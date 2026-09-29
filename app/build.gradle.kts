@@ -5,14 +5,15 @@ plugins {
     alias(libs.plugins.ktfmt)
     id("org.sonarqube") version "7.5.0.8588"
     id("jacoco")
+    id("com.google.gms.google-services")
 }
 
 android {
-    namespace = "com.android.sample"
+    namespace = "com.android.festivar"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.android.sample"
+        applicationId = "com.android.festivar"
         minSdk = 28
         targetSdk = 34
         versionCode = 1
@@ -114,6 +115,8 @@ fun DependencyHandlerScope.globalTestImplementation(dep: Any) {
 }
 
 dependencies {
+    implementation(platform("com.google.firebase:firebase-bom:34.19.0"))
+    // TODO: Add the dependencies for Firebase products you want to use
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
