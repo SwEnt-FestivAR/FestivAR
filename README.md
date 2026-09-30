@@ -6,4 +6,6 @@ This will allow the association's volunteers to know where every table, marquees
 should be placed. Moreover, it allows to schedule events, to dispatch roles between all the volunteers
 and to assign them tasks. A true event manager. As a secondary feature, some parts can be viewable trough an AR simulation.
 
-Link to the Figma : https://www.figma.com/design/hVnXJ5JMVFz0ffuNTlNbJn/FestivAR---Android?node-id=0-1&t=PEh0xqhTGniGAnB8-1
+
+
+[Figma](https://www.figma.com/design/hVnXJ5JMVFz0ffuNTlNbJn/FestivAR---Android?node-id=0-1&t=PEh0xqhTGniGAnB8-1)
