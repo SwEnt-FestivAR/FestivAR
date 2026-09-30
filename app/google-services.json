@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "53869374519",
+    "project_id": "festivar-9a339",
+    "storage_bucket": "festivar-9a339.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:53869374519:android:b3df697285bfa9e8d9a3b2",
+        "android_client_info": {
+          "package_name": "com.android.festivar"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "53869374519-eo0j5k9t4k82fkbl9ncd17b5djhv9bit.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.android.festivar",
+            "certificate_hash": "39478854c1b5d4b1b91ec7bc4c0f837dbc58281e"
+          }
+        },
+        {
+          "client_id": "53869374519-me9kp2amlrjmcs43gapkfp5e65eeasvb.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyChwIeVnWsh4VbSNNv2ODdOBo6X4ZXSKTo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "53869374519-me9kp2amlrjmcs43gapkfp5e65eeasvb.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
