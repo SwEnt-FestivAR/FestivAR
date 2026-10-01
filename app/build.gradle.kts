@@ -1,16 +1,17 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.androidApplication)
-    alias(libs.plugins.jetbrainsKotlinAndroid)
+    alias(libs.plugins.kotlinCompose)
     alias(libs.plugins.ktfmt)
-    id("org.sonarqube") version "7.5.0.8588"
+    alias(libs.plugins.sonar)
     id("jacoco")
-    id("com.google.gms.google-services")
+    alias(libs.plugins.gms)
 }
 
 android {
     namespace = "com.android.festivar"
-    compileSdk = 34
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.android.festivar"
@@ -48,17 +49,9 @@ android {
         compose = true
     }
 
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.1"
-    }
-
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = "17"
     }
 
     packaging {
@@ -81,17 +74,23 @@ android {
     sourceSets.getByName("testDebug") {
         val test = sourceSets.getByName("test")
 
-        java.setSrcDirs(test.java.srcDirs)
-        res.setSrcDirs(test.res.srcDirs)
-        resources.setSrcDirs(test.resources.srcDirs)
+        java.directories.clear()
+        java.directories.addAll(test.java.directories)
+        res.directories.clear()
+        res.directories.addAll(test.res.directories)
+        resources.directories.clear()
+        resources.directories.addAll(test.resources.directories)
     }
 
     sourceSets.getByName("test") {
-        java.setSrcDirs(emptyList<File>())
-        res.setSrcDirs(emptyList<File>())
-        resources.setSrcDirs(emptyList<File>())
+        java.directories.clear()
+        res.directories.clear()
+        resources.directories.clear()
     }
 }
+
+// With AGP 9 the JVM target is set outside the android block.
+kotlin { compilerOptions { jvmTarget.set(JvmTarget.JVM_17) } }
 
 sonar {
     properties {
@@ -179,7 +178,13 @@ tasks.register("jacocoTestReport", JacocoReport::class) {
         "android/**/*.*",
     )
 
-    val debugTree = fileTree("${project.layout.buildDirectory.get()}/tmp/kotlin-classes/debug") {
+    val debugTree = fileTree(project.layout.buildDirectory) {
+        include(
+            // AGP 9 compiles Kotlin with its built-in compiler, which writes here
+            "intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes/**",
+            // Fallback for the AGP 8 layout
+            "tmp/kotlin-classes/debug/**",
+        )
         exclude(fileFilter)
     }
 
