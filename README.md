@@ -9,3 +9,20 @@ and to assign them tasks. A true event manager. As a secondary feature, some par
 
 
 [Figma](https://www.figma.com/design/hVnXJ5JMVFz0ffuNTlNbJn/FestivAR---Android?node-id=0-1&t=PEh0xqhTGniGAnB8-1)
+
+## Code Review
+Code reviews should follow these [guidelines](https://github.com/swent-epfl/public/blob/main/project/README.md#reviewing-code)
+
+## New branches should be named following these guidelines:
+- New feature: feature/feature-name (ex: feature/map-screen)
+- Bugfix: bugfix/issue-number (ex: bugfix/issue-67)
+- Improvements: improvement/short-desc (ex: improvement/refactor)
+- Trying things: experiment/desc (ex: experiment/ar-view)
+- Tests creation: test/what-is-tested (ex: test/map-gps-loc)
+
+## Issues
+When creating an issue, make sure to clearly describe the issue and specify the correct labels/types/priority...
+
+## Pull requests
+Follow the usual commit conventions, as seen in [class](https://drive.google.com/file/d/1JjXkOzGVbd-3MIclaial4zcmi67X0BMc/view).
+Add labels as done with issues.
