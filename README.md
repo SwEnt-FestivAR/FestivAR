@@ -61,3 +61,9 @@ When creating an issue, make sure to clearly describe the issue and specify the 
 ## Pull requests
 Follow the usual commit conventions, as seen in [class](https://drive.google.com/file/d/1JjXkOzGVbd-3MIclaial4zcmi67X0BMc/view).
 Add labels as done with issues.
+
+---
+
+<a href="https://github.com/SwEnt-FestivAR/FestivAR/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=SwEnt-FestivAR/FestivAR" alt="Contributors">
+</a>
