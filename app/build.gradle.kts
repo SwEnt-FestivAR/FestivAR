@@ -48,22 +48,13 @@ android {
     targetCompatibility = JavaVersion.VERSION_17
   }
 
-  packaging {
-    resources {
-      excludes += "/META-INF/{AL2.0,LGPL2.1}"
-      // mockk-android and the Firebase SDKs ship duplicate licence files.
-      excludes += "META-INF/LICENSE.md"
-      excludes += "META-INF/LICENSE-notice.md"
-    }
-  }
+  packaging { resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" } }
 
   testOptions {
     unitTests {
       isIncludeAndroidResources = true
       isReturnDefaultValues = true
     }
-    // mockk-android needs its native agent extracted on the device.
-    packaging { jniLibs { useLegacyPackaging = true } }
   }
 
   // Robolectric needs to be run only in debug. But its tests are placed in the shared source set
@@ -170,13 +161,11 @@ dependencies {
 
   // ----------       Robolectric     ------------
   testImplementation(libs.robolectric)
-  testImplementation(libs.test.core.ktx)
+  globalTestImplementation(libs.test.core.ktx)
 
   // ---------- Fakes and coroutines in tests ----------
   testImplementation(libs.kotlinx.coroutines.test)
   testImplementation(libs.mockk)
-  androidTestImplementation(libs.mockk.android)
-  androidTestImplementation(libs.mockk.agent)
 }
 
 configurations.forEach { configuration ->

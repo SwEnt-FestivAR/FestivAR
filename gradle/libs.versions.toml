@@ -58,8 +58,6 @@ firebase-auth = { group = "com.google.firebase", name = "firebase-auth" }
 firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
-mockk-android = { group = "io.mockk", name = "mockk-android", version.ref = "mockk" }
-mockk-agent = { group = "io.mockk", name = "mockk-agent", version.ref = "mockk" }
 test-core-ktx = { group = "androidx.test", name = "core-ktx", version.ref = "androidxTestCore" }
 
 [plugins]
