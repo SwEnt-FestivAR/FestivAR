@@ -48,13 +48,22 @@ android {
     targetCompatibility = JavaVersion.VERSION_17
   }
 
-  packaging { resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" } }
+  packaging {
+    resources {
+      excludes += "/META-INF/{AL2.0,LGPL2.1}"
+      // mockk-android and the Firebase SDKs ship duplicate licence files.
+      excludes += "META-INF/LICENSE.md"
+      excludes += "META-INF/LICENSE-notice.md"
+    }
+  }
 
   testOptions {
     unitTests {
       isIncludeAndroidResources = true
       isReturnDefaultValues = true
     }
+    // mockk-android needs its native agent extracted on the device.
+    packaging { jniLibs { useLegacyPackaging = true } }
   }
 
   // Robolectric needs to be run only in debug. But its tests are placed in the shared source set
@@ -116,8 +125,16 @@ fun DependencyHandlerScope.globalTestImplementation(dep: Any) {
 }
 
 dependencies {
-  implementation(platform("com.google.firebase:firebase-bom:34.19.0"))
-  // TODO: Add the dependencies for Firebase products you want to use
+  // Firebase: every com.google.firebase artifact takes its version from the BOM.
+  implementation(platform(libs.firebase.bom))
+  implementation(libs.firebase.auth)
+  implementation(libs.firebase.firestore)
+  // Google sign-in through the Credential Manager
+  implementation(libs.credentials)
+  implementation(libs.credentials.play.services.auth)
+  implementation(libs.googleid)
+  // Navigation
+  implementation(libs.navigation.compose)
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.appcompat)
   implementation(libs.material)
@@ -153,6 +170,18 @@ dependencies {
 
   // ----------       Robolectric     ------------
   testImplementation(libs.robolectric)
+  testImplementation(libs.test.core.ktx)
+
+  // ---------- Fakes and coroutines in tests ----------
+  testImplementation(libs.kotlinx.coroutines.test)
+  testImplementation(libs.mockk)
+  androidTestImplementation(libs.mockk.android)
+  androidTestImplementation(libs.mockk.agent)
+}
+
+configurations.forEach { configuration ->
+  // Firestore tests crash with protobuf-lite on the classpath next to protobuf-javalite.
+  configuration.exclude("com.google.protobuf", "protobuf-lite")
 }
 
 tasks.withType<Test> {
