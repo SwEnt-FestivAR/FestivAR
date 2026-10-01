@@ -13,6 +13,7 @@ import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.authentication.AuthRepositoryProvider
 import com.android.festivar.model.authentication.AuthUser
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -56,6 +57,8 @@ class SignInViewModel(private val auth: AuthRepository = AuthRepositoryProvider.
           } catch (e: GetCredentialCancellationException) {
             _uiState.update { it.copy(isLoading = false) }
             return@launch
+          } catch (e: CancellationException) {
+            throw e
           } catch (e: NoCredentialException) {
             Result.failure(IllegalStateException("No Google account is available on this device"))
           } catch (e: Exception) {

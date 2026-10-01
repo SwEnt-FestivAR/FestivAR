@@ -3,11 +3,11 @@ package com.android.festivar.ui.home
 
 import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CredentialManager
-import androidx.credentials.exceptions.ClearCredentialException
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.authentication.AuthRepositoryProvider
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -41,8 +41,10 @@ class HomeViewModel(private val auth: AuthRepository = AuthRepositoryProvider.re
     viewModelScope.launch {
       try {
         credentialManager.clearCredentialState(ClearCredentialStateRequest())
-      } catch (e: ClearCredentialException) {
-        // Nothing was stored for this app; signing out is still right.
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        // Nothing was stored for this app, or Play services balked; signing out is still right.
       }
       auth
           .signOut()
