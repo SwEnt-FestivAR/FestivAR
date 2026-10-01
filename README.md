@@ -11,7 +11,8 @@ and to assign them tasks. A true event manager. As a secondary feature, some par
 [Figma](https://www.figma.com/design/hVnXJ5JMVFz0ffuNTlNbJn/FestivAR---Android?node-id=0-1&t=PEh0xqhTGniGAnB8-1)
 
 ## Code Review
-Code reviews should follow these [guidelines](https://github.com/swent-epfl/public/blob/main/project/README.md#reviewing-code)
+Code reviews should follow these [guidelines](https://github.com/swent-epfl/public/blob/main/project/README.md#reviewing-code).
+Don't forget to delete branches after merging in main.
 
 ## New branches should be named following these guidelines:
 - New feature: feature/feature-name (ex: feature/map-screen)
