@@ -23,10 +23,9 @@ class SecondActivity : ComponentActivity() {
         // A surface container using the 'background' color from the theme
         Surface(
             modifier = Modifier.fillMaxSize().semantics { testTag = C.Tag.second_screen_container },
-            color = MaterialTheme.colorScheme.background,
-        ) {
-          GreetingRobo("Robolectric")
-        }
+            color = MaterialTheme.colorScheme.background) {
+              GreetingRobo("Robolectric")
+            }
       }
     }
   }

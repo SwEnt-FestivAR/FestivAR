@@ -19,6 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "FestivAR"
+rootProject.name = "SampleApp"
 include(":app")
  
