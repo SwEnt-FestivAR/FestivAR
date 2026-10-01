@@ -77,7 +77,7 @@ android {
     // Robolectric needs to be run only in debug. But its tests are placed in the shared source set (test)
     // The next lines transfers the src/test/* from shared to the testDebug one
     //
-    // This prevent errors from occurring during unit tests
+    // This prevents errors from occurring during unit tests
     sourceSets.getByName("testDebug") {
         val test = sourceSets.getByName("test")
 
@@ -154,6 +154,10 @@ dependencies {
     testImplementation(libs.robolectric)
 }
 
+dependencyLocking {
+    lockAllConfigurations()
+}
+
 tasks.withType<Test> {
     // Configure Jacoco for each tests
     configure<JacocoTaskExtension> {
@@ -163,6 +167,8 @@ tasks.withType<Test> {
 }
 
 tasks.register("jacocoTestReport", JacocoReport::class) {
+    description = "Creates a Jacoco test report"
+    group = JavaBasePlugin.VERIFICATION_GROUP
     mustRunAfter("testDebugUnitTest", "connectedDebugAndroidTest")
 
     reports {
