@@ -1,5 +1,7 @@
 <resources>
-    <string name="app_name">SampleApp</string>
-    <string name="title_activity_main">MainActivity</string>
-    <string name="title_activity_second">SecondActivity</string>
+    <string name="app_name">FestivAR</string>
+    <string name="sign_in_welcome">Plan the ground, dispatch the crew.</string>
+    <string name="sign_in_with_google">Continue with Google</string>
+    <string name="signed_in_as">Signed in as %1$s</string>
+    <string name="sign_out">Sign out</string>
 </resources>
