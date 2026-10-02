@@ -116,9 +116,14 @@ fun DependencyHandlerScope.globalTestImplementation(dep: Any) {
 
 dependencies {
     implementation(platform("com.google.firebase:firebase-bom:34.19.0"))
+    implementation(platform(libs.firebase.bom))
     // TODO: Add the dependencies for Firebase products you want to use
+    implementation(libs.credentials)
+    implementation(libs.credentials.play.services.auth)
+    implementation(libs.googleid)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
+    implementation(libs.firebase.auth)
     implementation(libs.material)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(platform(libs.compose.bom))
