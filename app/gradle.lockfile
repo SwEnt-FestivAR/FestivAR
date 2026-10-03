@@ -1,0 +1,21 @@
+# This is a Gradle generated file for dependency locking.
+# Manual edits can break the build and are not advised.
+# This file is expected to be part of source control.
+com.facebook:ktfmt:0.64=ktfmt
+com.google.errorprone:error_prone_annotations:2.41.0=ktfmt
+com.google.googlejavaformat:google-java-format:1.23.0=ktfmt
+com.google.guava:failureaccess:1.0.3=ktfmt
+com.google.guava:guava:33.5.0-jre=ktfmt
+com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava=ktfmt
+com.google.j2objc:j2objc-annotations:3.1=ktfmt
+net.java.dev.jna:jna:4.2.2=ktfmt
+org.ec4j.core:ec4j-core:1.2.0=ktfmt
+org.jetbrains.kotlin:kotlin-compiler-embeddable:2.3.20=ktfmt
+org.jetbrains.kotlin:kotlin-daemon-embeddable:2.3.20=ktfmt
+org.jetbrains.kotlin:kotlin-reflect:1.6.10=ktfmt
+org.jetbrains.kotlin:kotlin-script-runtime:2.3.20=ktfmt
+org.jetbrains.kotlin:kotlin-stdlib:2.3.20=ktfmt
+org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.8.0=ktfmt
+org.jetbrains:annotations:13.0=ktfmt
+org.jspecify:jspecify:1.0.0=ktfmt
+empty=
