@@ -116,19 +116,19 @@ fun DependencyHandlerScope.globalTestImplementation(dep: Any) {
 }
 
 dependencies {
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.credentials)
-    implementation(libs.credentials.play.services.auth)
-    implementation(libs.googleid)
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.appcompat)
-    implementation(libs.firebase.auth)
-    implementation(libs.material)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(platform(libs.compose.bom))
-    testImplementation(libs.junit)
-    globalTestImplementation(libs.androidx.junit)
-    globalTestImplementation(libs.androidx.espresso.core)
+  implementation(platform(libs.firebase.bom))
+  implementation(libs.credentials)
+  implementation(libs.credentials.play.services.auth)
+  implementation(libs.googleid)
+  implementation(libs.androidx.core.ktx)
+  implementation(libs.androidx.appcompat)
+  implementation(libs.firebase.auth)
+  implementation(libs.material)
+  implementation(libs.androidx.lifecycle.runtime.ktx)
+  implementation(platform(libs.compose.bom))
+  testImplementation(libs.junit)
+  globalTestImplementation(libs.androidx.junit)
+  globalTestImplementation(libs.androidx.espresso.core)
 
   // ------------- Jetpack Compose ------------------
   val composeBom = platform(libs.compose.bom)
