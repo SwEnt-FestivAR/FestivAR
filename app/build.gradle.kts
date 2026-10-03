@@ -155,9 +155,7 @@ dependencies {
   testImplementation(libs.robolectric)
 }
 
-dependencyLocking {
-    lockAllConfigurations()
-}
+dependencyLocking { lockAllConfigurations() }
 
 tasks.withType<Test> {
   // Configure Jacoco for each tests
