@@ -7,3 +7,7 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Firebase emulator output
+*-debug.log
+.firebase/

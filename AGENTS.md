@@ -5,16 +5,15 @@ Writing them down also helps the human team agree on how we build.
 
 ## The app
 
-A Kotlin/Android Festival manager app (`com.github.se.bootcamp`), built with an **MVVM** architecture.
+A Kotlin/Android Festival manager app (`com.android.festivar`), built with an **MVVM** architecture.
 
 - `model/` holds the data and repositories (Firestore, Location, ...).
 - `ui/` holds the screens and their **ViewModels**.
-- `sigchecks/` are signature checks used for grading. **Never edit them.**
 
 ## Architecture rules
 
 - Keep the **MVVM** separation. **ViewModels never import Firebase** or a repository implementation; they depend on repository interfaces. Firebase lives only in the `model/` repositories.
-- Do not edit anything under `sigchecks/` or generated code.
+- Do not edit generated code.
 
 ## Definition of done
 
