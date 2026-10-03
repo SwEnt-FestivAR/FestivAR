@@ -1,16 +1,6 @@
 name: Build Android APK
 
-on:
-  workflow_dispatch:
-    inputs:
-      buildType:
-        description: 'Select build type'
-        required: true
-        default: 'debug'
-        type: choice
-        options:
-          - debug
-          - release
+on: workflow_dispatch
 
 jobs:
   build:
