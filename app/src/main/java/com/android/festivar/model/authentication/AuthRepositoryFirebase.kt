@@ -23,7 +23,7 @@ class AuthRepositoryFirebase(
 
   override suspend fun signInWithEmailAndPassword(
       email: String,
-      password: String
+      password: String,
   ): Result<FirebaseUser> {
     return runCatching {
       Firebase.auth.signInWithEmailAndPassword(email, password).await().user
@@ -33,7 +33,7 @@ class AuthRepositoryFirebase(
 
   override suspend fun signUpWIthEmailAndPassword(
       email: String,
-      password: String
+      password: String,
   ): Result<FirebaseUser> {
     return runCatching {
       Firebase.auth.createUserWithEmailAndPassword(email, password).await().user

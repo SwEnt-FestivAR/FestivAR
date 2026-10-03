@@ -1,4 +1,3 @@
-
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -118,7 +117,6 @@ fun DependencyHandlerScope.globalTestImplementation(dep: Any) {
 
 dependencies {
     implementation(platform(libs.firebase.bom))
-    // TODO: Add the dependencies for Firebase products you want to use
     implementation(libs.credentials)
     implementation(libs.credentials.play.services.auth)
     implementation(libs.googleid)

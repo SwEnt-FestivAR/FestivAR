@@ -9,14 +9,17 @@ import com.google.firebase.auth.GoogleAuthProvider
 
 class GoogleSignInHelper {
   fun getFirebaseCredential(credential: Credential): AuthCredential {
-    if (credential !is CustomCredential ||
-        credential.type != GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+    if (
+        credential !is CustomCredential ||
+            credential.type != GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
+    ) {
       throw IllegalArgumentException("Credential is not a Google ID token credential")
     }
 
     val idToken =
         credential.data.getString(
-            "com.google.android.libraries.identity.googleid.BUNDLE_KEY_ID_TOKEN")
+            "com.google.android.libraries.identity.googleid.BUNDLE_KEY_ID_TOKEN"
+        )
             ?: credential.data.getString("id_token")
             ?: GoogleIdTokenCredential.createFrom(credential.data).idToken
     return GoogleAuthProvider.getCredential(idToken, null)
