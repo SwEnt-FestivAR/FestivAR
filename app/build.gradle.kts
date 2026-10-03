@@ -1,7 +1,10 @@
 
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.jetbrainsKotlinAndroid)
+    alias(libs.plugins.jetbrainsKotlinCompose)
     alias(libs.plugins.ktfmt)
     id("org.sonarqube") version "7.5.0.8588"
     id("jacoco")
@@ -10,7 +13,7 @@ plugins {
 
 android {
     namespace = "com.android.festivar"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.android.festivar"
@@ -41,15 +44,11 @@ android {
     }
 
     testCoverage {
-        jacocoVersion = "0.8.11"
+        jacocoVersion = "0.8.13"
     }
 
     buildFeatures {
         compose = true
-    }
-
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.1"
     }
 
     compileOptions {
@@ -57,8 +56,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
+        }
     }
 
     packaging {
@@ -115,7 +116,6 @@ fun DependencyHandlerScope.globalTestImplementation(dep: Any) {
 }
 
 dependencies {
-    implementation(platform("com.google.firebase:firebase-bom:34.19.0"))
     implementation(platform(libs.firebase.bom))
     // TODO: Add the dependencies for Firebase products you want to use
     implementation(libs.credentials)

@@ -30,4 +30,14 @@ class AuthRepositoryFirebase(
           ?: throw IllegalStateException("Firebase sign-in returned no user")
     }
   }
+
+  override suspend fun signUpWIthEmailAndPassword(
+      email: String,
+      password: String
+  ): Result<FirebaseUser> {
+    return runCatching {
+      Firebase.auth.createUserWithEmailAndPassword(email, password).await().user
+          ?: throw IllegalStateException("Firebase sign-in returned no user")
+    }
+  }
 }
