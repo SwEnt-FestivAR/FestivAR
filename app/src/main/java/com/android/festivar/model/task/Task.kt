@@ -78,6 +78,7 @@ data class Task(
      * Meant to inform that the [Task] is completed by returning a completed version copy
      * of `this`.
      *
+     * @return The [Task] but completed.
      */
   fun complete(): Task {
       return copy(completed = true)
@@ -88,6 +89,8 @@ data class Task(
      * to the [assignees] list.
      *
      * @param user The [User]that is going to be assigned to `this`, to be added to [assignees] list.
+     *
+     * @return The [Task] but with [user] added to it.
      *
      * @throws IllegalStateException If the [Task] is already full.
      * @throws IllegalArgumentException If [user] is already assigned.
@@ -107,6 +110,8 @@ data class Task(
      * removed from the [assignees] list.
      *
      * @param user The [User]that is going to be removed from `this`, from [assignees] list.
+     *
+     * @return The [Task] but with [user] removed from it.
      *
      * @throws IllegalArgumentException If [user] is not assigned to `this`.
      */
