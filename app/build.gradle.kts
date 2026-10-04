@@ -39,7 +39,7 @@ android {
     }
   }
 
-  testCoverage { jacocoVersion = "0.8.11" }
+  testCoverage { jacocoVersion = "0.8.13" }
 
   buildFeatures { compose = true }
 
@@ -48,7 +48,16 @@ android {
     targetCompatibility = JavaVersion.VERSION_17
   }
 
-  packaging { resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" } }
+  packaging {
+    resources {
+      excludes +=
+        listOf(
+          "/META-INF/{AL2.0,LGPL2.1}",
+          "/META-INF/LICENSE*",
+          "/META-INF/NOTICE*",
+        )
+    }
+  }
 
   testOptions {
     unitTests {
@@ -95,7 +104,8 @@ sonar {
         "sonar.junit.reportPaths",
         "${project.layout.buildDirectory.get()}/test-results/testDebugunitTest/",
     )
-    // Paths to xml files with Android Lint issues. If the main flavor is changed, this file will
+    // Paths to xml files with Android Lint issues. If the main flavor is changed, this file
+    // will
     // have to be changed too.
     property(
         "sonar.androidLint.reportPaths",
@@ -116,14 +126,17 @@ fun DependencyHandlerScope.globalTestImplementation(dep: Any) {
 }
 
 dependencies {
-  implementation(platform("com.google.firebase:firebase-bom:34.19.0"))
+  implementation(platform(libs.firebase.bom))
   // TODO: Add the dependencies for Firebase products you want to use
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.appcompat)
+  implementation(libs.firebase.auth)
+  implementation(libs.googleid)
   implementation(libs.material)
   implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation(platform(libs.compose.bom))
   testImplementation(libs.junit)
+  androidTestImplementation(libs.mockk.android)
   globalTestImplementation(libs.androidx.junit)
   globalTestImplementation(libs.androidx.espresso.core)
 
