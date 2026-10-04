@@ -5,7 +5,7 @@ package com.android.festivar.model.temporary
  * and parameters of this class are up to changes and this definition states only as a preliminary
  * definition to allow the implementation of other classes.
  *
- * @param uid is the [User]'s unique identifier.
+ * @param uid The [User]'s unique identifier.
  */
 data class User(
     val uid: String
