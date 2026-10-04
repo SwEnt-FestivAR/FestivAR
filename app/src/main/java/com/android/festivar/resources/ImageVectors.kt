@@ -6,7 +6,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.unit.dp
 
-// <!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+// Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools
+// converted to Jetpack Compose ImageVector by www.svgtocompose.com
 val GoogleLogo: ImageVector
     get() {
         val current = _googleLogo
@@ -20,11 +21,10 @@ val GoogleLogo: ImageVector
             viewportHeight = 32.0f,
         )
             .apply {
-                // M23.75 16 A7.7446 7.7446 0 0 1 8.7177 18.6259 L4.2849 22.1721 A13.244 13.244 0 0 0
+                // M23.75 16 A7.7446 7.7446 0 0 1 8.7177 18.6259 L4.2849 22.1721 A13.244 13.244 0 0
+                // 0
                 // 29.25 16
-                path(
-                    fill = SolidColor(Color(0xFF00AC47)),
-                ) {
+                path(fill = SolidColor(Color(0xFF00AC47))) {
                     // M 23.75 16
                     moveTo(x = 23.75f, y = 16.0f)
                     // A 7.7446 7.7446 0 0 1 8.7177 18.6259
@@ -50,11 +50,10 @@ val GoogleLogo: ImageVector
                         y1 = 16.0f,
                     )
                 }
-                // M23.75 16 a7.7387 7.7387 0 0 1 -3.2516 6.2987 l4.3824 3.5059 A13.2042 13.2042 0 0 0
+                // M23.75 16 a7.7387 7.7387 0 0 1 -3.2516 6.2987 l4.3824 3.5059 A13.2042 13.2042 0 0
+                // 0
                 // 29.25 16
-                path(
-                    fill = SolidColor(Color(0xFF4285F4)),
-                ) {
+                path(fill = SolidColor(Color(0xFF4285F4))) {
                     // M 23.75 16
                     moveTo(x = 23.75f, y = 16.0f)
                     // a 7.7387 7.7387 0 0 1 -3.2516 6.2987
@@ -80,11 +79,10 @@ val GoogleLogo: ImageVector
                         y1 = 16.0f,
                     )
                 }
-                // M8.25 16 a7.698 7.698 0 0 1 .4677 -2.6259 L4.2849 9.8279 a13.177 13.177 0 0 0 0 12.3442
+                // M8.25 16 a7.698 7.698 0 0 1 .4677 -2.6259 L4.2849 9.8279 a13.177 13.177 0 0 0 0
+                // 12.3442
                 // l4.4328 -3.5462 A7.698 7.698 0 0 1 8.25 16Z
-                path(
-                    fill = SolidColor(Color(0xFFFFBA00)),
-                ) {
+                path(fill = SolidColor(Color(0xFFFFBA00))) {
                     // M 8.25 16
                     moveTo(x = 8.25f, y = 16.0f)
                     // a 7.698 7.698 0 0 1 0.4677 -2.6259
@@ -123,10 +121,9 @@ val GoogleLogo: ImageVector
                     )
                     close()
                 }
-                // <polygon points="8.718 13.374 8.718 13.374 8.718 13.374 8.718 13.374" fill="#2ab2db" />
-                path(
-                    fill = SolidColor(Color(0xFF2AB2DB)),
-                ) {
+                // <polygon points="8.718 13.374 8.718 13.374 8.718 13.374 8.718 13.374"
+                // fill="#2ab2db" />
+                path(fill = SolidColor(Color(0xFF2AB2DB))) {
                     // M 8.718 13.374
                     moveTo(x = 8.718f, y = 13.374f)
                     // L 8.718 13.374
@@ -137,11 +134,10 @@ val GoogleLogo: ImageVector
                     lineTo(x = 8.718f, y = 13.374f)
                     close()
                 }
-                // M16 8.25 a7.699 7.699 0 0 1 4.558 1.4958 l4.06 -3.7893 A13.2152 13.2152 0 0 0 4.2849
+                // M16 8.25 a7.699 7.699 0 0 1 4.558 1.4958 l4.06 -3.7893 A13.2152 13.2152 0 0 0
+                // 4.2849
                 // 9.8279 l4.4328 3.5462 A7.756 7.756 0 0 1 16 8.25Z
-                path(
-                    fill = SolidColor(Color(0xFFEA4435)),
-                ) {
+                path(fill = SolidColor(Color(0xFFEA4435))) {
                     // M 16 8.25
                     moveTo(x = 16.0f, y = 8.25f)
                     // a 7.699 7.699 0 0 1 4.558 1.4958
@@ -180,10 +176,9 @@ val GoogleLogo: ImageVector
                     )
                     close()
                 }
-                // <polygon points="8.718 18.626 8.718 18.626 8.718 18.626 8.718 18.626" fill="#2ab2db" />
-                path(
-                    fill = SolidColor(Color(0xFF2AB2DB)),
-                ) {
+                // <polygon points="8.718 18.626 8.718 18.626 8.718 18.626 8.718 18.626"
+                // fill="#2ab2db" />
+                path(fill = SolidColor(Color(0xFF2AB2DB))) {
                     // M 8.718 18.626
                     moveTo(x = 8.718f, y = 18.626f)
                     // L 8.718 18.626
@@ -195,9 +190,7 @@ val GoogleLogo: ImageVector
                     close()
                 }
                 // M29.25 15 v1 L27 19.5 H16.5 V14 H28.25 A1 1 0 0 1 29.25 15Z
-                path(
-                    fill = SolidColor(Color(0xFF4285F4)),
-                ) {
+                path(fill = SolidColor(Color(0xFF4285F4))) {
                     // M 29.25 15
                     moveTo(x = 29.25f, y = 15.0f)
                     // v 1
