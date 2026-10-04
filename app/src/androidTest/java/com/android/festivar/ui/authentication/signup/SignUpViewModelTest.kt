@@ -83,8 +83,9 @@ class SignUpViewModelTest {
   private fun awaitState(
     viewModel: SignUpViewModel,
     predicate: (AuthUIState) -> Boolean,
-  ): AuthUIState =
-    runBlocking { withTimeout(5_000.milliseconds) { viewModel.uiState.first(predicate) } }
+  ): AuthUIState = runBlocking {
+    withTimeout(5_000.milliseconds) { viewModel.uiState.first(predicate) }
+  }
 
   private class FakeAuthRepository : AuthRepository {
     var signUpBehavior: suspend (String, String) -> Result<FirebaseUser> = { _, _ ->
