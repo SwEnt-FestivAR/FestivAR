@@ -127,6 +127,7 @@ dependencies {
   implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation(platform(libs.compose.bom))
   testImplementation(libs.junit)
+  testImplementation(libs.mockk)
   globalTestImplementation(libs.androidx.junit)
   globalTestImplementation(libs.androidx.espresso.core)
 
