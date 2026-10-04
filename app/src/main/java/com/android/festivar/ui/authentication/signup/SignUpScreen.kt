@@ -155,7 +155,8 @@ fun SignUpScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag(SignUpScreenTestTags.SIGNUP_BUTTON),
-                    enabled = email.isNotBlank() && password.isNotBlank() && confirmPass.isNotBlank(),
+                    enabled =
+                        email.isNotBlank() && password.isNotBlank() && confirmPass.isNotBlank(),
                 ) {
                     Text(if (uiState.isLoading) "Signing up..." else "Sign up")
                 }
