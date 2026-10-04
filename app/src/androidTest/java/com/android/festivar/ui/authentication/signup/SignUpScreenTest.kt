@@ -23,8 +23,7 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class SignUpScreenTest {
-  @get:Rule
-  val composeTestRule = createComposeRule()
+  @get:Rule val composeTestRule = createComposeRule()
 
   private lateinit var viewModel: SignUpViewModel
 
@@ -38,8 +37,8 @@ class SignUpScreenTest {
   fun signUpScreen_displaysTaggedTitleAndFields() {
     composeTestRule.setContent {
       SignUpScreen(
-        credentialManager = mockk<CredentialManager>(relaxed = true),
-        signUpViewModel = viewModel,
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          signUpViewModel = viewModel,
       )
     }
 
@@ -53,8 +52,8 @@ class SignUpScreenTest {
   fun signUpButton_isDisabledWhenRequiredFieldsAreBlank() {
     composeTestRule.setContent {
       SignUpScreen(
-        credentialManager = mockk<CredentialManager>(relaxed = true),
-        signUpViewModel = viewModel,
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          signUpViewModel = viewModel,
       )
     }
 
@@ -65,20 +64,20 @@ class SignUpScreenTest {
   fun signUpButton_callsViewModelWithEnteredEmailAndPassword() {
     composeTestRule.setContent {
       SignUpScreen(
-        credentialManager = mockk<CredentialManager>(relaxed = true),
-        signUpViewModel = viewModel,
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          signUpViewModel = viewModel,
       )
     }
 
     composeTestRule
-      .onNodeWithTag(SignUpScreenTestTags.EMAIL_FIELD)
-      .performTextInput("user@example.com")
+        .onNodeWithTag(SignUpScreenTestTags.EMAIL_FIELD)
+        .performTextInput("user@example.com")
     composeTestRule
-      .onNodeWithTag(SignUpScreenTestTags.PASS_FIELD)
-      .performTextInput("secure-password")
+        .onNodeWithTag(SignUpScreenTestTags.PASS_FIELD)
+        .performTextInput("secure-password")
     composeTestRule
-      .onNodeWithTag(SignUpScreenTestTags.PASS_CONFIRM_FIELD)
-      .performTextInput("secure-password")
+        .onNodeWithTag(SignUpScreenTestTags.PASS_CONFIRM_FIELD)
+        .performTextInput("secure-password")
     composeTestRule.onNodeWithTag(SignUpScreenTestTags.SIGNUP_BUTTON).assertIsEnabled()
     composeTestRule.onNodeWithTag(SignUpScreenTestTags.SIGNUP_BUTTON).performClick()
 
@@ -89,20 +88,20 @@ class SignUpScreenTest {
   fun confirmPassword_mismatchShowsErrorMessage() {
     composeTestRule.setContent {
       SignUpScreen(
-        credentialManager = mockk<CredentialManager>(relaxed = true),
-        signUpViewModel = viewModel,
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          signUpViewModel = viewModel,
       )
     }
 
     composeTestRule.onNodeWithTag(SignUpScreenTestTags.PASS_FIELD).performTextInput("password")
     composeTestRule
-      .onNodeWithTag(SignUpScreenTestTags.PASS_CONFIRM_FIELD)
-      .performTextInput("different")
+        .onNodeWithTag(SignUpScreenTestTags.PASS_CONFIRM_FIELD)
+        .performTextInput("different")
 
     composeTestRule
-      .onNodeWithTag(SignUpScreenTestTags.PASSWORD_MISMATCH_ERROR)
-      .assertIsDisplayed()
-      .assertTextEquals("Passwords do not match")
+        .onNodeWithTag(SignUpScreenTestTags.PASSWORD_MISMATCH_ERROR)
+        .assertIsDisplayed()
+        .assertTextEquals("Passwords do not match")
   }
 
   @Test
@@ -110,9 +109,9 @@ class SignUpScreenTest {
     var callbackInvoked = false
     composeTestRule.setContent {
       SignUpScreen(
-        credentialManager = mockk<CredentialManager>(relaxed = true),
-        onCreateAccountClick = { callbackInvoked = true },
-        signUpViewModel = viewModel,
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          onCreateAccountClick = { callbackInvoked = true },
+          signUpViewModel = viewModel,
       )
     }
 

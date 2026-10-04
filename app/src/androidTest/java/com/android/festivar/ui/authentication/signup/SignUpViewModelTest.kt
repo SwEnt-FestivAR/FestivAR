@@ -6,6 +6,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.authentication.AuthRepository
 import com.google.firebase.auth.FirebaseUser
 import io.mockk.mockk
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -15,7 +16,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
-import kotlin.time.Duration.Companion.milliseconds
 
 @RunWith(AndroidJUnit4::class)
 class SignUpViewModelTest {
@@ -81,8 +81,8 @@ class SignUpViewModelTest {
   }
 
   private fun awaitState(
-    viewModel: SignUpViewModel,
-    predicate: (AuthUIState) -> Boolean,
+      viewModel: SignUpViewModel,
+      predicate: (AuthUIState) -> Boolean,
   ): AuthUIState = runBlocking {
     withTimeout(5_000.milliseconds) { viewModel.uiState.first(predicate) }
   }
@@ -98,8 +98,8 @@ class SignUpViewModelTest {
       private set
 
     override suspend fun signUpWIthEmailAndPassword(
-      email: String,
-      password: String,
+        email: String,
+        password: String,
     ): Result<FirebaseUser> {
       signUpCallCount += 1
       lastSignUpCredentials = email to password
@@ -107,14 +107,14 @@ class SignUpViewModelTest {
     }
 
     override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> =
-      Result.failure(UnsupportedOperationException("Not configured"))
+        Result.failure(UnsupportedOperationException("Not configured"))
 
     override suspend fun signOut(): Result<Unit> =
-      Result.failure(UnsupportedOperationException("Not configured"))
+        Result.failure(UnsupportedOperationException("Not configured"))
 
     override suspend fun signInWithEmailAndPassword(
-      email: String,
-      password: String,
+        email: String,
+        password: String,
     ): Result<FirebaseUser> = Result.failure(UnsupportedOperationException("Not configured"))
   }
 }
