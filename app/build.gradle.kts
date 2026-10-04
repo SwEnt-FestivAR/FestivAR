@@ -9,9 +9,6 @@ plugins {
     alias(libs.plugins.gms)
 }
 
-// Change the default ktfmt settings to use the Kotlin official style guide
-ktfmt { kotlinLangStyle() }
-
 android {
     namespace = "com.android.festivar"
     compileSdk = 37

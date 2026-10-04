@@ -127,10 +127,9 @@ fun SignUpScreen(
                 OutlinedTextField(
                     value = confirmPass,
                     onValueChange = { confirmPass = it },
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .testTag(SignUpScreenTestTags.PASS_CONFIRM_FIELD),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag(SignUpScreenTestTags.PASS_CONFIRM_FIELD),
                     label = { Text("Confirm password") },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
@@ -155,8 +154,7 @@ fun SignUpScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag(SignUpScreenTestTags.SIGNUP_BUTTON),
-                    enabled =
-                        email.isNotBlank() && password.isNotBlank() && confirmPass.isNotBlank(),
+                    enabled = email.isNotBlank() && password.isNotBlank() && confirmPass.isNotBlank(),
                 ) {
                     Text(if (uiState.isLoading) "Signing up..." else "Sign up")
                 }

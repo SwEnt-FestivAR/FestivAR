@@ -32,9 +32,7 @@ class SignUpViewModel(
             _uiState.value = AuthUIState(isLoading = true)
             val result = runCatching {
                 val option =
-                    GetSignInWithGoogleOption.Builder(
-                        context.getString(R.string.default_web_client_id)
-                    )
+                    GetSignInWithGoogleOption.Builder(context.getString(R.string.default_web_client_id))
                         .build()
                 val request = GetCredentialRequest.Builder().addCredentialOption(option).build()
                 credentialManager.getCredential(context, request).credential
