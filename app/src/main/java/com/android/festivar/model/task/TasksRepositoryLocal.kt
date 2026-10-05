@@ -10,7 +10,7 @@ class TasksRepositoryLocal : TasksRepository {
   }
 
   override suspend fun getAllTasks(): List<Task> {
-    return tasks
+    return tasks.toList()
   }
 
   override suspend fun getTask(taskId: String): Task {
