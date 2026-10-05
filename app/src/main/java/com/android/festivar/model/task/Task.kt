@@ -6,7 +6,7 @@ import java.time.LocalDateTime
 
 /**
  * Represents a [Task] in the FestivAR application. A [Task] is something, in the context of an
- * [Event], that has to be done. To allow people to properly realize hat it asks for, it has several
+ * [Event], that has to be done. To allow people to properly realize what it asks for, it has several
  * informational fields that may or may not be used by the creator of the [Task].
  *
  * A [Task] is immutable: its fields can never be changed. Every "modification" ([copy],
@@ -85,7 +85,7 @@ data class Task(
    * Adds a new assigned [User] to the [Task] by returning a version of `this` with [user] added to
    * the [assignees] list.
    *
-   * @param user The [User]that is going to be assigned to `this`, to be added to [assignees] list.
+   * @param user The [User] that is going to be assigned to `this`, to be added to [assignees] list.
    * @return The [Task] but with [user] added to it.
    * @throws IllegalStateException If the [Task] is already full.
    * @throws IllegalArgumentException If [user] is already assigned.
@@ -102,7 +102,7 @@ data class Task(
    * Removes an assigned [User] from the [Task] by returning a version of `this` with [user] removed
    * from the [assignees] list.
    *
-   * @param user The [User]that is going to be removed from `this`, from [assignees] list.
+   * @param user The [User] that is going to be removed from `this`, from [assignees] list.
    * @return The [Task] but with [user] removed from it.
    * @throws IllegalArgumentException If [user] is not assigned to `this`.
    */
