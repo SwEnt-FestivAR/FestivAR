@@ -7,7 +7,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
-import java.util.UUID
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
 import org.junit.Assert.assertEquals
@@ -17,6 +16,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.util.UUID
 
 @RunWith(AndroidJUnit4::class)
 class AuthRepositoryFirebaseTest {
@@ -33,7 +33,7 @@ class AuthRepositoryFirebaseTest {
   fun signUpWithEmailAndPassword_returnsCreatedUserAndSetsCurrentUser() = runBlocking {
     val email = newEmail()
 
-    val user = repository.signUpWIthEmailAndPassword(email, PASSWORD).getOrThrow()
+    val user = repository.signUpWithEmailAndPassword(email, PASSWORD).getOrThrow()
 
     assertEquals(email, user.email)
     assertNotNull(repository.currentUser)
@@ -43,9 +43,9 @@ class AuthRepositoryFirebaseTest {
   @Test
   fun signUpWithEmailAndPassword_returnsFailureForExistingEmail() = runBlocking {
     val email = newEmail()
-    repository.signUpWIthEmailAndPassword(email, PASSWORD).getOrThrow()
+    repository.signUpWithEmailAndPassword(email, PASSWORD).getOrThrow()
 
-    val result = repository.signUpWIthEmailAndPassword(email, PASSWORD)
+    val result = repository.signUpWithEmailAndPassword(email, PASSWORD)
 
     assertTrue(result.isFailure)
   }
@@ -76,7 +76,7 @@ class AuthRepositoryFirebaseTest {
 
   @Test
   fun signOut_clearsCurrentUser() = runBlocking {
-    repository.signUpWIthEmailAndPassword(newEmail(), PASSWORD).getOrThrow()
+    repository.signUpWithEmailAndPassword(newEmail(), PASSWORD).getOrThrow()
     assertNotNull(repository.currentUser)
 
     val result = repository.signOut()

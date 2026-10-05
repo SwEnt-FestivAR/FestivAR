@@ -55,7 +55,7 @@ class AuthRepositoryFirebaseNullUserTest {
         Tasks.forResult(noUserResult())
     val repository = AuthRepositoryFirebase(firebaseAuth = auth)
 
-    val result = repository.signUpWIthEmailAndPassword(EMAIL, PASSWORD)
+    val result = repository.signUpWithEmailAndPassword(EMAIL, PASSWORD)
 
     assertNoUserFailure(result)
   }
