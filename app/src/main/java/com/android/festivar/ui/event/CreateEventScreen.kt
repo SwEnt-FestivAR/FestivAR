@@ -3,6 +3,7 @@ package com.android.festivar.ui.event
 // Co-authored-by: Copilot App
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -16,6 +17,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -24,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,6 +43,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 /** A Screen for creating events. */
 @Composable
@@ -50,6 +58,9 @@ fun CreateEventScreen(
   var startDate by rememberSaveable { mutableStateOf("") }
   var endDate by rememberSaveable { mutableStateOf("") }
   var address by rememberSaveable { mutableStateOf("") }
+  var startDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
+  var endDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
+  var activeDatePicker by rememberSaveable { mutableStateOf<DateField?>(null) }
 
   val formIsComplete =
       name.isNotBlank() && startDate.isNotBlank() && endDate.isNotBlank() && address.isNotBlank()
@@ -77,25 +88,25 @@ fun CreateEventScreen(
             EventInput(
                 value = name,
                 onValueChange = { name = it },
-                placeholder = "Name"
+                placeholder = "Name",
             )
             Spacer(modifier = Modifier.height(12.dp))
-            EventInput(
+            DateInput(
                 value = startDate,
-                onValueChange = { startDate = it },
-                placeholder = "Start date"
+                onClick = { activeDatePicker = DateField.START },
+                placeholder = "Start date",
             )
             Spacer(modifier = Modifier.height(12.dp))
-            EventInput(
+            DateInput(
                 value = endDate,
-                onValueChange = { endDate = it },
-                placeholder = "End Date"
+                onClick = { activeDatePicker = DateField.END },
+                placeholder = "End Date",
             )
             Spacer(modifier = Modifier.height(12.dp))
             EventInput(
                 value = address,
                 onValueChange = { address = it },
-                placeholder = "Address"
+                placeholder = "Address",
             )
           }
 
@@ -103,8 +114,7 @@ fun CreateEventScreen(
           Button(
               onClick = onCreate,
               enabled = formIsComplete,
-              modifier =
-                  Modifier.fillMaxWidth().padding(horizontal = 12.dp).height(42.dp),
+              modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).height(42.dp),
               shape = RoundedCornerShape(8.dp),
               colors =
                   ButtonDefaults.buttonColors(
@@ -119,7 +129,49 @@ fun CreateEventScreen(
         }
       },
   )
+
+  activeDatePicker?.let { dateField ->
+    val initialDateMillis = if (dateField == DateField.START) startDateMillis else endDateMillis
+    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialDateMillis)
+
+    DatePickerDialog(
+        onDismissRequest = { activeDatePicker = null },
+        confirmButton = {
+          Button(
+              onClick = {
+                val selectedDateMillis = datePickerState.selectedDateMillis
+                if (dateField == DateField.START) {
+                  startDateMillis = selectedDateMillis
+                  startDate = selectedDateMillis.toDisplayDate()
+                } else {
+                  endDateMillis = selectedDateMillis
+                  endDate = selectedDateMillis.toDisplayDate()
+                }
+                activeDatePicker = null
+              },
+          ) {
+            Text("OK")
+          }
+        },
+        dismissButton = { Button(onClick = { activeDatePicker = null }) { Text("Cancel") } },
+    ) {
+      DatePicker(state = datePickerState)
+    }
+  }
 }
+
+private enum class DateField {
+  START,
+  END,
+}
+
+private fun Long?.toDisplayDate(): String =
+    this?.let {
+        DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
+            .withZone(ZoneId.systemDefault())
+            .format(Instant.ofEpochMilli(it))
+    } ?: ""
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -158,18 +210,19 @@ private fun CreateEventTopBar(onBack: () -> Unit) {
 private fun EventInput(
     value: String,
     onValueChange: (String) -> Unit,
-    placeholder: String
+    placeholder: String,
+    modifier: Modifier = Modifier,
+    readOnly: Boolean = false,
+    enabled: Boolean = true,
 ) {
   val shape = RoundedCornerShape(8.dp)
   BasicTextField(
       value = value,
       onValueChange = onValueChange,
-      modifier =
-          Modifier.fillMaxWidth()
-              .height(40.dp)
-              .clip(shape)
-              .background(Color(0xFFE4DCFF)),
+      modifier = modifier.fillMaxWidth().height(40.dp).clip(shape).background(Color(0xFFE4DCFF)),
       singleLine = true,
+      readOnly = readOnly,
+      enabled = enabled,
       textStyle = TextStyle(color = Color(0xFF554C78), fontSize = 12.sp),
       cursorBrush = SolidColor(Color(0xFF7137F2)),
       decorationBox = { innerTextField ->
@@ -184,6 +237,23 @@ private fun EventInput(
         }
       },
   )
+}
+
+@Composable
+private fun DateInput(
+    value: String,
+    onClick: () -> Unit,
+    placeholder: String,
+) {
+  Box(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+    EventInput(
+        value = value,
+        onValueChange = {},
+        placeholder = placeholder,
+        readOnly = true,
+        enabled = false,
+    )
+  }
 }
 
 @Preview
