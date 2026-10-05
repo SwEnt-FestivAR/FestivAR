@@ -2,8 +2,6 @@ package com.android.festivar.model.authentication
 
 import androidx.credentials.Credential
 import com.google.firebase.auth.FirebaseUser
-import kotlin.Result
-import kotlin.Unit
 
 public interface AuthRepository {
   /** signs in with Google */
