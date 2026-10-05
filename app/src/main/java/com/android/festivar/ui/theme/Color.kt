@@ -1,4 +1,5 @@
 package com.android.festivar.ui.theme
+
 import androidx.compose.ui.graphics.Color
 
 val primaryLight = Color(0xFF5F5791)
@@ -216,10 +217,3 @@ val surfaceContainerLowDarkHighContrast = Color(0xFF201F25)
 val surfaceContainerDarkHighContrast = Color(0xFF312F36)
 val surfaceContainerHighDarkHighContrast = Color(0xFF3C3A41)
 val surfaceContainerHighestDarkHighContrast = Color(0xFF48464C)
-
-
-
-
-
-
-
