@@ -65,7 +65,7 @@ data class Task(
     }
     require(assignees.distinct().size == assignees.size) { "A user is assigned twice." }
     require(startTime == null || endTime == null || !endTime.isBefore(startTime)) {
-      "endTime must be after startTime."
+      "endTime must not be before startTime."
     }
     require(estimatedTime == null || !estimatedTime.isNegative) {
       "estimatedTime cannot be negative."
