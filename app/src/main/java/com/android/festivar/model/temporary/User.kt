@@ -7,4 +7,4 @@ package com.android.festivar.model.temporary
  *
  * @param uid The [User]'s unique identifier.
  */
-data class User(val uid: String) {}
+data class User(val uid: String)

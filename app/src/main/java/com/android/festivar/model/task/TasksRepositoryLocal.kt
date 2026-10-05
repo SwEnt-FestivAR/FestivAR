@@ -2,7 +2,7 @@ package com.android.festivar.model.task
 
 /** Represents a repository that manages a local list of tasks. */
 class TasksRepositoryLocal : TasksRepository {
-  private val todos: MutableList<Task> = mutableListOf()
+  private val tasks: MutableList<Task> = mutableListOf()
   private var counter = 0
 
   override fun getNewUid(): String {
@@ -10,31 +10,31 @@ class TasksRepositoryLocal : TasksRepository {
   }
 
   override suspend fun getAllTasks(): List<Task> {
-    return todos
+    return tasks
   }
 
   override suspend fun getTask(taskId: String): Task {
-    return todos.find { it.taskId == taskId }
+    return tasks.find { it.taskId == taskId }
         ?: throw Exception("TasksRepositoryLocal: Task not found")
   }
 
   override suspend fun addTask(task: Task) {
-    todos.add(task)
+    tasks.add(task)
   }
 
   override suspend fun editTask(taskId: String, newValue: Task) {
-    val index = todos.indexOfFirst { it.taskId == taskId }
+    val index = tasks.indexOfFirst { it.taskId == taskId }
     if (index != -1) {
-      todos[index] = newValue
+      tasks[index] = newValue
     } else {
       throw Exception("TasksRepositoryLocal: Task not found")
     }
   }
 
   override suspend fun deleteTask(taskId: String) {
-    val index = todos.indexOfFirst { it.taskId == taskId }
+    val index = tasks.indexOfFirst { it.taskId == taskId }
     if (index != -1) {
-      todos.removeAt(index)
+      tasks.removeAt(index)
     } else {
       throw Exception("TasksRepositoryLocal: Task not found")
     }
