@@ -16,11 +16,11 @@ interface TasksRepository {
   /**
    * Retrieves a specific [Task] item by its unique identifier.
    *
-   * @param taskID The unique identifier of the [Task] item to retrieve.
+   * @param taskId The unique identifier of the [Task] item to retrieve.
    * @return The [Task] item with the specified identifier.
    * @throws Exception if the [Task] item is not found.
    */
-  suspend fun getTask(taskID: String): Task
+  suspend fun getTask(taskId: String): Task
 
   /**
    * Adds a new [Task] item to the repository.
@@ -32,17 +32,17 @@ interface TasksRepository {
   /**
    * Edits an existing [Task] item in the repository.
    *
-   * @param taskID The unique identifier of the [Task] item to edit.
+   * @param taskId The unique identifier of the [Task] item to edit.
    * @param newValue The new value for the [Task] item.
    * @throws Exception if the [Task] item is not found.
    */
-  suspend fun editTask(taskID: String, newValue: Task)
+  suspend fun editTask(taskId: String, newValue: Task)
 
   /**
    * Deletes a [Task] item from the repository.
    *
-   * @param taskID The unique identifier of the [Task] item to delete.
+   * @param taskId The unique identifier of the [Task] item to delete.
    * @throws Exception if the [Task] item is not found.
    */
-  suspend fun deleteTask(taskID: String)
+  suspend fun deleteTask(taskId: String)
 }

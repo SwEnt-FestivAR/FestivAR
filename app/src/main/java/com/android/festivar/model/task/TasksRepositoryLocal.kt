@@ -13,8 +13,8 @@ class TasksRepositoryLocal : TasksRepository {
     return todos
   }
 
-  override suspend fun getTask(taskID: String): Task {
-    return todos.find { it.taskId == taskID }
+  override suspend fun getTask(taskId: String): Task {
+    return todos.find { it.taskId == taskId }
         ?: throw Exception("TasksRepositoryLocal: Task not found")
   }
 
@@ -22,8 +22,8 @@ class TasksRepositoryLocal : TasksRepository {
     todos.add(task)
   }
 
-  override suspend fun editTask(taskID: String, newValue: Task) {
-    val index = todos.indexOfFirst { it.taskId == taskID }
+  override suspend fun editTask(taskId: String, newValue: Task) {
+    val index = todos.indexOfFirst { it.taskId == taskId }
     if (index != -1) {
       todos[index] = newValue
     } else {
@@ -31,8 +31,8 @@ class TasksRepositoryLocal : TasksRepository {
     }
   }
 
-  override suspend fun deleteTask(taskID: String) {
-    val index = todos.indexOfFirst { it.taskId == taskID }
+  override suspend fun deleteTask(taskId: String) {
+    val index = todos.indexOfFirst { it.taskId == taskId }
     if (index != -1) {
       todos.removeAt(index)
     } else {
