@@ -94,9 +94,7 @@ class TaskTest {
   @Test
   fun init_fails_whenTaskIdIsBlank() {
     for (blank in blankStrings) {
-      assertInvalid(taskIdMessage) {
-          Task(taskId = blank, eventId = "e1", title = "Task")
-      }
+      assertInvalid(taskIdMessage) { Task(taskId = blank, eventId = "e1", title = "Task") }
     }
   }
 
@@ -104,9 +102,7 @@ class TaskTest {
   @Test
   fun init_fails_whenEventIdIsBlank() {
     for (blank in blankStrings) {
-      assertInvalid(eventIdMessage) {
-          Task(taskId = "t1", eventId = blank, title = "Task")
-      }
+      assertInvalid(eventIdMessage) { Task(taskId = "t1", eventId = blank, title = "Task") }
     }
   }
 
@@ -114,9 +110,7 @@ class TaskTest {
   @Test
   fun init_fails_whenTitleIsBlank() {
     for (blank in blankStrings) {
-      assertInvalid(titleMessage) {
-          Task(taskId = "t1", eventId = "e1", title = blank)
-      }
+      assertInvalid(titleMessage) { Task(taskId = "t1", eventId = "e1", title = blank) }
     }
   }
 
@@ -353,13 +347,9 @@ class TaskTest {
     assertInvalid(estimatedTimeMessage) { task.copy(estimatedTime = Duration.ofHours(-1)) }
   }
 
-
-
-
-
-  //**************************************************************************************//
+  // **************************************************************************************//
   // complete, addAssignee and removeAssignee
-  //**************************************************************************************//
+  // **************************************************************************************//
 
   private val taskFullMessage = "The task is full."
   private val alreadyAssignedMessage = "This user is already assigned to the task."
@@ -401,7 +391,9 @@ class TaskTest {
   // complete
   // ---------------------------------------------------------------------------------------- //
 
-  /** complete returns a completed copy, keeps every other field and does not change the original. */
+  /**
+   * complete returns a completed copy, keeps every other field and does not change the original.
+   */
   @Test
   fun complete_returnsCompletedCopy_andKeepsOtherFields() {
     for (maxAssign in 1..10) {
@@ -425,7 +417,6 @@ class TaskTest {
       assertEquals(task.copy(completed = true), task.complete())
     }
   }
-
 
   // ---------------------------------------------------------------------------------------- //
   // addAssignee

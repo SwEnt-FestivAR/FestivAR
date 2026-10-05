@@ -112,9 +112,7 @@ class TasksRepositoryLocalTest {
     assertEquals(0, tasks.size) // Ensure no tasks are present
 
     assertThrows(Exception::class.java) {
-      runBlocking {
-        tasksRepositoryLocal.getTask(task.taskId)
-      }
+      runBlocking { tasksRepositoryLocal.getTask(task.taskId) }
     }
   }
 
@@ -146,8 +144,8 @@ class TasksRepositoryLocalTest {
   }
 
   /**
-   * This test verifies that getAllTasks returns an empty list if no further Task add were done
-   * in the repository.
+   * This test verifies that getAllTasks returns an empty list if no further Task add were done in
+   * the repository.
    */
   @Test
   fun getAllTasks_returnEmptyList_whenCalledAtBeginning() = runTest {
@@ -161,24 +159,17 @@ class TasksRepositoryLocalTest {
    */
   @Test
   fun getTaskById_callsOnFailure_whenRepositoryEmpty() {
-    assertThrows(Exception::class.java) {
-      runBlocking { tasksRepositoryLocal.getTask("") }
-    }
+    assertThrows(Exception::class.java) { runBlocking { tasksRepositoryLocal.getTask("") } }
   }
 
-  /**
-   * This test verifies that getTask returns the exact same Task that was added previously.
-   */
+  /** This test verifies that getTask returns the exact same Task that was added previously. */
   @Test
   fun getTaskById_callsOnSuccess_sameObjectGet() = runTest {
     tasksRepositoryLocal.addTask(task)
     assertEquals(task, tasksRepositoryLocal.getTask(task.taskId))
   }
 
-
-
-
-  //**************************************************************************************//
+  // **************************************************************************************//
 
   /** Number of tasks used by the tests below that fill the repository with many tasks. */
   private val manyTasksCount = 50
@@ -205,7 +196,10 @@ class TasksRepositoryLocalTest {
     fail("An exception was expected but none was thrown.")
   }
 
-  /** This test verifies that many successive calls to getNewUid all return different, non-empty identifiers. */
+  /**
+   * This test verifies that many successive calls to getNewUid all return different, non-empty
+   * identifiers.
+   */
   @Test
   fun getNewUid_generatesManyUniqueIds() {
     val ids = mutableSetOf<String>()
@@ -220,7 +214,8 @@ class TasksRepositoryLocalTest {
   /** This test verifies that tasks created with identifiers from getNewUid can all be retrieved. */
   @Test
   fun getNewUid_identifiersCanBeUsedToAddAndRetrieveTasks() = runTest {
-    val tasks = (0 until manyTasksCount).map { task.copy(taskId = tasksRepositoryLocal.getNewUid()) }
+    val tasks =
+        (0 until manyTasksCount).map { task.copy(taskId = tasksRepositoryLocal.getNewUid()) }
     for (t in tasks) {
       tasksRepositoryLocal.addTask(t)
     }
@@ -229,7 +224,9 @@ class TasksRepositoryLocalTest {
     }
   }
 
-  /** This test verifies that after each addTask, the new task is present and the size grows by one. */
+  /**
+   * This test verifies that after each addTask, the new task is present and the size grows by one.
+   */
   @Test
   fun addTask_manyTasks_sizeGrowsAndAllTasksPresent() = runTest {
     val added = mutableListOf<Task>()
@@ -246,14 +243,19 @@ class TasksRepositoryLocalTest {
     }
   }
 
-  /** This test verifies that getAllTasks returns all the added tasks, in the order they were added. */
+  /**
+   * This test verifies that getAllTasks returns all the added tasks, in the order they were added.
+   */
   @Test
   fun getAllTasks_manyTasks_returnsAllTasksInOrder() = runTest {
     val tasks = addManyTasks()
     assertEquals(tasks, tasksRepositoryLocal.getAllTasks())
   }
 
-  /** This test verifies that getTask returns the right task for every identifier in a full repository. */
+  /**
+   * This test verifies that getTask returns the right task for every identifier in a full
+   * repository.
+   */
   @Test
   fun getTask_manyTasks_returnsEachCorrectTask() = runTest {
     val tasks = addManyTasks()
@@ -262,7 +264,10 @@ class TasksRepositoryLocalTest {
     }
   }
 
-  /** This test verifies that getTask throws for many unknown identifiers, even when the repository is full. */
+  /**
+   * This test verifies that getTask throws for many unknown identifiers, even when the repository
+   * is full.
+   */
   @Test
   fun getTask_manyTasks_failsForUnknownIds() = runTest {
     addManyTasks()
@@ -281,10 +286,12 @@ class TasksRepositoryLocalTest {
     assertThrowsSuspend { tasksRepositoryLocal.getTask("Swent EPFL") }
     assertThrowsSuspend { tasksRepositoryLocal.getTask("task1\n") }
     assertThrowsSuspend { tasksRepositoryLocal.getTask("task1\r\n") }
-
   }
 
-  /** This test verifies that editTask throws for unknown identifiers and leaves the repository unchanged. */
+  /**
+   * This test verifies that editTask throws for unknown identifiers and leaves the repository
+   * unchanged.
+   */
   @Test
   fun editTask_manyTasks_failsForUnknownIdsAndChangesNothing() = runTest {
     val tasks = addManyTasks()
@@ -312,7 +319,10 @@ class TasksRepositoryLocalTest {
     assertTrue(tasksRepositoryLocal.getAllTasks().isEmpty())
   }
 
-  /** This test verifies that deleteTask throws for unknown or already deleted identifiers and changes nothing. */
+  /**
+   * This test verifies that deleteTask throws for unknown or already deleted identifiers and
+   * changes nothing.
+   */
   @Test
   fun deleteTask_manyTasks_failsForUnknownOrAlreadyDeletedIds() = runTest {
     val tasks = addManyTasks()

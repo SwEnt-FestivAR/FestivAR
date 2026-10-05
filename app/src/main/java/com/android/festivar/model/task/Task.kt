@@ -5,18 +5,16 @@ import java.time.Duration
 import java.time.LocalDateTime
 
 /**
- * Represents a [Task] in the FestivAR application.
- * A [Task] is something, in the context of an [Event], that has to be done. To allow people to
- * properly realize hat it asks for, it has several informational fields that may or may not be
- * used by the creator of the [Task].
- *
+ * Represents a [Task] in the FestivAR application. A [Task] is something, in the context of an
+ * [Event], that has to be done. To allow people to properly realize hat it asks for, it has several
+ * informational fields that may or may not be used by the creator of the [Task].
  *
  * A [Task] is immutable: its fields can never be changed. Every "modification" ([copy],
  * [addAssignee], [removeAssignee], [complete]) returns a new [Task] instead, so the result must be
  * kept as: `task = task.complete()`. And for any other change of one of the [Task] variables, it
  * has to be done through a copy of this [Task]. This implementation is the consequence of working
- * with Compose that needs, to refresh the View automatically, to have an object that is
- * reassigned. Only changing a field of an object would not automatically refresh the View.
+ * with Compose that needs, to refresh the View automatically, to have an object that is reassigned.
+ * Only changing a field of an object would not automatically refresh the View.
  *
  * Every new version goes through the `init` block, so the rules below always hold:
  * - [title] is not blank;
@@ -29,7 +27,7 @@ import java.time.LocalDateTime
  * - [estimatedTime] is not negative.
  *
  * @property taskId Unique identifier of the [Task].
- * @property eventId Identifier of the [Event]  the [Task] belongs to.
+ * @property eventId Identifier of the [Event] the [Task] belongs to.
  * @property title Name of the [Task], shown as the screen title.
  * @property description Free-text description of what has to be done.
  * @property startTime Beginning time of the [Task], or `null` if not set.
@@ -58,67 +56,58 @@ data class Task(
 ) {
 
   init {
-      require(taskId.isNotBlank()) { "The taskId cannot be empty." }
-      require(eventId.isNotBlank()) { "The eventId cannot be empty." }
-      require(title.isNotBlank()) { "The title cannot be empty." }
-      require(maxAssign >= 1) { "maxAssign must be at least 1." }
-      require(assignees.size <= maxAssign) {
-          "maxAssign is lower than the number of assigned people."
-      }
-      require(assignees.distinct().size == assignees.size) { "A user is assigned twice." }
-      require(startTime == null || endTime == null || !endTime.isBefore(startTime)) {
-          "endTime must be after startTime."
-      }
-      require(estimatedTime == null || !estimatedTime.isNegative) {
-          "estimatedTime cannot be negative."
-      }
+    require(taskId.isNotBlank()) { "The taskId cannot be empty." }
+    require(eventId.isNotBlank()) { "The eventId cannot be empty." }
+    require(title.isNotBlank()) { "The title cannot be empty." }
+    require(maxAssign >= 1) { "maxAssign must be at least 1." }
+    require(assignees.size <= maxAssign) {
+      "maxAssign is lower than the number of assigned people."
+    }
+    require(assignees.distinct().size == assignees.size) { "A user is assigned twice." }
+    require(startTime == null || endTime == null || !endTime.isBefore(startTime)) {
+      "endTime must be after startTime."
+    }
+    require(estimatedTime == null || !estimatedTime.isNegative) {
+      "estimatedTime cannot be negative."
+    }
   }
 
-    /**
-     * Meant to inform that the [Task] is completed by returning a completed version copy
-     * of `this`.
-     *
-     * @return The [Task] but completed.
-     */
+  /**
+   * Meant to inform that the [Task] is completed by returning a completed version copy of `this`.
+   *
+   * @return The [Task] but completed.
+   */
   fun complete(): Task {
-      return copy(completed = true)
+    return copy(completed = true)
   }
 
-    /**
-     * Adds a new assigned [User] to the [Task] by returning a version of `this` with [user] added
-     * to the [assignees] list.
-     *
-     * @param user The [User]that is going to be assigned to `this`, to be added to [assignees] list.
-     *
-     * @return The [Task] but with [user] added to it.
-     *
-     * @throws IllegalStateException If the [Task] is already full.
-     * @throws IllegalArgumentException If [user] is already assigned.
-     */
+  /**
+   * Adds a new assigned [User] to the [Task] by returning a version of `this` with [user] added to
+   * the [assignees] list.
+   *
+   * @param user The [User]that is going to be assigned to `this`, to be added to [assignees] list.
+   * @return The [Task] but with [user] added to it.
+   * @throws IllegalStateException If the [Task] is already full.
+   * @throws IllegalArgumentException If [user] is already assigned.
+   */
   fun addAssignee(user: User): Task {
     check(assignees.size < maxAssign) { "The task is full." }
 
-    require(user !in assignees) {
-        "This user is already assigned to the task."
-    }
+    require(user !in assignees) { "This user is already assigned to the task." }
 
     return copy(assignees = assignees + user)
   }
 
-    /**
-     * Removes an assigned [User] from the [Task] by returning a version of `this` with [user]
-     * removed from the [assignees] list.
-     *
-     * @param user The [User]that is going to be removed from `this`, from [assignees] list.
-     *
-     * @return The [Task] but with [user] removed from it.
-     *
-     * @throws IllegalArgumentException If [user] is not assigned to `this`.
-     */
+  /**
+   * Removes an assigned [User] from the [Task] by returning a version of `this` with [user] removed
+   * from the [assignees] list.
+   *
+   * @param user The [User]that is going to be removed from `this`, from [assignees] list.
+   * @return The [Task] but with [user] removed from it.
+   * @throws IllegalArgumentException If [user] is not assigned to `this`.
+   */
   fun removeAssignee(user: User): Task {
-    require(user in assignees) {
-        "This user is not assigned to the task."
-    }
+    require(user in assignees) { "This user is not assigned to the task." }
 
     return copy(assignees = assignees - user)
   }
