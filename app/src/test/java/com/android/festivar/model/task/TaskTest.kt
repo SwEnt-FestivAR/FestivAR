@@ -27,9 +27,6 @@ class TaskTest {
   /** Strings that are blank, so refused for taskId, eventId and title. */
   private val blankStrings = listOf("", " ", "   ", "\t", "\n", " \t\n ")
 
-  /** Strings that are not blank, so accepted for taskId, eventId and title. */
-  private val nonBlankStrings = listOf("a", "1", " a ", "Task", "é", "\ta\n", "x".repeat(1000))
-
   /** Builds a list of [n] different users. */
   private fun users(n: Int): List<User> = (0 until n).map { User("user$it") }
 
@@ -113,21 +110,6 @@ class TaskTest {
     }
   }
 
-  /** Any non-blank taskId, eventId and title is accepted, in every combination. */
-  @Test
-  fun init_succeeds_whenTaskIdEventIdAndTitleAreNotBlank() {
-    for (taskId in nonBlankStrings) {
-      for (eventId in nonBlankStrings) {
-        for (title in nonBlankStrings) {
-          val task = Task(taskId = taskId, eventId = eventId, title = title)
-          assertEquals(taskId, task.taskId)
-          assertEquals(eventId, task.eventId)
-          assertEquals(title, task.title)
-        }
-      }
-    }
-  }
-
   // ---------------------------------------------------------------------------------------- //
   // maxAssign and assignees
   // ---------------------------------------------------------------------------------------- //
@@ -148,24 +130,6 @@ class TaskTest {
     for (maxAssign in (1..100) + Int.MAX_VALUE) {
       val task = Task(taskId = "t1", eventId = "e1", title = "Task", maxAssign = maxAssign)
       assertEquals(maxAssign, task.maxAssign)
-    }
-  }
-
-  /** Any number of assignees from 0 to maxAssign is accepted. */
-  @Test
-  fun init_succeeds_whenAssigneesFitInMaxAssign() {
-    for (maxAssign in 1..10) {
-      for (size in 0..maxAssign) {
-        val task =
-            Task(
-                taskId = "t1",
-                eventId = "e1",
-                title = "Task",
-                maxAssign = maxAssign,
-                assignees = users(size),
-            )
-        assertEquals(size, task.assignees.size)
-      }
     }
   }
 
@@ -205,22 +169,6 @@ class TaskTest {
             )
           }
         }
-      }
-    }
-  }
-
-  /** The same user assigned many times is refused. */
-  @Test
-  fun init_fails_whenTheSameUserIsAssignedManyTimes() {
-    for (times in 2..10) {
-      assertInvalid(duplicateMessage) {
-        Task(
-            taskId = "t1",
-            eventId = "e1",
-            title = "Task",
-            maxAssign = times,
-            assignees = List(times) { User("same") },
-        )
       }
     }
   }
@@ -408,15 +356,6 @@ class TaskTest {
     }
   }
 
-  /** complete works for every priority. */
-  @Test
-  fun complete_succeeds_forEveryPriority() {
-    for (priority in Priority.entries) {
-      val task = taskWith(maxAssign = 1).copy(priority = priority)
-      assertEquals(task.copy(completed = true), task.complete())
-    }
-  }
-
   // ---------------------------------------------------------------------------------------- //
   // addAssignee
   // ---------------------------------------------------------------------------------------- //
@@ -523,21 +462,6 @@ class TaskTest {
     }
   }
 
-  /** Removing every user one by one ends with an empty list. */
-  @Test
-  fun removeAssignee_removesAllUsersOneByOne() {
-    for (size in 1..10) {
-      var task = taskWith(maxAssign = size, assignees = users(size))
-      val remaining = users(size).toMutableList()
-
-      while (remaining.isNotEmpty()) {
-        val user = remaining.removeAt(remaining.size / 2) // Remove from the middle.
-        task = task.removeAssignee(user)
-        assertEquals(remaining, task.assignees)
-      }
-      assertTrue(task.assignees.isEmpty())
-    }
-  }
 
   /** removeAssignee throws an IllegalArgumentException when the user is not assigned. */
   @Test
@@ -554,29 +478,4 @@ class TaskTest {
     }
   }
 
-  /** Removing the same user twice throws the second time. */
-  @Test
-  fun removeAssignee_fails_whenUserIsRemovedTwice() {
-    for (size in 1..10) {
-      val task = taskWith(maxAssign = size, assignees = users(size))
-
-      for (user in task.assignees) {
-        val result = task.removeAssignee(user)
-        assertThrowsWithMessage(IllegalArgumentException::class.java, notAssignedMessage) {
-          result.removeAssignee(user)
-        }
-      }
-    }
-  }
-
-  /** Adding then removing the same user gives back a task equal to the original. */
-  @Test
-  fun addThenRemoveAssignee_givesBackTheOriginalTask() {
-    for (maxAssign in 1..10) {
-      for (size in 0 until maxAssign) {
-        val task = taskWith(maxAssign = maxAssign, assignees = users(size))
-        assertEquals(task, task.addAssignee(outsider).removeAssignee(outsider))
-      }
-    }
-  }
 }

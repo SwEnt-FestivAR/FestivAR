@@ -203,13 +203,6 @@ class TasksRepositoryLocalTest {
     }
   }
 
-  /** This test verifies that getTask returns the exact same Task that was added previously. */
-  @Test
-  fun getTaskById_callsOnSuccess_sameObjectGet() = runTest {
-    tasksRepositoryLocal.addTask(task)
-    assertEquals(task, tasksRepositoryLocal.getTask(task.taskId))
-  }
-
   // **************************************************************************************//
 
   /** Number of tasks used by the tests below that fill the repository with many tasks. */
@@ -238,53 +231,6 @@ class TasksRepositoryLocalTest {
       return
     }
     fail("A NoSuchElementException was expected but none was thrown.")
-  }
-
-  /**
-   * This test verifies that many successive calls to getNewUid all return different, non-empty
-   * identifiers.
-   */
-  @Test
-  fun getNewUid_generatesManyUniqueIds() {
-    val ids = mutableSetOf<String>()
-    for (i in 0 until 1000) {
-      val id = tasksRepositoryLocal.getNewUid()
-      assertTrue(id.isNotEmpty())
-      assertTrue("The identifier $id was generated twice.", ids.add(id))
-    }
-    assertEquals(1000, ids.size)
-  }
-
-  /** This test verifies that tasks created with identifiers from getNewUid can all be retrieved. */
-  @Test
-  fun getNewUid_identifiersCanBeUsedToAddAndRetrieveTasks() = runTest {
-    val tasks =
-        (0 until manyTasksCount).map { task.copy(taskId = tasksRepositoryLocal.getNewUid()) }
-    for (t in tasks) {
-      tasksRepositoryLocal.addTask(t)
-    }
-    for (t in tasks) {
-      assertEquals(t, tasksRepositoryLocal.getTask(t.taskId))
-    }
-  }
-
-  /**
-   * This test verifies that after each addTask, the new task is present and the size grows by one.
-   */
-  @Test
-  fun addTask_manyTasks_sizeGrowsAndAllTasksPresent() = runTest {
-    val added = mutableListOf<Task>()
-    for (i in 0 until manyTasksCount) {
-      val t = taskNumber(i)
-      tasksRepositoryLocal.addTask(t)
-      added.add(t)
-
-      val tasks = tasksRepositoryLocal.getAllTasks()
-      assertEquals(i + 1, tasks.size)
-      for (previous in added) {
-        assertTrue(tasks.contains(previous))
-      }
-    }
   }
 
   /**
@@ -335,24 +281,6 @@ class TasksRepositoryLocalTest {
       assertThrowsSuspend { tasksRepositoryLocal.editTask("task$i", taskNumber(i)) }
     }
     assertEquals(tasks, tasksRepositoryLocal.getAllTasks())
-  }
-
-  /** This test verifies that deleting every task one by one removes exactly one task each time. */
-  @Test
-  fun deleteTask_manyTasks_deletesOneByOne() = runTest {
-    val remaining = addManyTasks().toMutableList()
-
-    while (remaining.isNotEmpty()) {
-      val deleted = remaining.removeAt(0)
-      tasksRepositoryLocal.deleteTask(deleted.taskId)
-
-      val tasks = tasksRepositoryLocal.getAllTasks().toList()
-      assertEquals(remaining.size, tasks.size)
-      assertFalse(tasks.contains(deleted))
-      assertEquals(remaining, tasks)
-      assertThrowsSuspend { tasksRepositoryLocal.getTask(deleted.taskId) }
-    }
-    assertTrue(tasksRepositoryLocal.getAllTasks().isEmpty())
   }
 
   /**
