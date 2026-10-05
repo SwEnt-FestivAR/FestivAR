@@ -1,3 +1,5 @@
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+
 package com.android.festivar.ui.theme
 
 import android.os.Build
@@ -42,6 +44,7 @@ private val lightScheme =
         inverseSurface = inverseSurfaceLight,
         inverseOnSurface = inverseOnSurfaceLight,
         inversePrimary = inversePrimaryLight,
+        surfaceTint = surfaceTintLight,
         surfaceDim = surfaceDimLight,
         surfaceBright = surfaceBrightLight,
         surfaceContainerLowest = surfaceContainerLowestLight,
@@ -81,6 +84,7 @@ private val darkScheme =
         inverseSurface = inverseSurfaceDark,
         inverseOnSurface = inverseOnSurfaceDark,
         inversePrimary = inversePrimaryDark,
+        surfaceTint = surfaceTintDark,
         surfaceDim = surfaceDimDark,
         surfaceBright = surfaceBrightDark,
         surfaceContainerLowest = surfaceContainerLowestDark,
@@ -120,6 +124,7 @@ private val mediumContrastLightColorScheme =
         inverseSurface = inverseSurfaceLightMediumContrast,
         inverseOnSurface = inverseOnSurfaceLightMediumContrast,
         inversePrimary = inversePrimaryLightMediumContrast,
+        surfaceTint = surfaceTintLightMediumContrast,
         surfaceDim = surfaceDimLightMediumContrast,
         surfaceBright = surfaceBrightLightMediumContrast,
         surfaceContainerLowest = surfaceContainerLowestLightMediumContrast,
@@ -159,6 +164,7 @@ private val highContrastLightColorScheme =
         inverseSurface = inverseSurfaceLightHighContrast,
         inverseOnSurface = inverseOnSurfaceLightHighContrast,
         inversePrimary = inversePrimaryLightHighContrast,
+        surfaceTint = surfaceTintLightHighContrast,
         surfaceDim = surfaceDimLightHighContrast,
         surfaceBright = surfaceBrightLightHighContrast,
         surfaceContainerLowest = surfaceContainerLowestLightHighContrast,
@@ -198,6 +204,7 @@ private val mediumContrastDarkColorScheme =
         inverseSurface = inverseSurfaceDarkMediumContrast,
         inverseOnSurface = inverseOnSurfaceDarkMediumContrast,
         inversePrimary = inversePrimaryDarkMediumContrast,
+        surfaceTint = surfaceTintDarkMediumContrast,
         surfaceDim = surfaceDimDarkMediumContrast,
         surfaceBright = surfaceBrightDarkMediumContrast,
         surfaceContainerLowest = surfaceContainerLowestDarkMediumContrast,
@@ -237,6 +244,7 @@ private val highContrastDarkColorScheme =
         inverseSurface = inverseSurfaceDarkHighContrast,
         inverseOnSurface = inverseOnSurfaceDarkHighContrast,
         inversePrimary = inversePrimaryDarkHighContrast,
+        surfaceTint = surfaceTintDarkHighContrast,
         surfaceDim = surfaceDimDarkHighContrast,
         surfaceBright = surfaceBrightDarkHighContrast,
         surfaceContainerLowest = surfaceContainerLowestDarkHighContrast,
