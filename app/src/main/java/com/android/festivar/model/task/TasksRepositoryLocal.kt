@@ -19,6 +19,9 @@ class TasksRepositoryLocal : TasksRepository {
   }
 
   override suspend fun addTask(task: Task) {
+    require(tasks.none { it.taskId == task.taskId }) {
+      "TasksRepositoryLocal: a Task with taskId ${task.taskId} already exists"
+    }
     tasks.add(task)
   }
 

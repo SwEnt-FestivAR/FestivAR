@@ -66,6 +66,28 @@ class TasksRepositoryLocalTest {
   }
 
   /**
+   * This test verifies that addTask throws an IllegalArgumentException when a Task with the same
+   * identifier already exists, even if the other fields are different, and that the repository is
+   * not modified.
+   */
+  @Test
+  fun addTask_fails_whenTaskIdAlreadyExists() = runTest {
+    tasksRepositoryLocal.addTask(task)
+
+    // Exactly the same task.
+    assertThrows(IllegalArgumentException::class.java) {
+      runBlocking { tasksRepositoryLocal.addTask(task) }
+    }
+    // Another task with the same identifier.
+    assertThrows(IllegalArgumentException::class.java) {
+      runBlocking { tasksRepositoryLocal.addTask(task.copy(title = "Duplicate")) }
+    }
+
+    // The repository still contains only the first task.
+    assertEquals(listOf(task), tasksRepositoryLocal.getAllTasks())
+  }
+
+  /**
    * This test verifies that editTask successfully updates an existing Task item in the local
    * repository. It also checks that the old Task item is no longer present and the updated item is
    * present with the correct updated values.

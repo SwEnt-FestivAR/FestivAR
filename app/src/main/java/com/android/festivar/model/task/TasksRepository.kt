@@ -25,7 +25,8 @@ interface TasksRepository {
   /**
    * Adds a new [Task] item to the repository.
    *
-   * @param task The [Task] item to add.
+   * @param task The [Task] item to add. Its [Task.taskId] must not be used by another [Task] item.
+   * @throws IllegalArgumentException if a [Task] item with the same identifier already exists.
    */
   suspend fun addTask(task: Task)
 
