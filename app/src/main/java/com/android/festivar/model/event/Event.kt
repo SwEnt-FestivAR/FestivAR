@@ -49,7 +49,7 @@ data class Event(
     init {
         require(eventId.isNotBlank()) { "The eventId cannot be empty." }
         require(title.isNotBlank()) { "The title cannot be empty." }
-        require(tasks.distinct().size == tasks.size) { "A task is duplicated." }
+        require(tasks.map { it.taskId }.distinct().size == tasks.size) { "A task is duplicated." }
         require(members.distinct().size == members.size) { "A user is registered twice." }
         require(startDate == null || endDate == null || !endDate.isBefore(startDate)) {
             "endDate must not be before startDate."
@@ -102,7 +102,7 @@ data class Event(
      * @throws IllegalArgumentException If [task] is already in the event.
      */
     fun addTask(task: Task): Event {
-        require(task !in tasks) { "This task is already in the event." }
+        require(tasks.none { it.taskId == task.taskId }) { "This task is already in the event." }
         return copy(tasks = tasks + task)
     }
 
@@ -110,14 +110,13 @@ data class Event(
      * Removes a [Task] from the [Event] by returning a version of `this` with [task] removed
      * from the [tasks] list.
      *
-     * @param task The [Task] that is going to be removed from `this`, from [tasks] list.
-     * @return The [Event] but with [task] removed from it.
-     * @throws IllegalArgumentException If [task] is not assigned to `this`.
+     * @param taskId The [Task]'s identifier that is going to be removed from `this`, from [tasks] list.
+     * @return The [Event] but with [taskId]'s [Task] removed from it.
+     * @throws IllegalArgumentException If [taskId]'s [Task] is not assigned to `this`.
      */
-    fun removeTask(task: Task): Event {
-        require(task in tasks) { "This task is not in the event." }
-
-        return copy(tasks = tasks - task)
+    fun removeTask(taskId: String): Event {
+        require(tasks.any { it.taskId == taskId }) { "This task is not in the event." }
+        return copy(tasks = tasks.filterNot { it.taskId == taskId })
     }
 
 }
