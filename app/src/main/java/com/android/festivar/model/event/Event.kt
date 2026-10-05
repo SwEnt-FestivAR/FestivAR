@@ -5,7 +5,7 @@ import com.android.festivar.model.temporary.User
 import java.time.LocalDate
 
 /**
- * Represents an [Event] in the FestivAR application. an [Event] os the core element of the
+ * Represents an [Event] in the FestivAR application. An [Event] is the core element of the
  * application as it is its purpose. An [Event] can be any organized meeting necessitating
  * people organization as well as a clear overview of it, it can be a festival, a music concert,
  * a wedding etc.
