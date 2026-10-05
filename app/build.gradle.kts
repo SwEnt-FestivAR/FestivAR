@@ -121,6 +121,7 @@ dependencies {
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.appcompat)
   implementation(libs.material)
+  implementation("androidx.compose.material:material-icons-extended")
   implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation(platform(libs.compose.bom))
   testImplementation(libs.junit)
