@@ -1,5 +1,6 @@
 package com.android.festivar.model.event
 
+import com.android.festivar.model.temporary.User
 
 /** Represents a repository that manages [Event] items. */
 interface EventsRepository {
@@ -24,6 +25,15 @@ interface EventsRepository {
      * @throws NoSuchElementException if the [Event] item is not found.
      */
     suspend fun getEvent(eventId: String): Event
+
+    /**
+     * Retrieves the [Event] items the given [User] is a member of.
+     *
+     * @param userId The unique identifier of the [User].
+     *
+     * @return The list of [Event] items whose members contain this [User].
+     */
+    suspend fun getEventsForUser(userId: String): List<Event>
 
     /**
      * Adds a new [Event] item to the repository.
