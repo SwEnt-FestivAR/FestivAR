@@ -6,8 +6,8 @@ import java.time.LocalDateTime
 
 /**
  * Represents a [Task] in the FestivAR application. A [Task] is something, in the context of an
- * [Event], that has to be done. To allow people to properly realize what it asks for, it has several
- * informational fields that may or may not be used by the creator of the [Task].
+ * [Event], that has to be done. To allow people to properly realize what it asks for, it has
+ * several informational fields that may or may not be used by the creator of the [Task].
  *
  * A [Task] is immutable: its fields can never be changed. Every "modification" ([copy],
  * [addAssignee], [removeAssignee], [complete]) returns a new [Task] instead, so the result must be

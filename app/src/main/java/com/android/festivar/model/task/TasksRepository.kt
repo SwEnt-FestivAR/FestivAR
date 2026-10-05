@@ -35,7 +35,6 @@ interface TasksRepository {
    *
    * @param taskId The unique identifier of the [Task] item to edit.
    * @param newValue The new value for the [Task] item. Its [Task.taskId] must be equal to [taskId].
-   *
    * @throws IllegalArgumentException if [newValue] does not have the same identifier as [taskId].
    * @throws NoSuchElementException if the [Task] item is not found.
    */

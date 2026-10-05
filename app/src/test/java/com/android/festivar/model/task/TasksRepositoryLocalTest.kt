@@ -198,7 +198,9 @@ class TasksRepositoryLocalTest {
    */
   @Test
   fun getTaskById_callsOnFailure_whenRepositoryEmpty() {
-    assertThrows(NoSuchElementException::class.java) { runBlocking { tasksRepositoryLocal.getTask("") } }
+    assertThrows(NoSuchElementException::class.java) {
+      runBlocking { tasksRepositoryLocal.getTask("") }
+    }
   }
 
   /** This test verifies that getTask returns the exact same Task that was added previously. */
