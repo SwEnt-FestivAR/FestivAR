@@ -3,7 +3,6 @@ package com.android.festivar.model.task
 import java.time.Duration
 import java.time.LocalDateTime
 import junit.framework.TestCase.assertEquals
-import junit.framework.TestCase.assertFalse
 import junit.framework.TestCase.assertTrue
 import junit.framework.TestCase.fail
 import kotlinx.coroutines.runBlocking

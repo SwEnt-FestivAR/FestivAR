@@ -462,7 +462,6 @@ class TaskTest {
     }
   }
 
-
   /** removeAssignee throws an IllegalArgumentException when the user is not assigned. */
   @Test
   fun removeAssignee_fails_whenUserIsNotAssigned() {
@@ -477,5 +476,4 @@ class TaskTest {
       assertEquals(users(size), task.assignees) // The task is not modified.
     }
   }
-
 }
