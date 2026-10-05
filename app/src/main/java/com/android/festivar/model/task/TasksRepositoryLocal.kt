@@ -15,7 +15,7 @@ class TasksRepositoryLocal : TasksRepository {
 
   override suspend fun getTask(taskId: String): Task {
     return tasks.find { it.taskId == taskId }
-        ?: throw Exception("TasksRepositoryLocal: Task not found")
+        ?: throw NoSuchElementException("TasksRepositoryLocal: Task $taskId not found")
   }
 
   override suspend fun addTask(task: Task) {
@@ -23,14 +23,16 @@ class TasksRepositoryLocal : TasksRepository {
   }
 
   override suspend fun editTask(taskId: String, newValue: Task) {
-    if(newValue.taskId != taskId){
-      throw IllegalArgumentException("TasksRepositoryLocal: newValue is not an edit of Task")
+    require(newValue.taskId == taskId) {
+      "TasksRepositoryLocal: newValue.taskId (${newValue.taskId}) must be equal to taskId ($taskId)"
     }
+
     val index = tasks.indexOfFirst { it.taskId == taskId }
+
     if (index != -1) {
       tasks[index] = newValue
     } else {
-      throw Exception("TasksRepositoryLocal: Task not found")
+      throw NoSuchElementException("TasksRepositoryLocal: Task $taskId not found")
     }
   }
 
@@ -39,7 +41,7 @@ class TasksRepositoryLocal : TasksRepository {
     if (index != -1) {
       tasks.removeAt(index)
     } else {
-      throw Exception("TasksRepositoryLocal: Task not found")
+      throw NoSuchElementException("TasksRepositoryLocal: Task $taskId not found")
     }
   }
 }

@@ -18,7 +18,7 @@ interface TasksRepository {
    *
    * @param taskId The unique identifier of the [Task] item to retrieve.
    * @return The [Task] item with the specified identifier.
-   * @throws Exception if the [Task] item is not found.
+   * @throws NoSuchElementException if the [Task] item is not found.
    */
   suspend fun getTask(taskId: String): Task
 
@@ -33,10 +33,10 @@ interface TasksRepository {
    * Edits an existing [Task] item in the repository.
    *
    * @param taskId The unique identifier of the [Task] item to edit.
-   * @param newValue The new value for the [Task] item.
+   * @param newValue The new value for the [Task] item. Its [Task.taskId] must be equal to [taskId].
    *
-   * @throws Exception if the [Task] item is not found.
-   * @throws IllegalArgumentException if the [newValue] does not have the same identifier as [taskId].
+   * @throws IllegalArgumentException if [newValue] does not have the same identifier as [taskId].
+   * @throws NoSuchElementException if the [Task] item is not found.
    */
   suspend fun editTask(taskId: String, newValue: Task)
 
@@ -44,7 +44,7 @@ interface TasksRepository {
    * Deletes a [Task] item from the repository.
    *
    * @param taskId The unique identifier of the [Task] item to delete.
-   * @throws Exception if the [Task] item is not found.
+   * @throws NoSuchElementException if the [Task] item is not found.
    */
   suspend fun deleteTask(taskId: String)
 }
