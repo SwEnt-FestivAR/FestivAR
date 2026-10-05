@@ -19,7 +19,7 @@ class TaskTest {
   private val maxAssignMessage = "maxAssign must be at least 1."
   private val tooManyAssigneesMessage = "maxAssign is lower than the number of assigned people."
   private val duplicateMessage = "A user is assigned twice."
-  private val timeMessage = "endTime must be after startTime."
+  private val timeMessage = "endTime must not be before startTime."
   private val estimatedTimeMessage = "estimatedTime cannot be negative."
 
   private val start = LocalDateTime.of(2026, 7, 1, 14, 0)
