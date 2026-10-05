@@ -97,6 +97,23 @@ class TasksRepositoryLocalTest {
   }
 
   /**
+   * This test verifies that editTask throws an IllegalArgumentException when newValue does not have
+   * the same identifier as taskId, and that no task is overwritten.
+   */
+  @Test
+  fun editTask_fails_whenNewValueHasDifferentTaskId() = runTest {
+    val task2 = task.copy(taskId = "2", title = "Second Task")
+    tasksRepositoryLocal.addTask(task)
+    tasksRepositoryLocal.addTask(task2)
+
+    assertThrows(IllegalArgumentException::class.java) {
+      runBlocking { tasksRepositoryLocal.editTask(task.taskId, task2.copy(title = "Overwrite")) }
+    }
+
+    assertEquals(listOf(task, task2), tasksRepositoryLocal.getAllTasks())
+  }
+
+  /**
    * This test verifies that deleteTask successfully removes a Task item from the local repository,
    * and that getTask then throws an exception for it.
    */
