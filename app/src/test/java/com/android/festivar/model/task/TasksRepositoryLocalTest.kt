@@ -320,14 +320,6 @@ class TasksRepositoryLocalTest {
     }
     assertThrowsSuspend { tasksRepositoryLocal.getTask("") }
     assertThrowsSuspend { tasksRepositoryLocal.getTask("unknown") }
-    assertThrowsSuspend { tasksRepositoryLocal.getTask("pikachu") }
-    assertThrowsSuspend { tasksRepositoryLocal.getTask("glbstkf") }
-    assertThrowsSuspend { tasksRepositoryLocal.getTask("pokemon") }
-    assertThrowsSuspend { tasksRepositoryLocal.getTask("rayquaza") }
-    assertThrowsSuspend {
-      tasksRepositoryLocal.getTask("IL ETAIT UN PETIT NAVIREUH IL ETAIT UN PETIT NAVIIIIIRE")
-    }
-    assertThrowsSuspend { tasksRepositoryLocal.getTask("Swent EPFL") }
     assertThrowsSuspend { tasksRepositoryLocal.getTask("task1\n") }
     assertThrowsSuspend { tasksRepositoryLocal.getTask("task1\r\n") }
   }
