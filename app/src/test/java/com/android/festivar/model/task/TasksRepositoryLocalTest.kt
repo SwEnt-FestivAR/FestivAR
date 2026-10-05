@@ -91,7 +91,7 @@ class TasksRepositoryLocalTest {
    */
   @Test
   fun editTask_failsWhenTaskNotFound() {
-    assertThrows(Exception::class.java) {
+    assertThrows(NoSuchElementException::class.java) {
       runTest { tasksRepositoryLocal.editTask(task.taskId, task) }
     }
   }
@@ -128,7 +128,7 @@ class TasksRepositoryLocalTest {
     assertTrue(!tasks.contains(task)) // Ensure the task is not present
     assertEquals(0, tasks.size) // Ensure no tasks are present
 
-    assertThrows(Exception::class.java) {
+    assertThrows(NoSuchElementException::class.java) {
       runBlocking { tasksRepositoryLocal.getTask(task.taskId) }
     }
   }
@@ -155,7 +155,7 @@ class TasksRepositoryLocalTest {
    */
   @Test
   fun deleteTaskById_callsOnFailure_whenTaskNotFound() {
-    assertThrows(Exception::class.java) {
+    assertThrows(NoSuchElementException::class.java) {
       runBlocking { tasksRepositoryLocal.deleteTask("non-existent-id") }
     }
   }
@@ -176,7 +176,7 @@ class TasksRepositoryLocalTest {
    */
   @Test
   fun getTaskById_callsOnFailure_whenRepositoryEmpty() {
-    assertThrows(Exception::class.java) { runBlocking { tasksRepositoryLocal.getTask("") } }
+    assertThrows(NoSuchElementException::class.java) { runBlocking { tasksRepositoryLocal.getTask("") } }
   }
 
   /** This test verifies that getTask returns the exact same Task that was added previously. */
@@ -203,14 +203,17 @@ class TasksRepositoryLocalTest {
     return tasks
   }
 
-  /** Fails the test if [block] does not throw an exception. Usable inside `runTest`. */
+  /**
+   * Fails the test if [block] does not throw a [NoSuchElementException]. Any other exception is not
+   * caught, so it also fails the test. Usable inside `runTest`.
+   */
   private suspend fun assertThrowsSuspend(block: suspend () -> Unit) {
     try {
       block()
-    } catch (e: Exception) {
+    } catch (e: NoSuchElementException) {
       return
     }
-    fail("An exception was expected but none was thrown.")
+    fail("A NoSuchElementException was expected but none was thrown.")
   }
 
   /**
