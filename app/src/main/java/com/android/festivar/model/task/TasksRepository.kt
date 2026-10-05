@@ -34,7 +34,9 @@ interface TasksRepository {
    *
    * @param taskId The unique identifier of the [Task] item to edit.
    * @param newValue The new value for the [Task] item.
+   *
    * @throws Exception if the [Task] item is not found.
+   * @throws IllegalArgumentException if the [newValue] does not have the same identifier as [taskId].
    */
   suspend fun editTask(taskId: String, newValue: Task)
 

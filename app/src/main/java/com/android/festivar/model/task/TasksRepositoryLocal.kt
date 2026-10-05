@@ -23,6 +23,9 @@ class TasksRepositoryLocal : TasksRepository {
   }
 
   override suspend fun editTask(taskId: String, newValue: Task) {
+    if(newValue.taskId != taskId){
+      throw IllegalArgumentException("TasksRepositoryLocal: newValue is not an edit of Task")
+    }
     val index = tasks.indexOfFirst { it.taskId == taskId }
     if (index != -1) {
       tasks[index] = newValue
