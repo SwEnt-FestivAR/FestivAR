@@ -124,7 +124,7 @@ dependencies {
   implementation(libs.androidx.appcompat)
   implementation(libs.firebase.auth)
   implementation(libs.material)
-  implementation("androidx.compose.material:material-icons-extended")
+  implementation(libs.androidx.material.icons.extended)
   implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation(platform(libs.compose.bom))
   testImplementation(libs.junit)
