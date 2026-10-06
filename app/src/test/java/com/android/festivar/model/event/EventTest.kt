@@ -2,10 +2,10 @@ package com.android.festivar.model.event
 
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.temporary.User
-import java.time.LocalDate
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertFalse
-import junit.framework.TestCase.assertNull
 import junit.framework.TestCase.assertTrue
 import org.junit.Assert.assertThrows
 import org.junit.Test
@@ -17,7 +17,7 @@ class EventTest {
   private val titleMessage = "The title cannot be empty."
   private val duplicateTaskMessage = "A task is duplicated."
   private val duplicateMemberMessage = "A user is registered twice."
-  private val dateMessage = "endDate must not be before startDate."
+  private val dateMessage = "endDate must be strictly after startDate."
 
   // Messages of the functions of Event.
   private val alreadyMemberMessage = "This user is already registered in the event."
@@ -25,7 +25,7 @@ class EventTest {
   private val taskAlreadyInEventMessage = "This task is already in the event."
   private val taskNotInEventMessage = "This task is not in the event."
 
-  private val start = LocalDate.of(2026, 7, 1)
+  private val start = ZonedDateTime.of(2026, 7, 1, 14, 0, 0, 0, ZoneId.of("Europe/Zurich"))
 
   private val alice = User("alice")
   private val bob = User("bob")
@@ -33,6 +33,24 @@ class EventTest {
 
   /** Builds a valid task of the event "e1" with the given identifier. */
   private fun task(taskId: String): Task = Task(taskId = taskId, eventId = "e1", title = "Task")
+
+  /** Builds an event with valid default values, so that only the given fields matter. */
+  private fun event(
+      eventId: String = "e1",
+      title: String = "Festival",
+      members: List<User> = emptyList(),
+      tasks: List<Task> = emptyList(),
+      startDate: ZonedDateTime = start,
+      endDate: ZonedDateTime = start.plusDays(2),
+  ): Event =
+      Event(
+          eventId = eventId,
+          title = title,
+          members = members,
+          tasks = tasks,
+          startDate = startDate,
+          endDate = endDate,
+      )
 
   /** Builds a valid event with every field set, so we can check that the functions keep them. */
   private fun eventWith(members: List<User> = emptyList(), tasks: List<Task> = emptyList()): Event =
@@ -60,14 +78,15 @@ class EventTest {
   /** An event with only the required fields is valid and gets the default values. */
   @Test
   fun init_succeeds_withOnlyRequiredFields() {
-    val event = Event(eventId = "e1", title = "Festival")
+    val event =
+        Event(eventId = "e1", title = "Festival", startDate = start, endDate = start.plusDays(2))
 
     assertEquals("e1", event.eventId)
     assertEquals("Festival", event.title)
     assertEquals("", event.description)
     assertTrue(event.members.isEmpty())
-    assertNull(event.startDate)
-    assertNull(event.endDate)
+    assertEquals(start, event.startDate)
+    assertEquals(start.plusDays(2), event.endDate)
     assertEquals("", event.location)
     assertTrue(event.tasks.isEmpty())
     assertFalse(event.closed)
@@ -89,58 +108,56 @@ class EventTest {
   /** A blank eventId is refused. */
   @Test
   fun init_fails_whenEventIdIsBlank() {
-    assertInvalid(eventIdMessage) { Event(eventId = "", title = "Festival") }
-    assertInvalid(eventIdMessage) { Event(eventId = " \t\n", title = "Festival") }
+    assertInvalid(eventIdMessage) { event(eventId = "") }
+    assertInvalid(eventIdMessage) { event(eventId = " \t\n") }
   }
 
   /** A blank title is refused. */
   @Test
   fun init_fails_whenTitleIsBlank() {
-    assertInvalid(titleMessage) { Event(eventId = "e1", title = "") }
-    assertInvalid(titleMessage) { Event(eventId = "e1", title = " \t\n") }
+    assertInvalid(titleMessage) { event(title = "") }
+    assertInvalid(titleMessage) { event(title = " \t\n") }
   }
 
   /** Two tasks with the same taskId are refused, even if their other fields are different. */
   @Test
   fun init_fails_whenATaskIdIsDuplicated() {
     assertInvalid(duplicateTaskMessage) {
-      Event(
-          eventId = "e1",
-          title = "Festival",
-          tasks = listOf(task("t1"), task("t1").copy(title = "Other")),
-      )
+      event(tasks = listOf(task("t1"), task("t1").copy(title = "Other")))
     }
   }
 
   /** The same user registered twice is refused, even as two different objects. */
   @Test
   fun init_fails_whenAUserIsRegisteredTwice() {
-    assertInvalid(duplicateMemberMessage) {
-      Event(eventId = "e1", title = "Festival", members = listOf(User("same"), User("same")))
-    }
+    assertInvalid(duplicateMemberMessage) { event(members = listOf(User("same"), User("same"))) }
   }
 
-  /** startDate and endDate can each be null. */
+  /** An endDate strictly after startDate is accepted, even by a single nanosecond. */
   @Test
-  fun init_succeeds_whenStartDateOrEndDateIsNull() {
-    Event(eventId = "e1", title = "Festival", startDate = start, endDate = null)
-    Event(eventId = "e1", title = "Festival", startDate = null, endDate = start)
-    Event(eventId = "e1", title = "Festival", startDate = null, endDate = null)
+  fun init_succeeds_whenEndDateIsAfterStartDate() {
+    event(startDate = start, endDate = start.plusDays(1))
+    event(startDate = start, endDate = start.plusNanos(1))
   }
 
-  /** An endDate equal to (one-day event) or after startDate is accepted. */
+  /** An endDate at the same moment as startDate is refused. */
   @Test
-  fun init_succeeds_whenEndDateIsNotBeforeStartDate() {
-    Event(eventId = "e1", title = "Festival", startDate = start, endDate = start)
-    Event(eventId = "e1", title = "Festival", startDate = start, endDate = start.plusDays(1))
+  fun init_fails_whenEndDateIsAtTheSameMomentAsStartDate() {
+    assertInvalid(dateMessage) { event(startDate = start, endDate = start) }
+  }
+
+  /** An endDate at the same instant in another time zone is also refused. */
+  @Test
+  fun init_fails_whenEndDateIsTheSameInstantInAnotherTimeZone() {
+    val sameInstantInLondon = start.withZoneSameInstant(ZoneId.of("Europe/London"))
+
+    assertInvalid(dateMessage) { event(startDate = start, endDate = sameInstantInLondon) }
   }
 
   /** An endDate before startDate is refused. */
   @Test
   fun init_fails_whenEndDateIsBeforeStartDate() {
-    assertInvalid(dateMessage) {
-      Event(eventId = "e1", title = "Festival", startDate = start, endDate = start.minusDays(1))
-    }
+    assertInvalid(dateMessage) { event(startDate = start, endDate = start.minusDays(1)) }
   }
 
   /** copy() goes through the init block, so it cannot create an invalid event. */
@@ -152,7 +169,7 @@ class EventTest {
     assertInvalid(titleMessage) { event.copy(title = " ") }
     assertInvalid(duplicateTaskMessage) { event.copy(tasks = listOf(task("t1"), task("t1"))) }
     assertInvalid(duplicateMemberMessage) { event.copy(members = listOf(alice, alice)) }
-    assertInvalid(dateMessage) { event.copy(endDate = start.minusDays(1)) }
+    assertInvalid(dateMessage) { event.copy(endDate = start) }
   }
 
   // **************************************************************************************//
