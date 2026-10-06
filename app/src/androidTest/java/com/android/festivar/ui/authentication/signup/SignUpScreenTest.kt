@@ -9,6 +9,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.credentials.CredentialManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -173,6 +174,7 @@ class SignUpScreenTest {
   @Test
   fun loginNowButton_invokesSignInCallback() {
     var callbackInvoked = false
+
     composeTestRule.setContent {
       SignUpScreen(
           credentialManager = mockk<CredentialManager>(relaxed = true),
@@ -183,6 +185,7 @@ class SignUpScreenTest {
 
     composeTestRule
         .onNodeWithTag(SignUpScreenTestTags.LOGIN_NOW_BUTTON)
+        .performScrollTo()
         .assertIsDisplayed()
         .performClick()
 
