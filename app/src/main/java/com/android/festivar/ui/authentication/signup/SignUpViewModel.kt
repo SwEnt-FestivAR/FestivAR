@@ -57,7 +57,7 @@ class SignUpViewModel(
     viewModelScope.launch {
       _uiState.value = AuthUIState(isLoading = true)
       val result =
-          authRepository.signUpWIthEmailAndPassword(
+          authRepository.signUpWithEmailAndPassword(
               email = email,
               password = password,
           )

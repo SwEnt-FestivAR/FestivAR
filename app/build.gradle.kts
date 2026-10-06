@@ -149,6 +149,7 @@ dependencies {
   implementation(libs.compose.ui)
   implementation(libs.compose.ui.graphics)
   implementation(libs.compose.material.icons.extended)
+  androidTestImplementation(libs.mockk.android)
   // Material Design 3
   implementation(libs.compose.material3)
   // Integration with activities
@@ -181,7 +182,7 @@ tasks.withType<Test> {
   }
 }
 
-tasks.register("jacocoTestReport", JacocoReport::class) {
+tasks.register(name = "jacocoTestReport", type = JacocoReport::class) {
   mustRunAfter("testDebugUnitTest", "connectedDebugAndroidTest")
 
   reports {

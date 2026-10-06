@@ -428,7 +428,7 @@ private object PreviewAuthRepository : AuthRepository {
       password: String,
   ): Result<FirebaseUser> = Result.failure(UnsupportedOperationException(STR))
 
-  override suspend fun signUpWIthEmailAndPassword(
+  override suspend fun signUpWithEmailAndPassword(
       email: String,
       password: String,
   ): Result<FirebaseUser> = Result.failure(UnsupportedOperationException(STR))

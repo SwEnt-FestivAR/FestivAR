@@ -3,6 +3,7 @@ package com.android.festivar.ui.authentication.signup
 import android.content.Context
 import androidx.credentials.Credential
 import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
 import androidx.credentials.GetCredentialResponse
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.authentication.AuthRepository
@@ -33,7 +34,8 @@ class SignUpViewModelTest {
     every { context.getString(com.android.festivar.R.string.default_web_client_id) } returns
         "web-client-id"
     every { response.credential } returns credential
-    coEvery { credentialManager.getCredential(context, any()) } returns response
+    coEvery { credentialManager.getCredential(context, any<GetCredentialRequest>()) } returns
+        response
     val credentialManagerStarted = CompletableDeferred<Unit>()
     val repositoryResponse = CompletableDeferred<Result<FirebaseUser>>()
     authRepository.googleSignInBehavior = {
@@ -65,8 +67,9 @@ class SignUpViewModelTest {
     every { context.getString(com.android.festivar.R.string.default_web_client_id) } returns
         "web-client-id"
     every { response.credential } returns credential
-    coEvery { credentialManager.getCredential(context, any()) } returns response
-    authRepository.googleSignInBehavior = { Result.failure(failure) }
+    coEvery { credentialManager.getCredential(context, any<GetCredentialRequest>()) } returns
+        response
+    authRepository.googleSignInBehavior = { Result.failure<FirebaseUser>(failure) }
     val viewModel = SignUpViewModel(authRepository)
 
     viewModel.googleSignUp(context, credentialManager)
@@ -84,7 +87,7 @@ class SignUpViewModelTest {
     val failure = IllegalStateException("Unable to retrieve Google credentials")
     every { context.getString(com.android.festivar.R.string.default_web_client_id) } returns
         "web-client-id"
-    coEvery { credentialManager.getCredential(context, any()) } throws failure
+    coEvery { credentialManager.getCredential(context, any<GetCredentialRequest>()) } throws failure
     val viewModel = SignUpViewModel(authRepository)
 
     viewModel.googleSignUp(context, credentialManager)
@@ -107,7 +110,8 @@ class SignUpViewModelTest {
     every { context.getString(com.android.festivar.R.string.default_web_client_id) } returns
         "web-client-id"
     every { response.credential } returns credential
-    coEvery { credentialManager.getCredential(context, any()) } returns response
+    coEvery { credentialManager.getCredential(context, any<GetCredentialRequest>()) } returns
+        response
     authRepository.googleSignInBehavior = {
       repositoryStarted.complete(Unit)
       repositoryResponse.await()
@@ -151,7 +155,7 @@ class SignUpViewModelTest {
   @Test
   fun signUp_setsErrorWhenRepositoryFails() {
     val failure = IllegalStateException("Account already exists")
-    authRepository.signUpBehavior = { _, _ -> Result.failure(failure) }
+    authRepository.signUpBehavior = { _, _ -> Result.failure<FirebaseUser>(failure) }
     val viewModel = SignUpViewModel(authRepository)
 
     viewModel.signUp("user@example.com", "password")
@@ -241,7 +245,7 @@ class SignUpViewModelTest {
       Result.failure(UnsupportedOperationException("Not configured"))
     }
 
-    override suspend fun signUpWIthEmailAndPassword(
+    override suspend fun signUpWithEmailAndPassword(
         email: String,
         password: String,
     ): Result<FirebaseUser> {
