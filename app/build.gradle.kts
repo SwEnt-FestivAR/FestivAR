@@ -147,6 +147,7 @@ dependencies {
 
   implementation(libs.compose.ui)
   implementation(libs.compose.ui.graphics)
+  implementation(libs.compose.material.icons.extended)
   // Material Design 3
   implementation(libs.compose.material3)
   // Integration with activities
@@ -159,6 +160,7 @@ dependencies {
   // UI Tests
   globalTestImplementation(libs.compose.test.junit)
   debugImplementation(libs.compose.test.manifest)
+  testImplementation(libs.mockk)
 
   // --------- Kaspresso test framework ----------
   globalTestImplementation(libs.kaspresso)

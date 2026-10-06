@@ -1,4 +1,3 @@
-// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.ui.authentication.signup
 
 import androidx.credentials.Credential
@@ -11,9 +10,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
+import org.junit.Assert
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -34,14 +31,14 @@ class SignUpViewModelTest {
 
     viewModel.signUp("user@example.com", "password")
     runBlocking { withTimeout(5_000.milliseconds) { repositoryStarted.await() } }
-    assertTrue(viewModel.uiState.value.isLoading)
+    Assert.assertTrue(viewModel.uiState.value.isLoading)
 
     response.complete(Result.success(user))
     val state = awaitState(viewModel) { it.isAuthenticated || it.errorMsg != null }
 
-    assertFalse(state.isLoading)
-    assertTrue(state.isAuthenticated)
-    assertEquals(null, state.errorMsg)
+    Assert.assertFalse(state.isLoading)
+    Assert.assertTrue(state.isAuthenticated)
+    Assert.assertEquals(null, state.errorMsg)
   }
 
   @Test
@@ -53,9 +50,9 @@ class SignUpViewModelTest {
     viewModel.signUp("user@example.com", "password")
     val state = awaitState(viewModel) { it.errorMsg != null }
 
-    assertFalse(state.isLoading)
-    assertEquals("Account already exists", state.errorMsg)
-    assertFalse(state.isAuthenticated)
+    Assert.assertFalse(state.isLoading)
+    Assert.assertEquals("Account already exists", state.errorMsg)
+    Assert.assertFalse(state.isAuthenticated)
   }
 
   @Test
@@ -72,12 +69,39 @@ class SignUpViewModelTest {
     runBlocking { withTimeout(5_000.milliseconds) { repositoryStarted.await() } }
     viewModel.signUp("other@example.com", "another-password")
 
-    assertTrue(viewModel.uiState.value.isLoading)
-    assertEquals(1, authRepository.signUpCallCount)
-    assertEquals("user@example.com" to "password", authRepository.lastSignUpCredentials)
+    Assert.assertTrue(viewModel.uiState.value.isLoading)
+    Assert.assertEquals(1, authRepository.signUpCallCount)
+    Assert.assertEquals("user@example.com" to "password", authRepository.lastSignUpCredentials)
 
     response.complete(Result.failure(IllegalStateException("test complete")))
     awaitState(viewModel) { it.errorMsg != null }
+  }
+
+  @Test
+  fun signOut_setsSignedOutOnSuccess() {
+    authRepository.signOutBehavior = { Result.success(Unit) }
+    val viewModel = SignUpViewModel(authRepository)
+
+    viewModel.signOut()
+    val state = awaitState(viewModel) { it.signedOut || it.errorMsg != null }
+
+    Assert.assertFalse(state.isLoading)
+    Assert.assertTrue(state.signedOut)
+    Assert.assertEquals(null, state.errorMsg)
+  }
+
+  @Test
+  fun signOut_setsErrorWhenRepositoryFails() {
+    val failure = IllegalStateException("Unable to sign out")
+    authRepository.signOutBehavior = { Result.failure(failure) }
+    val viewModel = SignUpViewModel(authRepository)
+
+    viewModel.signOut()
+    val state = awaitState(viewModel) { it.errorMsg != null }
+
+    Assert.assertFalse(state.isLoading)
+    Assert.assertFalse(state.signedOut)
+    Assert.assertEquals("Unable to sign out", state.errorMsg)
   }
 
   private fun awaitState(
@@ -97,6 +121,10 @@ class SignUpViewModelTest {
     var lastSignUpCredentials: Pair<String, String>? = null
       private set
 
+    var signOutBehavior: suspend () -> Result<Unit> = {
+      Result.failure(UnsupportedOperationException("Not configured"))
+    }
+
     override suspend fun signUpWIthEmailAndPassword(
         email: String,
         password: String,
@@ -109,8 +137,7 @@ class SignUpViewModelTest {
     override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> =
         Result.failure(UnsupportedOperationException("Not configured"))
 
-    override suspend fun signOut(): Result<Unit> =
-        Result.failure(UnsupportedOperationException("Not configured"))
+    override suspend fun signOut(): Result<Unit> = signOutBehavior()
 
     override suspend fun signInWithEmailAndPassword(
         email: String,

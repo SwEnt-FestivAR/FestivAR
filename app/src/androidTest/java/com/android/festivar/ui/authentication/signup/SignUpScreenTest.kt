@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
@@ -102,6 +103,71 @@ class SignUpScreenTest {
         .onNodeWithTag(SignUpScreenTestTags.PASSWORD_MISMATCH_ERROR)
         .assertIsDisplayed()
         .assertTextEquals("Passwords do not match")
+  }
+
+  @Test
+  fun signUpButton_isDisabledWhenPasswordsDoNotMatch() {
+    composeTestRule.setContent {
+      SignUpScreen(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          signUpViewModel = viewModel,
+      )
+    }
+
+    composeTestRule
+        .onNodeWithTag(SignUpScreenTestTags.EMAIL_FIELD)
+        .performTextInput("user@example.com")
+    composeTestRule.onNodeWithTag(SignUpScreenTestTags.PASS_FIELD).performTextInput("password")
+    composeTestRule
+        .onNodeWithTag(SignUpScreenTestTags.PASS_CONFIRM_FIELD)
+        .performTextInput("different")
+
+    composeTestRule.onNodeWithTag(SignUpScreenTestTags.SIGNUP_BUTTON).assertIsNotEnabled()
+  }
+
+  @Test
+  fun passwordVisibilityButton_togglesShowAndHideLabels() {
+    composeTestRule.setContent {
+      SignUpScreen(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          signUpViewModel = viewModel,
+      )
+    }
+
+    composeTestRule.onNodeWithContentDescription("Show password").assertIsDisplayed().performClick()
+    composeTestRule.onNodeWithContentDescription("Hide password").assertIsDisplayed().performClick()
+    composeTestRule.onNodeWithContentDescription("Show password").assertIsDisplayed()
+  }
+
+  @Test
+  fun googleSignUpButton_callsViewModel() {
+    val credentialManager = mockk<CredentialManager>(relaxed = true)
+    composeTestRule.setContent {
+      SignUpScreen(
+          credentialManager = credentialManager,
+          signUpViewModel = viewModel,
+      )
+    }
+
+    composeTestRule.onNodeWithTag(SignUpScreenTestTags.GOOGLE_SIGNUP_BUTTON).performClick()
+
+    verify { viewModel.googleSignUp(any(), credentialManager) }
+  }
+
+  @Test
+  fun backButton_invokesBackCallback() {
+    var callbackInvoked = false
+    composeTestRule.setContent {
+      SignUpScreen(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          onBackClick = { callbackInvoked = true },
+          signUpViewModel = viewModel,
+      )
+    }
+
+    composeTestRule.onNodeWithContentDescription("Back").performClick()
+
+    assertTrue(callbackInvoked)
   }
 
   @Test
