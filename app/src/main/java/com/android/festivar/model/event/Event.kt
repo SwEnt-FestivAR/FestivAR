@@ -51,10 +51,7 @@ data class Event(
     require(title.isNotBlank()) { "The title cannot be empty." }
     require(tasks.map { it.taskId }.distinct().size == tasks.size) { "A task is duplicated." }
     require(members.distinct().size == members.size) { "A user is registered twice." }
-      require(endDate.isAfter(startDate)) {
-          "endDate must be strictly after startDate."
-      }
-
+    require(endDate.isAfter(startDate)) { "endDate must be strictly after startDate." }
   }
 
   /**
