@@ -6,9 +6,9 @@ import java.time.LocalDate
 
 /**
  * Represents an [Event] in the FestivAR application. An [Event] is the core element of the
- * application as it is its purpose. An [Event] can be any organized meeting necessitating
- * people organization as well as a clear overview of it, it can be a festival, a music concert,
- * a wedding etc.
+ * application as it is its purpose. An [Event] can be any organized meeting necessitating people
+ * organization as well as a clear overview of it, it can be a festival, a music concert, a wedding
+ * etc.
  *
  * An [Event] is immutable: its fields can never be changed. Every "modification" ([copy],
  * [addMember], [removeMember], [close],...) returns a new [Event] instead, so the result must be
@@ -43,81 +43,80 @@ data class Event(
     val endDate: LocalDate? = null,
     val location: String = "",
     val tasks: List<Task> = emptyList(),
-    val closed: Boolean = false
-){
+    val closed: Boolean = false,
+) {
 
-    init {
-        require(eventId.isNotBlank()) { "The eventId cannot be empty." }
-        require(title.isNotBlank()) { "The title cannot be empty." }
-        require(tasks.map { it.taskId }.distinct().size == tasks.size) { "A task is duplicated." }
-        require(members.distinct().size == members.size) { "A user is registered twice." }
-        require(startDate == null || endDate == null || !endDate.isBefore(startDate)) {
-            "endDate must not be before startDate."
-        }
+  init {
+    require(eventId.isNotBlank()) { "The eventId cannot be empty." }
+    require(title.isNotBlank()) { "The title cannot be empty." }
+    require(tasks.map { it.taskId }.distinct().size == tasks.size) { "A task is duplicated." }
+    require(members.distinct().size == members.size) { "A user is registered twice." }
+    require(startDate == null || endDate == null || !endDate.isBefore(startDate)) {
+      "endDate must not be before startDate."
     }
+  }
 
-    /**
-     * Meant to inform that the [Event] is finished/closed by returning a closed version
-     * copy of `this`.
-     *
-     * @return The [Event] but finished/closed.
-     */
-    fun close(): Event {
-        return copy(closed = true)
-    }
+  /**
+   * Meant to inform that the [Event] is finished/closed by returning a closed version copy of
+   * `this`.
+   *
+   * @return The [Event] but finished/closed.
+   */
+  fun close(): Event {
+    return copy(closed = true)
+  }
 
-    /**
-     * Adds a new [User] to the [Event] by returning a version of `this` with [user] added to
-     * the [members] list.
-     *
-     * @param user The [User] that is going to join `this`, to be added to [members] list.
-     * @return The [Event] but with [user] added to it.
-     * @throws IllegalArgumentException If [user] is already in the event.
-     */
-    fun addMember(user: User): Event {
-        require(user !in members) { "This user is already registered in the event." }
-        return copy(members = members + user)
-    }
+  /**
+   * Adds a new [User] to the [Event] by returning a version of `this` with [user] added to the
+   * [members] list.
+   *
+   * @param user The [User] that is going to join `this`, to be added to [members] list.
+   * @return The [Event] but with [user] added to it.
+   * @throws IllegalArgumentException If [user] is already in the event.
+   */
+  fun addMember(user: User): Event {
+    require(user !in members) { "This user is already registered in the event." }
+    return copy(members = members + user)
+  }
 
-    /**
-     * Removes an assigned [User] from the [Task] by returning a version of `this` with [user] removed
-     * from the [members] list.
-     *
-     * @param user The [User] that is going to be removed from `this`, from [members] list.
-     * @return The [Event] but with [user] removed from it.
-     * @throws IllegalArgumentException If [user] is not assigned to `this`.
-     */
-    fun removeMember(user: User): Event {
-        require(user in members) { "This user is not a member of the event." }
+  /**
+   * Removes an assigned [User] from the [Task] by returning a version of `this` with [user] removed
+   * from the [members] list.
+   *
+   * @param user The [User] that is going to be removed from `this`, from [members] list.
+   * @return The [Event] but with [user] removed from it.
+   * @throws IllegalArgumentException If [user] is not assigned to `this`.
+   */
+  fun removeMember(user: User): Event {
+    require(user in members) { "This user is not a member of the event." }
 
-        return copy(members = members - user)
-    }
+    return copy(members = members - user)
+  }
 
-    /**
-     * Adds a new [Task] to the [Event] by returning a version of `this` with [task] added to
-     * the [tasks] list.
-     *
-     * @param task The [Task] that is going to be added to `this`, to be added to [tasks] list.
-     * @return The [Event] but with [task] added to it.
-     * @throws IllegalArgumentException If [task] is already in the event.
-     */
-    fun addTask(task: Task): Event {
-        require(tasks.none { it.taskId == task.taskId }) { "This task is already in the event." }
-        return copy(tasks = tasks + task)
-    }
+  /**
+   * Adds a new [Task] to the [Event] by returning a version of `this` with [task] added to the
+   * [tasks] list.
+   *
+   * @param task The [Task] that is going to be added to `this`, to be added to [tasks] list.
+   * @return The [Event] but with [task] added to it.
+   * @throws IllegalArgumentException If [task] is already in the event.
+   */
+  fun addTask(task: Task): Event {
+    require(tasks.none { it.taskId == task.taskId }) { "This task is already in the event." }
+    return copy(tasks = tasks + task)
+  }
 
-    /**
-     * Removes a [Task] from the [Event] by returning a version of `this` with [task] removed
-     * from the [tasks] list.
-     *
-     * @param taskId The [Task]'s identifier that is going to be removed from `this`, from [tasks] list.
-     * @return The [Event] but with [taskId]'s [Task] removed from it.
-     * @throws IllegalArgumentException If [taskId]'s [Task] is not assigned to `this`.
-     */
-    fun removeTask(taskId: String): Event {
-        require(tasks.any { it.taskId == taskId }) { "This task is not in the event." }
-        return copy(tasks = tasks.filterNot { it.taskId == taskId })
-    }
-
+  /**
+   * Removes a [Task] from the [Event] by returning a version of `this` with [task] removed from the
+   * [tasks] list.
+   *
+   * @param taskId The [Task]'s identifier that is going to be removed from `this`, from [tasks]
+   *   list.
+   * @return The [Event] but with [taskId]'s [Task] removed from it.
+   * @throws IllegalArgumentException If [taskId]'s [Task] is not assigned to `this`.
+   */
+  fun removeTask(taskId: String): Event {
+    require(tasks.any { it.taskId == taskId }) { "This task is not in the event." }
+    return copy(tasks = tasks.filterNot { it.taskId == taskId })
+  }
 }
-

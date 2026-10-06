@@ -104,7 +104,11 @@ class EventTest {
   @Test
   fun init_fails_whenATaskIdIsDuplicated() {
     assertInvalid(duplicateTaskMessage) {
-      Event(eventId = "e1", title = "Festival", tasks = listOf(task("t1"), task("t1").copy(title = "Other")))
+      Event(
+          eventId = "e1",
+          title = "Festival",
+          tasks = listOf(task("t1"), task("t1").copy(title = "Other")),
+      )
     }
   }
 
@@ -167,7 +171,9 @@ class EventTest {
     assertFalse(event.closed)
   }
 
-  /** addMember adds the user at the end, keeps every other field and does not change the original. */
+  /**
+   * addMember adds the user at the end, keeps every other field and does not change the original.
+   */
   @Test
   fun addMember_addsUserAtTheEnd() {
     val event = eventWith(members = listOf(alice))
