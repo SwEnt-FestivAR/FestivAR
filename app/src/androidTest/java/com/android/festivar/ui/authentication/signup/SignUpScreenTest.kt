@@ -171,7 +171,7 @@ class SignUpScreenTest {
   }
 
   @Test
-  fun loginNowButton_invokesCreateAccountCallback() {
+  fun loginNowButton_invokesSignInCallback() {
     var callbackInvoked = false
     composeTestRule.setContent {
       SignUpScreen(
@@ -181,8 +181,12 @@ class SignUpScreenTest {
       )
     }
 
-    composeTestRule.onNodeWithTag(SignUpScreenTestTags.LOGIN_NOW_BUTTON).performClick()
+    composeTestRule
+        .onNodeWithTag(SignUpScreenTestTags.LOGIN_NOW_BUTTON)
+        .assertIsDisplayed()
+        .performClick()
 
-    composeTestRule.runOnIdle { assertTrue(callbackInvoked) }
+    composeTestRule.waitForIdle()
+    assertTrue(callbackInvoked)
   }
 }

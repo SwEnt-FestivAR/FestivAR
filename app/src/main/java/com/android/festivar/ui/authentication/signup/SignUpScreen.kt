@@ -377,7 +377,7 @@ private fun SignUpTerms() {
 }
 
 @Composable
-private fun SignUpFooter(onCreateAccountClick: () -> Unit, darkLime: Color) {
+private fun SignUpFooter(onSignInClick: () -> Unit, darkLime: Color) {
   Row(
       modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
       horizontalArrangement = Arrangement.Center,
@@ -390,7 +390,7 @@ private fun SignUpFooter(onCreateAccountClick: () -> Unit, darkLime: Color) {
     )
     Spacer(modifier = Modifier.width(4.dp))
     TextButton(
-        onClick = onCreateAccountClick,
+        onClick = onSignInClick,
         modifier = Modifier.testTag(SignUpScreenTestTags.LOGIN_NOW_BUTTON),
     ) {
       Text(
