@@ -22,7 +22,7 @@ import java.time.ZonedDateTime
  * - [eventId] is not blank;
  * - a [User] is a joined member at most once (no duplicates);
  * - a [Task] is unique in the event (no duplicates);
- * - [endDate] is not before [startDate];
+ * - [endDate] must be after [startDate];
  *
  * @property eventId Unique identifier of the [Event].
  * @property title Name of the [Event], shown as the screen title.
