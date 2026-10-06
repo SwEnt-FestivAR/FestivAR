@@ -84,7 +84,7 @@ private object UnusedAuthRepository : AuthRepository {
   ): Result<FirebaseUser> =
       Result.failure(UnsupportedOperationException("Not used in this UI test"))
 
-  override suspend fun signUpWIthEmailAndPassword(
+  override suspend fun signUpWithEmailAndPassword(
       email: String,
       password: String,
   ): Result<FirebaseUser> =
