@@ -2,7 +2,6 @@ package com.android.festivar.model.event
 
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.temporary.User
-import java.time.LocalDate
 import java.time.ZonedDateTime
 
 /**
