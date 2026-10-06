@@ -14,5 +14,5 @@ interface AuthRepository {
   suspend fun signInWithEmailAndPassword(email: String, password: String): Result<FirebaseUser>
 
   /** Sign up with password and email */
-  suspend fun signUpWIthEmailAndPassword(email: String, password: String): Result<FirebaseUser>
+  suspend fun signUpWithEmailAndPassword(email: String, password: String): Result<FirebaseUser>
 }

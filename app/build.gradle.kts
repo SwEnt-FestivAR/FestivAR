@@ -39,7 +39,7 @@ android {
     }
   }
 
-  testCoverage { jacocoVersion = "0.8.13" }
+  testCoverage { jacocoVersion = "0.8.14" }
 
   buildFeatures { compose = true }
 
@@ -127,16 +127,17 @@ fun DependencyHandlerScope.globalTestImplementation(dep: Any) {
 
 dependencies {
   implementation(platform(libs.firebase.bom))
-  // TODO: Add the dependencies for Firebase products you want to use
+  implementation(libs.credentials)
+  implementation(libs.credentials.play.services.auth)
+  implementation(libs.googleid)
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.appcompat)
   implementation(libs.firebase.auth)
-  implementation(libs.googleid)
   implementation(libs.material)
   implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation(platform(libs.compose.bom))
   testImplementation(libs.junit)
-  androidTestImplementation(libs.mockk.android)
+  testImplementation(libs.mockk)
   globalTestImplementation(libs.androidx.junit)
   globalTestImplementation(libs.androidx.espresso.core)
 
