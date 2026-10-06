@@ -74,7 +74,7 @@ object SignUpScreenTestTags {
 fun SignUpScreen(
     modifier: Modifier = Modifier,
     credentialManager: CredentialManager? = CredentialManager.create(LocalContext.current),
-    onCreateAccountClick: () -> Unit = {},
+    onSignInClick: () -> Unit = {},
     onBackClick: () -> Unit = {},
     signUpViewModel: SignUpViewModel? = null,
 ) {
@@ -133,7 +133,7 @@ fun SignUpScreen(
     Spacer(modifier = Modifier.height(24.dp))
     SignUpTerms()
     Spacer(modifier = Modifier.height(32.dp))
-    SignUpFooter(onCreateAccountClick, darkLime)
+    SignUpFooter(onSignInClick, darkLime)
   }
 }
 

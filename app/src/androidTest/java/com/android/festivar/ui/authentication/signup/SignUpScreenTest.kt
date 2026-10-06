@@ -176,13 +176,13 @@ class SignUpScreenTest {
     composeTestRule.setContent {
       SignUpScreen(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          onCreateAccountClick = { callbackInvoked = true },
+          onSignInClick = { callbackInvoked = true },
           signUpViewModel = viewModel,
       )
     }
 
     composeTestRule.onNodeWithTag(SignUpScreenTestTags.LOGIN_NOW_BUTTON).performClick()
 
-    assertTrue(callbackInvoked)
+    composeTestRule.runOnIdle { assertTrue(callbackInvoked) }
   }
 }
