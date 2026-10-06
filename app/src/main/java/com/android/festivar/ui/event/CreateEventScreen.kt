@@ -47,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -61,6 +62,16 @@ private val ScreenBackground = Color(0xFFFFFEF9)
 private val FieldBorder = Color(0xFFD7D5CC)
 private val PrimaryButton = Color(0xFFC7F21A)
 private val SecondaryText = Color(0xFF77766F)
+
+object CreateEventScreenTestTags {
+    const val NAVIGATION_BUTTON = "navigationButton"
+    const val NAME_FIELD = "nameField"
+    const val START_DATE_FIELD = "startDateField"
+    const val END_DATE_FIELD = "endDateField"
+    const val LOCATION_FIELD = "locationField"
+    const val DESCRIPTION_FIELD = "descriptionField"
+    const val CREATE_BUTTON = "createButton"
+}
 
 /** A screen for creating events. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -98,7 +109,11 @@ fun CreateEventScreen(
             onClick = onCreate,
             enabled = formIsComplete,
             modifier =
-                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 12.dp).height(48.dp),
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 12.dp)
+                    .height(48.dp)
+                    .testTag(CreateEventScreenTestTags.CREATE_BUTTON),
             shape = RoundedCornerShape(8.dp),
             colors =
                 ButtonDefaults.buttonColors(
@@ -126,6 +141,7 @@ fun CreateEventScreen(
           value = name,
           onValueChange = { name = it },
           placeholder = "Event name",
+          modifier = Modifier.testTag(CreateEventScreenTestTags.NAME_FIELD),
       )
       Spacer(modifier = Modifier.height(14.dp))
 
@@ -134,13 +150,13 @@ fun CreateEventScreen(
             value = startDate,
             onClick = { activeDatePicker = DateField.START },
             placeholder = "Starts",
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).testTag(CreateEventScreenTestTags.START_DATE_FIELD),
         )
         DateTimeInput(
             value = endDate,
             onClick = { activeDatePicker = DateField.END },
             placeholder = "Ends",
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).testTag(CreateEventScreenTestTags.END_DATE_FIELD),
         )
       }
       Spacer(modifier = Modifier.height(14.dp))
@@ -165,6 +181,7 @@ fun CreateEventScreen(
           value = venue,
           onValueChange = { venue = it },
           placeholder = "Venue",
+          modifier = Modifier.testTag(CreateEventScreenTestTags.LOCATION_FIELD),
       )
       Spacer(modifier = Modifier.height(8.dp))
 
@@ -196,6 +213,7 @@ fun CreateEventScreen(
           placeholder = "Notes for the team, optional",
           minHeight = 56.dp,
           singleLine = false,
+          modifier = Modifier.testTag(CreateEventScreenTestTags.DESCRIPTION_FIELD)
       )
       Spacer(modifier = Modifier.height(14.dp))
 
@@ -336,7 +354,10 @@ private fun CreateEventTopBar(onBack: () -> Unit) {
         )
       },
       navigationIcon = {
-        IconButton(onClick = onBack) {
+        IconButton(
+            onClick = onBack,
+            modifier = Modifier.testTag(CreateEventScreenTestTags.NAVIGATION_BUTTON)
+        ) {
           Icon(
               imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
               contentDescription = "Navigate back",
