@@ -4,10 +4,7 @@ package com.android.festivar.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Light / Dark: exact values from the Figma "Color scheme" collection.
-// *MediumContrast / *HighContrast: derived (same hue and chroma, tone adjusted
-// to reach WCAG contrast targets). Not designer-reviewed.
-
+// Light
 val primaryLight = Color(0xFFD9FF3D)
 val onPrimaryLight = Color(0xFF17180F)
 val primaryContainerLight = Color(0xFFECFFB3)
@@ -45,6 +42,7 @@ val surfaceContainerLight = Color(0xFFF1F3EA)
 val surfaceContainerHighLight = Color(0xFFEBEEE2)
 val surfaceContainerHighestLight = Color(0xFFE1E4D6)
 
+// Light medium contrast
 val primaryLightMediumContrast = Color(0xFF535E00)
 val onPrimaryLightMediumContrast = Color(0xFFFFFEFF)
 val primaryContainerLightMediumContrast = Color(0xFFECFFB3)
@@ -82,6 +80,7 @@ val surfaceContainerLightMediumContrast = Color(0xFFEBEDE4)
 val surfaceContainerHighLightMediumContrast = Color(0xFFE5E8DC)
 val surfaceContainerHighestLightMediumContrast = Color(0xFFD8DCCE)
 
+// Light high contrast
 val primaryLightHighContrast = Color(0xFF334100)
 val onPrimaryLightHighContrast = Color(0xFFFFFEFF)
 val primaryContainerLightHighContrast = Color(0xFF333E00)
@@ -119,6 +118,7 @@ val surfaceContainerLightHighContrast = Color(0xFFE5E8DF)
 val surfaceContainerHighLightHighContrast = Color(0xFFE0E3D7)
 val surfaceContainerHighestLightHighContrast = Color(0xFFD0D3C5)
 
+// Dark
 val primaryDark = Color(0xFFD9FF3D)
 val onPrimaryDark = Color(0xFF17180F)
 val primaryContainerDark = Color(0xFF2A3310)
@@ -156,6 +156,7 @@ val surfaceContainerDark = Color(0xFF1B1E18)
 val surfaceContainerHighDark = Color(0xFF242822)
 val surfaceContainerHighestDark = Color(0xFF2E3329)
 
+// Dark medium contrast
 val primaryDarkMediumContrast = Color(0xFFD9FF3D)
 val onPrimaryDarkMediumContrast = Color(0xFF17180F)
 val primaryContainerDarkMediumContrast = Color(0xFF2A3310)
@@ -193,6 +194,7 @@ val surfaceContainerDarkMediumContrast = Color(0xFF1F221C)
 val surfaceContainerHighDarkMediumContrast = Color(0xFF282C26)
 val surfaceContainerHighestDarkMediumContrast = Color(0xFF353A2F)
 
+// Dark high contrast
 val primaryDarkHighContrast = Color(0xFFD9FF3D)
 val onPrimaryDarkHighContrast = Color(0xFF17180F)
 val primaryContainerDarkHighContrast = Color(0xFFA8CA00)
@@ -230,7 +232,7 @@ val surfaceContainerDarkHighContrast = Color(0xFF232620)
 val surfaceContainerHighDarkHighContrast = Color(0xFF2D312A)
 val surfaceContainerHighestDarkHighContrast = Color(0xFF3B4036)
 
-// Custom color (no Material 3 role)
+// Custom: on surface muted
 val onSurfaceMutedLight = Color(0xFF8C9080)
 val onSurfaceMutedLightMediumContrast = Color(0xFF717566)
 val onSurfaceMutedLightHighContrast = Color(0xFF54584A)
@@ -238,8 +240,7 @@ val onSurfaceMutedDark = Color(0xFFA9AD9C)
 val onSurfaceMutedDarkMediumContrast = Color(0xFFA9AD9C)
 val onSurfaceMutedDarkHighContrast = Color(0xFFA9AD9C)
 
-// Figma also defines the *Fixed roles and shadow. They are not part of the
-// scheme in Theme.kt (older material3 versions don't have the Fixed params).
+// Fixed and shadow
 val shadowLight = Color(0xFF17180F)
 val shadowDark = Color(0xFF000000)
 val primaryFixedLight = Color(0xFFECFFB3)
