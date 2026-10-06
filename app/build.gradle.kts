@@ -119,6 +119,7 @@ dependencies {
   implementation(platform(libs.firebase.bom))
   implementation(libs.credentials)
   implementation(libs.credentials.play.services.auth)
+  implementation(libs.firebase.firestore)
   implementation(libs.googleid)
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.appcompat)
@@ -160,6 +161,8 @@ dependencies {
 }
 
 dependencyLocking { lockAllConfigurations() }
+
+configurations.configureEach { exclude(group = "com.google.protobuf", module = "protobuf-lite") }
 
 tasks.withType<Test> {
   // Configure Jacoco for each tests
