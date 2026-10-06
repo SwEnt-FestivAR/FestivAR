@@ -3,6 +3,7 @@ package com.android.festivar.model.event
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.temporary.User
 import java.time.LocalDate
+import java.time.ZonedDateTime
 
 /**
  * Represents an [Event] in the FestivAR application. An [Event] is the core element of the
@@ -28,8 +29,8 @@ import java.time.LocalDate
  * @property title Name of the [Event], shown as the screen title.
  * @property description Free-text description of specifications about the [Event].
  * @property members People who joined or were assigned the [Event].
- * @property startDate Starting date of the [Event], or `null` if not set.
- * @property endDate Ending date of the [Event], or `null` if not set.
+ * @property startDate Starting date and time of the [Event].
+ * @property endDate Ending date and time of the [Event].
  * @property location Where the [Event] takes place.
  * @property tasks Tasks that are related, that belong to the [Event].
  * @property closed Whether the [Event] is still ongoing or not.
@@ -39,8 +40,8 @@ data class Event(
     val title: String,
     val description: String = "",
     val members: List<User> = emptyList(),
-    val startDate: LocalDate? = null,
-    val endDate: LocalDate? = null,
+    val startDate: ZonedDateTime,
+    val endDate: ZonedDateTime,
     val location: String = "",
     val tasks: List<Task> = emptyList(),
     val closed: Boolean = false,
@@ -51,9 +52,10 @@ data class Event(
     require(title.isNotBlank()) { "The title cannot be empty." }
     require(tasks.map { it.taskId }.distinct().size == tasks.size) { "A task is duplicated." }
     require(members.distinct().size == members.size) { "A user is registered twice." }
-    require(startDate == null || endDate == null || !endDate.isBefore(startDate)) {
-      "endDate must not be before startDate."
-    }
+      require(endDate.isAfter(startDate)) {
+          "endDate must be strictly after startDate."
+      }
+
   }
 
   /**
