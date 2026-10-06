@@ -34,7 +34,7 @@ class AuthRepositoryFirebase(
     }
   }
 
-  override suspend fun signUpWIthEmailAndPassword(
+  override suspend fun signUpWithEmailAndPassword(
       email: String,
       password: String,
   ): Result<FirebaseUser> {

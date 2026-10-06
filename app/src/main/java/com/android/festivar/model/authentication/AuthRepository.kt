@@ -2,8 +2,6 @@ package com.android.festivar.model.authentication
 
 import androidx.credentials.Credential
 import com.google.firebase.auth.FirebaseUser
-import kotlin.Result
-import kotlin.Unit
 
 public interface AuthRepository {
   /** signs in with Google */
@@ -16,5 +14,5 @@ public interface AuthRepository {
   suspend fun signInWithEmailAndPassword(email: String, password: String): Result<FirebaseUser>
 
   /** Sign up with password and email */
-  suspend fun signUpWIthEmailAndPassword(email: String, password: String): Result<FirebaseUser>
+  suspend fun signUpWithEmailAndPassword(email: String, password: String): Result<FirebaseUser>
 }

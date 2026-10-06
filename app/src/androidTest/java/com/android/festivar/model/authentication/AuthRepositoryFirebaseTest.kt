@@ -33,7 +33,7 @@ class AuthRepositoryFirebaseTest {
   fun signUpWithEmailAndPassword_returnsCreatedUserAndSetsCurrentUser() = runBlocking {
     val email = newEmail()
 
-    val user = repository.signUpWIthEmailAndPassword(email, PASSWORD).getOrThrow()
+    val user = repository.signUpWithEmailAndPassword(email, PASSWORD).getOrThrow()
 
     assertEquals(email, user.email)
     assertNotNull(repository.currentUser)
@@ -43,9 +43,9 @@ class AuthRepositoryFirebaseTest {
   @Test
   fun signUpWithEmailAndPassword_returnsFailureForExistingEmail() = runBlocking {
     val email = newEmail()
-    repository.signUpWIthEmailAndPassword(email, PASSWORD).getOrThrow()
+    repository.signUpWithEmailAndPassword(email, PASSWORD).getOrThrow()
 
-    val result = repository.signUpWIthEmailAndPassword(email, PASSWORD)
+    val result = repository.signUpWithEmailAndPassword(email, PASSWORD)
 
     assertTrue(result.isFailure)
   }
@@ -76,7 +76,7 @@ class AuthRepositoryFirebaseTest {
 
   @Test
   fun signOut_clearsCurrentUser() = runBlocking {
-    repository.signUpWIthEmailAndPassword(newEmail(), PASSWORD).getOrThrow()
+    repository.signUpWithEmailAndPassword(newEmail(), PASSWORD).getOrThrow()
     assertNotNull(repository.currentUser)
 
     val result = repository.signOut()
