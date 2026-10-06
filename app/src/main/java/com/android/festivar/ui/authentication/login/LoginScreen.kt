@@ -25,10 +25,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -40,6 +43,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.credentials.CredentialManager
 import com.android.festivar.resources.GoogleLogo
 import com.android.festivar.ui.theme.AppTheme
 
@@ -53,20 +57,23 @@ internal object LoginScreenTestTags {
 
 @Composable
 fun LoginScreen(
-    viewModel: LoginViewModel,
-    onGoogleSignInClick: (LoginViewModel) -> Unit,
-    onForgotPasswordClick: () -> Unit,
+    viewModel: LoginViewModel = LoginViewModel(),
     onSignUpClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onSignedIn: () -> Unit = {},
+    credentialManager: CredentialManager = CredentialManager.create(LocalContext.current),
 ) {
-  val uiState by viewModel.uiState.collectAsState()
+  val stableViewModel = remember { viewModel }
+  val context = LocalContext.current
+  val uiState by stableViewModel.uiState.collectAsState()
+  LaunchedEffect(uiState.user) { if (uiState.user != null) onSignedIn() }
 
   LoginScreenContent(
       uiState = uiState,
-      onEmailChange = viewModel::updateEmail,
-      onPasswordChange = viewModel::updatePassword,
-      onLoginClick = viewModel::signIn,
-      onGoogleSignInClick = { onGoogleSignInClick(viewModel) },
+      onEmailChange = stableViewModel::updateEmail,
+      onPasswordChange = stableViewModel::updatePassword,
+      onLoginClick = stableViewModel::signIn,
+      onGoogleSignInClick = { stableViewModel.signInWithGoogle(context, credentialManager) },
       onSignUpClick = onSignUpClick,
       modifier = modifier,
   )

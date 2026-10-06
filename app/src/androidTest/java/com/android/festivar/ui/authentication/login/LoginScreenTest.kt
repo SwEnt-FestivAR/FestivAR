@@ -29,8 +29,6 @@ class LoginScreenTest {
     composeTestRule.setContent {
       LoginScreen(
           viewModel = viewModel,
-          onGoogleSignInClick = {},
-          onForgotPasswordClick = {},
           onSignUpClick = {},
       )
     }
@@ -49,8 +47,6 @@ class LoginScreenTest {
     composeTestRule.setContent {
       LoginScreen(
           viewModel = viewModel,
-          onGoogleSignInClick = {},
-          onForgotPasswordClick = {},
           onSignUpClick = {},
       )
     }
