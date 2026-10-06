@@ -5,11 +5,11 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -153,10 +153,7 @@ private fun LoginScreenContent(
         shape = RoundedCornerShape(8.dp),
         contentPadding = PaddingValues(0.dp),
         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-        modifier =
-            Modifier.fillMaxWidth()
-                .height(44.dp)
-                .testTag(LoginScreenTestTags.LOGIN_BUTTON),
+        modifier = Modifier.fillMaxWidth().height(44.dp).testTag(LoginScreenTestTags.LOGIN_BUTTON),
     ) {
       if (uiState.isLoading) {
         CircularProgressIndicator(
@@ -207,9 +204,7 @@ private fun LoginScreenContent(
                 contentColor = MaterialTheme.colorScheme.onSurface,
             ),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        modifier =
-            Modifier.fillMaxWidth()
-                .height(44.dp)
+        modifier = Modifier.fillMaxWidth().height(44.dp),
     ) {
       Row(verticalAlignment = Alignment.CenterVertically) {
         Image(
@@ -269,10 +264,7 @@ private fun LoginInputField(
       label = { Text(label, fontSize = 12.sp) },
       textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
       shape = RoundedCornerShape(8.dp),
-      modifier =
-          modifier
-              .height(56.dp)
-              .testTag(testTag),
+      modifier = modifier.height(56.dp).testTag(testTag),
   )
 }
 
