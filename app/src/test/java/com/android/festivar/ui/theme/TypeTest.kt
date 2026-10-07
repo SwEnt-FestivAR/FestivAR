@@ -2,6 +2,7 @@
 
 package com.android.festivar.ui.theme
 
+import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -11,7 +12,11 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import com.android.festivar.R
+import java.io.File
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TypeTest {
@@ -97,5 +102,151 @@ class TypeTest {
   @Test
   fun figtreeOpticalSize_isNotSet() {
     assertEquals(emptyList<Float>(), opticalSizes(FigtreeFonts))
+  }
+
+  private val materialStyles: Map<String, TextStyle> =
+      with(AppTypography) {
+        mapOf(
+            "displayLarge" to displayLarge,
+            "displayMedium" to displayMedium,
+            "displaySmall" to displaySmall,
+            "headlineLarge" to headlineLarge,
+            "headlineMedium" to headlineMedium,
+            "headlineSmall" to headlineSmall,
+            "titleLarge" to titleLarge,
+            "titleMedium" to titleMedium,
+            "titleSmall" to titleSmall,
+            "bodyLarge" to bodyLarge,
+            "bodyMedium" to bodyMedium,
+            "bodySmall" to bodySmall,
+            "labelLarge" to labelLarge,
+            "labelMedium" to labelMedium,
+            "labelSmall" to labelSmall,
+        )
+      }
+
+  private val allStyles: Map<String, TextStyle> =
+      materialStyles +
+          mapOf(
+              "NumeralLarge" to NumeralLarge,
+              "NumeralMedium" to NumeralMedium,
+              "NumeralSmall" to NumeralSmall,
+          )
+
+  private fun declaredWeights(family: FontFamily): List<FontWeight> =
+      when (family) {
+        BricolageGrotesque -> BricolageGrotesqueFonts
+        Figtree -> FigtreeFonts
+        else -> error("Unexpected font family $family")
+      }.map { it.weight }
+
+  /** A style whose weight is not declared in its family would silently fall back to another one. */
+  @Test
+  fun everyStyleWeight_isDeclaredInItsFontFamily() {
+    allStyles.forEach { (name, style) ->
+      val family = style.fontFamily ?: error("$name has no font family")
+      assertTrue(
+          "$name uses ${style.fontWeight} which ${declaredWeights(family)} does not provide",
+          style.fontWeight in declaredWeights(family),
+      )
+    }
+  }
+
+  /** Every declared weight is used by at least one style, so no font entry is dead weight. */
+  @Test
+  fun everyDeclaredWeight_isUsedByAStyle() {
+    listOf(BricolageGrotesque, Figtree).forEach { family ->
+      val used = allStyles.values.filter { it.fontFamily == family }.mapNotNull { it.fontWeight }
+      declaredWeights(family).forEach { weight ->
+        assertTrue("$weight of $family is never used", weight in used)
+      }
+    }
+  }
+
+  /** The design only uses the two Figma families, so no style may fall back to the system font. */
+  @Test
+  fun everyStyle_usesAFigmaFontFamily() {
+    allStyles.forEach { (name, style) ->
+      assertTrue(
+          "$name must use Bricolage Grotesque or Figtree",
+          style.fontFamily == BricolageGrotesque || style.fontFamily == Figtree,
+      )
+    }
+  }
+
+  /** Guards against a Material slot being left on the default typography. */
+  @Test
+  fun appTypography_overridesEveryMaterialSlot() {
+    val d = Typography()
+    val defaults =
+        mapOf(
+            "displayLarge" to d.displayLarge,
+            "displayMedium" to d.displayMedium,
+            "displaySmall" to d.displaySmall,
+            "headlineLarge" to d.headlineLarge,
+            "headlineMedium" to d.headlineMedium,
+            "headlineSmall" to d.headlineSmall,
+            "titleLarge" to d.titleLarge,
+            "titleMedium" to d.titleMedium,
+            "titleSmall" to d.titleSmall,
+            "bodyLarge" to d.bodyLarge,
+            "bodyMedium" to d.bodyMedium,
+            "bodySmall" to d.bodySmall,
+            "labelLarge" to d.labelLarge,
+            "labelMedium" to d.labelMedium,
+            "labelSmall" to d.labelSmall,
+        )
+    assertEquals(15, materialStyles.size)
+    materialStyles.forEach { (name, style) ->
+      assertNotEquals("$name still has the Material default", defaults[name], style)
+    }
+  }
+
+  /** Line height must leave room for the glyphs, otherwise text gets clipped. */
+  @Test
+  fun lineHeight_isNeverSmallerThanFontSize() {
+    allStyles.forEach { (name, style) ->
+      assertTrue("$name lineHeight < fontSize", style.lineHeight.value >= style.fontSize.value)
+    }
+  }
+
+  /** Each entry must point at the bundled font file and carry its own weight on the wght axis. */
+  @Test
+  fun fontEntries_useBundledFilesAndMatchingWeightAxis() {
+    listOf(
+            BricolageGrotesqueFonts to R.font.bricolage_grotesque,
+            FigtreeFonts to R.font.figtree,
+        )
+        .forEach { (fonts, resId) ->
+          fonts.filterIsInstance<ResourceFont>().also { assertEquals(fonts.size, it.size) }.forEach {
+              font ->
+            assertEquals(resId, font.resId)
+            val wght =
+                font.variationSettings.settings
+                    .filter { it.axisName == "wght" }
+                    .map { it.toVariationValue(Density(1f)) }
+            assertEquals(listOf(font.weight.weight.toFloat()), wght)
+          }
+        }
+  }
+
+  /** Fonts must not declare the same weight twice, Compose would pick one arbitrarily. */
+  @Test
+  fun fontFamilies_haveNoDuplicateWeights() {
+    listOf(BricolageGrotesqueFonts, FigtreeFonts).forEach { fonts ->
+      val weights = fonts.map { it.weight }
+      assertEquals(weights.distinct(), weights)
+    }
+  }
+
+  /** The OFL requires the license to ship with the font files. */
+  @Test
+  fun bundledFonts_shipTheirLicense() {
+    listOf("bricolage_grotesque", "figtree").forEach { name ->
+      val license = File("../third_party/fonts/$name/OFL.txt")
+      assertTrue("Missing ${license.path}", license.isFile)
+      assertTrue(license.readText().contains("SIL Open Font License"))
+      assertTrue(File("src/main/res/font/$name.ttf").isFile)
+    }
   }
 }
