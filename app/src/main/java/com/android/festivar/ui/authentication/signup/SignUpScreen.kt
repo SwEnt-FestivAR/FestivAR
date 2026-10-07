@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.authentication.signup
 
 import android.annotation.SuppressLint
@@ -44,13 +45,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.credentials.Credential
 import androidx.credentials.CredentialManager
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -165,17 +164,15 @@ private fun SignUpHeader() {
   Column {
     Text(
         text = "Create an account",
-        fontSize = 32.sp,
-        fontWeight = FontWeight.Bold,
+        style = MaterialTheme.typography.displaySmall,
         color = Color.Black,
         modifier = Modifier.testTag(SignUpScreenTestTags.CREATE_ACC_TITLE),
     )
     Spacer(modifier = Modifier.height(8.dp))
     Text(
         text = "Your organizer adds you to an event by code once you are in.",
-        fontSize = 15.sp,
+        style = MaterialTheme.typography.bodyMedium,
         color = Color.Gray,
-        lineHeight = 20.sp,
     )
   }
 }
@@ -220,7 +217,7 @@ private fun SignUpFields(
       Text(
           text = "Passwords do not match",
           color = Color.Red,
-          fontSize = 12.sp,
+          style = MaterialTheme.typography.bodySmall,
           modifier =
               Modifier.padding(top = 4.dp).testTag(SignUpScreenTestTags.PASSWORD_MISMATCH_ERROR),
       )
@@ -228,7 +225,7 @@ private fun SignUpFields(
     Spacer(modifier = Modifier.height(6.dp))
     Text(
         text = "8 characters or more.",
-        fontSize = 13.sp,
+        style = MaterialTheme.typography.bodySmall,
         color = Color.Gray,
         modifier = Modifier.padding(start = 4.dp),
     )
@@ -313,8 +310,7 @@ private fun SignUpButton(
   ) {
     Text(
         text = if (isLoading) "Signing up..." else "Create account",
-        fontSize = 16.sp,
-        fontWeight = FontWeight.Bold,
+        style = MaterialTheme.typography.labelLarge,
     )
   }
 }
@@ -330,7 +326,7 @@ private fun SignUpDivider() {
         text = "or",
         modifier = Modifier.padding(horizontal = 12.dp),
         color = Color.Gray,
-        fontSize = 14.sp,
+        style = MaterialTheme.typography.bodyMedium,
     )
     HorizontalDivider(modifier = Modifier.weight(1f), color = Color.LightGray.copy(alpha = 0.5f))
   }
@@ -356,8 +352,7 @@ private fun GoogleSignUpButton(onClick: () -> Unit) {
       Spacer(modifier = Modifier.width(12.dp))
       Text(
           text = "Continue with Google",
-          fontSize = 16.sp,
-          fontWeight = FontWeight.Bold,
+          style = MaterialTheme.typography.labelLarge,
           color = Color.Black,
       )
     }
@@ -369,9 +364,8 @@ private fun SignUpTerms() {
   Text(
       text =
           "By continuing you accept the terms and the privacy notice. Your phone number, if you add one later, is only shown to organizers.",
-      fontSize = 12.sp,
+      style = MaterialTheme.typography.bodySmall,
       color = Color.Gray,
-      lineHeight = 16.sp,
   )
 }
 
@@ -384,7 +378,7 @@ private fun SignUpFooter(onSignInClick: () -> Unit, darkLime: Color) {
   ) {
     Text(
         text = "Already have an account?",
-        fontSize = 15.sp,
+        style = MaterialTheme.typography.bodyMedium,
         color = Color.Gray,
     )
     Spacer(modifier = Modifier.width(4.dp))
@@ -394,8 +388,7 @@ private fun SignUpFooter(onSignInClick: () -> Unit, darkLime: Color) {
     ) {
       Text(
           text = "Sign in",
-          fontSize = 15.sp,
-          fontWeight = FontWeight.Bold,
+          style = MaterialTheme.typography.labelLarge,
           color = darkLime,
       )
     }
