@@ -33,7 +33,8 @@ class TaskRepositoryFirebase(
   override suspend fun addTask(task: Task) {
     val document = taskCollection.document(task.taskId)
     db.runTransaction { transaction ->
-          if (transaction.get(document).exists()) {
+          require(task.taskId.isNotEmpty()) { "Task ID must not be empty." }
+          require(!transaction.get(document).exists()) {
             throw IllegalArgumentException("A Task with taskId '${task.taskId}' already exists.")
           }
           transaction.set(document, toFirestoreData(task))

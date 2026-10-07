@@ -13,6 +13,7 @@ import kotlinx.coroutines.tasks.await
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.BeforeClass
@@ -49,6 +50,45 @@ class TaskRepositoryFirebaseTest {
 
     assertTrue(first.isNotEmpty())
     assertNotEquals(first, second)
+  }
+
+  @Test
+  fun toFirestoreData_serializesTaskFields() {
+    val data = invokeToFirestoreData(task)
+
+    assertEquals(task.taskId, data["taskId"])
+    assertEquals(task.eventId, data["eventId"])
+    assertEquals(task.title, data["title"])
+    assertEquals(task.description, data["description"])
+    assertEquals(task.startTime.toString(), data["startTime"])
+    assertEquals(task.endTime.toString(), data["endTime"])
+    assertEquals(task.estimatedTime!!.toNanos(), data["estimatedTime"])
+    assertEquals(task.location, data["location"])
+    assertEquals(task.priority.name, data["priority"])
+    assertEquals(task.maxAssign, data["maxAssign"])
+    assertEquals(task.assignees.map { it.uid }, data["assignees"])
+    assertEquals(task.completed, data["completed"])
+  }
+
+  @Test
+  fun toFirestoreData_serializesOptionalFieldsAsNull() {
+    val taskWithoutOptionalFields =
+        task.copy(startTime = null, endTime = null, estimatedTime = null)
+
+    val data = invokeToFirestoreData(taskWithoutOptionalFields)
+
+    assertNull(data["startTime"])
+    assertNull(data["endTime"])
+    assertNull(data["estimatedTime"])
+  }
+
+  @Test
+  fun documentToTask_deserializesStoredTask() = runBlocking {
+    val data = invokeToFirestoreData(task)
+    val document = Firebase.firestore.collection(TASK_COLLECTION_PATH).document(task.taskId)
+    document.set(data).await()
+
+    assertEquals(task, invokeDocumentToTask(document.get().await()))
   }
 
   @Test
@@ -147,6 +187,26 @@ class TaskRepositoryFirebaseTest {
       thrown = true
     }
     assertTrue("Expected an exception", thrown)
+  }
+
+  @Suppress("UNCHECKED_CAST")
+  private fun invokeToFirestoreData(task: Task): Map<String, Any?> {
+    val method =
+        TaskRepositoryFirebase::class.java.getDeclaredMethod("toFirestoreData", Task::class.java)
+    method.isAccessible = true
+    return method.invoke(repository, task) as Map<String, Any?>
+  }
+
+  private fun invokeDocumentToTask(document: com.google.firebase.firestore.DocumentSnapshot): Task {
+    val method =
+        TaskRepositoryFirebase::class
+            .java
+            .getDeclaredMethod(
+                "documentToTask",
+                com.google.firebase.firestore.DocumentSnapshot::class.java,
+            )
+    method.isAccessible = true
+    return method.invoke(repository, document) as Task
   }
 
   private companion object {
