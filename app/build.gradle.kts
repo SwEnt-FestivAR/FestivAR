@@ -48,7 +48,16 @@ android {
     targetCompatibility = JavaVersion.VERSION_17
   }
 
-  packaging { resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" } }
+  packaging {
+    resources {
+      excludes +=
+          listOf(
+              "/META-INF/{AL2.0,LGPL2.1}",
+              "/META-INF/LICENSE*",
+              "/META-INF/NOTICE*",
+          )
+    }
+  }
 
   testOptions {
     unitTests {
@@ -95,7 +104,8 @@ sonar {
         "sonar.junit.reportPaths",
         "${project.layout.buildDirectory.get()}/test-results/testDebugunitTest/",
     )
-    // Paths to xml files with Android Lint issues. If the main flavor is changed, this file will
+    // Paths to xml files with Android Lint issues. If the main flavor is changed, this file
+    // will
     // have to be changed too.
     property(
         "sonar.androidLint.reportPaths",
@@ -139,6 +149,8 @@ dependencies {
 
   implementation(libs.compose.ui)
   implementation(libs.compose.ui.graphics)
+  implementation(libs.compose.material.icons.extended)
+  androidTestImplementation(libs.mockk.android)
   // Material Design 3
   implementation(libs.compose.material3)
   // Integration with activities
@@ -151,6 +163,7 @@ dependencies {
   // UI Tests
   globalTestImplementation(libs.compose.test.junit)
   debugImplementation(libs.compose.test.manifest)
+  testImplementation(libs.mockk)
 
   // --------- Kaspresso test framework ----------
   globalTestImplementation(libs.kaspresso)
@@ -170,7 +183,7 @@ tasks.withType<Test> {
   }
 }
 
-tasks.register("jacocoTestReport", JacocoReport::class) {
+tasks.register(name = "jacocoTestReport", type = JacocoReport::class) {
   mustRunAfter("testDebugUnitTest", "connectedDebugAndroidTest")
 
   reports {
