@@ -171,7 +171,7 @@ private fun SignUpHeader() {
     Spacer(modifier = Modifier.height(8.dp))
     Text(
         text = "Your organizer adds you to an event by code once you are in.",
-        style = MaterialTheme.typography.bodyMedium,
+        style = MaterialTheme.typography.bodyLarge,
         color = Color.Gray,
     )
   }
@@ -326,7 +326,7 @@ private fun SignUpDivider() {
         text = "or",
         modifier = Modifier.padding(horizontal = 12.dp),
         color = Color.Gray,
-        style = MaterialTheme.typography.bodyMedium,
+        style = MaterialTheme.typography.bodySmall,
     )
     HorizontalDivider(modifier = Modifier.weight(1f), color = Color.LightGray.copy(alpha = 0.5f))
   }
