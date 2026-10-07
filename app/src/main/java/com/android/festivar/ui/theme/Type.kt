@@ -9,6 +9,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.android.festivar.R
@@ -49,74 +50,47 @@ val BricolageGrotesque = FontFamily(BricolageGrotesqueFonts)
 /** Font used for the body, label and numeral styles. */
 val Figtree = FontFamily(FigtreeFonts)
 
-// Text styles of the Figma design. Letter spacing is a percentage of the font size in Figma, so it
-// is expressed in em here (-2% = -0.02.em).
-private val displayLarge =
+// Every text style of the Figma design is defined on its own, so that each one maps to exactly one
+// Figma style and can change independently. Letter spacing is a percentage of the font size in
+// Figma, so it is expressed in em here (-2% = -0.02).
+private fun textStyle(
+    fontFamily: FontFamily,
+    fontWeight: FontWeight,
+    fontSize: TextUnit,
+    lineHeight: TextUnit,
+    letterSpacing: TextUnit,
+) =
     TextStyle(
-        fontFamily = BricolageGrotesque,
-        fontWeight = FontWeight.Bold,
-        fontSize = 44.sp,
-        lineHeight = 48.sp,
-        letterSpacing = (-0.02).em,
+        fontFamily = fontFamily,
+        fontWeight = fontWeight,
+        fontSize = fontSize,
+        lineHeight = lineHeight,
+        letterSpacing = letterSpacing,
     )
-private val displayMedium = displayLarge.copy(fontSize = 36.sp, lineHeight = 40.sp)
-private val displaySmall = displayLarge.copy(fontSize = 32.sp, lineHeight = 36.sp)
-private val headlineLarge =
-    TextStyle(
-        fontFamily = BricolageGrotesque,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 28.sp,
-        lineHeight = 32.sp,
-        letterSpacing = (-0.01).em,
-    )
-private val headlineMedium = headlineLarge.copy(fontSize = 24.sp, lineHeight = 28.sp)
-private val headlineSmall = headlineLarge.copy(fontSize = 22.sp, lineHeight = 28.sp)
-// Aliases: Figma defines these styles with the same values, so keep them in sync if it changes.
-private val titleLarge = headlineSmall
-private val titleMedium =
-    headlineLarge.copy(fontSize = 18.sp, lineHeight = 24.sp, letterSpacing = 0.em)
-private val titleSmall =
-    TextStyle(
-        fontFamily = Figtree,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 16.sp,
-        lineHeight = 24.sp,
-        letterSpacing = 0.em,
-    )
-private val bodyLarge = titleSmall.copy(fontWeight = FontWeight.Normal)
-private val bodyMedium = bodyLarge.copy(fontSize = 14.sp, lineHeight = 20.sp)
-private val bodySmall = bodyLarge.copy(fontSize = 13.sp, lineHeight = 16.sp)
-private val labelLarge = titleSmall
-private val labelMedium =
-    titleSmall.copy(
-        fontWeight = FontWeight.Medium,
-        fontSize = 13.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.01.em,
-    )
-private val labelSmall = labelMedium.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.04.em)
 
 val AppTypography =
     Typography(
-        displayLarge = displayLarge,
-        displayMedium = displayMedium,
-        displaySmall = displaySmall,
-        headlineLarge = headlineLarge,
-        headlineMedium = headlineMedium,
-        headlineSmall = headlineSmall,
-        titleLarge = titleLarge,
-        titleMedium = titleMedium,
-        titleSmall = titleSmall,
-        bodyLarge = bodyLarge,
-        bodyMedium = bodyMedium,
-        bodySmall = bodySmall,
-        labelLarge = labelLarge,
-        labelMedium = labelMedium,
-        labelSmall = labelSmall,
+        displayLarge = textStyle(BricolageGrotesque, FontWeight.Bold, 44.sp, 48.sp, (-0.02).em),
+        displayMedium = textStyle(BricolageGrotesque, FontWeight.Bold, 36.sp, 40.sp, (-0.02).em),
+        displaySmall = textStyle(BricolageGrotesque, FontWeight.Bold, 32.sp, 36.sp, (-0.02).em),
+        headlineLarge =
+            textStyle(BricolageGrotesque, FontWeight.SemiBold, 28.sp, 32.sp, (-0.01).em),
+        headlineMedium =
+            textStyle(BricolageGrotesque, FontWeight.SemiBold, 24.sp, 28.sp, (-0.01).em),
+        headlineSmall =
+            textStyle(BricolageGrotesque, FontWeight.SemiBold, 22.sp, 28.sp, (-0.01).em),
+        titleLarge = textStyle(BricolageGrotesque, FontWeight.SemiBold, 22.sp, 28.sp, (-0.01).em),
+        titleMedium = textStyle(BricolageGrotesque, FontWeight.SemiBold, 18.sp, 24.sp, 0.em),
+        titleSmall = textStyle(Figtree, FontWeight.SemiBold, 16.sp, 24.sp, 0.em),
+        bodyLarge = textStyle(Figtree, FontWeight.Normal, 16.sp, 24.sp, 0.em),
+        bodyMedium = textStyle(Figtree, FontWeight.Normal, 14.sp, 20.sp, 0.em),
+        bodySmall = textStyle(Figtree, FontWeight.Normal, 13.sp, 16.sp, 0.em),
+        labelLarge = textStyle(Figtree, FontWeight.SemiBold, 16.sp, 24.sp, 0.em),
+        labelMedium = textStyle(Figtree, FontWeight.Medium, 13.sp, 16.sp, 0.01.em),
+        labelSmall = textStyle(Figtree, FontWeight.SemiBold, 13.sp, 16.sp, 0.04.em),
     )
 
 // Numeral styles have no Material slot, so they are exposed on their own.
-val NumeralLarge = titleSmall.copy(fontSize = 32.sp, lineHeight = 36.sp, letterSpacing = (-0.01).em)
-// Same values as titleSmall in Figma (see the note on titleLarge).
-val NumeralMedium = titleSmall
-val NumeralSmall = titleSmall.copy(fontSize = 13.sp, lineHeight = 16.sp)
+val NumeralLarge = textStyle(Figtree, FontWeight.SemiBold, 32.sp, 36.sp, (-0.01).em)
+val NumeralMedium = textStyle(Figtree, FontWeight.SemiBold, 16.sp, 24.sp, 0.em)
+val NumeralSmall = textStyle(Figtree, FontWeight.SemiBold, 13.sp, 16.sp, 0.em)
