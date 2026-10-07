@@ -1,10 +1,12 @@
 package com.android.festivar
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -13,6 +15,10 @@ import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.ui.event.CreateEventScreen
 import com.android.festivar.ui.event.CreateEventScreenTestTags
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -64,8 +70,18 @@ class CreateEventScreenTest {
         .onNodeWithTag(CreateEventScreenTestTags.DESCRIPTION_FIELD)
         .assertTextEquals("Bring the stage equipment")
 
+    /**
+    * TODO: select the current day for the start date and the next day for the end date
+    * TODO: and verify that the start date and end date fields have the right values
+    */
     selectDate(CreateEventScreenTestTags.START_DATE_FIELD)
     selectDate(CreateEventScreenTestTags.END_DATE_FIELD)
+
+    val expectedDate =
+        DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
+            .withZone(ZoneId.systemDefault())
+            .format(Instant.now())
+    composeTestRule.onAllNodesWithText(expectedDate).assertCountEquals(2)
 
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsEnabled()
   }
