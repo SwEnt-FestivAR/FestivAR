@@ -15,8 +15,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
+import com.android.festivar.ui.theme.AppTheme
 
 object BottomNavigationBarTestTags {
   const val BOTTOM_NAVIGATION_BAR = "bottomNavigationBar"
@@ -81,4 +83,10 @@ fun BottomNavigationBar(
       }
     }
   }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun BottomNavigationBarPreview() {
+  AppTheme { BottomNavigationBar(selectedTab = NavigationTab.EVENTS, onTabSelected = {}) }
 }

@@ -11,7 +11,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.android.festivar.ui.theme.AppTheme
 
 /** Round avatar of the design, showing the given [text]. */
 @Composable
@@ -29,4 +31,10 @@ fun Avatar(text: String) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
   }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun AvatarPreview() {
+  AppTheme { Avatar(text = "AK") }
 }

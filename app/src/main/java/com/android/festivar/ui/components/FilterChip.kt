@@ -15,7 +15,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.android.festivar.ui.theme.AppTheme
 
 /** Filter chip of the design: ink when [selected], outlined otherwise, with a [count]. */
 @Composable
@@ -52,6 +54,17 @@ fun FilterChip(
               if (selected) MaterialTheme.colorScheme.onSecondaryContainer
               else MaterialTheme.colorScheme.onSurfaceVariant,
       )
+    }
+  }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun FilterChipPreview() {
+  AppTheme {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(8.dp)) {
+      FilterChip(label = "All", count = 12, selected = true, onClick = {})
+      FilterChip(label = "Ongoing", count = 3, selected = false, onClick = {})
     }
   }
 }
