@@ -82,6 +82,12 @@ class EventsRepositoryLocalTest {
   }
 
   @Test
+  fun getEvent_findsTheEventAmongOthers() = runTest {
+    repository = EventsRepositoryLocal(listOf(event, otherEvent))
+    assertEquals(otherEvent, repository.getEvent(otherEvent.eventId))
+  }
+
+  @Test
   fun getEvent_unknownIdThrows() {
     assertThrows(NoSuchElementException::class.java) {
       runBlocking { repository.getEvent("unknown") }
