@@ -156,7 +156,8 @@ fun CreateEventScreen(
   }
 
   uiState.activeDatePicker?.let { dateField ->
-    val initialDateMillis = if (dateField == DateField.START) uiState.startDateMillis else uiState.endDateMillis
+    val initialDateMillis =
+        if (dateField == DateField.START) uiState.startDateMillis else uiState.endDateMillis
     val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialDateMillis)
 
     DatePickerDialog(
@@ -178,7 +179,9 @@ fun CreateEventScreen(
             Text("OK")
           }
         },
-        dismissButton = { Button(onClick = { viewModel.updateActiveDatePicker(null) }) { Text("Cancel") } },
+        dismissButton = {
+          Button(onClick = { viewModel.updateActiveDatePicker(null) }) { Text("Cancel") }
+        },
     ) {
       DatePicker(state = datePickerState)
     }
@@ -193,9 +196,7 @@ private fun ZonedDateTime?.toDisplayDate(
     locale: Locale = Locale.getDefault(),
 ): String =
     this?.let {
-        DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
-            .withLocale(locale)
-            .format(it)
+      DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale).format(it)
     } ?: ""
 
 @OptIn(ExperimentalMaterial3Api::class)
