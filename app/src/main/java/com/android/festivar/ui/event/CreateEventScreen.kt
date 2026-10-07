@@ -32,10 +32,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,10 +44,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import java.time.Instant
 import java.time.ZoneId
+import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
+import java.util.Locale
 
 private val ScreenBackground = Color(0xFFFFFEF9)
 private val FieldBorder = Color(0xFFD7D5CC)
@@ -70,28 +71,18 @@ object CreateEventScreenTestTags {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateEventScreen(
+    viewModel: CreateEventViewModel = viewModel(),
     onBack: () -> Unit = {},
-    onCreate: () -> Unit = {},
 ) {
-  var name by rememberSaveable { mutableStateOf("") }
-  var startDate by rememberSaveable { mutableStateOf("") }
-  var endDate by rememberSaveable { mutableStateOf("") }
-  var venue by rememberSaveable { mutableStateOf("") }
-  var notes by rememberSaveable { mutableStateOf("") }
-  var startDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
-  var endDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
-  var activeDatePicker by rememberSaveable { mutableStateOf<DateField?>(null) }
-
-  val formIsComplete =
-      name.isNotBlank() && startDate.isNotBlank() && endDate.isNotBlank() && venue.isNotBlank()
+  val uiState by viewModel.uiState.collectAsState()
 
   Scaffold(
       containerColor = ScreenBackground,
       topBar = { CreateEventTopBar(onBack = onBack) },
       bottomBar = {
         Button(
-            onClick = onCreate,
-            enabled = formIsComplete,
+            onClick = { viewModel.createEvent() },
+            enabled = viewModel.formIsComplete(),
             modifier =
                 Modifier.fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 12.dp)
@@ -121,8 +112,8 @@ fun CreateEventScreen(
                 .padding(horizontal = 12.dp),
     ) {
       EventInput(
-          value = name,
-          onValueChange = { name = it },
+          value = uiState.name,
+          onValueChange = { viewModel.updateName(it) },
           placeholder = "Event name",
           modifier = Modifier.testTag(CreateEventScreenTestTags.NAME_FIELD),
       )
@@ -130,14 +121,14 @@ fun CreateEventScreen(
 
       Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         DateTimeInput(
-            value = startDate,
-            onClick = { activeDatePicker = DateField.START },
+            value = uiState.startDate.toDisplayDate(),
+            onClick = { viewModel.updateActiveDatePicker(DateField.START) },
             placeholder = "Starts",
             modifier = Modifier.weight(1f).testTag(CreateEventScreenTestTags.START_DATE_FIELD),
         )
         DateTimeInput(
-            value = endDate,
-            onClick = { activeDatePicker = DateField.END },
+            value = uiState.endDate.toDisplayDate(),
+            onClick = { viewModel.updateActiveDatePicker(DateField.END) },
             placeholder = "Ends",
             modifier = Modifier.weight(1f).testTag(CreateEventScreenTestTags.END_DATE_FIELD),
         )
@@ -145,16 +136,16 @@ fun CreateEventScreen(
       Spacer(modifier = Modifier.height(14.dp))
 
       EventInput(
-          value = venue,
-          onValueChange = { venue = it },
+          value = uiState.venue,
+          onValueChange = { viewModel.updateVenue(it) },
           placeholder = "Venue",
           modifier = Modifier.testTag(CreateEventScreenTestTags.LOCATION_FIELD),
       )
       Spacer(modifier = Modifier.height(8.dp))
 
       EventInput(
-          value = notes,
-          onValueChange = { notes = it },
+          value = uiState.notes,
+          onValueChange = { viewModel.updateNotes(it) },
           placeholder = "Notes for the team, optional",
           minHeight = 56.dp,
           singleLine = false,
@@ -164,46 +155,47 @@ fun CreateEventScreen(
     }
   }
 
-  activeDatePicker?.let { dateField ->
-    val initialDateMillis = if (dateField == DateField.START) startDateMillis else endDateMillis
+  uiState.activeDatePicker?.let { dateField ->
+    val initialDateMillis = if (dateField == DateField.START) uiState.startDateMillis else uiState.endDateMillis
     val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialDateMillis)
 
     DatePickerDialog(
-        onDismissRequest = { activeDatePicker = null },
+        onDismissRequest = { viewModel.updateActiveDatePicker(null) },
         confirmButton = {
           Button(
               onClick = {
                 val selectedDateMillis = datePickerState.selectedDateMillis
                 if (dateField == DateField.START) {
-                  startDateMillis = selectedDateMillis
-                  startDate = selectedDateMillis.toDisplayDate()
+                  viewModel.updateStartDateMillis(selectedDateMillis!!)
+                  viewModel.updateStartDate(selectedDateMillis.toZonedDateTime())
                 } else {
-                  endDateMillis = selectedDateMillis
-                  endDate = selectedDateMillis.toDisplayDate()
+                  viewModel.updateEndDateMillis(selectedDateMillis!!)
+                  viewModel.updateEndDate(selectedDateMillis.toZonedDateTime())
                 }
-                activeDatePicker = null
+                viewModel.updateActiveDatePicker(null)
               },
           ) {
             Text("OK")
           }
         },
-        dismissButton = { Button(onClick = { activeDatePicker = null }) { Text("Cancel") } },
+        dismissButton = { Button(onClick = { viewModel.updateActiveDatePicker(null) }) { Text("Cancel") } },
     ) {
       DatePicker(state = datePickerState)
     }
   }
 }
 
-private enum class DateField {
-  START,
-  END,
-}
+private fun Long.toZonedDateTime(
+    zone: ZoneId = ZoneId.systemDefault(),
+): ZonedDateTime = Instant.ofEpochMilli(this).atZone(zone)
 
-private fun Long?.toDisplayDate(): String =
+private fun ZonedDateTime?.toDisplayDate(
+    locale: Locale = Locale.getDefault(),
+): String =
     this?.let {
-      DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
-          .withZone(ZoneId.systemDefault())
-          .format(Instant.ofEpochMilli(it))
+        DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
+            .withLocale(locale)
+            .format(it)
     } ?: ""
 
 @OptIn(ExperimentalMaterial3Api::class)
