@@ -97,8 +97,6 @@ fun CreateEventScreen(
       name.isNotBlank() &&
           startDate.isNotBlank() &&
           endDate.isNotBlank() &&
-          startHour.isNotBlank() &&
-          endHour.isNotBlank() &&
           venue.isNotBlank()
 
   Scaffold(
