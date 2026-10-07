@@ -13,30 +13,42 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.android.festivar.R
 
-private val weights =
-    listOf(FontWeight.Normal, FontWeight.Medium, FontWeight.SemiBold, FontWeight.Bold)
-
 /**
- * Builds a family from a variable font file, with one entry per weight used in the design. Extra
- * axes (e.g. optical size) are applied to every weight.
+ * Builds one entry per weight from a variable font file. Extra axes (e.g. optical size) are applied
+ * to every weight. Variation settings need API 26+, and the app's minSdk is 28.
  */
-private fun variableFamily(resId: Int, vararg axes: FontVariation.Setting): FontFamily =
-    FontFamily(
-        weights.map { weight ->
-          Font(
-              resId,
-              weight,
-              variationSettings = FontVariation.Settings(weight, FontStyle.Normal, *axes),
-          )
-        }
+private fun variableFonts(
+    resId: Int,
+    weights: List<FontWeight>,
+    vararg axes: FontVariation.Setting,
+): List<Font> =
+    weights.map { weight ->
+      Font(
+          resId,
+          weight,
+          variationSettings = FontVariation.Settings(weight, FontStyle.Normal, *axes),
+      )
+    }
+
+// Kept separate from the families so tests can inspect the variation settings.
+internal val BricolageGrotesqueFonts =
+    variableFonts(
+        R.font.bricolage_grotesque,
+        listOf(FontWeight.SemiBold, FontWeight.Bold),
+        FontVariation.Setting("opsz", 14f),
+    )
+
+internal val FigtreeFonts =
+    variableFonts(
+        R.font.figtree,
+        listOf(FontWeight.Normal, FontWeight.Medium, FontWeight.SemiBold),
     )
 
 /** Font used for the display, headline and title styles. Figma sets its optical size to 14. */
-val BricolageGrotesque =
-    variableFamily(R.font.bricolage_grotesque, FontVariation.Setting("opsz", 14f))
+val BricolageGrotesque = FontFamily(BricolageGrotesqueFonts)
 
 /** Font used for the body, label and numeral styles. */
-val Figtree = variableFamily(R.font.figtree)
+val Figtree = FontFamily(FigtreeFonts)
 
 // Text styles of the Figma design. Letter spacing is a percentage of the font size in Figma, so it
 // is expressed in em here (-2% = -0.02.em).
@@ -60,6 +72,7 @@ private val headlineLarge =
     )
 private val headlineMedium = headlineLarge.copy(fontSize = 24.sp, lineHeight = 28.sp)
 private val headlineSmall = headlineLarge.copy(fontSize = 22.sp, lineHeight = 28.sp)
+// Aliases: Figma defines these styles with the same values, so keep them in sync if it changes.
 private val titleLarge = headlineSmall
 private val titleMedium =
     headlineLarge.copy(fontSize = 18.sp, lineHeight = 24.sp, letterSpacing = 0.em)
@@ -105,5 +118,6 @@ val AppTypography =
 
 // Numeral styles have no Material slot, so they are exposed on their own.
 val NumeralLarge = titleSmall.copy(fontSize = 32.sp, lineHeight = 36.sp, letterSpacing = (-0.01).em)
+// Same values as titleSmall in Figma (see the note on titleLarge).
 val NumeralMedium = titleSmall
 val NumeralSmall = titleSmall.copy(fontSize = 13.sp, lineHeight = 16.sp)
