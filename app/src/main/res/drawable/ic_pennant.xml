@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icon/pennant of the FestivAR design (My tasks), tinted by the Icon composable. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+  <path
+      android:pathData="M10,3V17"
+      android:strokeWidth="2"
+      android:strokeColor="#FF000000"
+      android:strokeLineCap="round"
+      android:strokeLineJoin="round" />
+  <path
+      android:fillColor="#FF000000"
+      android:pathData="M10,3L18,6L10,9V3Z"
+      android:strokeWidth="2"
+      android:strokeColor="#FF000000"
+      android:strokeLineCap="round"
+      android:strokeLineJoin="round" />
+  <path
+      android:pathData="M10,22.5C11.3807,22.5 12.5,21.3807 12.5,20C12.5,18.6193 11.3807,17.5 10,17.5C8.61929,17.5 7.5,18.6193 7.5,20C7.5,21.3807 8.61929,22.5 10,22.5Z"
+      android:strokeWidth="2"
+      android:strokeColor="#FF000000"
+      android:strokeLineCap="round"
+      android:strokeLineJoin="round" />
+</vector>
