@@ -278,7 +278,7 @@ private fun LoginInputField(
 @Preview(showBackground = true, widthDp = 290, heightDp = 638)
 @Composable
 private fun LoginScreenPreview() {
-  AppTheme(darkTheme = false, dynamicColor = false) {
+  AppTheme(darkTheme = false) {
     LoginScreenContent(
         uiState = LoginUIState(),
         onEmailChange = {},
