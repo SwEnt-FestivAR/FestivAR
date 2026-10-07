@@ -76,7 +76,7 @@ fun SignUpScreen(
     credentialManager: CredentialManager? = CredentialManager.create(LocalContext.current),
     onSignInClick: () -> Unit = {},
     onBackClick: () -> Unit = {},
-    signUpViewModel: SignUpViewModel? = null,
+    viewModel: SignUpViewModel = SignUpViewModel()
 ) {
   var email by remember { mutableStateOf("") }
   var password by remember { mutableStateOf("") }
@@ -84,7 +84,6 @@ fun SignUpScreen(
   var isPasswordVisible by remember { mutableStateOf(false) }
 
   val context = LocalContext.current
-  val viewModel = signUpViewModel ?: viewModel<SignUpViewModel>()
   val uiState by viewModel.uiState.collectAsState()
 
   val limeGreen = Color(0xFFD4FE42)
@@ -410,7 +409,6 @@ fun SignUpScreenPreview() {
   MaterialTheme {
     SignUpScreen(
         credentialManager = null,
-        signUpViewModel = SignUpViewModel(PreviewAuthRepository),
     )
   }
 }

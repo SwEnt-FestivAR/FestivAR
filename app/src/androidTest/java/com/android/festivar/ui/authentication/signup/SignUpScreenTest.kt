@@ -40,7 +40,7 @@ class SignUpScreenTest {
     composeTestRule.setContent {
       SignUpScreen(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          signUpViewModel = viewModel,
+          viewModel = viewModel,
       )
     }
 
@@ -55,7 +55,7 @@ class SignUpScreenTest {
     composeTestRule.setContent {
       SignUpScreen(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          signUpViewModel = viewModel,
+          viewModel = viewModel,
       )
     }
 
@@ -67,7 +67,7 @@ class SignUpScreenTest {
     composeTestRule.setContent {
       SignUpScreen(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          signUpViewModel = viewModel,
+          viewModel = viewModel,
       )
     }
 
@@ -91,7 +91,7 @@ class SignUpScreenTest {
     composeTestRule.setContent {
       SignUpScreen(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          signUpViewModel = viewModel,
+          viewModel = viewModel,
       )
     }
 
@@ -111,7 +111,7 @@ class SignUpScreenTest {
     composeTestRule.setContent {
       SignUpScreen(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          signUpViewModel = viewModel,
+          viewModel = viewModel,
       )
     }
 
@@ -131,7 +131,7 @@ class SignUpScreenTest {
     composeTestRule.setContent {
       SignUpScreen(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          signUpViewModel = viewModel,
+          viewModel = viewModel,
       )
     }
 
@@ -146,7 +146,7 @@ class SignUpScreenTest {
     composeTestRule.setContent {
       SignUpScreen(
           credentialManager = credentialManager,
-          signUpViewModel = viewModel,
+          viewModel = viewModel,
       )
     }
 
@@ -162,7 +162,7 @@ class SignUpScreenTest {
       SignUpScreen(
           credentialManager = mockk<CredentialManager>(relaxed = true),
           onBackClick = { callbackInvoked = true },
-          signUpViewModel = viewModel,
+          viewModel = viewModel,
       )
     }
 
@@ -179,7 +179,7 @@ class SignUpScreenTest {
       SignUpScreen(
           credentialManager = mockk<CredentialManager>(relaxed = true),
           onSignInClick = { callbackInvoked = true },
-          signUpViewModel = viewModel,
+          viewModel = viewModel,
       )
     }
 
