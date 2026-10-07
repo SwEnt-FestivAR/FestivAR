@@ -64,13 +64,13 @@ private val PrimaryButton = Color(0xFFC7F21A)
 private val SecondaryText = Color(0xFF77766F)
 
 object CreateEventScreenTestTags {
-    const val NAVIGATION_BUTTON = "navigationButton"
-    const val NAME_FIELD = "nameField"
-    const val START_DATE_FIELD = "startDateField"
-    const val END_DATE_FIELD = "endDateField"
-    const val LOCATION_FIELD = "locationField"
-    const val DESCRIPTION_FIELD = "descriptionField"
-    const val CREATE_BUTTON = "createButton"
+  const val NAVIGATION_BUTTON = "navigationButton"
+  const val NAME_FIELD = "nameField"
+  const val START_DATE_FIELD = "startDateField"
+  const val END_DATE_FIELD = "endDateField"
+  const val LOCATION_FIELD = "locationField"
+  const val DESCRIPTION_FIELD = "descriptionField"
+  const val CREATE_BUTTON = "createButton"
 }
 
 /** A screen for creating events. */
@@ -94,10 +94,7 @@ fun CreateEventScreen(
   var activeTimePicker by rememberSaveable { mutableStateOf<TimeField?>(null) }
 
   val formIsComplete =
-      name.isNotBlank() &&
-          startDate.isNotBlank() &&
-          endDate.isNotBlank() &&
-          venue.isNotBlank()
+      name.isNotBlank() && startDate.isNotBlank() && endDate.isNotBlank() && venue.isNotBlank()
 
   Scaffold(
       containerColor = ScreenBackground,
@@ -107,8 +104,7 @@ fun CreateEventScreen(
             onClick = onCreate,
             enabled = formIsComplete,
             modifier =
-                Modifier
-                    .fillMaxWidth()
+                Modifier.fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 12.dp)
                     .height(48.dp)
                     .testTag(CreateEventScreenTestTags.CREATE_BUTTON),
@@ -211,7 +207,7 @@ fun CreateEventScreen(
           placeholder = "Notes for the team, optional",
           minHeight = 56.dp,
           singleLine = false,
-          modifier = Modifier.testTag(CreateEventScreenTestTags.DESCRIPTION_FIELD)
+          modifier = Modifier.testTag(CreateEventScreenTestTags.DESCRIPTION_FIELD),
       )
       Spacer(modifier = Modifier.height(14.dp))
 
@@ -354,7 +350,7 @@ private fun CreateEventTopBar(onBack: () -> Unit) {
       navigationIcon = {
         IconButton(
             onClick = onBack,
-            modifier = Modifier.testTag(CreateEventScreenTestTags.NAVIGATION_BUTTON)
+            modifier = Modifier.testTag(CreateEventScreenTestTags.NAVIGATION_BUTTON),
         ) {
           Icon(
               imageVector = Icons.AutoMirrored.Outlined.ArrowBack,

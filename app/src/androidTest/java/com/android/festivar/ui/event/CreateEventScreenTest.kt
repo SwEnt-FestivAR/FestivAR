@@ -15,20 +15,19 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
-import org.junit.runner.RunWith
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class CreateEventScreenTest {
 
-  @get:Rule
-  val composeTestRule = createComposeRule()
+  @get:Rule val composeTestRule = createComposeRule()
 
   @Before
   fun setUp() {
@@ -72,9 +71,9 @@ class CreateEventScreenTest {
         .assertTextEquals("Bring the stage equipment")
 
     /**
-    * TODO: select the current day for the start date and the next day for the end date
-    * TODO: and verify that the start date and end date fields have the right values
-    */
+     * TODO: select the current day for the start date and the next day for the end date
+     * TODO: and verify that the start date and end date fields have the right values
+     */
     selectDate(CreateEventScreenTestTags.START_DATE_FIELD)
     selectDate(CreateEventScreenTestTags.END_DATE_FIELD)
 
