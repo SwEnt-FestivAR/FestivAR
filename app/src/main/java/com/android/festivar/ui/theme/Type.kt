@@ -6,54 +6,70 @@ import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.android.festivar.R
 
 private val weights =
     listOf(FontWeight.Normal, FontWeight.Medium, FontWeight.SemiBold, FontWeight.Bold)
 
-/** Builds a family from a variable font file, with one entry per weight used in the design. */
-private fun variableFamily(resId: Int): FontFamily =
+/**
+ * Builds a family from a variable font file, with one entry per weight used in the design. Extra
+ * axes (e.g. optical size) are applied to every weight.
+ */
+private fun variableFamily(resId: Int, vararg axes: FontVariation.Setting): FontFamily =
     FontFamily(
         weights.map { weight ->
-          Font(resId, weight, variationSettings = FontVariation.Settings(FontVariation.weight(weight.weight)))
-        })
+          Font(
+              resId,
+              weight,
+              variationSettings = FontVariation.Settings(weight, FontStyle.Normal, *axes),
+          )
+        }
+    )
 
-/** Font used for the display, headline and title styles. */
-val BricolageGrotesque = variableFamily(R.font.bricolage_grotesque)
+/** Font used for the display, headline and title styles. Figma sets its optical size to 14. */
+val BricolageGrotesque =
+    variableFamily(R.font.bricolage_grotesque, FontVariation.Setting("opsz", 14f))
 
 /** Font used for the body, label and numeral styles. */
 val Figtree = variableFamily(R.font.figtree)
 
-// Text styles of the Figma design. Letter spacing is in sp, like the other metrics.
-private val displayMedium =
+// Text styles of the Figma design. Letter spacing is a percentage of the font size in Figma, so it
+// is expressed in em here (-2% = -0.02.em).
+private val displayLarge =
     TextStyle(
         fontFamily = BricolageGrotesque,
         fontWeight = FontWeight.Bold,
-        fontSize = 36.sp,
-        lineHeight = 40.sp,
-        letterSpacing = (-2).sp,
+        fontSize = 44.sp,
+        lineHeight = 48.sp,
+        letterSpacing = (-0.02).em,
     )
-private val displaySmall = displayMedium.copy(fontSize = 32.sp, lineHeight = 36.sp)
-private val headlineMedium =
+private val displayMedium = displayLarge.copy(fontSize = 36.sp, lineHeight = 40.sp)
+private val displaySmall = displayLarge.copy(fontSize = 32.sp, lineHeight = 36.sp)
+private val headlineLarge =
     TextStyle(
         fontFamily = BricolageGrotesque,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 24.sp,
-        lineHeight = 28.sp,
-        letterSpacing = (-1).sp,
+        fontSize = 28.sp,
+        lineHeight = 32.sp,
+        letterSpacing = (-0.01).em,
     )
-private val headlineSmall = headlineMedium.copy(fontSize = 22.sp)
+private val headlineMedium = headlineLarge.copy(fontSize = 24.sp, lineHeight = 28.sp)
+private val headlineSmall = headlineLarge.copy(fontSize = 22.sp, lineHeight = 28.sp)
 private val titleLarge = headlineSmall
+private val titleMedium =
+    headlineLarge.copy(fontSize = 18.sp, lineHeight = 24.sp, letterSpacing = 0.em)
 private val titleSmall =
     TextStyle(
         fontFamily = Figtree,
         fontWeight = FontWeight.SemiBold,
         fontSize = 16.sp,
         lineHeight = 24.sp,
-        letterSpacing = 0.sp,
+        letterSpacing = 0.em,
     )
 private val bodyLarge = titleSmall.copy(fontWeight = FontWeight.Normal)
 private val bodyMedium = bodyLarge.copy(fontSize = 14.sp, lineHeight = 20.sp)
@@ -64,18 +80,20 @@ private val labelMedium =
         fontWeight = FontWeight.Medium,
         fontSize = 13.sp,
         lineHeight = 16.sp,
-        letterSpacing = 1.sp,
+        letterSpacing = 0.01.em,
     )
-private val labelSmall = labelMedium.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 4.sp)
+private val labelSmall = labelMedium.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.04.em)
 
-/** Material slots without a Figma style (displayLarge, headlineLarge, titleMedium) keep defaults. */
 val AppTypography =
-    Typography().copy(
+    Typography(
+        displayLarge = displayLarge,
         displayMedium = displayMedium,
         displaySmall = displaySmall,
+        headlineLarge = headlineLarge,
         headlineMedium = headlineMedium,
         headlineSmall = headlineSmall,
         titleLarge = titleLarge,
+        titleMedium = titleMedium,
         titleSmall = titleSmall,
         bodyLarge = bodyLarge,
         bodyMedium = bodyMedium,
@@ -86,7 +104,6 @@ val AppTypography =
     )
 
 // Numeral styles have no Material slot, so they are exposed on their own.
-val NumeralLarge =
-    titleSmall.copy(fontSize = 32.sp, lineHeight = 36.sp, letterSpacing = (-1).sp)
+val NumeralLarge = titleSmall.copy(fontSize = 32.sp, lineHeight = 36.sp, letterSpacing = (-0.01).em)
 val NumeralMedium = titleSmall
 val NumeralSmall = titleSmall.copy(fontSize = 13.sp, lineHeight = 16.sp)
