@@ -218,15 +218,17 @@ class TypeTest {
             FigtreeFonts to R.font.figtree,
         )
         .forEach { (fonts, resId) ->
-          fonts.filterIsInstance<ResourceFont>().also { assertEquals(fonts.size, it.size) }.forEach {
-              font ->
-            assertEquals(resId, font.resId)
-            val wght =
-                font.variationSettings.settings
-                    .filter { it.axisName == "wght" }
-                    .map { it.toVariationValue(Density(1f)) }
-            assertEquals(listOf(font.weight.weight.toFloat()), wght)
-          }
+          fonts
+              .filterIsInstance<ResourceFont>()
+              .also { assertEquals(fonts.size, it.size) }
+              .forEach { font ->
+                assertEquals(resId, font.resId)
+                val wght =
+                    font.variationSettings.settings
+                        .filter { it.axisName == "wght" }
+                        .map { it.toVariationValue(Density(1f)) }
+                assertEquals(listOf(font.weight.weight.toFloat()), wght)
+              }
         }
   }
 
