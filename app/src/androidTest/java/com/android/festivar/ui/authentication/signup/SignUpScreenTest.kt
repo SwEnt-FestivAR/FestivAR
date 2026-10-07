@@ -11,12 +11,18 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.credentials.Credential
 import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.GetCredentialResponse
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.festivar.model.authentication.AuthRepository
+import com.google.firebase.auth.FirebaseUser
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.verify
-import kotlinx.coroutines.flow.MutableStateFlow
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -28,11 +34,12 @@ class SignUpScreenTest {
   @get:Rule val composeTestRule = createComposeRule()
 
   private lateinit var viewModel: SignUpViewModel
+  private lateinit var authRepository: FakeAuthRepository
 
   @Before
   fun setUp() {
-    viewModel = mockk(relaxed = true)
-    every { viewModel.uiState } returns MutableStateFlow(AuthUIState())
+    authRepository = FakeAuthRepository()
+    viewModel = SignUpViewModel(authRepository)
   }
 
   @Test
@@ -82,8 +89,12 @@ class SignUpScreenTest {
         .performTextInput("secure-password")
     composeTestRule.onNodeWithTag(SignUpScreenTestTags.SIGNUP_BUTTON).assertIsEnabled()
     composeTestRule.onNodeWithTag(SignUpScreenTestTags.SIGNUP_BUTTON).performClick()
+    composeTestRule.waitForIdle()
 
-    verify { viewModel.signUp("user@example.com", "secure-password") }
+    assertEquals(
+        "user@example.com" to "secure-password",
+        authRepository.lastSignUpCredentials,
+    )
   }
 
   @Test
@@ -143,6 +154,10 @@ class SignUpScreenTest {
   @Test
   fun googleSignUpButton_callsViewModel() {
     val credentialManager = mockk<CredentialManager>(relaxed = true)
+    val credential = mockk<Credential>()
+    val response = mockk<GetCredentialResponse>()
+    coEvery { credentialManager.getCredential(any(), any<GetCredentialRequest>()) } returns response
+    every { response.credential } returns credential
     composeTestRule.setContent {
       SignUpScreen(
           credentialManager = credentialManager,
@@ -151,8 +166,9 @@ class SignUpScreenTest {
     }
 
     composeTestRule.onNodeWithTag(SignUpScreenTestTags.GOOGLE_SIGNUP_BUTTON).performClick()
+    composeTestRule.waitForIdle()
 
-    verify { viewModel.googleSignUp(any(), credentialManager) }
+    assertSame(credential, authRepository.lastGoogleCredential)
   }
 
   @Test
@@ -191,5 +207,34 @@ class SignUpScreenTest {
 
     composeTestRule.waitForIdle()
     assertTrue(callbackInvoked)
+  }
+
+  private class FakeAuthRepository : AuthRepository {
+    var lastSignUpCredentials: Pair<String, String>? = null
+      private set
+
+    var lastGoogleCredential: Credential? = null
+      private set
+
+    override suspend fun signUpWithEmailAndPassword(
+        email: String,
+        password: String,
+    ): Result<FirebaseUser> {
+      lastSignUpCredentials = email to password
+      return Result.failure(UnsupportedOperationException("Not configured"))
+    }
+
+    override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> {
+      lastGoogleCredential = credential
+      return Result.failure(UnsupportedOperationException("Not configured"))
+    }
+
+    override suspend fun signOut(): Result<Unit> =
+        Result.failure(UnsupportedOperationException("Not configured"))
+
+    override suspend fun signInWithEmailAndPassword(
+        email: String,
+        password: String,
+    ): Result<FirebaseUser> = Result.failure(UnsupportedOperationException("Not configured"))
   }
 }

@@ -12,6 +12,7 @@ import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class AuthUIState(
@@ -19,13 +20,27 @@ data class AuthUIState(
     val isAuthenticated: Boolean = false,
     val errorMsg: String? = null,
     val signedOut: Boolean = false,
+    val password: String = "",
+    val confirmPassword: String = "",
+    val email: String = "",
 )
 
-class SignUpViewModel(
-    private val authRepository: AuthRepository = AuthRepositoryFirebase()
-) : ViewModel() {
+class SignUpViewModel(private val authRepository: AuthRepository = AuthRepositoryFirebase()) :
+    ViewModel() {
   private val _uiState = MutableStateFlow(AuthUIState())
   val uiState: StateFlow<AuthUIState> = _uiState.asStateFlow()
+
+  fun updateEmail(email: String) {
+    _uiState.update { it.copy(email = email) }
+  }
+
+  fun updatePassword(password: String) {
+    _uiState.update { it.copy(password = password) }
+  }
+
+  fun updateConfirmPassword(confirmPassword: String) {
+    _uiState.update { it.copy(confirmPassword = confirmPassword) }
+  }
 
   fun googleSignUp(context: Context, credentialManager: CredentialManager) {
     if (_uiState.value.isLoading) return

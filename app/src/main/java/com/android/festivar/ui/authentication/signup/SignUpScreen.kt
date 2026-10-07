@@ -76,11 +76,9 @@ fun SignUpScreen(
     credentialManager: CredentialManager? = CredentialManager.create(LocalContext.current),
     onSignInClick: () -> Unit = {},
     onBackClick: () -> Unit = {},
-    viewModel: SignUpViewModel = SignUpViewModel()
+    viewModel: SignUpViewModel = SignUpViewModel(),
+    onSignUpSuccess: () -> Unit = {},
 ) {
-  var email by remember { mutableStateOf("") }
-  var password by remember { mutableStateOf("") }
-  var confirmPass by remember { mutableStateOf("") }
   var isPasswordVisible by remember { mutableStateOf(false) }
 
   val context = LocalContext.current
@@ -88,7 +86,9 @@ fun SignUpScreen(
 
   val limeGreen = Color(0xFFD4FE42)
   val darkLime = Color(0xFF5B7900)
-
+  if (uiState.isAuthenticated) {
+    onSignUpSuccess()
+  }
   Column(
       modifier =
           modifier
@@ -103,24 +103,24 @@ fun SignUpScreen(
     SignUpHeader()
     Spacer(modifier = Modifier.height(24.dp))
     SignUpFields(
-        email = email,
-        onEmailChange = { email = it },
-        password = password,
-        onPasswordChange = { password = it },
-        confirmPassword = confirmPass,
-        onConfirmPasswordChange = { confirmPass = it },
+        email = uiState.email,
+        onEmailChange = { viewModel.updateEmail(it) },
+        password = uiState.password,
+        onPasswordChange = { viewModel.updatePassword(it) },
+        confirmPassword = uiState.confirmPassword,
+        onConfirmPasswordChange = { viewModel.updateConfirmPassword(it) },
         isPasswordVisible = isPasswordVisible,
         onPasswordVisibilityChange = { isPasswordVisible = !isPasswordVisible },
     )
     Spacer(modifier = Modifier.height(20.dp))
     SignUpButton(
         enabled =
-            email.isNotBlank() &&
-                password.isNotBlank() &&
-                confirmPass.isNotBlank() &&
-                password == confirmPass,
+            uiState.email.isNotBlank() &&
+                uiState.password.isNotBlank() &&
+                uiState.confirmPassword.isNotBlank() &&
+                uiState.password == uiState.confirmPassword,
         isLoading = uiState.isLoading,
-        onClick = { viewModel.signUp(email, password) },
+        onClick = { viewModel.signUp(uiState.email, uiState.password) },
         limeGreen = limeGreen,
     )
     Spacer(modifier = Modifier.height(24.dp))
