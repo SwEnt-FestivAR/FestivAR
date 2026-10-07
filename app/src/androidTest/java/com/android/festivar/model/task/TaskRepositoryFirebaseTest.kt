@@ -92,6 +92,35 @@ class TaskRepositoryFirebaseTest {
   }
 
   @Test
+  fun documentToTask_usesDefaultsForMissingOptionalFields() = runBlocking {
+    val documentId = "task-${UUID.randomUUID()}"
+    val document = Firebase.firestore.collection(TASK_COLLECTION_PATH).document(documentId)
+    document
+        .set(
+            mapOf(
+                "eventId" to "event-2",
+                "title" to "Minimal task",
+                "assignees" to listOf(mapOf("uid" to "user-2")),
+            )
+        )
+        .await()
+
+    try {
+      assertEquals(
+          Task(
+              taskId = documentId,
+              eventId = "event-2",
+              title = "Minimal task",
+              assignees = listOf(com.android.festivar.model.temporary.User("user-2")),
+          ),
+          invokeDocumentToTask(document.get().await()),
+      )
+    } finally {
+      document.delete().await()
+    }
+  }
+
+  @Test
   fun getAllTasks_returnsStoredTasks() = runBlocking {
     repository.addTask(task)
 
