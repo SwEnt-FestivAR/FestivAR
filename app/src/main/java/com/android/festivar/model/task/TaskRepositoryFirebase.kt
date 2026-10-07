@@ -90,9 +90,11 @@ class TaskRepositoryFirebase(
         assignees =
             (document.get("assignees") as? List<*>).orEmpty().map { value ->
               when (value) {
-                // When the assignee is stored as a string (the UID), we create a User with that UID.
+                // When the assignee is stored as a string (the UID), we create a User with that
+                // UID.
                 is String -> User(value)
-                // When the assignee is stored as a map (with a "uid" field), we create a User with that UID.
+                // When the assignee is stored as a map (with a "uid" field), we create a User with
+                // that UID.
                 is Map<*, *> -> User(value["uid"] as? String ?: error("Invalid assignee"))
                 else -> error("Invalid assignee")
               }
