@@ -238,14 +238,12 @@ private fun DateTimeRow(
         value = date?.let(::formatDate).orEmpty(),
         label = dateLabel,
         onClick = onDateClick,
-        onClickLabel = "Pick ${dateLabel.lowercase()}",
         modifier = Modifier.weight(1f).testTag(dateTag),
     )
     FestivarPickerField(
         value = time?.let(::formatTime).orEmpty(),
         label = timeLabel,
         onClick = onTimeClick,
-        onClickLabel = "Pick ${timeLabel.lowercase()}",
         modifier = Modifier.weight(1f).testTag(timeTag),
     )
   }
