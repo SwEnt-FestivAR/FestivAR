@@ -21,14 +21,13 @@ private fun variableFonts(
     resId: Int,
     weights: List<FontWeight>,
     vararg axes: FontVariation.Setting,
-): List<Font> =
-    weights.map { weight ->
-      Font(
-          resId,
-          weight,
-          variationSettings = FontVariation.Settings(weight, FontStyle.Normal, *axes),
-      )
-    }
+): List<Font> = weights.map { weight ->
+  Font(
+      resId,
+      weight,
+      variationSettings = FontVariation.Settings(weight, FontStyle.Normal, *axes),
+  )
+}
 
 // Kept separate from the families so tests can inspect the variation settings.
 internal val BricolageGrotesqueFonts =
