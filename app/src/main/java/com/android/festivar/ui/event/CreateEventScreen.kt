@@ -14,16 +14,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.MoreVert
-import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
@@ -33,11 +29,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TimePicker
-import androidx.compose.material3.TimePickerDialog
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
-import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -79,19 +72,15 @@ object CreateEventScreenTestTags {
 fun CreateEventScreen(
     onBack: () -> Unit = {},
     onCreate: () -> Unit = {},
-    onCoverPhotoClick: () -> Unit = {},
 ) {
   var name by rememberSaveable { mutableStateOf("") }
   var startDate by rememberSaveable { mutableStateOf("") }
   var endDate by rememberSaveable { mutableStateOf("") }
-  var startHour by rememberSaveable { mutableStateOf("") }
-  var endHour by rememberSaveable { mutableStateOf("") }
   var venue by rememberSaveable { mutableStateOf("") }
   var notes by rememberSaveable { mutableStateOf("") }
   var startDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
   var endDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
   var activeDatePicker by rememberSaveable { mutableStateOf<DateField?>(null) }
-  var activeTimePicker by rememberSaveable { mutableStateOf<TimeField?>(null) }
 
   val formIsComplete =
       name.isNotBlank() && startDate.isNotBlank() && endDate.isNotBlank() && venue.isNotBlank()
@@ -155,49 +144,11 @@ fun CreateEventScreen(
       }
       Spacer(modifier = Modifier.height(14.dp))
 
-      Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        DateTimeInput(
-            value = startHour,
-            onClick = { activeTimePicker = TimeField.START },
-            placeholder = "From",
-            modifier = Modifier.weight(1f),
-        )
-        DateTimeInput(
-            value = endHour,
-            onClick = { activeTimePicker = TimeField.END },
-            placeholder = "To",
-            modifier = Modifier.weight(1f),
-        )
-      }
-      Spacer(modifier = Modifier.height(14.dp))
-
       EventInput(
           value = venue,
           onValueChange = { venue = it },
           placeholder = "Venue",
           modifier = Modifier.testTag(CreateEventScreenTestTags.LOCATION_FIELD),
-      )
-      Spacer(modifier = Modifier.height(8.dp))
-
-      Box(
-          modifier =
-              Modifier.fillMaxWidth()
-                  .height(166.dp)
-                  .clip(RoundedCornerShape(8.dp))
-                  .background(Color(0xFFE7E7E2)),
-          contentAlignment = Alignment.Center,
-      ) {
-        Text(
-            text = "AR Map",
-            color = SecondaryText,
-            fontSize = 18.sp,
-        )
-      }
-      Text(
-          text = "The map centre is where volunteers' GPS snaps when they open the venue.",
-          modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp),
-          color = SecondaryText,
-          fontSize = 11.sp,
       )
       Spacer(modifier = Modifier.height(8.dp))
 
@@ -210,41 +161,6 @@ fun CreateEventScreen(
           modifier = Modifier.testTag(CreateEventScreenTestTags.DESCRIPTION_FIELD),
       )
       Spacer(modifier = Modifier.height(14.dp))
-
-      Row(
-          modifier =
-              Modifier.fillMaxWidth()
-                  .clip(RoundedCornerShape(8.dp))
-                  .background(Color.White)
-                  .clickable(onClick = onCoverPhotoClick)
-                  .padding(vertical = 12.dp),
-          verticalAlignment = Alignment.CenterVertically,
-      ) {
-        Box(
-            modifier =
-                Modifier.size(44.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFFEEF0E5)),
-            contentAlignment = Alignment.Center,
-        ) {
-          Icon(
-              imageVector = Icons.Outlined.PhotoCamera,
-              contentDescription = null,
-              tint = Color(0xFF33352E),
-          )
-        }
-        Spacer(modifier = Modifier.width(10.dp))
-        Column {
-          Text(
-              text = "Cover photo",
-              fontWeight = FontWeight.Bold,
-          )
-          Text(
-              text = "Add a picture of the venue, optional",
-              color = SecondaryText,
-              fontSize = 11.sp,
-          )
-        }
-      }
-      Spacer(modifier = Modifier.height(32.dp))
     }
   }
 
@@ -276,48 +192,9 @@ fun CreateEventScreen(
       DatePicker(state = datePickerState)
     }
   }
-
-  activeTimePicker?.let { timeField ->
-    val initialTime = if (timeField == TimeField.START) startHour else endHour
-    val (initialHour, initialMinute) = initialTime.toTimeParts()
-    val timePickerState =
-        rememberTimePickerState(
-            initialHour = initialHour,
-            initialMinute = initialMinute,
-            is24Hour = true,
-        )
-
-    TimePickerDialog(
-        onDismissRequest = { activeTimePicker = null },
-        title = { Text("Select time") },
-        confirmButton = {
-          Button(
-              onClick = {
-                val selectedTime = "%02d:%02d".format(timePickerState.hour, timePickerState.minute)
-                if (timeField == TimeField.START) {
-                  startHour = selectedTime
-                } else {
-                  endHour = selectedTime
-                }
-                activeTimePicker = null
-              },
-          ) {
-            Text("OK")
-          }
-        },
-        dismissButton = { Button(onClick = { activeTimePicker = null }) { Text("Cancel") } },
-    ) {
-      TimePicker(state = timePickerState)
-    }
-  }
 }
 
 private enum class DateField {
-  START,
-  END,
-}
-
-private enum class TimeField {
   START,
   END,
 }
@@ -328,13 +205,6 @@ private fun Long?.toDisplayDate(): String =
           .withZone(ZoneId.systemDefault())
           .format(Instant.ofEpochMilli(it))
     } ?: ""
-
-private fun String.toTimeParts(): Pair<Int, Int> {
-  val parts = split(":")
-  if (parts.size != 2) return 12 to 0
-  return (parts[0].toIntOrNull()?.coerceIn(0, 23) ?: 12) to
-      (parts[1].toIntOrNull()?.coerceIn(0, 59) ?: 0)
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -358,14 +228,7 @@ private fun CreateEventTopBar(onBack: () -> Unit) {
           )
         }
       },
-      actions = {
-        IconButton(onClick = {}) {
-          Icon(
-              imageVector = Icons.Outlined.MoreVert,
-              contentDescription = "More options",
-          )
-        }
-      },
+      actions = {},
   )
 }
 
