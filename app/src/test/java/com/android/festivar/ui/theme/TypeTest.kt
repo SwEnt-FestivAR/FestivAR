@@ -5,6 +5,8 @@ package com.android.festivar.ui.theme
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.ResourceFont
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
@@ -75,5 +77,24 @@ class TypeTest {
     assertStyle("numeralLarge", NumeralLarge, f, FontWeight.SemiBold, 32.sp, 36.sp, (-0.01).em)
     assertStyle("numeralMedium", NumeralMedium, f, FontWeight.SemiBold, 16.sp, 24.sp, 0.em)
     assertStyle("numeralSmall", NumeralSmall, f, FontWeight.SemiBold, 13.sp, 16.sp, 0.em)
+  }
+
+  private fun opticalSizes(family: FontFamily): List<Float> =
+      (family as List<*>).filterIsInstance<ResourceFont>().flatMap { font ->
+        font.variationSettings.settings
+            .filter { it.axisName == "opsz" }
+            .map { it.toVariationValue(Density(1f)) }
+      }
+
+  /** Figma sets the optical size of every Bricolage Grotesque weight to 14. */
+  @Test
+  fun bricolageOpticalSize_isFourteen() {
+    assertEquals(List(4) { 14f }, opticalSizes(BricolageGrotesque))
+  }
+
+  /** Figtree has no optical size in the Figma design, so it keeps the font default. */
+  @Test
+  fun figtreeOpticalSize_isNotSet() {
+    assertEquals(emptyList<Float>(), opticalSizes(Figtree))
   }
 }
