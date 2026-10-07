@@ -55,6 +55,7 @@ import androidx.credentials.CredentialManager
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.resources.GoogleLogo
+import com.android.festivar.ui.theme.AppTheme
 import com.google.firebase.auth.FirebaseUser
 
 object SignUpScreenTestTags {
@@ -399,7 +400,7 @@ private fun SignUpFooter(onSignInClick: () -> Unit, darkLime: Color) {
 @Preview(showBackground = true)
 @Composable
 fun SignUpScreenPreview() {
-  MaterialTheme {
+  AppTheme {
     SignUpScreen(
         credentialManager = null,
     )
