@@ -15,7 +15,7 @@ import androidx.compose.ui.test.hasClickAction
  * does not match the year or another day.
  */
 fun hasDayOfMonth(dayOfMonth: Int): SemanticsMatcher {
-  val whole = Regex("(^|\D)$dayOfMonth(\D|$)")
+  val whole = Regex("""(^|\D)$dayOfMonth(\D|$)""")
   val isTheDay =
       SemanticsMatcher("is the cell of day $dayOfMonth") { node ->
         val descriptions = node.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty()
