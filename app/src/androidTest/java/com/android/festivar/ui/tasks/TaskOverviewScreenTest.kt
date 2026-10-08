@@ -1,3 +1,4 @@
+// Written with the help of an AI coding assistant and reviewed line by line by the author.
 package com.android.festivar.ui.tasks
 
 import androidx.compose.ui.test.assertIsDisplayed
@@ -10,6 +11,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.task.Task
+import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.task.TasksRepositoryProvider
 import com.android.festivar.model.temporary.User
@@ -43,8 +45,11 @@ class TaskOverviewScreenTest {
   private val sound = Task("sound", EVENT, "Sound check", assignees = listOf(User(ME)))
   private val elsewhere = Task("elsewhere", "other-event", "Other event's task")
 
+  private lateinit var original: TasksRepository
+
   @Before
   fun setUp() {
+    original = TasksRepositoryProvider.repository
     val repository = TasksRepositoryLocal()
     runBlocking { listOf(power, bunting, sound, elsewhere).forEach { repository.addTask(it) } }
     TasksRepositoryProvider.repository = repository
@@ -52,7 +57,7 @@ class TaskOverviewScreenTest {
 
   @After
   fun tearDown() {
-    TasksRepositoryProvider.repository = TasksRepositoryLocal()
+    TasksRepositoryProvider.repository = original
   }
 
   private fun setOverview(onBack: () -> Unit = {}, onOpenTask: (String) -> Unit = {}) {
