@@ -28,7 +28,9 @@ class CreateTaskUiStateTest {
   @Test
   fun titleOnly_canBeCreated() {
     assertTrue(valid.canCreate)
-    assertNull(valid.scheduleError)
+    assertNull(valid.titleError)
+    assertNull(valid.startDateError)
+    assertNull(valid.endDateError)
   }
 
   @Test
@@ -43,15 +45,16 @@ class CreateTaskUiStateTest {
 
   @Test
   fun timeWithoutDate_isAnError() {
-    assertEquals(
-        ScheduleError.TIME_WITHOUT_DATE,
-        valid.copy(startTime = LocalTime.of(9, 30)).scheduleError,
-    )
-    assertEquals(
-        ScheduleError.TIME_WITHOUT_DATE,
-        valid.copy(endTime = LocalTime.of(9, 50)).scheduleError,
-    )
-    assertFalse(valid.copy(startTime = LocalTime.of(9, 30)).canCreate)
+    // The error sits under the date that is missing, and nowhere else.
+    val missingStartDate = valid.copy(startTime = LocalTime.of(9, 30))
+    assertEquals(FieldError.MISSING_DATE, missingStartDate.startDateError)
+    assertNull(missingStartDate.endDateError)
+    assertFalse(missingStartDate.canCreate)
+
+    val missingEndDate = valid.copy(endTime = LocalTime.of(9, 50))
+    assertEquals(FieldError.MISSING_DATE, missingEndDate.endDateError)
+    assertNull(missingEndDate.startDateError)
+    assertFalse(missingEndDate.canCreate)
   }
 
   @Test
@@ -63,7 +66,8 @@ class CreateTaskUiStateTest {
             endDate = day,
             endTime = LocalTime.of(9, 29),
         )
-    assertEquals(ScheduleError.END_BEFORE_START, state.scheduleError)
+    assertEquals(FieldError.END_BEFORE_START, state.endDateError)
+    assertNull(state.startDateError)
     assertFalse(state.canCreate)
   }
 
@@ -76,12 +80,29 @@ class CreateTaskUiStateTest {
             endDate = day,
             endTime = LocalTime.of(9, 30),
         )
-    assertNull(state.scheduleError)
+    assertNull(state.endDateError)
   }
 
   @Test
   fun onlyOneBoundSet_isValid() {
-    assertNull(valid.copy(endDate = day).scheduleError)
+    assertNull(valid.copy(endDate = day).endDateError)
+  }
+
+  @Test
+  fun untouchedTitle_hasNoError() {
+    assertNull(CreateTaskUiState().titleError)
+  }
+
+  @Test
+  fun editedBlankTitle_hasAnError() {
+    val state = CreateTaskUiState(title = "  ", titleEdited = true)
+    assertEquals(FieldError.EMPTY_TITLE, state.titleError)
+    assertFalse(state.canCreate)
+  }
+
+  @Test
+  fun editedFilledTitle_hasNoError() {
+    assertNull(CreateTaskUiState(title = "Run power", titleEdited = true).titleError)
   }
 
   @Test

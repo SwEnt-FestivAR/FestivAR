@@ -37,6 +37,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.ui.components.FestivarDatePickerDialog
+import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.components.FestivarPickerField
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.components.FestivarTimePickerDialog
@@ -54,7 +55,9 @@ object CreateTaskScreenTestTags {
   const val START_TIME_FIELD = "createTaskStartTimeField"
   const val END_DATE_FIELD = "createTaskEndDateField"
   const val END_TIME_FIELD = "createTaskEndTimeField"
-  const val SCHEDULE_ERROR = "createTaskScheduleError"
+  const val TITLE_ERROR = "createTaskTitleError"
+  const val START_DATE_ERROR = "createTaskStartDateError"
+  const val END_DATE_ERROR = "createTaskEndDateError"
   const val SAVE_ERROR = "createTaskSaveError"
   const val CREATE_BUTTON = "createTaskCreateButton"
 }
@@ -140,12 +143,15 @@ fun CreateTaskContent(
                 .padding(start = 16.dp, top = 8.dp, end = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-      FestivarTextField(
-          value = state.title,
-          onValueChange = actions.onTitleChange,
-          label = "Title",
-          modifier = Modifier.testTag(CreateTaskScreenTestTags.TITLE_FIELD),
-      )
+      FieldWithError(state.titleError, CreateTaskScreenTestTags.TITLE_ERROR) {
+        FestivarTextField(
+            value = state.title,
+            onValueChange = actions.onTitleChange,
+            label = "Title",
+            isError = state.titleError != null,
+            modifier = Modifier.testTag(CreateTaskScreenTestTags.TITLE_FIELD),
+        )
+      }
       FestivarTextField(
           value = state.description,
           onValueChange = actions.onDescriptionChange,
@@ -164,9 +170,11 @@ fun CreateTaskContent(
           timeLabel = "Start time",
           date = state.startDate,
           time = state.startTime,
+          dateError = state.startDateError,
           onDateClick = { openPicker = Picker.START_DATE },
           onTimeClick = { openPicker = Picker.START_TIME },
           dateTag = CreateTaskScreenTestTags.START_DATE_FIELD,
+          dateErrorTag = CreateTaskScreenTestTags.START_DATE_ERROR,
           timeTag = CreateTaskScreenTestTags.START_TIME_FIELD,
       )
       DateTimeRow(
@@ -174,14 +182,13 @@ fun CreateTaskContent(
           timeLabel = "End time",
           date = state.endDate,
           time = state.endTime,
+          dateError = state.endDateError,
           onDateClick = { openPicker = Picker.END_DATE },
           onTimeClick = { openPicker = Picker.END_TIME },
           dateTag = CreateTaskScreenTestTags.END_DATE_FIELD,
+          dateErrorTag = CreateTaskScreenTestTags.END_DATE_ERROR,
           timeTag = CreateTaskScreenTestTags.END_TIME_FIELD,
       )
-      state.scheduleError?.let { error ->
-        ErrorText(scheduleErrorMessage(error), CreateTaskScreenTestTags.SCHEDULE_ERROR)
-      }
     }
     state.errorMsg?.let {
       Box(Modifier.padding(horizontal = 16.dp)) {
@@ -238,24 +245,45 @@ private fun DateTimeRow(
     timeLabel: String,
     date: LocalDate?,
     time: LocalTime?,
+    dateError: FieldError?,
     onDateClick: () -> Unit,
     onTimeClick: () -> Unit,
     dateTag: String,
+    dateErrorTag: String,
     timeTag: String,
 ) {
   Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-    FestivarPickerField(
-        value = date?.let(::formatDate).orEmpty(),
-        label = dateLabel,
-        onClick = onDateClick,
-        modifier = Modifier.weight(1f).testTag(dateTag),
-    )
+    FieldWithError(dateError, dateErrorTag, Modifier.weight(1f)) {
+      FestivarPickerField(
+          value = date?.let(::formatDate).orEmpty(),
+          label = dateLabel,
+          onClick = onDateClick,
+          isError = dateError != null,
+          modifier = Modifier.testTag(dateTag),
+      )
+    }
     FestivarPickerField(
         value = time?.let(::formatTime).orEmpty(),
         label = timeLabel,
         onClick = onTimeClick,
         modifier = Modifier.weight(1f).testTag(timeTag),
     )
+  }
+}
+
+/** Shows [field] with the message for [error] under it, when there is one. */
+@Composable
+private fun FieldWithError(
+    error: FieldError?,
+    errorTag: String,
+    modifier: Modifier = Modifier,
+    field: @Composable () -> Unit,
+) {
+  Column(modifier = modifier) {
+    field()
+    error?.let {
+      FestivarFieldError(message = fieldErrorMessage(it), modifier = Modifier.testTag(errorTag))
+    }
   }
 }
 
@@ -317,11 +345,12 @@ private fun PickerDialog(
   }
 }
 
-/** The message shown under the schedule fields for [error]. */
-fun scheduleErrorMessage(error: ScheduleError): String =
+/** The message shown under a field for [error]. */
+fun fieldErrorMessage(error: FieldError): String =
     when (error) {
-      ScheduleError.TIME_WITHOUT_DATE -> "Pick a date for each time you set."
-      ScheduleError.END_BEFORE_START -> "The end cannot be before the start."
+      FieldError.EMPTY_TITLE -> "Title cannot be empty"
+      FieldError.MISSING_DATE -> "Pick a date for this time"
+      FieldError.END_BEFORE_START -> "The end cannot be before the start"
     }
 
 @Preview(showBackground = true)

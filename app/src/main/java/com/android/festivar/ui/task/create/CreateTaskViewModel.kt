@@ -28,7 +28,7 @@ class CreateTaskViewModel(
   private val _uiState = MutableStateFlow(CreateTaskUiState())
   val uiState: StateFlow<CreateTaskUiState> = _uiState.asStateFlow()
 
-  fun updateTitle(title: String) = _uiState.update { it.copy(title = title) }
+  fun updateTitle(title: String) = _uiState.update { it.copy(title = title, titleEdited = true) }
 
   fun updateDescription(description: String) = _uiState.update {
     it.copy(description = description)

@@ -6,10 +6,13 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 
-/** Why the schedule typed in the Create task form cannot be turned into a valid [Task]. */
-enum class ScheduleError {
+/** What is wrong with a field of the Create task form, shown as a message under that field. */
+enum class FieldError {
+  /** The title was edited and is now blank. */
+  EMPTY_TITLE,
+
   /** A time was picked without its date. */
-  TIME_WITHOUT_DATE,
+  MISSING_DATE,
 
   /** The end is before the start. */
   END_BEFORE_START,
@@ -29,6 +32,7 @@ data class CreateTaskUiState(
     val startTime: LocalTime? = null,
     val endDate: LocalDate? = null,
     val endTime: LocalTime? = null,
+    val titleEdited: Boolean = false,
     val isSaving: Boolean = false,
     val isCreated: Boolean = false,
     val errorMsg: String? = null,
@@ -39,16 +43,25 @@ data class CreateTaskUiState(
   val endDateTime: LocalDateTime?
     get() = combine(endDate, endTime)
 
-  /** The first reason the schedule is invalid, or `null` if it is valid (or empty). */
-  val scheduleError: ScheduleError?
+  /**
+   * The title error. It only appears once the title has been edited, so that an untouched form does
+   * not start with an error.
+   */
+  val titleError: FieldError?
+    get() = if (titleEdited && title.isBlank()) FieldError.EMPTY_TITLE else null
+
+  /** The error shown under the start date, or `null`. */
+  val startDateError: FieldError?
+    get() = if (startTime != null && startDate == null) FieldError.MISSING_DATE else null
+
+  /** The error shown under the end date, or `null`. */
+  val endDateError: FieldError?
     get() {
-      if ((startTime != null && startDate == null) || (endTime != null && endDate == null)) {
-        return ScheduleError.TIME_WITHOUT_DATE
-      }
+      if (endTime != null && endDate == null) return FieldError.MISSING_DATE
       val start = startDateTime
       val end = endDateTime
       return if (start != null && end != null && end.isBefore(start)) {
-        ScheduleError.END_BEFORE_START
+        FieldError.END_BEFORE_START
       } else {
         null
       }
@@ -56,7 +69,7 @@ data class CreateTaskUiState(
 
   /** Whether the "Create task" button can be pressed. */
   val canCreate: Boolean
-    get() = title.isNotBlank() && scheduleError == null && !isSaving
+    get() = title.isNotBlank() && startDateError == null && endDateError == null && !isSaving
 
   /**
    * Builds the [Task] described by this form.

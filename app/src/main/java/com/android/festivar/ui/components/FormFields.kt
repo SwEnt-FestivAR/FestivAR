@@ -4,6 +4,7 @@ package com.android.festivar.ui.components
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -30,6 +31,7 @@ fun FestivarTextField(
     label: String,
     modifier: Modifier = Modifier,
     singleLine: Boolean = true,
+    isError: Boolean = false,
 ) {
   OutlinedTextField(
       value = value,
@@ -38,6 +40,7 @@ fun FestivarTextField(
       label = { Text(label) },
       textStyle = MaterialTheme.typography.bodyLarge,
       singleLine = singleLine,
+      isError = isError,
       shape = FieldShape,
   )
 }
@@ -52,6 +55,7 @@ fun FestivarPickerField(
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    isError: Boolean = false,
 ) {
   val currentOnClick by rememberUpdatedState(onClick)
   val interactionSource = remember { MutableInteractionSource() }
@@ -70,7 +74,22 @@ fun FestivarPickerField(
       label = { Text(label) },
       textStyle = MaterialTheme.typography.bodyLarge,
       singleLine = true,
+      isError = isError,
       shape = FieldShape,
       interactionSource = interactionSource,
+  )
+}
+
+/**
+ * Supporting line shown under a field that has an error, as in the Figma "Supporting text": Body
+ * small in the theme error color, inset like the field's own text.
+ */
+@Composable
+fun FestivarFieldError(message: String, modifier: Modifier = Modifier) {
+  Text(
+      text = message,
+      style = MaterialTheme.typography.bodySmall,
+      color = MaterialTheme.colorScheme.error,
+      modifier = modifier.fillMaxWidth().padding(start = 16.dp, top = 4.dp),
   )
 }

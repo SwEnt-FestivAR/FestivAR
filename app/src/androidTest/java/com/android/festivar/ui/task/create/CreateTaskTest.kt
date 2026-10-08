@@ -120,15 +120,26 @@ abstract class CreateTaskTest {
 
   // --- Checks --------------------------------------------------------------------------------
 
-  fun ComposeTestRule.checkScheduleErrorIsDisplayed(error: ScheduleError) {
-    onNodeWithTag(CreateTaskScreenTestTags.SCHEDULE_ERROR)
+  private fun ComposeTestRule.checkErrorIsDisplayed(errorTag: String, error: FieldError) {
+    onNodeWithTag(errorTag)
         .performScrollTo()
         .assertIsDisplayed()
-        .assertTextEquals(scheduleErrorMessage(error))
+        .assertTextEquals(fieldErrorMessage(error))
   }
 
-  fun ComposeTestRule.checkNoScheduleErrorIsDisplayed() {
-    onNodeWithTag(CreateTaskScreenTestTags.SCHEDULE_ERROR).assertDoesNotExist()
+  fun ComposeTestRule.checkTitleErrorIsDisplayed(error: FieldError = FieldError.EMPTY_TITLE) =
+      checkErrorIsDisplayed(CreateTaskScreenTestTags.TITLE_ERROR, error)
+
+  fun ComposeTestRule.checkStartDateErrorIsDisplayed(error: FieldError) =
+      checkErrorIsDisplayed(CreateTaskScreenTestTags.START_DATE_ERROR, error)
+
+  fun ComposeTestRule.checkEndDateErrorIsDisplayed(error: FieldError) =
+      checkErrorIsDisplayed(CreateTaskScreenTestTags.END_DATE_ERROR, error)
+
+  fun ComposeTestRule.checkNoFieldErrorIsDisplayed() {
+    onNodeWithTag(CreateTaskScreenTestTags.TITLE_ERROR).assertDoesNotExist()
+    onNodeWithTag(CreateTaskScreenTestTags.START_DATE_ERROR).assertDoesNotExist()
+    onNodeWithTag(CreateTaskScreenTestTags.END_DATE_ERROR).assertDoesNotExist()
   }
 
   /** Runs [action] and checks that it did not add any task to the repository. */

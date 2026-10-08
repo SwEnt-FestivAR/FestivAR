@@ -56,7 +56,7 @@ class CreateTaskScreenInstrumentedTest : CreateTaskTest() {
         .assertIsDisplayed()
         .assertTextContains("Create task")
     fieldTags.forEach { composeTestRule.onNodeWithTag(it).assertIsDisplayed() }
-    composeTestRule.checkNoScheduleErrorIsDisplayed()
+    composeTestRule.checkNoFieldErrorIsDisplayed()
   }
 
   @Test
@@ -76,7 +76,7 @@ class CreateTaskScreenInstrumentedTest : CreateTaskTest() {
     val text = "title"
     composeTestRule.enterCreateTaskTitle(text)
     composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.TITLE_FIELD).assertTextContains(text)
-    composeTestRule.checkNoScheduleErrorIsDisplayed()
+    composeTestRule.checkNoFieldErrorIsDisplayed()
   }
 
   @Test
@@ -86,7 +86,7 @@ class CreateTaskScreenInstrumentedTest : CreateTaskTest() {
     composeTestRule
         .onNodeWithTag(CreateTaskScreenTestTags.DESCRIPTION_FIELD)
         .assertTextContains(text)
-    composeTestRule.checkNoScheduleErrorIsDisplayed()
+    composeTestRule.checkNoFieldErrorIsDisplayed()
   }
 
   @Test
@@ -94,7 +94,7 @@ class CreateTaskScreenInstrumentedTest : CreateTaskTest() {
     val text = "location"
     composeTestRule.enterCreateTaskLocation(text)
     composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.LOCATION_FIELD).assertTextContains(text)
-    composeTestRule.checkNoScheduleErrorIsDisplayed()
+    composeTestRule.checkNoFieldErrorIsDisplayed()
   }
 
   @Test
@@ -125,7 +125,7 @@ class CreateTaskScreenInstrumentedTest : CreateTaskTest() {
     composeTestRule
         .onNodeWithTag(CreateTaskScreenTestTags.START_TIME_FIELD)
         .assertTextContains(formatTime(PICKER_DEFAULT_TIME))
-    composeTestRule.checkNoScheduleErrorIsDisplayed()
+    composeTestRule.checkNoFieldErrorIsDisplayed()
   }
 
   @Test
@@ -177,25 +177,52 @@ class CreateTaskScreenInstrumentedTest : CreateTaskTest() {
     val day: LocalDate = completeForm.startDate!!
     composeTestRule.pickCreateTaskDate(CreateTaskScreenTestTags.START_DATE_FIELD, day.plusDays(1))
     composeTestRule.pickCreateTaskDate(CreateTaskScreenTestTags.END_DATE_FIELD, day)
-    composeTestRule.checkScheduleErrorIsDisplayed(ScheduleError.END_BEFORE_START)
+    composeTestRule.checkEndDateErrorIsDisplayed(FieldError.END_BEFORE_START)
   }
 
   @Test
   fun enteringATimeWithoutItsDateShowsErrorMessage() {
     composeTestRule.pickCreateTaskTime(CreateTaskScreenTestTags.END_TIME_FIELD, PICKER_DEFAULT_TIME)
-    composeTestRule.checkScheduleErrorIsDisplayed(ScheduleError.TIME_WITHOUT_DATE)
+    composeTestRule.checkEndDateErrorIsDisplayed(FieldError.MISSING_DATE)
   }
 
   @Test
-  fun theErrorMessageDisappearsOnceTheScheduleIsFixed() {
+  fun enteringABlankTitleShowsErrorMessage() {
+    composeTestRule.enterCreateTaskTitle(" ") // Title is mandatory
+    composeTestRule.checkTitleErrorIsDisplayed()
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.CREATE_BUTTON).assertIsNotEnabled()
+  }
+
+  @Test
+  fun theTitleErrorDisappearsOnceATitleIsEntered() {
+    composeTestRule.enterCreateTaskTitle(" ")
+    composeTestRule.checkTitleErrorIsDisplayed()
+
+    composeTestRule.enterCreateTaskTitle("Run power to stage")
+
+    composeTestRule.checkNoFieldErrorIsDisplayed()
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.CREATE_BUTTON).assertIsEnabled()
+  }
+
+  @Test
+  fun enteringAStartTimeWithoutItsDateShowsErrorMessageUnderTheStartDate() {
+    composeTestRule.pickCreateTaskTime(
+        CreateTaskScreenTestTags.START_TIME_FIELD,
+        PICKER_DEFAULT_TIME,
+    )
+    composeTestRule.checkStartDateErrorIsDisplayed(FieldError.MISSING_DATE)
+  }
+
+  @Test
+  fun theDateErrorDisappearsOnceTheScheduleIsFixed() {
     val day: LocalDate = completeForm.startDate!!
     composeTestRule.pickCreateTaskDate(CreateTaskScreenTestTags.START_DATE_FIELD, day.plusDays(1))
     composeTestRule.pickCreateTaskDate(CreateTaskScreenTestTags.END_DATE_FIELD, day)
-    composeTestRule.checkScheduleErrorIsDisplayed(ScheduleError.END_BEFORE_START)
+    composeTestRule.checkEndDateErrorIsDisplayed(FieldError.END_BEFORE_START)
 
     composeTestRule.pickCreateTaskDate(CreateTaskScreenTestTags.END_DATE_FIELD, day.plusDays(2))
 
-    composeTestRule.checkNoScheduleErrorIsDisplayed()
+    composeTestRule.checkNoFieldErrorIsDisplayed()
   }
 
   // --- Valid forms ---------------------------------------------------------------------------

@@ -150,7 +150,7 @@ class CreateTaskScreenTest {
   }
 
   @Test
-  fun scheduleError_isShownOnlyWhenTheScheduleIsInvalid() {
+  fun endBeforeStart_isReportedUnderTheEndDateOnly() {
     showContent(
         CreateTaskUiState(
             title = "Run power to stage",
@@ -160,15 +160,65 @@ class CreateTaskScreenTest {
     )
 
     composeTestRule
-        .onNodeWithTag(CreateTaskScreenTestTags.SCHEDULE_ERROR)
-        .assertTextEquals(scheduleErrorMessage(ScheduleError.END_BEFORE_START))
+        .onNodeWithTag(CreateTaskScreenTestTags.END_DATE_ERROR)
+        .assertTextEquals(fieldErrorMessage(FieldError.END_BEFORE_START))
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.START_DATE_ERROR).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.TITLE_ERROR).assertDoesNotExist()
     composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.CREATE_BUTTON).assertIsNotEnabled()
   }
 
   @Test
-  fun noScheduleError_whenScheduleIsValid() {
+  fun timeWithoutDate_isReportedUnderTheMatchingDate() {
+    showContent(
+        CreateTaskUiState(title = "Run power to stage", startTime = LocalTime.of(9, 30)),
+    )
+
+    composeTestRule
+        .onNodeWithTag(CreateTaskScreenTestTags.START_DATE_ERROR)
+        .assertTextEquals(fieldErrorMessage(FieldError.MISSING_DATE))
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.END_DATE_ERROR).assertDoesNotExist()
+  }
+
+  @Test
+  fun editedBlankTitle_showsItsErrorUnderTheTitle() {
+    showContent(CreateTaskUiState(title = "", titleEdited = true))
+
+    composeTestRule
+        .onNodeWithTag(CreateTaskScreenTestTags.TITLE_ERROR)
+        .assertTextEquals(fieldErrorMessage(FieldError.EMPTY_TITLE))
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.CREATE_BUTTON).assertIsNotEnabled()
+  }
+
+  @Test
+  fun untouchedForm_showsNoFieldError() {
+    showContent(CreateTaskUiState())
+
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.TITLE_ERROR).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.START_DATE_ERROR).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.END_DATE_ERROR).assertDoesNotExist()
+  }
+
+  @Test
+  fun validSchedule_showsNoFieldError() {
     showContent(CreateTaskUiState(title = "Run power to stage", startDate = day, endDate = day))
-    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.SCHEDULE_ERROR).assertDoesNotExist()
+
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.START_DATE_ERROR).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.END_DATE_ERROR).assertDoesNotExist()
+  }
+
+  @Test
+  fun clearingTheTitle_showsItsErrorEndToEnd() {
+    val viewModel = CreateTaskViewModel("event-1", TasksRepositoryLocal())
+    composeTestRule.setContent {
+      AppTheme { CreateTaskScreen(viewModel = viewModel, onBack = {}, onTaskCreated = {}) }
+    }
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.TITLE_ERROR).assertDoesNotExist()
+
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.TITLE_FIELD).performTextInput(" ")
+
+    composeTestRule
+        .onNodeWithTag(CreateTaskScreenTestTags.TITLE_ERROR)
+        .assertTextEquals(fieldErrorMessage(FieldError.EMPTY_TITLE))
   }
 
   @Test

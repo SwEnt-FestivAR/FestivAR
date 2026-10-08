@@ -75,7 +75,29 @@ class CreateTaskViewModelTest {
     viewModel.createTask()
 
     assertTrue(savedTasks().isEmpty())
-    assertEquals(ScheduleError.END_BEFORE_START, viewModel.uiState.value.scheduleError)
+    assertEquals(FieldError.END_BEFORE_START, viewModel.uiState.value.endDateError)
+  }
+
+  @Test
+  fun titleError_appearsOnlyAfterTheTitleIsEditedToBlank() {
+    assertNull(viewModel.uiState.value.titleError)
+
+    viewModel.updateTitle("Run power to stage")
+    assertNull(viewModel.uiState.value.titleError)
+
+    viewModel.updateTitle("")
+    assertEquals(FieldError.EMPTY_TITLE, viewModel.uiState.value.titleError)
+
+    viewModel.updateTitle("Run")
+    assertNull(viewModel.uiState.value.titleError)
+  }
+
+  @Test
+  fun timeWithoutDate_putsTheErrorUnderTheMatchingDate() {
+    viewModel.updateEndTime(LocalTime.of(9, 50))
+
+    assertEquals(FieldError.MISSING_DATE, viewModel.uiState.value.endDateError)
+    assertNull(viewModel.uiState.value.startDateError)
   }
 
   @Test
