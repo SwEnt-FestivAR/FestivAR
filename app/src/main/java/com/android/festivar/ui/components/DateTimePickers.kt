@@ -11,6 +11,8 @@ import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.tooling.preview.Preview
+import com.android.festivar.ui.theme.AppTheme
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -84,4 +86,20 @@ fun FestivarTimePickerDialog(
       dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
       text = { TimePicker(state = state) },
   )
+}
+
+@Preview
+@Composable
+private fun FestivarDatePickerDialogPreview() {
+  AppTheme {
+    FestivarDatePickerDialog(initial = LocalDate.of(2026, 10, 17), onConfirm = {}, onDismiss = {})
+  }
+}
+
+@Preview
+@Composable
+private fun FestivarTimePickerDialogPreview() {
+  AppTheme {
+    FestivarTimePickerDialog(initial = LocalTime.of(9, 30), onConfirm = {}, onDismiss = {})
+  }
 }
