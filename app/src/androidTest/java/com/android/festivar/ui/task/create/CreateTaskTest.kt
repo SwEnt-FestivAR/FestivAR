@@ -1,9 +1,9 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.create
 
-import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -47,7 +47,7 @@ abstract class CreateTaskTest {
 
   fun savedTasks(): List<Task> = runBlocking { repository.getAllTasks() }
 
-  fun ComposeTestRule.showCreateTaskScreen() {
+  fun ComposeContentTestRule.showCreateTaskScreen() {
     setContent {
       AppTheme {
         CreateTaskScreen(
