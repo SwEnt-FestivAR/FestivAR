@@ -142,8 +142,9 @@ class CreateTaskViewModel(
   // Functions to update the UI state.
 
   // Once the task is created the form is final: later edits are ignored.
-  private fun edit(change: (CreateTaskUiState) -> CreateTaskUiState) =
-      _uiState.update { if (it.isCreated) it else change(it) }
+  private fun edit(change: (CreateTaskUiState) -> CreateTaskUiState) = _uiState.update {
+    if (it.isCreated) it else change(it)
+  }
 
   /** Sets the title and marks it as edited, so that an empty title is reported. */
   fun updateTitle(title: String) = edit { it.copy(title = title, titleEdited = true) }

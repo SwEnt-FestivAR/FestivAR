@@ -7,8 +7,7 @@ import org.junit.Test
 
 class TasksRepositoryProviderTest {
   // The provider is process-wide: undo the assignment so other tests do not inherit it.
-  @After
-  fun tearDown() = TasksRepositoryProvider.reset()
+  @After fun tearDown() = TasksRepositoryProvider.reset()
 
   // No FirebaseApp exists in a plain unit test: if setting or reading the repository built the
   // Firestore one, these would throw.
