@@ -3,19 +3,22 @@ package com.android.festivar.ui.task.create
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -127,12 +130,14 @@ fun CreateTaskContent(
               .fillMaxSize()
               .background(MaterialTheme.colorScheme.background)
               .systemBarsPadding()
-              .imePadding()
-              .padding(horizontal = 16.dp),
+              .imePadding(),
   ) {
     CreateTaskTopBar(onBack = actions.onBack)
     Column(
-        modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(top = 8.dp),
+        modifier =
+            Modifier.weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(start = 16.dp, top = 8.dp, end = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
       FestivarTextField(
@@ -178,15 +183,19 @@ fun CreateTaskContent(
         ErrorText(scheduleErrorMessage(error), CreateTaskScreenTestTags.SCHEDULE_ERROR)
       }
     }
-    state.errorMsg?.let { ErrorText(it, CreateTaskScreenTestTags.SAVE_ERROR) }
+    state.errorMsg?.let {
+      Box(Modifier.padding(horizontal = 16.dp)) {
+        ErrorText(it, CreateTaskScreenTestTags.SAVE_ERROR)
+      }
+    }
     Button(
         onClick = actions.onCreate,
         enabled = state.canCreate,
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(12.dp),
         modifier =
             Modifier.fillMaxWidth()
-                .padding(vertical = 24.dp)
-                .height(48.dp)
+                .padding(horizontal = 16.dp, vertical = 24.dp)
+                .height(52.dp)
                 .testTag(CreateTaskScreenTestTags.CREATE_BUTTON),
     ) {
       Text("Create task", style = MaterialTheme.typography.labelLarge)
@@ -204,18 +213,19 @@ fun CreateTaskContent(
 @Composable
 private fun CreateTaskTopBar(onBack: () -> Unit) {
   Row(
-      modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+      modifier = Modifier.fillMaxWidth().height(64.dp).padding(start = 8.dp, end = 12.dp),
       verticalAlignment = Alignment.CenterVertically,
   ) {
     IconButton(
         onClick = onBack,
         modifier = Modifier.testTag(CreateTaskScreenTestTags.BACK_BUTTON),
     ) {
-      Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+      Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
     }
+    Spacer(Modifier.width(4.dp))
     Text(
         text = "Create task",
-        style = MaterialTheme.typography.headlineSmall,
+        style = MaterialTheme.typography.titleLarge,
         color = MaterialTheme.colorScheme.onBackground,
         modifier = Modifier.testTag(CreateTaskScreenTestTags.TITLE),
     )
