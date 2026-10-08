@@ -16,8 +16,11 @@ import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.event.EventsRepositoryLocal
+import io.mockk.spyk
+import io.mockk.verify
 import java.time.Instant
 import java.time.ZoneId
+import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import org.junit.Before
@@ -29,10 +32,11 @@ import org.junit.runner.RunWith
 class CreateEventScreenTest {
 
   @get:Rule val composeTestRule = createComposeRule()
+  private lateinit var viewModel: CreateEventViewModel
 
   @Before
   fun setUp() {
-    val viewModel = CreateEventViewModel(EventsRepositoryLocal())
+    viewModel = spyk(CreateEventViewModel(EventsRepositoryLocal()))
     composeTestRule.setContent { CreateEventScreen(viewModel) }
   }
 
@@ -86,6 +90,20 @@ class CreateEventScreenTest {
     composeTestRule.onAllNodesWithText(expectedDate).assertCountEquals(2)
 
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsEnabled()
+  }
+
+  @Test
+  fun clickingEnabledCreateButtonCallsViewModelCreateEvent() {
+    viewModel.updateName("Summer festival")
+    viewModel.updateStartDate(ZonedDateTime.parse("2026-10-08T10:00:00+02:00"))
+    viewModel.updateEndDate(ZonedDateTime.parse("2026-10-08T18:00:00+02:00"))
+    viewModel.updateVenue("Main square")
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsEnabled()
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).performClick()
+
+    verify(exactly = 1) { viewModel.createEvent() }
   }
 
   @Test
