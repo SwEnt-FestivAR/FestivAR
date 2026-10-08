@@ -11,8 +11,13 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -324,6 +329,16 @@ class EventsOverviewViewModelTest {
     assertTrue(state.hasNoEvents)
   }
 
+  /** Test that a failure whose exception has no message still shows an error message. */
+  @Test
+  fun failureWithoutMessageShowsUnknownError() = runTest {
+    val repository = RecordingEventsRepository(error = NoSuchElementException())
+    val viewModel = createViewModel(withRepository = repository)
+    advanceUntilIdle()
+
+    assertEquals("Failed to load events: unknown error", viewModel.uiState.value.errorMsg)
+  }
+
   /** Test that the error message is removed once cleared. */
   @Test
   fun clearErrorMsgRemovesTheErrorMsg() = runTest {
@@ -401,6 +416,29 @@ class EventsOverviewViewModelTest {
     assertFalse(state.isLoading)
     assertNull(state.errorMsg)
     assertShows(listOf(ongoingEvent), state.ongoingEvents)
+  }
+
+  /**
+   * Test that two identical failures in a row both surface: a refresh clears the error message
+   * while it loads, so a screen keyed on the error message sees the second failure as a new one.
+   */
+  @Test
+  fun identicalFailuresInARowBothSurface() = runTest {
+    val repository = RecordingEventsRepository(error = RuntimeException("Network down"))
+    val viewModel = createViewModel(withRepository = repository)
+    // Every change of the error message, as a screen keyed on it would see them
+    val errorMsgs = mutableListOf<String?>()
+    backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+      viewModel.uiState.map { it.errorMsg }.distinctUntilChanged().toList(errorMsgs)
+    }
+    advanceUntilIdle()
+
+    viewModel.refreshUIState()
+    assertNull(viewModel.uiState.value.errorMsg)
+    advanceUntilIdle()
+
+    val failure = "Failed to load events: Network down"
+    assertEquals(listOf(null, failure, null, failure), errorMsgs)
   }
 
   /**

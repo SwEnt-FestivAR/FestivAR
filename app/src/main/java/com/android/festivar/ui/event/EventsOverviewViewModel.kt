@@ -142,7 +142,10 @@ class EventsOverviewViewModel(
         throw e
       } catch (e: Exception) {
         _uiState.update {
-          it.copy(isLoading = false, errorMsg = "Failed to load events: ${e.message ?: "unknown error"}")
+          it.copy(
+              isLoading = false,
+              errorMsg = "Failed to load events: ${e.message ?: "unknown error"}",
+          )
         }
       }
     }
