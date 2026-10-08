@@ -2,9 +2,13 @@
 package com.android.festivar.ui.components
 
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerColors
+import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
@@ -44,16 +48,15 @@ fun FestivarDatePickerDialog(
   DatePickerDialog(
       onDismissRequest = onDismiss,
       confirmButton = {
-        TextButton(
+        DialogButton(
+            text = "OK",
             onClick = { state.selectedDateMillis?.let { onConfirm(it.toPickerDate()) } },
             enabled = state.selectedDateMillis != null,
-        ) {
-          Text("OK")
-        }
+        )
       },
-      dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+      dismissButton = { DialogButton(text = "Cancel", onClick = onDismiss) },
   ) {
-    DatePicker(state = state)
+    DatePicker(state = state, colors = readableDatePickerColors())
   }
 }
 
@@ -81,10 +84,51 @@ fun FestivarTimePickerDialog(
   AlertDialog(
       onDismissRequest = onDismiss,
       confirmButton = {
-        TextButton(onClick = { onConfirm(LocalTime.of(state.hour, state.minute)) }) { Text("OK") }
+        DialogButton(
+            text = "OK",
+            onClick = { onConfirm(LocalTime.of(state.hour, state.minute)) },
+        )
       },
-      dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+      dismissButton = { DialogButton(text = "Cancel", onClick = onDismiss) },
       text = { TimePicker(state = state) },
+  )
+}
+
+/**
+ * Text button of the dialogs. Material draws these in `primary`, which is the lime of the app and
+ * cannot be read on the dialog background, so the dark green of the theme is used instead.
+ */
+@Composable
+private fun DialogButton(
+    text: String,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+) {
+  TextButton(
+      onClick = onClick,
+      enabled = enabled,
+      colors =
+          ButtonDefaults.textButtonColors(
+              contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+          ),
+  ) {
+    Text(text)
+  }
+}
+
+/**
+ * Date picker colors: today's date and the current year are outlined in `primary` by default, which
+ * is the unreadable lime, so they use the dark green of the theme. The selected day keeps the lime
+ * background with dark text.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun readableDatePickerColors(): DatePickerColors {
+  val accent = MaterialTheme.colorScheme.onPrimaryContainer
+  return DatePickerDefaults.colors(
+      todayContentColor = accent,
+      todayDateBorderColor = accent,
+      currentYearContentColor = accent,
   )
 }
 
