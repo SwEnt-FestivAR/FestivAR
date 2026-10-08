@@ -237,29 +237,84 @@ class CreateTaskViewModelTest {
     assertFalse(vm.uiState.value.isSaving)
   }
 
-  // The save reached the repository but reported a failure (for example a timeout after the
-  // commit). The retry keeps the same task id and finds the task, so nothing is saved twice.
+  // A repository whose first save is stored but reported as failed, and whose first read fails
+  // too (the app is offline). The retry must reuse the task id: the stored task is found, and
+  // nothing is saved twice.
+  private class StoredThenFailed(val local: TasksRepositoryLocal = TasksRepositoryLocal()) :
+      TasksRepository by local {
+    var firstAdd = true
+    var firstGet = true
+
+    override suspend fun addTask(task: Task) {
+      local.addTask(task)
+      if (firstAdd) {
+        firstAdd = false
+        throw IllegalStateException("lost the answer")
+      }
+    }
+
+    override suspend fun getTask(taskId: String): Task {
+      if (firstGet) {
+        firstGet = false
+        throw IllegalStateException("offline")
+      }
+      return local.getTask(taskId)
+    }
+  }
+
   @Test
-  fun createTask_whenTheFailedSaveWasStored_retryDoesNotDuplicate() {
-    val local = TasksRepositoryLocal()
-    var failing = true
-    val storedThenFailed =
-        object : TasksRepository by local {
-          override suspend fun addTask(task: Task) {
-            local.addTask(task)
-            if (failing) throw IllegalStateException("lost the answer")
-          }
-        }
-    val vm = CreateTaskViewModel(storedThenFailed)
+  fun createTask_retryAfterAStoredButFailedSave_reusesTheTaskId() {
+    val repo = StoredThenFailed()
+    val vm = CreateTaskViewModel(repo)
     vm.updateTitle("Run power to stage")
 
     vm.createTask("event-1")
-    failing = false
+    assertEquals("Unable to create the task.", vm.uiState.value.errorMsg)
     vm.createTask("event-1")
 
-    assertEquals(1, runBlocking { local.getAllTasks("event-1") }.size)
+    assertEquals(1, runBlocking { repo.local.getAllTasks("event-1") }.size)
     assertTrue(vm.uiState.value.isCreated)
     assertNull(vm.uiState.value.errorMsg)
+  }
+
+  @Test
+  fun createTask_retryAfterEditingTheForm_updatesTheStoredTask() {
+    val repo = StoredThenFailed()
+    val vm = CreateTaskViewModel(repo)
+    vm.updateTitle("Run power to stage")
+    vm.createTask("event-1")
+
+    vm.updateTitle("Run power to the main stage")
+    vm.createTask("event-1")
+
+    val saved = runBlocking { repo.local.getAllTasks("event-1") }.single()
+    assertEquals("Run power to the main stage", saved.title)
+    assertTrue(vm.uiState.value.isCreated)
+  }
+
+  @Test
+  fun createTask_retryForAnotherEvent_createsANewTask() {
+    val repo = StoredThenFailed()
+    val vm = CreateTaskViewModel(repo)
+    vm.updateTitle("Run power to stage")
+    vm.createTask("event-1")
+
+    vm.createTask("event-2")
+
+    assertEquals(1, runBlocking { repo.local.getAllTasks("event-1") }.size)
+    assertEquals(1, runBlocking { repo.local.getAllTasks("event-2") }.size)
+  }
+
+  @Test
+  fun createTask_withBlankEventId_reportsAnErrorInsteadOfCrashing() {
+    viewModel.updateTitle("Run power to stage")
+
+    viewModel.createTask("")
+
+    assertEquals("Unable to create the task.", viewModel.uiState.value.errorMsg)
+    assertFalse(viewModel.uiState.value.isCreated)
+    assertFalse(viewModel.uiState.value.isSaving)
+    assertTrue(savedTasks().isEmpty())
   }
 
   @Test

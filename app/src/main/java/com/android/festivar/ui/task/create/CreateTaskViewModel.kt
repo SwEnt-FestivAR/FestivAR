@@ -129,9 +129,11 @@ class CreateTaskViewModel(
     private val tasksRepository: TasksRepository = TasksRepositoryProvider.repository,
     private val saveTimeoutMs: Long = SAVE_TIMEOUT_MS,
 ) : ViewModel() {
-  // The id of the task being created. It is kept across retries: if a save timed out or failed
-  // after reaching the server, the retry targets the same task instead of creating a second one.
+  // The id of the task being created and the event it was created for. They are kept across
+  // retries: if a save timed out or failed after reaching the server, the retry targets the same
+  // task instead of creating a second one. A different event starts a new task.
   private var pendingTaskId: String? = null
+  private var pendingEventId: String? = null
 
   // Create task UI state
   private val _uiState = MutableStateFlow(CreateTaskUiState())
@@ -176,10 +178,19 @@ class CreateTaskViewModel(
   fun createTask(eventId: String) {
     val form = _uiState.value
     if (!form.canCreate) return
+    if (eventId.isBlank()) {
+      // A Task needs an event: this is a mistake of the caller, reported instead of crashing.
+      Log.e("CreateTaskViewModel", "createTask called without an event")
+      _uiState.update { it.copy(errorMsg = "Unable to create the task.") }
+      return
+    }
     // The task is built from the copy of the form taken above, so typing during the save does not
     // change what is saved. It is built outside the try: the form was just checked, so a failure
     // here is a bug and must not be shown to the user as a failed save.
-    val taskId = pendingTaskId ?: tasksRepository.getNewUid().also { pendingTaskId = it }
+    if (pendingEventId != eventId) pendingTaskId = null
+    val taskId = pendingTaskId ?: tasksRepository.getNewUid()
+    pendingTaskId = taskId
+    pendingEventId = eventId
     val task = form.toTask(taskId, eventId)
     _uiState.update { it.copy(isSaving = true, errorMsg = null) }
     viewModelScope.launch {
@@ -198,12 +209,16 @@ class CreateTaskViewModel(
   }
 
   // A failed save may still have reached the server (for example a timeout). If the task exists,
-  // it is created; otherwise the error is shown and the user can retry with the same task id.
+  // it is created, and updated if the form changed since that save; otherwise the error is shown
+  // and the user can retry with the same task id.
   private suspend fun onSaveFailed(task: Task, e: Exception) {
     Log.e("CreateTaskViewModel", "Error adding the task", e)
     val alreadySaved =
         try {
-          withTimeout(saveTimeoutMs) { tasksRepository.getTask(task.taskId) }
+          withTimeout(saveTimeoutMs) {
+            val stored = tasksRepository.getTask(task.taskId)
+            if (stored != task) tasksRepository.editTask(task.taskId, task)
+          }
           true
         } catch (_: TimeoutCancellationException) {
           false
