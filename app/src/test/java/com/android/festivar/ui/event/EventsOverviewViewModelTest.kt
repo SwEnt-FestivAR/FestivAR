@@ -33,7 +33,7 @@ class EventsOverviewViewModelTest {
    * An [EventsRepositoryLocal] serving [events]. It throws [error] on every fetch of the events of
    * a user while it is set, and records for which users they are fetched.
    */
-  private class EventsRepositoryImpl(
+  private class RecordingEventsRepository(
       events: List<Event> = listOf(),
       var error: Exception? = null,
       private val local: EventsRepository = EventsRepositoryLocal(events),
@@ -159,7 +159,7 @@ class EventsOverviewViewModelTest {
   /** Test that the UI state is loading until the events are fetched, without any error. */
   @Test
   fun isLoadingUntilEventsAreFetched() = runTest {
-    val viewModel = createViewModel(EventsRepositoryImpl(listOf(ongoingEvent)))
+    val viewModel = createViewModel(RecordingEventsRepository(listOf(ongoingEvent)))
     assertTrue(viewModel.uiState.value.isLoading)
 
     advanceUntilIdle()
@@ -171,7 +171,7 @@ class EventsOverviewViewModelTest {
   /** Test that each event lands in the category matching its dates: ongoing, upcoming or past. */
   @Test
   fun eventsAreSplitIntoOngoingUpcomingAndPast() = runTest {
-    val repository = EventsRepositoryImpl(listOf(pastEvent, upcomingEvent, ongoingEvent))
+    val repository = RecordingEventsRepository(listOf(pastEvent, upcomingEvent, ongoingEvent))
     val viewModel = createViewModel(withRepository = repository)
     advanceUntilIdle()
 
@@ -201,7 +201,7 @@ class EventsOverviewViewModelTest {
             endDate = getDate(2025, 5, 9),
         )
     val repository =
-        EventsRepositoryImpl(
+        RecordingEventsRepository(
             listOf(ongoingEvent, earlierOngoing, laterUpcoming, upcomingEvent, olderPast, pastEvent)
         )
     val viewModel = createViewModel(withRepository = repository)
@@ -231,7 +231,7 @@ class EventsOverviewViewModelTest {
             startDate = getDate(2026, 5, 1),
             endDate = getDate(2026, 5, 2),
         )
-    val viewModel = createViewModel(EventsRepositoryImpl(listOf(shortPast, longPast)))
+    val viewModel = createViewModel(RecordingEventsRepository(listOf(shortPast, longPast)))
     advanceUntilIdle()
 
     assertShows(listOf(longPast, shortPast), viewModel.uiState.value.pastEvents)
@@ -245,7 +245,8 @@ class EventsOverviewViewModelTest {
   fun closedEventIsPastEvenIfNotEnded() = runTest {
     val closedOngoing = ongoingEvent.close()
     val closedUpcoming = upcomingEvent.close()
-    val viewModel = createViewModel(EventsRepositoryImpl(listOf(closedOngoing, closedUpcoming)))
+    val viewModel =
+        createViewModel(RecordingEventsRepository(listOf(closedOngoing, closedUpcoming)))
     advanceUntilIdle()
 
     val state = viewModel.uiState.value
@@ -263,7 +264,7 @@ class EventsOverviewViewModelTest {
     val endingNow = pastEvent.copy(startDate = getDate(2026, 10, 17, hour = 12), endDate = now)
     val startingNow =
         upcomingEvent.copy(startDate = now, endDate = getDate(2026, 10, 17, hour = 22))
-    val viewModel = createViewModel(EventsRepositoryImpl(listOf(endingNow, startingNow)))
+    val viewModel = createViewModel(RecordingEventsRepository(listOf(endingNow, startingNow)))
     advanceUntilIdle()
 
     val state = viewModel.uiState.value
@@ -276,7 +277,7 @@ class EventsOverviewViewModelTest {
   @Test
   fun onlyTheEventsOfTheUserAreFetched() = runTest {
     val repository =
-        EventsRepositoryImpl(listOf(ongoingEvent, upcomingEvent, pastEvent, eventWithoutSara))
+        RecordingEventsRepository(listOf(ongoingEvent, upcomingEvent, pastEvent, eventWithoutSara))
     val viewModel = createViewModel(withRepository = repository, user = sara)
     advanceUntilIdle()
 
@@ -293,7 +294,7 @@ class EventsOverviewViewModelTest {
    */
   @Test
   fun userStaysInTheUIState() = runTest {
-    val repository = EventsRepositoryImpl(listOf(ongoingEvent))
+    val repository = RecordingEventsRepository(listOf(ongoingEvent))
     val viewModel = createViewModel(withRepository = repository, user = sara)
     assertTrue(viewModel.uiState.value.isLoading)
     assertEquals(sara, viewModel.uiState.value.user)
@@ -313,7 +314,7 @@ class EventsOverviewViewModelTest {
   /** Test that a failing repository stops the loading and shows an error message. */
   @Test
   fun repositoryFailureShowsErrorMsg() = runTest {
-    val repository = EventsRepositoryImpl(error = RuntimeException("Network down"))
+    val repository = RecordingEventsRepository(error = RuntimeException("Network down"))
     val viewModel = createViewModel(withRepository = repository)
     advanceUntilIdle()
 
@@ -326,7 +327,7 @@ class EventsOverviewViewModelTest {
   /** Test that the error message is removed once cleared. */
   @Test
   fun clearErrorMsgRemovesTheErrorMsg() = runTest {
-    val repository = EventsRepositoryImpl(error = RuntimeException("Network down"))
+    val repository = RecordingEventsRepository(error = RuntimeException("Network down"))
     val viewModel = createViewModel(withRepository = repository)
     advanceUntilIdle()
 
@@ -338,7 +339,7 @@ class EventsOverviewViewModelTest {
   /** Test that the ongoing events are shown by default, and that each filter shows its events. */
   @Test
   fun selectFilterChangesTheShownEvents() = runTest {
-    val repository = EventsRepositoryImpl(listOf(ongoingEvent, upcomingEvent, pastEvent))
+    val repository = RecordingEventsRepository(listOf(ongoingEvent, upcomingEvent, pastEvent))
     val viewModel = createViewModel(withRepository = repository)
     advanceUntilIdle()
 
@@ -360,7 +361,7 @@ class EventsOverviewViewModelTest {
    */
   @Test
   fun refreshFetchesNewEventsAndKeepsTheFilter() = runTest {
-    val repository = EventsRepositoryImpl(listOf(ongoingEvent))
+    val repository = RecordingEventsRepository(listOf(ongoingEvent))
     val viewModel = createViewModel(withRepository = repository)
     advanceUntilIdle()
     viewModel.selectFilter(EventsFilter.UPCOMING)
@@ -387,7 +388,7 @@ class EventsOverviewViewModelTest {
   @Test
   fun refreshAfterFailureShowsTheEventsWithoutError() = runTest {
     val repository =
-        EventsRepositoryImpl(listOf(ongoingEvent), error = RuntimeException("Network down"))
+        RecordingEventsRepository(listOf(ongoingEvent), error = RuntimeException("Network down"))
     val viewModel = createViewModel(withRepository = repository)
     advanceUntilIdle()
     assertEquals("Failed to load events: Network down", viewModel.uiState.value.errorMsg)
@@ -490,13 +491,13 @@ class EventsOverviewViewModelTest {
   /** Test that there are no events only when every category is empty. */
   @Test
   fun hasNoEventsOnlyWhenEveryCategoryIsEmpty() = runTest {
-    val emptyViewModel = createViewModel(EventsRepositoryImpl())
+    val emptyViewModel = createViewModel(RecordingEventsRepository())
     advanceUntilIdle()
     assertTrue(emptyViewModel.uiState.value.hasNoEvents)
 
     // One event in a single category is enough, whichever the category
     listOf(ongoingEvent, upcomingEvent, pastEvent).forEach { event ->
-      val viewModel = createViewModel(EventsRepositoryImpl(listOf(event)))
+      val viewModel = createViewModel(RecordingEventsRepository(listOf(event)))
       advanceUntilIdle()
       assertFalse(viewModel.uiState.value.hasNoEvents)
     }
@@ -516,7 +517,7 @@ class EventsOverviewViewModelTest {
             startDate = realNow.plusYears(1),
             endDate = realNow.plusYears(1).plusHours(5),
         )
-    val repository = EventsRepositoryImpl(listOf(lastYear, nextYear))
+    val repository = RecordingEventsRepository(listOf(lastYear, nextYear))
     val viewModel = EventsOverviewViewModel(eventsRepository = repository, user = sara)
     advanceUntilIdle()
 
