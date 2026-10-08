@@ -125,6 +125,7 @@ class CreateTaskViewModelTest {
     vm.clearError()
     assertNull(vm.uiState.value.errorMsg)
   }
+
   // A second tap while the first save is still running must not save the task twice. The fake
   // repository waits on a gate, so the ViewModel stays in the saving state in between.
   @Test
