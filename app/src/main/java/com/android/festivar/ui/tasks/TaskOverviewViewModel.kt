@@ -144,6 +144,7 @@ class TaskOverviewViewModel(
     }
   }
 
+  /** Switches the chip; the sections follow at once, the counts do not change. */
   fun selectFilter(filter: OverviewFilter) {
     _uiState.update { derive(it.copy(filter = filter)) }
   }
@@ -153,6 +154,7 @@ class TaskOverviewViewModel(
     _uiState.update { derive(it.copy(searchOpen = !it.searchOpen, query = "")) }
   }
 
+  /** Replaces the search text; a blank query shows every task of the current chip. */
   fun setQuery(query: String) {
     _uiState.update { derive(it.copy(query = query)) }
   }
@@ -192,12 +194,14 @@ class TaskOverviewViewModel(
         .min()
   }
 
+  /** Whether the signed-in user holds [task]; always false with nobody signed in. */
   private fun isMine(task: Task): Boolean =
       userId != null && task.assignees.any { it.uid == userId }
 
   /** The one place that says when a task has no place left; OPEN and the full badge both use it. */
   private fun isFull(task: Task): Boolean = task.assignees.size >= task.maxAssign
 
+  /** Whether [task] belongs under the [filter] chip, before the search applies. */
   private fun matches(task: Task, filter: OverviewFilter): Boolean =
       when (filter) {
         OverviewFilter.OPEN -> !task.completed && !isFull(task)
@@ -206,6 +210,11 @@ class TaskOverviewViewModel(
         OverviewFilter.ALL -> true
       }
 
+  /**
+   * Rebuilds what the screen shows from [tasks] and the chip, query and clock in [state]: the
+   * matching tasks grouped by day and part of day, in load order, plus the chip counts. Everything
+   * else in [state] is kept as is.
+   */
   private fun derive(state: TaskOverviewUiState): TaskOverviewUiState {
     val query = state.query.trim()
     val now = LocalDateTime.now(clock)
@@ -261,6 +270,7 @@ class TaskOverviewViewModel(
     }
   }
 
+  /** Flattens [task] into the data one row shows, with the user-dependent flags resolved. */
   private fun row(task: Task) =
       OverviewRowUi(
           task = task,

@@ -71,6 +71,7 @@ class TaskOverviewViewModelTest {
 
   private lateinit var repository: TasksRepositoryLocal
 
+  /** Routes viewModelScope to the test dispatcher and seeds the eight tasks above. */
   @Before
   fun setUp() {
     Dispatchers.setMain(dispatcher)
@@ -82,18 +83,22 @@ class TaskOverviewViewModelTest {
     }
   }
 
+  /** Gives Dispatchers.Main back, so the next test class starts clean. */
   @After
   fun tearDown() {
     Dispatchers.resetMain()
   }
 
+  /** A ViewModel on [EVENT] with the settable clock, signed in as [me] unless told otherwise. */
   private fun overview(userId: String? = me.uid, repo: TasksRepository = repository) =
       TaskOverviewViewModel(EVENT, userId, repo, clock)
 
+  /** The ids of every visible row, in section then row order. */
   private fun TaskOverviewUiState.visibleIds() = sections.flatMap { section ->
     section.rows.map { it.task.taskId }
   }
 
+  /** The ids of the rows under [group], across days, in section then row order. */
   private fun TaskOverviewUiState.idsIn(group: OverviewGroup) =
       sections
           .filter { it.group == group }
@@ -553,6 +558,7 @@ class TaskOverviewViewModelTest {
 
   /** A clock the test moves by hand, so the NOW group can be watched over time. */
   private class SettableClock(private var now: Instant, private val zone: ZoneId) : Clock() {
+    /** Moves the clock forward; the coroutine scheduler is moved separately by [tick]. */
     fun advance(by: Duration) {
       now += by
     }
@@ -568,6 +574,7 @@ class TaskOverviewViewModelTest {
     const val EVENT = "fete"
     val DAY: LocalDate = LocalDate.of(2026, 7, 1)
 
+    /** A time on [DAY], the day every seeded task lives on. */
     fun at(hour: Int, minute: Int): LocalDateTime = DAY.atTime(hour, minute)
   }
 }
