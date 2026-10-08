@@ -93,8 +93,7 @@ class TaskOverviewViewModel(
       try {
         tasks =
             repository
-                .getAllTasks()
-                .filter { it.eventId == eventId }
+                .getAllTasks(eventId)
                 .sortedWith(compareBy(nullsLast()) { it: Task -> it.startTime }.thenBy { it.title })
         _uiState.update { derive(it.copy(isLoading = false, errorMsg = null)) }
       } catch (e: CancellationException) {
