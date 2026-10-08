@@ -2,8 +2,6 @@
 package com.android.festivar.ui.components
 
 import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.hasClickAction
-import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -93,7 +91,7 @@ class DateTimePickerDialogsTest {
   fun dateDialog_confirmsTheDayThatWasTapped() {
     showDateDialog(initial = null)
 
-    composeTestRule.onNode(hasText("15") and hasClickAction()).performClick()
+    composeTestRule.onNode(hasDayOfMonth(15)).performClick()
     composeTestRule.onNodeWithText("OK").performClick()
 
     assertEquals(LocalDate.now().withDayOfMonth(15), pickedDate)
