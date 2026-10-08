@@ -12,6 +12,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.festivar.ui.components.formatDate
+import com.android.festivar.ui.components.formatTime
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Before
