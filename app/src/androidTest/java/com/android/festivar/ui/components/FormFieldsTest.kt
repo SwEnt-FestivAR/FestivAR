@@ -34,6 +34,7 @@ class FormFieldsTest {
 
   private val fieldTag = "field"
 
+  // The field displays the value it is given, and its label is visible.
   @Test
   fun textField_showsItsLabelAndValue() {
     composeTestRule.setContent {
@@ -52,6 +53,7 @@ class FormFieldsTest {
     composeTestRule.onNodeWithText("Title").assertIsDisplayed()
   }
 
+  // Typing calls onValueChange with the new text, and the field shows it once the state is updated.
   @Test
   fun textField_reportsTypedTextAndShowsIt() {
     var typed = ""
@@ -76,6 +78,8 @@ class FormFieldsTest {
     composeTestRule.onNodeWithTag(fieldTag).assertTextContains("abc")
   }
 
+  // A PasswordVisualTransformation makes the field a password field, so the text is masked and
+  // not exposed to accessibility services.
   @Test
   fun textField_withAPasswordTransformation_isMarkedAsAPasswordField() {
     composeTestRule.setContent {
@@ -95,6 +99,7 @@ class FormFieldsTest {
         .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Password))
   }
 
+  // Counterpart of the test above: a regular field must not be treated as a password field.
   @Test
   fun textField_withoutATransformation_isNotAPasswordField() {
     composeTestRule.setContent {
@@ -113,6 +118,7 @@ class FormFieldsTest {
         .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Password))
   }
 
+  // The trailing icon slot (e.g. the show/hide password button) stays clickable.
   @Test
   fun textField_trailingIconIsInteractive() {
     var clicks = 0
@@ -137,6 +143,7 @@ class FormFieldsTest {
     assertEquals(1, clicks)
   }
 
+  // The picker field displays the value it is given, e.g. the formatted date.
   @Test
   fun pickerField_showsItsValue() {
     composeTestRule.setContent {
@@ -153,6 +160,7 @@ class FormFieldsTest {
     composeTestRule.onNodeWithTag(fieldTag).assertTextContains("Sat 17 Oct")
   }
 
+  // Tapping the read-only picker field calls onClick exactly once, which is what opens the dialog.
   @Test
   fun pickerField_callsOnClickWhenTapped() {
     var clicks = 0
@@ -173,6 +181,47 @@ class FormFieldsTest {
     assertEquals(1, clicks)
   }
 
+  // The error state of the picker field must reach accessibility services, not only the colors:
+  // Material marks an invalid field with the Error semantics.
+  @Test
+  fun pickerField_withAnError_isMarkedAsInvalid() {
+    composeTestRule.setContent {
+      AppTheme {
+        FestivarPickerField(
+            value = "",
+            label = "Start date",
+            onClick = {},
+            isError = true,
+            modifier = Modifier.testTag(fieldTag),
+        )
+      }
+    }
+
+    composeTestRule
+        .onNodeWithTag(fieldTag)
+        .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Error))
+  }
+
+  // Counterpart of the test above: a field with the default isError = false must not be flagged.
+  @Test
+  fun pickerField_withoutAnError_isNotMarkedAsInvalid() {
+    composeTestRule.setContent {
+      AppTheme {
+        FestivarPickerField(
+            value = "",
+            label = "Start date",
+            onClick = {},
+            modifier = Modifier.testTag(fieldTag),
+        )
+      }
+    }
+
+    composeTestRule
+        .onNodeWithTag(fieldTag)
+        .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Error))
+  }
+
+  // The error line displays exactly the message it is given.
   @Test
   fun fieldError_showsItsMessage() {
     composeTestRule.setContent {

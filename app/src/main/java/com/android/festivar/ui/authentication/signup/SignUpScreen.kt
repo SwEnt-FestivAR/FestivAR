@@ -1,9 +1,11 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.authentication.signup
 
 import android.annotation.SuppressLint
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -31,6 +33,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -41,21 +44,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.credentials.Credential
 import androidx.credentials.CredentialManager
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.resources.GoogleLogo
+import com.android.festivar.ui.theme.AppTheme
+import com.android.festivar.ui.theme.onSurfaceMutedDark
+import com.android.festivar.ui.theme.onSurfaceMutedLight
 import com.google.firebase.auth.FirebaseUser
 
 object SignUpScreenTestTags {
@@ -69,7 +72,6 @@ object SignUpScreenTestTags {
   const val LOGIN_NOW_BUTTON = "loginNowButton"
 }
 
-// TODO colors are hardcoded, use the ones in Theme when merged
 @Composable
 fun SignUpScreen(
     modifier: Modifier = Modifier,
@@ -84,8 +86,6 @@ fun SignUpScreen(
   val context = LocalContext.current
   val uiState by viewModel.uiState.collectAsState()
 
-  val limeGreen = Color(0xFFD4FE42)
-  val darkLime = Color(0xFF5B7900)
   if (uiState.isAuthenticated) {
     onSignUpSuccess()
   }
@@ -93,7 +93,7 @@ fun SignUpScreen(
       modifier =
           modifier
               .fillMaxSize()
-              .background(color = Color(0xFFFCFBF7))
+              .background(color = MaterialTheme.colorScheme.background)
               .padding(horizontal = 24.dp)
               .verticalScroll(rememberScrollState()),
       horizontalAlignment = Alignment.Start,
@@ -121,7 +121,6 @@ fun SignUpScreen(
                 uiState.password == uiState.confirmPassword,
         isLoading = uiState.isLoading,
         onClick = { viewModel.signUp(uiState.email, uiState.password) },
-        limeGreen = limeGreen,
     )
     Spacer(modifier = Modifier.height(24.dp))
     SignUpDivider()
@@ -132,7 +131,7 @@ fun SignUpScreen(
     Spacer(modifier = Modifier.height(24.dp))
     SignUpTerms()
     Spacer(modifier = Modifier.height(32.dp))
-    SignUpFooter(onSignInClick, darkLime)
+    SignUpFooter(onSignInClick)
   }
 }
 
@@ -147,14 +146,14 @@ private fun SignUpTopBar(onBackClick: () -> Unit) {
       Icon(
           imageVector = Icons.AutoMirrored.Filled.ArrowBack,
           contentDescription = "Back",
-          tint = Color.Black,
+          tint = MaterialTheme.colorScheme.onSurface,
       )
     }
     IconButton(onClick = {}) {
       Icon(
           imageVector = Icons.Default.MoreVert,
           contentDescription = "More Options",
-          tint = Color.Black,
+          tint = MaterialTheme.colorScheme.onSurface,
       )
     }
   }
@@ -165,17 +164,15 @@ private fun SignUpHeader() {
   Column {
     Text(
         text = "Create an account",
-        fontSize = 32.sp,
-        fontWeight = FontWeight.Bold,
-        color = Color.Black,
+        style = MaterialTheme.typography.displaySmall,
+        color = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.testTag(SignUpScreenTestTags.CREATE_ACC_TITLE),
     )
     Spacer(modifier = Modifier.height(8.dp))
     Text(
         text = "Your organizer adds you to an event by code once you are in.",
-        fontSize = 15.sp,
-        color = Color.Gray,
-        lineHeight = 20.sp,
+        style = MaterialTheme.typography.bodyLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
   }
 }
@@ -219,8 +216,8 @@ private fun SignUpFields(
     if (confirmPassword.isNotEmpty() && password != confirmPassword) {
       Text(
           text = "Passwords do not match",
-          color = Color.Red,
-          fontSize = 12.sp,
+          color = MaterialTheme.colorScheme.error,
+          style = MaterialTheme.typography.bodySmall,
           modifier =
               Modifier.padding(top = 4.dp).testTag(SignUpScreenTestTags.PASSWORD_MISMATCH_ERROR),
       )
@@ -228,8 +225,8 @@ private fun SignUpFields(
     Spacer(modifier = Modifier.height(6.dp))
     Text(
         text = "8 characters or more.",
-        fontSize = 13.sp,
-        color = Color.Gray,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(start = 4.dp),
     )
   }
@@ -251,6 +248,7 @@ private fun SignUpTextField(
       singleLine = true,
       keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
       shape = RoundedCornerShape(12.dp),
+      colors = fieldColors(),
   )
 }
 
@@ -282,12 +280,13 @@ private fun PasswordTextField(
                         else Icons.Default.VisibilityOff,
                     contentDescription =
                         if (isPasswordVisible) "Hide password" else "Show password",
-                    tint = Color.Gray,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
               }
             }
           },
       shape = RoundedCornerShape(12.dp),
+      colors = fieldColors(),
   )
 }
 
@@ -296,7 +295,6 @@ private fun SignUpButton(
     enabled: Boolean,
     isLoading: Boolean,
     onClick: () -> Unit,
-    limeGreen: Color,
 ) {
   Button(
       onClick = onClick,
@@ -305,16 +303,15 @@ private fun SignUpButton(
       shape = RoundedCornerShape(16.dp),
       colors =
           ButtonDefaults.buttonColors(
-              containerColor = limeGreen,
-              contentColor = Color.Black,
-              disabledContainerColor = limeGreen.copy(alpha = 0.5f),
-              disabledContentColor = Color.Black.copy(alpha = 0.5f),
+              containerColor = MaterialTheme.colorScheme.primary,
+              contentColor = MaterialTheme.colorScheme.onPrimary,
+              disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+              disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f),
           ),
   ) {
     Text(
         text = if (isLoading) "Signing up..." else "Create account",
-        fontSize = 16.sp,
-        fontWeight = FontWeight.Bold,
+        style = MaterialTheme.typography.labelLarge,
     )
   }
 }
@@ -325,14 +322,20 @@ private fun SignUpDivider() {
       modifier = Modifier.fillMaxWidth(),
       verticalAlignment = Alignment.CenterVertically,
   ) {
-    HorizontalDivider(modifier = Modifier.weight(1f), color = Color.LightGray.copy(alpha = 0.5f))
+    HorizontalDivider(
+        modifier = Modifier.weight(1f),
+        color = MaterialTheme.colorScheme.outlineVariant,
+    )
     Text(
         text = "or",
         modifier = Modifier.padding(horizontal = 12.dp),
-        color = Color.Gray,
-        fontSize = 14.sp,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = MaterialTheme.typography.bodySmall,
     )
-    HorizontalDivider(modifier = Modifier.weight(1f), color = Color.LightGray.copy(alpha = 0.5f))
+    HorizontalDivider(
+        modifier = Modifier.weight(1f),
+        color = MaterialTheme.colorScheme.outlineVariant,
+    )
   }
 }
 
@@ -343,6 +346,10 @@ private fun GoogleSignUpButton(onClick: () -> Unit) {
       modifier =
           Modifier.fillMaxWidth().height(52.dp).testTag(SignUpScreenTestTags.GOOGLE_SIGNUP_BUTTON),
       shape = RoundedCornerShape(16.dp),
+      colors =
+          ButtonDefaults.outlinedButtonColors(
+              containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
+          ),
   ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -356,27 +363,35 @@ private fun GoogleSignUpButton(onClick: () -> Unit) {
       Spacer(modifier = Modifier.width(12.dp))
       Text(
           text = "Continue with Google",
-          fontSize = 16.sp,
-          fontWeight = FontWeight.Bold,
-          color = Color.Black,
+          style = MaterialTheme.typography.labelLarge,
+          color = MaterialTheme.colorScheme.onSurface,
       )
     }
   }
 }
 
 @Composable
+private fun fieldColors() =
+    OutlinedTextFieldDefaults.colors(
+        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+        focusedBorderColor = MaterialTheme.colorScheme.outline,
+        focusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        cursorColor = MaterialTheme.colorScheme.onSurface,
+    )
+
+@Composable
 private fun SignUpTerms() {
   Text(
       text =
           "By continuing you accept the terms and the privacy notice. Your phone number, if you add one later, is only shown to organizers.",
-      fontSize = 12.sp,
-      color = Color.Gray,
-      lineHeight = 16.sp,
+      style = MaterialTheme.typography.bodySmall,
+      color = if (isSystemInDarkTheme()) onSurfaceMutedDark else onSurfaceMutedLight,
   )
 }
 
 @Composable
-private fun SignUpFooter(onSignInClick: () -> Unit, darkLime: Color) {
+private fun SignUpFooter(onSignInClick: () -> Unit) {
   Row(
       modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
       horizontalArrangement = Arrangement.Center,
@@ -384,8 +399,8 @@ private fun SignUpFooter(onSignInClick: () -> Unit, darkLime: Color) {
   ) {
     Text(
         text = "Already have an account?",
-        fontSize = 15.sp,
-        color = Color.Gray,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     Spacer(modifier = Modifier.width(4.dp))
     TextButton(
@@ -394,9 +409,8 @@ private fun SignUpFooter(onSignInClick: () -> Unit, darkLime: Color) {
     ) {
       Text(
           text = "Sign in",
-          fontSize = 15.sp,
-          fontWeight = FontWeight.Bold,
-          color = darkLime,
+          style = MaterialTheme.typography.labelLarge,
+          color = MaterialTheme.colorScheme.onPrimaryContainer,
       )
     }
   }
@@ -406,7 +420,7 @@ private fun SignUpFooter(onSignInClick: () -> Unit, darkLime: Color) {
 @Preview(showBackground = true)
 @Composable
 fun SignUpScreenPreview() {
-  MaterialTheme {
+  AppTheme {
     SignUpScreen(
         credentialManager = null,
     )
