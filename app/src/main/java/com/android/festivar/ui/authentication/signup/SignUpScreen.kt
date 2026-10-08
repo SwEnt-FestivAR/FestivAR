@@ -5,6 +5,7 @@ package com.android.festivar.ui.authentication.signup
 import android.annotation.SuppressLint
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -32,6 +33,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -55,6 +57,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.resources.GoogleLogo
 import com.android.festivar.ui.theme.AppTheme
+import com.android.festivar.ui.theme.onSurfaceMutedDark
+import com.android.festivar.ui.theme.onSurfaceMutedLight
 import com.google.firebase.auth.FirebaseUser
 
 object SignUpScreenTestTags {
@@ -244,6 +248,7 @@ private fun SignUpTextField(
       singleLine = true,
       keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
       shape = RoundedCornerShape(12.dp),
+      colors = fieldColors(),
   )
 }
 
@@ -281,6 +286,7 @@ private fun PasswordTextField(
             }
           },
       shape = RoundedCornerShape(12.dp),
+      colors = fieldColors(),
   )
 }
 
@@ -340,6 +346,10 @@ private fun GoogleSignUpButton(onClick: () -> Unit) {
       modifier =
           Modifier.fillMaxWidth().height(52.dp).testTag(SignUpScreenTestTags.GOOGLE_SIGNUP_BUTTON),
       shape = RoundedCornerShape(16.dp),
+      colors =
+          ButtonDefaults.outlinedButtonColors(
+              containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
+          ),
   ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -361,12 +371,19 @@ private fun GoogleSignUpButton(onClick: () -> Unit) {
 }
 
 @Composable
+private fun fieldColors() =
+    OutlinedTextFieldDefaults.colors(
+        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+    )
+
+@Composable
 private fun SignUpTerms() {
   Text(
       text =
           "By continuing you accept the terms and the privacy notice. Your phone number, if you add one later, is only shown to organizers.",
       style = MaterialTheme.typography.bodySmall,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      color = if (isSystemInDarkTheme()) onSurfaceMutedDark else onSurfaceMutedLight,
   )
 }
 
