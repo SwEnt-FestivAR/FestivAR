@@ -6,6 +6,9 @@ import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.firestore
+import java.time.Duration
+import java.time.LocalDateTime
+import java.util.UUID
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
 import org.junit.After
@@ -14,9 +17,6 @@ import org.junit.Before
 import org.junit.BeforeClass
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.time.Duration
-import java.time.LocalDateTime
-import java.util.UUID
 
 @RunWith(AndroidJUnit4::class)
 class TaskRepositoryFirebaseTest {
