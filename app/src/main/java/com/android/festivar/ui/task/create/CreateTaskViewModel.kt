@@ -3,12 +3,10 @@ package com.android.festivar.ui.task.create
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.initializer
-import androidx.lifecycle.viewmodel.viewModelFactory
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
+import com.android.festivar.model.task.TasksRepositoryProvider
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -101,14 +99,14 @@ data class CreateTaskUiState(
   fun toTask(taskId: String, eventId: String): Task {
     require(isValid) { "The form is not valid." }
     return Task(
-          taskId = taskId,
-          eventId = eventId,
-          title = title.trim(),
-          description = description.trim(),
-          location = location.trim(),
-          startTime = startDateTime,
-          endTime = endDateTime,
-      )
+        taskId = taskId,
+        eventId = eventId,
+        title = title.trim(),
+        description = description.trim(),
+        location = location.trim(),
+        startTime = startDateTime,
+        endTime = endDateTime,
+    )
   }
 
   private fun combine(date: LocalDate?, time: LocalTime?): LocalDateTime? =
@@ -118,12 +116,11 @@ data class CreateTaskUiState(
 /**
  * Holds the state of the Create task screen and saves the new task in [tasksRepository].
  *
- * @param eventId The event the created task belongs to.
- * @param tasksRepository Where the task is saved. Only the interface is known here, never Firebase.
+ * @param tasksRepository Where the task is saved. It is the app's repository by default; the tests
+ *   give an in-memory one.
  */
 class CreateTaskViewModel(
-    private val eventId: String,
-    private val tasksRepository: TasksRepository,
+    private val tasksRepository: TasksRepository = TasksRepositoryProvider.repository,
 ) : ViewModel() {
   // Create task UI state
   private val _uiState = MutableStateFlow(CreateTaskUiState())
@@ -157,8 +154,13 @@ class CreateTaskViewModel(
   /** Clears the error message in the UI state. */
   fun clearError() = _uiState.update { it.copy(errorMsg = null) }
 
-  /** Saves the task if the form is valid. Does nothing while a save is running. */
-  fun createTask() {
+  /**
+   * Saves the task in the event [eventId] if the form is valid. Does nothing while a save is
+   * running.
+   *
+   * @param eventId The event the created task belongs to.
+   */
+  fun createTask(eventId: String) {
     val form = _uiState.value
     if (!form.canCreate) return
     // The task is built from the copy of the form taken above, so typing during the save does not
@@ -176,12 +178,5 @@ class CreateTaskViewModel(
         _uiState.update { it.copy(isSaving = false, errorMsg = "Unable to create the task.") }
       }
     }
-  }
-
-  companion object {
-    fun factory(eventId: String, tasksRepository: TasksRepository): ViewModelProvider.Factory =
-        viewModelFactory {
-          initializer { CreateTaskViewModel(eventId, tasksRepository) }
-        }
   }
 }

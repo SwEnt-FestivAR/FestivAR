@@ -42,7 +42,7 @@ abstract class CreateTaskTest {
   @Before
   open fun setUp() {
     repository = TasksRepositoryLocal()
-    viewModel = CreateTaskViewModel(EVENT_ID, repository)
+    viewModel = CreateTaskViewModel(repository)
     createdCount = 0
     backCount = 0
   }
@@ -53,6 +53,7 @@ abstract class CreateTaskTest {
     setContent {
       AppTheme {
         CreateTaskScreen(
+            eventId = EVENT_ID,
             viewModel = viewModel,
             onBack = { backCount++ },
             onTaskCreated = { createdCount++ },

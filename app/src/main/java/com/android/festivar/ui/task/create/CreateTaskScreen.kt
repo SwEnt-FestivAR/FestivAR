@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.ui.components.FestivarDatePickerDialog
 import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.components.FestivarPickerField
@@ -88,15 +89,17 @@ private enum class Picker {
 /**
  * Create task screen, connected to its [viewModel].
  *
+ * @param eventId The event the created task belongs to.
  * @param onBack Called when the user leaves without creating a task.
  * @param onTaskCreated Called once the task has been saved.
  */
 @Composable
 fun CreateTaskScreen(
-    viewModel: CreateTaskViewModel,
+    eventId: String,
     onBack: () -> Unit,
     onTaskCreated: () -> Unit,
     modifier: Modifier = Modifier,
+    viewModel: CreateTaskViewModel = viewModel(),
 ) {
   val state by viewModel.uiState.collectAsState()
 
@@ -114,7 +117,7 @@ fun CreateTaskScreen(
               onStartTimeChange = viewModel::updateStartTime,
               onEndDateChange = viewModel::updateEndDate,
               onEndTimeChange = viewModel::updateEndTime,
-              onCreate = viewModel::createTask,
+              onCreate = { viewModel.createTask(eventId) },
           ),
       modifier = modifier,
   )
