@@ -137,7 +137,8 @@ class CreateTaskScreenInstrumentedTest : CreateTaskTest() {
     composeTestRule.onNodeWithText("Cancel").assertDoesNotExist()
     composeTestRule
         .onNodeWithTag(CreateTaskScreenTestTags.START_TIME_FIELD)
-        .assertTextEquals("Start time")
+        // The label, then the (empty) value of the field: nothing was picked.
+        .assertTextEquals("Start time", "")
   }
 
   // --- Invalid forms -------------------------------------------------------------------------
