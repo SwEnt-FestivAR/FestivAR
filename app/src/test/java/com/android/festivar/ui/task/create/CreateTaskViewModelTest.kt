@@ -22,7 +22,7 @@ class CreateTaskViewModelTest {
   private val viewModel = CreateTaskViewModel(eventId = "event-1", tasksRepository = repository)
   private val day = LocalDate.of(2026, 10, 17)
 
-  private fun savedTasks(): List<Task> = runBlocking { repository.getAllTasks() }
+  private fun savedTasks(): List<Task> = runBlocking { repository.getAllTasks("event-1") }
 
   @Test
   fun updates_areReflectedInState() {
