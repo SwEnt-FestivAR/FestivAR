@@ -1,5 +1,7 @@
 package com.android.festivar.ui.event
 
+// Co-authored-by: Copilot App
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.model.event.Event

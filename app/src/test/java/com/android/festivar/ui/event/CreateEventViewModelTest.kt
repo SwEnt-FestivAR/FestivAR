@@ -81,6 +81,82 @@ class CreateEventViewModelTest {
   }
 
   @Test
+  fun removeErrorNameWorks() {
+    viewModel.setErrors()
+    viewModel.removeErrorName()
+
+    assertFalse(viewModel.uiState.value.errorName)
+  }
+
+  @Test
+  fun removeErrorDateWorks() {
+    viewModel.setErrors()
+    viewModel.removeErrorDate()
+
+    assertFalse(viewModel.uiState.value.errorDate)
+  }
+
+  @Test
+  fun removeErrorVenueWorks() {
+    viewModel.setErrors()
+    viewModel.removeErrorVenue()
+
+    assertFalse(viewModel.uiState.value.errorVenue)
+  }
+
+  @Test
+  fun setErrorsSetsErrorsForBlankFields() {
+    viewModel.setErrors()
+
+    val state = viewModel.uiState.value
+    assertTrue(state.errorName)
+    assertTrue(state.errorDate)
+    assertTrue(state.errorVenue)
+  }
+
+  @Test
+  fun setErrorsSetsDateErrorForInvalidDateRange() {
+    viewModel.updateStartDate(endDate)
+    viewModel.updateEndDate(startDate)
+
+    viewModel.setErrors()
+
+    assertTrue(viewModel.uiState.value.errorDate)
+  }
+
+  @Test
+  fun endDateComesAfterStartDateWorksForValidDates() {
+    viewModel.updateStartDate(startDate)
+    viewModel.updateEndDate(endDate)
+
+    assertTrue(viewModel.endDateComesAfterStartDate())
+  }
+
+  @Test
+  fun endDateComesAfterStartDateIsFalseForInvalidDates() {
+    viewModel.updateStartDate(endDate)
+    viewModel.updateEndDate(startDate)
+
+    assertFalse(viewModel.endDateComesAfterStartDate())
+  }
+
+  @Test
+  fun validEventIsTrueWhenAllFieldsAreValid() {
+    fillRequiredFields()
+
+    assertTrue(viewModel.validEvent())
+  }
+
+  @Test
+  fun validEventIsFalseWhenDatesAreInvalid() {
+    fillRequiredFields()
+    viewModel.updateStartDate(endDate)
+    viewModel.updateEndDate(startDate)
+
+    assertFalse(viewModel.validEvent())
+  }
+
+  @Test
   fun createEvent_addsTheFormEventToTheRepository() = runBlocking {
     viewModel.updateName("Summer festival")
     viewModel.updateStartDate(startDate)

@@ -2,27 +2,22 @@ package com.android.festivar.ui.event
 
 // Co-authored-by: Copilot App
 
-import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
-import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
-import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.event.EventsRepositoryLocal
 import io.mockk.spyk
 import io.mockk.verify
-import java.time.Instant
-import java.time.ZoneId
+import java.time.LocalDate
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
+import java.util.Locale
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -41,7 +36,7 @@ class CreateEventScreenTest {
   }
 
   @Test
-  fun taggedElementsAreDisplayed() {
+  fun nonErrorTaggedElementsAreDisplayed() {
     listOf(
             CreateEventScreenTestTags.NAVIGATION_BUTTON,
             CreateEventScreenTestTags.TITLE,
@@ -56,6 +51,22 @@ class CreateEventScreenTest {
   }
 
   @Test
+  fun errorComponentsAreDisplayedWhenCreateButtonIsClickedWithInvalidFields() {
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).performClick()
+
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAME_ERROR).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.ENDS_ERROR).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.ADDRESS_ERROR).assertIsDisplayed()
+  }
+
+  @Test
+  fun createButtonDoesNotCallCreateEventWhenFieldsAreInvalid() {
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).performClick()
+
+    verify(exactly = 0) { viewModel.createEvent() }
+  }
+
+  @Test
   fun fieldsReceiveInput() {
     composeTestRule
         .onNodeWithTag(CreateEventScreenTestTags.NAME_FIELD)
@@ -67,34 +78,29 @@ class CreateEventScreenTest {
         .onNodeWithTag(CreateEventScreenTestTags.DESCRIPTION_FIELD)
         .performTextInput("Bring the stage equipment")
 
-    composeTestRule
-        .onNodeWithTag(CreateEventScreenTestTags.NAME_FIELD)
-        .assertTextEquals("Summer festival")
-    composeTestRule
-        .onNodeWithTag(CreateEventScreenTestTags.LOCATION_FIELD)
-        .assertTextEquals("Main square")
-    composeTestRule
-        .onNodeWithTag(CreateEventScreenTestTags.DESCRIPTION_FIELD)
-        .assertTextEquals("Bring the stage equipment")
+    composeTestRule.onNodeWithText("Summer festival").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Main square").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Bring the stage equipment").assertIsDisplayed()
 
-    /**
-     * TODO: select the current day for the start date and the next day for the end date
-     * TODO: and verify that the start date and end date fields have the right values
-     */
-    selectDate(CreateEventScreenTestTags.START_DATE_FIELD)
-    selectDate(CreateEventScreenTestTags.END_DATE_FIELD)
+    selectDate(CreateEventScreenTestTags.START_DATE_FIELD, LocalDate.now())
+    selectDate(CreateEventScreenTestTags.END_DATE_FIELD, LocalDate.now().plusDays(1))
 
-    val expectedDate =
+    val expectedStartDate =
         DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
-            .withZone(ZoneId.systemDefault())
-            .format(Instant.now())
-    composeTestRule.onAllNodesWithText(expectedDate).assertCountEquals(2)
+            .withLocale(Locale.getDefault())
+            .format(LocalDate.now())
+    val expectedEndDate =
+        DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
+            .withLocale(Locale.getDefault())
+            .format(LocalDate.now().plusDays(1))
+    composeTestRule.onNodeWithText(expectedStartDate).assertIsDisplayed()
+    composeTestRule.onNodeWithText(expectedEndDate).assertIsDisplayed()
 
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsEnabled()
   }
 
   @Test
-  fun clickingEnabledCreateButtonCallsViewModelCreateEvent() {
+  fun createButtonCallsCreateEventWhenValid() {
     viewModel.updateName("Summer festival")
     viewModel.updateStartDate(ZonedDateTime.parse("2026-10-08T10:00:00+02:00"))
     viewModel.updateEndDate(ZonedDateTime.parse("2026-10-08T18:00:00+02:00"))
@@ -107,69 +113,18 @@ class CreateEventScreenTest {
     verify(exactly = 1) { viewModel.createEvent() }
   }
 
-  @Test
-  fun createButtonIsDisabledUntilRequiredFieldsAreFilled() {
-    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsNotEnabled()
-
-    fillRequiredFields()
-    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsEnabled()
-
-    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAME_FIELD).performTextClearance()
-    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsNotEnabled()
-  }
-
-  @Test
-  fun createButtonIsDisabledWhenStartDateIsEmpty() {
-    composeTestRule
-        .onNodeWithTag(CreateEventScreenTestTags.NAME_FIELD)
-        .performTextInput("Summer festival")
-    composeTestRule
-        .onNodeWithTag(CreateEventScreenTestTags.LOCATION_FIELD)
-        .performTextInput("Main square")
-    selectDate(CreateEventScreenTestTags.END_DATE_FIELD)
-
-    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsNotEnabled()
-  }
-
-  @Test
-  fun createButtonIsDisabledWhenEndDateIsEmpty() {
-    composeTestRule
-        .onNodeWithTag(CreateEventScreenTestTags.NAME_FIELD)
-        .performTextInput("Summer festival")
-    composeTestRule
-        .onNodeWithTag(CreateEventScreenTestTags.LOCATION_FIELD)
-        .performTextInput("Main square")
-    selectDate(CreateEventScreenTestTags.START_DATE_FIELD)
-
-    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsNotEnabled()
-  }
-
-  @Test
-  fun createButtonIsDisabledWhenLocationIsEmpty() {
-    composeTestRule
-        .onNodeWithTag(CreateEventScreenTestTags.NAME_FIELD)
-        .performTextInput("Summer festival")
-    selectDate(CreateEventScreenTestTags.START_DATE_FIELD)
-    selectDate(CreateEventScreenTestTags.END_DATE_FIELD)
-
-    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsNotEnabled()
-  }
-
-  private fun fillRequiredFields() {
-    composeTestRule
-        .onNodeWithTag(CreateEventScreenTestTags.NAME_FIELD)
-        .performTextInput("Summer festival")
-    composeTestRule
-        .onNodeWithTag(CreateEventScreenTestTags.LOCATION_FIELD)
-        .performTextInput("Main square")
-    selectDate(CreateEventScreenTestTags.START_DATE_FIELD)
-    selectDate(CreateEventScreenTestTags.END_DATE_FIELD)
-  }
-
-  private fun selectDate(tag: String) {
+  private fun selectDate(tag: String, date: LocalDate) {
     composeTestRule.onNodeWithTag(tag).performClick()
     composeTestRule.onNodeWithText("OK").assertIsDisplayed()
-    composeTestRule.onNodeWithText("Today", substring = true).performClick()
+    if (date == LocalDate.now()) {
+      composeTestRule.onNodeWithText("Today", substring = true).performClick()
+    } else {
+      val dateDescription =
+          DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL)
+              .withLocale(Locale.getDefault())
+              .format(date)
+      composeTestRule.onNodeWithText(dateDescription, substring = true).performClick()
+    }
     composeTestRule.onNodeWithText("OK").performClick()
   }
 }
