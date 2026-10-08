@@ -7,6 +7,9 @@ import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.temporary.User
 import java.time.ZonedDateTime
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,8 +35,7 @@ data class EventItemUIState(
 /**
  * Represents the UI state of the Events Overview screen.
  *
- * @property ongoingEvents The [Event] items taking place right now, the one that started first
- *   first.
+ * @property ongoingEvents The [Event] items taking place right now, the earliest started first.
  * @property upcomingEvents The [Event] items that have not started yet, the soonest first.
  * @property pastEvents The [Event] items that are closed or ended, the most recent first.
  * @property selectedFilter Which [Event] items are shown: [ongoingEvents], [upcomingEvents] or
@@ -85,6 +87,9 @@ class EventsOverviewViewModel(
   private val _uiState = MutableStateFlow(EventsOverviewUIState(user = user))
   val uiState: StateFlow<EventsOverviewUIState> = _uiState.asStateFlow()
 
+  /** The fetch of the [Event] items in progress, cancelled when a newer one starts. */
+  private var getEventsJob: Job? = null
+
   init {
     getEvents()
   }
@@ -106,15 +111,18 @@ class EventsOverviewViewModel(
 
   /**
    * Fetches the [Event] items from the repository, the ones of [user] if it is set, and updates the
-   * UI state.
+   * UI state. Cancels the previous fetch, so that an older result never overwrites a newer one.
    */
   private fun getEvents() {
+    getEventsJob?.cancel()
     _uiState.update { it.copy(isLoading = true) }
-    viewModelScope.launch {
+    getEventsJob = viewModelScope.launch {
       try {
         val events =
             if (user == null) eventsRepository.getAllEvents()
             else eventsRepository.getEventsForUser(user.uid)
+        // Stop here if cancelled during a fetch that does not check for cancellation itself
+        ensureActive()
         val currentTime = now()
         val (past, notPast) = events.partition { it.isPast(currentTime) }
         val (upcoming, ongoing) = notPast.partition { it.startDate.isAfter(currentTime) }
@@ -126,8 +134,12 @@ class EventsOverviewViewModel(
               pastEvents =
                   past.sortedByDescending { event -> event.startDate }.map(::EventItemUIState),
               isLoading = false,
+              errorMsg = null,
           )
         }
+      } catch (e: CancellationException) {
+        // Cancelled by a newer fetch or because the ViewModel is cleared: not an error
+        throw e
       } catch (e: Exception) {
         _uiState.update {
           it.copy(isLoading = false, errorMsg = "Failed to load events: ${e.message}")
