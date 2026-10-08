@@ -212,7 +212,7 @@ private fun CreateEventTopBar(onBack: () -> Unit) {
             text = "Create event",
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.testTag(CreateEventScreenTestTags.TITLE)
+            modifier = Modifier.testTag(CreateEventScreenTestTags.TITLE),
         )
       },
       navigationIcon = {
