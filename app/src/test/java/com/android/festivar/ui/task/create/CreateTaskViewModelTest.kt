@@ -162,6 +162,31 @@ class CreateTaskViewModelTest {
     assertFalse(vm.uiState.value.isSaving)
   }
 
+  // Typing while the save is running must not change the task that is saved: it is built from the
+  // form as it was when "Create task" was pressed.
+  @Test
+  fun createTask_editsDuringTheSave_doNotChangeTheSavedTask() {
+    val gate = CompletableDeferred<Unit>()
+    val local = TasksRepositoryLocal()
+    // FAKE with a gate: it saves like TasksRepositoryLocal, but only once the test opens the gate.
+    val slow =
+        object : TasksRepository by local {
+          override suspend fun addTask(task: Task) {
+            gate.await()
+            local.addTask(task)
+          }
+        }
+    val vm = CreateTaskViewModel(slow)
+    vm.updateTitle("Run power to stage")
+
+    vm.createTask("event-1")
+    vm.updateTitle("Something else")
+    gate.complete(Unit)
+    shadowOf(Looper.getMainLooper()).idle()
+
+    assertEquals("Run power to stage", runBlocking { local.getAllTasks("event-1") }.single().title)
+  }
+
   // After a failure the user can press "Create task" again: the repository now works, so the task
   // is saved once and the old error is gone.
   @Test

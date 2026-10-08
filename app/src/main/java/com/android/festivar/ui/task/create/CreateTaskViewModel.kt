@@ -164,11 +164,13 @@ class CreateTaskViewModel(
     val form = _uiState.value
     if (!form.canCreate) return
     // The task is built from the copy of the form taken above, so typing during the save does not
-    // change what is saved.
+    // change what is saved. It is built outside the try: the form was just checked, so a failure
+    // here is a bug and must not be shown to the user as a failed save.
+    val task = form.toTask(tasksRepository.getNewUid(), eventId)
     _uiState.update { it.copy(isSaving = true, errorMsg = null) }
     viewModelScope.launch {
       try {
-        tasksRepository.addTask(form.toTask(tasksRepository.getNewUid(), eventId))
+        tasksRepository.addTask(task)
         _uiState.update { it.copy(isSaving = false, isCreated = true) }
       } catch (e: CancellationException) {
         _uiState.update { it.copy(isSaving = false) }
