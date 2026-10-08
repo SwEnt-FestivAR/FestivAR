@@ -13,7 +13,7 @@ object TasksRepositoryProvider {
     TaskRepositoryFirebase(Firebase.firestore)
   }
 
-  private var override: TasksRepository? = null
+  @Volatile private var override: TasksRepository? = null
 
   /**
    * The repository in use. Firestore is only touched if nothing was set: assigning a repository
@@ -24,4 +24,9 @@ object TasksRepositoryProvider {
     set(value) {
       override = value
     }
+
+  /** Goes back to the Firestore-backed repository. Tests call it to undo an assignment. */
+  fun reset() {
+    override = null
+  }
 }

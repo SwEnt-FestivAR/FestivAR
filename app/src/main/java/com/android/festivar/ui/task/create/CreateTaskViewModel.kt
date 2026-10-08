@@ -11,11 +11,13 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 
 /** What is wrong with a field of the Create task form, shown as a message under that field. */
 enum class FieldError {
@@ -113,43 +115,54 @@ data class CreateTaskUiState(
       date?.atTime(time ?: LocalTime.MIDNIGHT)
 }
 
+private const val SAVE_TIMEOUT_MS = 15_000L
+
 /**
  * Holds the state of the Create task screen and saves the new task in [tasksRepository].
  *
  * @param tasksRepository Where the task is saved. It is the app's repository by default; the tests
  *   give an in-memory one.
+ * @param saveTimeoutMs How long a save may last before it is reported as failed, so that the form
+ *   never stays stuck in the saving state.
  */
 class CreateTaskViewModel(
     private val tasksRepository: TasksRepository = TasksRepositoryProvider.repository,
+    private val saveTimeoutMs: Long = SAVE_TIMEOUT_MS,
 ) : ViewModel() {
+  // The id of the task being created. It is kept across retries: if a save timed out or failed
+  // after reaching the server, the retry targets the same task instead of creating a second one.
+  private var pendingTaskId: String? = null
+
   // Create task UI state
   private val _uiState = MutableStateFlow(CreateTaskUiState())
   val uiState: StateFlow<CreateTaskUiState> = _uiState.asStateFlow()
 
   // Functions to update the UI state.
 
+  // Once the task is created the form is final: later edits are ignored.
+  private fun edit(change: (CreateTaskUiState) -> CreateTaskUiState) =
+      _uiState.update { if (it.isCreated) it else change(it) }
+
   /** Sets the title and marks it as edited, so that an empty title is reported. */
-  fun updateTitle(title: String) = _uiState.update { it.copy(title = title, titleEdited = true) }
+  fun updateTitle(title: String) = edit { it.copy(title = title, titleEdited = true) }
 
   /** Sets the description. */
-  fun updateDescription(description: String) = _uiState.update {
-    it.copy(description = description)
-  }
+  fun updateDescription(description: String) = edit { it.copy(description = description) }
 
   /** Sets the location. */
-  fun updateLocation(location: String) = _uiState.update { it.copy(location = location) }
+  fun updateLocation(location: String) = edit { it.copy(location = location) }
 
   /** Sets the date the task starts. */
-  fun updateStartDate(date: LocalDate) = _uiState.update { it.copy(startDate = date) }
+  fun updateStartDate(date: LocalDate) = edit { it.copy(startDate = date) }
 
   /** Sets the time the task starts. */
-  fun updateStartTime(time: LocalTime) = _uiState.update { it.copy(startTime = time) }
+  fun updateStartTime(time: LocalTime) = edit { it.copy(startTime = time) }
 
   /** Sets the date the task ends. */
-  fun updateEndDate(date: LocalDate) = _uiState.update { it.copy(endDate = date) }
+  fun updateEndDate(date: LocalDate) = edit { it.copy(endDate = date) }
 
   /** Sets the time the task ends. */
-  fun updateEndTime(time: LocalTime) = _uiState.update { it.copy(endTime = time) }
+  fun updateEndTime(time: LocalTime) = edit { it.copy(endTime = time) }
 
   /** Clears the error message in the UI state. */
   fun clearError() = _uiState.update { it.copy(errorMsg = null) }
@@ -166,19 +179,42 @@ class CreateTaskViewModel(
     // The task is built from the copy of the form taken above, so typing during the save does not
     // change what is saved. It is built outside the try: the form was just checked, so a failure
     // here is a bug and must not be shown to the user as a failed save.
-    val task = form.toTask(tasksRepository.getNewUid(), eventId)
+    val taskId = pendingTaskId ?: tasksRepository.getNewUid().also { pendingTaskId = it }
+    val task = form.toTask(taskId, eventId)
     _uiState.update { it.copy(isSaving = true, errorMsg = null) }
     viewModelScope.launch {
       try {
-        tasksRepository.addTask(task)
+        withTimeout(saveTimeoutMs) { tasksRepository.addTask(task) }
         _uiState.update { it.copy(isSaving = false, isCreated = true) }
+      } catch (e: TimeoutCancellationException) {
+        onSaveFailed(task, e)
       } catch (e: CancellationException) {
         _uiState.update { it.copy(isSaving = false) }
         throw e
       } catch (e: Exception) {
-        Log.e("CreateTaskViewModel", "Error adding the task", e)
-        _uiState.update { it.copy(isSaving = false, errorMsg = "Unable to create the task.") }
+        onSaveFailed(task, e)
       }
+    }
+  }
+
+  // A failed save may still have reached the server (for example a timeout). If the task exists,
+  // it is created; otherwise the error is shown and the user can retry with the same task id.
+  private suspend fun onSaveFailed(task: Task, e: Exception) {
+    Log.e("CreateTaskViewModel", "Error adding the task", e)
+    val alreadySaved =
+        try {
+          withTimeout(saveTimeoutMs) { tasksRepository.getTask(task.taskId) }
+          true
+        } catch (_: TimeoutCancellationException) {
+          false
+        } catch (e: CancellationException) {
+          throw e
+        } catch (_: Exception) {
+          false
+        }
+    _uiState.update {
+      if (alreadySaved) it.copy(isSaving = false, isCreated = true)
+      else it.copy(isSaving = false, errorMsg = "Unable to create the task.")
     }
   }
 }

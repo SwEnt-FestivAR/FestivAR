@@ -237,6 +237,60 @@ class CreateTaskViewModelTest {
     assertFalse(vm.uiState.value.isSaving)
   }
 
+  // The save reached the repository but reported a failure (for example a timeout after the
+  // commit). The retry keeps the same task id and finds the task, so nothing is saved twice.
+  @Test
+  fun createTask_whenTheFailedSaveWasStored_retryDoesNotDuplicate() {
+    val local = TasksRepositoryLocal()
+    var failing = true
+    val storedThenFailed =
+        object : TasksRepository by local {
+          override suspend fun addTask(task: Task) {
+            local.addTask(task)
+            if (failing) throw IllegalStateException("lost the answer")
+          }
+        }
+    val vm = CreateTaskViewModel(storedThenFailed)
+    vm.updateTitle("Run power to stage")
+
+    vm.createTask("event-1")
+    failing = false
+    vm.createTask("event-1")
+
+    assertEquals(1, runBlocking { local.getAllTasks("event-1") }.size)
+    assertTrue(vm.uiState.value.isCreated)
+    assertNull(vm.uiState.value.errorMsg)
+  }
+
+  @Test
+  fun createTask_whenTheSaveNeverEnds_timesOutAndAllowsRetry() {
+    val never = CompletableDeferred<Unit>()
+    val hanging =
+        object : TasksRepository by TasksRepositoryLocal() {
+          override suspend fun addTask(task: Task) = never.await()
+        }
+    val vm = CreateTaskViewModel(hanging, saveTimeoutMs = 1_000)
+    vm.updateTitle("Run power to stage")
+
+    vm.createTask("event-1")
+    assertTrue(vm.uiState.value.isSaving)
+    shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofSeconds(5))
+
+    assertEquals("Unable to create the task.", vm.uiState.value.errorMsg)
+    assertFalse(vm.uiState.value.isSaving)
+    assertTrue(vm.uiState.value.canCreate)
+  }
+
+  @Test
+  fun updates_afterTheTaskIsCreated_areIgnored() {
+    viewModel.updateTitle("Run power to stage")
+    viewModel.createTask("event-1")
+
+    viewModel.updateTitle("Something else")
+
+    assertEquals("Run power to stage", viewModel.uiState.value.title)
+  }
+
   @Test
   fun createTask_afterASuccess_isIgnored() {
     viewModel.updateTitle("Run power to stage")
