@@ -27,16 +27,17 @@ import org.junit.Test
 class EventsOverviewViewModelTest {
 
   /**
-   * An [EventsRepositoryLocal] serving [events]. It throws [error] on every fetch when it is set,
-   * and counts the fetches so the tests can check which one the ViewModel uses.
+   * An [EventsRepositoryLocal] serving [events]. It throws [error] on every fetch while it is set,
+   * and records the fetches so the tests can check which one the ViewModel uses, and for which
+   * user.
    */
   private class EventsRepositoryImpl(
       events: List<Event> = listOf(),
-      val error: Exception? = null,
+      var error: Exception? = null,
       private val local: EventsRepository = EventsRepositoryLocal(events),
   ) : EventsRepository by local {
     var getAllEventsCalls = 0
-    var getEventsForUserCalls = 0
+    val requestedUserIds = mutableListOf<String>()
 
     override suspend fun getAllEvents(): List<Event> {
       getAllEventsCalls++
@@ -45,7 +46,7 @@ class EventsOverviewViewModelTest {
     }
 
     override suspend fun getEventsForUser(userId: String): List<Event> {
-      getEventsForUserCalls++
+      requestedUserIds.add(userId)
       error?.let { throw it }
       return local.getEventsForUser(userId)
     }
@@ -61,6 +62,9 @@ class EventsOverviewViewModelTest {
   private val now = getDate(2026, 10, 17, hour = 18)
 
   private val sara = User(uid = "u1", name = "Sara", surname = "Keller")
+
+  /** A user who is a member of no event. */
+  private val marc = User(uid = "u2", name = "Marc", surname = "Dubois")
 
   private val ongoingEvent =
       Event(
@@ -112,11 +116,11 @@ class EventsOverviewViewModelTest {
 
   private fun createViewModel(
       withRepository: EventsRepository,
-      userId: String? = null,
+      user: User? = null,
   ): EventsOverviewViewModel {
     return EventsOverviewViewModel(
         eventsRepository = withRepository,
-        userId = userId,
+        user = user,
         now = { now },
     )
   }
@@ -237,29 +241,83 @@ class EventsOverviewViewModelTest {
 
   /** Test that, without a user, every event of the repository is fetched. */
   @Test
-  fun withoutUserIdAllEventsAreFetched() = runTest {
+  fun withoutUserAllEventsAreFetched() = runTest {
     val repository = EventsRepositoryImpl(listOf(ongoingEvent, upcomingEvent, pastEvent))
     val viewModel = createViewModel(withRepository = repository)
     advanceUntilIdle()
 
     assertEquals(1, repository.getAllEventsCalls)
-    assertEquals(0, repository.getEventsForUserCalls)
+    assertTrue(repository.requestedUserIds.isEmpty())
     assertShows(listOf(pastEvent), viewModel.uiState.value.pastEvents)
   }
 
-  /** Test that, with a user, only the events the user is a member of are fetched. */
+  /** Test that, with a user, only the events the user is a member of are fetched, by its uid. */
   @Test
-  fun withUserIdOnlyTheirEventsAreFetched() = runTest {
+  fun withUserOnlyTheirEventsAreFetched() = runTest {
     val repository = EventsRepositoryImpl(listOf(ongoingEvent, upcomingEvent, pastEvent))
-    val viewModel = createViewModel(withRepository = repository, userId = sara.uid)
+    val viewModel = createViewModel(withRepository = repository, user = sara)
     advanceUntilIdle()
 
     assertEquals(0, repository.getAllEventsCalls)
-    assertEquals(1, repository.getEventsForUserCalls)
+    assertEquals(listOf(sara.uid), repository.requestedUserIds)
     val state = viewModel.uiState.value
     assertShows(listOf(ongoingEvent), state.ongoingEvents)
     assertShows(listOf(upcomingEvent), state.upcomingEvents)
     assertTrue(state.pastEvents.isEmpty())
+  }
+
+  /** Test that a user who is a member of no event has no events, even if the repository has. */
+  @Test
+  fun userWithoutEventsHasNoEvents() = runTest {
+    val repository = EventsRepositoryImpl(listOf(ongoingEvent, upcomingEvent, pastEvent))
+    val viewModel = createViewModel(withRepository = repository, user = marc)
+    advanceUntilIdle()
+
+    assertEquals(listOf(marc.uid), repository.requestedUserIds)
+    assertTrue(viewModel.uiState.value.hasNoEvents)
+    assertNull(viewModel.uiState.value.errorMsg)
+  }
+
+  /** Test that the signed-in user is in the UI state from the start, while the events load. */
+  @Test
+  fun userIsInTheUIStateWhileLoading() = runTest {
+    val viewModel = createViewModel(EventsRepositoryImpl(listOf(ongoingEvent)), user = sara)
+
+    assertTrue(viewModel.uiState.value.isLoading)
+    assertEquals(sara, viewModel.uiState.value.user)
+  }
+
+  /** Test that the signed-in user stays in the UI state once the events are fetched. */
+  @Test
+  fun userIsKeptOnceEventsAreFetched() = runTest {
+    val viewModel = createViewModel(EventsRepositoryImpl(listOf(ongoingEvent)), user = sara)
+    advanceUntilIdle()
+
+    assertFalse(viewModel.uiState.value.isLoading)
+    assertEquals(sara, viewModel.uiState.value.user)
+  }
+
+  /** Test that the signed-in user stays in the UI state when fetching the events fails. */
+  @Test
+  fun userIsKeptWhenFetchingFails() = runTest {
+    val repository = EventsRepositoryImpl(error = RuntimeException("Network down"))
+    val viewModel = createViewModel(withRepository = repository, user = sara)
+    advanceUntilIdle()
+
+    val state = viewModel.uiState.value
+    assertEquals("Failed to load events: Network down", state.errorMsg)
+    assertEquals(sara, state.user)
+  }
+
+  /** Test that, without a user, the UI state has no user to show. */
+  @Test
+  fun withoutUserTheUIStateHasNoUser() = runTest {
+    val viewModel = createViewModel(EventsRepositoryImpl(listOf(ongoingEvent)))
+    assertNull(viewModel.uiState.value.user)
+
+    advanceUntilIdle()
+
+    assertNull(viewModel.uiState.value.user)
   }
 
   /** Test that a failing repository stops the loading and shows an error message. */
@@ -326,6 +384,52 @@ class EventsOverviewViewModelTest {
     assertShows(listOf(upcomingEvent), state.shownEvents)
   }
 
+  /**
+   * Test that refreshing with a user fetches its events again, including the ones it joined since,
+   * and keeps the user in the UI state.
+   */
+  @Test
+  fun refreshWithUserFetchesTheirNewEvents() = runTest {
+    val repository = EventsRepositoryImpl(listOf(ongoingEvent))
+    val viewModel = createViewModel(withRepository = repository, user = sara)
+    advanceUntilIdle()
+
+    repository.addEvent(upcomingEvent)
+    repository.addEvent(pastEvent)
+    viewModel.refreshUIState()
+    advanceUntilIdle()
+
+    assertEquals(listOf(sara.uid, sara.uid), repository.requestedUserIds)
+    val state = viewModel.uiState.value
+    assertShows(listOf(ongoingEvent), state.ongoingEvents)
+    assertShows(listOf(upcomingEvent), state.upcomingEvents)
+    assertTrue(state.pastEvents.isEmpty())
+    assertEquals(sara, state.user)
+  }
+
+  /**
+   * Test that, once the error message is cleared, refreshing after the repository recovers shows
+   * the events without any error.
+   */
+  @Test
+  fun refreshAfterFailureShowsTheEvents() = runTest {
+    val repository =
+        EventsRepositoryImpl(listOf(ongoingEvent), error = RuntimeException("Network down"))
+    val viewModel = createViewModel(withRepository = repository)
+    advanceUntilIdle()
+    assertTrue(viewModel.uiState.value.hasNoEvents)
+
+    viewModel.clearErrorMsg()
+    repository.error = null
+    viewModel.refreshUIState()
+    advanceUntilIdle()
+
+    val state = viewModel.uiState.value
+    assertFalse(state.isLoading)
+    assertNull(state.errorMsg)
+    assertShows(listOf(ongoingEvent), state.ongoingEvents)
+  }
+
   /** Test that there are no events only when every category is empty. */
   @Test
   fun hasNoEventsOnlyWhenEveryCategoryIsEmpty() = runTest {
@@ -333,8 +437,53 @@ class EventsOverviewViewModelTest {
     advanceUntilIdle()
     assertTrue(emptyViewModel.uiState.value.hasNoEvents)
 
-    val pastOnlyViewModel = createViewModel(EventsRepositoryImpl(listOf(pastEvent)))
+    // One event in a single category is enough, whichever the category
+    listOf(ongoingEvent, upcomingEvent, pastEvent).forEach { event ->
+      val viewModel = createViewModel(EventsRepositoryImpl(listOf(event)))
+      advanceUntilIdle()
+      assertFalse(viewModel.uiState.value.hasNoEvents)
+    }
+  }
+
+  /** Test the default UI state: nothing to show, no user, the ongoing filter, no error. */
+  @Test
+  fun defaultUIStateIsEmpty() {
+    val state = EventsOverviewUIState()
+
+    assertNull(state.user)
+    assertEquals(EventsFilter.ONGOING, state.selectedFilter)
+    assertFalse(state.isLoading)
+    assertNull(state.errorMsg)
+    assertTrue(state.hasNoEvents)
+    assertTrue(state.shownEvents.isEmpty())
+  }
+
+  /**
+   * Test that, with the default arguments, the ViewModel has no user, fetches every event and
+   * splits them with the real current time.
+   */
+  @Test
+  fun defaultArgumentsFetchEveryEventWithTheRealTime() = runTest {
+    val realNow = ZonedDateTime.now()
+    val lastYear =
+        pastEvent.copy(
+            startDate = realNow.minusYears(1),
+            endDate = realNow.minusYears(1).plusHours(5),
+        )
+    val nextYear =
+        upcomingEvent.copy(
+            startDate = realNow.plusYears(1),
+            endDate = realNow.plusYears(1).plusHours(5),
+        )
+    val repository = EventsRepositoryImpl(listOf(lastYear, nextYear))
+    val viewModel = EventsOverviewViewModel(eventsRepository = repository)
     advanceUntilIdle()
-    assertFalse(pastOnlyViewModel.uiState.value.hasNoEvents)
+
+    assertEquals(1, repository.getAllEventsCalls)
+    val state = viewModel.uiState.value
+    assertNull(state.user)
+    assertTrue(state.ongoingEvents.isEmpty())
+    assertShows(listOf(nextYear), state.upcomingEvents)
+    assertShows(listOf(lastYear), state.pastEvents)
   }
 }
