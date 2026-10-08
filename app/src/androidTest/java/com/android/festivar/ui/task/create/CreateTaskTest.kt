@@ -45,7 +45,7 @@ abstract class CreateTaskTest {
     backCount = 0
   }
 
-  fun savedTasks(): List<Task> = runBlocking { repository.getAllTasks() }
+  fun savedTasks(): List<Task> = runBlocking { repository.getAllTasks(EVENT_ID) }
 
   fun ComposeContentTestRule.showCreateTaskScreen() {
     setContent {

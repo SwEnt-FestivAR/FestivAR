@@ -71,7 +71,7 @@ private fun CreateTaskTestHost(onClose: () -> Unit) {
       onBack = onClose,
       onTaskCreated = {
         scope.launch {
-          Log.d("CreateTaskTest", "Saved tasks: ${repository.getAllTasks()}")
+          Log.d("CreateTaskTest", "Saved tasks: ${repository.getAllTasks("test-event")}")
           Toast.makeText(context, "Task created (see Logcat: CreateTaskTest)", Toast.LENGTH_LONG)
               .show()
         }
