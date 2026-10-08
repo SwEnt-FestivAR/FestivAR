@@ -11,7 +11,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -25,6 +27,21 @@ import androidx.compose.ui.unit.dp
 import com.android.festivar.ui.theme.AppTheme
 
 private val FieldShape = RoundedCornerShape(12.dp)
+
+/**
+ * Colors of the fields. Material draws the focused border, label and cursor in `primary`, the lime
+ * of the app, which is too flashy and hard to read on the light background. They use the dark green
+ * of the theme instead; the other states keep the Material defaults.
+ */
+@Composable
+private fun festivarFieldColors(): TextFieldColors {
+  val accent = MaterialTheme.colorScheme.onPrimaryContainer
+  return OutlinedTextFieldDefaults.colors(
+      focusedBorderColor = accent,
+      focusedLabelColor = accent,
+      cursorColor = accent,
+  )
+}
 
 /**
  * Outlined text field in the FestivAR style, with its label sitting on the border.
@@ -62,6 +79,7 @@ fun FestivarTextField(
       keyboardOptions = keyboardOptions,
       visualTransformation = visualTransformation,
       trailingIcon = trailingIcon,
+      colors = festivarFieldColors(),
       shape = FieldShape,
   )
 }
@@ -96,6 +114,7 @@ fun FestivarPickerField(
       textStyle = MaterialTheme.typography.bodyLarge,
       singleLine = true,
       isError = isError,
+      colors = festivarFieldColors(),
       shape = FieldShape,
       interactionSource = interactionSource,
   )
