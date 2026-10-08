@@ -7,11 +7,12 @@ interface TasksRepository {
   fun getNewUid(): String
 
   /**
-   * Retrieves all [Task] items from the repository.
+   * Retrieves all [Task] items belonging to an event from the repository.
    *
-   * @return A list of all [Task] items.
+   * @param eventId The unique identifier of the [Event] whose tasks to retrieve.
+   * @return A list of [Task] items belonging to the event.
    */
-  suspend fun getAllTasks(): List<Task>
+  suspend fun getAllTasks(eventId: String): List<Task>
 
   /**
    * Retrieves a specific [Task] item by its unique identifier.
