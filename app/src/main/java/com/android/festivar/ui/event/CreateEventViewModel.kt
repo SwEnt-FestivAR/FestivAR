@@ -96,7 +96,7 @@ class CreateEventViewModel(
     val state = _uiState.value
     return state.startDate != null &&
         state.endDate != null &&
-        state.endDate.isAfter(state.startDate)
+        !state.endDate.isBefore(state.startDate)
   }
 
   fun formIsComplete(): Boolean {
