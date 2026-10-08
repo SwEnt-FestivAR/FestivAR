@@ -55,7 +55,10 @@ data class EventsOverviewUIState(
           EventsFilter.PAST -> pastEvents
         }
 
-  /** Whether there is no [Event] at all, neither ongoing, upcoming nor past. */
+  /**
+   * Whether there is no [Event] at all, neither ongoing, upcoming nor past. Also `true` during the
+   * first load, so the screen checks [isLoading] first to not flash its empty state.
+   */
   val hasNoEvents: Boolean
     get() = ongoingEvents.isEmpty() && upcomingEvents.isEmpty() && pastEvents.isEmpty()
 }
