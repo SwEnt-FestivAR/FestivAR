@@ -24,15 +24,6 @@ enum class EventsFilter {
 }
 
 /**
- * Represents an [Event] card of the Events Overview screen.
- *
- * @property event The [Event] shown by the card.
- */
-data class EventItemUIState(
-    val event: Event,
-)
-
-/**
  * Represents the UI state of the Events Overview screen.
  *
  * @property ongoingEvents The [Event] items taking place right now, the earliest started first.
@@ -47,16 +38,16 @@ data class EventItemUIState(
  *   there is no error.
  */
 data class EventsOverviewUIState(
-    val ongoingEvents: List<EventItemUIState> = emptyList(),
-    val upcomingEvents: List<EventItemUIState> = emptyList(),
-    val pastEvents: List<EventItemUIState> = emptyList(),
+    val ongoingEvents: List<Event> = emptyList(),
+    val upcomingEvents: List<Event> = emptyList(),
+    val pastEvents: List<Event> = emptyList(),
     val selectedFilter: EventsFilter = EventsFilter.ONGOING,
     val user: User? = null,
     val isLoading: Boolean = false,
     val errorMsg: String? = null,
 ) {
   /** The [Event] items selected by [selectedFilter]. */
-  val shownEvents: List<EventItemUIState>
+  val shownEvents: List<Event>
     get() =
         when (selectedFilter) {
           EventsFilter.ONGOING -> ongoingEvents
@@ -128,11 +119,9 @@ class EventsOverviewViewModel(
         val (upcoming, ongoing) = notPast.partition { it.startDate.isAfter(currentTime) }
         _uiState.update {
           it.copy(
-              ongoingEvents = ongoing.sortedBy { event -> event.startDate }.map(::EventItemUIState),
-              upcomingEvents =
-                  upcoming.sortedBy { event -> event.startDate }.map(::EventItemUIState),
-              pastEvents =
-                  past.sortedByDescending { event -> event.endDate }.map(::EventItemUIState),
+              ongoingEvents = ongoing.sortedBy { event -> event.startDate },
+              upcomingEvents = upcoming.sortedBy { event -> event.startDate },
+              pastEvents = past.sortedByDescending { event -> event.endDate },
               isLoading = false,
               errorMsg = null,
           )

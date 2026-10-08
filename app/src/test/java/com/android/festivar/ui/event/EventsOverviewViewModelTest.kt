@@ -142,11 +142,6 @@ class EventsOverviewViewModelTest {
     )
   }
 
-  /** Asserts that [items] show exactly the [expected] events, in the same order. */
-  private fun assertShows(expected: List<Event>, items: List<EventItemUIState>) {
-    assertEquals(expected, items.map { it.event })
-  }
-
   /**
    * Creates a ViewModel on [repository] and refreshes it while its first fetch is still pending.
    */
@@ -181,9 +176,9 @@ class EventsOverviewViewModelTest {
     advanceUntilIdle()
 
     val state = viewModel.uiState.value
-    assertShows(listOf(ongoingEvent), state.ongoingEvents)
-    assertShows(listOf(upcomingEvent), state.upcomingEvents)
-    assertShows(listOf(pastEvent), state.pastEvents)
+    assertEquals(listOf(ongoingEvent), state.ongoingEvents)
+    assertEquals(listOf(upcomingEvent), state.upcomingEvents)
+    assertEquals(listOf(pastEvent), state.pastEvents)
   }
 
   /**
@@ -213,9 +208,9 @@ class EventsOverviewViewModelTest {
     advanceUntilIdle()
 
     val state = viewModel.uiState.value
-    assertShows(listOf(earlierOngoing, ongoingEvent), state.ongoingEvents)
-    assertShows(listOf(upcomingEvent, laterUpcoming), state.upcomingEvents)
-    assertShows(listOf(pastEvent, olderPast), state.pastEvents)
+    assertEquals(listOf(earlierOngoing, ongoingEvent), state.ongoingEvents)
+    assertEquals(listOf(upcomingEvent, laterUpcoming), state.upcomingEvents)
+    assertEquals(listOf(pastEvent, olderPast), state.pastEvents)
   }
 
   /**
@@ -239,7 +234,7 @@ class EventsOverviewViewModelTest {
     val viewModel = createViewModel(RecordingEventsRepository(listOf(shortPast, longPast)))
     advanceUntilIdle()
 
-    assertShows(listOf(longPast, shortPast), viewModel.uiState.value.pastEvents)
+    assertEquals(listOf(longPast, shortPast), viewModel.uiState.value.pastEvents)
   }
 
   /**
@@ -257,7 +252,7 @@ class EventsOverviewViewModelTest {
     val state = viewModel.uiState.value
     assertTrue(state.ongoingEvents.isEmpty())
     assertTrue(state.upcomingEvents.isEmpty())
-    assertShows(listOf(closedUpcoming, closedOngoing), state.pastEvents)
+    assertEquals(listOf(closedUpcoming, closedOngoing), state.pastEvents)
   }
 
   /**
@@ -273,9 +268,9 @@ class EventsOverviewViewModelTest {
     advanceUntilIdle()
 
     val state = viewModel.uiState.value
-    assertShows(listOf(startingNow), state.ongoingEvents)
+    assertEquals(listOf(startingNow), state.ongoingEvents)
     assertTrue(state.upcomingEvents.isEmpty())
-    assertShows(listOf(endingNow), state.pastEvents)
+    assertEquals(listOf(endingNow), state.pastEvents)
   }
 
   /** Test that only the events the user is a member of are fetched, by its uid. */
@@ -288,9 +283,9 @@ class EventsOverviewViewModelTest {
 
     assertEquals(listOf(sara.uid), repository.requestedUserIds)
     val state = viewModel.uiState.value
-    assertShows(listOf(ongoingEvent), state.ongoingEvents)
-    assertShows(listOf(upcomingEvent), state.upcomingEvents)
-    assertShows(listOf(pastEvent), state.pastEvents)
+    assertEquals(listOf(ongoingEvent), state.ongoingEvents)
+    assertEquals(listOf(upcomingEvent), state.upcomingEvents)
+    assertEquals(listOf(pastEvent), state.pastEvents)
   }
 
   /**
@@ -359,15 +354,15 @@ class EventsOverviewViewModelTest {
     advanceUntilIdle()
 
     assertEquals(EventsFilter.ONGOING, viewModel.uiState.value.selectedFilter)
-    assertShows(listOf(ongoingEvent), viewModel.uiState.value.shownEvents)
+    assertEquals(listOf(ongoingEvent), viewModel.uiState.value.shownEvents)
 
     viewModel.selectFilter(EventsFilter.UPCOMING)
     assertEquals(EventsFilter.UPCOMING, viewModel.uiState.value.selectedFilter)
-    assertShows(listOf(upcomingEvent), viewModel.uiState.value.shownEvents)
+    assertEquals(listOf(upcomingEvent), viewModel.uiState.value.shownEvents)
 
     viewModel.selectFilter(EventsFilter.PAST)
     assertEquals(EventsFilter.PAST, viewModel.uiState.value.selectedFilter)
-    assertShows(listOf(pastEvent), viewModel.uiState.value.shownEvents)
+    assertEquals(listOf(pastEvent), viewModel.uiState.value.shownEvents)
   }
 
   /**
@@ -392,7 +387,7 @@ class EventsOverviewViewModelTest {
     val state = viewModel.uiState.value
     assertFalse(state.isLoading)
     assertEquals(EventsFilter.UPCOMING, state.selectedFilter)
-    assertShows(listOf(upcomingEvent), state.shownEvents)
+    assertEquals(listOf(upcomingEvent), state.shownEvents)
     assertTrue(state.pastEvents.isEmpty())
   }
 
@@ -415,7 +410,7 @@ class EventsOverviewViewModelTest {
     val state = viewModel.uiState.value
     assertFalse(state.isLoading)
     assertNull(state.errorMsg)
-    assertShows(listOf(ongoingEvent), state.ongoingEvents)
+    assertEquals(listOf(ongoingEvent), state.ongoingEvents)
   }
 
   /**
@@ -458,7 +453,7 @@ class EventsOverviewViewModelTest {
 
     val state = viewModel.uiState.value
     assertFalse(state.isLoading)
-    assertShows(listOf(upcomingEvent), state.upcomingEvents)
+    assertEquals(listOf(upcomingEvent), state.upcomingEvents)
     assertTrue(state.pastEvents.isEmpty())
   }
 
@@ -481,7 +476,7 @@ class EventsOverviewViewModelTest {
     advanceUntilIdle()
     val state = viewModel.uiState.value
     assertFalse(state.isLoading)
-    assertShows(listOf(upcomingEvent), state.upcomingEvents)
+    assertEquals(listOf(upcomingEvent), state.upcomingEvents)
     assertTrue(state.pastEvents.isEmpty())
   }
 
@@ -497,7 +492,7 @@ class EventsOverviewViewModelTest {
     advanceUntilIdle()
 
     assertNull(viewModel.uiState.value.errorMsg)
-    assertShows(listOf(ongoingEvent), viewModel.uiState.value.ongoingEvents)
+    assertEquals(listOf(ongoingEvent), viewModel.uiState.value.ongoingEvents)
   }
 
   /**
@@ -522,7 +517,7 @@ class EventsOverviewViewModelTest {
     val state = viewModel.uiState.value
     assertFalse(state.isLoading)
     assertNull(state.errorMsg)
-    assertShows(listOf(upcomingEvent), state.upcomingEvents)
+    assertEquals(listOf(upcomingEvent), state.upcomingEvents)
     assertTrue(state.pastEvents.isEmpty())
   }
 
@@ -563,7 +558,7 @@ class EventsOverviewViewModelTest {
     val state = viewModel.uiState.value
     assertEquals(sara, state.user)
     assertTrue(state.ongoingEvents.isEmpty())
-    assertShows(listOf(nextYear), state.upcomingEvents)
-    assertShows(listOf(lastYear), state.pastEvents)
+    assertEquals(listOf(nextYear), state.upcomingEvents)
+    assertEquals(listOf(lastYear), state.pastEvents)
   }
 }
