@@ -50,7 +50,7 @@ The app will also be able to load the event from a local file.
 
 ## Figma link
 
-[Figma](https://www.figma.com/design/hVnXJ5JMVFz0ffuNTlNbJn/FestivAR---Android?node-id=0-1&t=PEh0xqhTGniGAnB8-1)
+[Figma](https://www.figma.com/design/FR2FGrLHh8KjltNRZPUfCq/FestivAR?node-id=0-1&t=S9wukb6rD7mKojF4-1)
 
 ---
 
