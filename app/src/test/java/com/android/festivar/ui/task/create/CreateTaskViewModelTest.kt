@@ -121,7 +121,7 @@ class CreateTaskViewModelTest {
     vm.createTask()
 
     val state = vm.uiState.value
-    assertEquals("offline", state.errorMsg)
+    assertEquals("Unable to create the task.", state.errorMsg)
     assertFalse(state.isCreated)
     assertFalse(state.isSaving)
     assertTrue(state.canCreate)
@@ -181,7 +181,7 @@ class CreateTaskViewModelTest {
     vm.updateTitle("Run power to stage")
 
     vm.createTask()
-    assertEquals("offline", vm.uiState.value.errorMsg)
+    assertEquals("Unable to create the task.", vm.uiState.value.errorMsg)
 
     failing = false
     vm.createTask()
@@ -209,6 +209,17 @@ class CreateTaskViewModelTest {
 
     assertNull(vm.uiState.value.errorMsg)
     assertFalse(vm.uiState.value.isCreated)
+    assertFalse(vm.uiState.value.isSaving)
+  }
+
+  @Test
+  fun createTask_afterASuccess_isIgnored() {
+    viewModel.updateTitle("Run power to stage")
+
+    viewModel.createTask()
+    viewModel.createTask()
+
+    assertEquals(1, savedTasks().size)
   }
 }
 
@@ -284,6 +295,14 @@ class CreateTaskUiStateTest {
     assertNull(state.endDateError)
   }
 
+  // A date without a time means the start of that day, also for the end: this end is at 00:00,
+  // before the start at 09:00.
+  @Test
+  fun endDateWithoutTime_onTheStartDay_isBeforeAStartWithATime() {
+    val state = valid.copy(startDate = day, startTime = LocalTime.of(9, 0), endDate = day)
+    assertEquals(FieldError.END_BEFORE_START, state.endDateError)
+  }
+
   @Test
   fun onlyOneBoundSet_isValid() {
     assertNull(valid.copy(endDate = day).endDateError)
@@ -342,7 +361,19 @@ class CreateTaskUiStateTest {
     assertThrows(IllegalArgumentException::class.java) { CreateTaskUiState().toTask("t1", "e1") }
   }
 
-  // The Task itself refuses an end before the start, so the conversion is rejected too.
+  @Test
+  fun toTask_withTimeWithoutDate_isRejected() {
+    val form = valid.copy(startTime = LocalTime.of(9, 30))
+
+    assertThrows(IllegalArgumentException::class.java) { form.toTask("t1", "e1") }
+  }
+
+  @Test
+  fun createdForm_cannotBeCreatedAgain() {
+    assertFalse(valid.copy(isCreated = true).canCreate)
+  }
+
+  // The form refuses an end before the start, so the conversion is rejected too.
   @Test
   fun toTask_withEndBeforeStart_isRejected() {
     val form = valid.copy(startDate = day, endDate = day.minusDays(1))

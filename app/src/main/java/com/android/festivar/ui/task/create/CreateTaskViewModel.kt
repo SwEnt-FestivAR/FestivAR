@@ -47,7 +47,7 @@ data class CreateTaskUiState(
     val endTime: LocalTime? = null,
     val titleEdited: Boolean = false,
     // True while the task is being saved. It keeps a second tap on "Create task" from saving the
-    // task twice (see canCreate); same idea as isLoading in the bootcamp SignInViewModel.
+    // task twice (see canCreate).
     val isSaving: Boolean = false,
     val isCreated: Boolean = false,
     val errorMsg: String? = null,
@@ -82,17 +82,25 @@ data class CreateTaskUiState(
       }
     }
 
-  /** Whether the "Create task" button can be pressed. */
+  /**
+   * Whether the "Create task" button can be pressed. It is false while a save is running and once
+   * the task is created, so that a tap just after the save cannot create a second task.
+   */
   val canCreate: Boolean
-    get() = title.isNotBlank() && startDateError == null && endDateError == null && !isSaving
+    get() = isValid && !isSaving && !isCreated
+
+  private val isValid: Boolean
+    get() = title.isNotBlank() && startDateError == null && endDateError == null
 
   /**
    * Builds the [Task] described by this form.
    *
-   * @throws IllegalArgumentException if the form is not valid (see [canCreate]).
+   * @throws IllegalArgumentException if the form is not valid: blank title, or a date error (a time
+   *   without its date, or an end before the start).
    */
-  fun toTask(taskId: String, eventId: String): Task =
-      Task(
+  fun toTask(taskId: String, eventId: String): Task {
+    require(isValid) { "The form is not valid." }
+    return Task(
           taskId = taskId,
           eventId = eventId,
           title = title.trim(),
@@ -101,6 +109,7 @@ data class CreateTaskUiState(
           startTime = startDateTime,
           endTime = endDateTime,
       )
+  }
 
   private fun combine(date: LocalDate?, time: LocalTime?): LocalDateTime? =
       date?.atTime(time ?: LocalTime.MIDNIGHT)
@@ -160,12 +169,11 @@ class CreateTaskViewModel(
         tasksRepository.addTask(form.toTask(tasksRepository.getNewUid(), eventId))
         _uiState.update { it.copy(isSaving = false, isCreated = true) }
       } catch (e: CancellationException) {
+        _uiState.update { it.copy(isSaving = false) }
         throw e
       } catch (e: Exception) {
         Log.e("CreateTaskViewModel", "Error adding the task", e)
-        _uiState.update {
-          it.copy(isSaving = false, errorMsg = e.message ?: "Unable to create the task.")
-        }
+        _uiState.update { it.copy(isSaving = false, errorMsg = "Unable to create the task.") }
       }
     }
   }
