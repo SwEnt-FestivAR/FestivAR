@@ -20,6 +20,9 @@ data class CreateEventUIState(
     val venue: String = "",
     val notes: String = "",
     val activeDatePicker: DateField? = null,
+    val errorName: Boolean = false,
+    val errorDate: Boolean = false,
+    val errorVenue: Boolean = false,
 )
 
 enum class DateField {
@@ -65,11 +68,44 @@ class CreateEventViewModel(
     _uiState.update { it.copy(activeDatePicker = newActiveDatePicker) }
   }
 
+  fun removeErrorName() {
+    _uiState.update { it.copy(errorName = false) }
+  }
+
+  fun removeErrorDate() {
+    _uiState.update { it.copy(errorDate = false) }
+  }
+
+  fun removeErrorVenue() {
+    _uiState.update { it.copy(errorVenue = false) }
+  }
+
+  fun setErrors() {
+    _uiState.update {
+      it.copy(
+          errorName = _uiState.value.name.isBlank(),
+          errorDate = !endDateComesAfterStartDate(),
+          errorVenue = _uiState.value.venue.isBlank(),
+      )
+    }
+  }
+
+  fun endDateComesAfterStartDate(): Boolean {
+    val state = _uiState.value
+    return state.startDate != null &&
+        state.endDate != null &&
+        state.endDate.isAfter(state.startDate)
+  }
+
   fun formIsComplete(): Boolean {
     return _uiState.value.name.isNotBlank() &&
         _uiState.value.startDate != null &&
         _uiState.value.endDate != null &&
         _uiState.value.venue.isNotBlank()
+  }
+
+  fun validEvent(): Boolean {
+    return formIsComplete() && endDateComesAfterStartDate()
   }
 
   fun createEvent() {
