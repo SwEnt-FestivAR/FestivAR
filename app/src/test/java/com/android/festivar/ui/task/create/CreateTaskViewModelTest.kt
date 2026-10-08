@@ -1,6 +1,7 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.create
 
+import android.os.Looper
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
@@ -8,6 +9,8 @@ import com.android.festivar.model.task.TasksRepositoryLocal
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -16,6 +19,7 @@ import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.Shadows.shadowOf
 
 @RunWith(AndroidJUnit4::class)
 class CreateTaskViewModelTest {
@@ -120,6 +124,81 @@ class CreateTaskViewModelTest {
 
     vm.clearError()
     assertNull(vm.uiState.value.errorMsg)
+  }
+  // A second tap while the first save is still running must not save the task twice. The fake
+  // repository waits on a gate, so the ViewModel stays in the saving state in between.
+  @Test
+  fun createTask_whileASaveIsRunning_isIgnored() {
+    val gate = CompletableDeferred<Unit>()
+    val local = TasksRepositoryLocal()
+    var addCalls = 0
+    val slow =
+        object : TasksRepository by local {
+          override suspend fun addTask(task: Task) {
+            addCalls++
+            gate.await()
+            local.addTask(task)
+          }
+        }
+    val vm = CreateTaskViewModel("event-1", slow)
+    vm.updateTitle("Run power to stage")
+
+    vm.createTask()
+    assertTrue(vm.uiState.value.isSaving)
+    vm.createTask()
+    gate.complete(Unit)
+    shadowOf(Looper.getMainLooper()).idle()
+
+    assertEquals(1, addCalls)
+    assertEquals(1, runBlocking { local.getAllTasks("event-1") }.size)
+    assertTrue(vm.uiState.value.isCreated)
+    assertFalse(vm.uiState.value.isSaving)
+  }
+
+  // After a failure the user can press "Create task" again: the repository now works, so the task
+  // is saved once and the old error is gone.
+  @Test
+  fun createTask_afterAFailure_succeedsOnRetryAndClearsTheError() {
+    val local = TasksRepositoryLocal()
+    var failing = true
+    val flaky =
+        object : TasksRepository by local {
+          override suspend fun addTask(task: Task) {
+            if (failing) throw IllegalStateException("offline")
+            local.addTask(task)
+          }
+        }
+    val vm = CreateTaskViewModel("event-1", flaky)
+    vm.updateTitle("Run power to stage")
+
+    vm.createTask()
+    assertEquals("offline", vm.uiState.value.errorMsg)
+
+    failing = false
+    vm.createTask()
+
+    val state = vm.uiState.value
+    assertNull(state.errorMsg)
+    assertTrue(state.isCreated)
+    assertFalse(state.isSaving)
+    assertEquals(1, runBlocking { local.getAllTasks("event-1") }.size)
+  }
+
+  // A cancelled save (for example when the ViewModel is cleared) is not a failure of the user's
+  // task, so no error message is shown for it.
+  @Test
+  fun createTask_whenTheSaveIsCancelled_doesNotReportAnError() {
+    val cancelled =
+        object : TasksRepository by TasksRepositoryLocal() {
+          override suspend fun addTask(task: Task) = throw CancellationException("cancelled")
+        }
+    val vm = CreateTaskViewModel("event-1", cancelled)
+    vm.updateTitle("Run power to stage")
+
+    vm.createTask()
+
+    assertNull(vm.uiState.value.errorMsg)
+    assertFalse(vm.uiState.value.isCreated)
   }
 }
 
@@ -251,5 +330,13 @@ class CreateTaskUiStateTest {
   @Test
   fun toTask_withBlankTitle_isRejected() {
     assertThrows(IllegalArgumentException::class.java) { CreateTaskUiState().toTask("t1", "e1") }
+  }
+
+  // The Task itself refuses an end before the start, so the conversion is rejected too.
+  @Test
+  fun toTask_withEndBeforeStart_isRejected() {
+    val form = valid.copy(startDate = day, endDate = day.minusDays(1))
+
+    assertThrows(IllegalArgumentException::class.java) { form.toTask("t1", "e1") }
   }
 }
