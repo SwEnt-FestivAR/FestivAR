@@ -21,19 +21,24 @@ class TaskRepositoryFirebase(
     return UUID.randomUUID().toString()
   }
 
-  override suspend fun getAllTasks(): List<Task> {
-    return taskCollection.get().await().documents.map(::documentToTask)
+  override suspend fun getAllTasks(eventId: String): List<Task> {
+    return taskCollection
+        .whereEqualTo("eventId", eventId)
+        .get()
+        .await()
+        .documents
+        .map(::documentToTask)
   }
 
   override suspend fun getTask(taskId: String): Task {
     val document = taskCollection.document(taskId).get().await()
+    require(document.exists()) { "Task '$taskId' does not exist." }
     return documentToTask(document)
   }
 
   override suspend fun addTask(task: Task) {
     val document = taskCollection.document(task.taskId)
     db.runTransaction { transaction ->
-          require(task.taskId.isNotEmpty()) { "Task ID must not be empty." }
           require(!transaction.get(document).exists()) {
             "A Task with taskId '${task.taskId}' already exists."
           }

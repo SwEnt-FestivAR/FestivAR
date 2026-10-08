@@ -162,6 +162,9 @@ dependencies {
 
 dependencyLocking { lockAllConfigurations() }
 
+// Exclude protobuf-lite from all configurations to avoid conflicts with protobuf-javalite.
+// This is necessary because Firebase Firestore depends on protobuf-lite, while other libraries may
+// depend on protobuf-javalite, leading to version conflicts.
 configurations.configureEach { exclude(group = "com.google.protobuf", module = "protobuf-lite") }
 
 tasks.withType<Test> {

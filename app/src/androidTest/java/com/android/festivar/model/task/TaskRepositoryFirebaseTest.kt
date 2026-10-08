@@ -1,24 +1,22 @@
-// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.model.task
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.festivar.model.temporary.User
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.firestore
-import java.time.Duration
-import java.time.LocalDateTime
-import java.util.UUID
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
 import org.junit.After
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotEquals
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
+import org.junit.Assert
 import org.junit.Before
 import org.junit.BeforeClass
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.time.Duration
+import java.time.LocalDateTime
+import java.util.UUID
 
 @RunWith(AndroidJUnit4::class)
 class TaskRepositoryFirebaseTest {
@@ -48,26 +46,26 @@ class TaskRepositoryFirebaseTest {
     val first = repository.getNewUid()
     val second = repository.getNewUid()
 
-    assertTrue(first.isNotEmpty())
-    assertNotEquals(first, second)
+    Assert.assertTrue(first.isNotEmpty())
+    Assert.assertNotEquals(first, second)
   }
 
   @Test
   fun toFirestoreData_serializesTaskFields() {
     val data = invokeToFirestoreData(task)
 
-    assertEquals(task.taskId, data["taskId"])
-    assertEquals(task.eventId, data["eventId"])
-    assertEquals(task.title, data["title"])
-    assertEquals(task.description, data["description"])
-    assertEquals(task.startTime.toString(), data["startTime"])
-    assertEquals(task.endTime.toString(), data["endTime"])
-    assertEquals(task.estimatedTime!!.toNanos(), data["estimatedTime"])
-    assertEquals(task.location, data["location"])
-    assertEquals(task.priority.name, data["priority"])
-    assertEquals(task.maxAssign, data["maxAssign"])
-    assertEquals(task.assignees.map { it.uid }, data["assignees"])
-    assertEquals(task.completed, data["completed"])
+    Assert.assertEquals(task.taskId, data["taskId"])
+    Assert.assertEquals(task.eventId, data["eventId"])
+    Assert.assertEquals(task.title, data["title"])
+    Assert.assertEquals(task.description, data["description"])
+    Assert.assertEquals(task.startTime.toString(), data["startTime"])
+    Assert.assertEquals(task.endTime.toString(), data["endTime"])
+    Assert.assertEquals(task.estimatedTime!!.toNanos(), data["estimatedTime"])
+    Assert.assertEquals(task.location, data["location"])
+    Assert.assertEquals(task.priority.name, data["priority"])
+    Assert.assertEquals(task.maxAssign, data["maxAssign"])
+    Assert.assertEquals(task.assignees.map { it.uid }, data["assignees"])
+    Assert.assertEquals(task.completed, data["completed"])
   }
 
   @Test
@@ -77,9 +75,9 @@ class TaskRepositoryFirebaseTest {
 
     val data = invokeToFirestoreData(taskWithoutOptionalFields)
 
-    assertNull(data["startTime"])
-    assertNull(data["endTime"])
-    assertNull(data["estimatedTime"])
+    Assert.assertNull(data["startTime"])
+    Assert.assertNull(data["endTime"])
+    Assert.assertNull(data["estimatedTime"])
   }
 
   @Test
@@ -88,7 +86,7 @@ class TaskRepositoryFirebaseTest {
     val document = Firebase.firestore.collection(TASK_COLLECTION_PATH).document(task.taskId)
     document.set(data).await()
 
-    assertEquals(task, invokeDocumentToTask(document.get().await()))
+    Assert.assertEquals(task, invokeDocumentToTask(document.get().await()))
   }
 
   @Test
@@ -106,12 +104,12 @@ class TaskRepositoryFirebaseTest {
         .await()
 
     try {
-      assertEquals(
+      Assert.assertEquals(
           Task(
               taskId = documentId,
               eventId = "event-2",
               title = "Minimal task",
-              assignees = listOf(com.android.festivar.model.temporary.User("user-2")),
+              assignees = listOf(User("user-2")),
           ),
           invokeDocumentToTask(document.get().await()),
       )
@@ -124,19 +122,36 @@ class TaskRepositoryFirebaseTest {
   fun getAllTasks_returnsStoredTasks() = runBlocking {
     repository.addTask(task)
 
-    assertEquals(listOf(task), repository.getAllTasks())
+    Assert.assertEquals(listOf(task), repository.getAllTasks(task.eventId))
   }
 
   @Test
   fun getAllTasks_returnsEmptyListWhenNoTasksExist() = runBlocking {
-    assertTrue(repository.getAllTasks().isEmpty())
+    Assert.assertTrue(repository.getAllTasks(task.eventId).isEmpty())
+  }
+
+  @Test
+  fun getAllTasks_filtersByEventId() = runBlocking {
+    val otherTask = task.copy(taskId = "task-${UUID.randomUUID()}", eventId = "event-2")
+    repository.addTask(task)
+    repository.addTask(otherTask)
+
+    try {
+      Assert.assertEquals(listOf(task), repository.getAllTasks(task.eventId))
+    } finally {
+      Firebase.firestore
+          .collection(TASK_COLLECTION_PATH)
+          .document(otherTask.taskId)
+          .delete()
+          .await()
+    }
   }
 
   @Test
   fun getTask_returnsTaskById() = runBlocking {
     repository.addTask(task)
 
-    assertEquals(task, repository.getTask(task.taskId))
+    Assert.assertEquals(task, repository.getTask(task.taskId))
   }
 
   @Test
@@ -145,15 +160,10 @@ class TaskRepositoryFirebaseTest {
   }
 
   @Test
-  fun addTask_storesTask() = runBlocking {
+  fun addTask_storesTaskAndThrowsWhenTaskIdAlreadyExists() = runBlocking {
     repository.addTask(task)
 
-    assertEquals(task, repository.getTask(task.taskId))
-  }
-
-  @Test
-  fun addTask_throwsWhenTaskIdAlreadyExists() = runBlocking {
-    repository.addTask(task)
+    Assert.assertEquals(task, repository.getTask(task.taskId))
 
     assertThrows { repository.addTask(task) }
   }
@@ -165,7 +175,7 @@ class TaskRepositoryFirebaseTest {
 
     repository.editTask(task.taskId, updatedTask)
 
-    assertEquals(updatedTask, repository.getTask(task.taskId))
+    Assert.assertEquals(updatedTask, repository.getTask(task.taskId))
   }
 
   @Test
@@ -204,7 +214,7 @@ class TaskRepositoryFirebaseTest {
           location = "EPFL",
           priority = Priority.MEDIUM,
           maxAssign = 2,
-          assignees = listOf(com.android.festivar.model.temporary.User("user-1")),
+          assignees = listOf(User("user-1")),
           completed = false,
       )
 
@@ -215,7 +225,7 @@ class TaskRepositoryFirebaseTest {
     } catch (_: Exception) {
       thrown = true
     }
-    assertTrue("Expected an exception", thrown)
+    Assert.assertTrue("Expected an exception", thrown)
   }
 
   @Suppress("UNCHECKED_CAST")
@@ -226,13 +236,13 @@ class TaskRepositoryFirebaseTest {
     return method.invoke(repository, task) as Map<String, Any?>
   }
 
-  private fun invokeDocumentToTask(document: com.google.firebase.firestore.DocumentSnapshot): Task {
+  private fun invokeDocumentToTask(document: DocumentSnapshot): Task {
     val method =
         TaskRepositoryFirebase::class
             .java
             .getDeclaredMethod(
                 "documentToTask",
-                com.google.firebase.firestore.DocumentSnapshot::class.java,
+                DocumentSnapshot::class.java,
             )
     method.isAccessible = true
     return method.invoke(repository, document) as Task
