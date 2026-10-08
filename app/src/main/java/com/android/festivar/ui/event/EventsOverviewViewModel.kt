@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
+import com.android.festivar.model.temporary.User
 import java.time.ZonedDateTime
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -41,6 +42,7 @@ data class EventItemUIState(
  * @property pastEvents The [Event] items that are closed or ended, the most recent first.
  * @property selectedFilter Which [Event] items are shown: [ongoingEvents], [upcomingEvents] or
  *   [pastEvents].
+ * @property user The signed-in [User], whose avatar is shown in the top bar. `null` if unknown.
  * @property isLoading Whether the [Event] items are currently being fetched.
  * @property errorMsg An error message to show when fetching the [Event] items fails. `null` if
  *   there is no error.
@@ -50,6 +52,7 @@ data class EventsOverviewUIState(
     val upcomingEvents: List<EventItemUIState> = emptyList(),
     val pastEvents: List<EventItemUIState> = emptyList(),
     val selectedFilter: EventsFilter = EventsFilter.ONGOING,
+    val user: User? = null,
     val isLoading: Boolean = false,
     val errorMsg: String? = null,
 ) {
@@ -73,17 +76,17 @@ data class EventsOverviewUIState(
  * Manages the UI state by fetching the [Event] items through the [EventsRepository].
  *
  * @property eventsRepository The repository used to fetch the [Event] items.
- * @property userId The identifier of the user whose [Event] items are shown. If `null`, every
- *   [Event] of the repository is shown.
+ * @property user The signed-in [User], whose [Event] items are shown. If `null`, every [Event] of
+ *   the repository is shown.
  * @property now Gives the current time, used to split ongoing, upcoming and past [Event] items.
  */
 class EventsOverviewViewModel(
     private val eventsRepository: EventsRepository,
-    private val userId: String? = null,
+    private val user: User? = null,
     private val now: () -> ZonedDateTime = ZonedDateTime::now,
 ) : ViewModel() {
 
-  private val _uiState = MutableStateFlow(EventsOverviewUIState())
+  private val _uiState = MutableStateFlow(EventsOverviewUIState(user = user))
   val uiState: StateFlow<EventsOverviewUIState> = _uiState.asStateFlow()
 
   init {
@@ -106,16 +109,16 @@ class EventsOverviewViewModel(
   }
 
   /**
-   * Fetches the [Event] items from the repository, the ones of [userId] if it is set, and updates
-   * the UI state.
+   * Fetches the [Event] items from the repository, the ones of [user] if it is set, and updates the
+   * UI state.
    */
   private fun getEvents() {
     _uiState.update { it.copy(isLoading = true) }
     viewModelScope.launch {
       try {
         val events =
-            if (userId == null) eventsRepository.getAllEvents()
-            else eventsRepository.getEventsForUser(userId)
+            if (user == null) eventsRepository.getAllEvents()
+            else eventsRepository.getEventsForUser(user.uid)
         val currentTime = now()
         val (past, notPast) = events.partition { it.isPast(currentTime) }
         val (upcoming, ongoing) = notPast.partition { it.startDate.isAfter(currentTime) }
