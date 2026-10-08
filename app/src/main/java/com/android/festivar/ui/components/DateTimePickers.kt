@@ -12,6 +12,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
+import androidx.compose.material3.TimePickerColors
+import androidx.compose.material3.TimePickerDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
@@ -90,7 +92,7 @@ fun FestivarTimePickerDialog(
         )
       },
       dismissButton = { DialogButton(text = "Cancel", onClick = onDismiss) },
-      text = { TimePicker(state = state) },
+      text = { TimePicker(state = state, colors = readableTimePickerColors()) },
   )
 }
 
@@ -131,6 +133,19 @@ private fun readableDatePickerColors(): DatePickerColors {
       currentYearContentColor = accent,
   )
 }
+
+/**
+ * Time picker colors: the clock hand and the circle around the selected number are drawn in
+ * `primary` by default, a thin lime line that cannot be read on the dial. They use the dark green
+ * of the theme, with white text inside the circle.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun readableTimePickerColors(): TimePickerColors =
+    TimePickerDefaults.colors(
+        selectorColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        clockDialSelectedContentColor = MaterialTheme.colorScheme.surfaceBright,
+    )
 
 @Preview
 @Composable
