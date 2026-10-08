@@ -35,7 +35,7 @@ class TaskRepositoryFirebase(
     db.runTransaction { transaction ->
           require(task.taskId.isNotEmpty()) { "Task ID must not be empty." }
           require(!transaction.get(document).exists()) {
-            throw IllegalArgumentException("A Task with taskId '${task.taskId}' already exists.")
+            "A Task with taskId '${task.taskId}' already exists."
           }
           transaction.set(document, toFirestoreData(task))
         }
