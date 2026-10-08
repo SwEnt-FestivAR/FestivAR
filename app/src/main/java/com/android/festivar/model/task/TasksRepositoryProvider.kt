@@ -1,3 +1,4 @@
+// Written with the help of an AI coding assistant and reviewed line by line by the author.
 package com.android.festivar.model.task
 
 /**

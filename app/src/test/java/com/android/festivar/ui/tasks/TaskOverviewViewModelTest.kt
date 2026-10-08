@@ -1,15 +1,20 @@
+// Written with the help of an AI coding assistant and reviewed line by line by the author.
 package com.android.festivar.ui.tasks
 
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
+import com.android.festivar.model.task.TasksRepositoryProvider
 import com.android.festivar.model.temporary.User
 import java.time.Clock
 import java.time.Duration
+import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
@@ -27,7 +32,8 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class TaskOverviewViewModelTest {
   private val zone = ZoneId.of("Europe/Zurich")
-  private val clock = Clock.fixed(at(10, 0).atZone(zone).toInstant(), zone)
+  private val clock = SettableClock(at(10, 0).atZone(zone).toInstant(), zone)
+  private val dispatcher = UnconfinedTestDispatcher()
   private val me = User("me")
   private val ana = User("ana")
 
@@ -64,7 +70,7 @@ class TaskOverviewViewModelTest {
 
   @Before
   fun setUp() {
-    Dispatchers.setMain(UnconfinedTestDispatcher())
+    Dispatchers.setMain(dispatcher)
     repository = TasksRepositoryLocal()
     runBlocking {
       listOf(power, tables, bar, bunting, sound, gate, litter, elsewhere).forEach {
@@ -84,6 +90,11 @@ class TaskOverviewViewModelTest {
   private fun TaskOverviewUiState.visibleIds() = sections.flatMap { section ->
     section.rows.map { it.task.taskId }
   }
+
+  private fun TaskOverviewUiState.idsIn(group: OverviewGroup) =
+      sections
+          .filter { it.group == group }
+          .flatMap { section -> section.rows.map { it.task.taskId } }
 
   /** Turns red when the ViewModel stops asking the repository for [EVENT]'s tasks only. */
   @Test
@@ -174,13 +185,15 @@ class TaskOverviewViewModelTest {
 
   /**
    * Turns red when a group boundary (12:00, 18:00), the NOW rule (an unfinished task from yesterday
-   * is not NOW), the start-then-title sort or the section order changes.
+   * is not NOW), the start-then-title sort, the section order, or the day split changes:
+   * yesterday's and tomorrow's 09:00 tasks must not share today's MORNING section.
    */
   @Test
-  fun tasksAreGroupedIntoTheFiveGroupsInOrder() {
+  fun tasksAreGroupedByDayThenIntoTheFiveGroupsInOrder() {
     runBlocking {
       listOf(
               Task("yesterday", EVENT, "Fold the tents", startTime = at(9, 0).minusDays(1)),
+              Task("tomorrow", EVENT, "Unfold the tents", startTime = at(9, 0).plusDays(1)),
               Task("chairs", EVENT, "Arrange chairs", startTime = at(11, 30)),
               Task("noon", EVENT, "Serve lunch", startTime = at(12, 0)),
               Task("late", EVENT, "Clear the tables", startTime = at(17, 59)),
@@ -193,17 +206,55 @@ class TaskOverviewViewModelTest {
 
     val sections = viewModel.uiState.value.sections
 
-    assertEquals(OverviewGroup.entries.toList(), sections.map { it.group })
+    val yesterday = DAY.minusDays(1)
+    val tomorrow = DAY.plusDays(1)
     assertEquals(
         listOf(
+            yesterday to OverviewGroup.MORNING,
+            DAY to OverviewGroup.NOW,
+            DAY to OverviewGroup.MORNING,
+            DAY to OverviewGroup.AFTERNOON,
+            DAY to OverviewGroup.EVENING,
+            tomorrow to OverviewGroup.MORNING,
+            null to OverviewGroup.ANYTIME,
+        ),
+        sections.map { it.day to it.group },
+    )
+    assertEquals(
+        listOf(
+            listOf("yesterday"),
             listOf("tables", "power"),
-            listOf("yesterday", "bar", "chairs", "bunting"),
+            listOf("bar", "chairs", "bunting"),
             listOf("noon", "sound", "late"),
             listOf("six", "gate"),
+            listOf("tomorrow"),
             listOf("litter"),
         ),
         sections.map { section -> section.rows.map { it.task.taskId } },
     )
+  }
+
+  /**
+   * Turns red when the NOW group stops following the clock on its own: a task that comes within the
+   * hour must move up, and a task whose day is over must drop out, without any user action.
+   */
+  @Test
+  fun nowFollowsTheClockWithoutAUserAction() {
+    val viewModel = overview()
+    assertEquals(listOf("tables", "power"), viewModel.uiState.value.idsIn(OverviewGroup.NOW))
+
+    clock.advance(Duration.ofMinutes(60))
+    assertEquals(listOf("tables", "power"), viewModel.uiState.value.idsIn(OverviewGroup.NOW))
+
+    dispatcher.scheduler.advanceTimeBy(TaskOverviewViewModel.REGROUP_PERIOD.toMillis() + 1)
+    assertEquals(
+        listOf("tables", "power", "bunting"),
+        viewModel.uiState.value.idsIn(OverviewGroup.NOW),
+    )
+
+    clock.advance(Duration.ofDays(1))
+    dispatcher.scheduler.advanceTimeBy(TaskOverviewViewModel.REGROUP_PERIOD.toMillis() + 1)
+    assertTrue(viewModel.uiState.value.idsIn(OverviewGroup.NOW).isEmpty())
   }
 
   /** Turns red when a row stops carrying the task's place, people, length, start or state. */
@@ -225,6 +276,19 @@ class TaskOverviewViewModelTest {
     assertEquals(90, rows.getValue("bunting").estimatedMinutes)
     assertTrue(rows.getValue("sound").isFull)
     assertFalse(rows.getValue("sound").isMine)
+  }
+
+  /** Turns red when the OPEN chip and the full badge disagree on when a task is full. */
+  @Test
+  fun aFullTaskIsNeverOpen() {
+    val viewModel = overview()
+    viewModel.selectFilter(OverviewFilter.ALL)
+    val full = viewModel.uiState.value.sections.flatMap { it.rows }.filter { it.isFull }
+
+    viewModel.selectFilter(OverviewFilter.OPEN)
+
+    assertEquals(listOf("sound"), full.map { it.task.taskId })
+    assertTrue(full.none { it.task.taskId in viewModel.uiState.value.visibleIds() })
   }
 
   /** Turns red when a task without start or estimate gets invented values. */
@@ -295,6 +359,63 @@ class TaskOverviewViewModelTest {
     assertEquals(6, viewModel.uiState.value.counts[OverviewFilter.OPEN])
   }
 
+  /** Turns red when a manual refresh runs without showing progress, or drops the last rows. */
+  @Test
+  fun aRefreshIsLoadingUntilTheRepositoryAnswers() {
+    val slow = SlowRepository()
+    val viewModel = overview(repo = slow)
+    slow.calls[0].complete(listOf(power))
+    assertFalse(viewModel.uiState.value.isLoading)
+
+    viewModel.refresh()
+
+    assertTrue(viewModel.uiState.value.isLoading)
+    assertEquals(listOf("power"), viewModel.uiState.value.visibleIds())
+
+    slow.calls[1].complete(listOf(power, tables))
+    assertFalse(viewModel.uiState.value.isLoading)
+    assertEquals(listOf("tables", "power"), viewModel.uiState.value.visibleIds())
+  }
+
+  /** Turns red when an older, slower load lands after a newer one and overwrites its rows. */
+  @Test
+  fun theNewestRefreshWinsOverAnOlderLoadThatAnswersLate() {
+    val slow = SlowRepository()
+    val viewModel = overview(repo = slow)
+
+    viewModel.refresh()
+    slow.calls[1].complete(listOf(power, tables))
+    slow.calls[0].complete(listOf(litter))
+
+    val state = viewModel.uiState.value
+    assertFalse(state.isLoading)
+    assertEquals(listOf("tables", "power"), state.visibleIds())
+  }
+
+  /** Turns red when an older load that fails late puts its error over a newer, successful one. */
+  @Test
+  fun anOlderLoadThatFailsLateDoesNotSetTheError() {
+    val slow = SlowRepository()
+    val viewModel = overview(repo = slow)
+
+    viewModel.refresh()
+    slow.calls[1].complete(listOf(power))
+    slow.calls[0].completeExceptionally(IllegalStateException("Network down"))
+
+    val state = viewModel.uiState.value
+    assertNull(state.errorMsg)
+    assertEquals(listOf("power"), state.visibleIds())
+  }
+
+  /**
+   * Turns red when the provider's default stops being in-memory, which would put Firebase behind
+   * every unit test that leaves the repository parameter out.
+   */
+  @Test
+  fun theProviderDefaultsToTheInMemoryRepository() {
+    assertTrue(TasksRepositoryProvider.repository is TasksRepositoryLocal)
+  }
+
   /** Reads through [inner] until [failing] is set, then every load throws. */
   private class FlakyRepository(private val inner: TasksRepositoryLocal) :
       TasksRepository by inner {
@@ -304,9 +425,31 @@ class TaskOverviewViewModelTest {
         if (failing) throw IllegalStateException("Network down") else inner.getAllTasks(eventId)
   }
 
+  /** Answers each load only when the test completes that call's entry in [calls]. */
+  private inner class SlowRepository : TasksRepository by repository {
+    val calls = mutableListOf<CompletableDeferred<List<Task>>>()
+
+    override suspend fun getAllTasks(eventId: String): List<Task> =
+        CompletableDeferred<List<Task>>().also { calls += it }.await()
+  }
+
+  /** A clock the test moves by hand, so the NOW group can be watched over time. */
+  private class SettableClock(private var now: Instant, private val zone: ZoneId) : Clock() {
+    fun advance(by: Duration) {
+      now += by
+    }
+
+    override fun getZone(): ZoneId = zone
+
+    override fun withZone(zone: ZoneId): Clock = SettableClock(now, zone)
+
+    override fun instant(): Instant = now
+  }
+
   private companion object {
     const val EVENT = "fete"
+    val DAY: LocalDate = LocalDate.of(2026, 7, 1)
 
-    fun at(hour: Int, minute: Int): LocalDateTime = LocalDateTime.of(2026, 7, 1, hour, minute)
+    fun at(hour: Int, minute: Int): LocalDateTime = DAY.atTime(hour, minute)
   }
 }
