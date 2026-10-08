@@ -88,7 +88,10 @@ class TaskOverviewScreenTest {
         .onNodeWithTag(TaskOverviewScreenTestTags.CHIP_DONE)
         .assertIsDisplayed()
         .assertTextContains("0")
-    composeTestRule.onNodeWithTag(TaskOverviewScreenTestTags.CHIP_ALL).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(TaskOverviewScreenTestTags.CHIP_ALL)
+        .assertIsDisplayed()
+        .assertTextContains("3")
   }
 
   /** Turns red when the screen shows another event's tasks or drops one of this event's. */

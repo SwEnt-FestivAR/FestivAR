@@ -33,7 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.R
-import com.android.festivar.ui.components.CountChip
+import com.android.festivar.ui.components.FilterChip
 import com.android.festivar.ui.components.Hairline
 import com.android.festivar.ui.components.PinKind
 import com.android.festivar.ui.components.SectionLabel
@@ -136,12 +136,12 @@ fun TaskOverviewContent(
           horizontalArrangement = Arrangement.spacedBy(8.dp),
       ) {
         CHIPS.forEach { (filter, label, tag) ->
-          CountChip(
-              stringResource(label),
-              state.filter == filter,
-              { onSelectFilter(filter) },
-              Modifier.testTag(tag),
-              state.counts[filter],
+          FilterChip(
+              label = stringResource(label),
+              count = state.counts[filter] ?: 0,
+              selected = state.filter == filter,
+              onClick = { onSelectFilter(filter) },
+              modifier = Modifier.testTag(tag),
           )
         }
       }
@@ -196,7 +196,7 @@ fun TaskOverviewContent(
 
 private data class Chip(val filter: OverviewFilter, val label: Int, val tag: String)
 
-// The chips in order. ALL shows no count.
+// The chips in order, each with its count.
 private val CHIPS =
     listOf(
         Chip(

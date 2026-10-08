@@ -105,7 +105,12 @@ class TaskOverviewViewModelTest {
     assertEquals(OverviewFilter.OPEN, state.filter)
     assertFalse(state.isLoading)
     assertEquals(
-        mapOf(OverviewFilter.OPEN to 5, OverviewFilter.MINE to 1, OverviewFilter.DONE to 1),
+        mapOf(
+            OverviewFilter.OPEN to 5,
+            OverviewFilter.MINE to 1,
+            OverviewFilter.DONE to 1,
+            OverviewFilter.ALL to 7,
+        ),
         state.counts,
     )
     assertEquals(

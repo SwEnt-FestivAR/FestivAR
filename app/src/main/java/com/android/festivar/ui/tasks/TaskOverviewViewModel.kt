@@ -52,7 +52,7 @@ data class OverviewSectionUi(val group: OverviewGroup, val rows: List<OverviewRo
 /**
  * UI state of the task overview.
  *
- * @property counts how many tasks the OPEN, MINE and DONE chips hold, before the search applies.
+ * @property counts how many tasks each chip holds, before the search applies.
  * @property sections the visible rows, grouped by part of the day, in start order.
  * @property isLoading true only until the first load ends.
  */
@@ -143,10 +143,7 @@ class TaskOverviewViewModel(
             .toSortedMap()
             .map { (group, rows) -> OverviewSectionUi(group, rows.map { row(it) }) }
     val counts =
-        listOf(OverviewFilter.OPEN, OverviewFilter.MINE, OverviewFilter.DONE).associateWith { filter
-          ->
-          tasks.count { matches(it, filter) }
-        }
+        OverviewFilter.entries.associateWith { filter -> tasks.count { matches(it, filter) } }
     return state.copy(sections = sections, counts = counts)
   }
 
