@@ -24,13 +24,9 @@ enum class EventsFilter {
  * Represents an [Event] card of the Events Overview screen.
  *
  * @property event The [Event] shown by the card.
- * @property openTasksCount The number of tasks of the [event] that are not completed yet.
- * @property isOngoing Whether the [event] is taking place right now.
  */
 data class EventItemUIState(
     val event: Event,
-    val openTasksCount: Int,
-    val isOngoing: Boolean = false,
 )
 
 /**
@@ -124,16 +120,11 @@ class EventsOverviewViewModel(
         val (upcoming, ongoing) = notPast.partition { it.startDate.isAfter(currentTime) }
         _uiState.update {
           it.copy(
-              ongoingEvents =
-                  ongoing
-                      .sortedBy { event -> event.startDate }
-                      .map { event -> toItem(event, true) },
+              ongoingEvents = ongoing.sortedBy { event -> event.startDate }.map(::EventItemUIState),
               upcomingEvents =
-                  upcoming.sortedBy { event -> event.startDate }.map { event -> toItem(event) },
+                  upcoming.sortedBy { event -> event.startDate }.map(::EventItemUIState),
               pastEvents =
-                  past
-                      .sortedByDescending { event -> event.startDate }
-                      .map { event -> toItem(event) },
+                  past.sortedByDescending { event -> event.startDate }.map(::EventItemUIState),
               isLoading = false,
           )
         }
@@ -147,12 +138,4 @@ class EventsOverviewViewModel(
 
   /** An [Event] is past once it is closed or once its [Event.endDate] is not after [time]. */
   private fun Event.isPast(time: ZonedDateTime): Boolean = closed || !endDate.isAfter(time)
-
-  /** Builds the card state of an [event], counting its tasks that are not completed yet. */
-  private fun toItem(event: Event, isOngoing: Boolean = false): EventItemUIState =
-      EventItemUIState(
-          event = event,
-          openTasksCount = event.tasks.count { !it.completed },
-          isOngoing = isOngoing,
-      )
 }
