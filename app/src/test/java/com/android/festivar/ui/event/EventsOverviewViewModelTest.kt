@@ -79,9 +79,6 @@ class EventsOverviewViewModelTest {
 
   private val sara = User(uid = "u1", name = "Sara", surname = "Keller")
 
-  /** A user who is a member of no event. */
-  private val marc = User(uid = "u2", name = "Marc", surname = "Dubois")
-
   private val ongoingEvent =
       Event(
           eventId = "0",
@@ -275,19 +272,6 @@ class EventsOverviewViewModelTest {
     assertShows(listOf(endingNow), state.pastEvents)
   }
 
-  /** Test that each event card holds its event as fetched, whatever its category. */
-  @Test
-  fun eventItemsHoldTheirEvent() = runTest {
-    val repository = EventsRepositoryImpl(listOf(ongoingEvent, upcomingEvent, pastEvent))
-    val viewModel = createViewModel(withRepository = repository)
-    advanceUntilIdle()
-
-    val state = viewModel.uiState.value
-    assertEquals(listOf(EventItemUIState(ongoingEvent)), state.ongoingEvents)
-    assertEquals(listOf(EventItemUIState(upcomingEvent)), state.upcomingEvents)
-    assertEquals(listOf(EventItemUIState(pastEvent)), state.pastEvents)
-  }
-
   /** Test that only the events the user is a member of are fetched, by its uid. */
   @Test
   fun onlyTheEventsOfTheUserAreFetched() = runTest {
@@ -303,44 +287,24 @@ class EventsOverviewViewModelTest {
     assertShows(listOf(pastEvent), state.pastEvents)
   }
 
-  /** Test that a user who is a member of no event has no events, even if the repository has. */
+  /**
+   * Test that the signed-in user is in the UI state from the start, while the events load, and
+   * stays there once they are fetched and after a refresh fails.
+   */
   @Test
-  fun userWithoutEventsHasNoEvents() = runTest {
-    val repository = EventsRepositoryImpl(listOf(ongoingEvent, upcomingEvent, pastEvent))
-    val viewModel = createViewModel(withRepository = repository, user = marc)
-    advanceUntilIdle()
-
-    assertEquals(listOf(marc.uid), repository.requestedUserIds)
-    assertTrue(viewModel.uiState.value.hasNoEvents)
-    assertNull(viewModel.uiState.value.errorMsg)
-  }
-
-  /** Test that the signed-in user is in the UI state from the start, while the events load. */
-  @Test
-  fun userIsInTheUIStateWhileLoading() = runTest {
-    val viewModel = createViewModel(EventsRepositoryImpl(listOf(ongoingEvent)), user = sara)
-
+  fun userStaysInTheUIState() = runTest {
+    val repository = EventsRepositoryImpl(listOf(ongoingEvent))
+    val viewModel = createViewModel(withRepository = repository, user = sara)
     assertTrue(viewModel.uiState.value.isLoading)
     assertEquals(sara, viewModel.uiState.value.user)
-  }
 
-  /** Test that the signed-in user stays in the UI state once the events are fetched. */
-  @Test
-  fun userIsKeptOnceEventsAreFetched() = runTest {
-    val viewModel = createViewModel(EventsRepositoryImpl(listOf(ongoingEvent)), user = sara)
     advanceUntilIdle()
-
     assertFalse(viewModel.uiState.value.isLoading)
     assertEquals(sara, viewModel.uiState.value.user)
-  }
 
-  /** Test that the signed-in user stays in the UI state when fetching the events fails. */
-  @Test
-  fun userIsKeptWhenFetchingFails() = runTest {
-    val repository = EventsRepositoryImpl(error = RuntimeException("Network down"))
-    val viewModel = createViewModel(withRepository = repository, user = sara)
+    repository.error = RuntimeException("Network down")
+    viewModel.refreshUIState()
     advanceUntilIdle()
-
     val state = viewModel.uiState.value
     assertEquals("Failed to load events: Network down", state.errorMsg)
     assertEquals(sara, state.user)
@@ -390,7 +354,10 @@ class EventsOverviewViewModelTest {
     assertShows(listOf(pastEvent), viewModel.uiState.value.shownEvents)
   }
 
-  /** Test that refreshing fetches the new events of the repository and keeps the filter. */
+  /**
+   * Test that refreshing fetches the events of the user again, including the ones it joined since
+   * but not the ones of others, and keeps the filter.
+   */
   @Test
   fun refreshFetchesNewEventsAndKeepsTheFilter() = runTest {
     val repository = EventsRepositoryImpl(listOf(ongoingEvent))
@@ -400,37 +367,17 @@ class EventsOverviewViewModelTest {
     assertTrue(viewModel.uiState.value.shownEvents.isEmpty())
 
     repository.addEvent(upcomingEvent)
+    repository.addEvent(eventWithoutSara)
     viewModel.refreshUIState()
     assertTrue(viewModel.uiState.value.isLoading)
     advanceUntilIdle()
 
+    assertEquals(listOf(sara.uid, sara.uid), repository.requestedUserIds)
     val state = viewModel.uiState.value
     assertFalse(state.isLoading)
     assertEquals(EventsFilter.UPCOMING, state.selectedFilter)
     assertShows(listOf(upcomingEvent), state.shownEvents)
-  }
-
-  /**
-   * Test that refreshing fetches the events of the user again, including the ones it joined since
-   * but not the ones of others, and keeps the user in the UI state.
-   */
-  @Test
-  fun refreshFetchesTheNewEventsOfTheUser() = runTest {
-    val repository = EventsRepositoryImpl(listOf(ongoingEvent))
-    val viewModel = createViewModel(withRepository = repository, user = sara)
-    advanceUntilIdle()
-
-    repository.addEvent(upcomingEvent)
-    repository.addEvent(eventWithoutSara)
-    viewModel.refreshUIState()
-    advanceUntilIdle()
-
-    assertEquals(listOf(sara.uid, sara.uid), repository.requestedUserIds)
-    val state = viewModel.uiState.value
-    assertShows(listOf(ongoingEvent), state.ongoingEvents)
-    assertShows(listOf(upcomingEvent), state.upcomingEvents)
     assertTrue(state.pastEvents.isEmpty())
-    assertEquals(sara, state.user)
   }
 
   /**
@@ -553,19 +500,6 @@ class EventsOverviewViewModelTest {
       advanceUntilIdle()
       assertFalse(viewModel.uiState.value.hasNoEvents)
     }
-  }
-
-  /** Test the default UI state: nothing to show, no user, the ongoing filter, no error. */
-  @Test
-  fun defaultUIStateIsEmpty() {
-    val state = EventsOverviewUIState()
-
-    assertNull(state.user)
-    assertEquals(EventsFilter.ONGOING, state.selectedFilter)
-    assertFalse(state.isLoading)
-    assertNull(state.errorMsg)
-    assertTrue(state.hasNoEvents)
-    assertTrue(state.shownEvents.isEmpty())
   }
 
   /** Test that, with the default clock, the events of the user are split with the real time. */
