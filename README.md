@@ -3,7 +3,6 @@
 [![Contributors](https://img.shields.io/github/contributors/SwEnt-FestivAR/FestivAR)](https://github.com/SwEnt-FestivAR/FestivAR/graphs/contributors)
 [![Contributors Activity](https://img.shields.io/github/commit-activity/y/SwEnt-FestivAR/FestivAR)](https://github.com/SwEnt-FestivAR/FestivAR/graphs/contributors)
 [![Last Commit](https://img.shields.io/github/last-commit/SwEnt-FestivAR/FestivAR)](https://github.com/SwEnt-FestivAR/FestivAR/commits)
-[![Daily Commits](https://img.shields.io/github/commit-activity/d/SwEnt-FestivAR/FestivAR)](https://github.com/SwEnt-FestivAR/FestivAR/graphs/commit-activity)
 [![Weekly Commits](https://img.shields.io/github/commit-activity/w/SwEnt-FestivAR/FestivAR)](https://github.com/SwEnt-FestivAR/FestivAR/graphs/commit-activity)
 [![Monthly Commits](https://img.shields.io/github/commit-activity/m/SwEnt-FestivAR/FestivAR)](https://github.com/SwEnt-FestivAR/FestivAR/graphs/commit-activity)
 [![Yearly Commits](https://img.shields.io/github/commit-activity/y/SwEnt-FestivAR/FestivAR)](https://github.com/SwEnt-FestivAR/FestivAR/graphs/commit-activity)
