@@ -1,6 +1,7 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.components
 
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -8,6 +9,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
@@ -73,7 +77,7 @@ class FormFieldsTest {
   }
 
   @Test
-  fun textField_withAPasswordTransformation_doesNotShowTheText() {
+  fun textField_withAPasswordTransformation_isMarkedAsAPasswordField() {
     composeTestRule.setContent {
       AppTheme {
         FestivarTextField(
@@ -86,23 +90,51 @@ class FormFieldsTest {
       }
     }
 
-    composeTestRule.onNodeWithText("secret").assertDoesNotExist()
+    composeTestRule
+        .onNodeWithTag(fieldTag)
+        .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Password))
   }
 
   @Test
-  fun textField_showsItsTrailingIcon() {
+  fun textField_withoutATransformation_isNotAPasswordField() {
+    composeTestRule.setContent {
+      AppTheme {
+        FestivarTextField(
+            value = "visible",
+            onValueChange = {},
+            label = "Title",
+            modifier = Modifier.testTag(fieldTag),
+        )
+      }
+    }
+
+    composeTestRule
+        .onNodeWithTag(fieldTag)
+        .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Password))
+  }
+
+  @Test
+  fun textField_trailingIconIsInteractive() {
+    var clicks = 0
     composeTestRule.setContent {
       AppTheme {
         FestivarTextField(
             value = "",
             onValueChange = {},
             label = "Password",
-            trailingIcon = { Text("show", modifier = Modifier.testTag("trailing")) },
+            trailingIcon = {
+              IconButton(onClick = { clicks++ }, modifier = Modifier.testTag("trailing")) {
+                Text("show")
+              }
+            },
         )
       }
     }
 
-    composeTestRule.onNodeWithTag("trailing").assertIsDisplayed()
+    composeTestRule.onNodeWithTag("trailing").performClick()
+    composeTestRule.waitForIdle()
+
+    assertEquals(1, clicks)
   }
 
   @Test
