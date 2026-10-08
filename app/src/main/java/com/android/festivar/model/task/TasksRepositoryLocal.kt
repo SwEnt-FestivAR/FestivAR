@@ -9,8 +9,8 @@ class TasksRepositoryLocal : TasksRepository {
     return (counter++).toString()
   }
 
-  override suspend fun getAllTasks(): List<Task> {
-    return tasks.toList()
+  override suspend fun getAllTasks(eventId: String): List<Task> {
+    return tasks.filter { it.eventId == eventId }
   }
 
   override suspend fun getTask(taskId: String): Task {
