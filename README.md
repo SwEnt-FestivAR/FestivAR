@@ -12,13 +12,13 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/SwEnt-FestivAR/FestivAR/issues"><img src="https://img.shields.io/github/issues/SwEnt-FestivAR/FestivAR" alt="Issues"></a>
-  <a href="https://github.com/SwEnt-FestivAR/FestivAR/issues?q=is%3Aissue+is%3Aclosed"><img src="https://img.shields.io/github/issues-closed/SwEnt-FestivAR/FestivAR" alt="Closed Issues"></a>
+  <a href="https://github.com/SwEnt-FestivAR/FestivAR/issues"><img src="https://img.shields.io/github/issues/SwEnt-FestivAR/FestivAR?color=red" alt="Issues"></a>
+  <a href="https://github.com/SwEnt-FestivAR/FestivAR/issues?q=is%3Aissue+is%3Aclosed"><img src="https://img.shields.io/github/issues-closed/SwEnt-FestivAR/FestivAR?color=brightgreen" alt="Closed Issues"></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/SwEnt-FestivAR/FestivAR/pulls"><img src="https://img.shields.io/github/issues-pr/SwEnt-FestivAR/FestivAR" alt="Pull Requests"></a>
-  <a href="https://github.com/SwEnt-FestivAR/FestivAR/pulls?q=is%3Apr+is%3Aclosed"><img src="https://img.shields.io/github/issues-pr-closed/SwEnt-FestivAR/FestivAR" alt="Closed Pull Requests"></a>
+  <a href="https://github.com/SwEnt-FestivAR/FestivAR/pulls"><img src="https://img.shields.io/github/issues-pr/SwEnt-FestivAR/FestivAR?color=yellow" alt="Pull Requests"></a>
+  <a href="https://github.com/SwEnt-FestivAR/FestivAR/pulls?q=is%3Apr+is%3Aclosed"><img src="https://img.shields.io/github/issues-pr-closed/SwEnt-FestivAR/FestivAR?color=brightgreen" alt="Closed Pull Requests"></a>
 </p>
 
 
