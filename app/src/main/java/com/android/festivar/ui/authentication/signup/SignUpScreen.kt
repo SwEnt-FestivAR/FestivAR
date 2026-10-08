@@ -42,7 +42,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
@@ -69,7 +68,6 @@ object SignUpScreenTestTags {
   const val LOGIN_NOW_BUTTON = "loginNowButton"
 }
 
-// TODO colors are hardcoded, use the ones in Theme when merged
 @Composable
 fun SignUpScreen(
     modifier: Modifier = Modifier,
@@ -84,8 +82,6 @@ fun SignUpScreen(
   val context = LocalContext.current
   val uiState by viewModel.uiState.collectAsState()
 
-  val limeGreen = Color(0xFFD4FE42)
-  val darkLime = Color(0xFF5B7900)
   if (uiState.isAuthenticated) {
     onSignUpSuccess()
   }
@@ -93,7 +89,7 @@ fun SignUpScreen(
       modifier =
           modifier
               .fillMaxSize()
-              .background(color = Color(0xFFFCFBF7))
+              .background(color = MaterialTheme.colorScheme.background)
               .padding(horizontal = 24.dp)
               .verticalScroll(rememberScrollState()),
       horizontalAlignment = Alignment.Start,
@@ -121,7 +117,6 @@ fun SignUpScreen(
                 uiState.password == uiState.confirmPassword,
         isLoading = uiState.isLoading,
         onClick = { viewModel.signUp(uiState.email, uiState.password) },
-        limeGreen = limeGreen,
     )
     Spacer(modifier = Modifier.height(24.dp))
     SignUpDivider()
@@ -132,7 +127,7 @@ fun SignUpScreen(
     Spacer(modifier = Modifier.height(24.dp))
     SignUpTerms()
     Spacer(modifier = Modifier.height(32.dp))
-    SignUpFooter(onSignInClick, darkLime)
+    SignUpFooter(onSignInClick)
   }
 }
 
@@ -147,14 +142,14 @@ private fun SignUpTopBar(onBackClick: () -> Unit) {
       Icon(
           imageVector = Icons.AutoMirrored.Filled.ArrowBack,
           contentDescription = "Back",
-          tint = Color.Black,
+          tint = MaterialTheme.colorScheme.onSurface,
       )
     }
     IconButton(onClick = {}) {
       Icon(
           imageVector = Icons.Default.MoreVert,
           contentDescription = "More Options",
-          tint = Color.Black,
+          tint = MaterialTheme.colorScheme.onSurface,
       )
     }
   }
@@ -166,14 +161,14 @@ private fun SignUpHeader() {
     Text(
         text = "Create an account",
         style = MaterialTheme.typography.displaySmall,
-        color = Color.Black,
+        color = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.testTag(SignUpScreenTestTags.CREATE_ACC_TITLE),
     )
     Spacer(modifier = Modifier.height(8.dp))
     Text(
         text = "Your organizer adds you to an event by code once you are in.",
         style = MaterialTheme.typography.bodyLarge,
-        color = Color.Gray,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
   }
 }
@@ -217,7 +212,7 @@ private fun SignUpFields(
     if (confirmPassword.isNotEmpty() && password != confirmPassword) {
       Text(
           text = "Passwords do not match",
-          color = Color.Red,
+          color = MaterialTheme.colorScheme.error,
           style = MaterialTheme.typography.bodySmall,
           modifier =
               Modifier.padding(top = 4.dp).testTag(SignUpScreenTestTags.PASSWORD_MISMATCH_ERROR),
@@ -227,7 +222,7 @@ private fun SignUpFields(
     Text(
         text = "8 characters or more.",
         style = MaterialTheme.typography.bodySmall,
-        color = Color.Gray,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(start = 4.dp),
     )
   }
@@ -280,7 +275,7 @@ private fun PasswordTextField(
                         else Icons.Default.VisibilityOff,
                     contentDescription =
                         if (isPasswordVisible) "Hide password" else "Show password",
-                    tint = Color.Gray,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
               }
             }
@@ -294,7 +289,6 @@ private fun SignUpButton(
     enabled: Boolean,
     isLoading: Boolean,
     onClick: () -> Unit,
-    limeGreen: Color,
 ) {
   Button(
       onClick = onClick,
@@ -303,10 +297,10 @@ private fun SignUpButton(
       shape = RoundedCornerShape(16.dp),
       colors =
           ButtonDefaults.buttonColors(
-              containerColor = limeGreen,
-              contentColor = Color.Black,
-              disabledContainerColor = limeGreen.copy(alpha = 0.5f),
-              disabledContentColor = Color.Black.copy(alpha = 0.5f),
+              containerColor = MaterialTheme.colorScheme.primary,
+              contentColor = MaterialTheme.colorScheme.onPrimary,
+              disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+              disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f),
           ),
   ) {
     Text(
@@ -322,14 +316,20 @@ private fun SignUpDivider() {
       modifier = Modifier.fillMaxWidth(),
       verticalAlignment = Alignment.CenterVertically,
   ) {
-    HorizontalDivider(modifier = Modifier.weight(1f), color = Color.LightGray.copy(alpha = 0.5f))
+    HorizontalDivider(
+        modifier = Modifier.weight(1f),
+        color = MaterialTheme.colorScheme.outlineVariant,
+    )
     Text(
         text = "or",
         modifier = Modifier.padding(horizontal = 12.dp),
-        color = Color.Gray,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         style = MaterialTheme.typography.bodySmall,
     )
-    HorizontalDivider(modifier = Modifier.weight(1f), color = Color.LightGray.copy(alpha = 0.5f))
+    HorizontalDivider(
+        modifier = Modifier.weight(1f),
+        color = MaterialTheme.colorScheme.outlineVariant,
+    )
   }
 }
 
@@ -354,7 +354,7 @@ private fun GoogleSignUpButton(onClick: () -> Unit) {
       Text(
           text = "Continue with Google",
           style = MaterialTheme.typography.labelLarge,
-          color = Color.Black,
+          color = MaterialTheme.colorScheme.onSurface,
       )
     }
   }
@@ -366,12 +366,12 @@ private fun SignUpTerms() {
       text =
           "By continuing you accept the terms and the privacy notice. Your phone number, if you add one later, is only shown to organizers.",
       style = MaterialTheme.typography.bodySmall,
-      color = Color.Gray,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
   )
 }
 
 @Composable
-private fun SignUpFooter(onSignInClick: () -> Unit, darkLime: Color) {
+private fun SignUpFooter(onSignInClick: () -> Unit) {
   Row(
       modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
       horizontalArrangement = Arrangement.Center,
@@ -380,7 +380,7 @@ private fun SignUpFooter(onSignInClick: () -> Unit, darkLime: Color) {
     Text(
         text = "Already have an account?",
         style = MaterialTheme.typography.bodyMedium,
-        color = Color.Gray,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     Spacer(modifier = Modifier.width(4.dp))
     TextButton(
@@ -390,7 +390,7 @@ private fun SignUpFooter(onSignInClick: () -> Unit, darkLime: Color) {
       Text(
           text = "Sign in",
           style = MaterialTheme.typography.labelLarge,
-          color = darkLime,
+          color = MaterialTheme.colorScheme.onPrimaryContainer,
       )
     }
   }
