@@ -28,6 +28,8 @@ import org.junit.Before
  * The subclass owns the compose rule and calls [showCreateTaskScreen] from its own `@Before`.
  */
 abstract class CreateTaskTest {
+  // FAKE: a real, working repository that keeps the tasks in memory instead of Firebase. The tests
+  // read the saved tasks back from it. There is no mock: nothing checks that a method was called.
   lateinit var repository: TasksRepositoryLocal
   lateinit var viewModel: CreateTaskViewModel
 
