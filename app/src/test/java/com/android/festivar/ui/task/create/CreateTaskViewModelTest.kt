@@ -27,7 +27,7 @@ class CreateTaskViewModelTest {
   // read the saved tasks back from it. There is no mock in this file: nothing checks that a method
   // was called, the tests check the state and what was stored.
   private val repository = TasksRepositoryLocal()
-  private val viewModel = CreateTaskViewModel(eventId = "event-1", tasksRepository = repository)
+  private val viewModel = CreateTaskViewModel(repository)
   private val day = LocalDate.of(2026, 10, 17)
 
   private fun savedTasks(): List<Task> = runBlocking { repository.getAllTasks("event-1") }
@@ -55,7 +55,7 @@ class CreateTaskViewModelTest {
     viewModel.updateTitle("Run power to stage")
     viewModel.updateLocation("Stage, north corner")
 
-    viewModel.createTask()
+    viewModel.createTask("event-1")
 
     val saved = savedTasks().single()
     assertEquals("Run power to stage", saved.title)
@@ -68,7 +68,7 @@ class CreateTaskViewModelTest {
 
   @Test
   fun createTask_withBlankTitle_savesNothing() {
-    viewModel.createTask()
+    viewModel.createTask("event-1")
 
     assertTrue(savedTasks().isEmpty())
     assertFalse(viewModel.uiState.value.isCreated)
@@ -80,7 +80,7 @@ class CreateTaskViewModelTest {
     viewModel.updateStartDate(day)
     viewModel.updateEndDate(day.minusDays(1))
 
-    viewModel.createTask()
+    viewModel.createTask("event-1")
 
     assertTrue(savedTasks().isEmpty())
     assertEquals(FieldError.END_BEFORE_START, viewModel.uiState.value.endDateError)
@@ -115,10 +115,10 @@ class CreateTaskViewModelTest {
         object : TasksRepository by TasksRepositoryLocal() {
           override suspend fun addTask(task: Task) = throw IllegalStateException("offline")
         }
-    val vm = CreateTaskViewModel("event-1", failing)
+    val vm = CreateTaskViewModel(failing)
     vm.updateTitle("Run power to stage")
 
-    vm.createTask()
+    vm.createTask("event-1")
 
     val state = vm.uiState.value
     assertEquals("Unable to create the task.", state.errorMsg)
@@ -147,12 +147,12 @@ class CreateTaskViewModelTest {
             local.addTask(task)
           }
         }
-    val vm = CreateTaskViewModel("event-1", slow)
+    val vm = CreateTaskViewModel(slow)
     vm.updateTitle("Run power to stage")
 
-    vm.createTask()
+    vm.createTask("event-1")
     assertTrue(vm.uiState.value.isSaving)
-    vm.createTask()
+    vm.createTask("event-1")
     gate.complete(Unit)
     shadowOf(Looper.getMainLooper()).idle()
 
@@ -177,14 +177,14 @@ class CreateTaskViewModelTest {
             local.addTask(task)
           }
         }
-    val vm = CreateTaskViewModel("event-1", flaky)
+    val vm = CreateTaskViewModel(flaky)
     vm.updateTitle("Run power to stage")
 
-    vm.createTask()
+    vm.createTask("event-1")
     assertEquals("Unable to create the task.", vm.uiState.value.errorMsg)
 
     failing = false
-    vm.createTask()
+    vm.createTask("event-1")
 
     val state = vm.uiState.value
     assertNull(state.errorMsg)
@@ -202,10 +202,10 @@ class CreateTaskViewModelTest {
         object : TasksRepository by TasksRepositoryLocal() {
           override suspend fun addTask(task: Task) = throw CancellationException("cancelled")
         }
-    val vm = CreateTaskViewModel("event-1", cancelled)
+    val vm = CreateTaskViewModel(cancelled)
     vm.updateTitle("Run power to stage")
 
-    vm.createTask()
+    vm.createTask("event-1")
 
     assertNull(vm.uiState.value.errorMsg)
     assertFalse(vm.uiState.value.isCreated)
@@ -216,8 +216,8 @@ class CreateTaskViewModelTest {
   fun createTask_afterASuccess_isIgnored() {
     viewModel.updateTitle("Run power to stage")
 
-    viewModel.createTask()
-    viewModel.createTask()
+    viewModel.createTask("event-1")
+    viewModel.createTask("event-1")
 
     assertEquals(1, savedTasks().size)
   }
