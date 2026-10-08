@@ -9,6 +9,7 @@ import java.time.Duration
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
@@ -264,6 +265,21 @@ class TaskOverviewViewModelTest {
     val state = viewModel.uiState.value
     assertFalse(state.isLoading)
     assertEquals("Network down", state.errorMsg)
+    assertTrue(state.sections.isEmpty())
+  }
+
+  /** Turns red when the ViewModel swallows cancellation and reports it as an error. */
+  @Test
+  fun aCancelledLoadIsNotReportedAsAnError() {
+    val cancelling =
+        object : TasksRepository by repository {
+          override suspend fun getAllTasks(eventId: String): List<Task> =
+              throw CancellationException("Left the screen")
+        }
+
+    val state = overview(repo = cancelling).uiState.value
+
+    assertNull(state.errorMsg)
     assertTrue(state.sections.isEmpty())
   }
 
