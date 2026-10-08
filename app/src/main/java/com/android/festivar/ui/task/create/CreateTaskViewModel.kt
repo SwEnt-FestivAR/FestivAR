@@ -101,14 +101,14 @@ data class CreateTaskUiState(
   fun toTask(taskId: String, eventId: String): Task {
     require(isValid) { "The form is not valid." }
     return Task(
-          taskId = taskId,
-          eventId = eventId,
-          title = title.trim(),
-          description = description.trim(),
-          location = location.trim(),
-          startTime = startDateTime,
-          endTime = endDateTime,
-      )
+        taskId = taskId,
+        eventId = eventId,
+        title = title.trim(),
+        description = description.trim(),
+        location = location.trim(),
+        startTime = startDateTime,
+        endTime = endDateTime,
+    )
   }
 
   private fun combine(date: LocalDate?, time: LocalTime?): LocalDateTime? =
