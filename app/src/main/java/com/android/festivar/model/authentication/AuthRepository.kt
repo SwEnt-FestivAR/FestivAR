@@ -3,7 +3,7 @@ package com.android.festivar.model.authentication
 import androidx.credentials.Credential
 import com.google.firebase.auth.FirebaseUser
 
-public interface AuthRepository {
+interface AuthRepository {
   /** signs in with Google */
   suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser>
 
