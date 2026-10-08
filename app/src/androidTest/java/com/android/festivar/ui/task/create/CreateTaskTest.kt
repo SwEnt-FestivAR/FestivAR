@@ -4,8 +4,6 @@ package com.android.festivar.ui.task.create
 import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
-import androidx.compose.ui.test.hasClickAction
-import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -14,6 +12,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepositoryLocal
+import com.android.festivar.ui.components.hasDayOfMonth
 import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
 import java.time.LocalTime
@@ -85,7 +84,7 @@ abstract class CreateTaskTest {
       "The date picker opens on the current month, so $date cannot be picked."
     }
     onNodeWithTag(fieldTag).performScrollTo().performClick()
-    onNode(hasText(date.dayOfMonth.toString()) and hasClickAction()).performClick()
+    onNode(hasDayOfMonth(date.dayOfMonth)).performClick()
     onNodeWithText("OK").performClick()
   }
 
