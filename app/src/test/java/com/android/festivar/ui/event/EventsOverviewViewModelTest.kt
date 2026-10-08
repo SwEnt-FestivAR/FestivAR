@@ -3,6 +3,7 @@ package com.android.festivar.ui.event
 
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
+import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.temporary.User
 import java.time.ZoneId
@@ -26,46 +27,27 @@ import org.junit.Test
 class EventsOverviewViewModelTest {
 
   /**
-   * A fake [EventsRepository] serving [eventList]. It throws [error] on every fetch when it is set,
+   * An [EventsRepositoryLocal] serving [events]. It throws [error] on every fetch when it is set,
    * and counts the fetches so the tests can check which one the ViewModel uses.
    */
   private class EventsRepositoryImpl(
-      var eventList: List<Event> = listOf(),
+      events: List<Event> = listOf(),
       val error: Exception? = null,
-  ) : EventsRepository {
+      private val local: EventsRepository = EventsRepositoryLocal(events),
+  ) : EventsRepository by local {
     var getAllEventsCalls = 0
     var getEventsForUserCalls = 0
-
-    override fun getNewUid(): String {
-      return "${eventList.size}"
-    }
 
     override suspend fun getAllEvents(): List<Event> {
       getAllEventsCalls++
       error?.let { throw it }
-      return eventList
-    }
-
-    override suspend fun getEvent(eventId: String): Event {
-      TODO("Not yet implemented")
+      return local.getAllEvents()
     }
 
     override suspend fun getEventsForUser(userId: String): List<Event> {
       getEventsForUserCalls++
       error?.let { throw it }
-      return eventList.filter { event -> event.members.any { it.uid == userId } }
-    }
-
-    override suspend fun addEvent(event: Event) {
-      TODO("Not yet implemented")
-    }
-
-    override suspend fun editEvent(eventId: String, newValue: Event) {
-      TODO("Not yet implemented")
-    }
-
-    override suspend fun deleteEvent(eventId: String) {
-      TODO("Not yet implemented")
+      return local.getEventsForUser(userId)
     }
   }
 
@@ -333,7 +315,7 @@ class EventsOverviewViewModelTest {
     viewModel.selectFilter(EventsFilter.UPCOMING)
     assertTrue(viewModel.uiState.value.shownEvents.isEmpty())
 
-    repository.eventList = listOf(ongoingEvent, upcomingEvent)
+    repository.addEvent(upcomingEvent)
     viewModel.refreshUIState()
     assertTrue(viewModel.uiState.value.isLoading)
     advanceUntilIdle()
