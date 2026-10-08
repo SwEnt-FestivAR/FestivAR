@@ -117,7 +117,7 @@ fun FestivarFieldError(message: String, modifier: Modifier = Modifier) {
 
 @Preview(showBackground = true)
 @Composable
-private fun FormFieldsPreview() {
+internal fun FormFieldsPreview() {
   AppTheme {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(16.dp)) {
       FestivarTextField(value = "", onValueChange = {}, label = "Title")
