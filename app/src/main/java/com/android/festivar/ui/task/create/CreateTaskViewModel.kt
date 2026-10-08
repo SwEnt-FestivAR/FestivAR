@@ -44,6 +44,8 @@ data class CreateTaskUiState(
     val endDate: LocalDate? = null,
     val endTime: LocalTime? = null,
     val titleEdited: Boolean = false,
+    // True while the task is being saved. It keeps a second tap on "Create task" from saving the
+    // task twice (see canCreate); same idea as isLoading in the bootcamp SignInViewModel.
     val isSaving: Boolean = false,
     val isCreated: Boolean = false,
     val errorMsg: String? = null,
@@ -137,6 +139,8 @@ class CreateTaskViewModel(
   fun createTask() {
     val form = _uiState.value
     if (!form.canCreate) return
+    // The task is built from the copy of the form taken above, so typing during the save does not
+    // change what is saved.
     _uiState.update { it.copy(isSaving = true, errorMsg = null) }
     viewModelScope.launch {
       runCatching { tasksRepository.addTask(form.toTask(tasksRepository.getNewUid(), eventId)) }
