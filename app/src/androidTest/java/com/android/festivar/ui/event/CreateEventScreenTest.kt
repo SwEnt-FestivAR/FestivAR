@@ -44,6 +44,7 @@ class CreateEventScreenTest {
   fun taggedElementsAreDisplayed() {
     listOf(
             CreateEventScreenTestTags.NAVIGATION_BUTTON,
+            CreateEventScreenTestTags.TITLE,
             CreateEventScreenTestTags.NAME_FIELD,
             CreateEventScreenTestTags.START_DATE_FIELD,
             CreateEventScreenTestTags.END_DATE_FIELD,

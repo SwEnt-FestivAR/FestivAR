@@ -62,6 +62,7 @@ private val SecondaryText = Color(0xFF77766F)
 
 object CreateEventScreenTestTags {
   const val NAVIGATION_BUTTON = "navigationButton"
+  const val TITLE = "title"
   const val NAME_FIELD = "nameField"
   const val START_DATE_FIELD = "startDateField"
   const val END_DATE_FIELD = "endDateField"
@@ -101,7 +102,7 @@ fun CreateEventScreen(
                 ),
         ) {
           Text(
-              text = "Create",
+              text = "Create event",
               fontWeight = FontWeight.Bold,
           )
         }
@@ -208,9 +209,10 @@ private fun CreateEventTopBar(onBack: () -> Unit) {
   TopAppBar(
       title = {
         Text(
-            text = "New event",
+            text = "Create event",
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
+            modifier = Modifier.testTag(CreateEventScreenTestTags.TITLE)
         )
       },
       navigationIcon = {
