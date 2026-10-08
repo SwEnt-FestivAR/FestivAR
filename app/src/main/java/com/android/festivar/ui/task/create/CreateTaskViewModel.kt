@@ -30,7 +30,9 @@ class CreateTaskViewModel(
 
   fun updateTitle(title: String) = _uiState.update { it.copy(title = title) }
 
-  fun updateDescription(description: String) = _uiState.update { it.copy(description = description) }
+  fun updateDescription(description: String) = _uiState.update {
+    it.copy(description = description)
+  }
 
   fun updateLocation(location: String) = _uiState.update { it.copy(location = location) }
 
@@ -62,6 +64,8 @@ class CreateTaskViewModel(
 
   companion object {
     fun factory(eventId: String, tasksRepository: TasksRepository): ViewModelProvider.Factory =
-        viewModelFactory { initializer { CreateTaskViewModel(eventId, tasksRepository) } }
+        viewModelFactory {
+          initializer { CreateTaskViewModel(eventId, tasksRepository) }
+        }
   }
 }

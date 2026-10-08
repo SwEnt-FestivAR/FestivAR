@@ -91,7 +91,9 @@ class CreateTaskScreenTest {
     composeTestRule
         .onNodeWithTag(CreateTaskScreenTestTags.END_DATE_FIELD)
         .assertTextContains("Sat 17 Oct")
-    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.END_TIME_FIELD).assertTextContains("09:50")
+    composeTestRule
+        .onNodeWithTag(CreateTaskScreenTestTags.END_TIME_FIELD)
+        .assertTextContains("09:50")
   }
 
   @Test

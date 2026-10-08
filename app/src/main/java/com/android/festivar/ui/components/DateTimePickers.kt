@@ -71,7 +71,11 @@ fun FestivarTimePickerDialog(
 ) {
   val start = initial ?: LocalTime.of(9, 0)
   val state =
-      rememberTimePickerState(initialHour = start.hour, initialMinute = start.minute, is24Hour = true)
+      rememberTimePickerState(
+          initialHour = start.hour,
+          initialMinute = start.minute,
+          is24Hour = true,
+      )
   AlertDialog(
       onDismissRequest = onDismiss,
       confirmButton = {
