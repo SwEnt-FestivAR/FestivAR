@@ -6,6 +6,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
+import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -329,7 +330,7 @@ class CreateTaskViewModelTest {
 
     vm.createTask("event-1")
     assertTrue(vm.uiState.value.isSaving)
-    shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofSeconds(5))
+    shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(5))
 
     assertEquals("Unable to create the task.", vm.uiState.value.errorMsg)
     assertFalse(vm.uiState.value.isSaving)
@@ -429,12 +430,33 @@ class CreateTaskUiStateTest {
     assertNull(state.endDateError)
   }
 
-  // A date without a time means the start of that day, also for the end: this end is at 00:00,
-  // before the start at 09:00.
+  // An end date without a time covers that whole day, so picking the start day as the end date
+  // is not "before" a start at 09:00: the user has not picked an end time yet.
   @Test
-  fun endDateWithoutTime_onTheStartDay_isBeforeAStartWithATime() {
+  fun endDateWithoutTime_onTheStartDay_isValid() {
     val state = valid.copy(startDate = day, startTime = LocalTime.of(9, 0), endDate = day)
+    assertNull(state.endDateError)
+    assertTrue(state.canCreate)
+  }
+
+  @Test
+  fun endDateWithoutTime_endsAtTheLastMinuteOfTheDay() {
+    assertEquals(day.atTime(23, 59), valid.copy(endDate = day).endDateTime)
+  }
+
+  // The day before the start, even as a whole day, ends before the start.
+  @Test
+  fun endDateWithoutTime_onTheDayBeforeTheStart_isAnError() {
+    val state = valid.copy(startDate = day, endDate = day.minusDays(1))
     assertEquals(FieldError.END_BEFORE_START, state.endDateError)
+  }
+
+  // Both dates without a time: the task covers the whole day, and is saved that way.
+  @Test
+  fun toTask_withDatesOnly_coversTheWholeDay() {
+    val task = valid.copy(startDate = day, endDate = day).toTask("t1", "e1")
+    assertEquals(day.atStartOfDay(), task.startTime)
+    assertEquals(day.atTime(23, 59), task.endTime)
   }
 
   @Test

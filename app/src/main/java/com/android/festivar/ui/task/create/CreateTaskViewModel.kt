@@ -35,7 +35,8 @@ enum class FieldError {
  * Everything the user typed in the Create task form, plus the rules that decide whether it can be
  * turned into a [Task]. It is a plain immutable value, so these rules are testable without any UI.
  *
- * A date picked without a time means "from the start of that day".
+ * A date picked without a time covers the whole day: the start is at [START_OF_DAY] and the end at
+ * [END_OF_DAY]. So a start on Saturday at 09:30 and an end date of Saturday is a valid task.
  */
 data class CreateTaskUiState(
     val title: String = "",
@@ -53,10 +54,10 @@ data class CreateTaskUiState(
     val errorMsg: String? = null,
 ) {
   val startDateTime: LocalDateTime?
-    get() = combine(startDate, startTime)
+    get() = startDate?.atTime(startTime ?: START_OF_DAY)
 
   val endDateTime: LocalDateTime?
-    get() = combine(endDate, endTime)
+    get() = endDate?.atTime(endTime ?: END_OF_DAY)
 
   /**
    * The title error. It only appears once the title has been edited, so that an untouched form does
@@ -110,12 +111,18 @@ data class CreateTaskUiState(
         endTime = endDateTime,
     )
   }
-
-  private fun combine(date: LocalDate?, time: LocalTime?): LocalDateTime? =
-      date?.atTime(time ?: LocalTime.MIDNIGHT)
 }
 
+/** The time of a start date picked without a time. */
+val START_OF_DAY: LocalTime = LocalTime.MIDNIGHT
+
+/** The time of an end date picked without a time: the last minute the forms can show. */
+val END_OF_DAY: LocalTime = LocalTime.of(23, 59)
+
 private const val SAVE_TIMEOUT_MS = 15_000L
+
+/** The message shown when the task could not be saved, whatever the cause. */
+private const val SAVE_FAILED_MESSAGE = "Unable to create the task."
 
 /**
  * Holds the state of the Create task screen and saves the new task in [tasksRepository].
@@ -123,7 +130,8 @@ private const val SAVE_TIMEOUT_MS = 15_000L
  * @param tasksRepository Where the task is saved. It is the app's repository by default; the tests
  *   give an in-memory one.
  * @param saveTimeoutMs How long a save may last before it is reported as failed, so that the form
- *   never stays stuck in the saving state.
+ *   never stays stuck in the saving state. A failed save is followed by a read of the task under
+ *   the same timeout, so the saving state lasts at most twice this long.
  */
 class CreateTaskViewModel(
     private val tasksRepository: TasksRepository = TasksRepositoryProvider.repository,
@@ -182,7 +190,7 @@ class CreateTaskViewModel(
     if (eventId.isBlank()) {
       // A Task needs an event: this is a mistake of the caller, reported instead of crashing.
       Log.e("CreateTaskViewModel", "createTask called without an event")
-      _uiState.update { it.copy(errorMsg = "Unable to create the task.") }
+      _uiState.update { it.copy(errorMsg = SAVE_FAILED_MESSAGE) }
       return
     }
     // The task is built from the copy of the form taken above, so typing during the save does not
@@ -230,7 +238,7 @@ class CreateTaskViewModel(
         }
     _uiState.update {
       if (alreadySaved) it.copy(isSaving = false, isCreated = true)
-      else it.copy(isSaving = false, errorMsg = "Unable to create the task.")
+      else it.copy(isSaving = false, errorMsg = SAVE_FAILED_MESSAGE)
     }
   }
 }
