@@ -1,17 +1,25 @@
+// Written with the help of an AI coding assistant and reviewed line by line by the author.
 package com.android.festivar.ui.tasks
 
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
+import com.android.festivar.model.task.TasksRepositoryProvider
 import com.android.festivar.model.temporary.User
 import java.time.Clock
 import java.time.Duration
+import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -27,7 +35,8 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class TaskOverviewViewModelTest {
   private val zone = ZoneId.of("Europe/Zurich")
-  private val clock = Clock.fixed(at(10, 0).atZone(zone).toInstant(), zone)
+  private val clock = SettableClock(at(10, 0).atZone(zone).toInstant(), zone)
+  private val dispatcher = UnconfinedTestDispatcher()
   private val me = User("me")
   private val ana = User("ana")
 
@@ -62,9 +71,10 @@ class TaskOverviewViewModelTest {
 
   private lateinit var repository: TasksRepositoryLocal
 
+  /** Routes viewModelScope to the test dispatcher and seeds the eight tasks above. */
   @Before
   fun setUp() {
-    Dispatchers.setMain(UnconfinedTestDispatcher())
+    Dispatchers.setMain(dispatcher)
     repository = TasksRepositoryLocal()
     runBlocking {
       listOf(power, tables, bar, bunting, sound, gate, litter, elsewhere).forEach {
@@ -73,16 +83,36 @@ class TaskOverviewViewModelTest {
     }
   }
 
+  /** Gives Dispatchers.Main back, so the next test class starts clean. */
   @After
   fun tearDown() {
     Dispatchers.resetMain()
   }
 
+  /** A ViewModel on [EVENT] with the settable clock, signed in as [me] unless told otherwise. */
   private fun overview(userId: String? = me.uid, repo: TasksRepository = repository) =
       TaskOverviewViewModel(EVENT, userId, repo, clock)
 
+  /** The ids of every visible row, in section then row order. */
   private fun TaskOverviewUiState.visibleIds() = sections.flatMap { section ->
     section.rows.map { it.task.taskId }
+  }
+
+  /** The ids of the rows under [group], across days, in section then row order. */
+  private fun TaskOverviewUiState.idsIn(group: OverviewGroup) =
+      sections
+          .filter { it.group == group }
+          .flatMap { section -> section.rows.map { it.task.taskId } }
+
+  /** Collects [TaskOverviewViewModel.uiState] the way a screen does; cancel it to leave. */
+  private fun watch(viewModel: TaskOverviewViewModel): Job =
+      CoroutineScope(dispatcher).launch { viewModel.uiState.collect {} }
+
+  /** Moves the clock and the coroutine scheduler together, as wall time would. */
+  private fun tick(by: Duration) {
+    clock.advance(by)
+    dispatcher.scheduler.advanceTimeBy(by.toMillis())
+    dispatcher.scheduler.runCurrent()
   }
 
   /** Turns red when the ViewModel stops asking the repository for [EVENT]'s tasks only. */
@@ -174,13 +204,15 @@ class TaskOverviewViewModelTest {
 
   /**
    * Turns red when a group boundary (12:00, 18:00), the NOW rule (an unfinished task from yesterday
-   * is not NOW), the start-then-title sort or the section order changes.
+   * is not NOW), the start-then-title sort, the section order, or the day split changes:
+   * yesterday's and tomorrow's 09:00 tasks must not share today's MORNING section.
    */
   @Test
-  fun tasksAreGroupedIntoTheFiveGroupsInOrder() {
+  fun tasksAreGroupedByDayThenIntoTheFiveGroupsInOrder() {
     runBlocking {
       listOf(
               Task("yesterday", EVENT, "Fold the tents", startTime = at(9, 0).minusDays(1)),
+              Task("tomorrow", EVENT, "Unfold the tents", startTime = at(9, 0).plusDays(1)),
               Task("chairs", EVENT, "Arrange chairs", startTime = at(11, 30)),
               Task("noon", EVENT, "Serve lunch", startTime = at(12, 0)),
               Task("late", EVENT, "Clear the tables", startTime = at(17, 59)),
@@ -193,17 +225,159 @@ class TaskOverviewViewModelTest {
 
     val sections = viewModel.uiState.value.sections
 
-    assertEquals(OverviewGroup.entries.toList(), sections.map { it.group })
+    val yesterday = DAY.minusDays(1)
+    val tomorrow = DAY.plusDays(1)
     assertEquals(
         listOf(
+            yesterday to OverviewGroup.MORNING,
+            DAY to OverviewGroup.NOW,
+            DAY to OverviewGroup.MORNING,
+            DAY to OverviewGroup.AFTERNOON,
+            DAY to OverviewGroup.EVENING,
+            tomorrow to OverviewGroup.MORNING,
+            null to OverviewGroup.ANYTIME,
+        ),
+        sections.map { it.day to it.group },
+    )
+    assertEquals(
+        listOf(
+            listOf("yesterday"),
             listOf("tables", "power"),
-            listOf("yesterday", "bar", "chairs", "bunting"),
+            listOf("bar", "chairs", "bunting"),
             listOf("noon", "sound", "late"),
             listOf("six", "gate"),
+            listOf("tomorrow"),
             listOf("litter"),
         ),
         sections.map { section -> section.rows.map { it.task.taskId } },
     )
+  }
+
+  /**
+   * Turns red when the NOW group stops following the clock while the screen watches, or regroups
+   * before a task actually changes group: bunting (11:30) comes within the hour at 10:30 exactly.
+   */
+  @Test
+  fun nowFollowsTheClockWhileTheScreenWatches() {
+    val viewModel = overview()
+    val screen = watch(viewModel)
+    assertEquals(listOf("tables", "power"), viewModel.uiState.value.idsIn(OverviewGroup.NOW))
+
+    tick(Duration.ofMinutes(29))
+    assertEquals(listOf("tables", "power"), viewModel.uiState.value.idsIn(OverviewGroup.NOW))
+
+    tick(Duration.ofMinutes(1))
+    assertEquals(
+        listOf("tables", "power", "bunting"),
+        viewModel.uiState.value.idsIn(OverviewGroup.NOW),
+    )
+    screen.cancel()
+  }
+
+  /**
+   * Turns red when the clock is followed with nobody collecting the state, which would keep a
+   * backgrounded screen's ViewModel working, or when a returning screen is not regrouped at once.
+   */
+  @Test
+  fun nothingRegroupsWhileNobodyWatchesAndAReturningScreenCatchesUp() {
+    val viewModel = overview()
+
+    tick(Duration.ofHours(2))
+    assertEquals(listOf("tables", "power"), viewModel.uiState.value.idsIn(OverviewGroup.NOW))
+
+    val screen = watch(viewModel)
+    assertEquals(
+        listOf("tables", "power", "bunting"),
+        viewModel.uiState.value.idsIn(OverviewGroup.NOW),
+    )
+    screen.cancel()
+  }
+
+  /**
+   * Turns red when a started task without an end leaves NOW before midnight, or stays in NOW past
+   * it: at 23:59:59 every unfinished task started today is NOW, full or not, one second later none
+   * is.
+   */
+  @Test
+  fun aTaskWithoutAnEndIsNowUntilMidnightOfItsDay() {
+    val viewModel = overview()
+    val screen = watch(viewModel)
+    viewModel.selectFilter(OverviewFilter.ALL)
+
+    tick(Duration.ofHours(13).plusMinutes(59).plusSeconds(59))
+    assertEquals(
+        listOf("tables", "power", "bunting", "sound", "gate"),
+        viewModel.uiState.value.idsIn(OverviewGroup.NOW),
+    )
+
+    tick(Duration.ofSeconds(1))
+    val sections = viewModel.uiState.value.sections
+    assertEquals(
+        listOf(
+            DAY to OverviewGroup.MORNING,
+            DAY to OverviewGroup.AFTERNOON,
+            DAY to OverviewGroup.EVENING,
+            null to OverviewGroup.ANYTIME,
+        ),
+        sections.map { it.day to it.group },
+    )
+    assertEquals(
+        listOf("tables", "bar", "power", "bunting"),
+        sections.first().rows.map { it.task.taskId },
+    )
+    screen.cancel()
+  }
+
+  /**
+   * Turns red when the day does not turn for the NOW section itself: a task starting at 00:15
+   * tomorrow is NOW from 23:15, under today, and must sit under tomorrow once midnight has passed.
+   */
+  @Test
+  fun theNowSectionMovesToTheNewDayAtMidnight() {
+    val onlyDawn = TasksRepositoryLocal()
+    runBlocking {
+      onlyDawn.addTask(Task("dawn", EVENT, "Open the gates", startTime = at(0, 15).plusDays(1)))
+    }
+    val viewModel = overview(repo = onlyDawn)
+    val screen = watch(viewModel)
+
+    tick(Duration.ofHours(13).plusMinutes(30))
+    val beforeMidnight = viewModel.uiState.value.sections.single()
+    assertEquals(OverviewGroup.NOW to DAY, beforeMidnight.group to beforeMidnight.day)
+
+    tick(Duration.ofMinutes(30))
+    val afterMidnight = viewModel.uiState.value.sections.single()
+    assertEquals(OverviewGroup.NOW to DAY.plusDays(1), afterMidnight.group to afterMidnight.day)
+    assertEquals(listOf("dawn"), afterMidnight.rows.map { it.task.taskId })
+    screen.cancel()
+  }
+
+  /**
+   * Turns red when a task with an end time stays in NOW after it has ended (bunting, 11:30, is
+   * rightly within the hour).
+   */
+  @Test
+  fun aTaskWithAnEndLeavesNowWhenItEnds() {
+    runBlocking {
+      repository.addTask(
+          Task("lights", EVENT, "Focus the lights", startTime = at(10, 30), endTime = at(10, 45))
+      )
+    }
+    val viewModel = overview()
+    val screen = watch(viewModel)
+    assertEquals(
+        listOf("tables", "lights", "power"),
+        viewModel.uiState.value.idsIn(OverviewGroup.NOW),
+    )
+
+    tick(Duration.ofMinutes(45))
+
+    assertEquals(
+        listOf("tables", "power", "bunting"),
+        viewModel.uiState.value.idsIn(OverviewGroup.NOW),
+    )
+    assertEquals(listOf("lights"), viewModel.uiState.value.idsIn(OverviewGroup.MORNING))
+    screen.cancel()
   }
 
   /** Turns red when a row stops carrying the task's place, people, length, start or state. */
@@ -225,6 +399,19 @@ class TaskOverviewViewModelTest {
     assertEquals(90, rows.getValue("bunting").estimatedMinutes)
     assertTrue(rows.getValue("sound").isFull)
     assertFalse(rows.getValue("sound").isMine)
+  }
+
+  /** Turns red when the OPEN chip and the full badge disagree on when a task is full. */
+  @Test
+  fun aFullTaskIsNeverOpen() {
+    val viewModel = overview()
+    viewModel.selectFilter(OverviewFilter.ALL)
+    val full = viewModel.uiState.value.sections.flatMap { it.rows }.filter { it.isFull }
+
+    viewModel.selectFilter(OverviewFilter.OPEN)
+
+    assertEquals(listOf("sound"), full.map { it.task.taskId })
+    assertTrue(full.none { it.task.taskId in viewModel.uiState.value.visibleIds() })
   }
 
   /** Turns red when a task without start or estimate gets invented values. */
@@ -295,6 +482,63 @@ class TaskOverviewViewModelTest {
     assertEquals(6, viewModel.uiState.value.counts[OverviewFilter.OPEN])
   }
 
+  /** Turns red when a manual refresh runs without showing progress, or drops the last rows. */
+  @Test
+  fun aRefreshIsLoadingUntilTheRepositoryAnswers() {
+    val slow = SlowRepository()
+    val viewModel = overview(repo = slow)
+    slow.calls[0].complete(listOf(power))
+    assertFalse(viewModel.uiState.value.isLoading)
+
+    viewModel.refresh()
+
+    assertTrue(viewModel.uiState.value.isLoading)
+    assertEquals(listOf("power"), viewModel.uiState.value.visibleIds())
+
+    slow.calls[1].complete(listOf(power, tables))
+    assertFalse(viewModel.uiState.value.isLoading)
+    assertEquals(listOf("tables", "power"), viewModel.uiState.value.visibleIds())
+  }
+
+  /** Turns red when an older, slower load lands after a newer one and overwrites its rows. */
+  @Test
+  fun theNewestRefreshWinsOverAnOlderLoadThatAnswersLate() {
+    val slow = SlowRepository()
+    val viewModel = overview(repo = slow)
+
+    viewModel.refresh()
+    slow.calls[1].complete(listOf(power, tables))
+    slow.calls[0].complete(listOf(litter))
+
+    val state = viewModel.uiState.value
+    assertFalse(state.isLoading)
+    assertEquals(listOf("tables", "power"), state.visibleIds())
+  }
+
+  /** Turns red when an older load that fails late puts its error over a newer, successful one. */
+  @Test
+  fun anOlderLoadThatFailsLateDoesNotSetTheError() {
+    val slow = SlowRepository()
+    val viewModel = overview(repo = slow)
+
+    viewModel.refresh()
+    slow.calls[1].complete(listOf(power))
+    slow.calls[0].completeExceptionally(IllegalStateException("Network down"))
+
+    val state = viewModel.uiState.value
+    assertNull(state.errorMsg)
+    assertEquals(listOf("power"), state.visibleIds())
+  }
+
+  /**
+   * Turns red when the provider's default stops being in-memory, which would put Firebase behind
+   * every unit test that leaves the repository parameter out.
+   */
+  @Test
+  fun theProviderDefaultsToTheInMemoryRepository() {
+    assertTrue(TasksRepositoryProvider.repository is TasksRepositoryLocal)
+  }
+
   /** Reads through [inner] until [failing] is set, then every load throws. */
   private class FlakyRepository(private val inner: TasksRepositoryLocal) :
       TasksRepository by inner {
@@ -304,9 +548,33 @@ class TaskOverviewViewModelTest {
         if (failing) throw IllegalStateException("Network down") else inner.getAllTasks(eventId)
   }
 
+  /** Answers each load only when the test completes that call's entry in [calls]. */
+  private inner class SlowRepository : TasksRepository by repository {
+    val calls = mutableListOf<CompletableDeferred<List<Task>>>()
+
+    override suspend fun getAllTasks(eventId: String): List<Task> =
+        CompletableDeferred<List<Task>>().also { calls += it }.await()
+  }
+
+  /** A clock the test moves by hand, so the NOW group can be watched over time. */
+  private class SettableClock(private var now: Instant, private val zone: ZoneId) : Clock() {
+    /** Moves the clock forward; the coroutine scheduler is moved separately by [tick]. */
+    fun advance(by: Duration) {
+      now += by
+    }
+
+    override fun getZone(): ZoneId = zone
+
+    override fun withZone(zone: ZoneId): Clock = SettableClock(now, zone)
+
+    override fun instant(): Instant = now
+  }
+
   private companion object {
     const val EVENT = "fete"
+    val DAY: LocalDate = LocalDate.of(2026, 7, 1)
 
-    fun at(hour: Int, minute: Int): LocalDateTime = LocalDateTime.of(2026, 7, 1, hour, minute)
+    /** A time on [DAY], the day every seeded task lives on. */
+    fun at(hour: Int, minute: Int): LocalDateTime = DAY.atTime(hour, minute)
   }
 }
