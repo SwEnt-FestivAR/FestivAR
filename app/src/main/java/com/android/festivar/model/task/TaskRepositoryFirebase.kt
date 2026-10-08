@@ -32,7 +32,9 @@ class TaskRepositoryFirebase(
 
   override suspend fun getTask(taskId: String): Task {
     val document = taskCollection.document(taskId).get().await()
-    require(document.exists()) { "Task '$taskId' does not exist." }
+    if (!document.exists()) {
+      throw NoSuchElementException("Task '$taskId' does not exist.")
+    }
     return documentToTask(document)
   }
 

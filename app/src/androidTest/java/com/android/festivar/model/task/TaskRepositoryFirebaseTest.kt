@@ -1,3 +1,4 @@
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.model.task
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -12,7 +13,7 @@ import java.util.UUID
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
 import org.junit.After
-import org.junit.Assert
+import org.junit.Assert.*
 import org.junit.Before
 import org.junit.BeforeClass
 import org.junit.Test
@@ -46,26 +47,26 @@ class TaskRepositoryFirebaseTest {
     val first = repository.getNewUid()
     val second = repository.getNewUid()
 
-    Assert.assertTrue(first.isNotEmpty())
-    Assert.assertNotEquals(first, second)
+    assertTrue(first.isNotEmpty())
+    assertNotEquals(first, second)
   }
 
   @Test
   fun toFirestoreData_serializesTaskFields() {
     val data = invokeToFirestoreData(task)
 
-    Assert.assertEquals(task.taskId, data["taskId"])
-    Assert.assertEquals(task.eventId, data["eventId"])
-    Assert.assertEquals(task.title, data["title"])
-    Assert.assertEquals(task.description, data["description"])
-    Assert.assertEquals(task.startTime.toString(), data["startTime"])
-    Assert.assertEquals(task.endTime.toString(), data["endTime"])
-    Assert.assertEquals(task.estimatedTime!!.toNanos(), data["estimatedTime"])
-    Assert.assertEquals(task.location, data["location"])
-    Assert.assertEquals(task.priority.name, data["priority"])
-    Assert.assertEquals(task.maxAssign, data["maxAssign"])
-    Assert.assertEquals(task.assignees.map { it.uid }, data["assignees"])
-    Assert.assertEquals(task.completed, data["completed"])
+    assertEquals(task.taskId, data["taskId"])
+    assertEquals(task.eventId, data["eventId"])
+    assertEquals(task.title, data["title"])
+    assertEquals(task.description, data["description"])
+    assertEquals(task.startTime.toString(), data["startTime"])
+    assertEquals(task.endTime.toString(), data["endTime"])
+    assertEquals(task.estimatedTime!!.toNanos(), data["estimatedTime"])
+    assertEquals(task.location, data["location"])
+    assertEquals(task.priority.name, data["priority"])
+    assertEquals(task.maxAssign, data["maxAssign"])
+    assertEquals(task.assignees.map { it.uid }, data["assignees"])
+    assertEquals(task.completed, data["completed"])
   }
 
   @Test
@@ -75,9 +76,9 @@ class TaskRepositoryFirebaseTest {
 
     val data = invokeToFirestoreData(taskWithoutOptionalFields)
 
-    Assert.assertNull(data["startTime"])
-    Assert.assertNull(data["endTime"])
-    Assert.assertNull(data["estimatedTime"])
+    assertNull(data["startTime"])
+    assertNull(data["endTime"])
+    assertNull(data["estimatedTime"])
   }
 
   @Test
@@ -86,7 +87,7 @@ class TaskRepositoryFirebaseTest {
     val document = Firebase.firestore.collection(TASK_COLLECTION_PATH).document(task.taskId)
     document.set(data).await()
 
-    Assert.assertEquals(task, invokeDocumentToTask(document.get().await()))
+    assertEquals(task, invokeDocumentToTask(document.get().await()))
   }
 
   @Test
@@ -104,7 +105,7 @@ class TaskRepositoryFirebaseTest {
         .await()
 
     try {
-      Assert.assertEquals(
+      assertEquals(
           Task(
               taskId = documentId,
               eventId = "event-2",
@@ -122,12 +123,12 @@ class TaskRepositoryFirebaseTest {
   fun getAllTasks_returnsStoredTasks() = runBlocking {
     repository.addTask(task)
 
-    Assert.assertEquals(listOf(task), repository.getAllTasks(task.eventId))
+    assertEquals(listOf(task), repository.getAllTasks(task.eventId))
   }
 
   @Test
   fun getAllTasks_returnsEmptyListWhenNoTasksExist() = runBlocking {
-    Assert.assertTrue(repository.getAllTasks(task.eventId).isEmpty())
+    assertTrue(repository.getAllTasks(task.eventId).isEmpty())
   }
 
   @Test
@@ -137,7 +138,7 @@ class TaskRepositoryFirebaseTest {
     repository.addTask(otherTask)
 
     try {
-      Assert.assertEquals(listOf(task), repository.getAllTasks(task.eventId))
+      assertEquals(listOf(task), repository.getAllTasks(task.eventId))
     } finally {
       Firebase.firestore
           .collection(TASK_COLLECTION_PATH)
@@ -151,7 +152,7 @@ class TaskRepositoryFirebaseTest {
   fun getTask_returnsTaskById() = runBlocking {
     repository.addTask(task)
 
-    Assert.assertEquals(task, repository.getTask(task.taskId))
+    assertEquals(task, repository.getTask(task.taskId))
   }
 
   @Test
@@ -163,7 +164,7 @@ class TaskRepositoryFirebaseTest {
   fun addTask_storesTaskAndThrowsWhenTaskIdAlreadyExists() = runBlocking {
     repository.addTask(task)
 
-    Assert.assertEquals(task, repository.getTask(task.taskId))
+    assertEquals(task, repository.getTask(task.taskId))
 
     assertThrows { repository.addTask(task) }
   }
@@ -175,7 +176,7 @@ class TaskRepositoryFirebaseTest {
 
     repository.editTask(task.taskId, updatedTask)
 
-    Assert.assertEquals(updatedTask, repository.getTask(task.taskId))
+    assertEquals(updatedTask, repository.getTask(task.taskId))
   }
 
   @Test
@@ -225,7 +226,7 @@ class TaskRepositoryFirebaseTest {
     } catch (_: Exception) {
       thrown = true
     }
-    Assert.assertTrue("Expected an exception", thrown)
+    assertTrue("Expected an exception", thrown)
   }
 
   @Suppress("UNCHECKED_CAST")
