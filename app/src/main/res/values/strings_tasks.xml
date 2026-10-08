@@ -22,4 +22,10 @@
     <string name="overview_hours_minutes">%1$d h %2$d min</string>
     <string name="overview_people">%1$d of %2$d</string>
     <string name="overview_empty">Nothing here. Try another filter.</string>
+    <string name="overview_retry">Retry</string>
+
+    <string name="pin_open">Open task</string>
+    <string name="pin_mine">Your task</string>
+    <string name="pin_taken">Taken task</string>
+    <string name="pin_done">Done task</string>
 </resources>

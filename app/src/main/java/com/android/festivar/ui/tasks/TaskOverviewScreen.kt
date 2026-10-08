@@ -1,5 +1,7 @@
+// Written with the help of an AI coding assistant and reviewed line by line by the author.
 package com.android.festivar.ui.tasks
 
+import android.text.format.DateFormat
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -8,8 +10,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -17,14 +24,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.vector.addPathNodes
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -38,6 +46,7 @@ import com.android.festivar.ui.components.Hairline
 import com.android.festivar.ui.components.PinKind
 import com.android.festivar.ui.components.SectionLabel
 import com.android.festivar.ui.components.TaskRow
+import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 object TaskOverviewScreenTestTags {
@@ -49,12 +58,16 @@ object TaskOverviewScreenTestTags {
   const val CHIP_MINE = "overviewChipMine"
   const val CHIP_DONE = "overviewChipDone"
   const val CHIP_ALL = "overviewChipAll"
+  const val LOADING = "overviewLoading"
   const val EMPTY = "overviewEmpty"
   const val ERROR_MESSAGE = "overviewError"
+  const val RETRY = "overviewRetry"
 
   fun row(taskId: String) = "overviewRow$taskId"
 
-  fun section(group: OverviewGroup) = "overviewSection${group.name}"
+  /** One tag per section: the same group can appear once per day. */
+  fun section(group: OverviewGroup, day: LocalDate? = null) =
+      "overviewSection${group.name}" + (day?.let { "_$it" } ?: "")
 }
 
 /** The task overview of [eventId], where a volunteer picks an open task. */
@@ -74,6 +87,7 @@ fun TaskOverviewScreen(
       onSelectFilter = viewModel::selectFilter,
       onToggleSearch = viewModel::toggleSearch,
       onQueryChange = viewModel::setQuery,
+      onRetry = viewModel::refresh,
       onOpenTask = onOpenTask,
   )
 }
@@ -87,6 +101,7 @@ fun TaskOverviewContent(
     onSelectFilter: (OverviewFilter) -> Unit = {},
     onToggleSearch: () -> Unit = {},
     onQueryChange: (String) -> Unit = {},
+    onRetry: () -> Unit = {},
     onOpenTask: (String) -> Unit = {},
 ) {
   Scaffold(
@@ -101,7 +116,7 @@ fun TaskOverviewContent(
             },
             navigationIcon = {
               IconButton(onClick = onBack, Modifier.testTag(TaskOverviewScreenTestTags.BACK)) {
-                Icon(BackArrow, stringResource(R.string.tasks_back))
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.tasks_back))
               }
             },
             actions = {
@@ -109,7 +124,7 @@ fun TaskOverviewContent(
                   onClick = onToggleSearch,
                   Modifier.testTag(TaskOverviewScreenTestTags.SEARCH),
               ) {
-                Icon(Magnifier, stringResource(R.string.tasks_search))
+                Icon(Icons.Filled.Search, stringResource(R.string.tasks_search))
               }
             },
         )
@@ -145,14 +160,14 @@ fun TaskOverviewContent(
           )
         }
       }
-      state.errorMsg?.let {
-        Text(
-            it,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.error,
+      state.errorMsg?.let { ErrorLine(it, onRetry) }
+      if (state.isLoading && state.sections.isEmpty()) {
+        CircularProgressIndicator(
             modifier =
-                Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
-                    .testTag(TaskOverviewScreenTestTags.ERROR_MESSAGE),
+                Modifier.align(Alignment.CenterHorizontally)
+                    .padding(20.dp)
+                    .size(32.dp)
+                    .testTag(TaskOverviewScreenTestTags.LOADING)
         )
       }
       if (!state.isLoading && state.errorMsg == null && state.sections.isEmpty()) {
@@ -165,20 +180,17 @@ fun TaskOverviewContent(
                 Modifier.fillMaxWidth().padding(20.dp).testTag(TaskOverviewScreenTestTags.EMPTY),
         )
       }
-      LazyColumn(contentPadding = PaddingValues(horizontal = 20.dp)) {
+      val timeFormat = rememberTimeFormat()
+      LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 20.dp)) {
         state.sections.forEach { section ->
-          item(key = section.group.name) {
-            SectionLabel(
-                stringResource(section.group.label()),
-                Modifier.testTag(TaskOverviewScreenTestTags.section(section.group)),
-            )
-          }
+          val sectionTag = TaskOverviewScreenTestTags.section(section.group, section.day)
+          item(key = sectionTag) { SectionLabel(section.label(), Modifier.testTag(sectionTag)) }
           section.rows.forEach { row ->
             item(key = row.task.taskId) {
               TaskRow(
                   title = row.task.title,
                   subtitle = row.subtitle(),
-                  time = row.startTime?.format(HOUR_MINUTE) ?: "",
+                  time = row.startTime?.format(timeFormat) ?: "",
                   trailing =
                       stringResource(R.string.overview_people, row.assigned, row.peopleNeeded),
                   pinKind = row.pinKind(),
@@ -190,6 +202,25 @@ fun TaskOverviewContent(
           }
         }
       }
+    }
+  }
+}
+
+/** The load error in the theme's error colour, with a retry beside it. */
+@Composable
+private fun ErrorLine(message: String, onRetry: () -> Unit) {
+  Row(
+      Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
+      verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Text(
+        message,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.error,
+        modifier = Modifier.weight(1f).testTag(TaskOverviewScreenTestTags.ERROR_MESSAGE),
+    )
+    TextButton(onClick = onRetry, Modifier.testTag(TaskOverviewScreenTestTags.RETRY)) {
+      Text(stringResource(R.string.overview_retry))
     }
   }
 }
@@ -217,24 +248,49 @@ private val CHIPS =
         Chip(OverviewFilter.ALL, R.string.overview_chip_all, TaskOverviewScreenTestTags.CHIP_ALL),
     )
 
-private val HOUR_MINUTE: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+/** "14:05" or "2:05 PM", following the device's time format setting. */
+@Composable
+private fun rememberTimeFormat(): DateTimeFormatter {
+  val context = LocalContext.current
+  val locale = LocalLocale.current.platformLocale
+  return remember(locale) {
+    val pattern = if (DateFormat.is24HourFormat(context)) "HH:mm" else "h:mm a"
+    DateTimeFormatter.ofPattern(pattern, locale)
+  }
+}
 
-/** Where, how many people (only when more than one) and how long, joined with a middle dot. */
+private val DAY: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE d MMM")
+
+/** The part of the day, then the date when the section has one: "Morning · Sun 11 Oct". */
+@Composable
+private fun OverviewSectionUi.label(): String {
+  val part = stringResource(group.label())
+  val locale = LocalLocale.current.platformLocale
+  return day?.let { "$part · ${it.format(DAY.withLocale(locale))}" } ?: part
+}
+
+/**
+ * Where, how many people (only when more than one) and how long (only when known and more than
+ * zero), joined with a middle dot.
+ */
 @Composable
 private fun OverviewRowUi.subtitle(): String {
   val people =
       if (peopleNeeded > 1) {
         pluralStringResource(R.plurals.overview_people_needed, peopleNeeded, peopleNeeded)
       } else null
-  val length = estimatedMinutes?.let { total ->
-    val hours = total / 60
-    val minutes = total % 60
-    when {
-      hours == 0 -> stringResource(R.string.overview_minutes, minutes)
-      minutes == 0 -> stringResource(R.string.overview_hours, hours)
-      else -> stringResource(R.string.overview_hours_minutes, hours, minutes)
-    }
-  }
+  val length =
+      estimatedMinutes
+          ?.takeIf { it > 0 }
+          ?.let { total ->
+            val hours = total / 60
+            val minutes = total % 60
+            when {
+              hours == 0 -> stringResource(R.string.overview_minutes, minutes)
+              minutes == 0 -> stringResource(R.string.overview_hours, hours)
+              else -> stringResource(R.string.overview_hours_minutes, hours, minutes)
+            }
+          }
   return listOfNotNull(location.ifBlank { null }, people, length).joinToString(" · ")
 }
 
@@ -255,21 +311,3 @@ private fun OverviewRowUi.pinKind(): PinKind =
       isFull -> PinKind.TAKEN
       else -> PinKind.STRUCTURE
     }
-
-// Material's arrow back and search glyphs, drawn here because the team's build has no icon
-// library. The black is a placeholder: Icon tints the whole vector.
-private fun glyph(name: String, pathData: String, autoMirror: Boolean = false): ImageVector =
-    ImageVector.Builder(name, 24.dp, 24.dp, 24f, 24f, autoMirror = autoMirror)
-        .addPath(addPathNodes(pathData), fill = SolidColor(Color.Black))
-        .build()
-
-private val BackArrow =
-    glyph("BackArrow", "M20,11H7.83l5.59,-5.59L12,4l-8,8 8,8 1.41,-1.41L7.83,13H20v-2z", true)
-
-private val Magnifier =
-    glyph(
-        "Magnifier",
-        "M15.5,14h-0.79l-0.28,-0.27C15.41,12.59 16,11.11 16,9.5 16,5.91 13.09,3 9.5,3S3,5.91 " +
-            "3,9.5 5.91,16 9.5,16c1.61,0 3.09,-0.59 4.23,-1.57l0.27,0.28v0.79l5,4.99L20.49,19" +
-            "l-4.99,-5zM9.5,14C7.01,14 5,11.99 5,9.5S7.01,5 9.5,5 14,7.01 14,9.5 11.99,14 9.5,14z",
-    )

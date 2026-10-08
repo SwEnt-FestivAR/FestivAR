@@ -1,3 +1,4 @@
+// Written with the help of an AI coding assistant and reviewed line by line by the author.
 package com.android.festivar.ui.components
 
 import androidx.compose.foundation.clickable
@@ -13,11 +14,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 
 /**
  * One task in a list: pennant bullet, title, where and what is needed, the time first on the right,
- * then a "1 of 2" progress. The caller decides every word.
+ * then a "1 of 2" progress. The caller decides every word; the pin's state is also spoken, so a
+ * screen reader tells a done, mine or taken row from an open one.
  *
  * @param subtitle what the row says under the title; hidden when empty.
  * @param time the start, already formatted; hidden when empty.
@@ -37,7 +40,12 @@ fun TaskRow(
       modifier = modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 12.dp),
       verticalAlignment = Alignment.Top,
   ) {
-    PennantIcon(kind = pinKind, size = 20.dp, modifier = Modifier.padding(top = 2.dp))
+    PennantIcon(
+        kind = pinKind,
+        size = 20.dp,
+        contentDescription = stringResource(pinKind.description),
+        modifier = Modifier.padding(top = 2.dp),
+    )
     Spacer(Modifier.width(12.dp))
     Column(Modifier.weight(1f)) {
       Text(title, style = MaterialTheme.typography.titleSmall)

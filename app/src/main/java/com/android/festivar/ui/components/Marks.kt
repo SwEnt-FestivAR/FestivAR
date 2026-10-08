@@ -1,3 +1,4 @@
+// Written with the help of an AI coding assistant and reviewed line by line by the author.
 package com.android.festivar.ui.components
 
 import androidx.compose.foundation.layout.size
@@ -13,13 +14,17 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.android.festivar.R
 
-/** Which pin this is, which decides its colour. The lime is only ever "mine" or "done". */
-enum class PinKind {
-  STRUCTURE,
-  MINE,
-  TAKEN,
-  DONE,
+/**
+ * Which pin this is, which decides its colour and what a screen reader says for it. The lime is
+ * only ever "mine" or "done".
+ */
+enum class PinKind(val description: Int) {
+  STRUCTURE(R.string.pin_open),
+  MINE(R.string.pin_mine),
+  TAKEN(R.string.pin_taken),
+  DONE(R.string.pin_done),
 }
 
 /** The pennant pin: the one motif. Map marker, task bullet, empty state. */
