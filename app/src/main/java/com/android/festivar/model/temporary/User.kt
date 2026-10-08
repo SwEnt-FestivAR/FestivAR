@@ -6,5 +6,7 @@ package com.android.festivar.model.temporary
  * definition to allow the implementation of other classes.
  *
  * @param uid The [User]'s unique identifier.
+ * @param name The [User]'s name.
+ * @param surname The [User]'s surname.
  */
-data class User(val uid: String)
+data class User(val uid: String, val name: String = "", val surname: String = "")
