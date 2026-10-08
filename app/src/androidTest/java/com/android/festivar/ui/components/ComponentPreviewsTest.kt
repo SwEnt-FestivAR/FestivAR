@@ -17,6 +17,7 @@ import org.junit.runner.RunWith
 class ComponentPreviewsTest {
   @get:Rule val composeTestRule = createComposeRule()
 
+  // The form fields preview renders without crashing and shows a value, an error and a picker.
   @Test
   fun formFieldsPreview_showsEveryKindOfField() {
     composeTestRule.setContent { FormFieldsPreview() }
@@ -26,6 +27,7 @@ class ComponentPreviewsTest {
     composeTestRule.onNodeWithText("Sat 17 Oct").assertIsDisplayed()
   }
 
+  // The date dialog preview renders without crashing and shows its OK and Cancel buttons.
   @Test
   fun datePickerDialogPreview_showsTheDialog() {
     composeTestRule.setContent { FestivarDatePickerDialogPreview() }
@@ -34,6 +36,7 @@ class ComponentPreviewsTest {
     composeTestRule.onNodeWithText("Cancel").assertIsDisplayed()
   }
 
+  // The time dialog preview renders without crashing and shows its OK and Cancel buttons.
   @Test
   fun timePickerDialogPreview_showsTheDialog() {
     composeTestRule.setContent { FestivarTimePickerDialogPreview() }
