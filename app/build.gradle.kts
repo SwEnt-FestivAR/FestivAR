@@ -48,7 +48,16 @@ android {
     targetCompatibility = JavaVersion.VERSION_17
   }
 
-  packaging { resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" } }
+  packaging {
+    resources {
+      excludes +=
+          listOf(
+              "/META-INF/{AL2.0,LGPL2.1}",
+              "/META-INF/LICENSE*",
+              "/META-INF/NOTICE*",
+          )
+    }
+  }
 
   testOptions {
     unitTests {
@@ -95,7 +104,8 @@ sonar {
         "sonar.junit.reportPaths",
         "${project.layout.buildDirectory.get()}/test-results/testDebugunitTest/",
     )
-    // Paths to xml files with Android Lint issues. If the main flavor is changed, this file will
+    // Paths to xml files with Android Lint issues. If the main flavor is changed, this file
+    // will
     // have to be changed too.
     property(
         "sonar.androidLint.reportPaths",
@@ -119,6 +129,7 @@ dependencies {
   implementation(platform(libs.firebase.bom))
   implementation(libs.credentials)
   implementation(libs.credentials.play.services.auth)
+  implementation(libs.firebase.firestore)
   implementation(libs.googleid)
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.appcompat)
@@ -140,6 +151,8 @@ dependencies {
 
   implementation(libs.compose.ui)
   implementation(libs.compose.ui.graphics)
+  implementation(libs.compose.material.icons.extended)
+  androidTestImplementation(libs.mockk.android)
   // Material Design 3
   implementation(libs.compose.material3)
   // Integration with activities
@@ -152,6 +165,7 @@ dependencies {
   // UI Tests
   globalTestImplementation(libs.compose.test.junit)
   debugImplementation(libs.compose.test.manifest)
+  testImplementation(libs.mockk)
 
   // --------- Kaspresso test framework ----------
   globalTestImplementation(libs.kaspresso)
@@ -163,6 +177,11 @@ dependencies {
 
 dependencyLocking { lockAllConfigurations() }
 
+// Exclude protobuf-lite from all configurations to avoid conflicts with protobuf-javalite.
+// This is necessary because Firebase Firestore depends on protobuf-lite, while other libraries may
+// depend on protobuf-javalite, leading to version conflicts.
+configurations.configureEach { exclude(group = "com.google.protobuf", module = "protobuf-lite") }
+
 tasks.withType<Test> {
   // Configure Jacoco for each tests
   configure<JacocoTaskExtension> {
@@ -171,7 +190,7 @@ tasks.withType<Test> {
   }
 }
 
-tasks.register("jacocoTestReport", JacocoReport::class) {
+tasks.register(name = "jacocoTestReport", type = JacocoReport::class) {
   mustRunAfter("testDebugUnitTest", "connectedDebugAndroidTest")
 
   reports {

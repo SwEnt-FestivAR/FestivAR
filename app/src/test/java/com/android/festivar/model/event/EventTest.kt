@@ -1,3 +1,4 @@
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.event
 
 import com.android.festivar.model.task.Task
@@ -226,6 +227,46 @@ class EventTest {
     val event = eventWith(members = listOf(alice))
 
     assertInvalid(notMemberMessage) { event.removeMember(outsider) }
+  }
+
+  // Members are identified by their uid, whatever their name or surname.
+
+  /** A member registered twice with the same uid is refused, even with other names. */
+  @Test
+  fun init_fails_whenAUidIsRegisteredTwice_withOtherNames() {
+    assertInvalid(duplicateMemberMessage) {
+      event(members = listOf(User("u1", name = "Sara", surname = "Keller"), User("u1")))
+    }
+  }
+
+  /** addMember refuses a user whose uid is already a member, even with other names. */
+  @Test
+  fun addMember_fails_whenAMemberHasTheSameUid() {
+    val event = eventWith(members = listOf(User("u1", name = "Sara", surname = "Keller")))
+
+    assertInvalid(alreadyMemberMessage) { event.addMember(User("u1")) }
+  }
+
+  /** removeMember removes the member with the same uid, even if its names differ. */
+  @Test
+  fun removeMember_removesTheMemberWithTheSameUid() {
+    val sara = User("u1", name = "Sara", surname = "Keller")
+    val event = eventWith(members = listOf(alice, sara, bob))
+
+    val result = event.removeMember(User("u1"))
+
+    assertEquals(event.copy(members = listOf(alice, bob)), result)
+    assertEquals(listOf(alice, sara, bob), event.members)
+  }
+
+  /** removeMember refuses a user whose uid is not a member, even with the names of a member. */
+  @Test
+  fun removeMember_fails_whenNoMemberHasTheUid_evenWithTheSameNames() {
+    val event = eventWith(members = listOf(User("u1", name = "Sara", surname = "Keller")))
+
+    assertInvalid(notMemberMessage) {
+      event.removeMember(User("u2", name = "Sara", surname = "Keller"))
+    }
   }
 
   /** addTask adds the task at the end, keeps every other field and does not change the original. */

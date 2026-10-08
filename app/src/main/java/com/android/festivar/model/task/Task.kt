@@ -1,3 +1,4 @@
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.task
 
 import com.android.festivar.model.temporary.User
@@ -22,7 +23,7 @@ import java.time.LocalDateTime
  * - [eventId] is not blank;
  * - [maxAssign] is at least 1;
  * - [maxAssign] is never lower than the number of [assignees];
- * - a [User] is assigned at most once (no duplicates);
+ * - a [User] is assigned at most once, identified by its [User.uid] (no duplicates);
  * - [endTime] is not before [startTime];
  * - [estimatedTime] is not negative.
  *
@@ -63,7 +64,7 @@ data class Task(
     require(assignees.size <= maxAssign) {
       "maxAssign is lower than the number of assigned people."
     }
-    require(assignees.distinct().size == assignees.size) { "A user is assigned twice." }
+    require(assignees.distinctBy { it.uid }.size == assignees.size) { "A user is assigned twice." }
     require(startTime == null || endTime == null || !endTime.isBefore(startTime)) {
       "endTime must not be before startTime."
     }
@@ -88,27 +89,28 @@ data class Task(
    * @param user The [User] that is going to be assigned to `this`, to be added to [assignees] list.
    * @return The [Task] but with [user] added to it.
    * @throws IllegalStateException If the [Task] is already full.
-   * @throws IllegalArgumentException If [user] is already assigned.
+   * @throws IllegalArgumentException If [user] is already assigned, identified by its [User.uid].
    */
   fun addAssignee(user: User): Task {
     check(assignees.size < maxAssign) { "The task is full." }
 
-    require(user !in assignees) { "This user is already assigned to the task." }
+    require(assignees.none { it.uid == user.uid }) { "This user is already assigned to the task." }
 
     return copy(assignees = assignees + user)
   }
 
   /**
    * Removes an assigned [User] from the [Task] by returning a version of `this` with [user] removed
-   * from the [assignees] list.
+   * from the [assignees] list. The assignee is identified by its [User.uid], so it is removed even
+   * if its name or surname differ from the ones of [user].
    *
    * @param user The [User] that is going to be removed from `this`, from [assignees] list.
    * @return The [Task] but with [user] removed from it.
-   * @throws IllegalArgumentException If [user] is not assigned to `this`.
+   * @throws IllegalArgumentException If [user] is not assigned, identified by its [User.uid].
    */
   fun removeAssignee(user: User): Task {
-    require(user in assignees) { "This user is not assigned to the task." }
+    require(assignees.any { it.uid == user.uid }) { "This user is not assigned to the task." }
 
-    return copy(assignees = assignees - user)
+    return copy(assignees = assignees.filterNot { it.uid == user.uid })
   }
 }

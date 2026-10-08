@@ -84,7 +84,7 @@ class TaskOverviewViewModelTest {
     section.rows.map { it.task.taskId }
   }
 
-  /** Turns red when the ViewModel stops filtering the repository's tasks by [EVENT]. */
+  /** Turns red when the ViewModel stops asking the repository for [EVENT]'s tasks only. */
   @Test
   fun onlyThisEventsTasksAppear() {
     val viewModel = overview()
@@ -279,8 +279,8 @@ class TaskOverviewViewModelTest {
       TasksRepository by inner {
     var failing = false
 
-    override suspend fun getAllTasks(): List<Task> =
-        if (failing) throw IllegalStateException("Network down") else inner.getAllTasks()
+    override suspend fun getAllTasks(eventId: String): List<Task> =
+        if (failing) throw IllegalStateException("Network down") else inner.getAllTasks(eventId)
   }
 
   private companion object {

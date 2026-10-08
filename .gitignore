@@ -11,3 +11,6 @@ local.properties
 # Firebase emulator output
 *-debug.log
 .firebase/
+
+# Agent plugins' files
+/graphify-out
