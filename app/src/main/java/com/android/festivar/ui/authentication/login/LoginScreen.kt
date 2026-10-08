@@ -28,7 +28,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -44,6 +43,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.credentials.CredentialManager
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.resources.GoogleLogo
 import com.android.festivar.ui.theme.AppTheme
 
@@ -57,23 +57,22 @@ internal object LoginScreenTestTags {
 
 @Composable
 fun LoginScreen(
-    viewModel: LoginViewModel = LoginViewModel(),
-    onSignUpClick: () -> Unit,
     modifier: Modifier = Modifier,
+    viewModel: LoginViewModel = viewModel(),
+    onSignUpClick: () -> Unit,
     onSignedIn: () -> Unit = {},
     credentialManager: CredentialManager = CredentialManager.create(LocalContext.current),
 ) {
-  val stableViewModel = remember { viewModel }
   val context = LocalContext.current
-  val uiState by stableViewModel.uiState.collectAsState()
+  val uiState by viewModel.uiState.collectAsState()
   LaunchedEffect(uiState.user) { if (uiState.user != null) onSignedIn() }
 
   LoginScreenContent(
       uiState = uiState,
-      onEmailChange = stableViewModel::updateEmail,
-      onPasswordChange = stableViewModel::updatePassword,
-      onLoginClick = stableViewModel::signIn,
-      onGoogleSignInClick = { stableViewModel.signInWithGoogle(context, credentialManager) },
+      onEmailChange = viewModel::updateEmail,
+      onPasswordChange = viewModel::updatePassword,
+      onLoginClick = viewModel::signIn,
+      onGoogleSignInClick = { viewModel.signInWithGoogle(context, credentialManager) },
       onSignUpClick = onSignUpClick,
       modifier = modifier,
   )
