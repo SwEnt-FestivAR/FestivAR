@@ -1,6 +1,7 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.create
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -11,6 +12,7 @@ import com.android.festivar.model.task.TasksRepository
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -114,25 +116,36 @@ class CreateTaskViewModel(
     private val eventId: String,
     private val tasksRepository: TasksRepository,
 ) : ViewModel() {
+  // Create task UI state
   private val _uiState = MutableStateFlow(CreateTaskUiState())
   val uiState: StateFlow<CreateTaskUiState> = _uiState.asStateFlow()
 
+  // Functions to update the UI state.
+
+  /** Sets the title and marks it as edited, so that an empty title is reported. */
   fun updateTitle(title: String) = _uiState.update { it.copy(title = title, titleEdited = true) }
 
+  /** Sets the description. */
   fun updateDescription(description: String) = _uiState.update {
     it.copy(description = description)
   }
 
+  /** Sets the location. */
   fun updateLocation(location: String) = _uiState.update { it.copy(location = location) }
 
+  /** Sets the date the task starts. */
   fun updateStartDate(date: LocalDate) = _uiState.update { it.copy(startDate = date) }
 
+  /** Sets the time the task starts. */
   fun updateStartTime(time: LocalTime) = _uiState.update { it.copy(startTime = time) }
 
+  /** Sets the date the task ends. */
   fun updateEndDate(date: LocalDate) = _uiState.update { it.copy(endDate = date) }
 
+  /** Sets the time the task ends. */
   fun updateEndTime(time: LocalTime) = _uiState.update { it.copy(endTime = time) }
 
+  /** Clears the error message in the UI state. */
   fun clearError() = _uiState.update { it.copy(errorMsg = null) }
 
   /** Saves the task if the form is valid. Does nothing while a save is running. */
@@ -143,13 +156,17 @@ class CreateTaskViewModel(
     // change what is saved.
     _uiState.update { it.copy(isSaving = true, errorMsg = null) }
     viewModelScope.launch {
-      runCatching { tasksRepository.addTask(form.toTask(tasksRepository.getNewUid(), eventId)) }
-          .onSuccess { _uiState.update { it.copy(isSaving = false, isCreated = true) } }
-          .onFailure { error ->
-            _uiState.update {
-              it.copy(isSaving = false, errorMsg = error.message ?: "Unable to create the task.")
-            }
-          }
+      try {
+        tasksRepository.addTask(form.toTask(tasksRepository.getNewUid(), eventId))
+        _uiState.update { it.copy(isSaving = false, isCreated = true) }
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        Log.e("CreateTaskViewModel", "Error adding the task", e)
+        _uiState.update {
+          it.copy(isSaving = false, errorMsg = e.message ?: "Unable to create the task.")
+        }
+      }
     }
   }
 
