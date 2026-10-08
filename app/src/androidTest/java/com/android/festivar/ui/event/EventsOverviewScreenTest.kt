@@ -14,6 +14,7 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
+import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.temporary.User
 import com.android.festivar.ui.components.BottomNavigationBarTestTags
@@ -35,42 +36,19 @@ class EventsOverviewScreenTest {
   @get:Rule val composeTestRule = createComposeRule()
 
   /**
-   * A fake [EventsRepository] serving [eventList]. It throws [error] on every fetch when it is set,
+   * An [EventsRepositoryLocal] serving [events]. It throws [error] on every fetch when it is set,
    * and waits for [gate] to be completed before answering when it is set.
    */
   private class EventsRepositoryImpl(
-      val eventList: List<Event> = listOf(),
+      events: List<Event> = listOf(),
       val error: Exception? = null,
       val gate: CompletableDeferred<Unit>? = null,
-  ) : EventsRepository {
-    override fun getNewUid(): String {
-      return "${eventList.size}"
-    }
-
+      private val local: EventsRepository = EventsRepositoryLocal(events),
+  ) : EventsRepository by local {
     override suspend fun getAllEvents(): List<Event> {
       gate?.await()
       error?.let { throw it }
-      return eventList
-    }
-
-    override suspend fun getEvent(eventId: String): Event {
-      TODO("Not yet implemented")
-    }
-
-    override suspend fun getEventsForUser(userId: String): List<Event> {
-      TODO("Not yet implemented")
-    }
-
-    override suspend fun addEvent(event: Event) {
-      TODO("Not yet implemented")
-    }
-
-    override suspend fun editEvent(eventId: String, newValue: Event) {
-      TODO("Not yet implemented")
-    }
-
-    override suspend fun deleteEvent(eventId: String) {
-      TODO("Not yet implemented")
+      return local.getAllEvents()
     }
   }
 
