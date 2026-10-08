@@ -137,8 +137,8 @@ class CreateTaskViewModelTest {
     val gate = CompletableDeferred<Unit>()
     val local = TasksRepositoryLocal()
     var addCalls = 0
-    // FAKE with a gate: it saves like TasksRepositoryLocal but only once the test opens the gate, so
-    // the ViewModel stays "saving". It also counts the calls to addTask (a hand-written spy).
+    // FAKE with a gate: it saves like TasksRepositoryLocal, but only once the test opens the gate,
+    // so the ViewModel stays "saving". It also counts the calls to addTask (a hand-written spy).
     val slow =
         object : TasksRepository by local {
           override suspend fun addTask(task: Task) {
@@ -168,8 +168,8 @@ class CreateTaskViewModelTest {
   fun createTask_afterAFailure_succeedsOnRetryAndClearsTheError() {
     val local = TasksRepositoryLocal()
     var failing = true
-    // FAKE that can fail on demand: it works like TasksRepositoryLocal, but fails while `failing` is
-    // true. The test turns it off to simulate a retry that works.
+    // FAKE that can fail on demand: it works like TasksRepositoryLocal, but fails while `failing`
+    // is true. The test turns it off to simulate a retry that works.
     val flaky =
         object : TasksRepository by local {
           override suspend fun addTask(task: Task) {
