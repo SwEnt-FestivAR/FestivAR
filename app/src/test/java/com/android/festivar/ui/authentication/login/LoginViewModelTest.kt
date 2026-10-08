@@ -7,6 +7,8 @@ import androidx.credentials.Credential
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.GetCredentialResponse
+import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.GetCredentialException
 import com.android.festivar.R
 import com.android.festivar.model.authentication.AuthRepository
 import com.google.firebase.auth.FirebaseUser
@@ -59,6 +61,15 @@ class LoginViewModelTest {
     assertEquals("Enter your email address and password", viewModel.uiState.value.errorMsg)
     assertFalse(viewModel.uiState.value.isLoading)
     coVerify(exactly = 0) { authRepository.signInWithEmailAndPassword(any(), any()) }
+  }
+
+  @Test
+  fun clearErrorRemovesCurrentError() {
+    viewModel.signIn()
+
+    viewModel.clearError()
+
+    assertNull(viewModel.uiState.value.errorMsg)
   }
 
   @Test
@@ -145,6 +156,60 @@ class LoginViewModelTest {
     assertEquals(user, viewModel.uiState.value.user)
     assertFalse(viewModel.uiState.value.isLoading)
     coVerify(exactly = 1) { authRepository.signInWithGoogle(credential) }
+  }
+
+  @Test
+  fun googleSignInRepositoryFailureShowsError() {
+    val context = mockk<Context>()
+    val credentialManager = mockk<CredentialManager>()
+    val credential = mockk<Credential>()
+    val credentialResponse = mockk<GetCredentialResponse>()
+    every { context.getString(R.string.default_web_client_id) } returns "client-id"
+    coEvery { credentialManager.getCredential(context, any<GetCredentialRequest>()) } returns
+        credentialResponse
+    every { credentialResponse.credential } returns credential
+    coEvery { authRepository.signInWithGoogle(credential) } returns
+        Result.failure(IllegalArgumentException("Google sign-in rejected"))
+
+    viewModel.signInWithGoogle(context, credentialManager)
+    shadowOf(Looper.getMainLooper()).idle()
+
+    assertEquals("Google sign-in rejected", viewModel.uiState.value.errorMsg)
+    assertFalse(viewModel.uiState.value.isLoading)
+  }
+
+  @Test
+  fun googleSignInPickerCancellationShowsCancellationMessage() {
+    val context = mockk<Context>()
+    val credentialManager = mockk<CredentialManager>()
+    val cancellation = mockk<GetCredentialCancellationException>()
+    every { context.getString(R.string.default_web_client_id) } returns "client-id"
+    coEvery { credentialManager.getCredential(context, any<GetCredentialRequest>()) } throws
+        cancellation
+
+    viewModel.signInWithGoogle(context, credentialManager)
+    shadowOf(Looper.getMainLooper()).idle()
+
+    assertEquals("Sign-in cancelled", viewModel.uiState.value.errorMsg)
+    assertFalse(viewModel.uiState.value.isLoading)
+    coVerify(exactly = 0) { authRepository.signInWithGoogle(any()) }
+  }
+
+  @Test
+  fun googleSignInCredentialErrorShowsClearMessage() {
+    val context = mockk<Context>()
+    val credentialManager = mockk<CredentialManager>()
+    val credentialException = mockk<GetCredentialException>()
+    every { context.getString(R.string.default_web_client_id) } returns "client-id"
+    coEvery { credentialManager.getCredential(context, any<GetCredentialRequest>()) } throws
+        credentialException
+
+    viewModel.signInWithGoogle(context, credentialManager)
+    shadowOf(Looper.getMainLooper()).idle()
+
+    assertEquals("Failed to get credentials", viewModel.uiState.value.errorMsg)
+    assertFalse(viewModel.uiState.value.isLoading)
+    coVerify(exactly = 0) { authRepository.signInWithGoogle(any()) }
   }
 
   @Test

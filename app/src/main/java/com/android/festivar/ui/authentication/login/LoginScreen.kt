@@ -23,11 +23,16 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -52,9 +57,11 @@ internal object LoginScreenTestTags {
   const val EMAIL_INPUT = "login_email_input"
   const val PASSWORD_INPUT = "login_password_input"
   const val LOGIN_BUTTON = "login_button"
+  const val GOOGLE_BUTTON = "google_sign_in_button"
   const val ERROR_MESSAGE = "login_error"
 }
 
+/** Displays login fields and handles authentication events. */
 @Composable
 fun LoginScreen(
     modifier: Modifier = Modifier,
@@ -65,17 +72,35 @@ fun LoginScreen(
 ) {
   val context = LocalContext.current
   val uiState by viewModel.uiState.collectAsState()
+  val snackbarHostState = remember { SnackbarHostState() }
   LaunchedEffect(uiState.user) { if (uiState.user != null) onSignedIn() }
+  LaunchedEffect(uiState.errorMsg) {
+    uiState.errorMsg?.let { error ->
+      snackbarHostState.showSnackbar(error)
+      viewModel.clearError()
+    }
+  }
 
-  LoginScreenContent(
-      uiState = uiState,
-      onEmailChange = viewModel::updateEmail,
-      onPasswordChange = viewModel::updatePassword,
-      onLoginClick = viewModel::signIn,
-      onGoogleSignInClick = { viewModel.signInWithGoogle(context, credentialManager) },
-      onSignUpClick = onSignUpClick,
+  Scaffold(
       modifier = modifier,
-  )
+      snackbarHost = {
+        SnackbarHost(snackbarHostState) { data ->
+          Snackbar(modifier = Modifier.testTag(LoginScreenTestTags.ERROR_MESSAGE)) {
+            Text(data.visuals.message)
+          }
+        }
+      },
+  ) { padding ->
+    LoginScreenContent(
+        uiState = uiState,
+        onEmailChange = viewModel::updateEmail,
+        onPasswordChange = viewModel::updatePassword,
+        onLoginClick = viewModel::signIn,
+        onGoogleSignInClick = { viewModel.signInWithGoogle(context, credentialManager) },
+        onSignUpClick = onSignUpClick,
+        modifier = Modifier.padding(padding),
+    )
+  }
 }
 
 @Composable
@@ -143,16 +168,6 @@ private fun LoginScreenContent(
       )
     }
 
-    uiState.errorMsg?.let { error ->
-      Text(
-          text = error,
-          color = MaterialTheme.colorScheme.error,
-          fontSize = 12.sp,
-          maxLines = 1,
-          modifier = Modifier.testTag(LoginScreenTestTags.ERROR_MESSAGE),
-      )
-    }
-
     Button(
         onClick = onLoginClick,
         enabled = !uiState.isLoading,
@@ -199,34 +214,7 @@ private fun LoginScreenContent(
       )
     }
 
-    Button(
-        onClick = onGoogleSignInClick,
-        enabled = !uiState.isLoading,
-        shape = RoundedCornerShape(8.dp),
-        contentPadding = PaddingValues(0.dp),
-        colors =
-            ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.onSurface,
-            ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        modifier = Modifier.fillMaxWidth().height(44.dp),
-    ) {
-      Row(verticalAlignment = Alignment.CenterVertically) {
-        Image(
-            imageVector = GoogleLogo,
-            contentDescription = null,
-            modifier = Modifier.size(18.dp),
-        )
-        Text(
-            text = "Continue with Google",
-            color = MaterialTheme.colorScheme.onSurface,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.padding(start = 8.dp),
-        )
-      }
-    }
+    GoogleSignInButton(onClick = onGoogleSignInClick, enabled = !uiState.isLoading)
 
     Spacer(modifier = Modifier.weight(1f))
 
@@ -246,6 +234,34 @@ private fun LoginScreenContent(
           fontSize = 12.sp,
           fontWeight = FontWeight.Bold,
           modifier = Modifier.clickable(role = Role.Button, onClick = onSignUpClick),
+      )
+    }
+  }
+}
+
+@Composable
+private fun GoogleSignInButton(onClick: () -> Unit, enabled: Boolean) {
+  Button(
+      onClick = onClick,
+      enabled = enabled,
+      shape = RoundedCornerShape(8.dp),
+      contentPadding = PaddingValues(0.dp),
+      colors =
+          ButtonDefaults.buttonColors(
+              containerColor = MaterialTheme.colorScheme.surface,
+              contentColor = MaterialTheme.colorScheme.onSurface,
+          ),
+      border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+      modifier = Modifier.fillMaxWidth().height(44.dp).testTag(LoginScreenTestTags.GOOGLE_BUTTON),
+  ) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+      Image(imageVector = GoogleLogo, contentDescription = null, modifier = Modifier.size(18.dp))
+      Text(
+          text = "Continue with Google",
+          color = MaterialTheme.colorScheme.onSurface,
+          fontSize = 14.sp,
+          fontWeight = FontWeight.Medium,
+          modifier = Modifier.padding(start = 8.dp),
       )
     }
   }

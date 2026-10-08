@@ -7,6 +7,7 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.credentials.Credential
@@ -40,10 +41,11 @@ class LoginScreenTest {
         .assertIsDisplayed()
         .assert(SemanticsMatcher.expectValue(SemanticsProperties.Password, Unit))
     composeTestRule.onNodeWithTag(LoginScreenTestTags.LOGIN_BUTTON).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.GOOGLE_BUTTON).assertIsDisplayed()
   }
 
   @Test
-  fun textInputUpdatesViewModelAndLoginDisplaysValidationError() {
+  fun textInputUpdatesViewModelAndRejectedSignInShowsError() {
     composeTestRule.setContent {
       LoginScreen(
           viewModel = viewModel,
@@ -60,10 +62,10 @@ class LoginScreenTest {
       assertEquals("secret", viewModel.uiState.value.password)
     }
 
-    viewModel.updatePassword("")
     composeTestRule.onNodeWithTag(LoginScreenTestTags.LOGIN_BUTTON).performClick()
 
     composeTestRule.onNodeWithTag(LoginScreenTestTags.ERROR_MESSAGE).assertIsDisplayed()
+    composeTestRule.onNodeWithText("Not used in this UI test").assertIsDisplayed()
   }
 }
 
