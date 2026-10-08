@@ -149,7 +149,7 @@ private fun readableTimePickerColors(): TimePickerColors =
 
 @Preview
 @Composable
-private fun FestivarDatePickerDialogPreview() {
+internal fun FestivarDatePickerDialogPreview() {
   AppTheme {
     FestivarDatePickerDialog(initial = LocalDate.of(2026, 10, 17), onConfirm = {}, onDismiss = {})
   }
@@ -157,7 +157,7 @@ private fun FestivarDatePickerDialogPreview() {
 
 @Preview
 @Composable
-private fun FestivarTimePickerDialogPreview() {
+internal fun FestivarTimePickerDialogPreview() {
   AppTheme {
     FestivarTimePickerDialog(initial = LocalTime.of(9, 30), onConfirm = {}, onDismiss = {})
   }
