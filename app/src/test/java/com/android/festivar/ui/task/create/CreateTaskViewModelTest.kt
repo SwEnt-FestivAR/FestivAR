@@ -23,6 +23,9 @@ import org.robolectric.Shadows.shadowOf
 
 @RunWith(AndroidJUnit4::class)
 class CreateTaskViewModelTest {
+  // FAKE: a real, working repository that keeps the tasks in memory instead of Firebase. The tests
+  // read the saved tasks back from it. There is no mock in this file: nothing checks that a method
+  // was called, the tests check the state and what was stored.
   private val repository = TasksRepositoryLocal()
   private val viewModel = CreateTaskViewModel(eventId = "event-1", tasksRepository = repository)
   private val day = LocalDate.of(2026, 10, 17)
@@ -107,6 +110,7 @@ class CreateTaskViewModelTest {
 
   @Test
   fun createTask_whenRepositoryFails_exposesErrorAndAllowsRetry() {
+    // STUB: a fake whose addTask always fails with a fixed error, to test how the ViewModel reacts.
     val failing =
         object : TasksRepository by TasksRepositoryLocal() {
           override suspend fun addTask(task: Task) = throw IllegalStateException("offline")
@@ -133,6 +137,8 @@ class CreateTaskViewModelTest {
     val gate = CompletableDeferred<Unit>()
     val local = TasksRepositoryLocal()
     var addCalls = 0
+    // FAKE with a gate: it saves like TasksRepositoryLocal but only once the test opens the gate, so
+    // the ViewModel stays "saving". It also counts the calls to addTask (a hand-written spy).
     val slow =
         object : TasksRepository by local {
           override suspend fun addTask(task: Task) {
@@ -162,6 +168,8 @@ class CreateTaskViewModelTest {
   fun createTask_afterAFailure_succeedsOnRetryAndClearsTheError() {
     val local = TasksRepositoryLocal()
     var failing = true
+    // FAKE that can fail on demand: it works like TasksRepositoryLocal, but fails while `failing` is
+    // true. The test turns it off to simulate a retry that works.
     val flaky =
         object : TasksRepository by local {
           override suspend fun addTask(task: Task) {
@@ -189,6 +197,7 @@ class CreateTaskViewModelTest {
   // task, so no error message is shown for it.
   @Test
   fun createTask_whenTheSaveIsCancelled_doesNotReportAnError() {
+    // STUB: its addTask always throws a CancellationException, as when the coroutine is cancelled.
     val cancelled =
         object : TasksRepository by TasksRepositoryLocal() {
           override suspend fun addTask(task: Task) = throw CancellationException("cancelled")
