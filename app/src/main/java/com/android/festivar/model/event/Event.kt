@@ -1,3 +1,4 @@
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.event
 
 import com.android.festivar.model.task.Task
@@ -20,7 +21,7 @@ import java.time.ZonedDateTime
  * Every new version goes through the `init` block, so the rules below always hold:
  * - [title] is not blank;
  * - [eventId] is not blank;
- * - a [User] is a joined member at most once (no duplicates);
+ * - a [User] is a joined member at most once, identified by its [User.uid] (no duplicates);
  * - a [Task] is unique in the event (no duplicates);
  * - [endDate] must be after [startDate];
  *
@@ -50,7 +51,7 @@ data class Event(
     require(eventId.isNotBlank()) { "The eventId cannot be empty." }
     require(title.isNotBlank()) { "The title cannot be empty." }
     require(tasks.map { it.taskId }.distinct().size == tasks.size) { "A task is duplicated." }
-    require(members.distinct().size == members.size) { "A user is registered twice." }
+    require(members.distinctBy { it.uid }.size == members.size) { "A user is registered twice." }
     require(endDate.isAfter(startDate)) { "endDate must be strictly after startDate." }
   }
 
@@ -70,25 +71,26 @@ data class Event(
    *
    * @param user The [User] that is going to join `this`, to be added to [members] list.
    * @return The [Event] but with [user] added to it.
-   * @throws IllegalArgumentException If [user] is already in the event.
+   * @throws IllegalArgumentException If a member already has the [User.uid] of [user].
    */
   fun addMember(user: User): Event {
-    require(user !in members) { "This user is already registered in the event." }
+    require(members.none { it.uid == user.uid }) { "This user is already registered in the event." }
     return copy(members = members + user)
   }
 
   /**
-   * Removes an assigned [User] from the [Task] by returning a version of `this` with [user] removed
-   * from the [members] list.
+   * Removes a member [User] from the [Event] by returning a version of `this` with [user] removed
+   * from the [members] list. The member is identified by its [User.uid], so it is removed even if
+   * its name or surname differ from the ones of [user].
    *
    * @param user The [User] that is going to be removed from `this`, from [members] list.
    * @return The [Event] but with [user] removed from it.
-   * @throws IllegalArgumentException If [user] is not assigned to `this`.
+   * @throws IllegalArgumentException If no member has the [User.uid] of [user].
    */
   fun removeMember(user: User): Event {
-    require(user in members) { "This user is not a member of the event." }
+    require(members.any { it.uid == user.uid }) { "This user is not a member of the event." }
 
-    return copy(members = members - user)
+    return copy(members = members.filterNot { it.uid == user.uid })
   }
 
   /**
