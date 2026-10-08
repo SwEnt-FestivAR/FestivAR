@@ -15,8 +15,11 @@ import java.time.LocalTime
 import java.time.ZoneId
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -95,6 +98,17 @@ class TaskOverviewViewModelTest {
       sections
           .filter { it.group == group }
           .flatMap { section -> section.rows.map { it.task.taskId } }
+
+  /** Collects [TaskOverviewViewModel.uiState] the way a screen does; cancel it to leave. */
+  private fun watch(viewModel: TaskOverviewViewModel): Job =
+      CoroutineScope(dispatcher).launch { viewModel.uiState.collect {} }
+
+  /** Moves the clock and the coroutine scheduler together, as wall time would. */
+  private fun tick(by: Duration) {
+    clock.advance(by)
+    dispatcher.scheduler.advanceTimeBy(by.toMillis())
+    dispatcher.scheduler.runCurrent()
+  }
 
   /** Turns red when the ViewModel stops asking the repository for [EVENT]'s tasks only. */
   @Test
@@ -235,26 +249,130 @@ class TaskOverviewViewModelTest {
   }
 
   /**
-   * Turns red when the NOW group stops following the clock on its own: a task that comes within the
-   * hour must move up, and a task whose day is over must drop out, without any user action.
+   * Turns red when the NOW group stops following the clock while the screen watches, or regroups
+   * before a task actually changes group: bunting (11:30) comes within the hour at 10:30 exactly.
    */
   @Test
-  fun nowFollowsTheClockWithoutAUserAction() {
+  fun nowFollowsTheClockWhileTheScreenWatches() {
     val viewModel = overview()
+    val screen = watch(viewModel)
     assertEquals(listOf("tables", "power"), viewModel.uiState.value.idsIn(OverviewGroup.NOW))
 
-    clock.advance(Duration.ofMinutes(60))
+    tick(Duration.ofMinutes(29))
     assertEquals(listOf("tables", "power"), viewModel.uiState.value.idsIn(OverviewGroup.NOW))
 
-    dispatcher.scheduler.advanceTimeBy(TaskOverviewViewModel.REGROUP_PERIOD.toMillis() + 1)
+    tick(Duration.ofMinutes(1))
     assertEquals(
         listOf("tables", "power", "bunting"),
         viewModel.uiState.value.idsIn(OverviewGroup.NOW),
     )
+    screen.cancel()
+  }
 
-    clock.advance(Duration.ofDays(1))
-    dispatcher.scheduler.advanceTimeBy(TaskOverviewViewModel.REGROUP_PERIOD.toMillis() + 1)
-    assertTrue(viewModel.uiState.value.idsIn(OverviewGroup.NOW).isEmpty())
+  /**
+   * Turns red when the clock is followed with nobody collecting the state, which would keep a
+   * backgrounded screen's ViewModel working, or when a returning screen is not regrouped at once.
+   */
+  @Test
+  fun nothingRegroupsWhileNobodyWatchesAndAReturningScreenCatchesUp() {
+    val viewModel = overview()
+
+    tick(Duration.ofHours(2))
+    assertEquals(listOf("tables", "power"), viewModel.uiState.value.idsIn(OverviewGroup.NOW))
+
+    val screen = watch(viewModel)
+    assertEquals(
+        listOf("tables", "power", "bunting"),
+        viewModel.uiState.value.idsIn(OverviewGroup.NOW),
+    )
+    screen.cancel()
+  }
+
+  /**
+   * Turns red when a started task without an end leaves NOW before midnight, or stays in NOW past
+   * it: at 23:59:59 every unfinished task started today is NOW, full or not, one second later none
+   * is.
+   */
+  @Test
+  fun aTaskWithoutAnEndIsNowUntilMidnightOfItsDay() {
+    val viewModel = overview()
+    val screen = watch(viewModel)
+    viewModel.selectFilter(OverviewFilter.ALL)
+
+    tick(Duration.ofHours(13).plusMinutes(59).plusSeconds(59))
+    assertEquals(
+        listOf("tables", "power", "bunting", "sound", "gate"),
+        viewModel.uiState.value.idsIn(OverviewGroup.NOW),
+    )
+
+    tick(Duration.ofSeconds(1))
+    val sections = viewModel.uiState.value.sections
+    assertEquals(
+        listOf(
+            DAY to OverviewGroup.MORNING,
+            DAY to OverviewGroup.AFTERNOON,
+            DAY to OverviewGroup.EVENING,
+            null to OverviewGroup.ANYTIME,
+        ),
+        sections.map { it.day to it.group },
+    )
+    assertEquals(
+        listOf("tables", "bar", "power", "bunting"),
+        sections.first().rows.map { it.task.taskId },
+    )
+    screen.cancel()
+  }
+
+  /**
+   * Turns red when the day does not turn for the NOW section itself: a task starting at 00:15
+   * tomorrow is NOW from 23:15, under today, and must sit under tomorrow once midnight has passed.
+   */
+  @Test
+  fun theNowSectionMovesToTheNewDayAtMidnight() {
+    val onlyDawn = TasksRepositoryLocal()
+    runBlocking {
+      onlyDawn.addTask(Task("dawn", EVENT, "Open the gates", startTime = at(0, 15).plusDays(1)))
+    }
+    val viewModel = overview(repo = onlyDawn)
+    val screen = watch(viewModel)
+
+    tick(Duration.ofHours(13).plusMinutes(30))
+    val beforeMidnight = viewModel.uiState.value.sections.single()
+    assertEquals(OverviewGroup.NOW to DAY, beforeMidnight.group to beforeMidnight.day)
+
+    tick(Duration.ofMinutes(30))
+    val afterMidnight = viewModel.uiState.value.sections.single()
+    assertEquals(OverviewGroup.NOW to DAY.plusDays(1), afterMidnight.group to afterMidnight.day)
+    assertEquals(listOf("dawn"), afterMidnight.rows.map { it.task.taskId })
+    screen.cancel()
+  }
+
+  /**
+   * Turns red when a task with an end time stays in NOW after it has ended (bunting, 11:30, is
+   * rightly within the hour).
+   */
+  @Test
+  fun aTaskWithAnEndLeavesNowWhenItEnds() {
+    runBlocking {
+      repository.addTask(
+          Task("lights", EVENT, "Focus the lights", startTime = at(10, 30), endTime = at(10, 45))
+      )
+    }
+    val viewModel = overview()
+    val screen = watch(viewModel)
+    assertEquals(
+        listOf("tables", "lights", "power"),
+        viewModel.uiState.value.idsIn(OverviewGroup.NOW),
+    )
+
+    tick(Duration.ofMinutes(45))
+
+    assertEquals(
+        listOf("tables", "power", "bunting"),
+        viewModel.uiState.value.idsIn(OverviewGroup.NOW),
+    )
+    assertEquals(listOf("lights"), viewModel.uiState.value.idsIn(OverviewGroup.MORNING))
+    screen.cancel()
   }
 
   /** Turns red when a row stops carrying the task's place, people, length, start or state. */
