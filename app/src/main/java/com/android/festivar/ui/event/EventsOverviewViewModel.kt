@@ -115,7 +115,7 @@ class EventsOverviewViewModel(
    */
   private fun getEvents() {
     getEventsJob?.cancel()
-    _uiState.update { it.copy(isLoading = true) }
+    _uiState.update { it.copy(isLoading = true, errorMsg = null) }
     getEventsJob = viewModelScope.launch {
       try {
         val events = eventsRepository.getEventsForUser(user.uid)
