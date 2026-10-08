@@ -15,6 +15,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.festivar.model.event.EventsRepositoryLocal
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -31,7 +32,8 @@ class CreateEventScreenTest {
 
   @Before
   fun setUp() {
-    composeTestRule.setContent { CreateEventScreen() }
+    val viewModel = CreateEventViewModel(EventsRepositoryLocal())
+    composeTestRule.setContent { CreateEventScreen(viewModel) }
   }
 
   @Test

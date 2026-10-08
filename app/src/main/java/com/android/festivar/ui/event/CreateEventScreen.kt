@@ -2,6 +2,7 @@ package com.android.festivar.ui.event
 
 // Co-authored-by: Copilot App
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -45,6 +46,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.ui.theme.AppTheme
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -300,8 +303,9 @@ private fun DateTimeInput(
   }
 }
 
+@SuppressLint("ViewModelConstructorInComposable")
 @Preview
 @Composable
 fun CreateEventScreenPreview() {
-  CreateEventScreen()
+  AppTheme { CreateEventScreen(CreateEventViewModel(EventsRepositoryLocal())) }
 }
