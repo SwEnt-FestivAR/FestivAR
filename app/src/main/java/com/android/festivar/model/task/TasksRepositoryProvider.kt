@@ -13,6 +13,9 @@ object TasksRepositoryProvider {
     TaskRepositoryFirebase(Firebase.firestore)
   }
 
+  // @Volatile: the repository can be set on one thread (for example a test) and read on another
+  // (the main thread). It makes a write visible to every thread right away, so no thread keeps
+  // using a stale repository.
   @Volatile private var override: TasksRepository? = null
 
   /**
