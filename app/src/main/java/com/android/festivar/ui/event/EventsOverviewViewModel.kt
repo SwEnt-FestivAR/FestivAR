@@ -147,7 +147,4 @@ class EventsOverviewViewModel(
       }
     }
   }
-
-  /** An [Event] is past once it is closed or once its [Event.endDate] is not after [time]. */
-  private fun Event.isPast(time: ZonedDateTime): Boolean = closed || !endDate.isAfter(time)
 }
