@@ -71,7 +71,7 @@ data class Event(
    *
    * @param user The [User] that is going to join `this`, to be added to [members] list.
    * @return The [Event] but with [user] added to it.
-   * @throws IllegalArgumentException If a member already has the [User.uid] of [user].
+   * @throws IllegalArgumentException If [user] is already a member, identified by its [User.uid].
    */
   fun addMember(user: User): Event {
     require(members.none { it.uid == user.uid }) { "This user is already registered in the event." }
@@ -85,7 +85,7 @@ data class Event(
    *
    * @param user The [User] that is going to be removed from `this`, from [members] list.
    * @return The [Event] but with [user] removed from it.
-   * @throws IllegalArgumentException If no member has the [User.uid] of [user].
+   * @throws IllegalArgumentException If [user] is not a member, identified by its [User.uid].
    */
   fun removeMember(user: User): Event {
     require(members.any { it.uid == user.uid }) { "This user is not a member of the event." }

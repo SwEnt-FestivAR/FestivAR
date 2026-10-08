@@ -89,7 +89,7 @@ data class Task(
    * @param user The [User] that is going to be assigned to `this`, to be added to [assignees] list.
    * @return The [Task] but with [user] added to it.
    * @throws IllegalStateException If the [Task] is already full.
-   * @throws IllegalArgumentException If an assignee already has the [User.uid] of [user].
+   * @throws IllegalArgumentException If [user] is already assigned, identified by its [User.uid].
    */
   fun addAssignee(user: User): Task {
     check(assignees.size < maxAssign) { "The task is full." }
@@ -106,7 +106,7 @@ data class Task(
    *
    * @param user The [User] that is going to be removed from `this`, from [assignees] list.
    * @return The [Task] but with [user] removed from it.
-   * @throws IllegalArgumentException If no assignee has the [User.uid] of [user].
+   * @throws IllegalArgumentException If [user] is not assigned, identified by its [User.uid].
    */
   fun removeAssignee(user: User): Task {
     require(assignees.any { it.uid == user.uid }) { "This user is not assigned to the task." }
