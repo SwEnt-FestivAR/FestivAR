@@ -9,7 +9,19 @@ import com.google.firebase.firestore.firestore
  * testing purposes.
  */
 object TasksRepositoryProvider {
-  private val _repository: TasksRepository by lazy { TaskRepositoryFirebase(Firebase.firestore) }
+  private val firebaseRepository: TasksRepository by lazy {
+    TaskRepositoryFirebase(Firebase.firestore)
+  }
 
-  var repository: TasksRepository = _repository
+  private var override: TasksRepository? = null
+
+  /**
+   * The repository in use. Firestore is only touched if nothing was set: assigning a repository
+   * (for example an in-memory one in a test) never builds the Firebase one.
+   */
+  var repository: TasksRepository
+    get() = override ?: firebaseRepository
+    set(value) {
+      override = value
+    }
 }
