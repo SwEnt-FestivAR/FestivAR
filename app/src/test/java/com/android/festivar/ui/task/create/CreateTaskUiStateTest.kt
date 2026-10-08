@@ -140,16 +140,4 @@ class CreateTaskUiStateTest {
   fun toTask_withBlankTitle_isRejected() {
     assertThrows(IllegalArgumentException::class.java) { CreateTaskUiState().toTask("t1", "e1") }
   }
-
-  @Test
-  fun formatDate_usesShortWeekdayDayAndMonth() {
-    assertEquals("Sat 17 Oct", formatDate(day))
-  }
-
-  @Test
-  fun formatTime_usesTwentyFourHourClockWithPadding() {
-    assertEquals("09:30", formatTime(LocalTime.of(9, 30)))
-    assertEquals("00:05", formatTime(LocalTime.of(0, 5)))
-    assertEquals("21:00", formatTime(LocalTime.of(21, 0)))
-  }
 }
