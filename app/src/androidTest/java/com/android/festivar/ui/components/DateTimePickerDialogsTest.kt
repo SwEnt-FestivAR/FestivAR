@@ -97,6 +97,19 @@ class DateTimePickerDialogsTest {
     assertEquals(LocalDate.now().withDayOfMonth(15), pickedDate)
   }
 
+  // The user picks a day but changes their mind: Cancel must only dismiss the dialog, and the
+  // tapped day must not be reported through onConfirm.
+  @Test
+  fun dateDialog_cancelAfterTappingADay_doesNotConfirm() {
+    showDateDialog(initial = null)
+
+    composeTestRule.onNode(hasDayOfMonth(15)).performClick()
+    composeTestRule.onNodeWithText("Cancel").performClick()
+
+    assertEquals(1, dismissals)
+    assertNull(pickedDate)
+  }
+
   @Test
   fun dateDialog_cancelOnlyDismisses() {
     showDateDialog(initial = LocalDate.of(2026, 10, 17))

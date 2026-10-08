@@ -173,6 +173,46 @@ class FormFieldsTest {
     assertEquals(1, clicks)
   }
 
+  // The error state of the picker field must reach accessibility services, not only the colors:
+  // Material marks an invalid field with the Error semantics.
+  @Test
+  fun pickerField_withAnError_isMarkedAsInvalid() {
+    composeTestRule.setContent {
+      AppTheme {
+        FestivarPickerField(
+            value = "",
+            label = "Start date",
+            onClick = {},
+            isError = true,
+            modifier = Modifier.testTag(fieldTag),
+        )
+      }
+    }
+
+    composeTestRule
+        .onNodeWithTag(fieldTag)
+        .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Error))
+  }
+
+  // Counterpart of the test above: a field with the default isError = false must not be flagged.
+  @Test
+  fun pickerField_withoutAnError_isNotMarkedAsInvalid() {
+    composeTestRule.setContent {
+      AppTheme {
+        FestivarPickerField(
+            value = "",
+            label = "Start date",
+            onClick = {},
+            modifier = Modifier.testTag(fieldTag),
+        )
+      }
+    }
+
+    composeTestRule
+        .onNodeWithTag(fieldTag)
+        .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Error))
+  }
+
   @Test
   fun fieldError_showsItsMessage() {
     composeTestRule.setContent {
