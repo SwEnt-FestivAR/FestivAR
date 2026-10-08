@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.authentication.signup
 
 import androidx.compose.ui.test.assertIsDisplayed
@@ -165,7 +166,10 @@ class SignUpScreenTest {
       )
     }
 
-    composeTestRule.onNodeWithTag(SignUpScreenTestTags.GOOGLE_SIGNUP_BUTTON).performClick()
+    composeTestRule
+        .onNodeWithTag(SignUpScreenTestTags.GOOGLE_SIGNUP_BUTTON)
+        .performScrollTo()
+        .performClick()
     composeTestRule.waitForIdle()
 
     assertSame(credential, authRepository.lastGoogleCredential)

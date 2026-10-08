@@ -57,7 +57,7 @@ class TasksRepositoryLocalTest {
     tasksRepositoryLocal.addTask(task)
 
     // Verify that the Task was added
-    val tasks = tasksRepositoryLocal.getAllTasks()
+    val tasks = tasksRepositoryLocal.getAllTasks(task.eventId)
     assertTrue(tasks.contains(task)) // Ensure the task is present
     assertEquals(1, tasks.size) // Ensure only one task is present
 
@@ -84,7 +84,7 @@ class TasksRepositoryLocalTest {
     }
 
     // The repository still contains only the first task.
-    assertEquals(listOf(task), tasksRepositoryLocal.getAllTasks())
+    assertEquals(listOf(task), tasksRepositoryLocal.getAllTasks(task.eventId))
   }
 
   /**
@@ -101,7 +101,7 @@ class TasksRepositoryLocalTest {
     tasksRepositoryLocal.editTask(task.taskId, updatedTask)
 
     // Verify that the Task was updated
-    val tasks = tasksRepositoryLocal.getAllTasks()
+    val tasks = tasksRepositoryLocal.getAllTasks(task.eventId)
     assertTrue(tasks.contains(updatedTask)) // Ensure the updated task is present
     assertTrue(!tasks.contains(task)) // Ensure the old task is not present
     assertEquals(1, tasks.size) // Ensure only one task is present
@@ -132,7 +132,7 @@ class TasksRepositoryLocalTest {
       runBlocking { tasksRepositoryLocal.editTask(task.taskId, task2.copy(title = "Overwrite")) }
     }
 
-    assertEquals(listOf(task, task2), tasksRepositoryLocal.getAllTasks())
+    assertEquals(listOf(task, task2), tasksRepositoryLocal.getAllTasks(task.eventId))
   }
 
   /**
@@ -146,7 +146,7 @@ class TasksRepositoryLocalTest {
     tasksRepositoryLocal.deleteTask(task.taskId)
 
     // Verify that the Task was deleted
-    val tasks = tasksRepositoryLocal.getAllTasks()
+    val tasks = tasksRepositoryLocal.getAllTasks(task.eventId)
     assertTrue(!tasks.contains(task)) // Ensure the task is not present
     assertEquals(0, tasks.size) // Ensure no tasks are present
 
@@ -165,7 +165,7 @@ class TasksRepositoryLocalTest {
     tasksRepositoryLocal.deleteTask(task.taskId)
 
     // Verify that the correct Task was deleted
-    val tasks = tasksRepositoryLocal.getAllTasks()
+    val tasks = tasksRepositoryLocal.getAllTasks(task.eventId)
     assertTrue(!tasks.contains(task)) // Ensure the first task is not present
     assertTrue(tasks.contains(task2)) // Ensure the second task is still present
     assertTrue(tasks.size == 1) // Ensure that it has not created or duplicated an element
@@ -188,8 +188,18 @@ class TasksRepositoryLocalTest {
    */
   @Test
   fun getAllTasks_returnEmptyList_whenCalledAtBeginning() = runTest {
-    val tasks = tasksRepositoryLocal.getAllTasks()
+    val tasks = tasksRepositoryLocal.getAllTasks(task.eventId)
     assertTrue(tasks.isEmpty())
+  }
+
+  @Test
+  fun getAllTasks_filtersByEventId() = runTest {
+    val otherTask = task.copy(taskId = "2", eventId = "event2")
+    tasksRepositoryLocal.addTask(task)
+    tasksRepositoryLocal.addTask(otherTask)
+
+    assertEquals(listOf(task), tasksRepositoryLocal.getAllTasks(task.eventId))
+    assertEquals(listOf(otherTask), tasksRepositoryLocal.getAllTasks(otherTask.eventId))
   }
 
   /**
@@ -239,7 +249,7 @@ class TasksRepositoryLocalTest {
   @Test
   fun getAllTasks_manyTasks_returnsAllTasksInOrder() = runTest {
     val tasks = addManyTasks()
-    assertEquals(tasks, tasksRepositoryLocal.getAllTasks())
+    assertEquals(tasks, tasksRepositoryLocal.getAllTasks(task.eventId))
   }
 
   /**
@@ -280,7 +290,7 @@ class TasksRepositoryLocalTest {
     for (i in manyTasksCount until manyTasksCount * 2) {
       assertThrowsSuspend { tasksRepositoryLocal.editTask("task$i", taskNumber(i)) }
     }
-    assertEquals(tasks, tasksRepositoryLocal.getAllTasks())
+    assertEquals(tasks, tasksRepositoryLocal.getAllTasks(task.eventId))
   }
 
   /**
@@ -293,7 +303,7 @@ class TasksRepositoryLocalTest {
     for (i in manyTasksCount until manyTasksCount * 2) {
       assertThrowsSuspend { tasksRepositoryLocal.deleteTask("task$i") }
     }
-    assertEquals(tasks, tasksRepositoryLocal.getAllTasks())
+    assertEquals(tasks, tasksRepositoryLocal.getAllTasks(task.eventId))
 
     tasksRepositoryLocal.deleteTask(tasks[0].taskId)
     assertThrowsSuspend { tasksRepositoryLocal.deleteTask(tasks[0].taskId) }

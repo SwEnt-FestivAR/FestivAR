@@ -306,6 +306,9 @@ class TaskTest {
   /** A user that is never part of the lists built by [users]. */
   private val outsider = User("outsider")
 
+  /** Sara Keller, with the uid "u1", to check that assignees are identified by their uid. */
+  private val sara = User("u1", name = "Sara", surname = "Keller")
+
   /** Builds a valid task with every field set, so we can check that the functions keep them. */
   private fun taskWith(
       maxAssign: Int,
@@ -475,6 +478,59 @@ class TaskTest {
         }
       }
       assertEquals(users(size), task.assignees) // The task is not modified.
+    }
+  }
+
+  // ---------------------------------------------------------------------------------------- //
+  // Assignees are identified by their uid, whatever their name or surname
+  // ---------------------------------------------------------------------------------------- //
+
+  /** A user assigned twice with the same uid is refused, even with other names. */
+  @Test
+  fun init_fails_whenAUidIsAssignedTwice_withOtherNames() {
+    assertInvalid(duplicateMessage) {
+      Task(
+          taskId = "t1",
+          eventId = "e1",
+          title = "Task",
+          maxAssign = 2,
+          assignees = listOf(sara, User("u1")),
+      )
+    }
+  }
+
+  /** addAssignee refuses a user whose uid is already assigned, even with other names. */
+  @Test
+  fun addAssignee_fails_whenAnAssigneeHasTheSameUid() {
+    val task = taskWith(maxAssign = 3, assignees = listOf(sara))
+
+    assertThrowsWithMessage(IllegalArgumentException::class.java, alreadyAssignedMessage) {
+      task.addAssignee(User("u1"))
+    }
+    assertEquals(listOf(sara), task.assignees) // The task is not modified.
+  }
+
+  /** removeAssignee removes the assignee with the same uid, even if its names differ. */
+  @Test
+  fun removeAssignee_removesTheAssigneeWithTheSameUid() {
+    val assignees = listOf(User("user0"), sara, User("user1"))
+    val task = taskWith(maxAssign = 3, assignees = assignees)
+
+    val result = task.removeAssignee(User("u1"))
+
+    assertEquals(task.copy(assignees = listOf(User("user0"), User("user1"))), result)
+    assertEquals(assignees, task.assignees) // The original task is not modified.
+  }
+
+  /**
+   * removeAssignee refuses a user whose uid is not assigned, even with the names of an assignee.
+   */
+  @Test
+  fun removeAssignee_fails_whenNoAssigneeHasTheUid_evenWithTheSameNames() {
+    val task = taskWith(maxAssign = 3, assignees = listOf(sara))
+
+    assertThrowsWithMessage(IllegalArgumentException::class.java, notAssignedMessage) {
+      task.removeAssignee(User("u2", name = "Sara", surname = "Keller"))
     }
   }
 }
