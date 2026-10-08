@@ -25,8 +25,8 @@ enum class PinKind {
 /** The pennant pin: the one motif. Map marker, task bullet, empty state. */
 @Composable
 fun PennantIcon(
-    kind: PinKind = PinKind.STRUCTURE,
     modifier: Modifier = Modifier,
+    kind: PinKind = PinKind.STRUCTURE,
     size: Dp = 24.dp,
     contentDescription: String? = null,
 ) {
