@@ -306,4 +306,47 @@ class EventTest {
 
     assertInvalid(taskNotInEventMessage) { event.removeTask("unknown") }
   }
+
+  // **************************************************************************************//
+  // isPast
+  // **************************************************************************************//
+
+  /** An event that is not closed is not past before its end, whether it has started or not. */
+  @Test
+  fun isPast_isFalse_beforeTheEnd() {
+    val event = event(startDate = start, endDate = start.plusDays(2))
+
+    assertFalse(event.isPast(start.minusDays(1)))
+    assertFalse(event.isPast(start))
+    assertFalse(event.isPast(start.plusDays(2).minusNanos(1)))
+  }
+
+  /** An event is past from its end on, including exactly at its end. */
+  @Test
+  fun isPast_isTrue_fromTheEnd() {
+    val event = event(startDate = start, endDate = start.plusDays(2))
+
+    assertTrue(event.isPast(start.plusDays(2)))
+    assertTrue(event.isPast(start.plusDays(3)))
+  }
+
+  /** A closed event is past, even before it starts or ends. */
+  @Test
+  fun isPast_isTrue_whenClosed_evenBeforeTheEnd() {
+    val event = event(startDate = start, endDate = start.plusDays(2)).close()
+
+    assertTrue(event.isPast(start.minusDays(1)))
+    assertTrue(event.isPast(start.plusDays(1)))
+  }
+
+  /** The end is compared as an instant, so the time zone of the given time does not matter. */
+  @Test
+  fun isPast_comparesInstants_acrossTimeZones() {
+    val end = start.plusDays(2)
+    val event = event(startDate = start, endDate = end)
+    val endInLondon = end.withZoneSameInstant(ZoneId.of("Europe/London"))
+
+    assertTrue(event.isPast(endInLondon))
+    assertFalse(event.isPast(endInLondon.minusNanos(1)))
+  }
 }

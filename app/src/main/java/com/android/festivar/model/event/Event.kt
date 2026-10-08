@@ -66,6 +66,17 @@ data class Event(
   }
 
   /**
+   * Tells whether the [Event] is past at a given time: once it is [closed], or once its [endDate]
+   * is reached. An [Event] ending exactly at [at] is past.
+   *
+   * @param at The time at which to check, usually the current time.
+   * @return `true` if `this` is closed or ended at [at], `false` otherwise.
+   */
+  fun isPast(at: ZonedDateTime): Boolean {
+    return closed || !endDate.isAfter(at)
+  }
+
+  /**
    * Adds a new [User] to the [Event] by returning a version of `this` with [user] added to the
    * [members] list.
    *
