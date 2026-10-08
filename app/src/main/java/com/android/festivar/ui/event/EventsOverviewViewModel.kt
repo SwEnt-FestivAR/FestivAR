@@ -37,10 +37,11 @@ data class EventItemUIState(
  *
  * @property ongoingEvents The [Event] items taking place right now, the earliest started first.
  * @property upcomingEvents The [Event] items that have not started yet, the soonest first.
- * @property pastEvents The [Event] items that are closed or ended, the most recent first.
+ * @property pastEvents The [Event] items that are closed or ended, the most recently ended first.
  * @property selectedFilter Which [Event] items are shown: [ongoingEvents], [upcomingEvents] or
  *   [pastEvents].
- * @property user The signed-in [User], whose avatar is shown in the top bar. `null` if unknown.
+ * @property user The signed-in [User], whose avatar is shown in the top bar. `null` only until a
+ *   ViewModel provides it.
  * @property isLoading Whether the [Event] items are currently being fetched.
  * @property errorMsg An error message to show when fetching the [Event] items fails. `null` if
  *   there is no error.
@@ -74,13 +75,12 @@ data class EventsOverviewUIState(
  * Manages the UI state by fetching the [Event] items through the [EventsRepository].
  *
  * @property eventsRepository The repository used to fetch the [Event] items.
- * @property user The signed-in [User], whose [Event] items are shown. If `null`, every [Event] of
- *   the repository is shown.
+ * @property user The signed-in [User], whose [Event] items are shown.
  * @property now Gives the current time, used to split ongoing, upcoming and past [Event] items.
  */
 class EventsOverviewViewModel(
     private val eventsRepository: EventsRepository,
-    private val user: User? = null,
+    private val user: User,
     private val now: () -> ZonedDateTime = ZonedDateTime::now,
 ) : ViewModel() {
 
@@ -110,17 +110,15 @@ class EventsOverviewViewModel(
   }
 
   /**
-   * Fetches the [Event] items from the repository, the ones of [user] if it is set, and updates the
-   * UI state. Cancels the previous fetch, so that an older result never overwrites a newer one.
+   * Fetches the [Event] items of [user] from the repository and updates the UI state. Cancels the
+   * previous fetch, so that an older result never overwrites a newer one.
    */
   private fun getEvents() {
     getEventsJob?.cancel()
     _uiState.update { it.copy(isLoading = true) }
     getEventsJob = viewModelScope.launch {
       try {
-        val events =
-            if (user == null) eventsRepository.getAllEvents()
-            else eventsRepository.getEventsForUser(user.uid)
+        val events = eventsRepository.getEventsForUser(user.uid)
         // Stop here if cancelled during a fetch that does not check for cancellation itself
         ensureActive()
         val currentTime = now()
@@ -132,7 +130,7 @@ class EventsOverviewViewModel(
               upcomingEvents =
                   upcoming.sortedBy { event -> event.startDate }.map(::EventItemUIState),
               pastEvents =
-                  past.sortedByDescending { event -> event.startDate }.map(::EventItemUIState),
+                  past.sortedByDescending { event -> event.endDate }.map(::EventItemUIState),
               isLoading = false,
               errorMsg = null,
           )
