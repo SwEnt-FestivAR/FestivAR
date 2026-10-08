@@ -3,9 +3,6 @@
 <p align="center">
   <a href="https://github.com/SwEnt-FestivAR/FestivAR/graphs/contributors"><img src="https://img.shields.io/github/contributors/SwEnt-FestivAR/FestivAR" alt="Contributors"></a>
   <a href="https://github.com/SwEnt-FestivAR/FestivAR/branches"><img src="https://img.shields.io/github/branches/SwEnt-FestivAR/FestivAR" alt="Branches"></a>
-</p>
-
-<p align="center">
   <a href="https://github.com/SwEnt-FestivAR/FestivAR/commits"><img src="https://img.shields.io/github/last-commit/SwEnt-FestivAR/FestivAR" alt="Last Commit"></a>
   <a href="https://github.com/SwEnt-FestivAR/FestivAR/graphs/commit-activity"><img src="https://img.shields.io/github/commit-activity/w/SwEnt-FestivAR/FestivAR" alt="Weekly Commits"></a>
   <a href="https://github.com/SwEnt-FestivAR/FestivAR/graphs/commit-activity"><img src="https://img.shields.io/github/commit-activity/m/SwEnt-FestivAR/FestivAR" alt="Monthly Commits"></a>
@@ -14,9 +11,6 @@
 <p align="center">
   <a href="https://github.com/SwEnt-FestivAR/FestivAR/issues"><img src="https://img.shields.io/github/issues/SwEnt-FestivAR/FestivAR?color=red" alt="Issues"></a>
   <a href="https://github.com/SwEnt-FestivAR/FestivAR/issues?q=is%3Aissue+is%3Aclosed"><img src="https://img.shields.io/github/issues-closed/SwEnt-FestivAR/FestivAR?color=brightgreen" alt="Closed Issues"></a>
-</p>
-
-<p align="center">
   <a href="https://github.com/SwEnt-FestivAR/FestivAR/pulls"><img src="https://img.shields.io/github/issues-pr/SwEnt-FestivAR/FestivAR?color=yellow" alt="Pull Requests"></a>
   <a href="https://github.com/SwEnt-FestivAR/FestivAR/pulls?q=is%3Apr+is%3Aclosed"><img src="https://img.shields.io/github/issues-pr-closed/SwEnt-FestivAR/FestivAR?color=brightgreen" alt="Closed Pull Requests"></a>
 </p>
