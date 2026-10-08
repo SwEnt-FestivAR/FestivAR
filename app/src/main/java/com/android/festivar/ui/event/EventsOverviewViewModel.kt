@@ -119,7 +119,9 @@ class EventsOverviewViewModel(
     getEventsJob = viewModelScope.launch {
       try {
         val events = eventsRepository.getEventsForUser(user.uid)
-        // Stop here if cancelled during a fetch that does not check for cancellation itself
+        // A newer fetch may have cancelled this one while the repository was fetching. A
+        // repository that ignores cancellation still returns its events, so stop here before
+        // these stale events reach the UI state.
         ensureActive()
         val currentTime = now()
         val (past, notPast) = events.partition { it.isPast(currentTime) }
