@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -20,6 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -62,6 +64,7 @@ object CreateTaskScreenTestTags {
   const val END_DATE_ERROR = "createTaskEndDateError"
   const val SAVE_ERROR = "createTaskSaveError"
   const val CREATE_BUTTON = "createTaskCreateButton"
+  const val SAVING_INDICATOR = "createTaskSavingIndicator"
 }
 
 /** What the user can do on the Create task screen. Lets [CreateTaskContent] stay stateless. */
@@ -197,17 +200,30 @@ fun CreateTaskContent(
         ErrorText(it, CreateTaskScreenTestTags.SAVE_ERROR)
       }
     }
-    Button(
-        onClick = actions.onCreate,
-        enabled = state.canCreate,
-        shape = RoundedCornerShape(12.dp),
-        modifier =
-            Modifier.fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 24.dp)
-                .height(52.dp)
-                .testTag(CreateTaskScreenTestTags.CREATE_BUTTON),
-    ) {
-      Text("Create task", style = MaterialTheme.typography.labelLarge)
+    // While the task is being saved, the button gives way to a spinner (as the sign-in screen of the
+    // bootcamp does), so the user sees that something is happening and cannot tap again.
+    if (state.isSaving) {
+      Box(
+          contentAlignment = Alignment.Center,
+          modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp).height(52.dp),
+      ) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(32.dp).testTag(CreateTaskScreenTestTags.SAVING_INDICATOR)
+        )
+      }
+    } else {
+      Button(
+          onClick = actions.onCreate,
+          enabled = state.canCreate,
+          shape = RoundedCornerShape(12.dp),
+          modifier =
+              Modifier.fillMaxWidth()
+                  .padding(horizontal = 16.dp, vertical = 24.dp)
+                  .height(52.dp)
+                  .testTag(CreateTaskScreenTestTags.CREATE_BUTTON),
+      ) {
+        Text("Create task", style = MaterialTheme.typography.labelLarge)
+      }
     }
   }
 
