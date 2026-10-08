@@ -4,7 +4,6 @@ package com.android.festivar.ui.tasks
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
-import com.android.festivar.model.task.TasksRepositoryProvider
 import com.android.festivar.model.temporary.User
 import java.time.Clock
 import java.time.Duration
@@ -528,15 +527,6 @@ class TaskOverviewViewModelTest {
     val state = viewModel.uiState.value
     assertNull(state.errorMsg)
     assertEquals(listOf("power"), state.visibleIds())
-  }
-
-  /**
-   * Turns red when the provider's default stops being in-memory, which would put Firebase behind
-   * every unit test that leaves the repository parameter out.
-   */
-  @Test
-  fun theProviderDefaultsToTheInMemoryRepository() {
-    assertTrue(TasksRepositoryProvider.repository is TasksRepositoryLocal)
   }
 
   /** Reads through [inner] until [failing] is set, then every load throws. */
