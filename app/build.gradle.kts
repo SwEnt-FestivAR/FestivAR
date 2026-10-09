@@ -127,6 +127,7 @@ fun DependencyHandlerScope.globalTestImplementation(dep: Any) {
 
 dependencies {
   implementation(platform(libs.firebase.bom))
+  implementation(libs.androidx.navigation.compose)
   implementation(libs.credentials)
   implementation(libs.credentials.play.services.auth)
   implementation(libs.firebase.firestore)

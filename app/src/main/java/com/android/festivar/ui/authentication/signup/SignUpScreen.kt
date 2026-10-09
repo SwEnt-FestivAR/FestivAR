@@ -78,7 +78,7 @@ fun SignUpScreen(
     credentialManager: CredentialManager? = CredentialManager.create(LocalContext.current),
     onSignInClick: () -> Unit = {},
     onBackClick: () -> Unit = {},
-    viewModel: SignUpViewModel = SignUpViewModel(),
+    viewModel: SignUpViewModel = viewModel(),
     onSignUpSuccess: () -> Unit = {},
 ) {
   var isPasswordVisible by remember { mutableStateOf(false) }
@@ -89,6 +89,7 @@ fun SignUpScreen(
   if (uiState.isAuthenticated) {
     onSignUpSuccess()
   }
+
   Column(
       modifier =
           modifier
