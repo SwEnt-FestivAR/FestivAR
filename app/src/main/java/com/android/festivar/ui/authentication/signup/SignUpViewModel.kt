@@ -1,6 +1,7 @@
 package com.android.festivar.ui.authentication.signup
 
 import android.content.Context
+import android.util.Log
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import androidx.lifecycle.ViewModel
@@ -27,6 +28,10 @@ data class AuthUIState(
 
 class SignUpViewModel(private val authRepository: AuthRepository = AuthRepositoryFirebase()) :
     ViewModel() {
+  companion object {
+    private const val TAG = "SignUpViewModel"
+  }
+
   private val _uiState = MutableStateFlow(AuthUIState())
   val uiState: StateFlow<AuthUIState> = _uiState.asStateFlow()
 
@@ -45,6 +50,7 @@ class SignUpViewModel(private val authRepository: AuthRepository = AuthRepositor
   fun googleSignUp(context: Context, credentialManager: CredentialManager) {
     if (_uiState.value.isLoading) return
     viewModelScope.launch {
+      Log.d(TAG, "Starting Google sign-up")
       _uiState.value = AuthUIState(isLoading = true)
       val result = runCatching {
         val option =
@@ -59,8 +65,14 @@ class SignUpViewModel(private val authRepository: AuthRepository = AuthRepositor
           )
       _uiState.value =
           result.fold(
-              onSuccess = { AuthUIState(isAuthenticated = true) },
-              onFailure = { AuthUIState(errorMsg = it.message ?: "Unable to sign up.") },
+              onSuccess = {
+                Log.d(TAG, "Google sign-up succeeded")
+                AuthUIState(isAuthenticated = true)
+              },
+              onFailure = {
+                Log.e(TAG, "Google sign-up failed", it)
+                AuthUIState(errorMsg = it.message ?: "Unable to sign up.")
+              },
           )
     }
   }
@@ -71,6 +83,7 @@ class SignUpViewModel(private val authRepository: AuthRepository = AuthRepositor
   ) {
     if (_uiState.value.isLoading) return
     viewModelScope.launch {
+      Log.d(TAG, "Starting email sign-up for ${email.maskForLog()}")
       _uiState.value = AuthUIState(isLoading = true)
       val result =
           authRepository.signUpWithEmailAndPassword(
@@ -79,8 +92,14 @@ class SignUpViewModel(private val authRepository: AuthRepository = AuthRepositor
           )
       _uiState.value =
           result.fold(
-              onSuccess = { AuthUIState(isAuthenticated = true) },
-              onFailure = { AuthUIState(errorMsg = it.message ?: "Unable to sign up.") },
+              onSuccess = {
+                Log.d(TAG, "Email sign-up succeeded for ${email.maskForLog()}")
+                AuthUIState(isAuthenticated = true)
+              },
+              onFailure = {
+                Log.e(TAG, "Email sign-up failed for ${email.maskForLog()}", it)
+                AuthUIState(errorMsg = it.message ?: "Unable to sign up.")
+              },
           )
     }
   }
@@ -94,5 +113,10 @@ class SignUpViewModel(private val authRepository: AuthRepository = AuthRepositor
               onFailure = { AuthUIState(errorMsg = it.message ?: "Unable to sign out.") },
           )
     }
+  }
+
+  private fun String.maskForLog(): String {
+    val atIndex = indexOf('@')
+    return if (atIndex > 1) "${take(1)}***${substring(atIndex)}" else "***"
   }
 }
