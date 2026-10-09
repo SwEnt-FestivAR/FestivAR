@@ -41,7 +41,10 @@ android {
 
   testCoverage { jacocoVersion = "0.8.14" }
 
-  buildFeatures { compose = true; buildConfig = true } // Enable buildConfig generation for the app module
+  buildFeatures {
+    compose = true
+    buildConfig = true
+  } // Enable buildConfig generation for the app module
 
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_17

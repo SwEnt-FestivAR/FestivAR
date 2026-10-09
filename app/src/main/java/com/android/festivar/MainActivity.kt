@@ -20,6 +20,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.authentication.AuthRepositoryFirebase
+import com.android.festivar.navigation.AppScreens
+import com.android.festivar.navigation.LoginNavigator
+import com.android.festivar.navigation.SignUpNavigator
 import com.android.festivar.ui.authentication.login.LoginScreen
 import com.android.festivar.ui.authentication.signup.SignUpScreen
 import com.android.festivar.ui.theme.AppTheme
@@ -47,17 +50,6 @@ class MainActivity : ComponentActivity() {
   }
 }
 
-// This enum defines the different screens in the app, used for navigation purposes.
-// Put only fully implemented screens here
-enum class AppScreens {
-  Login,
-  SignUp,
-  TaskOverview,
-  EventOverview,
-  CreateEvent,
-  CreateTask,
-}
-
 /**
  * `FestivAR` is the main composable function that sets up the whole app UI. It initializes the
  * navigation controller and defines the navigation graph. You can add your app implementation
@@ -73,63 +65,56 @@ fun FestivAR(
     context: Context = LocalContext.current,
     credentialManager: CredentialManager = CredentialManager.create(context),
     authRepository: AuthRepository = AuthRepositoryFirebase(),
+    initialDestination: String? = null,
 ) {
   val navController = rememberNavController()
   val scope = rememberCoroutineScope()
 
   val startDestination =
-      if (runCatching { Firebase.auth.currentUser != null }.getOrDefault(false)) {
-        AppScreens.EventOverview.name
-      } else {
-        AppScreens.Login.name
-      }
+      initialDestination
+          ?: if (runCatching { Firebase.auth.currentUser != null }.getOrDefault(false)) {
+            AppScreens.EventOverview.name
+          } else {
+            AppScreens.Login.name
+          }
 
   NavHost(
       navController = navController,
       startDestination = startDestination,
   ) {
     composable(route = AppScreens.SignUp.name) {
+      val navigator = SignUpNavigator(navController)
       SignUpScreen(
           credentialManager = credentialManager,
-          onSignInClick = {
-            navController.navigate(AppScreens.Login.name)
-          },
-          onBackClick = { navController.popBackStack() },
-          onSignUpSuccess = {
-            navController.navigate(AppScreens.EventOverview.name) {
-              popUpTo(AppScreens.EventOverview.name) { inclusive = true }
-            }
-          },
+          onSignInClick = navigator.onSignInClick,
+          onBackClick = navigator.onBackClick,
+          onSignUpSuccess = navigator.onSignUpSuccess,
       )
     }
-    composable (route = AppScreens.Login.name) {
+    composable(route = AppScreens.Login.name) {
+      val navigator = LoginNavigator(navController)
       LoginScreen(
           credentialManager = credentialManager,
-          onSignUpClick = {
-            navController.navigate(AppScreens.SignUp.name)
-          },
-          onSignedIn = {
-            navController.navigate(AppScreens.EventOverview.name) {
-              popUpTo(AppScreens.EventOverview.name) { inclusive = true }
-            }
-          },
+          onSignUpClick = navigator.onSignUpClick,
+          onSignedIn = navigator.onSignedIn,
       )
     }
     composable(route = AppScreens.EventOverview.name) {
       ScreenName(
-        "event overview, click to logout",
-        modifier = Modifier.clickable(
-          role = Role.Button,
-          onClick = {
-            scope.launch {
-              authRepository.signOut().onSuccess {
-                navController.navigate(AppScreens.Login.name) {
-                  popUpTo(AppScreens.Login.name) { inclusive = true }
-                }
-              }
-            }
-          },
-        )
+          "event overview, click to logout",
+          modifier =
+              Modifier.clickable(
+                  role = Role.Button,
+                  onClick = {
+                    scope.launch {
+                      authRepository.signOut().onSuccess {
+                        navController.navigate(AppScreens.Login.name) {
+                          popUpTo(AppScreens.Login.name) { inclusive = true }
+                        }
+                      }
+                    }
+                  },
+              ),
       )
     }
     composable(route = AppScreens.TaskOverview.name) { ScreenName("task overview") }

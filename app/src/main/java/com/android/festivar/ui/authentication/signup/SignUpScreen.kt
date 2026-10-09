@@ -3,7 +3,6 @@
 package com.android.festivar.ui.authentication.signup
 
 import android.annotation.SuppressLint
-import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -61,7 +60,6 @@ import com.android.festivar.ui.theme.AppTheme
 import com.android.festivar.ui.theme.onSurfaceMutedDark
 import com.android.festivar.ui.theme.onSurfaceMutedLight
 import com.google.firebase.auth.FirebaseUser
-import com.google.firebase.firestore.BuildConfig
 
 object SignUpScreenTestTags {
   const val CREATE_ACC_TITLE = "createAccTitle"
