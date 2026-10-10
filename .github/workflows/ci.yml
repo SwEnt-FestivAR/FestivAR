@@ -1,4 +1,5 @@
 # Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+# Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 name: CI - Test Runner
 
 # Run the workflow when commits are pushed on main or when a PR is modified
@@ -31,10 +32,6 @@ jobs:
           distribution: "temurin"
           java-version: "21"
 
-      # Caching is a very useful part of a CI, as a workflow is executed in a clean environment every time,
-      # this means that one would need to re-download and re-process gradle files for every run. Which is very time consuming.
-      #
-      # To avoid that, we cache the the gradle folder to reuse it later.
       - name: Gradle cache
         uses: gradle/actions/setup-gradle@v6
 
@@ -47,8 +44,11 @@ jobs:
       - name: Upload unit build outputs
         uses: actions/upload-artifact@v6
         with:
-          name: unit-build
-          path: app/build
+          name: unit-artifacts
+          path: |
+            app/build/reports
+            app/build/test-results
+            app/build/outputs
           if-no-files-found: error
 
   instrumented:
@@ -109,7 +109,6 @@ jobs:
           firebase emulators:start --only auth,firestore &
           sleep 10  # Give emulator time to start
 
-      # Run connected tests on the emulator
       - name: run tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -124,8 +123,11 @@ jobs:
       - name: Upload instrumented build outputs
         uses: actions/upload-artifact@v6
         with:
-          name: instrumented-build
-          path: app/build
+          name: instrumented-artifacts
+          path: |
+            app/build/reports
+            app/build/test-results
+            app/build/outputs
           if-no-files-found: error
 
   sonar:
@@ -152,17 +154,12 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
 
-      - name: Download unit build outputs
+      - name: Download unit and instrumented build outputs
         uses: actions/download-artifact@v6
         with:
-          name: unit-build
+          pattern: "*-artifacts"
           path: app/build
-
-      - name: Download instrumented build outputs
-        uses: actions/download-artifact@v6
-        with:
-          name: instrumented-build
-          path: app/build
+          merge-multiple: true
 
       - name: Generate Coverage Report
         env:
