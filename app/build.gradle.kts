@@ -195,6 +195,7 @@ tasks.withType<Test> {
 }
 
 tasks.register(name = "jacocoTestReport", type = JacocoReport::class) {
+  dependsOn("compileDebugKotlin")
   mustRunAfter("testDebugUnitTest", "connectedDebugAndroidTest")
 
   reports {
@@ -217,8 +218,6 @@ tasks.register(name = "jacocoTestReport", type = JacocoReport::class) {
         include(
             // AGP 9 compiles Kotlin with its built-in compiler, which writes here
             "intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes/**",
-            // Fallback for the AGP 8 layout
-            "tmp/kotlin-classes/debug/**",
         )
         exclude(fileFilter)
       }
