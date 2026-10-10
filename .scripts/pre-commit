@@ -1,0 +1,11 @@
+#!/bin/sh
+
+echo "***** Running checks *****"
+if ./gradlew ktfmtCheck --no-daemon --console=plain; then
+  echo "***** Checks passed *****"
+  exit 0
+else
+  status=$?
+  echo "Checks failed. Commit aborted. Please format." >&2
+  exit "$status"
+fi
