@@ -1,16 +1,25 @@
+# Android Studio
 /.idea/
+
+# Gradle & Kotlin
+.gradle/
+.kotlin/
+build/
+
+# Local machine config (SDK path)
+local.properties
+
+# Firebase emulator
+*-debug.log
+.firebase/
+*.log
+
+# macOS
 .DS_Store
-.gradle
-/local.properties
-/build
+
 /captures
 .externalNativeBuild
 .cxx
-local.properties
-
-# Firebase emulator output
-*-debug.log
-.firebase/
 
 # Agent plugins' files
 /graphify-out
