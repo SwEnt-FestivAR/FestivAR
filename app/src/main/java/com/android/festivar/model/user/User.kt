@@ -1,5 +1,7 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.model.user
+import com.android.festivar.model.event.Event
+import com.android.festivar.model.task.Task
 
 /**
  * Represents a [User] in the FestivAR application.
