@@ -6,6 +6,6 @@ if ./gradlew ktfmtCheck --no-daemon --console=plain; then
   exit 0
 else
   status=$?
-  echo "Checks failed. Commit aborted." >&2
+  echo "Checks failed. Commit aborted. Please format." >&2
   exit "$status"
 fi
