@@ -2,7 +2,7 @@
 package com.android.festivar.model.event
 
 import com.android.festivar.model.task.Task
-import com.android.festivar.model.temporary.User
+import com.android.festivar.model.user.User
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import junit.framework.TestCase.assertEquals
