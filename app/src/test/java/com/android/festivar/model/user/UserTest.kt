@@ -10,8 +10,8 @@ import org.junit.Test
 class UserTest {
 
   private val uidMessage = "The uid cannot be empty."
-  private val blankEventIdMessage = "An owned event id cannot be empty."
-  private val duplicateEventMessage = "An owned event is duplicated."
+  private val blankEventIdMessage = "A joined event id cannot be empty."
+  private val duplicateEventMessage = "A joined event is duplicated."
 
   @Test
   fun init_succeeds_withOnlyRequiredFields() {
@@ -21,7 +21,7 @@ class UserTest {
     assertEquals("", user.name)
     assertEquals("", user.surname)
     assertEquals("", user.email)
-    assertTrue(user.eventsOwned.isEmpty())
+    assertTrue(user.joinedEvents.isEmpty())
     assertTrue(user.tasksAssigned.isEmpty())
   }
 
@@ -33,14 +33,14 @@ class UserTest {
             name = "Sara",
             surname = "Keller",
             email = "sara@example.com",
-            eventsOwned = listOf("e1", "e2"),
+            joinedEvents = listOf("e1", "e2"),
             tasksAssigned = listOf("t1", "t2"),
         )
 
     assertEquals("Sara", user.name)
     assertEquals("Keller", user.surname)
     assertEquals("sara@example.com", user.email)
-    assertEquals(listOf("e1", "e2"), user.eventsOwned)
+    assertEquals(listOf("e1", "e2"), user.joinedEvents)
     assertEquals(listOf("t1", "t2"), user.tasksAssigned)
   }
 
@@ -52,7 +52,7 @@ class UserTest {
             name = "Sara",
             surname = "Keller",
             email = "sara@example.com",
-            eventsOwned = listOf("e1"),
+            joinedEvents = listOf("e1"),
             tasksAssigned = listOf("t1"),
         )
 
@@ -60,7 +60,7 @@ class UserTest {
     assertNotEquals(sara, sara.copy(name = "Sarah"))
     assertNotEquals(sara, sara.copy(surname = "Muller"))
     assertNotEquals(sara, sara.copy(email = "sarah@example.com"))
-    assertNotEquals(sara, sara.copy(eventsOwned = listOf("e2")))
+    assertNotEquals(sara, sara.copy(joinedEvents = listOf("e2")))
     assertNotEquals(sara, sara.copy(tasksAssigned = listOf("t2")))
   }
 
@@ -72,13 +72,13 @@ class UserTest {
   }
 
   @Test
-  fun init_fails_whenOwnedEventIdIsBlank() {
-    assertInvalid(blankEventIdMessage) { User("u1", eventsOwned = listOf("e1", " ")) }
+  fun init_fails_whenJoinedEventIdIsBlank() {
+    assertInvalid(blankEventIdMessage) { User("u1", joinedEvents = listOf("e1", " ")) }
   }
 
   @Test
-  fun init_fails_whenOwnedEventIsDuplicated() {
-    assertInvalid(duplicateEventMessage) { User("u1", eventsOwned = listOf("e1", "e1")) }
+  fun init_fails_whenJoinedEventIsDuplicated() {
+    assertInvalid(duplicateEventMessage) { User("u1", joinedEvents = listOf("e1", "e1")) }
   }
 
   @Test
@@ -97,11 +97,11 @@ class UserTest {
 
   @Test
   fun copy_fails_whenTheCopyBreaksARule() {
-    val user = User("u1", eventsOwned = listOf("e1"))
+    val user = User("u1", joinedEvents = listOf("e1"))
 
     assertInvalid(uidMessage) { user.copy(uid = "") }
-    assertInvalid(blankEventIdMessage) { user.copy(eventsOwned = listOf("")) }
-    assertInvalid(duplicateEventMessage) { user.copy(eventsOwned = listOf("e1", "e1")) }
+    assertInvalid(blankEventIdMessage) { user.copy(joinedEvents = listOf("")) }
+    assertInvalid(duplicateEventMessage) { user.copy(joinedEvents = listOf("e1", "e1")) }
     assertInvalid("An assigned task id cannot be empty.") { user.copy(tasksAssigned = listOf("")) }
     assertInvalid("An assigned task is duplicated.") {
       user.copy(tasksAssigned = listOf("t1", "t1"))
@@ -109,20 +109,27 @@ class UserTest {
   }
 
   @Test
-  fun addOwnedEvent_returnsCopyAndPreservesOtherFields() {
-    val user = User("u1", name = "Sara", surname = "Keller", eventsOwned = listOf("e1"))
+  fun addJoinedEvent_returnsCopyAndPreservesOtherFields() {
+    val user = User("u1", name = "Sara", surname = "Keller", joinedEvents = listOf("e1"))
 
-    val result = user.addOwnedEvent("e2")
+    val result = user.addJoinedEvent("e2")
 
-    assertEquals(user.copy(eventsOwned = listOf("e1", "e2")), result)
-    assertEquals(listOf("e1"), user.eventsOwned)
+    assertEquals(user.copy(joinedEvents = listOf("e1", "e2")), result)
+    assertEquals(listOf("e1"), user.joinedEvents)
   }
 
   @Test
-  fun addOwnedEvent_fails_whenEventIsAlreadyOwned() {
-    val user = User("u1", eventsOwned = listOf("e1"))
+  fun addJoinedEvent_fails_whenEventIsAlreadyJoined() {
+    val user = User("u1", joinedEvents = listOf("e1"))
 
-    assertInvalid("This event is already owned by the user.") { user.addOwnedEvent("e1") }
+    assertInvalid("This event is already joined by the user.") { user.addJoinedEvent("e1") }
+  }
+
+  @Test
+  fun addJoinedEvent_fails_whenEventIdIsBlank() {
+    val user = User("u1")
+
+    assertInvalid(blankEventIdMessage) { user.addJoinedEvent(" ") }
   }
 
   @Test
@@ -132,7 +139,7 @@ class UserTest {
             "u1",
             name = "Sara",
             email = "sara@example.com",
-            eventsOwned = listOf("e1"),
+            joinedEvents = listOf("e1"),
             tasksAssigned = listOf("t1"),
         )
 
@@ -157,20 +164,37 @@ class UserTest {
   }
 
   @Test
-  fun removeOwnedEvent_returnsCopyAndPreservesOtherFields() {
-    val user = User("u1", name = "Sara", eventsOwned = listOf("e1", "e2"))
+  fun removeJoinedEvent_returnsCopyAndPreservesOtherFields() {
+    val user = User("u1", name = "Sara", joinedEvents = listOf("e1", "e2"))
 
-    val result = user.removeOwnedEvent("e1")
+    val result = user.removeJoinedEvent("e1")
 
-    assertEquals(user.copy(eventsOwned = listOf("e2")), result)
-    assertEquals(listOf("e1", "e2"), user.eventsOwned)
+    assertEquals(user.copy(joinedEvents = listOf("e2")), result)
+    assertEquals(listOf("e1", "e2"), user.joinedEvents)
   }
 
   @Test
-  fun removeOwnedEvent_fails_whenEventIsNotOwned() {
-    val user = User("u1", eventsOwned = listOf("e1"))
+  fun removeJoinedEvent_fails_whenEventIsNotJoined() {
+    val user = User("u1", joinedEvents = listOf("e1"))
 
-    assertInvalid("This event is not owned by the user.") { user.removeOwnedEvent("e2") }
+    assertInvalid("This event has not been joined by the user.") { user.removeJoinedEvent("e2") }
+  }
+
+  @Test
+  fun removeAssignedTask_returnsCopyAndPreservesOtherFields() {
+    val user = User("u1", tasksAssigned = listOf("t1", "t2"))
+
+    val result = user.removeAssignedTask("t1")
+
+    assertEquals(user.copy(tasksAssigned = listOf("t2")), result)
+    assertEquals(listOf("t1", "t2"), user.tasksAssigned)
+  }
+
+  @Test
+  fun removeAssignedTask_fails_whenTaskIsNotAssigned() {
+    val user = User("u1", tasksAssigned = listOf("t1"))
+
+    assertInvalid("This task is not assigned to the user.") { user.removeAssignedTask("t2") }
   }
 
   private fun assertInvalid(expectedMessage: String, build: () -> User) {
