@@ -1,0 +1,31 @@
+<resources>
+    <string name="tasks_back">Back</string>
+    <string name="tasks_search">Search</string>
+    <string name="tasks_search_hint">Title or place</string>
+
+    <string name="overview_title">Task overview</string>
+    <string name="overview_chip_open">Open</string>
+    <string name="overview_chip_mine">Mine</string>
+    <string name="overview_chip_done">Done</string>
+    <string name="overview_chip_all">All</string>
+    <string name="overview_group_now">Now</string>
+    <string name="overview_group_morning">Morning</string>
+    <string name="overview_group_afternoon">Afternoon</string>
+    <string name="overview_group_evening">Evening</string>
+    <string name="overview_group_anytime">Any time</string>
+    <plurals name="overview_people_needed">
+        <item quantity="one">%d person needed</item>
+        <item quantity="other">%d people needed</item>
+    </plurals>
+    <string name="overview_minutes">%d min</string>
+    <string name="overview_hours">%d h</string>
+    <string name="overview_hours_minutes">%1$d h %2$d min</string>
+    <string name="overview_people">%1$d of %2$d</string>
+    <string name="overview_empty">Nothing here. Try another filter.</string>
+    <string name="overview_retry">Retry</string>
+
+    <string name="pin_open">Open task</string>
+    <string name="pin_mine">Your task</string>
+    <string name="pin_taken">Taken task</string>
+    <string name="pin_done">Done task</string>
+</resources>
