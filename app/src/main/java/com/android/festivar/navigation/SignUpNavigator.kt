@@ -9,7 +9,7 @@ class SignUpNavigator(private val navController: NavHostController) {
 
   val onSignUpSuccess: () -> Unit = {
     navController.navigate(AppScreens.EventOverview.name) {
-      popUpTo(AppScreens.EventOverview.name) { inclusive = true }
+      popUpTo(AppScreens.SignUp.name) { inclusive = true }
     }
   }
 }

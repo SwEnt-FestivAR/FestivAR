@@ -7,7 +7,7 @@ class LoginNavigator(private val navController: NavHostController) {
 
   val onSignedIn = {
     navController.navigate(AppScreens.EventOverview.name) {
-      popUpTo(AppScreens.EventOverview.name) { inclusive = true }
+      popUpTo(AppScreens.Login.name) { inclusive = true }
     }
   }
 }
