@@ -4,7 +4,7 @@ package com.android.festivar.ui.event
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
-import com.android.festivar.model.temporary.User
+import com.android.festivar.model.user.User
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlinx.coroutines.CompletableDeferred

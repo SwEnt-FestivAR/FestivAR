@@ -2,7 +2,7 @@
 package com.android.festivar.model.task
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.android.festivar.model.temporary.User
+import com.android.festivar.model.user.User
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.DocumentSnapshot

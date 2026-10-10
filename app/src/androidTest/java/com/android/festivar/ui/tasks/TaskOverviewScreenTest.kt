@@ -14,7 +14,7 @@ import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.task.TasksRepositoryProvider
-import com.android.festivar.model.temporary.User
+import com.android.festivar.model.user.User
 import java.time.Duration
 import kotlinx.coroutines.runBlocking
 import org.junit.After
