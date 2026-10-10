@@ -4,6 +4,7 @@ package com.android.festivar.navigation
 import androidx.navigation.NavHostController
 import androidx.navigation.NavOptionsBuilder
 import io.mockk.mockk
+import io.mockk.slot
 import io.mockk.verify
 import org.junit.Test
 
@@ -20,13 +21,11 @@ class LoginNavigatorTest {
 
   @Test
   fun signedInNavigatesToEventOverview() {
+    val options = slot<NavOptionsBuilder.() -> Unit>()
+
     navigator.onSignedIn()
 
-    verify {
-      navController.navigate(
-          AppScreens.EventOverview.name,
-          any<NavOptionsBuilder.() -> Unit>(),
-      )
-    }
+    verify { navController.navigate(AppScreens.EventOverview.name, capture(options)) }
+    options.captured.invoke(NavOptionsBuilder())
   }
 }

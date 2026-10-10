@@ -27,7 +27,9 @@ import com.android.festivar.ui.authentication.login.LoginScreen
 import com.android.festivar.ui.authentication.signup.SignUpScreen
 import com.android.festivar.ui.theme.AppTheme
 import com.google.firebase.Firebase
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.auth
+import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.firestore
 import kotlinx.coroutines.launch
 
@@ -36,17 +38,27 @@ const val EMU_IP = "127.0.0.1"
 class MainActivity : ComponentActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
-    // Copied from bootcamp
-    Log.d("FirebaseConfig", "DEBUG=${BuildConfig.DEBUG}")
-
-    if (BuildConfig.DEBUG) {
-      Firebase.firestore.useEmulator(EMU_IP, 8080)
-      Firebase.auth.useEmulator(EMU_IP, 9099)
-    }
+    configureFirebase(
+        debug = BuildConfig.DEBUG,
+        auth = Firebase.auth,
+        firestore = Firebase.firestore,
+    )
 
     super.onCreate(savedInstanceState)
 
     setContent { AppTheme { Surface(modifier = Modifier.fillMaxSize()) { FestivAR() } } }
+  }
+}
+
+fun configureFirebase(
+    debug: Boolean,
+    auth: FirebaseAuth,
+    firestore: FirebaseFirestore, // hello i would like two fires please
+) {
+  Log.d("FirebaseConfig", "DEBUG=${BuildConfig.DEBUG}")
+  if (debug) {
+    firestore.useEmulator(EMU_IP, 8080)
+    auth.useEmulator(EMU_IP, 9099)
   }
 }
 
@@ -59,6 +71,9 @@ class MainActivity : ComponentActivity() {
  *
  * @param context The context of the application, used for accessing resources and services.
  * @param credentialManager The CredentialManager instance for handling authentication credentials.
+ * @param authRepository The AuthRepository instance for handling authentication operations.
+ * @param initialDestination The initial destination of the navigation graph. If null, it will
+ *   determine the start destination based on the user's authentication state.
  */
 @Composable
 fun FestivAR(
