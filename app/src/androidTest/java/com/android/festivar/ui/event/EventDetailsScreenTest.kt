@@ -8,10 +8,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.android.festivar.model.event.Event
-import com.android.festivar.model.user.User
-import java.time.ZoneId
-import java.time.ZonedDateTime
+import com.android.festivar.ui.components.formatDate
+import com.android.festivar.ui.components.formatDateWithoutMonth
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -24,7 +22,7 @@ class EventDetailsScreenTest {
 
   @Test
   fun displaysEventDataAndTaggedElements() {
-    val event = createEvent()
+    val event = eventSameMonth
 
     composeTestRule.setContent {
       EventDetailsScreen(event = event, onTasksButtonClicked = {}, onBack = {})
@@ -44,12 +42,20 @@ class EventDetailsScreenTest {
     composeTestRule.onNodeWithText(event.title).assertIsDisplayed()
     composeTestRule.onNodeWithText(event.members.firstOrNull()?.name.orEmpty()).assertIsDisplayed()
     composeTestRule.onNodeWithText(event.location).assertIsDisplayed()
+    composeTestRule.onNodeWithText("${tasksListSize / 2}").assertIsDisplayed()
+    composeTestRule.onNodeWithText("of $tasksListSize").assertIsDisplayed()
+    composeTestRule.onNodeWithText("tasks still open").assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(
+            "${formatDateWithoutMonth(event.startDate.toLocalDate())} to ${formatDate(event.endDate.toLocalDate())}"
+        )
+        .assertIsDisplayed()
   }
 
   @Test
   fun clickingSeeTasksButtonCallsOnTasksButtonClicked() {
     var tasksButtonClicked = false
-    val event = createEvent()
+    val event = eventSameMonth
 
     composeTestRule.setContent {
       EventDetailsScreen(
@@ -67,7 +73,7 @@ class EventDetailsScreenTest {
   @Test
   fun clickingBackButtonCallsOnBack() {
     var backClicked = false
-    val event = createEvent()
+    val event = eventSameMonth
 
     composeTestRule.setContent {
       EventDetailsScreen(
@@ -81,14 +87,4 @@ class EventDetailsScreenTest {
 
     assertTrue(backClicked)
   }
-
-  private fun createEvent() =
-      Event(
-          eventId = "event-id",
-          title = "Fête de l'Asso 2026",
-          members = listOf(User("Sami K.")),
-          startDate = ZonedDateTime.of(2026, 10, 16, 10, 0, 0, 0, ZoneId.of("Europe/Zurich")),
-          endDate = ZonedDateTime.of(2026, 10, 18, 18, 0, 0, 0, ZoneId.of("Europe/Zurich")),
-          location = "Parc de Vidy, Lausanne",
-      )
 }

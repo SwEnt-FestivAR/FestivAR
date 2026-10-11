@@ -264,9 +264,12 @@ private fun EventDetailsScreenPreview() {
   AppTheme { EventDetailsScreen(event = eventSameMonth, onTasksButtonClicked = {}, onBack = {}) }
 }
 
-private val eventStartDate = ZonedDateTime.of(2026, 10, 16, 10, 0, 0, 0, ZoneId.of("Europe/Zurich"))
-private val eventEndDate = ZonedDateTime.of(2026, 10, 18, 18, 0, 0, 0, ZoneId.of("Europe/Zurich"))
-private val eventSameMonth =
+val eventStartDate: ZonedDateTime =
+    ZonedDateTime.of(2026, 10, 16, 10, 0, 0, 0, ZoneId.of("Europe/Zurich"))
+val eventEndDate: ZonedDateTime =
+    ZonedDateTime.of(2026, 10, 18, 18, 0, 0, 0, ZoneId.of("Europe/Zurich"))
+const val tasksListSize = 10
+val eventSameMonth =
     Event(
         eventId = "0",
         title = "Fête de l'Asso 2026",
@@ -276,7 +279,7 @@ private val eventSameMonth =
         location = "Parc de Vidy, Lausanne",
         tasks =
             List(
-                size = 10,
+                size = tasksListSize,
                 init = { index ->
                   Task(
                       taskId = index.toString(),
@@ -288,9 +291,7 @@ private val eventSameMonth =
             ),
     )
 
-private val eventSameDay =
+val eventSameDay =
     eventSameMonth.copy(endDate = eventEndDate.withDayOfMonth(eventStartDate.dayOfMonth))
-
-private val eventDifferentMonth = eventSameMonth.copy(endDate = eventStartDate.plusMonths(1))
-
-private val eventNoTasksOpen = eventSameMonth.copy(tasks = emptyList())
+val eventDifferentMonth = eventSameMonth.copy(endDate = eventStartDate.plusMonths(1))
+val eventNoTasksOpen = eventSameMonth.copy(tasks = emptyList())
