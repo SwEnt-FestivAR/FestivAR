@@ -69,7 +69,7 @@ fun EventDetailsScreen(
 ) {
   val openTasks = event.tasks.count { !it.completed }
   val date = formatEventDate(event)
-  val owner = event.members.firstOrNull()?.uid.orEmpty()
+  val owner = event.members.firstOrNull()?.name.orEmpty()
 
   Scaffold(
       containerColor = MaterialTheme.colorScheme.background,
@@ -270,7 +270,7 @@ private val eventSameMonth =
     Event(
         eventId = "0",
         title = "Fête de l'Asso 2026",
-        members = listOf(User("Sami K.")),
+        members = listOf(User(uid = "user", name = "Sami K.")),
         startDate = eventStartDate,
         endDate = eventEndDate,
         location = "Parc de Vidy, Lausanne",

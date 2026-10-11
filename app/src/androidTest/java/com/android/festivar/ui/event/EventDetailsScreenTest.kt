@@ -42,7 +42,7 @@ class EventDetailsScreenTest {
         .forEach { tag -> composeTestRule.onNodeWithTag(tag).assertIsDisplayed() }
 
     composeTestRule.onNodeWithText(event.title).assertIsDisplayed()
-    composeTestRule.onNodeWithText("Sami K.").assertIsDisplayed()
+    composeTestRule.onNodeWithText(event.members.firstOrNull()?.name.orEmpty()).assertIsDisplayed()
     composeTestRule.onNodeWithText(event.location).assertIsDisplayed()
   }
 
