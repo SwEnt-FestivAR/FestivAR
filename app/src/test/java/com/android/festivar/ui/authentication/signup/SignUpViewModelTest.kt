@@ -1,15 +1,9 @@
 package com.android.festivar.ui.authentication.signup
 
-import android.content.Context
 import androidx.credentials.Credential
-import androidx.credentials.CredentialManager
-import androidx.credentials.GetCredentialRequest
-import androidx.credentials.GetCredentialResponse
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.authentication.AuthRepository
 import com.google.firebase.auth.FirebaseUser
-import io.mockk.coEvery
-import io.mockk.every
 import io.mockk.mockk
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CompletableDeferred
