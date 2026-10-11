@@ -3,13 +3,19 @@ package com.android.festivar.ui.event
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -244,11 +250,29 @@ class JoinEventScreenTest {
   }
 
   @Test
-  fun eachCodeCellIsNamedByItsPosition() {
+  fun eachCodeCellIsAButtonNamedByItsPosition() {
     content(JoinEventUiState())
 
-    composeTestRule
-        .onNodeWithTag(JoinEventScreenTestTags.cell(0))
-        .assertContentDescriptionEquals("Code character 1")
+    for (i in 0 until 6) {
+      composeTestRule
+          .onNodeWithTag(JoinEventScreenTestTags.cell(i))
+          .assertContentDescriptionEquals("Code character ${i + 1}")
+          .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+    }
+  }
+
+  @Test
+  fun theCodeRowAndTheHiddenFieldAreDescribedForAScreenReader() {
+    composeTestRule.setContent {
+      var code by remember { mutableStateOf("") }
+      JoinEventContent(JoinEventUiState(code = code), {}, { code = it }, {})
+    }
+
+    composeTestRule.onNode(hasContentDescription("Code is empty")).assertExists()
+    composeTestRule.onNode(hasContentDescription("Join code")).assertExists()
+
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.CODE_INPUT).performTextInput("AB12")
+
+    composeTestRule.onNode(hasContentDescription("Code so far: AB12")).assertExists()
   }
 }
