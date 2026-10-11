@@ -2,4 +2,8 @@
     <string name="app_name">FestivAR</string>
     <string name="title_activity_main">MainActivity</string>
     <string name="title_activity_second">SecondActivity</string>
+    <plurals name="join_event_members">
+        <item quantity="one">%d member</item>
+        <item quantity="other">%d members</item>
+    </plurals>
 </resources>

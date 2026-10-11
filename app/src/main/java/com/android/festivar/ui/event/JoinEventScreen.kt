@@ -39,6 +39,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -46,6 +47,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.android.festivar.R
 import com.android.festivar.model.event.JOIN_CODE_LENGTH
 import com.android.festivar.ui.theme.AppTheme
 
@@ -103,6 +105,7 @@ fun JoinEventContent(
     onJoin: () -> Unit,
 ) {
   val focus = remember { FocusRequester() }
+  LaunchedEffect(Unit) { focus.requestFocus() }
   val keyboard = LocalSoftwareKeyboardController.current
   Scaffold(
       containerColor = ScreenBackground,
@@ -237,7 +240,8 @@ private fun FoundCard(found: FoundEventUi) {
   ) {
     Text(found.name, style = MaterialTheme.typography.titleMedium)
     Text(
-        "${found.dateLine}, ${found.members} members",
+        "${found.dateLine}, " +
+            pluralStringResource(R.plurals.join_event_members, found.members, found.members),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
