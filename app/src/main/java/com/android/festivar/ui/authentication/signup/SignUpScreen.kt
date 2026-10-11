@@ -3,7 +3,6 @@
 package com.android.festivar.ui.authentication.signup
 
 import android.annotation.SuppressLint
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -14,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,16 +25,19 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,7 +45,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -52,86 +52,99 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.credentials.Credential
-import androidx.credentials.CredentialManager
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.model.authentication.AuthRepository
-import com.android.festivar.resources.GoogleLogo
+import com.android.festivar.ui.authentication.login.LoginScreenTestTags
 import com.android.festivar.ui.theme.AppTheme
 import com.android.festivar.ui.theme.onSurfaceMutedDark
 import com.android.festivar.ui.theme.onSurfaceMutedLight
 import com.google.firebase.auth.FirebaseUser
 
 object SignUpScreenTestTags {
+  const val ERROR_MESSAGE: String = "errorMessage"
   const val CREATE_ACC_TITLE = "createAccTitle"
   const val EMAIL_FIELD = "emailField"
   const val PASS_FIELD = "passField"
   const val PASS_CONFIRM_FIELD = "passConfirmField"
   const val PASSWORD_MISMATCH_ERROR = "passwordMismatchError"
   const val SIGNUP_BUTTON = "signUpButton"
-  const val GOOGLE_SIGNUP_BUTTON = "googleSignUpButton"
   const val LOGIN_NOW_BUTTON = "loginNowButton"
 }
 
 @Composable
 fun SignUpScreen(
     modifier: Modifier = Modifier,
-    credentialManager: CredentialManager? = CredentialManager.create(LocalContext.current),
     onSignInClick: () -> Unit = {},
     onBackClick: () -> Unit = {},
     viewModel: SignUpViewModel = SignUpViewModel(),
     onSignUpSuccess: () -> Unit = {},
 ) {
   var isPasswordVisible by remember { mutableStateOf(false) }
+  val snackBarHostState = remember { SnackbarHostState() }
 
-  val context = LocalContext.current
   val uiState by viewModel.uiState.collectAsState()
+
+  LaunchedEffect(uiState.errorMsg) {
+    uiState.errorMsg?.let { error ->
+      snackBarHostState.showSnackbar(error)
+      viewModel.clearError()
+    }
+  }
+
 
   if (uiState.isAuthenticated) {
     onSignUpSuccess()
   }
-  Column(
-      modifier =
-          modifier
-              .fillMaxSize()
-              .background(color = MaterialTheme.colorScheme.background)
-              .padding(horizontal = 24.dp)
-              .verticalScroll(rememberScrollState()),
-      horizontalAlignment = Alignment.Start,
-  ) {
-    SignUpTopBar(onBackClick)
-    Spacer(modifier = Modifier.height(16.dp))
-    SignUpHeader()
-    Spacer(modifier = Modifier.height(24.dp))
-    SignUpFields(
-        email = uiState.email,
-        onEmailChange = { viewModel.updateEmail(it) },
-        password = uiState.password,
-        onPasswordChange = { viewModel.updatePassword(it) },
-        confirmPassword = uiState.confirmPassword,
-        onConfirmPasswordChange = { viewModel.updateConfirmPassword(it) },
-        isPasswordVisible = isPasswordVisible,
-        onPasswordVisibilityChange = { isPasswordVisible = !isPasswordVisible },
-    )
-    Spacer(modifier = Modifier.height(20.dp))
-    SignUpButton(
-        enabled =
-            uiState.email.isNotBlank() &&
-                uiState.password.isNotBlank() &&
-                uiState.confirmPassword.isNotBlank() &&
-                uiState.password == uiState.confirmPassword,
-        isLoading = uiState.isLoading,
-        onClick = { viewModel.signUp(uiState.email, uiState.password) },
-    )
-    Spacer(modifier = Modifier.height(24.dp))
-    SignUpDivider()
-    Spacer(modifier = Modifier.height(24.dp))
-    GoogleSignUpButton(
-        onClick = { credentialManager?.let { viewModel.googleSignUp(context, it) } },
-    )
-    Spacer(modifier = Modifier.height(24.dp))
-    SignUpTerms()
-    Spacer(modifier = Modifier.height(32.dp))
-    SignUpFooter(onSignInClick)
+  Scaffold(
+    modifier = modifier,
+    snackbarHost = {
+      SnackbarHost(snackBarHostState) { data ->
+        Snackbar(modifier = Modifier.testTag(SignUpScreenTestTags.ERROR_MESSAGE)) {
+          Text(data.visuals.message)
+        }
+      }
+    },
+  ) { paddingValues ->
+    Column(
+        modifier =
+            modifier
+                .fillMaxSize()
+                .background(color = MaterialTheme.colorScheme.background)
+                .padding(paddingValues)
+                .padding(horizontal = 24.dp)
+                .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.Start,
+    ) {
+      SignUpTopBar(onBackClick)
+      Spacer(modifier = Modifier.height(16.dp))
+      SignUpHeader()
+      Spacer(modifier = Modifier.height(24.dp))
+      SignUpFields(
+          email = uiState.email,
+          onEmailChange = { viewModel.updateEmail(it) },
+          password = uiState.password,
+          onPasswordChange = { viewModel.updatePassword(it) },
+          confirmPassword = uiState.confirmPassword,
+          onConfirmPasswordChange = { viewModel.updateConfirmPassword(it) },
+          isPasswordVisible = isPasswordVisible,
+          onPasswordVisibilityChange = { isPasswordVisible = !isPasswordVisible },
+      )
+      Spacer(modifier = Modifier.height(20.dp))
+      SignUpButton(
+          enabled =
+              uiState.email.isNotBlank() &&
+                  uiState.password.isNotBlank() &&
+                  uiState.confirmPassword.isNotBlank() &&
+                  uiState.password == uiState.confirmPassword,
+          isLoading = uiState.isLoading,
+          onClick = { viewModel.signUp(uiState.email, uiState.password) },
+      )
+      Spacer(modifier = Modifier.height(24.dp))
+      Spacer(modifier = Modifier.height(24.dp))
+      Spacer(modifier = Modifier.height(24.dp))
+      SignUpTerms()
+      Spacer(modifier = Modifier.height(32.dp))
+      SignUpFooter(onSignInClick)
+    }
   }
 }
 
@@ -222,13 +235,14 @@ private fun SignUpFields(
               Modifier.padding(top = 4.dp).testTag(SignUpScreenTestTags.PASSWORD_MISMATCH_ERROR),
       )
     }
-    Spacer(modifier = Modifier.height(6.dp))
-    Text(
-        text = "8 characters or more.",
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(start = 4.dp),
-    )
+    if (password.isNotEmpty() && password.length < 8) {
+      Text(
+          text = "Password must be at least 8 characters.",
+          color = MaterialTheme.colorScheme.error,
+          style = MaterialTheme.typography.bodySmall,
+          modifier = Modifier.padding(top = 4.dp),
+      )
+    }
   }
 }
 
@@ -317,60 +331,6 @@ private fun SignUpButton(
 }
 
 @Composable
-private fun SignUpDivider() {
-  Row(
-      modifier = Modifier.fillMaxWidth(),
-      verticalAlignment = Alignment.CenterVertically,
-  ) {
-    HorizontalDivider(
-        modifier = Modifier.weight(1f),
-        color = MaterialTheme.colorScheme.outlineVariant,
-    )
-    Text(
-        text = "or",
-        modifier = Modifier.padding(horizontal = 12.dp),
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        style = MaterialTheme.typography.bodySmall,
-    )
-    HorizontalDivider(
-        modifier = Modifier.weight(1f),
-        color = MaterialTheme.colorScheme.outlineVariant,
-    )
-  }
-}
-
-@Composable
-private fun GoogleSignUpButton(onClick: () -> Unit) {
-  OutlinedButton(
-      onClick = onClick,
-      modifier =
-          Modifier.fillMaxWidth().height(52.dp).testTag(SignUpScreenTestTags.GOOGLE_SIGNUP_BUTTON),
-      shape = RoundedCornerShape(16.dp),
-      colors =
-          ButtonDefaults.outlinedButtonColors(
-              containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
-          ),
-  ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
-    ) {
-      Image(
-          imageVector = GoogleLogo,
-          contentDescription = "Google Logo",
-          modifier = Modifier.size(24.dp),
-      )
-      Spacer(modifier = Modifier.width(12.dp))
-      Text(
-          text = "Continue with Google",
-          style = MaterialTheme.typography.labelLarge,
-          color = MaterialTheme.colorScheme.onSurface,
-      )
-    }
-  }
-}
-
-@Composable
 private fun fieldColors() =
     OutlinedTextFieldDefaults.colors(
         focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
@@ -422,7 +382,11 @@ private fun SignUpFooter(onSignInClick: () -> Unit) {
 fun SignUpScreenPreview() {
   AppTheme {
     SignUpScreen(
-        credentialManager = null,
+        modifier = Modifier.fillMaxSize(),
+        onSignInClick = {},
+        onBackClick = {},
+        viewModel = SignUpViewModel(PreviewAuthRepository),
+        onSignUpSuccess = {},
     )
   }
 }
