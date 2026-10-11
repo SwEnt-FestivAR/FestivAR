@@ -39,14 +39,15 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.festivar.R
 import com.android.festivar.model.event.JOIN_CODE_LENGTH
@@ -64,7 +65,7 @@ object JoinEventScreenTestTags {
   const val JOIN = "joinEventJoin"
   const val ERROR_MESSAGE = "joinEventError"
 
-  fun cell(i: Int) = "codeCell$i"
+  fun cell(i: Int) = "joinEventCodeCell$i"
 }
 
 /**
@@ -80,7 +81,12 @@ fun JoinEventScreen(
     onOpenEvent: (eventId: String) -> Unit = {},
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-  LaunchedEffect(uiState.joinedEventId) { uiState.joinedEventId?.let(onOpenEvent) }
+  LaunchedEffect(uiState.joinedEventId) {
+    uiState.joinedEventId?.let {
+      onOpenEvent(it)
+      viewModel.onEventOpened()
+    }
+  }
   JoinEventContent(
       state = uiState,
       onBack = onBack,
@@ -147,7 +153,7 @@ fun JoinEventContent(
     Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 12.dp)) {
       Text(
           text = stringResource(R.string.join_event_title),
-          fontSize = 28.sp,
+          style = MaterialTheme.typography.headlineLarge,
           fontWeight = FontWeight.Bold,
           modifier = Modifier.testTag(JoinEventScreenTestTags.TITLE),
       )
@@ -183,6 +189,7 @@ fun JoinEventContent(
         ) {
           for (i in 0 until JOIN_CODE_LENGTH) {
             val active = i == state.code.length
+            val cellLabel = stringResource(R.string.join_event_code_cell, i + 1)
             Box(
                 Modifier.weight(1f)
                     .height(60.dp)
@@ -195,6 +202,10 @@ fun JoinEventContent(
                     .clickable {
                       focus.requestFocus()
                       keyboard?.show()
+                    }
+                    .semantics {
+                      role = Role.Button
+                      contentDescription = cellLabel
                     }
                     .testTag(JoinEventScreenTestTags.cell(i)),
                 contentAlignment = Alignment.Center,
