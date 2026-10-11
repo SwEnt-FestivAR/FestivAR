@@ -56,6 +56,21 @@ class SignUpViewModelTest {
   }
 
   @Test
+  fun clearError_removesCurrentError() {
+    authRepository.signUpBehavior = { _, _ ->
+      Result.failure(IllegalStateException("Account already exists"))
+    }
+    val viewModel = SignUpViewModel(authRepository)
+
+    viewModel.signUp("user@example.com", "password")
+    awaitState(viewModel) { it.errorMsg != null }
+
+    viewModel.clearError()
+
+    Assert.assertEquals(null, viewModel.uiState.value.errorMsg)
+  }
+
+  @Test
   fun signUp_ignoresDuplicateRequestWhileLoading() {
     val repositoryStarted = CompletableDeferred<Unit>()
     val response = CompletableDeferred<Result<FirebaseUser>>()
