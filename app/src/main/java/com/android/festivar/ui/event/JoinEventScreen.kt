@@ -89,12 +89,14 @@ fun JoinEventScreen(
       onBack = onBack,
       onCode = viewModel::setCode,
       onJoin = viewModel::join,
+      requestFocusOnEntry = true,
   )
 }
 
 /**
  * The stateless join screen: six code cells over one hidden text field, the event found for the
- * code (or a not found line), and the Join button.
+ * code (or a not found line), and the Join button. The code field takes focus on entry only when
+ * [requestFocusOnEntry] is set, which [JoinEventScreen] does.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -103,9 +105,10 @@ fun JoinEventContent(
     onBack: () -> Unit,
     onCode: (String) -> Unit,
     onJoin: () -> Unit,
+    requestFocusOnEntry: Boolean = false,
 ) {
   val focus = remember { FocusRequester() }
-  LaunchedEffect(Unit) { focus.requestFocus() }
+  LaunchedEffect(Unit) { if (requestFocusOnEntry) focus.requestFocus() }
   val keyboard = LocalSoftwareKeyboardController.current
   Scaffold(
       containerColor = ScreenBackground,
