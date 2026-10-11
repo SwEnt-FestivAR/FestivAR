@@ -1,6 +1,10 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.event
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsFocused
@@ -212,5 +216,39 @@ class JoinEventScreenTest {
     composeTestRule.waitForIdle()
 
     assertEquals(listOf(event.eventId), opened)
+  }
+
+  @Test
+  fun leavingAndReenteringTheScreenDoesNotOpenTheEventAgain() {
+    val opened = mutableListOf<String>()
+    val user = User(uid = "u1")
+    val viewModel =
+        JoinEventViewModel(user, EventsRepositoryLocal(listOf(event)), InMemoryUsers(listOf(user)))
+    var shown by mutableStateOf(true)
+    composeTestRule.setContent {
+      if (shown) JoinEventScreen(viewModel = viewModel, onOpenEvent = { opened.add(it) })
+    }
+    composeTestRule
+        .onNodeWithTag(JoinEventScreenTestTags.CODE_INPUT)
+        .performTextInput(joinCodeOf(event))
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.JOIN).performClick()
+    composeTestRule.waitUntil(5_000) { opened.isNotEmpty() }
+    composeTestRule.waitForIdle()
+
+    shown = false
+    composeTestRule.waitForIdle()
+    shown = true
+    composeTestRule.waitForIdle()
+
+    assertEquals(listOf(event.eventId), opened)
+  }
+
+  @Test
+  fun eachCodeCellIsNamedByItsPosition() {
+    content(JoinEventUiState())
+
+    composeTestRule
+        .onNodeWithTag(JoinEventScreenTestTags.cell(0))
+        .assertContentDescriptionEquals("Code character 1")
   }
 }
