@@ -458,4 +458,32 @@ class JoinEventViewModelTest {
     assertNull(viewModel.uiState.value.errorMsg)
     assertEquals("fete2026", viewModel.uiState.value.found?.id)
   }
+
+  @Test
+  fun aLookupFailingWithoutAMessageFallsBackToAGenericOne() {
+    val failing =
+        object : EventsRepository by events {
+          override suspend fun getAllEvents(): List<Event> = throw RuntimeException()
+        }
+    val viewModel = viewModel(eventsRepository = failing)
+
+    viewModel.setCode("FETE20")
+
+    assertEquals("Could not find the event", viewModel.uiState.value.errorMsg)
+  }
+
+  @Test
+  fun typingAfterAJoinIsIgnoredUntilTheScreenConsumedTheId() {
+    val viewModel = viewModel()
+    viewModel.setCode("FETE20")
+    viewModel.join()
+    assertTrue(viewModel.uiState.value.joined)
+
+    viewModel.setCode("X")
+
+    assertEquals("FETE20", viewModel.uiState.value.code)
+    viewModel.onEventOpened()
+    viewModel.setCode("X")
+    assertEquals("X", viewModel.uiState.value.code)
+  }
 }
