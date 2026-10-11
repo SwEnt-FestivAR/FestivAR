@@ -40,9 +40,7 @@ class SignUpScreenTest {
 
   @Test
   fun signUpScreen_displaysTaggedTitleAndFields() {
-    composeTestRule.setContent {
-      SignUpScreen(viewModel = viewModel)
-    }
+    composeTestRule.setContent { SignUpScreen(viewModel = viewModel) }
 
     composeTestRule.onNodeWithTag(SignUpScreenTestTags.CREATE_ACC_TITLE).assertIsDisplayed()
     composeTestRule.onNodeWithTag(SignUpScreenTestTags.EMAIL_FIELD).assertIsDisplayed()
@@ -52,18 +50,14 @@ class SignUpScreenTest {
 
   @Test
   fun signUpButton_isDisabledWhenRequiredFieldsAreBlank() {
-    composeTestRule.setContent {
-      SignUpScreen(viewModel = viewModel)
-    }
+    composeTestRule.setContent { SignUpScreen(viewModel = viewModel) }
 
     composeTestRule.onNodeWithTag(SignUpScreenTestTags.SIGNUP_BUTTON).assertIsNotEnabled()
   }
 
   @Test
   fun signUpButton_callsViewModelWithEnteredEmailAndPassword() {
-    composeTestRule.setContent {
-      SignUpScreen(viewModel = viewModel)
-    }
+    composeTestRule.setContent { SignUpScreen(viewModel = viewModel) }
 
     composeTestRule
         .onNodeWithTag(SignUpScreenTestTags.EMAIL_FIELD)
@@ -106,9 +100,7 @@ class SignUpScreenTest {
 
   @Test
   fun confirmPassword_mismatchShowsErrorMessage() {
-    composeTestRule.setContent {
-      SignUpScreen(viewModel = viewModel)
-    }
+    composeTestRule.setContent { SignUpScreen(viewModel = viewModel) }
 
     composeTestRule.onNodeWithTag(SignUpScreenTestTags.PASS_FIELD).performTextInput("password")
     composeTestRule
@@ -123,9 +115,7 @@ class SignUpScreenTest {
 
   @Test
   fun signUpButton_isDisabledWhenPasswordsDoNotMatch() {
-    composeTestRule.setContent {
-      SignUpScreen(viewModel = viewModel)
-    }
+    composeTestRule.setContent { SignUpScreen(viewModel = viewModel) }
 
     composeTestRule
         .onNodeWithTag(SignUpScreenTestTags.EMAIL_FIELD)
@@ -140,9 +130,7 @@ class SignUpScreenTest {
 
   @Test
   fun passwordVisibilityButton_togglesShowAndHideLabels() {
-    composeTestRule.setContent {
-      SignUpScreen(viewModel = viewModel)
-    }
+    composeTestRule.setContent { SignUpScreen(viewModel = viewModel) }
 
     composeTestRule.onNodeWithContentDescription("Show password").assertIsDisplayed().performClick()
     composeTestRule.onNodeWithContentDescription("Hide password").assertIsDisplayed().performClick()
@@ -195,12 +183,12 @@ class SignUpScreenTest {
         email: String,
         password: String,
     ): Result<FirebaseUser> {
-        lastSignUpCredentials = email to password
-        return Result.failure(UnsupportedOperationException(signUpErrorMessage))
+      lastSignUpCredentials = email to password
+      return Result.failure(UnsupportedOperationException(signUpErrorMessage))
     }
 
     override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> {
-        return Result.failure(UnsupportedOperationException("Not configured"))
+      return Result.failure(UnsupportedOperationException("Not configured"))
     }
 
     override suspend fun signOut(): Result<Unit> =

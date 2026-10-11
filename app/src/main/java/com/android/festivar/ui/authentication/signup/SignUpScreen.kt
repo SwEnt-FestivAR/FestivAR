@@ -53,7 +53,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.credentials.Credential
 import com.android.festivar.model.authentication.AuthRepository
-import com.android.festivar.ui.authentication.login.LoginScreenTestTags
 import com.android.festivar.ui.theme.AppTheme
 import com.android.festivar.ui.theme.onSurfaceMutedDark
 import com.android.festivar.ui.theme.onSurfaceMutedLight
@@ -90,19 +89,18 @@ fun SignUpScreen(
     }
   }
 
-
   if (uiState.isAuthenticated) {
     onSignUpSuccess()
   }
   Scaffold(
-    modifier = modifier,
-    snackbarHost = {
-      SnackbarHost(snackBarHostState) { data ->
-        Snackbar(modifier = Modifier.testTag(SignUpScreenTestTags.ERROR_MESSAGE)) {
-          Text(data.visuals.message)
+      modifier = modifier,
+      snackbarHost = {
+        SnackbarHost(snackBarHostState) { data ->
+          Snackbar(modifier = Modifier.testTag(SignUpScreenTestTags.ERROR_MESSAGE)) {
+            Text(data.visuals.message)
+          }
         }
-      }
-    },
+      },
   ) { paddingValues ->
     Column(
         modifier =
