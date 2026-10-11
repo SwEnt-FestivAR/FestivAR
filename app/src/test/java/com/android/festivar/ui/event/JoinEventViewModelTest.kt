@@ -314,17 +314,6 @@ class JoinEventViewModelTest {
   }
 
   @Test
-  fun clearErrorMsgRemovesTheError() {
-    val viewModel = viewModel(eventsRepository = offlineEvents())
-    viewModel.setCode("FETE20")
-    assertEquals("offline", viewModel.uiState.value.errorMsg)
-
-    viewModel.clearErrorMsg()
-
-    assertNull(viewModel.uiState.value.errorMsg)
-  }
-
-  @Test
   fun aSecondJoinWhileJoiningWritesNothingTwice() {
     val gate = CompletableDeferred<Unit>()
     var writes = 0

@@ -27,6 +27,6 @@ class JoinCodeTest {
     val code = joinCodeOf(eventWithId("fete2026xyz"))
 
     assertEquals("FETE20", code)
-    assertEquals(CODE_LENGTH, code.length)
+    assertEquals(JOIN_CODE_LENGTH, code.length)
   }
 }

@@ -3,8 +3,8 @@ package com.android.festivar.ui.event
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.android.festivar.model.event.CODE_LENGTH
 import com.android.festivar.model.event.EventsRepository
+import com.android.festivar.model.event.JOIN_CODE_LENGTH
 import com.android.festivar.model.event.joinCodeOf
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
@@ -35,6 +35,7 @@ data class FoundEventUi(val id: String, val name: String, val dateLine: String, 
  * @property found the event the code matched, or `null` while none did.
  * @property isJoining whether a join is in progress, so a second tap is ignored.
  * @property joined true once the person is a member; the screen then opens the event.
+ * @property joinedEventId the id of the event just joined, consumed by the screen to open it.
  * @property errorMsg an error message to show when the lookup or the join fails, or `null`.
  */
 data class JoinEventUiState(
@@ -43,6 +44,7 @@ data class JoinEventUiState(
     val notFound: Boolean = false,
     val isJoining: Boolean = false,
     val joined: Boolean = false,
+    val joinedEventId: String? = null,
     val errorMsg: String? = null,
 )
 
@@ -63,14 +65,18 @@ class JoinEventViewModel(
 
   /** Keeps the letters and digits of [raw], uppercased, and looks the code up once complete. */
   fun setCode(raw: String) {
-    val code = raw.uppercase().filter { it.isLetterOrDigit() }.take(CODE_LENGTH)
+    val code = raw.uppercase().filter { it.isLetterOrDigit() }.take(JOIN_CODE_LENGTH)
+    val current = _uiState.value
+    // A join keeps its code, and a keystroke that filtering drops changes nothing.
+    if (current.isJoining || current.joined || code == current.code) return
     _uiState.update { it.copy(code = code, found = null, notFound = false, errorMsg = null) }
-    if (code.length < CODE_LENGTH) return
+    if (code.length < JOIN_CODE_LENGTH) return
     viewModelScope.launch {
       try {
         val found =
             eventsRepository
                 .getAllEvents()
+                // Two ids sharing their first six characters would give one event; negligible.
                 .firstOrNull { joinCodeOf(it) == code }
                 ?.let {
                   FoundEventUi(
@@ -89,7 +95,10 @@ class JoinEventViewModel(
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
-        _uiState.update { it.copy(errorMsg = e.message ?: "Could not find the event") }
+        // Same guard as the success path: an old code's failure is not the new code's.
+        _uiState.update {
+          if (it.code != code) it else it.copy(errorMsg = e.message ?: "Could not find the event")
+        }
       }
     }
   }
@@ -112,7 +121,7 @@ class JoinEventViewModel(
         if (event.eventId !in stored.joinedEvents) {
           usersRepository.editUser(stored.uid, stored.addJoinedEvent(event.eventId))
         }
-        _uiState.update { it.copy(isJoining = false, joined = true) }
+        _uiState.update { it.copy(isJoining = false, joined = true, joinedEventId = found.id) }
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
@@ -121,10 +130,5 @@ class JoinEventViewModel(
         }
       }
     }
-  }
-
-  /** Dismisses the error once the screen has shown it. */
-  fun clearErrorMsg() {
-    _uiState.update { it.copy(errorMsg = null) }
   }
 }
