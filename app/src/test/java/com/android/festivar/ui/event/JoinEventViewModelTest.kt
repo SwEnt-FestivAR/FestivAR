@@ -423,4 +423,39 @@ class JoinEventViewModelTest {
     assertNull(viewModel.uiState.value.found)
     assertFalse(viewModel.uiState.value.notFound)
   }
+
+  @Test
+  fun onceTheScreenOpenedTheJoinedEventTheJoinIsConsumedAndTypingWorksAgain() {
+    val viewModel = viewModel()
+    viewModel.setCode("FETE20")
+    viewModel.join()
+
+    viewModel.onEventOpened()
+
+    assertNull(viewModel.uiState.value.joinedEventId)
+    assertFalse(viewModel.uiState.value.joined)
+    viewModel.setCode("NOEL12")
+    assertEquals("noel-12", viewModel.uiState.value.found?.id)
+  }
+
+  @Test
+  fun retypingTheSameCodeAfterAFailedLookupLooksTheEventUpAgain() {
+    var lookups = 0
+    val flaky =
+        object : EventsRepository by events {
+          override suspend fun getAllEvents(): List<Event> {
+            if (lookups++ == 0) throw IllegalStateException("offline")
+            return events.getAllEvents()
+          }
+        }
+    val viewModel = viewModel(eventsRepository = flaky)
+    viewModel.setCode("FETE20")
+    assertEquals("offline", viewModel.uiState.value.errorMsg)
+
+    viewModel.setCode("FETE20")
+
+    assertEquals(2, lookups)
+    assertNull(viewModel.uiState.value.errorMsg)
+    assertEquals("fete2026", viewModel.uiState.value.found?.id)
+  }
 }
