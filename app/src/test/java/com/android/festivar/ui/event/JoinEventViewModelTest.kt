@@ -314,6 +314,71 @@ class JoinEventViewModelTest {
   }
 
   @Test
+  fun aKeystrokeWhileJoiningDoesNotLoseTheJoinedEvent() {
+    val gate = CompletableDeferred<Unit>()
+    val slow =
+        object : EventsRepository by events {
+          override suspend fun editEvent(eventId: String, newValue: Event) {
+            gate.await()
+            events.editEvent(eventId, newValue)
+          }
+        }
+    val viewModel = viewModel(eventsRepository = slow)
+    viewModel.setCode("FETE20")
+    viewModel.join()
+
+    viewModel.setCode("FETE2")
+    gate.complete(Unit)
+
+    assertTrue(viewModel.uiState.value.joined)
+    assertEquals("fete2026", viewModel.uiState.value.joinedEventId)
+    assertEquals("FETE20", viewModel.uiState.value.code)
+  }
+
+  @Test
+  fun aLateLookupFailureForAnOldCodeIsNotShownUnderTheNewCode() {
+    val gate = CompletableDeferred<Unit>()
+    var calls = 0
+    val flaky =
+        object : EventsRepository by events {
+          override suspend fun getAllEvents(): List<Event> {
+            if (calls++ == 0) {
+              gate.await()
+              throw IllegalStateException("late")
+            }
+            return events.getAllEvents()
+          }
+        }
+    val viewModel = viewModel(eventsRepository = flaky)
+    viewModel.setCode("FETE20")
+    viewModel.setCode("NOEL12")
+
+    gate.complete(Unit)
+
+    assertNull(viewModel.uiState.value.errorMsg)
+    assertEquals("noel-12", viewModel.uiState.value.found?.id)
+  }
+
+  @Test
+  fun aCodeUnchangedByFilteringDoesNotLookTheEventUpAgain() {
+    var lookups = 0
+    val counting =
+        object : EventsRepository by events {
+          override suspend fun getAllEvents(): List<Event> {
+            lookups++
+            return events.getAllEvents()
+          }
+        }
+    val viewModel = viewModel(eventsRepository = counting)
+
+    viewModel.setCode("FETE20")
+    viewModel.setCode("FETE20-")
+
+    assertEquals(1, lookups)
+    assertEquals("fete2026", viewModel.uiState.value.found?.id)
+  }
+
+  @Test
   fun aSecondJoinWhileJoiningWritesNothingTwice() {
     val gate = CompletableDeferred<Unit>()
     var writes = 0
