@@ -24,8 +24,16 @@ interface UsersRepository {
    * @throws NoSuchElementException if the [User] item is not found.
    */
   suspend fun getUser(uId: String): User
-  
 
+  /**
+   * Retrieves all [User] items whose [User.uid] correspond to the ones located in the given
+   * parameter list. Allows to get multiple users without external n calls to [getUser].
+   *
+   * @param uIds The list of unique identifier of the [User] we want to get.
+   * @return The list of requested users.
+   * @throws NoSuchElementException if one [User] item is not found.
+   */
+  suspend fun getListUsers(uIds: List<String>): List<User>
 
   /**
    * Adds a new [User] item to the repository.
