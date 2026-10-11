@@ -3,6 +3,7 @@ package com.android.festivar.ui.event
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasAnyDescendant
@@ -127,6 +128,41 @@ class JoinEventScreenTest {
     composeTestRule.onNodeWithTag(JoinEventScreenTestTags.BACK).performClick()
 
     assertEquals(1, backs)
+  }
+
+  @Test
+  fun oneMemberIsWrittenInTheSingular() {
+    content(JoinEventUiState(code = "VIDY26", found = found.copy(members = 1)))
+
+    composeTestRule
+        .onNode(
+            hasTestTag(JoinEventScreenTestTags.RESULT)
+                .and(hasAnyDescendant(hasText("Sat 17 Oct, 1 member"))),
+            useUnmergedTree = true,
+        )
+        .assertExists()
+  }
+
+  @Test
+  fun severalMembersAreWrittenInThePlural() {
+    content(JoinEventUiState(code = "VIDY26", found = found.copy(members = 3)))
+
+    composeTestRule
+        .onNode(
+            hasTestTag(JoinEventScreenTestTags.RESULT)
+                .and(hasAnyDescendant(hasText("Sat 17 Oct, 3 members"))),
+            useUnmergedTree = true,
+        )
+        .assertExists()
+  }
+
+  @Test
+  fun theCodeFieldHasFocusWhenTheScreenOpens() {
+    val user = User(uid = "u1")
+    val viewModel = JoinEventViewModel(user, EventsRepositoryLocal(), InMemoryUsers(listOf(user)))
+    composeTestRule.setContent { JoinEventScreen(viewModel = viewModel) }
+
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.CODE_INPUT).assertIsFocused()
   }
 
   @Test
