@@ -60,6 +60,8 @@ object JoinEventScreenTestTags {
   const val TITLE = "joinEventTitle"
   const val CODE_INPUT = "joinEventCodeInput"
   const val RESULT = "joinEventResult"
+  const val RESULT_NAME = "joinEventResultName"
+  const val RESULT_LINE = "joinEventResultLine"
   const val NOT_FOUND = "joinEventNotFound"
   const val JOIN = "joinEventJoin"
   const val ERROR_MESSAGE = "joinEventError"
@@ -80,10 +82,7 @@ fun JoinEventScreen(
     onOpenEvent: (eventId: String) -> Unit = {},
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-  LaunchedEffect(uiState.joined) {
-    val id = uiState.found?.id
-    if (uiState.joined && id != null) onOpenEvent(id)
-  }
+  LaunchedEffect(uiState.joinedEventId) { uiState.joinedEventId?.let(onOpenEvent) }
   JoinEventContent(
       state = uiState,
       onBack = onBack,
@@ -168,6 +167,7 @@ fun JoinEventContent(
         BasicTextField(
             value = state.code,
             onValueChange = onCode,
+            enabled = !state.isJoining,
             singleLine = true,
             keyboardOptions =
                 KeyboardOptions(
@@ -241,12 +241,17 @@ private fun FoundCard(found: FoundEventUi) {
           .padding(16.dp)
           .testTag(JoinEventScreenTestTags.RESULT)
   ) {
-    Text(found.name, style = MaterialTheme.typography.titleMedium)
+    Text(
+        found.name,
+        style = MaterialTheme.typography.titleMedium,
+        modifier = Modifier.testTag(JoinEventScreenTestTags.RESULT_NAME),
+    )
     Text(
         "${found.dateLine}, " +
             pluralStringResource(R.plurals.join_event_members, found.members, found.members),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.testTag(JoinEventScreenTestTags.RESULT_LINE),
     )
   }
 }
