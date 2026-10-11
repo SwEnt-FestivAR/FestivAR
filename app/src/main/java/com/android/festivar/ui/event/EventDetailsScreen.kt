@@ -35,13 +35,14 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.model.event.Event
+import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
+import com.android.festivar.ui.components.formatDate
+import com.android.festivar.ui.components.formatDateWithoutMonth
 import com.android.festivar.ui.theme.AppTheme
 import com.android.festivar.ui.theme.NumeralLarge
 import java.time.ZoneId
 import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 object EventDetailsScreenTestTags {
   const val BACK_BUTTON = "backButton"
@@ -52,8 +53,6 @@ object EventDetailsScreenTestTags {
   const val ADDRESS_ROW = "addressRow"
   const val SEE_TASKS_BUTTON = "seeTasksButton"
 }
-
-private val EventDateFormatter = DateTimeFormatter.ofPattern("EEE d MMM", Locale.ENGLISH)
 
 /**
  * A screen for viewing event details.
@@ -243,12 +242,14 @@ private fun EventDetailsRow(
 }
 
 private fun formatEventDate(event: Event): String {
-  val start = event.startDate.format(EventDateFormatter)
-  val end = event.endDate.format(EventDateFormatter)
-  return if (
-      event.startDate.month == event.endDate.month && event.startDate.year == event.endDate.year
-  ) {
-    "${event.startDate.format(DateTimeFormatter.ofPattern("EEE d", Locale.ENGLISH))} to $end"
+  val start = formatDate(event.startDate.toLocalDate())
+  val end = formatDate(event.endDate.toLocalDate())
+  return if (event.startDate.month == event.endDate.month) {
+    if (event.startDate.dayOfMonth == event.endDate.dayOfMonth) {
+      start
+    } else {
+      "${formatDateWithoutMonth(event.startDate.toLocalDate())} to $end"
+    }
   } else {
     "$start to $end"
   }
@@ -256,15 +257,37 @@ private fun formatEventDate(event: Event): String {
 
 @Preview
 @Composable
-fun EventDetailsScreenPreview() {
-  val event =
-      Event(
-          eventId = "event-id",
-          title = "Fête de l'Asso 2026",
-          members = listOf(User("Sami K.")),
-          startDate = ZonedDateTime.of(2026, 10, 16, 10, 0, 0, 0, ZoneId.of("Europe/Zurich")),
-          endDate = ZonedDateTime.of(2026, 10, 18, 18, 0, 0, 0, ZoneId.of("Europe/Zurich")),
-          location = "Parc de Vidy, Lausanne",
-      )
-  AppTheme { EventDetailsScreen(event = event, onTasksButtonClicked = {}, onBack = {}) }
+private fun EventDetailsScreenPreview() {
+  AppTheme {
+    EventDetailsScreen(event = eventDifferentMonth, onTasksButtonClicked = {}, onBack = {})
+  }
 }
+
+private val eventStartDate = ZonedDateTime.of(2026, 10, 16, 10, 0, 0, 0, ZoneId.of("Europe/Zurich"))
+private val eventEndDate = ZonedDateTime.of(2026, 10, 18, 18, 0, 0, 0, ZoneId.of("Europe/Zurich"))
+private val eventSameMonth =
+    Event(
+        eventId = "0",
+        title = "Fête de l'Asso 2026",
+        members = listOf(User("Sami K.")),
+        startDate = eventStartDate,
+        endDate = eventEndDate,
+        location = "Parc de Vidy, Lausanne",
+        tasks =
+            List(
+                size = 10,
+                init = { index ->
+                  Task(
+                      taskId = index.toString(),
+                      eventId = "0",
+                      title = "Task $index",
+                      completed = index % 2 == 0,
+                  )
+                },
+            ),
+    )
+
+private val eventSameDay =
+    eventSameMonth.copy(endDate = eventEndDate.withDayOfMonth(eventStartDate.dayOfMonth))
+
+private val eventDifferentMonth = eventSameMonth.copy(endDate = eventStartDate.plusMonths(1))
