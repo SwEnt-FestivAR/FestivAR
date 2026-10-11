@@ -19,7 +19,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -36,10 +35,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -50,9 +51,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.festivar.R
 import com.android.festivar.model.event.JOIN_CODE_LENGTH
 import com.android.festivar.ui.theme.AppTheme
-
-private val ScreenBackground = Color(0xFFFFFEF9)
-private val PrimaryButton = Color(0xFFC7F21A)
 
 /** Test tags of the join event screen. */
 object JoinEventScreenTestTags {
@@ -109,8 +107,12 @@ fun JoinEventContent(
   val focus = remember { FocusRequester() }
   LaunchedEffect(Unit) { if (requestFocusOnEntry) focus.requestFocus() }
   val keyboard = LocalSoftwareKeyboardController.current
+  val codeFieldLabel = stringResource(R.string.join_event_code_field)
+  val codeSoFar =
+      if (state.code.isEmpty()) stringResource(R.string.join_event_code_empty)
+      else stringResource(R.string.join_event_code_so_far, state.code)
   Scaffold(
-      containerColor = ScreenBackground,
+      containerColor = MaterialTheme.colorScheme.surface,
       topBar = {
         TopAppBar(
             title = {},
@@ -121,7 +123,7 @@ fun JoinEventContent(
               ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = "Navigate back",
+                    contentDescription = stringResource(R.string.join_event_back),
                 )
               }
             },
@@ -137,28 +139,21 @@ fun JoinEventContent(
                     .height(48.dp)
                     .testTag(JoinEventScreenTestTags.JOIN),
             shape = RoundedCornerShape(8.dp),
-            colors =
-                ButtonDefaults.buttonColors(
-                    containerColor = PrimaryButton,
-                    contentColor = Color(0xFF202020),
-                    disabledContainerColor = Color(0xFFE6E4DE),
-                    disabledContentColor = Color(0xFF99978F),
-                ),
         ) {
-          Text(text = "Join as a volunteer", fontWeight = FontWeight.Bold)
+          Text(text = stringResource(R.string.join_event_join), fontWeight = FontWeight.Bold)
         }
       },
   ) { padding ->
     Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 12.dp)) {
       Text(
-          text = "Join by code",
+          text = stringResource(R.string.join_event_title),
           fontSize = 28.sp,
           fontWeight = FontWeight.Bold,
           modifier = Modifier.testTag(JoinEventScreenTestTags.TITLE),
       )
       Spacer(Modifier.height(8.dp))
       Text(
-          text = "Enter the six character code the organizer shared with you.",
+          text = stringResource(R.string.join_event_subtitle),
           style = MaterialTheme.typography.bodyLarge,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
@@ -179,9 +174,13 @@ fun JoinEventContent(
                 Modifier.matchParentSize()
                     .alpha(0f)
                     .focusRequester(focus)
+                    .semantics { contentDescription = codeFieldLabel }
                     .testTag(JoinEventScreenTestTags.CODE_INPUT),
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.semantics { contentDescription = codeSoFar },
+        ) {
           for (i in 0 until JOIN_CODE_LENGTH) {
             val active = i == state.code.length
             Box(
@@ -214,7 +213,7 @@ fun JoinEventContent(
         FoundCard(found)
       } else if (state.notFound) {
         Text(
-            "No event matches this code.",
+            stringResource(R.string.join_event_not_found),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error,
             modifier = Modifier.testTag(JoinEventScreenTestTags.NOT_FOUND),
@@ -247,8 +246,11 @@ private fun FoundCard(found: FoundEventUi) {
         modifier = Modifier.testTag(JoinEventScreenTestTags.RESULT_NAME),
     )
     Text(
-        "${found.dateLine}, " +
+        stringResource(
+            R.string.join_event_found_line,
+            found.dateLine,
             pluralStringResource(R.plurals.join_event_members, found.members, found.members),
+        ),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.testTag(JoinEventScreenTestTags.RESULT_LINE),

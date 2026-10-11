@@ -2,6 +2,15 @@
     <string name="app_name">FestivAR</string>
     <string name="title_activity_main">MainActivity</string>
     <string name="title_activity_second">SecondActivity</string>
+    <string name="join_event_back">Navigate back</string>
+    <string name="join_event_title">Join by code</string>
+    <string name="join_event_subtitle">Enter the six character code the organizer shared with you.</string>
+    <string name="join_event_not_found">No event matches this code.</string>
+    <string name="join_event_join">Join as a volunteer</string>
+    <string name="join_event_code_field">Join code</string>
+    <string name="join_event_code_empty">Code is empty</string>
+    <string name="join_event_code_so_far">Code so far: %1$s</string>
+    <string name="join_event_found_line">%1$s, %2$s</string>
     <plurals name="join_event_members">
         <item quantity="one">%d member</item>
         <item quantity="other">%d members</item>
