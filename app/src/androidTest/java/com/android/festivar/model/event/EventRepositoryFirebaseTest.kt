@@ -2,6 +2,7 @@
 package com.android.festivar.model.event
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.festivar.FirebaseEmulatorSetup
 import com.android.festivar.model.user.User
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
@@ -30,7 +31,7 @@ class EventRepositoryFirebaseTest {
 
   @Before
   fun setUp() {
-    Firebase.auth.useEmulator("10.0.2.2", 9099)
+    FirebaseEmulatorSetup.configure()
     runBlocking { Firebase.auth.signInAnonymously().await() }
     event =
         Event(
@@ -211,7 +212,7 @@ class EventRepositoryFirebaseTest {
     @JvmStatic
     @BeforeClass
     fun configureFirestoreEmulator() {
-      Firebase.firestore.useEmulator("10.0.2.2", 8080)
+      FirebaseEmulatorSetup.configure()
     }
   }
 }
