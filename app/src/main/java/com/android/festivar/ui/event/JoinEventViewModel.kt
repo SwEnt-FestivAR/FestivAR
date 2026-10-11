@@ -30,7 +30,10 @@ data class FoundEventUi(val id: String, val name: String, val dateLine: String, 
  *
  * @property code what was typed: uppercase letters and digits, at most six.
  * @property notFound true when six characters match no event.
+ * @property found the event the code matched, or `null` while none did.
+ * @property isJoining whether a join is in progress, so a second tap is ignored.
  * @property joined true once the person is a member; the screen then opens the event.
+ * @property errorMsg an error message to show when the lookup or the join fails, or `null`.
  */
 data class JoinEventUiState(
     val code: String = "",
@@ -41,7 +44,13 @@ data class JoinEventUiState(
     val errorMsg: String? = null,
 )
 
-/** Looks an event up by its code as it is typed, and joins it as the signed-in [user]. */
+/**
+ * Looks an event up by its code as it is typed, and joins it as the signed-in [user].
+ *
+ * @property user The signed-in [User] who joins.
+ * @property eventsRepository The repository used to look the event up and to add the member.
+ * @property usersRepository The repository holding the [User], whose joined events are updated.
+ */
 class JoinEventViewModel(
     private val user: User,
     private val eventsRepository: EventsRepository,
@@ -83,7 +92,7 @@ class JoinEventViewModel(
     }
   }
 
-  /** Adds the signed-in person to the found event, unless they already belong to it. */
+  /** Makes the signed-in person a member of the found event, writing only what is still missing. */
   fun join() {
     val state = _uiState.value
     val found = state.found ?: return
@@ -91,10 +100,15 @@ class JoinEventViewModel(
     _uiState.update { it.copy(isJoining = true, errorMsg = null) }
     viewModelScope.launch {
       try {
+        // Both sides are read again and only the missing one is written, so a join that stopped
+        // halfway earlier is repaired instead of failing as "already joined" forever.
+        val stored = usersRepository.getUser(user.uid)
         val event = eventsRepository.getEvent(found.id)
-        if (event.members.none { it.uid == user.uid }) {
-          usersRepository.editUser(user.uid, user.addJoinedEvent(event.eventId))
-          eventsRepository.editEvent(event.eventId, event.addMember(user))
+        if (event.members.none { it.uid == stored.uid }) {
+          eventsRepository.editEvent(event.eventId, event.addMember(stored))
+        }
+        if (event.eventId !in stored.joinedEvents) {
+          usersRepository.editUser(stored.uid, stored.addJoinedEvent(event.eventId))
         }
         _uiState.update { it.copy(isJoining = false, joined = true) }
       } catch (e: CancellationException) {

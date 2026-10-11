@@ -212,7 +212,7 @@ class JoinEventViewModelTest {
     assertEquals("denied", viewModel.uiState.value.errorMsg)
     assertFalse(viewModel.uiState.value.isJoining)
     assertFalse(viewModel.uiState.value.joined)
-    assertEquals(listOf(sami.uid), memberIds("fete2026"))
+    assertEquals(emptyList<String>(), joinedEvents(ada.uid))
   }
 
   @Test
