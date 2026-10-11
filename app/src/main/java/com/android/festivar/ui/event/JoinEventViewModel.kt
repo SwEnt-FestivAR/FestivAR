@@ -35,7 +35,8 @@ data class FoundEventUi(val id: String, val name: String, val dateLine: String, 
  * @property found the event the code matched, or `null` while none did.
  * @property isJoining whether a join is in progress, so a second tap is ignored.
  * @property joined true once the person is a member; the screen then opens the event.
- * @property joinedEventId the id of the event just joined, consumed by the screen to open it.
+ * @property joinedEventId the id of the event just joined, consumed by
+ *   [JoinEventViewModel.onEventOpened] once the screen opened it.
  * @property errorMsg an error message to show when the lookup or the join fails, or `null`.
  */
 data class JoinEventUiState(
@@ -67,8 +68,10 @@ class JoinEventViewModel(
   fun setCode(raw: String) {
     val code = raw.uppercase().filter { it.isLetterOrDigit() }.take(JOIN_CODE_LENGTH)
     val current = _uiState.value
-    // A join keeps its code, and a keystroke that filtering drops changes nothing.
-    if (current.isJoining || current.joined || code == current.code) return
+    // A join keeps its code, and a keystroke that filtering drops changes nothing, unless the
+    // last attempt failed: retyping the same code then retries.
+    if (current.isJoining || current.joined) return
+    if (code == current.code && current.errorMsg == null) return
     _uiState.update { it.copy(code = code, found = null, notFound = false, errorMsg = null) }
     if (code.length < JOIN_CODE_LENGTH) return
     viewModelScope.launch {
@@ -130,5 +133,10 @@ class JoinEventViewModel(
         }
       }
     }
+  }
+
+  /** Called by the screen once it navigated, so a re-entry does not open the event again. */
+  fun onEventOpened() {
+    _uiState.update { it.copy(joined = false, joinedEventId = null) }
   }
 }
