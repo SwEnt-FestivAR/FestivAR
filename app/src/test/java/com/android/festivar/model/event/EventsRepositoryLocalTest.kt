@@ -1,7 +1,7 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.event
 
-import com.android.festivar.model.temporary.User
+import com.android.festivar.model.user.User
 import java.time.ZonedDateTime
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest

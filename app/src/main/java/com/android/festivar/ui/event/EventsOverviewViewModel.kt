@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
-import com.android.festivar.model.temporary.User
+import com.android.festivar.model.user.User
 import java.time.ZonedDateTime
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
