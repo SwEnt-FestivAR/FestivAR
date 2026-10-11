@@ -100,17 +100,20 @@ fun EventDetailsScreen(
                   .testTag(EventDetailsScreenTestTags.OPEN_TASKS_STAT),
           verticalAlignment = Alignment.CenterVertically,
       ) {
-        Text(
-            text = openTasks.toString(),
-            color = MaterialTheme.colorScheme.onSurface,
-            style = NumeralLarge,
-        )
-        Column(modifier = Modifier.padding(start = 8.dp)) {
-          Text(
-              text = "of ${event.tasks.size}",
-              color = MaterialTheme.colorScheme.onSurface,
-              style = MaterialTheme.typography.bodySmall,
-          )
+        Column {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = openTasks.toString(),
+                color = MaterialTheme.colorScheme.onSurface,
+                style = NumeralLarge,
+            )
+            Text(
+                text = "of ${event.tasks.size}",
+                modifier = Modifier.padding(start = 4.dp, top = 12.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall,
+            )
+          }
           Text(
               text = "tasks still open",
               color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -258,9 +261,7 @@ private fun formatEventDate(event: Event): String {
 @Preview
 @Composable
 private fun EventDetailsScreenPreview() {
-  AppTheme {
-    EventDetailsScreen(event = eventDifferentMonth, onTasksButtonClicked = {}, onBack = {})
-  }
+  AppTheme { EventDetailsScreen(event = eventSameMonth, onTasksButtonClicked = {}, onBack = {}) }
 }
 
 private val eventStartDate = ZonedDateTime.of(2026, 10, 16, 10, 0, 0, 0, ZoneId.of("Europe/Zurich"))
@@ -291,3 +292,5 @@ private val eventSameDay =
     eventSameMonth.copy(endDate = eventEndDate.withDayOfMonth(eventStartDate.dayOfMonth))
 
 private val eventDifferentMonth = eventSameMonth.copy(endDate = eventStartDate.plusMonths(1))
+
+private val eventNoTasksOpen = eventSameMonth.copy(tasks = emptyList())
