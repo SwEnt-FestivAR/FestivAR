@@ -20,6 +20,8 @@ import kotlinx.coroutines.launch
 /**
  * The event a typed code matched.
  *
+ * @property id the event identifier, passed back to join it.
+ * @property name the event title shown in the result card.
  * @property dateLine when it starts, e.g. `Sat 17 Oct, 10:00`.
  * @property members how many people already belong to it.
  */

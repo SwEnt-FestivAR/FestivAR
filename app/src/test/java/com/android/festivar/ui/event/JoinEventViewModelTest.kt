@@ -48,8 +48,28 @@ class JoinEventViewModelTest {
           endDate = start.plusDays(60).plusHours(3),
       )
 
-  private val events = EventsRepositoryLocal(listOf(fete, noel))
-  private val users = UsersRepositoryLocal(listOf(ada, sami))
+  /** Delegates to [local] and counts the calls to [editEvent]. */
+  private class CountingEvents(private val local: EventsRepository) : EventsRepository by local {
+    var writes = 0
+
+    override suspend fun editEvent(eventId: String, newValue: Event) {
+      writes++
+      local.editEvent(eventId, newValue)
+    }
+  }
+
+  /** Delegates to [local] and counts the calls to [editUser]. */
+  private class CountingUsers(private val local: UsersRepository) : UsersRepository by local {
+    var writes = 0
+
+    override suspend fun editUser(uId: String, newValue: User) {
+      writes++
+      local.editUser(uId, newValue)
+    }
+  }
+
+  private val events = CountingEvents(EventsRepositoryLocal(listOf(fete, noel)))
+  private val users = CountingUsers(UsersRepositoryLocal(listOf(ada, sami)))
 
   @Before
   fun setUp() {
@@ -175,6 +195,8 @@ class JoinEventViewModelTest {
     assertNull(viewModel.uiState.value.errorMsg)
     assertEquals(listOf(sami.uid), memberIds("fete2026"))
     assertEquals(listOf("fete2026"), joinedEvents(sami.uid))
+    assertEquals(0, events.writes)
+    assertEquals(0, users.writes)
   }
 
   @Test
@@ -185,6 +207,9 @@ class JoinEventViewModelTest {
 
     assertFalse(viewModel.uiState.value.joined)
     assertFalse(viewModel.uiState.value.isJoining)
+    assertNull(viewModel.uiState.value.errorMsg)
+    assertEquals(0, events.writes)
+    assertEquals(0, users.writes)
   }
 
   @Test
@@ -199,7 +224,7 @@ class JoinEventViewModelTest {
   }
 
   @Test
-  fun aFailingJoinIsReportedAndStopsJoining() {
+  fun aFailingUserWriteLeavesTheEventSideWrittenAndReportsIt() {
     val failing =
         object : UsersRepository by users {
           override suspend fun editUser(uId: String, newValue: User) =
@@ -213,7 +238,7 @@ class JoinEventViewModelTest {
     assertEquals("denied", viewModel.uiState.value.errorMsg)
     assertFalse(viewModel.uiState.value.isJoining)
     assertFalse(viewModel.uiState.value.joined)
-    assertEquals(emptyList<String>(), joinedEvents(ada.uid))
+    assertEquals(listOf(sami.uid, ada.uid), memberIds("fete2026"))
   }
 
   @Test
