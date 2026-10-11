@@ -4,7 +4,10 @@ package com.android.festivar.ui.event
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -38,7 +41,9 @@ private class InMemoryUsers(initial: List<User>) : UsersRepository {
   }
 
   override suspend fun editUser(uId: String, newValue: User) {
-    users[users.indexOfFirst { it.uid == uId }] = newValue
+    val index = users.indexOfFirst { it.uid == uId }
+    if (index == -1) throw NoSuchElementException(uId)
+    users[index] = newValue
   }
 
   override suspend fun deleteUser(uId: String) {
@@ -76,10 +81,14 @@ class JoinEventScreenTest {
     var joins = 0
     content(JoinEventUiState(code = "VIDY26", found = found), onJoin = { joins++ })
 
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.RESULT).assertIsDisplayed()
     composeTestRule
-        .onNodeWithTag(JoinEventScreenTestTags.RESULT)
-        .assertIsDisplayed()
-        .assertTextContains("Vidy Festival", substring = true)
+        .onNode(
+            hasTestTag(JoinEventScreenTestTags.RESULT)
+                .and(hasAnyDescendant(hasText("Vidy Festival"))),
+            useUnmergedTree = true,
+        )
+        .assertExists()
     composeTestRule.onNodeWithTag(JoinEventScreenTestTags.JOIN).assertIsEnabled().performClick()
     assertEquals(1, joins)
   }
@@ -98,6 +107,16 @@ class JoinEventScreenTest {
     content(JoinEventUiState(code = "VIDY26", found = found, isJoining = true))
 
     composeTestRule.onNodeWithTag(JoinEventScreenTestTags.JOIN).assertIsNotEnabled()
+  }
+
+  @Test
+  fun anErrorMessageIsShownUnderTheCode() {
+    content(JoinEventUiState(code = "VIDY26", found = found, errorMsg = "offline"))
+
+    composeTestRule
+        .onNodeWithTag(JoinEventScreenTestTags.ERROR_MESSAGE)
+        .assertIsDisplayed()
+        .assertTextEquals("offline")
   }
 
   @Test
