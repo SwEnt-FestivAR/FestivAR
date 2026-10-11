@@ -24,22 +24,8 @@ interface UsersRepository {
    * @throws NoSuchElementException if the [User] item is not found.
    */
   suspend fun getUser(uId: String): User
+  
 
-  /**
-   * Retrieves all [User] items belonging to an [Event] from the repository.
-   *
-   * @param eventId The unique identifier of the [Event] whose users to retrieve.
-   * @return A list of [User] items belonging to the [Event].
-   */
-  suspend fun getEventUsers(eventId: String): List<User>
-
-  /**
-   * Retrieves all [User] items belonging to a [Task] from the repository.
-   *
-   * @param taskId The unique identifier of the [Task] whose users to retrieve.
-   * @return A list of [User] items belonging to the [Task].
-   */
-  suspend fun getTaskUsers(taskId: String): List<User>
 
   /**
    * Adds a new [User] item to the repository.
