@@ -28,7 +28,8 @@ import org.junit.Test
 class JoinEventViewModelTest {
   private val start = ZonedDateTime.of(2026, 10, 17, 10, 0, 0, 0, ZoneId.of("Europe/Zurich"))
   private val ada = User(uid = "uid-ada", name = "Ada", surname = "Lovelace")
-  private val sami = User(uid = "uid-sami", name = "Sami", surname = "Kabbaj")
+  private val sami =
+      User(uid = "uid-sami", name = "Sami", surname = "Kabbaj", joinedEvents = listOf("fete2026"))
 
   // The code of fete2026 is FETE20.
   private val fete =
@@ -173,7 +174,7 @@ class JoinEventViewModelTest {
     assertTrue(viewModel.uiState.value.joined)
     assertNull(viewModel.uiState.value.errorMsg)
     assertEquals(listOf(sami.uid), memberIds("fete2026"))
-    assertEquals(emptyList<String>(), joinedEvents(sami.uid))
+    assertEquals(listOf("fete2026"), joinedEvents(sami.uid))
   }
 
   @Test
@@ -229,12 +230,69 @@ class JoinEventViewModelTest {
 
     assertEquals("Could not join the event", viewModel.uiState.value.errorMsg)
     assertFalse(viewModel.uiState.value.isJoining)
+    assertEquals(emptyList<String>(), joinedEvents(ada.uid))
+  }
+
+  @Test
+  fun aUserWhoseRecordHoldsTheEventButIsMissingFromItsMembersEndsWithOneMembershipOnEachSide() {
+    val halfJoined = ada.addJoinedEvent("fete2026")
+    val halfUsers = UsersRepositoryLocal(listOf(halfJoined, sami))
+    val viewModel = viewModel(user = halfJoined, usersRepository = halfUsers)
+    viewModel.setCode("FETE20")
+
+    viewModel.join()
+
+    assertTrue(viewModel.uiState.value.joined)
+    assertNull(viewModel.uiState.value.errorMsg)
+    assertEquals(listOf(sami.uid, ada.uid), memberIds("fete2026"))
+    assertEquals(listOf("fete2026"), runBlocking { halfUsers.getUser(ada.uid) }.joinedEvents)
+  }
+
+  @Test
+  fun aJoinThatFailedOnTheEventSideLeavesTheUserUnrecordedAndTheRetrySucceeds() {
+    var failures = 1
+    val flaky =
+        object : EventsRepository by events {
+          override suspend fun editEvent(eventId: String, newValue: Event) {
+            if (failures-- > 0) throw IllegalStateException("flaky")
+            events.editEvent(eventId, newValue)
+          }
+        }
+    val viewModel = viewModel(eventsRepository = flaky)
+    viewModel.setCode("FETE20")
+
+    viewModel.join()
+
+    assertEquals("flaky", viewModel.uiState.value.errorMsg)
+    assertFalse(viewModel.uiState.value.isJoining)
+    assertEquals(emptyList<String>(), joinedEvents(ada.uid))
+
+    viewModel.join()
+
+    assertTrue(viewModel.uiState.value.joined)
+    assertEquals(listOf(sami.uid, ada.uid), memberIds("fete2026"))
+    assertEquals(listOf("fete2026"), joinedEvents(ada.uid))
+  }
+
+  @Test
+  fun joiningKeepsTheOtherJoinedEventsAndTheAssignedTasksOfTheStoredUser() {
+    val stored = ada.addJoinedEvent("noel-12").addAssignedTask("task-1")
+    val storedUsers = UsersRepositoryLocal(listOf(stored, sami))
+    val viewModel = viewModel(user = ada, usersRepository = storedUsers)
+    viewModel.setCode("FETE20")
+
+    viewModel.join()
+
+    val after = runBlocking { storedUsers.getUser(ada.uid) }
+    assertEquals(listOf("noel-12", "fete2026"), after.joinedEvents)
+    assertEquals(listOf("task-1"), after.tasksAssigned)
   }
 
   @Test
   fun clearErrorMsgRemovesTheError() {
     val viewModel = viewModel(eventsRepository = offlineEvents())
     viewModel.setCode("FETE20")
+    assertEquals("offline", viewModel.uiState.value.errorMsg)
 
     viewModel.clearErrorMsg()
 
