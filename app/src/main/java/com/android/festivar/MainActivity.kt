@@ -1,3 +1,4 @@
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar
 
 import android.content.Context
@@ -41,12 +42,7 @@ class MainActivity : ComponentActivity() {
 
 /**
  * `FestivAR` is the main composable function that sets up the whole app UI. It initializes the
- * navigation controller and defines the navigation graph. You can add your app implementation
- * inside this function.
- *
- * @param context The context of the application, used for accessing resources and services.
- * @param credentialManager The CredentialManager instance for handling authentication credentials.
- * @param authRepository The AuthRepository instance for handling authentication operations.
+ * navigation controller and defines the navigation graph.
  */
 @Composable
 fun FestivAR(

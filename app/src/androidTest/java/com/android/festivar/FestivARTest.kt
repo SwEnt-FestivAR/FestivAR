@@ -1,9 +1,8 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar
 
-import androidx.activity.compose.setContent
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import com.android.festivar.ui.authentication.login.LoginScreenTestTags
@@ -13,11 +12,11 @@ import org.junit.Rule
 import org.junit.Test
 
 class FestivARTest {
-  @get:Rule val composeTestRule = createAndroidComposeRule<MainActivity>()
+  @get:Rule val composeTestRule = createComposeRule()
 
   @Test
   fun createsFestivARWithInitialDestination() {
-    composeTestRule.activity.setContent {
+    composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk(relaxed = true),
       )
