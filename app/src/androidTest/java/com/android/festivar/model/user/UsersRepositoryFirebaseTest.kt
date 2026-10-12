@@ -249,7 +249,7 @@ class UsersRepositoryFirebaseTest {
     @JvmStatic
     @BeforeClass
     fun configureFirestoreEmulator() {
-      Firebase.firestore.useEmulator("10.0.2.2", 8080)
+      FirebaseEmulatorSetup.configure()
     }
   }
 }
