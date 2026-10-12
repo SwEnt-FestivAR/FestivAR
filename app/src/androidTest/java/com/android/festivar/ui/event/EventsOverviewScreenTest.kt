@@ -16,9 +16,7 @@ import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.task.Task
-import com.android.festivar.model.temporary.User
-import com.android.festivar.ui.components.BottomNavigationBarTestTags
-import com.android.festivar.ui.components.NavigationTab
+import com.android.festivar.model.user.User
 import com.android.festivar.ui.theme.AppTheme
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -36,8 +34,8 @@ class EventsOverviewScreenTest {
   @get:Rule val composeTestRule = createComposeRule()
 
   /**
-   * An [EventsRepositoryLocal] serving [events]. It throws [error] on every fetch when it is set,
-   * and waits for [gate] to be completed before answering when it is set.
+   * An [EventsRepositoryLocal] serving [events]. It throws [error] on every fetch of the events of
+   * a user when it is set, and waits for [gate] to be completed before answering when it is set.
    */
   private class EventsRepositoryImpl(
       events: List<Event> = listOf(),
@@ -45,10 +43,10 @@ class EventsOverviewScreenTest {
       val gate: CompletableDeferred<Unit>? = null,
       private val local: EventsRepository = EventsRepositoryLocal(events),
   ) : EventsRepository by local {
-    override suspend fun getAllEvents(): List<Event> {
+    override suspend fun getEventsForUser(userId: String): List<Event> {
       gate?.await()
       error?.let { throw it }
-      return local.getAllEvents()
+      return local.getEventsForUser(userId)
     }
   }
 
@@ -59,6 +57,7 @@ class EventsOverviewScreenTest {
   /** The fixed current time of every test: 17/10/2026 at 18:00. */
   private val now = getDate(2026, 10, 17, hour = 18)
 
+  /** The signed-in user of every test, member of every event. */
   private val sara = User(uid = "u1", name = "Sara", surname = "Keller")
   private val marc = User(uid = "u2", name = "Marc", surname = "Dubois")
   private val alice = User(uid = "u3", name = "Alice", surname = "Lambert")
@@ -98,6 +97,7 @@ class EventsOverviewScreenTest {
           eventId = "2",
           title = "Balélec",
           description = "The EPFL music festival",
+          members = listOf(sara),
           startDate = getDate(2026, 5, 8, hour = 17),
           endDate = getDate(2026, 5, 9, hour = 5),
           closed = true,
@@ -107,16 +107,17 @@ class EventsOverviewScreenTest {
       withRepository: EventsRepository,
       onSelectEvent: (Event) -> Unit = {},
       onAddEvent: () -> Unit = {},
-      onSelectTab: (NavigationTab) -> Unit = {},
+      onSelectAvatar: () -> Unit = {},
   ): EventsOverviewViewModel {
-    val viewModel = EventsOverviewViewModel(eventsRepository = withRepository, now = { now })
+    val viewModel =
+        EventsOverviewViewModel(eventsRepository = withRepository, user = sara, now = { now })
     composeTestRule.setContent {
       AppTheme {
         EventsOverviewScreen(
             eventsOverviewViewModel = viewModel,
             onSelectEvent = onSelectEvent,
             onAddEvent = onAddEvent,
-            onSelectTab = onSelectTab,
+            onSelectAvatar = onSelectAvatar,
         )
       }
     }
@@ -137,27 +138,23 @@ class EventsOverviewScreenTest {
         .assertIsDisplayed()
   }
 
-  /** Formats a date the way the event cards do, e.g. "Sat 17 Oct, 16:00". */
-  private fun formatDate(date: ZonedDateTime): String {
-    val day = DateTimeFormatter.ofPattern("EEE d MMM", Locale.getDefault())
-    val time = DateTimeFormatter.ofPattern("HH:mm", Locale.getDefault())
-    return "${date.format(day)}, ${date.format(time)}"
+  /** Formats a day the way the event cards do, e.g. "Sat 17 Oct". */
+  private fun formatDay(date: ZonedDateTime): String {
+    return date.format(DateTimeFormatter.ofPattern("EEE d MMM", Locale.getDefault()))
   }
 
-  /** Test that the title, the filter chips, the button and the navigation bar are displayed. */
+  /** Test that the title, the avatar, the filter chips and the button are displayed. */
   @Test
   fun displaysAllComponents() {
     setContent(withRepository = EventsRepositoryImpl(listOf(ongoingEvent)))
 
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.TITLE).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.USER_AVATAR).assertIsDisplayed()
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.ONGOING_CHIP).assertIsDisplayed()
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.UPCOMING_CHIP).assertIsDisplayed()
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.PAST_CHIP).assertIsDisplayed()
     composeTestRule
         .onNodeWithTag(EventsOverviewScreenTestTags.CREATE_EVENT_BUTTON)
-        .assertIsDisplayed()
-    composeTestRule
-        .onNodeWithTag(BottomNavigationBarTestTags.BOTTOM_NAVIGATION_BAR)
         .assertIsDisplayed()
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.EVENT_LIST).assertIsDisplayed()
   }
@@ -187,7 +184,21 @@ class EventsOverviewScreenTest {
         .assertIsDisplayed()
   }
 
-  /** Test that the ongoing events are shown by default, flagged as ongoing. */
+  /** Test that the avatar of the top bar shows the initials of the signed-in user. */
+  @Test
+  fun avatarShowsTheInitialsOfTheUser() {
+    setContent(withRepository = EventsRepositoryImpl())
+
+    composeTestRule
+        .onNode(
+            hasTestTag(EventsOverviewScreenTestTags.USER_AVATAR)
+                .and(hasAnyDescendant(hasText("SK"))),
+            useUnmergedTree = true,
+        )
+        .assertIsDisplayed()
+  }
+
+  /** Test that the ongoing events are shown by default. */
   @Test
   fun ongoingEventsAreShownByDefault() {
     setContent(
@@ -195,7 +206,6 @@ class EventsOverviewScreenTest {
     )
 
     onEventItem(ongoingEvent, hasText(ongoingEvent.title))
-    onEventItem(ongoingEvent, hasText("Ongoing"))
     composeTestRule
         .onNodeWithTag(EventsOverviewScreenTestTags.getTestTagForEventItem(upcomingEvent))
         .assertDoesNotExist()
@@ -219,7 +229,7 @@ class EventsOverviewScreenTest {
         .assertDoesNotExist()
   }
 
-  /** Test that clicking on the past chip shows only the past events, flagged as closed. */
+  /** Test that clicking on the past chip shows only the past events. */
   @Test
   fun pastChipShowsPastEvents() {
     setContent(
@@ -229,7 +239,6 @@ class EventsOverviewScreenTest {
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.PAST_CHIP).performClick()
 
     onEventItem(pastEvent, hasText(pastEvent.title))
-    onEventItem(pastEvent, hasText("Closed"))
     composeTestRule
         .onNodeWithTag(EventsOverviewScreenTestTags.getTestTagForEventItem(ongoingEvent))
         .assertDoesNotExist()
@@ -248,62 +257,27 @@ class EventsOverviewScreenTest {
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.EVENT_LIST).assertDoesNotExist()
   }
 
-  /**
-   * Test that an event ending on its starting day shows the end time only, followed by its
-   * location.
-   */
+  /** Test that an event ending on its starting day shows this day only, then its location. */
   @Test
-  fun sameDayEventShowsEndTimeAndLocation() {
+  fun sameDayEventShowsItsDayAndLocation() {
     setContent(withRepository = EventsRepositoryImpl(listOf(ongoingEvent)))
 
-    val dates = "${formatDate(ongoingEvent.startDate)} to 23:00 · Esplanade EPFL"
+    val dates = "${formatDay(ongoingEvent.startDate)} · Esplanade EPFL"
     onEventItem(ongoingEvent, hasText(dates, substring = false))
   }
 
   /**
-   * Test that an event ending on another day repeats the end day, and that an event without
-   * location shows only its dates.
+   * Test that an event ending on another day of the same month shows both days with the month once,
+   * and that an event without location shows only its days.
    */
   @Test
   fun multiDayEventShowsEndDayAndNoLocationIfBlank() {
     setContent(withRepository = EventsRepositoryImpl(listOf(pastEvent)))
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.PAST_CHIP).performClick()
 
-    val dates = "${formatDate(pastEvent.startDate)} to ${formatDate(pastEvent.endDate)}"
+    val startDay = DateTimeFormatter.ofPattern("EEE d", Locale.getDefault())
+    val dates = "${pastEvent.startDate.format(startDay)} to ${formatDay(pastEvent.endDate)}"
     onEventItem(pastEvent, hasText(dates, substring = false))
-  }
-
-  /**
-   * Test that the team of an event shows the initials of the first two members, a "+N" avatar for
-   * the other ones, and the size of the team.
-   */
-  @Test
-  fun eventItemShowsTheTeam() {
-    setContent(withRepository = EventsRepositoryImpl(listOf(ongoingEvent)))
-
-    onEventItem(ongoingEvent, hasText("SK"))
-    onEventItem(ongoingEvent, hasText("MD"))
-    onEventItem(ongoingEvent, hasText("+2"))
-    onEventItem(ongoingEvent, hasText("4 on the team"))
-  }
-
-  /** Test that an event without members says that no one is on the team yet. */
-  @Test
-  fun eventItemWithoutMembersShowsEmptyTeam() {
-    setContent(withRepository = EventsRepositoryImpl(listOf(pastEvent)))
-    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.PAST_CHIP).performClick()
-
-    onEventItem(pastEvent, hasText("No one on the team yet."))
-  }
-
-  /** Test that the number of open tasks is shown, with the singular form for a single task. */
-  @Test
-  fun eventItemShowsTheOpenTasks() {
-    setContent(withRepository = EventsRepositoryImpl(listOf(ongoingEvent, upcomingEvent)))
-
-    onEventItem(ongoingEvent, hasText("2 tasks open"))
-    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.UPCOMING_CHIP).performClick()
-    onEventItem(upcomingEvent, hasText("1 task open"))
   }
 
   /**
@@ -392,16 +366,14 @@ class EventsOverviewScreenTest {
     assertEquals(1, clicks)
   }
 
-  /** Test that clicking on a tab of the navigation bar gives the clicked tab. */
+  /** Test that clicking on the avatar of the top bar calls onSelectAvatar. */
   @Test
-  fun clickingATabCallsOnSelectTab() {
-    var selected: NavigationTab? = null
-    setContent(withRepository = EventsRepositoryImpl(), onSelectTab = { selected = it })
+  fun clickingAvatarCallsOnSelectAvatar() {
+    var clicks = 0
+    setContent(withRepository = EventsRepositoryImpl(), onSelectAvatar = { clicks++ })
 
-    composeTestRule
-        .onNodeWithTag(BottomNavigationBarTestTags.getTestTagForTab(NavigationTab.MAP))
-        .performClick()
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.USER_AVATAR).performClick()
 
-    assertEquals(NavigationTab.MAP, selected)
+    assertEquals(1, clicks)
   }
 }

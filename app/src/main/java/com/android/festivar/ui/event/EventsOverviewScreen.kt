@@ -45,7 +45,7 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
 import com.android.festivar.model.event.Event
-import com.android.festivar.model.temporary.User
+import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.Avatar
 import com.android.festivar.ui.components.FilterChip
 import com.android.festivar.ui.theme.AppTheme
@@ -261,8 +261,8 @@ fun EventsOverviewContent(
               contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 88.dp),
               modifier = Modifier.fillMaxSize().testTag(EventsOverviewScreenTestTags.EVENT_LIST),
           ) {
-            items(uiState.shownEvents, key = { it.event.eventId }) { item ->
-              EventItem(item = item, onClick = { onSelectEvent(item.event) })
+            items(uiState.shownEvents, key = { it.eventId }) { event ->
+              EventItem(event = event, onClick = { onSelectEvent(event) })
             }
           }
         }
@@ -271,10 +271,9 @@ fun EventsOverviewContent(
   }
 }
 
-/** Card showing the [Event] of an [item]: its title, then its days and location. */
+/** Card showing an [event]: its title, then its days and location. */
 @Composable
-fun EventItem(item: EventItemUIState, onClick: () -> Unit) {
-  val event = item.event
+fun EventItem(event: Event, onClick: () -> Unit) {
   val shape = RoundedCornerShape(20.dp)
   Column(
       verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -349,10 +348,9 @@ private fun EventsOverviewContentPreview() {
       }
   val uiState =
       EventsOverviewUIState(
-          ongoingEvents =
-              listOf(EventItemUIState(ongoingEvent, openTasksCount = 0, isOngoing = true)),
-          upcomingEvents = upcomingEvents.map { EventItemUIState(it, openTasksCount = 0) },
-          pastEvents = pastEvents.map { EventItemUIState(it, openTasksCount = 0) },
+          ongoingEvents = listOf(ongoingEvent),
+          upcomingEvents = upcomingEvents,
+          pastEvents = pastEvents,
           selectedFilter = EventsFilter.UPCOMING,
           user = User("u0", name = "Yasmine", surname = "Amrani"),
       )
