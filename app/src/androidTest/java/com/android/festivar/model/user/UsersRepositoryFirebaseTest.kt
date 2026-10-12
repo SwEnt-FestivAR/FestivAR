@@ -2,6 +2,7 @@
 package com.android.festivar.model.user
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.festivar.FirebaseEmulatorSetup
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.DocumentSnapshot
@@ -26,7 +27,7 @@ class UsersRepositoryFirebaseTest {
 
   @Before
   fun setUp() {
-    Firebase.auth.useEmulator("10.0.2.2", 9099)
+    FirebaseEmulatorSetup.configure()
     runBlocking { Firebase.auth.signInAnonymously().await() }
     user =
         User(
