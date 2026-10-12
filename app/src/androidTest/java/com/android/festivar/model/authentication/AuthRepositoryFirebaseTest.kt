@@ -4,6 +4,7 @@ package com.android.festivar.model.authentication
 import android.os.Bundle
 import androidx.credentials.CustomCredential
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.festivar.FirebaseEmulatorSetup
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
@@ -15,6 +16,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.BeforeClass
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -24,7 +26,7 @@ class AuthRepositoryFirebaseTest {
 
   @Before
   fun setUp() {
-    Firebase.auth.useEmulator("10.0.2.2", 9099)
+    FirebaseEmulatorSetup.configure()
     Firebase.auth.signOut()
     repository = AuthRepositoryFirebase()
   }
@@ -110,6 +112,12 @@ class AuthRepositoryFirebaseTest {
   private fun newEmail() = "auth-repository-${UUID.randomUUID()}@example.com"
 
   private companion object {
+    @JvmStatic
+    @BeforeClass
+    fun configureFirebaseEmulators() {
+      FirebaseEmulatorSetup.configure()
+    }
+
     const val PASSWORD = "Password123!"
   }
 }
