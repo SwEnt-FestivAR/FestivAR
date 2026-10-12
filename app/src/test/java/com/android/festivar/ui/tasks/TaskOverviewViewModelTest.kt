@@ -4,7 +4,7 @@ package com.android.festivar.ui.tasks
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
-import com.android.festivar.model.temporary.User
+import com.android.festivar.model.user.User
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant

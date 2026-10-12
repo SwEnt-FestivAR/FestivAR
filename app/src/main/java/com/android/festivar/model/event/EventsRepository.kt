@@ -1,6 +1,6 @@
 package com.android.festivar.model.event
 
-import com.android.festivar.model.temporary.User
+import com.android.festivar.model.user.User
 
 /** Represents a repository that manages [Event] items. */
 interface EventsRepository {
