@@ -2,6 +2,14 @@
 package com.android.festivar.ui.event
 
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
+import androidx.annotation.DrawableRes
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,21 +18,29 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.FloatingActionButtonElevation
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,6 +48,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,6 +59,7 @@ import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
@@ -62,8 +82,11 @@ object EventsOverviewScreenTestTags {
   const val UPCOMING_CHIP = "upcomingEventsChip"
   const val PAST_CHIP = "pastEventsChip"
   const val EVENT_LIST = "eventList"
+  const val EMPTY_TITLE = "eventsOverviewEmptyTitle"
   const val EMPTY_EVENT_LIST_MSG = "emptyEventList"
   const val LOADING_INDICATOR = "eventsLoadingIndicator"
+  const val EVENT_ACTIONS_BUTTON = "eventActionsFab"
+  const val JOIN_EVENT_BUTTON = "joinEventFab"
   const val CREATE_EVENT_BUTTON = "createEventFab"
 
   fun getTestTagForEventItem(event: Event): String = "eventItem${event.eventId}"
@@ -93,13 +116,16 @@ internal fun formatEventDates(event: Event, locale: Locale = Locale.getDefault()
  *
  * @param eventsOverviewViewModel The ViewModel providing the [Event] items.
  * @param onSelectEvent Called when the user clicks on an [Event] card.
- * @param onAddEvent Called when the user clicks on the "New event" button.
+ * @param onJoinEvent Called when the user clicks on the "Join" button.
+ * @param onAddEvent Called when the user clicks on the "Create" button.
  * @param onSelectAvatar Called when the user clicks on its avatar in the top bar.
  */
 @Composable
 fun EventsOverviewScreen(
     eventsOverviewViewModel: EventsOverviewViewModel,
     onSelectEvent: (Event) -> Unit = {},
+    // TODO: navigate to the join event screen once the app has navigation
+    onJoinEvent: () -> Unit = {},
     // TODO: navigate to the new event screen once the app has navigation
     onAddEvent: () -> Unit = {},
     // TODO: navigate to the profile screen once the app has navigation
@@ -123,6 +149,7 @@ fun EventsOverviewScreen(
       uiState = uiState,
       onSelectFilter = eventsOverviewViewModel::selectFilter,
       onSelectEvent = onSelectEvent,
+      onJoinEvent = onJoinEvent,
       onAddEvent = onAddEvent,
       onSelectAvatar = onSelectAvatar,
   )
@@ -134,7 +161,8 @@ fun EventsOverviewScreen(
  * @param uiState The state to display.
  * @param onSelectFilter Called when the user clicks on the "Ongoing", "Upcoming" or "Past" chip.
  * @param onSelectEvent Called when the user clicks on an [Event] card.
- * @param onAddEvent Called when the user clicks on the "New event" button.
+ * @param onJoinEvent Called when the user clicks on the "Join" button.
+ * @param onAddEvent Called when the user clicks on the "Create" button.
  * @param onSelectAvatar Called when the user clicks on its avatar in the top bar.
  */
 @Composable
@@ -142,6 +170,7 @@ fun EventsOverviewContent(
     uiState: EventsOverviewUIState,
     onSelectFilter: (EventsFilter) -> Unit = {},
     onSelectEvent: (Event) -> Unit = {},
+    onJoinEvent: () -> Unit = {},
     onAddEvent: () -> Unit = {},
     onSelectAvatar: () -> Unit = {},
 ) {
@@ -170,30 +199,10 @@ fun EventsOverviewContent(
         }
       },
       floatingActionButton = {
-        ExtendedFloatingActionButton(
-            text = { Text(text = "New event", style = MaterialTheme.typography.labelLarge) },
-            icon = {
-              Icon(painter = painterResource(R.drawable.ic_add), contentDescription = null)
-            },
-            onClick = onAddEvent,
-            shape = CircleShape,
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
-            // The design has its own floating shadow instead of the Material elevation
-            elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp),
-            modifier =
-                Modifier.dropShadow(
-                        shape = CircleShape,
-                        shadow =
-                            Shadow(
-                                radius = 24.dp,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                offset = DpOffset(0.dp, 8.dp),
-                                alpha = 0.14f,
-                            ),
-                    )
-                    .testTag(EventsOverviewScreenTestTags.CREATE_EVENT_BUTTON),
-        )
+        // The empty state has its own "Join" and "Create" buttons
+        if (!uiState.hasNoEvents) {
+          EventActionsMenu(onJoinEvent = onJoinEvent, onAddEvent = onAddEvent)
+        }
       },
   ) { pd ->
     Column(
@@ -236,6 +245,9 @@ fun EventsOverviewContent(
             )
           }
         }
+        uiState.hasNoEvents -> {
+          EmptyEventsState(onJoinEvent = onJoinEvent, onAddEvent = onAddEvent)
+        }
         uiState.shownEvents.isEmpty() -> {
           Text(
               text =
@@ -269,6 +281,180 @@ fun EventsOverviewContent(
       }
     }
   }
+}
+
+/**
+ * Empty state of the [EventsOverviewScreen], shown when the user has no [Event] at all. It offers
+ * to join or to create one.
+ */
+@Composable
+private fun EmptyEventsState(onJoinEvent: () -> Unit, onAddEvent: () -> Unit) {
+  val buttonShape = RoundedCornerShape(12.dp)
+  val buttonPadding = PaddingValues(horizontal = 20.dp)
+  Column(
+      verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
+      horizontalAlignment = Alignment.CenterHorizontally,
+      modifier = Modifier.fillMaxSize().padding(horizontal = 44.dp),
+  ) {
+    Icon(
+        painter = painterResource(R.drawable.ic_event),
+        contentDescription = null,
+        tint = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.size(56.dp),
+    )
+    Text(
+        text = "No events yet",
+        style = MaterialTheme.typography.headlineSmall,
+        color = MaterialTheme.colorScheme.onSurface,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.testTag(EventsOverviewScreenTestTags.EMPTY_TITLE),
+    )
+    Text(
+        text = "Join or create an event.",
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center,
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+    // Both buttons share the width equally
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+      OutlinedButton(
+          onClick = onJoinEvent,
+          shape = buttonShape,
+          colors =
+              ButtonDefaults.outlinedButtonColors(
+                  containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+                  contentColor = MaterialTheme.colorScheme.onSurface,
+              ),
+          border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+          contentPadding = buttonPadding,
+          modifier =
+              Modifier.weight(1f)
+                  .height(52.dp)
+                  .testTag(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON),
+      ) {
+        Icon(painter = painterResource(R.drawable.ic_groups), contentDescription = null)
+        Spacer(modifier = Modifier.width(10.dp))
+        Text(text = "Join", style = MaterialTheme.typography.labelLarge, maxLines = 1)
+      }
+      Button(
+          onClick = onAddEvent,
+          shape = buttonShape,
+          colors =
+              ButtonDefaults.buttonColors(
+                  containerColor = MaterialTheme.colorScheme.primary,
+                  contentColor = MaterialTheme.colorScheme.onPrimary,
+              ),
+          contentPadding = buttonPadding,
+          modifier =
+              Modifier.weight(1f)
+                  .height(52.dp)
+                  .testTag(EventsOverviewScreenTestTags.CREATE_EVENT_BUTTON),
+      ) {
+        Icon(painter = painterResource(R.drawable.ic_add), contentDescription = null)
+        Spacer(modifier = Modifier.width(10.dp))
+        Text(text = "Create", style = MaterialTheme.typography.labelLarge, maxLines = 1)
+      }
+    }
+  }
+}
+
+/**
+ * Floating "+" button of the [EventsOverviewScreen]. Clicking on it turns it into a close button
+ * and shows the "Join" and "Create" buttons above it.
+ */
+@Composable
+private fun EventActionsMenu(onJoinEvent: () -> Unit, onAddEvent: () -> Unit) {
+  var expanded by rememberSaveable { mutableStateOf(false) }
+  // The design has its own floating shadow instead of the Material elevation
+  val elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
+  val floatingShadow =
+      Modifier.dropShadow(
+          shape = CircleShape,
+          shadow =
+              Shadow(
+                  radius = 24.dp,
+                  color = MaterialTheme.colorScheme.onSurface,
+                  offset = DpOffset(0.dp, 8.dp),
+                  alpha = 0.14f,
+              ),
+      )
+
+  BackHandler(enabled = expanded) { expanded = false }
+
+  Column(
+      horizontalAlignment = Alignment.End,
+      verticalArrangement = Arrangement.spacedBy(12.dp),
+  ) {
+    AnimatedVisibility(
+        visible = expanded,
+        enter = fadeIn() + slideInVertically { it / 2 },
+        exit = fadeOut() + slideOutVertically { it / 2 },
+    ) {
+      Column(
+          horizontalAlignment = Alignment.End,
+          verticalArrangement = Arrangement.spacedBy(12.dp),
+      ) {
+        EventActionButton(
+            label = "Join",
+            icon = R.drawable.ic_groups,
+            onClick = {
+              expanded = false
+              onJoinEvent()
+            },
+            elevation = elevation,
+            modifier = floatingShadow.testTag(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON),
+        )
+        EventActionButton(
+            label = "Create",
+            icon = R.drawable.ic_add,
+            onClick = {
+              expanded = false
+              onAddEvent()
+            },
+            elevation = elevation,
+            modifier = floatingShadow.testTag(EventsOverviewScreenTestTags.CREATE_EVENT_BUTTON),
+        )
+      }
+    }
+    FloatingActionButton(
+        onClick = { expanded = !expanded },
+        shape = CircleShape,
+        containerColor = MaterialTheme.colorScheme.primary,
+        contentColor = MaterialTheme.colorScheme.onPrimary,
+        elevation = elevation,
+        modifier = floatingShadow.testTag(EventsOverviewScreenTestTags.EVENT_ACTIONS_BUTTON),
+    ) {
+      Icon(
+          painter = painterResource(if (expanded) R.drawable.ic_close else R.drawable.ic_add),
+          contentDescription = if (expanded) "Close" else "Join or create an event",
+      )
+    }
+  }
+}
+
+/** Button of the [EventActionsMenu]: an [icon] followed by a [label]. */
+@Composable
+private fun EventActionButton(
+    label: String,
+    @DrawableRes icon: Int,
+    onClick: () -> Unit,
+    elevation: FloatingActionButtonElevation,
+    modifier: Modifier = Modifier,
+) {
+  ExtendedFloatingActionButton(
+      text = { Text(text = label, style = MaterialTheme.typography.labelLarge) },
+      icon = { Icon(painter = painterResource(icon), contentDescription = null) },
+      onClick = onClick,
+      shape = CircleShape,
+      containerColor = MaterialTheme.colorScheme.primary,
+      contentColor = MaterialTheme.colorScheme.onPrimary,
+      elevation = elevation,
+      modifier = modifier,
+  )
 }
 
 /** Card showing an [event]: its title, then its days and location. */
@@ -355,4 +541,14 @@ private fun EventsOverviewContentPreview() {
           user = User("u0", name = "Yasmine", surname = "Amrani"),
       )
   AppTheme { EventsOverviewContent(uiState = uiState) }
+}
+
+@Preview(showBackground = true, widthDp = 412, heightDp = 915)
+@Composable
+private fun EventsOverviewEmptyPreview() {
+  AppTheme {
+    EventsOverviewContent(
+        uiState = EventsOverviewUIState(user = User("u0", name = "Yasmine", surname = "Amrani"))
+    )
+  }
 }
