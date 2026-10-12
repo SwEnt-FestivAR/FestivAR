@@ -19,7 +19,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
-class UserRepositoryFirebaseTest {
+class UsersRepositoryFirebaseTest {
   private lateinit var repository: UserRepositoryFirebase
   private lateinit var user: User
   private val createdUids = mutableSetOf<String>()
