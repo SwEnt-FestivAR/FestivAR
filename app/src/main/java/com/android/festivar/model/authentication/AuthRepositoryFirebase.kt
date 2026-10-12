@@ -12,7 +12,7 @@ class AuthRepositoryFirebase(
     private val googleSignInHelper: GoogleSignInHelper = GoogleSignInHelper(),
     private val firebaseAuth: FirebaseAuth = Firebase.auth,
 ) : AuthRepository {
-  val currentUser: FirebaseUser?
+  override val currentUser: FirebaseUser?
     get() = firebaseAuth.currentUser
 
   override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> =

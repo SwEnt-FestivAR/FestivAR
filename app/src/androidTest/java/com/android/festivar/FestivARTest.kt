@@ -4,6 +4,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
 import com.android.festivar.ui.authentication.login.LoginScreenTestTags
 import com.android.festivar.ui.authentication.signup.SignUpScreenTestTags
 import io.mockk.mockk
@@ -18,17 +19,11 @@ class FestivARTest {
     composeTestRule.activity.setContent {
       FestivAR(
           credentialManager = mockk(relaxed = true),
-          initialDestination = "Login",
       )
     }
     composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
 
-    composeTestRule.activity.setContent {
-      FestivAR(
-          credentialManager = mockk(relaxed = true),
-          initialDestination = "SignUp",
-      )
-    }
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.CREATE_ACC_BUTTON).performClick()
     composeTestRule.onNodeWithTag(SignUpScreenTestTags.CREATE_ACC_TITLE).assertIsDisplayed()
   }
 }

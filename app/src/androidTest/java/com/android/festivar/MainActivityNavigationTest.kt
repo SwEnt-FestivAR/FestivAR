@@ -11,7 +11,6 @@ import androidx.credentials.Credential
 import androidx.credentials.CredentialManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.authentication.AuthRepository
-import com.android.festivar.navigation.AppScreens
 import com.android.festivar.ui.authentication.login.LoginScreenTestTags
 import com.android.festivar.ui.authentication.signup.SignUpScreenTestTags
 import com.google.firebase.auth.FirebaseUser
@@ -29,7 +28,6 @@ class MainActivityNavigationTest {
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          initialDestination = AppScreens.Login.name,
       )
     }
 
@@ -55,7 +53,6 @@ class MainActivityNavigationTest {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
           authRepository = authRepository,
-          initialDestination = AppScreens.EventOverview.name,
       )
     }
 
@@ -69,6 +66,8 @@ class MainActivityNavigationTest {
   }
 
   private class SuccessfulSignOutRepository : AuthRepository {
+    override val currentUser: FirebaseUser = mockk()
+
     override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> =
         Result.failure(UnsupportedOperationException())
 

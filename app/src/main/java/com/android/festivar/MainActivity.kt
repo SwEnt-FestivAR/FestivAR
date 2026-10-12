@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -23,10 +24,10 @@ import com.android.festivar.navigation.AppScreens
 import com.android.festivar.navigation.LoginNavigator
 import com.android.festivar.navigation.SignUpNavigator
 import com.android.festivar.ui.authentication.login.LoginScreen
+import com.android.festivar.ui.authentication.login.LoginViewModel
 import com.android.festivar.ui.authentication.signup.SignUpScreen
+import com.android.festivar.ui.authentication.signup.SignUpViewModel
 import com.android.festivar.ui.theme.AppTheme
-import com.google.firebase.Firebase
-import com.google.firebase.auth.auth
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -46,26 +47,19 @@ class MainActivity : ComponentActivity() {
  * @param context The context of the application, used for accessing resources and services.
  * @param credentialManager The CredentialManager instance for handling authentication credentials.
  * @param authRepository The AuthRepository instance for handling authentication operations.
- * @param initialDestination The initial destination of the navigation graph. If null, it will
- *   determine the start destination based on the user's authentication state.
  */
 @Composable
 fun FestivAR(
     context: Context = LocalContext.current,
     credentialManager: CredentialManager = CredentialManager.create(context),
     authRepository: AuthRepository = AuthRepositoryFirebase(),
-    initialDestination: String? = null,
 ) {
   val navController = rememberNavController()
   val scope = rememberCoroutineScope()
 
   val startDestination =
-      initialDestination
-          ?: if (runCatching { Firebase.auth.currentUser != null }.getOrDefault(false)) {
-            AppScreens.EventOverview.name
-          } else {
-            AppScreens.Login.name
-          }
+      if (authRepository.currentUser != null) AppScreens.EventOverview.name
+      else AppScreens.Login.name
 
   NavHost(
       navController = navController,
@@ -75,6 +69,7 @@ fun FestivAR(
       val navigator = SignUpNavigator(navController)
       SignUpScreen(
           credentialManager = credentialManager,
+          viewModel = remember(authRepository) { SignUpViewModel(authRepository) },
           onSignInClick = navigator.onSignInClick,
           onBackClick = navigator.onBackClick,
           onSignUpSuccess = navigator.onSignUpSuccess,
@@ -84,6 +79,7 @@ fun FestivAR(
       val navigator = LoginNavigator(navController)
       LoginScreen(
           credentialManager = credentialManager,
+          viewModel = remember(authRepository) { LoginViewModel(authRepository) },
           onSignUpClick = navigator.onSignUpClick,
           onSignedIn = navigator.onSignedIn,
       )
