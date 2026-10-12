@@ -109,6 +109,6 @@ fun FestivAR(
 }
 
 @Composable
-fun ScreenName(x0: String, modifier: Modifier = Modifier) {
-  Text(text = "Hello $x0!", modifier = modifier)
+fun ScreenName(name: String, modifier: Modifier = Modifier) {
+  Text(text = "Hello $name!", modifier = modifier)
 }
