@@ -43,8 +43,6 @@ class MainActivity : ComponentActivity() {
  * navigation controller and defines the navigation graph. You can add your app implementation
  * inside this function.
  *
- * For B3:
- *
  * @param context The context of the application, used for accessing resources and services.
  * @param credentialManager The CredentialManager instance for handling authentication credentials.
  * @param authRepository The AuthRepository instance for handling authentication operations.
