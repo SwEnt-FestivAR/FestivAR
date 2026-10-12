@@ -3,6 +3,7 @@ package com.android.festivar.ui.task.create
 
 import android.os.Looper
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.festivar.R
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
@@ -122,7 +123,7 @@ class CreateTaskViewModelTest {
     vm.createTask("event-1")
 
     val state = vm.uiState.value
-    assertEquals("Unable to create the task.", state.errorMsg)
+    assertEquals(R.string.create_task_error_save_failed, state.errorMsg)
     assertFalse(state.isCreated)
     assertFalse(state.isSaving)
     assertTrue(state.canCreate)
@@ -207,7 +208,7 @@ class CreateTaskViewModelTest {
     vm.updateTitle("Run power to stage")
 
     vm.createTask("event-1")
-    assertEquals("Unable to create the task.", vm.uiState.value.errorMsg)
+    assertEquals(R.string.create_task_error_save_failed, vm.uiState.value.errorMsg)
 
     failing = false
     vm.createTask("event-1")
@@ -270,7 +271,7 @@ class CreateTaskViewModelTest {
     vm.updateTitle("Run power to stage")
 
     vm.createTask("event-1")
-    assertEquals("Unable to create the task.", vm.uiState.value.errorMsg)
+    assertEquals(R.string.create_task_error_save_failed, vm.uiState.value.errorMsg)
     vm.createTask("event-1")
 
     assertEquals(1, runBlocking { repo.local.getAllTasks("event-1") }.size)
@@ -312,7 +313,7 @@ class CreateTaskViewModelTest {
 
     viewModel.createTask("")
 
-    assertEquals("Unable to create the task.", viewModel.uiState.value.errorMsg)
+    assertEquals(R.string.create_task_error_save_failed, viewModel.uiState.value.errorMsg)
     assertFalse(viewModel.uiState.value.isCreated)
     assertFalse(viewModel.uiState.value.isSaving)
     assertTrue(savedTasks().isEmpty())
@@ -332,7 +333,7 @@ class CreateTaskViewModelTest {
     assertTrue(vm.uiState.value.isSaving)
     shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(5))
 
-    assertEquals("Unable to create the task.", vm.uiState.value.errorMsg)
+    assertEquals(R.string.create_task_error_save_failed, vm.uiState.value.errorMsg)
     assertFalse(vm.uiState.value.isSaving)
     assertTrue(vm.uiState.value.canCreate)
   }

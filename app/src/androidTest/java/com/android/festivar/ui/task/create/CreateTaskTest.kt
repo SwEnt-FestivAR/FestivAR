@@ -10,6 +10,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.test.platform.app.InstrumentationRegistry
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.ui.components.hasDayOfMonth
@@ -122,11 +123,16 @@ abstract class CreateTaskTest {
 
   // --- Checks --------------------------------------------------------------------------------
 
+  private fun errorMessage(error: FieldError): String =
+      InstrumentationRegistry.getInstrumentation()
+          .targetContext
+          .getString(fieldErrorMessageRes(error))
+
   private fun ComposeTestRule.checkErrorIsDisplayed(errorTag: String, error: FieldError) {
     onNodeWithTag(errorTag)
         .performScrollTo()
         .assertIsDisplayed()
-        .assertTextEquals(fieldErrorMessage(error))
+        .assertTextEquals(errorMessage(error))
   }
 
   fun ComposeTestRule.checkTitleErrorIsDisplayed(error: FieldError = FieldError.EMPTY_TITLE) =
