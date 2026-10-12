@@ -94,7 +94,7 @@ fun FestivAR(
                     scope.launch {
                       authRepository.signOut().onSuccess {
                         navController.navigate(AppScreens.Login.name) {
-                          popUpTo(AppScreens.Login.name) { inclusive = true }
+                          popUpTo(navController.graph.id) { inclusive = true }
                         }
                       }
                     }
