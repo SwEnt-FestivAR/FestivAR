@@ -1,5 +1,20 @@
+<!-- Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com> -->
 <resources>
     <string name="app_name">FestivAR</string>
     <string name="title_activity_main">MainActivity</string>
     <string name="title_activity_second">SecondActivity</string>
+    <!-- Create task screen -->
+    <string name="create_task">Create task</string>
+    <string name="create_task_back">Back</string>
+    <string name="create_task_field_title">Title</string>
+    <string name="create_task_field_description">Description</string>
+    <string name="create_task_field_location">Location</string>
+    <string name="create_task_field_start_date">Start date</string>
+    <string name="create_task_field_start_time">Start time</string>
+    <string name="create_task_field_end_date">End date</string>
+    <string name="create_task_field_end_time">End time</string>
+    <string name="create_task_error_empty_title">Title cannot be empty</string>
+    <string name="create_task_error_missing_date">Pick a date for this time</string>
+    <string name="create_task_error_end_before_start">The end cannot be before the start</string>
+    <string name="create_task_error_save_failed">Unable to create the task.</string>
 </resources>

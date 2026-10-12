@@ -2,8 +2,10 @@
 package com.android.festivar.ui.task.create
 
 import android.util.Log
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.android.festivar.R
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryProvider
@@ -51,7 +53,8 @@ data class CreateTaskUiState(
     // task twice (see canCreate).
     val isSaving: Boolean = false,
     val isCreated: Boolean = false,
-    val errorMsg: String? = null,
+    // String resource of the error to show (see R.string.create_task_error_save_failed), or null.
+    @StringRes val errorMsg: Int? = null,
 ) {
   val startDateTime: LocalDateTime?
     get() = startDate?.atTime(startTime ?: START_OF_DAY)
@@ -121,8 +124,8 @@ val END_OF_DAY: LocalTime = LocalTime.of(23, 59)
 
 private const val SAVE_TIMEOUT_MS = 15_000L
 
-/** The message shown when the task could not be saved, whatever the cause. */
-private const val SAVE_FAILED_MESSAGE = "Unable to create the task."
+/** The message shown when the task could not be saved, whatever the cause (a string resource). */
+@StringRes private val SAVE_FAILED_MESSAGE = R.string.create_task_error_save_failed
 
 /**
  * Holds the state of the Create task screen and saves the new task in [tasksRepository].

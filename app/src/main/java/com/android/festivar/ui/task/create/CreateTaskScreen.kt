@@ -1,6 +1,7 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.create
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -32,9 +33,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.android.festivar.R
 import com.android.festivar.ui.components.FestivarDatePickerDialog
 import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.components.FestivarPickerField
@@ -138,7 +141,7 @@ fun CreateTaskContent(
         TopAppBar(
             title = {
               Text(
-                  text = "Create task",
+                  text = stringResource(R.string.create_task),
                   style = MaterialTheme.typography.titleLarge,
                   modifier = Modifier.testTag(CreateTaskScreenTestTags.TITLE),
               )
@@ -148,7 +151,10 @@ fun CreateTaskContent(
                   onClick = actions.onBack,
                   modifier = Modifier.testTag(CreateTaskScreenTestTags.BACK_BUTTON),
               ) {
-                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
+                Icon(
+                    Icons.AutoMirrored.Rounded.ArrowBack,
+                    contentDescription = stringResource(R.string.create_task_back),
+                )
               }
             },
             colors =
@@ -161,7 +167,7 @@ fun CreateTaskContent(
         Column {
           state.errorMsg?.let {
             FestivarFieldError(
-                message = it,
+                message = stringResource(it),
                 modifier = Modifier.testTag(CreateTaskScreenTestTags.SAVE_ERROR),
             )
           }
@@ -175,7 +181,7 @@ fun CreateTaskContent(
                       .height(52.dp)
                       .testTag(CreateTaskScreenTestTags.CREATE_BUTTON),
           ) {
-            Text("Create task", style = MaterialTheme.typography.labelLarge)
+            Text(stringResource(R.string.create_task), style = MaterialTheme.typography.labelLarge)
           }
         }
       },
@@ -192,7 +198,7 @@ fun CreateTaskContent(
         FestivarTextField(
             value = state.title,
             onValueChange = actions.onTitleChange,
-            label = "Title",
+            label = stringResource(R.string.create_task_field_title),
             isError = state.titleError != null,
             modifier = Modifier.testTag(CreateTaskScreenTestTags.TITLE_FIELD),
         )
@@ -200,19 +206,19 @@ fun CreateTaskContent(
       FestivarTextField(
           value = state.description,
           onValueChange = actions.onDescriptionChange,
-          label = "Description",
+          label = stringResource(R.string.create_task_field_description),
           singleLine = false,
           modifier = Modifier.testTag(CreateTaskScreenTestTags.DESCRIPTION_FIELD),
       )
       FestivarTextField(
           value = state.location,
           onValueChange = actions.onLocationChange,
-          label = "Location",
+          label = stringResource(R.string.create_task_field_location),
           modifier = Modifier.testTag(CreateTaskScreenTestTags.LOCATION_FIELD),
       )
       DateTimeRow(
-          dateLabel = "Start date",
-          timeLabel = "Start time",
+          dateLabel = stringResource(R.string.create_task_field_start_date),
+          timeLabel = stringResource(R.string.create_task_field_start_time),
           date = state.startDate,
           time = state.startTime,
           dateError = state.startDateError,
@@ -223,8 +229,8 @@ fun CreateTaskContent(
           timeTag = CreateTaskScreenTestTags.START_TIME_FIELD,
       )
       DateTimeRow(
-          dateLabel = "End date",
-          timeLabel = "End time",
+          dateLabel = stringResource(R.string.create_task_field_end_date),
+          timeLabel = stringResource(R.string.create_task_field_end_time),
           date = state.endDate,
           time = state.endTime,
           dateError = state.endDateError,
@@ -288,7 +294,10 @@ private fun FieldWithError(
   Column(modifier = modifier) {
     field()
     error?.let {
-      FestivarFieldError(message = fieldErrorMessage(it), modifier = Modifier.testTag(errorTag))
+      FestivarFieldError(
+          message = stringResource(fieldErrorMessageRes(it)),
+          modifier = Modifier.testTag(errorTag),
+      )
     }
   }
 }
@@ -341,12 +350,13 @@ private fun PickerDialog(
   }
 }
 
-/** The message shown under a field for [error]. */
-fun fieldErrorMessage(error: FieldError): String =
+/** The string resource of the message shown under a field for [error]. */
+@StringRes
+fun fieldErrorMessageRes(error: FieldError): Int =
     when (error) {
-      FieldError.EMPTY_TITLE -> "Title cannot be empty"
-      FieldError.MISSING_DATE -> "Pick a date for this time"
-      FieldError.END_BEFORE_START -> "The end cannot be before the start"
+      FieldError.EMPTY_TITLE -> R.string.create_task_error_empty_title
+      FieldError.MISSING_DATE -> R.string.create_task_error_missing_date
+      FieldError.END_BEFORE_START -> R.string.create_task_error_end_before_start
     }
 
 @Preview(showBackground = true)
