@@ -52,7 +52,7 @@ class MainActivity : ComponentActivity() {
 fun FestivAR(
     context: Context = LocalContext.current,
     credentialManager: CredentialManager = CredentialManager.create(context),
-    authRepository: AuthRepository = AuthRepositoryFirebase(),
+    authRepository: AuthRepository = remember { AuthRepositoryFirebase() },
 ) {
   val navController = rememberNavController()
   val scope = rememberCoroutineScope()
