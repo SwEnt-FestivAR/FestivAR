@@ -2,7 +2,6 @@ package com.android.festivar
 
 import android.content.Context
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
@@ -27,38 +26,15 @@ import com.android.festivar.ui.authentication.login.LoginScreen
 import com.android.festivar.ui.authentication.signup.SignUpScreen
 import com.android.festivar.ui.theme.AppTheme
 import com.google.firebase.Firebase
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.auth
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.firestore
 import kotlinx.coroutines.launch
-
-const val EMU_IP = "127.0.0.1"
 
 class MainActivity : ComponentActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
-    configureFirebase(
-        debug = BuildConfig.DEBUG,
-        auth = Firebase.auth,
-        firestore = Firebase.firestore,
-    )
-
     super.onCreate(savedInstanceState)
 
     setContent { AppTheme { Surface(modifier = Modifier.fillMaxSize()) { FestivAR() } } }
-  }
-}
-
-fun configureFirebase(
-    debug: Boolean,
-    auth: FirebaseAuth,
-    firestore: FirebaseFirestore, // hello i would like two fires please
-) {
-  Log.d("FirebaseConfig", "DEBUG=${BuildConfig.DEBUG}")
-  if (debug) {
-    firestore.useEmulator(EMU_IP, 8080)
-    auth.useEmulator(EMU_IP, 9099)
   }
 }
 
