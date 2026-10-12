@@ -2,8 +2,11 @@
 package com.android.festivar.ui.event
 
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -11,6 +14,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
@@ -23,6 +27,7 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Rule
@@ -103,25 +108,40 @@ class EventsOverviewScreenTest {
           closed = true,
       )
 
+  private fun createViewModel(withRepository: EventsRepository): EventsOverviewViewModel {
+    return EventsOverviewViewModel(eventsRepository = withRepository, user = sara, now = { now })
+  }
+
   private fun setContent(
       withRepository: EventsRepository,
       onSelectEvent: (Event) -> Unit = {},
+      onJoinEvent: () -> Unit = {},
       onAddEvent: () -> Unit = {},
       onSelectAvatar: () -> Unit = {},
+      viewModel: EventsOverviewViewModel = createViewModel(withRepository),
   ): EventsOverviewViewModel {
-    val viewModel =
-        EventsOverviewViewModel(eventsRepository = withRepository, user = sara, now = { now })
     composeTestRule.setContent {
       AppTheme {
         EventsOverviewScreen(
             eventsOverviewViewModel = viewModel,
             onSelectEvent = onSelectEvent,
+            onJoinEvent = onJoinEvent,
             onAddEvent = onAddEvent,
             onSelectAvatar = onSelectAvatar,
         )
       }
     }
     return viewModel
+  }
+
+  /** Asserts that neither the "Join" nor the "Create" button is in the screen. */
+  private fun assertJoinAndCreateButtonsDoNotExist() {
+    composeTestRule
+        .onNodeWithTag(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON)
+        .assertDoesNotExist()
+    composeTestRule
+        .onNodeWithTag(EventsOverviewScreenTestTags.CREATE_EVENT_BUTTON)
+        .assertDoesNotExist()
   }
 
   /**
@@ -143,7 +163,10 @@ class EventsOverviewScreenTest {
     return date.format(DateTimeFormatter.ofPattern("EEE d MMM", Locale.getDefault()))
   }
 
-  /** Test that the title, the avatar, the filter chips and the button are displayed. */
+  /**
+   * Test that the title, the avatar, the filter chips, the list and the "+" button are displayed,
+   * and that the "Join" and "Create" buttons stay hidden until the "+" button is clicked.
+   */
   @Test
   fun displaysAllComponents() {
     setContent(withRepository = EventsRepositoryImpl(listOf(ongoingEvent)))
@@ -154,9 +177,11 @@ class EventsOverviewScreenTest {
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.UPCOMING_CHIP).assertIsDisplayed()
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.PAST_CHIP).assertIsDisplayed()
     composeTestRule
-        .onNodeWithTag(EventsOverviewScreenTestTags.CREATE_EVENT_BUTTON)
+        .onNodeWithTag(EventsOverviewScreenTestTags.EVENT_ACTIONS_BUTTON)
         .assertIsDisplayed()
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.EVENT_LIST).assertIsDisplayed()
+    assertJoinAndCreateButtonsDoNotExist()
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.EMPTY_TITLE).assertDoesNotExist()
   }
 
   /** Test that each filter chip shows the number of events of its category. */
@@ -244,17 +269,94 @@ class EventsOverviewScreenTest {
         .assertDoesNotExist()
   }
 
-  /** Test that each category shows its own message when it has no event. */
+  /**
+   * Test that the ongoing and the upcoming categories show their own message when they have no
+   * event while another category has one, and that the "+" button is still there.
+   */
   @Test
-  fun emptyCategoriesShowAMessage() {
+  fun emptyOngoingAndUpcomingCategoriesShowAMessage() {
+    setContent(withRepository = EventsRepositoryImpl(listOf(pastEvent)))
+    val message = composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.EMPTY_EVENT_LIST_MSG)
+
+    message.assertIsDisplayed().assertTextEquals("You have no ongoing event.")
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.UPCOMING_CHIP).performClick()
+    message.assertIsDisplayed().assertTextEquals("You have no upcoming event.")
+
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.EVENT_LIST).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.EMPTY_TITLE).assertDoesNotExist()
+    composeTestRule
+        .onNodeWithTag(EventsOverviewScreenTestTags.EVENT_ACTIONS_BUTTON)
+        .assertIsDisplayed()
+  }
+
+  /** Test that the past category shows its own message when only the other ones have events. */
+  @Test
+  fun emptyPastCategoryShowsAMessage() {
+    setContent(withRepository = EventsRepositoryImpl(listOf(ongoingEvent)))
+
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.PAST_CHIP).performClick()
+
+    composeTestRule
+        .onNodeWithTag(EventsOverviewScreenTestTags.EMPTY_EVENT_LIST_MSG)
+        .assertIsDisplayed()
+        .assertTextEquals("You have no past event.")
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.EVENT_LIST).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.EMPTY_TITLE).assertDoesNotExist()
+  }
+
+  /**
+   * Test that a user without any event sees the empty state with its "Join" and "Create" buttons,
+   * instead of the message of a category and of the "+" button.
+   */
+  @Test
+  fun emptyStateIsShownWhenTheUserHasNoEvent() {
     setContent(withRepository = EventsRepositoryImpl())
 
-    composeTestRule.onNodeWithText("You have no ongoing event.").assertIsDisplayed()
-    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.UPCOMING_CHIP).performClick()
-    composeTestRule.onNodeWithText("You have no upcoming event.").assertIsDisplayed()
-    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.PAST_CHIP).performClick()
-    composeTestRule.onNodeWithText("You have no past event.").assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(EventsOverviewScreenTestTags.EMPTY_TITLE)
+        .assertIsDisplayed()
+        .assertTextEquals("No events yet")
+    composeTestRule.onNodeWithText("Join or create an event.").assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON)
+        .assertIsDisplayed()
+        .assertTextEquals("Join")
+    composeTestRule
+        .onNodeWithTag(EventsOverviewScreenTestTags.CREATE_EVENT_BUTTON)
+        .assertIsDisplayed()
+        .assertTextEquals("Create")
+
+    composeTestRule
+        .onNodeWithTag(EventsOverviewScreenTestTags.EVENT_ACTIONS_BUTTON)
+        .assertDoesNotExist()
+    composeTestRule
+        .onNodeWithTag(EventsOverviewScreenTestTags.EMPTY_EVENT_LIST_MSG)
+        .assertDoesNotExist()
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.EVENT_LIST).assertDoesNotExist()
+  }
+
+  /** Test that the empty state stays whichever filter chip is selected, each one counting 0. */
+  @Test
+  fun emptyStateStaysOnEveryFilter() {
+    setContent(withRepository = EventsRepositoryImpl())
+
+    listOf(
+            EventsOverviewScreenTestTags.ONGOING_CHIP,
+            EventsOverviewScreenTestTags.UPCOMING_CHIP,
+            EventsOverviewScreenTestTags.PAST_CHIP,
+        )
+        .forEach { chip ->
+          composeTestRule
+              .onNode(hasTestTag(chip).and(hasText("0")))
+              .assertIsDisplayed()
+              .performClick()
+          composeTestRule
+              .onNodeWithTag(EventsOverviewScreenTestTags.EMPTY_TITLE)
+              .assertIsDisplayed()
+          composeTestRule
+              .onNodeWithTag(EventsOverviewScreenTestTags.EMPTY_EVENT_LIST_MSG)
+              .assertDoesNotExist()
+        }
   }
 
   /** Test that an event ending on its starting day shows this day only, then its location. */
@@ -278,6 +380,21 @@ class EventsOverviewScreenTest {
     val startDay = DateTimeFormatter.ofPattern("EEE d", Locale.getDefault())
     val dates = "${pastEvent.startDate.format(startDay)} to ${formatDay(pastEvent.endDate)}"
     onEventItem(pastEvent, hasText(dates, substring = false))
+  }
+
+  /** Test that an event ending in another month shows the month of both its days. */
+  @Test
+  fun eventEndingInAnotherMonthShowsBothMonths() {
+    val event =
+        upcomingEvent.copy(
+            startDate = getDate(2026, 10, 31, hour = 20),
+            endDate = getDate(2026, 11, 1, hour = 4),
+        )
+    setContent(withRepository = EventsRepositoryImpl(listOf(event)))
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.UPCOMING_CHIP).performClick()
+
+    val dates = "${formatDay(event.startDate)} to ${formatDay(event.endDate)} · Satellite"
+    onEventItem(event, hasText(dates, substring = false))
   }
 
   /**
@@ -308,7 +425,29 @@ class EventsOverviewScreenTest {
         .assertIsDisplayed()
   }
 
-  /** Test that a loading indicator is shown until the events are fetched. */
+  /** Test that switching filter shows the new list from its top, whatever the previous scroll. */
+  @Test
+  fun switchingFilterStartsBackAtTheTopOfTheList() {
+    val ongoingEvents = (1..30).map { i -> ongoingEvent.copy(eventId = "ongoing$i") }
+    val upcomingEvents = (1..30).map { i -> upcomingEvent.copy(eventId = "upcoming$i") }
+    setContent(withRepository = EventsRepositoryImpl(ongoingEvents + upcomingEvents))
+
+    val lastOngoingTag = EventsOverviewScreenTestTags.getTestTagForEventItem(ongoingEvents.last())
+    composeTestRule
+        .onNodeWithTag(EventsOverviewScreenTestTags.EVENT_LIST)
+        .performScrollToNode(hasTestTag(lastOngoingTag))
+    composeTestRule.onNodeWithTag(lastOngoingTag).assertIsDisplayed()
+
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.UPCOMING_CHIP).performClick()
+
+    composeTestRule
+        .onNodeWithTag(EventsOverviewScreenTestTags.getTestTagForEventItem(upcomingEvents.first()))
+        .assertIsDisplayed()
+  }
+
+  /**
+   * Test that a loading indicator is shown, and not the empty state, until the events are fetched.
+   */
   @Test
   fun loadingIndicatorIsShownUntilEventsAreFetched() {
     val gate = CompletableDeferred<Unit>()
@@ -317,6 +456,9 @@ class EventsOverviewScreenTest {
     composeTestRule
         .onNodeWithTag(EventsOverviewScreenTestTags.LOADING_INDICATOR)
         .assertIsDisplayed()
+    // The empty state must not flash while the first events are still being fetched
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.EMPTY_TITLE).assertDoesNotExist()
+    assertJoinAndCreateButtonsDoNotExist()
 
     gate.complete(Unit)
     composeTestRule.waitForIdle()
@@ -336,7 +478,31 @@ class EventsOverviewScreenTest {
     composeTestRule.waitForIdle()
 
     assertNull(viewModel.uiState.value.errorMsg)
-    composeTestRule.onNodeWithText("You have no ongoing event.").assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(EventsOverviewScreenTestTags.LOADING_INDICATOR)
+        .assertDoesNotExist()
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.EMPTY_TITLE).assertIsDisplayed()
+  }
+
+  /**
+   * Test that the events are fetched again when the screen is shown, so that an event added since
+   * the ViewModel was created appears.
+   */
+  @Test
+  fun eventsAreFetchedAgainWhenTheScreenIsShown() {
+    val repository = EventsRepositoryImpl(listOf(ongoingEvent))
+    val viewModel = createViewModel(withRepository = repository)
+    composeTestRule.waitUntil { !viewModel.uiState.value.isLoading }
+    assertEquals(listOf<Event>(), viewModel.uiState.value.upcomingEvents)
+
+    runBlocking { repository.addEvent(upcomingEvent) }
+    setContent(withRepository = repository, viewModel = viewModel)
+
+    composeTestRule
+        .onNode(hasTestTag(EventsOverviewScreenTestTags.UPCOMING_CHIP).and(hasText("1")))
+        .assertIsDisplayed()
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.UPCOMING_CHIP).performClick()
+    onEventItem(upcomingEvent, hasText(upcomingEvent.title))
   }
 
   /** Test that clicking on an event card gives the clicked event. */
@@ -355,15 +521,124 @@ class EventsOverviewScreenTest {
     assertEquals(ongoingEvent, selected)
   }
 
-  /** Test that clicking on the "New event" button calls onAddEvent. */
+  /**
+   * Test that the "+" button turns into a close button showing the "Join" and "Create" buttons, and
+   * that clicking on it again hides them.
+   */
   @Test
-  fun clickingCreateButtonCallsOnAddEvent() {
-    var clicks = 0
-    setContent(withRepository = EventsRepositoryImpl(), onAddEvent = { clicks++ })
+  fun actionsButtonShowsThenHidesJoinAndCreateButtons() {
+    setContent(withRepository = EventsRepositoryImpl(listOf(ongoingEvent)))
+    val actionsButton =
+        composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.EVENT_ACTIONS_BUTTON)
+
+    actionsButton.assert(hasContentDescription("Join or create an event"))
+    assertJoinAndCreateButtonsDoNotExist()
+
+    actionsButton.performClick()
+
+    actionsButton.assertIsDisplayed().assert(hasContentDescription("Close"))
+    composeTestRule
+        .onNodeWithTag(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON)
+        .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(EventsOverviewScreenTestTags.CREATE_EVENT_BUTTON)
+        .assertIsDisplayed()
+
+    actionsButton.performClick()
+
+    actionsButton.assert(hasContentDescription("Join or create an event"))
+    assertJoinAndCreateButtonsDoNotExist()
+  }
+
+  /** Test that the back button of the device hides the "Join" and "Create" buttons again. */
+  @Test
+  fun backButtonHidesJoinAndCreateButtons() {
+    setContent(withRepository = EventsRepositoryImpl(listOf(ongoingEvent)))
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.EVENT_ACTIONS_BUTTON).performClick()
+    composeTestRule
+        .onNodeWithTag(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON)
+        .assertIsDisplayed()
+
+    Espresso.pressBack()
+
+    assertJoinAndCreateButtonsDoNotExist()
+    // The back button only closed the menu: the screen is still there
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.TITLE).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(EventsOverviewScreenTestTags.EVENT_ACTIONS_BUTTON)
+        .assert(hasContentDescription("Join or create an event"))
+  }
+
+  /** Test that the "Join" button of the "+" button calls onJoinEvent only, then hides again. */
+  @Test
+  fun clickingJoinButtonCallsOnJoinEventAndHidesTheButtons() {
+    var joins = 0
+    var adds = 0
+    setContent(
+        withRepository = EventsRepositoryImpl(listOf(ongoingEvent)),
+        onJoinEvent = { joins++ },
+        onAddEvent = { adds++ },
+    )
+
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.EVENT_ACTIONS_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON).performClick()
+
+    assertEquals(1, joins)
+    assertEquals(0, adds)
+    assertJoinAndCreateButtonsDoNotExist()
+  }
+
+  /** Test that the "Create" button of the "+" button calls onAddEvent only, then hides again. */
+  @Test
+  fun clickingCreateButtonCallsOnAddEventAndHidesTheButtons() {
+    var joins = 0
+    var adds = 0
+    setContent(
+        withRepository = EventsRepositoryImpl(listOf(ongoingEvent)),
+        onJoinEvent = { joins++ },
+        onAddEvent = { adds++ },
+    )
+
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.EVENT_ACTIONS_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.CREATE_EVENT_BUTTON).performClick()
+
+    assertEquals(0, joins)
+    assertEquals(1, adds)
+    assertJoinAndCreateButtonsDoNotExist()
+  }
+
+  /** Test that the "Join" button of the empty state calls onJoinEvent only. */
+  @Test
+  fun clickingJoinButtonOfTheEmptyStateCallsOnJoinEvent() {
+    var joins = 0
+    var adds = 0
+    setContent(
+        withRepository = EventsRepositoryImpl(),
+        onJoinEvent = { joins++ },
+        onAddEvent = { adds++ },
+    )
+
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON).performClick()
+
+    assertEquals(1, joins)
+    assertEquals(0, adds)
+  }
+
+  /** Test that the "Create" button of the empty state calls onAddEvent only. */
+  @Test
+  fun clickingCreateButtonOfTheEmptyStateCallsOnAddEvent() {
+    var joins = 0
+    var adds = 0
+    setContent(
+        withRepository = EventsRepositoryImpl(),
+        onJoinEvent = { joins++ },
+        onAddEvent = { adds++ },
+    )
 
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.CREATE_EVENT_BUTTON).performClick()
 
-    assertEquals(1, clicks)
+    assertEquals(0, joins)
+    assertEquals(1, adds)
   }
 
   /** Test that clicking on the avatar of the top bar calls onSelectAvatar. */
