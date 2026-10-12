@@ -31,6 +31,10 @@ class UserRepositoryFirebase(
     return documentToUser(document)
   }
 
+  /**
+   * The FIRESTORE_IN_QUERY_LIMIT just limits how many requests are sent at once, not how many
+   * request you can send in total
+   */
   override suspend fun getListUsers(uIds: List<String>): List<User> {
     if (uIds.isEmpty()) return emptyList()
 
@@ -78,10 +82,13 @@ class UserRepositoryFirebase(
 
   override suspend fun deleteUser(uId: String) {
     val document = userCollection.document(uId)
-    if (!document.get().await().exists()) {
-      throw NoSuchElementException("User '$uId' does not exist.")
-    }
-    document.delete().await()
+    db.runTransaction { transaction ->
+          if (!transaction.get(document).exists()) {
+            throw NoSuchElementException("User '$uId' does not exist.")
+          }
+          transaction.delete(document)
+        }
+        .await()
   }
 
   private fun toFirestoreData(user: User): Map<String, Any?> {

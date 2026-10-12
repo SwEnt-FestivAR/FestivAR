@@ -7,6 +7,8 @@ import com.google.firebase.auth.auth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.firestore
 import java.util.UUID
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
 import org.junit.After
@@ -193,6 +195,21 @@ class UserRepositoryFirebaseTest {
   @Test
   fun deleteUser_throwsWhenUserDoesNotExist() = runBlocking {
     assertThrows<NoSuchElementException> { repository.deleteUser(user.uid) }
+  }
+
+  @Test
+  fun deleteUser_concurrentDeletesOnlySucceedOnce() = runBlocking {
+    repository.addUser(user)
+
+    val results =
+        listOf(
+                async { runCatching { repository.deleteUser(user.uid) } },
+                async { runCatching { repository.deleteUser(user.uid) } },
+            )
+            .awaitAll()
+
+    assertEquals(1, results.count { it.isSuccess })
+    assertTrue(results.single { it.isFailure }.exceptionOrNull() is NoSuchElementException)
   }
 
   private suspend inline fun <reified T : Throwable> assertThrows(
