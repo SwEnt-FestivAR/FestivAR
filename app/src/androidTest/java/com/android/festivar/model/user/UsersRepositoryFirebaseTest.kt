@@ -15,7 +15,6 @@ import kotlinx.coroutines.tasks.await
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
-import org.junit.BeforeClass
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -243,13 +242,5 @@ class UsersRepositoryFirebaseTest {
             )
     method.isAccessible = true
     return method.invoke(repository, document) as User
-  }
-
-  private companion object {
-    @JvmStatic
-    @BeforeClass
-    fun configureFirestoreEmulator() {
-      FirebaseEmulatorSetup.configure()
-    }
   }
 }
