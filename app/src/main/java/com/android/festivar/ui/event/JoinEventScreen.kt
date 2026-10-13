@@ -13,9 +13,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.Button
@@ -58,14 +60,19 @@ object JoinEventScreenTestTags {
   const val BACK = "joinEventBack"
   const val TITLE = "joinEventTitle"
   const val CODE_INPUT = "joinEventCodeInput"
-  const val RESULT = "joinEventResult"
-  const val RESULT_NAME = "joinEventResultName"
-  const val RESULT_LINE = "joinEventResultLine"
+  const val SEVERAL = "joinEventSeveral"
   const val NOT_FOUND = "joinEventNotFound"
-  const val JOIN = "joinEventJoin"
   const val ERROR_MESSAGE = "joinEventError"
 
   fun cell(i: Int) = "joinEventCodeCell$i"
+
+  fun result(eventId: String) = "joinEventResult$eventId"
+
+  fun resultName(eventId: String) = "joinEventResultName$eventId"
+
+  fun resultLine(eventId: String) = "joinEventResultLine$eventId"
+
+  fun join(eventId: String) = "joinEventJoin$eventId"
 }
 
 /**
@@ -97,8 +104,9 @@ fun JoinEventScreen(
 }
 
 /**
- * The stateless join screen: six code cells over one hidden text field, the event found for the
- * code (or a not found line), and the Join button. The code field takes focus on entry only when
+ * The stateless join screen: six code cells over one hidden text field, then one card per event the
+ * code matched (or a not found line), each with its own Join button since two events can share a
+ * code. [onJoin] gets the id of the tapped card. The code field takes focus on entry only when
  * [requestFocusOnEntry] is set, which [JoinEventScreen] does.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -107,7 +115,7 @@ fun JoinEventContent(
     state: JoinEventUiState,
     onBack: () -> Unit,
     onCode: (String) -> Unit,
-    onJoin: () -> Unit,
+    onJoin: (eventId: String) -> Unit,
     requestFocusOnEntry: Boolean = false,
 ) {
   val focus = remember { FocusRequester() }
@@ -135,22 +143,13 @@ fun JoinEventContent(
             },
         )
       },
-      bottomBar = {
-        Button(
-            onClick = onJoin,
-            enabled = state.found != null && !state.isJoining,
-            modifier =
-                Modifier.fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 12.dp)
-                    .height(48.dp)
-                    .testTag(JoinEventScreenTestTags.JOIN),
-            shape = RoundedCornerShape(8.dp),
-        ) {
-          Text(text = stringResource(R.string.join_event_join), fontWeight = FontWeight.Bold)
-        }
-      },
   ) { padding ->
-    Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 12.dp)) {
+    Column(
+        Modifier.fillMaxSize()
+            .padding(padding)
+            .padding(horizontal = 12.dp)
+            .verticalScroll(rememberScrollState())
+    ) {
       Text(
           text = stringResource(R.string.join_event_title),
           style = MaterialTheme.typography.headlineLarge,
@@ -219,10 +218,20 @@ fun JoinEventContent(
         }
       }
       Spacer(Modifier.height(16.dp))
-      val found = state.found
-      if (found != null) {
-        FoundCard(found)
-      } else if (state.notFound) {
+      if (state.matches.size > 1) {
+        Text(
+            stringResource(R.string.join_event_several),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.testTag(JoinEventScreenTestTags.SEVERAL),
+        )
+        Spacer(Modifier.height(8.dp))
+      }
+      state.matches.forEach { found ->
+        FoundCard(found, enabled = !state.isJoining, onJoin = { onJoin(found.id) })
+        Spacer(Modifier.height(12.dp))
+      }
+      if (state.notFound) {
         Text(
             stringResource(R.string.join_event_not_found),
             style = MaterialTheme.typography.bodySmall,
@@ -243,18 +252,19 @@ fun JoinEventContent(
   }
 }
 
+/** One matched event: its name, start and member count, and the button that joins it. */
 @Composable
-private fun FoundCard(found: FoundEventUi) {
+private fun FoundCard(found: FoundEventUi, enabled: Boolean, onJoin: () -> Unit) {
   Column(
       Modifier.fillMaxWidth()
           .background(MaterialTheme.colorScheme.surfaceContainerLow, RoundedCornerShape(16.dp))
           .padding(16.dp)
-          .testTag(JoinEventScreenTestTags.RESULT)
+          .testTag(JoinEventScreenTestTags.result(found.id))
   ) {
     Text(
         found.name,
         style = MaterialTheme.typography.titleMedium,
-        modifier = Modifier.testTag(JoinEventScreenTestTags.RESULT_NAME),
+        modifier = Modifier.testTag(JoinEventScreenTestTags.resultName(found.id)),
     )
     Text(
         stringResource(
@@ -264,8 +274,18 @@ private fun FoundCard(found: FoundEventUi) {
         ),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.testTag(JoinEventScreenTestTags.RESULT_LINE),
+        modifier = Modifier.testTag(JoinEventScreenTestTags.resultLine(found.id)),
     )
+    Spacer(Modifier.height(12.dp))
+    Button(
+        onClick = onJoin,
+        enabled = enabled,
+        modifier =
+            Modifier.fillMaxWidth().height(48.dp).testTag(JoinEventScreenTestTags.join(found.id)),
+        shape = RoundedCornerShape(8.dp),
+    ) {
+      Text(text = stringResource(R.string.join_event_join), fontWeight = FontWeight.Bold)
+    }
   }
 }
 
@@ -277,7 +297,11 @@ private fun JoinEventContentPreview() {
         state =
             JoinEventUiState(
                 code = "VIDY26",
-                found = FoundEventUi("e1", "Vidy Festival", "Sat 17 Oct", 12),
+                matches =
+                    listOf(
+                        FoundEventUi("e1", "Vidy Festival", "Sat 17 Oct", 12),
+                        FoundEventUi("e2", "Vidy Afterparty", "Sat 17 Oct", 3),
+                    ),
             ),
         onBack = {},
         onCode = {},

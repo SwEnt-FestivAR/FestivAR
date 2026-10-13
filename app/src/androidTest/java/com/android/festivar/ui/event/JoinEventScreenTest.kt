@@ -25,42 +25,13 @@ import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.joinCodeOf
 import com.android.festivar.model.user.User
-import com.android.festivar.model.user.UsersRepository
+import com.android.festivar.model.user.UsersRepositoryLocal
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-
-// androidTest cannot see src/test, so this duplicates the UsersRepositoryLocal fake that lives
-// there. It keeps only what the join flow reads and writes.
-private class InMemoryUsers(initial: List<User>) : UsersRepository {
-  private val users = initial.toMutableList()
-
-  override fun getNewUid() = "uid${users.size}"
-
-  override suspend fun getAllUsers() = users.toList()
-
-  override suspend fun getUser(uId: String) =
-      users.firstOrNull { it.uid == uId } ?: throw NoSuchElementException(uId)
-
-  override suspend fun getListUsers(uIds: List<String>) = uIds.map { getUser(it) }
-
-  override suspend fun addUser(user: User) {
-    users.add(user)
-  }
-
-  override suspend fun editUser(uId: String, newValue: User) {
-    val index = users.indexOfFirst { it.uid == uId }
-    if (index == -1) throw NoSuchElementException(uId)
-    users[index] = newValue
-  }
-
-  override suspend fun deleteUser(uId: String) {
-    users.removeAll { it.uid == uId }
-  }
-}
 
 @RunWith(AndroidJUnit4::class)
 class JoinEventScreenTest {
@@ -80,7 +51,7 @@ class JoinEventScreenTest {
       state: JoinEventUiState,
       onBack: () -> Unit = {},
       onCode: (String) -> Unit = {},
-      onJoin: () -> Unit = {},
+      onJoin: (String) -> Unit = {},
   ) {
     composeTestRule.setContent { JoinEventContent(state, onBack, onCode, onJoin) }
   }
@@ -88,7 +59,11 @@ class JoinEventScreenTest {
   private fun screen(opened: MutableList<String>) {
     val user = User(uid = "u1")
     val viewModel =
-        JoinEventViewModel(user, EventsRepositoryLocal(listOf(event)), InMemoryUsers(listOf(user)))
+        JoinEventViewModel(
+            user,
+            EventsRepositoryLocal(listOf(event)),
+            UsersRepositoryLocal(listOf(user)),
+        )
     composeTestRule.setContent {
       JoinEventScreen(viewModel = viewModel, onOpenEvent = { opened.add(it) })
     }
@@ -105,16 +80,20 @@ class JoinEventScreenTest {
   }
 
   @Test
-  fun aFoundEventShowsItsNameAndEnablesJoin() {
-    var joins = 0
-    content(JoinEventUiState(code = "VIDY26", found = found), onJoin = { joins++ })
+  fun aFoundEventShowsItsNameAndItsJoinButtonPassesItsId() {
+    val joins = mutableListOf<String>()
+    content(JoinEventUiState(code = "VIDY26", matches = listOf(found)), onJoin = { joins.add(it) })
 
-    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.RESULT).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.result("e1")).assertIsDisplayed()
     composeTestRule
-        .onNodeWithTag(JoinEventScreenTestTags.RESULT_NAME, useUnmergedTree = true)
+        .onNodeWithTag(JoinEventScreenTestTags.resultName("e1"), useUnmergedTree = true)
         .assertTextEquals("Vidy Festival")
-    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.JOIN).assertIsEnabled().performClick()
-    assertEquals(1, joins)
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.SEVERAL).assertDoesNotExist()
+    composeTestRule
+        .onNodeWithTag(JoinEventScreenTestTags.join("e1"))
+        .assertIsEnabled()
+        .performClick()
+    assertEquals(listOf("e1"), joins)
   }
 
   @Test
@@ -122,27 +101,27 @@ class JoinEventScreenTest {
     content(JoinEventUiState(code = "ZZZZZZ", notFound = true))
 
     composeTestRule.onNodeWithTag(JoinEventScreenTestTags.NOT_FOUND).assertIsDisplayed()
-    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.RESULT).assertDoesNotExist()
-    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.JOIN).assertIsNotEnabled()
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.result("e1")).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.join("e1")).assertDoesNotExist()
   }
 
   @Test
   fun joinIsDisabledWhileTheJoinIsRunning() {
-    content(JoinEventUiState(code = "VIDY26", found = found, isJoining = true))
+    content(JoinEventUiState(code = "VIDY26", matches = listOf(found), isJoining = true))
 
-    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.JOIN).assertIsNotEnabled()
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.join("e1")).assertIsNotEnabled()
   }
 
   @Test
   fun theCodeFieldIsDisabledWhileTheJoinIsRunning() {
-    content(JoinEventUiState(code = "VIDY26", found = found, isJoining = true))
+    content(JoinEventUiState(code = "VIDY26", matches = listOf(found), isJoining = true))
 
     composeTestRule.onNodeWithTag(JoinEventScreenTestTags.CODE_INPUT).assertIsNotEnabled()
   }
 
   @Test
   fun anErrorMessageIsShownUnderTheCode() {
-    content(JoinEventUiState(code = "VIDY26", found = found, errorMsg = "offline"))
+    content(JoinEventUiState(code = "VIDY26", matches = listOf(found), errorMsg = "offline"))
 
     composeTestRule
         .onNodeWithTag(JoinEventScreenTestTags.ERROR_MESSAGE)
@@ -162,19 +141,19 @@ class JoinEventScreenTest {
 
   @Test
   fun oneMemberIsWrittenInTheSingular() {
-    content(JoinEventUiState(code = "VIDY26", found = found.copy(members = 1)))
+    content(JoinEventUiState(code = "VIDY26", matches = listOf(found.copy(members = 1))))
 
     composeTestRule
-        .onNodeWithTag(JoinEventScreenTestTags.RESULT_LINE, useUnmergedTree = true)
+        .onNodeWithTag(JoinEventScreenTestTags.resultLine("e1"), useUnmergedTree = true)
         .assertTextEquals("Sat 17 Oct, 1 member")
   }
 
   @Test
   fun severalMembersAreWrittenInThePlural() {
-    content(JoinEventUiState(code = "VIDY26", found = found.copy(members = 3)))
+    content(JoinEventUiState(code = "VIDY26", matches = listOf(found.copy(members = 3))))
 
     composeTestRule
-        .onNodeWithTag(JoinEventScreenTestTags.RESULT_LINE, useUnmergedTree = true)
+        .onNodeWithTag(JoinEventScreenTestTags.resultLine("e1"), useUnmergedTree = true)
         .assertTextEquals("Sat 17 Oct, 3 members")
   }
 
@@ -202,8 +181,8 @@ class JoinEventScreenTest {
     composeTestRule
         .onNodeWithTag(JoinEventScreenTestTags.CODE_INPUT)
         .performTextInput(joinCodeOf(event))
-    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.RESULT).assertIsDisplayed()
-    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.JOIN).performClick()
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.result(event.eventId)).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.join(event.eventId)).performClick()
 
     composeTestRule.waitUntil(5_000) { opened.isNotEmpty() }
     assertEquals(event.eventId, opened.first())
@@ -217,7 +196,7 @@ class JoinEventScreenTest {
     composeTestRule
         .onNodeWithTag(JoinEventScreenTestTags.CODE_INPUT)
         .performTextInput(joinCodeOf(event))
-    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.JOIN).performClick()
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.join(event.eventId)).performClick()
     composeTestRule.waitUntil(5_000) { opened.isNotEmpty() }
     composeTestRule.waitForIdle()
 
@@ -229,7 +208,11 @@ class JoinEventScreenTest {
     val opened = mutableListOf<String>()
     val user = User(uid = "u1")
     val viewModel =
-        JoinEventViewModel(user, EventsRepositoryLocal(listOf(event)), InMemoryUsers(listOf(user)))
+        JoinEventViewModel(
+            user,
+            EventsRepositoryLocal(listOf(event)),
+            UsersRepositoryLocal(listOf(user)),
+        )
     var shown by mutableStateOf(true)
     composeTestRule.setContent {
       if (shown) JoinEventScreen(viewModel = viewModel, onOpenEvent = { opened.add(it) })
@@ -237,7 +220,7 @@ class JoinEventScreenTest {
     composeTestRule
         .onNodeWithTag(JoinEventScreenTestTags.CODE_INPUT)
         .performTextInput(joinCodeOf(event))
-    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.JOIN).performClick()
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.join(event.eventId)).performClick()
     composeTestRule.waitUntil(5_000) { opened.isNotEmpty() }
     composeTestRule.waitForIdle()
 
