@@ -1,5 +1,6 @@
 # Android Studio
 /.idea/
+*.iml
 
 # Gradle & Kotlin
 .gradle/
@@ -10,13 +11,13 @@ build/
 local.properties
 
 # Firebase emulator
-*-debug.log
 .firebase/
 *.log
 
 # macOS
 .DS_Store
 
+# Android studio automatically generated
 /captures
 .externalNativeBuild
 .cxx
