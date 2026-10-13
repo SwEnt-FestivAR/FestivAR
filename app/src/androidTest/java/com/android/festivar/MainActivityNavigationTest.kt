@@ -25,9 +25,12 @@ class MainActivityNavigationTest {
 
   @Test
   fun loginNavigatesToSignUpAndBackToLogin() {
+    val authRepository = FakeAuthRepository(currentUser = null)
+
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
+          authRepository = authRepository,
       )
     }
 
@@ -47,7 +50,7 @@ class MainActivityNavigationTest {
   // the placeholder
   @Test
   fun eventOverviewLogoutSignsOutAndReturnsToLogin() {
-    val authRepository = SuccessfulSignOutRepository()
+    val authRepository = FakeAuthRepository(currentUser = mockk())
 
     composeTestRule.setContent {
       FestivAR(
@@ -64,23 +67,21 @@ class MainActivityNavigationTest {
 
     composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
   }
+}
 
-  private class SuccessfulSignOutRepository : AuthRepository {
-    override val currentUser: FirebaseUser = mockk()
+class FakeAuthRepository(override val currentUser: FirebaseUser?) : AuthRepository {
+  override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> =
+      Result.failure(UnsupportedOperationException())
 
-    override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> =
-        Result.failure(UnsupportedOperationException())
+  override suspend fun signOut(): Result<Unit> = Result.success(Unit)
 
-    override suspend fun signOut(): Result<Unit> = Result.success(Unit)
+  override suspend fun signInWithEmailAndPassword(
+      email: String,
+      password: String,
+  ): Result<FirebaseUser> = Result.failure(UnsupportedOperationException())
 
-    override suspend fun signInWithEmailAndPassword(
-        email: String,
-        password: String,
-    ): Result<FirebaseUser> = Result.failure(UnsupportedOperationException())
-
-    override suspend fun signUpWithEmailAndPassword(
-        email: String,
-        password: String,
-    ): Result<FirebaseUser> = Result.failure(UnsupportedOperationException())
-  }
+  override suspend fun signUpWithEmailAndPassword(
+      email: String,
+      password: String,
+  ): Result<FirebaseUser> = Result.failure(UnsupportedOperationException())
 }

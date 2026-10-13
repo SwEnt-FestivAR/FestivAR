@@ -16,9 +16,12 @@ class FestivARTest {
 
   @Test
   fun createsFestivARWithInitialDestination() {
+    val authRepository = FakeAuthRepository(currentUser = null)
+
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk(relaxed = true),
+          authRepository = authRepository,
       )
     }
     composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
