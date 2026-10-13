@@ -8,6 +8,9 @@ package com.android.festivar.model.event
  */
 const val JOIN_CODE_LENGTH = 6
 
-/** The code an organizer shares: the first six letters or digits of the event id, uppercased. */
+/**
+ * The code an organizer shares: the first six letters or digits of the event id, uppercased. Two
+ * events may share a code; the join screen then lists both and the person picks one.
+ */
 fun joinCodeOf(event: Event): String =
     event.eventId.filter { it.isLetterOrDigit() }.take(JOIN_CODE_LENGTH).uppercase()

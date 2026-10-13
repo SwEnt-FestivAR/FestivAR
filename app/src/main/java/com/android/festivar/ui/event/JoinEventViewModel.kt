@@ -3,6 +3,7 @@ package com.android.festivar.ui.event
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.JOIN_CODE_LENGTH
 import com.android.festivar.model.event.joinCodeOf
@@ -18,9 +19,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * The event a typed code matched.
+ * An event a typed code matched.
  *
- * @property id the event identifier, passed back to join it.
+ * @property id the event identifier, passed back to [JoinEventViewModel.join] it.
  * @property name the event title shown in the result card.
  * @property dateLine when it starts, e.g. `Sat 17 Oct, 10:00`.
  * @property members how many people already belong to it.
@@ -31,8 +32,9 @@ data class FoundEventUi(val id: String, val name: String, val dateLine: String, 
  * UI state of the join screen.
  *
  * @property code what was typed: uppercase letters and digits, at most six.
+ * @property matches every event the code matched, one card each; usually one, more when two event
+ *   ids share their first six letters and digits, so the person picks the right one.
  * @property notFound true when six characters match no event.
- * @property found the event the code matched, or `null` while none did.
  * @property isJoining whether a join is in progress, so a second tap is ignored.
  * @property joined true once the person is a member; the screen then opens the event.
  * @property joinedEventId the id of the event just joined, consumed by
@@ -41,7 +43,7 @@ data class FoundEventUi(val id: String, val name: String, val dateLine: String, 
  */
 data class JoinEventUiState(
     val code: String = "",
-    val found: FoundEventUi? = null,
+    val matches: List<FoundEventUi> = emptyList(),
     val notFound: Boolean = false,
     val isJoining: Boolean = false,
     val joined: Boolean = false,
@@ -50,10 +52,10 @@ data class JoinEventUiState(
 )
 
 /**
- * Looks an event up by its code as it is typed, and joins it as the signed-in [user].
+ * Looks events up by their code as it is typed, and joins the chosen one as the signed-in [user].
  *
  * @property user The signed-in [User] who joins.
- * @property eventsRepository The repository used to look the event up and to add the member.
+ * @property eventsRepository The repository used to look the events up and to add the member.
  * @property usersRepository The repository holding the [User], whose joined events are updated.
  */
 class JoinEventViewModel(
@@ -72,59 +74,62 @@ class JoinEventViewModel(
     // last attempt failed: retyping the same code then retries.
     if (current.isJoining || current.joined) return
     if (code == current.code && current.errorMsg == null) return
-    _uiState.update { it.copy(code = code, found = null, notFound = false, errorMsg = null) }
-    if (code.length < JOIN_CODE_LENGTH) return
-    viewModelScope.launch {
-      try {
-        val found =
-            eventsRepository
-                .getAllEvents()
-                // Two ids sharing their first six characters would give one event; negligible.
-                .firstOrNull { joinCodeOf(it) == code }
-                ?.let {
-                  FoundEventUi(
-                      id = it.eventId,
-                      name = it.title,
-                      dateLine =
-                          "${formatDate(it.startDate.toLocalDate())}, " +
-                              formatTime(it.startDate.toLocalTime()),
-                      members = it.members.size,
-                  )
-                }
-        // A later keystroke may have changed the code while this lookup ran.
-        _uiState.update {
-          if (it.code != code) it else it.copy(found = found, notFound = found == null)
-        }
-      } catch (e: CancellationException) {
-        throw e
-      } catch (e: Exception) {
-        // Same guard as the success path: an old code's failure is not the new code's.
-        _uiState.update {
-          if (it.code != code) it else it.copy(errorMsg = e.message ?: "Could not find the event")
-        }
-      }
+    _uiState.update {
+      it.copy(code = code, matches = emptyList(), notFound = false, errorMsg = null)
+    }
+    if (code.length == JOIN_CODE_LENGTH) viewModelScope.launch { lookUp(code) }
+  }
+
+  /** Lists every event whose code is [code], unless the code changed while the lookup ran. */
+  private suspend fun lookUp(code: String) {
+    try {
+      val matches = eventsRepository.getAllEvents().filter { joinCodeOf(it) == code }.map(::cardOf)
+      updateIfStillTyped(code) { it.copy(matches = matches, notFound = matches.isEmpty()) }
+    } catch (e: CancellationException) {
+      throw e
+    } catch (e: Exception) {
+      updateIfStillTyped(code) { it.copy(errorMsg = e.message ?: "Could not find the event") }
     }
   }
 
-  /** Makes the signed-in person a member of the found event, writing only what is still missing. */
-  fun join() {
+  /**
+   * Applies [change] only while [code] is still the typed one: a later keystroke owns the state.
+   */
+  private fun updateIfStillTyped(code: String, change: (JoinEventUiState) -> JoinEventUiState) {
+    _uiState.update { if (it.code == code) change(it) else it }
+  }
+
+  private fun cardOf(event: Event) =
+      FoundEventUi(
+          id = event.eventId,
+          name = event.title,
+          dateLine =
+              "${formatDate(event.startDate.toLocalDate())}, " +
+                  formatTime(event.startDate.toLocalTime()),
+          members = event.members.size,
+      )
+
+  /**
+   * Makes the signed-in person a member of the matched event [eventId], writing only what is still
+   * missing. Ignored unless [eventId] is among [JoinEventUiState.matches] and no join is running.
+   */
+  fun join(eventId: String) {
     val state = _uiState.value
-    val found = state.found ?: return
-    if (state.isJoining) return
+    if (state.isJoining || state.matches.none { it.id == eventId }) return
     _uiState.update { it.copy(isJoining = true, errorMsg = null) }
     viewModelScope.launch {
       try {
         // Both sides are read again and only the missing one is written, so a join that stopped
         // halfway earlier is repaired instead of failing as "already joined" forever.
         val stored = usersRepository.getUser(user.uid)
-        val event = eventsRepository.getEvent(found.id)
+        val event = eventsRepository.getEvent(eventId)
         if (event.members.none { it.uid == stored.uid }) {
           eventsRepository.editEvent(event.eventId, event.addMember(stored))
         }
         if (event.eventId !in stored.joinedEvents) {
           usersRepository.editUser(stored.uid, stored.addJoinedEvent(event.eventId))
         }
-        _uiState.update { it.copy(isJoining = false, joined = true, joinedEventId = found.id) }
+        _uiState.update { it.copy(isJoining = false, joined = true, joinedEventId = eventId) }
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
