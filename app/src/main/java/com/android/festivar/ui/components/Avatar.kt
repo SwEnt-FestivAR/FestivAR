@@ -69,7 +69,7 @@ fun Avatar(user: User, onClick: (() -> Unit)? = null) {
     if (initials == null) {
       Icon(
           painter = painterResource(R.drawable.ic_person),
-          contentDescription = null,
+          contentDescription = "User avatar",
           tint = MaterialTheme.colorScheme.onSurfaceVariant,
           modifier = Modifier.size(20.dp).testTag(AvatarTestTags.PERSON_ICON),
       )
