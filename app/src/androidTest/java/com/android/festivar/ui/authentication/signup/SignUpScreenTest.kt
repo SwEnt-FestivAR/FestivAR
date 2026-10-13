@@ -17,6 +17,7 @@ import androidx.credentials.Credential
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.authentication.AuthRepository
 import com.google.firebase.auth.FirebaseUser
+import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -95,6 +96,33 @@ class SignUpScreenTest {
     composeTestRule.waitForIdle()
     composeTestRule.onNodeWithTag(SignUpScreenTestTags.ERROR_MESSAGE).assertIsDisplayed()
     composeTestRule.onNodeWithText(errorMessage).assertIsDisplayed()
+    composeTestRule.onNodeWithText("OK").performClick()
+    composeTestRule.waitForIdle()
+    assertEquals(null, viewModel.uiState.value.errorMsg)
+  }
+
+  @Test
+  fun signUpSuccess_invokesSuccessCallback() {
+    var callbackInvoked = false
+    authRepository.signUpResult = Result.success(mockk())
+    composeTestRule.setContent {
+      SignUpScreen(
+          onSignUpSuccess = { callbackInvoked = true },
+          viewModel = viewModel,
+      )
+    }
+
+    composeTestRule
+        .onNodeWithTag(SignUpScreenTestTags.EMAIL_FIELD)
+        .performTextInput("user@example.com")
+    composeTestRule.onNodeWithTag(SignUpScreenTestTags.PASS_FIELD).performTextInput("password123")
+    composeTestRule
+        .onNodeWithTag(SignUpScreenTestTags.PASS_CONFIRM_FIELD)
+        .performTextInput("password123")
+    composeTestRule.onNodeWithTag(SignUpScreenTestTags.SIGNUP_BUTTON).performClick()
+
+    composeTestRule.waitForIdle()
+    assertTrue(callbackInvoked)
   }
 
   @Test
@@ -185,13 +213,14 @@ class SignUpScreenTest {
       private set
 
     var signUpErrorMessage: String = "Not configured"
+    var signUpResult: Result<FirebaseUser>? = null
 
     override suspend fun signUpWithEmailAndPassword(
         email: String,
         password: String,
     ): Result<FirebaseUser> {
       lastSignUpCredentials = email to password
-      return Result.failure(UnsupportedOperationException(signUpErrorMessage))
+      return signUpResult ?: Result.failure(UnsupportedOperationException(signUpErrorMessage))
     }
 
     override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> {
