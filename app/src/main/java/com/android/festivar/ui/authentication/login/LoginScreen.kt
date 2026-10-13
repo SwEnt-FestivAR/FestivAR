@@ -59,6 +59,8 @@ internal object LoginScreenTestTags {
   const val LOGIN_BUTTON = "login_button"
   const val GOOGLE_BUTTON = "google_sign_in_button"
   const val ERROR_MESSAGE = "login_error"
+
+  const val CREATE_ACC_BUTTON = "create_account_button"
 }
 
 /** Displays login fields and handles authentication events. */
@@ -233,7 +235,9 @@ private fun LoginScreenContent(
           color = MaterialTheme.colorScheme.primary,
           fontSize = 12.sp,
           fontWeight = FontWeight.Bold,
-          modifier = Modifier.clickable(role = Role.Button, onClick = onSignUpClick),
+          modifier =
+              Modifier.clickable(role = Role.Button, onClick = onSignUpClick)
+                  .testTag(LoginScreenTestTags.CREATE_ACC_BUTTON),
       )
     }
   }
