@@ -174,7 +174,6 @@ class SignUpScreenTest {
 
     composeTestRule
         .onNodeWithTag(SignUpScreenTestTags.LOGIN_NOW_BUTTON)
-        .performScrollTo()
         .assertIsDisplayed()
         .performClick()
 
