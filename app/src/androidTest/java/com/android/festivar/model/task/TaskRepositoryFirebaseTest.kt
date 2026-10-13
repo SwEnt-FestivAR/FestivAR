@@ -2,6 +2,7 @@
 package com.android.festivar.model.task
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.festivar.FirebaseEmulatorSetup
 import com.android.festivar.model.user.User
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
@@ -26,7 +27,7 @@ class TaskRepositoryFirebaseTest {
 
   @Before
   fun setUp() {
-    Firebase.auth.useEmulator("10.0.2.2", 9099)
+    FirebaseEmulatorSetup.configure()
     runBlocking { Firebase.auth.signInAnonymously().await() }
     task = newTask()
     repository = TaskRepositoryFirebase(Firebase.firestore)
@@ -253,7 +254,7 @@ class TaskRepositoryFirebaseTest {
     @JvmStatic
     @BeforeClass
     fun configureFirestoreEmulator() {
-      Firebase.firestore.useEmulator("10.0.2.2", 8080)
+      FirebaseEmulatorSetup.configure()
     }
   }
 }

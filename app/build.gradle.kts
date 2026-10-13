@@ -41,7 +41,10 @@ android {
 
   testCoverage { jacocoVersion = "0.8.14" }
 
-  buildFeatures { compose = true }
+  buildFeatures {
+    compose = true
+    buildConfig = true
+  } // Enable buildConfig generation for the app module
 
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_17
@@ -127,6 +130,7 @@ fun DependencyHandlerScope.globalTestImplementation(dep: Any) {
 
 dependencies {
   implementation(platform(libs.firebase.bom))
+  implementation(libs.androidx.navigation.compose)
   implementation(libs.credentials)
   implementation(libs.credentials.play.services.auth)
   implementation(libs.firebase.firestore)

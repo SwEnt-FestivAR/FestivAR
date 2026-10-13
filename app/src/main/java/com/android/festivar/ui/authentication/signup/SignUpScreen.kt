@@ -73,7 +73,7 @@ fun SignUpScreen(
     modifier: Modifier = Modifier,
     onSignInClick: () -> Unit = {},
     onBackClick: () -> Unit = {},
-    viewModel: SignUpViewModel = SignUpViewModel(),
+    viewModel: SignUpViewModel = viewModel(),
     onSignUpSuccess: () -> Unit = {},
 ) {
   var isPasswordVisible by remember { mutableStateOf(false) }
