@@ -75,7 +75,7 @@ fun FestivAR(
       val navigator = LoginNavigator(navController)
       LoginScreen(
           credentialManager = credentialManager,
-          viewModel = remember(authRepository) { LoginViewModel(authRepository) },
+          viewModel = viewModel { LoginViewModel(authRepository) },
           onSignUpClick = navigator.onSignUpClick,
           onSignedIn = navigator.onSignedIn,
       )
