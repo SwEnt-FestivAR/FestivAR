@@ -37,6 +37,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -78,7 +79,7 @@ fun SignUpScreen(
     credentialManager: CredentialManager? = CredentialManager.create(LocalContext.current),
     onSignInClick: () -> Unit = {},
     onBackClick: () -> Unit = {},
-    viewModel: SignUpViewModel = SignUpViewModel(),
+    viewModel: SignUpViewModel = viewModel(),
     onSignUpSuccess: () -> Unit = {},
 ) {
   var isPasswordVisible by remember { mutableStateOf(false) }
@@ -86,9 +87,8 @@ fun SignUpScreen(
   val context = LocalContext.current
   val uiState by viewModel.uiState.collectAsState()
 
-  if (uiState.isAuthenticated) {
-    onSignUpSuccess()
-  }
+  LaunchedEffect(uiState.isAuthenticated) { if (uiState.isAuthenticated) onSignUpSuccess() }
+
   Column(
       modifier =
           modifier
