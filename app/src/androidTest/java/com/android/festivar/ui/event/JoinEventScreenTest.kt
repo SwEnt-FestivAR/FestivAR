@@ -97,6 +97,25 @@ class JoinEventScreenTest {
   }
 
   @Test
+  fun twoEventsSharingACodeShowTwoCardsAndTheTappedOneIsJoined() {
+    val joins = mutableListOf<String>()
+    val other = FoundEventUi("e2", "Vidy Afterparty", "Sat 17 Oct", 3)
+    content(
+        JoinEventUiState(code = "VIDY26", matches = listOf(found, other)),
+        onJoin = { joins.add(it) },
+    )
+
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.SEVERAL).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.result("e1")).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(JoinEventScreenTestTags.resultName("e2"), useUnmergedTree = true)
+        .assertTextEquals("Vidy Afterparty")
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.join("e2")).performClick()
+
+    assertEquals(listOf("e2"), joins)
+  }
+
+  @Test
   fun anUnknownCodeShowsNotFoundAndNoJoin() {
     content(JoinEventUiState(code = "ZZZZZZ", notFound = true))
 
