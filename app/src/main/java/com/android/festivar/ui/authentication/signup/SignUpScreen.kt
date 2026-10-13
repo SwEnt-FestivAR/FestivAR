@@ -20,7 +20,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
@@ -95,8 +94,18 @@ fun SignUpScreen(
   Scaffold(
       modifier = modifier,
       snackbarHost = {
-        SnackbarHost(snackBarHostState) { data ->
-          Snackbar(modifier = Modifier.testTag(SignUpScreenTestTags.ERROR_MESSAGE)) {
+        SnackbarHost(
+            hostState = snackBarHostState,
+            modifier = Modifier.padding(bottom = 64.dp),
+        ) { data ->
+          Snackbar(
+              modifier = Modifier.testTag(SignUpScreenTestTags.ERROR_MESSAGE),
+              action = {
+                TextButton(onClick = { data.dismiss() }) {
+                  Text(text = "OK", color = MaterialTheme.colorScheme.primary)
+                }
+              },
+          ) {
             Text(data.visuals.message)
           }
         }
@@ -108,39 +117,41 @@ fun SignUpScreen(
                 .fillMaxSize()
                 .background(color = MaterialTheme.colorScheme.background)
                 .padding(paddingValues)
-                .padding(horizontal = 24.dp)
-                .verticalScroll(rememberScrollState()),
+                .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.Start,
     ) {
-      SignUpTopBar(onBackClick)
-      Spacer(modifier = Modifier.height(16.dp))
-      SignUpHeader()
-      Spacer(modifier = Modifier.height(24.dp))
-      SignUpFields(
-          email = uiState.email,
-          onEmailChange = { viewModel.updateEmail(it) },
-          password = uiState.password,
-          onPasswordChange = { viewModel.updatePassword(it) },
-          confirmPassword = uiState.confirmPassword,
-          onConfirmPasswordChange = { viewModel.updateConfirmPassword(it) },
-          isPasswordVisible = isPasswordVisible,
-          onPasswordVisibilityChange = { isPasswordVisible = !isPasswordVisible },
-      )
-      Spacer(modifier = Modifier.height(20.dp))
-      SignUpButton(
-          enabled =
-              uiState.email.isNotBlank() &&
-                  uiState.password.isNotBlank() &&
-                  uiState.confirmPassword.isNotBlank() &&
-                  uiState.password == uiState.confirmPassword,
-          isLoading = uiState.isLoading,
-          onClick = { viewModel.signUp(uiState.email, uiState.password) },
-      )
-      Spacer(modifier = Modifier.height(24.dp))
-      Spacer(modifier = Modifier.height(24.dp))
-      Spacer(modifier = Modifier.height(24.dp))
-      SignUpTerms()
-      Spacer(modifier = Modifier.height(32.dp))
+      Column(
+          modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
+          horizontalAlignment = Alignment.Start,
+      ) {
+        SignUpTopBar(onBackClick)
+        Spacer(modifier = Modifier.height(16.dp))
+        SignUpHeader()
+        Spacer(modifier = Modifier.height(24.dp))
+        SignUpFields(
+            email = uiState.email,
+            onEmailChange = { viewModel.updateEmail(it) },
+            password = uiState.password,
+            onPasswordChange = { viewModel.updatePassword(it) },
+            confirmPassword = uiState.confirmPassword,
+            onConfirmPasswordChange = { viewModel.updateConfirmPassword(it) },
+            isPasswordVisible = isPasswordVisible,
+            onPasswordVisibilityChange = { isPasswordVisible = !isPasswordVisible },
+        )
+        Spacer(modifier = Modifier.height(20.dp))
+        SignUpButton(
+            enabled =
+                uiState.email.isNotBlank() &&
+                    uiState.password.isNotBlank() &&
+                    uiState.confirmPassword.isNotBlank() &&
+                    uiState.password == uiState.confirmPassword,
+            isLoading = uiState.isLoading,
+            onClick = { viewModel.signUp(uiState.email, uiState.password) },
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        SignUpTerms()
+        Spacer(modifier = Modifier.height(32.dp))
+      }
       SignUpFooter(onSignInClick)
     }
   }
@@ -157,13 +168,6 @@ private fun SignUpTopBar(onBackClick: () -> Unit) {
       Icon(
           imageVector = Icons.AutoMirrored.Filled.ArrowBack,
           contentDescription = "Back",
-          tint = MaterialTheme.colorScheme.onSurface,
-      )
-    }
-    IconButton(onClick = {}) {
-      Icon(
-          imageVector = Icons.Default.MoreVert,
-          contentDescription = "More Options",
           tint = MaterialTheme.colorScheme.onSurface,
       )
     }
@@ -386,6 +390,20 @@ fun SignUpScreenPreview() {
         viewModel = SignUpViewModel(PreviewAuthRepository),
         onSignUpSuccess = {},
     )
+  }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun SignUpErrorSnackbarPreview() {
+  AppTheme {
+    Snackbar(
+        action = {
+          TextButton(onClick = {}) { Text(text = "OK", color = MaterialTheme.colorScheme.primary) }
+        },
+    ) {
+      Text("Email already used")
+    }
   }
 }
 
