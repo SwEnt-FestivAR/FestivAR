@@ -19,14 +19,14 @@ class SignUpNavigatorTest {
   fun signInClickPopsBackStack() {
     navigator.onSignInClick()
 
-    verify { navController.popBackStack() }
+    verify { navController.popBackStack(AppScreens.Login.name, inclusive = false) }
   }
 
   @Test
   fun backClickPopsBackStack() {
     navigator.onBackClick()
 
-    verify { navController.popBackStack() }
+    verify { navController.popBackStack(AppScreens.Login.name, inclusive = false) }
   }
 
   @Test
