@@ -486,4 +486,43 @@ class JoinEventViewModelTest {
     viewModel.setCode("X")
     assertEquals("X", viewModel.uiState.value.code)
   }
+
+  @Test
+  fun twoEventsSharingACodeAreBothListedAndJoiningOneLeavesTheOtherAlone() {
+    // fete2026 and fete2026-bis both give FETE20.
+    val bis = fete.copy(eventId = "fete2026-bis", title = "Fete bis", members = emptyList())
+    val colliding = EventsRepositoryLocal(listOf(fete, bis, noel))
+    val viewModel = viewModel(eventsRepository = colliding)
+
+    viewModel.setCode("FETE20")
+
+    assertEquals(listOf("fete2026", "fete2026-bis"), viewModel.uiState.value.matches.map { it.id })
+    assertFalse(viewModel.uiState.value.notFound)
+
+    viewModel.join("fete2026-bis")
+
+    assertEquals("fete2026-bis", viewModel.uiState.value.joinedEventId)
+    assertEquals(
+        listOf(ada.uid),
+        runBlocking { colliding.getEvent("fete2026-bis") }.members.map { it.uid },
+    )
+    assertEquals(
+        listOf(sami.uid),
+        runBlocking { colliding.getEvent("fete2026") }.members.map { it.uid },
+    )
+    assertEquals(listOf("fete2026-bis"), joinedEvents(ada.uid))
+  }
+
+  @Test
+  fun joiningAnEventTheCodeDidNotMatchWritesNothing() {
+    val viewModel = viewModel()
+    viewModel.setCode("FETE20")
+
+    viewModel.join("noel-12")
+
+    assertFalse(viewModel.uiState.value.isJoining)
+    assertFalse(viewModel.uiState.value.joined)
+    assertEquals(0, events.writes)
+    assertEquals(0, users.writes)
+  }
 }
