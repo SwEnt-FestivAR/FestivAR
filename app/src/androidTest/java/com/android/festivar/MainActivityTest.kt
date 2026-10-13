@@ -8,7 +8,11 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.credentials.CredentialManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.ui.authentication.login.LoginScreenTestTags
+import com.google.firebase.Firebase
+import com.google.firebase.auth.auth
 import io.mockk.mockk
+import org.junit.After
+import org.junit.BeforeClass
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -29,5 +33,18 @@ class MainActivityTest {
     }
 
     composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  @After
+  fun tearDown() {
+    Firebase.auth.signOut()
+  }
+
+  companion object {
+    @BeforeClass
+    @JvmStatic
+    fun signOut() {
+      Firebase.auth.signOut()
+    }
   }
 }
