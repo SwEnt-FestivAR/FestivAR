@@ -3,7 +3,6 @@ package com.android.festivar.ui.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.model.authentication.AuthRepository
-import com.android.festivar.model.event.Event
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import kotlinx.coroutines.CancellationException
@@ -59,7 +58,15 @@ data class ProfileUIState(
         }
 }
 
-
+/**
+ * ViewModel of the Profile screen.
+ *
+ * Manages the UI state by fetching the [User] item through the [UsersRepository].
+ *
+ * @property repository The repository used to fetch the [User] item.
+ * @property authRepository The repository used to fetch the [User] account or log him out.
+ * @property uId The current [User] unique identifier.
+ */
 class ProfileViewModel (
     private val repository: UsersRepository, // = UsersRepositoryProvider.repository
     private val authRepository: AuthRepository,
@@ -69,49 +76,70 @@ class ProfileViewModel (
     private val _uiState = MutableStateFlow(ProfileUIState())
     val uiState: StateFlow<ProfileUIState> = _uiState.asStateFlow()
 
-
+    /**
+     * Initialisation block that charges all data  to be ready for display.
+     */
     init {
         getUserInformation()
     }
 
+    /** Clears the error message in the UI state. */
     fun clearErrorMsg() {
         _uiState.update { it.copy(errorMsg = null) }
     }
 
-    /** Sets the name typed in the Name field. The saved [ProfileUIState.user] is not changed. */
+    /**
+     * Sets the name typed in the Name field. The saved [ProfileUIState.user] is not changed.
+     *
+     * @param name The name that is being typed.
+     */
     fun updateName(name: String) {
         _uiState.update { it.copy(name = name) }
     }
 
+    /**
+     * Sets the surname typed in the Surname field. The saved [ProfileUIState.user] is not changed.
+     *
+     * @param surname The surname that is being typed.
+     */
     fun updateSurname(surname: String) {
         _uiState.update { it.copy(surname = surname) }
     }
 
 
     /**
-     * Saves the typed name and surname in the repository; the email is not editable and is kept.
-     * Does nothing unless [ProfileUIState.canSave], so a second tap during a save is ignored.
+     * Utility function that saves the typed name and surname in the repository.
+     * Does nothing unless [ProfileUIState.canSave], and checks [ProfileUIState.isSaving] so that
+     * a second tap will do nothing until the save is completed or fails.
+     *
+     * @throws IllegalStateException if the current original [User] is `null`.
      */
     fun saveChanges() {
         val state = _uiState.value
+
+        // If saving is disabled, quit the function.
         if (!state.canSave) return
-        val original = state.user ?: return
+
+        // If there is no actual user, that shouldn't happen and throws and exception.
+        val original = state.user ?: throw IllegalStateException("The user shouldn't be null.")
 
         // Built from the fields as they are now, so typing during the save does not change what is
-        // saved. copy keeps the email, joined events and assigned tasks of the user.
-
+        // saved. copy keeps the email, joined events and assigned tasks of the original user.
         val newUser = original.copy(
                 name = state.name.trim(),
                 surname = state.surname.trim()
-            )
+        )
 
+        // Set the current state to saving.
         _uiState.update { it.copy(isSaving = true, errorMsg = null) }
 
+        // Save the user modifications into the rpeository.
         viewModelScope.launch {
             try {
+
                 repository.editUser(uId, newUser)
-                // The saved user is the new original, so canSave turns false until the next edit.
                 _uiState.update { it.copy(user = newUser, isSaving = false) }
+
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -144,8 +172,15 @@ class ProfileViewModel (
         }
     }
 
+    /**
+     * Utility function that fetches the [User] item from the repository and updates the UI state.
+     */
     private fun getUserInformation(){
+        // Sets the state to loading so that the user can't already try to write the in the fields
+        // while the information are not already set.
         _uiState.update { it.copy(isLoading = true, errorMsg = null) }
+
+        // Fetch the information from the repository.
         viewModelScope.launch {
             try {
                 val user = repository.getUser(uId)
@@ -159,7 +194,7 @@ class ProfileViewModel (
                 }
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: Exception) {
+            } catch (e: NoSuchElementException) {
                 _uiState.update {
                     it.copy(
                         isLoading = false,
