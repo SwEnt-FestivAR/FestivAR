@@ -382,8 +382,6 @@ private fun SignUpButton(
   }
 }
 
-ng.signup_signing_up
-
 @Composable
 private fun fieldColors() =
     OutlinedTextFieldDefaults.colors(
