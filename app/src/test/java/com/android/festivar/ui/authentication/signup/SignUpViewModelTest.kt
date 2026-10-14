@@ -39,7 +39,7 @@ class SignUpViewModelTest {
 
     Assert.assertFalse(state.isLoading)
     Assert.assertTrue(state.isAuthenticated)
-    Assert.assertEquals(null, state.errorMsg)
+    Assert.assertNull(state.errorMsg)
   }
 
   @Test
@@ -68,7 +68,7 @@ class SignUpViewModelTest {
 
     viewModel.clearError()
 
-    Assert.assertEquals(null, viewModel.uiState.value.errorMsg)
+    Assert.assertNull(viewModel.uiState.value.errorMsg)
   }
 
   @Test
@@ -103,7 +103,7 @@ class SignUpViewModelTest {
 
     Assert.assertFalse(state.isLoading)
     Assert.assertTrue(state.signedOut)
-    Assert.assertEquals(null, state.errorMsg)
+    Assert.assertNull(state.errorMsg)
   }
 
   @Test
