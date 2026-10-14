@@ -13,11 +13,14 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import com.android.festivar.R
 import com.android.festivar.ui.components.FieldError
 import com.android.festivar.ui.components.formatDate
 import com.android.festivar.ui.components.formatTime
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -263,6 +266,32 @@ class CreateTaskScreenInstrumentedTest : CreateTaskTest() {
     assertEquals(completeForm.endDateTime, saved.endTime)
     assertEquals(1, createdCount)
     assertEquals(0, backCount)
+  }
+
+  @Test
+  fun aFailedSaveShowsAnErrorAndCanBeRetried() {
+    addTaskFails = true
+    composeTestRule.enterCreateTaskDetails(titleOnlyForm)
+    composeTestRule.clickOnCreate()
+
+    composeTestRule.waitUntil(UI_WAIT_TIMEOUT) { viewModel.uiState.value.errorMsg != null }
+    val message =
+        InstrumentationRegistry.getInstrumentation()
+            .targetContext
+            .getString(R.string.create_task_error_save_failed)
+    composeTestRule
+        .onNodeWithTag(CreateTaskScreenTestTags.SAVE_ERROR)
+        .assertIsDisplayed()
+        .assertTextEquals(message)
+    assertTrue(savedTasks().isEmpty())
+    assertEquals(0, createdCount)
+
+    addTaskFails = false
+    composeTestRule.clickOnCreate(waitForRedirection = true)
+
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.SAVE_ERROR).assertDoesNotExist()
+    assertEquals(titleOnlyForm.title, savedTasks().single().title)
+    assertEquals(1, createdCount)
   }
 
   // --- Navigation ----------------------------------------------------------------------------

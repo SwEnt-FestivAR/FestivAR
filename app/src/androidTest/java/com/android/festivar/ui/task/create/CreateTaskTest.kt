@@ -13,6 +13,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.platform.app.InstrumentationRegistry
 import com.android.festivar.model.task.Task
+import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.ui.components.FieldError
 import com.android.festivar.ui.components.fieldErrorMessageRes
@@ -43,12 +44,24 @@ abstract class CreateTaskTest {
   /** How many times the screen reported that the user went back. */
   var backCount = 0
 
+  /** While true, saving a task fails as if the device were offline. */
+  var addTaskFails = false
+
   @Before
   open fun setUp() {
     repository = TasksRepositoryLocal()
-    viewModel = CreateTaskViewModel(repository)
+    // STUB over the fake: addTask fails while addTaskFails is true, to test the save error.
+    val failable =
+        object : TasksRepository by repository {
+          override suspend fun addTask(task: Task) {
+            if (addTaskFails) throw IllegalStateException("offline")
+            repository.addTask(task)
+          }
+        }
+    viewModel = CreateTaskViewModel(failable)
     createdCount = 0
     backCount = 0
+    addTaskFails = false
   }
 
   fun savedTasks(): List<Task> = runBlocking { repository.getAllTasks(EVENT_ID) }
