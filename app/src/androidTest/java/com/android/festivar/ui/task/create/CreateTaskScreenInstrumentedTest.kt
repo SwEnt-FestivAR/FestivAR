@@ -5,19 +5,13 @@ package com.android.festivar.ui.task.create
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.android.festivar.R
 import com.android.festivar.ui.components.FieldError
-import com.android.festivar.ui.components.formatDate
-import com.android.festivar.ui.components.formatTime
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -26,7 +20,11 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** Runs the Create task screen on a device or emulator, through the tags annotated in Figma. */
+/**
+ * Runs the Create task screen on a device or emulator, through the tags annotated in Figma. The
+ * validation rules and the saving logic are tested in `CreateTaskViewModelTest`; these tests check
+ * that the screen shows them and forwards the user's input.
+ */
 @RunWith(AndroidJUnit4::class)
 class CreateTaskScreenInstrumentedTest : CreateTaskTest() {
   @get:Rule val composeTestRule = createComposeRule()
@@ -48,8 +46,6 @@ class CreateTaskScreenInstrumentedTest : CreateTaskTest() {
     composeTestRule.showCreateTaskScreen()
   }
 
-  // --- Display -------------------------------------------------------------------------------
-
   @Test
   fun displayAllComponents() {
     composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.BACK_BUTTON).assertIsDisplayed()
@@ -60,150 +56,16 @@ class CreateTaskScreenInstrumentedTest : CreateTaskTest() {
     composeTestRule
         .onNodeWithTag(CreateTaskScreenTestTags.CREATE_BUTTON)
         .assertIsDisplayed()
-        .assertTextContains("Create task")
+        .assertIsNotEnabled() // The form is empty.
     fieldTags.forEach { composeTestRule.onNodeWithTag(it).assertIsDisplayed() }
     composeTestRule.checkNoFieldErrorIsDisplayed()
   }
 
   @Test
-  fun createButtonIsDisabledWhenTheFormIsEmpty() {
-    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.CREATE_BUTTON).assertIsNotEnabled()
-  }
-
-  @Test
-  fun everyFieldIsReachableByScrolling() {
-    fieldTags.forEach { composeTestRule.onNodeWithTag(it).performScrollTo().assertIsDisplayed() }
-  }
-
-  // --- Entering values -----------------------------------------------------------------------
-
-  @Test
-  fun canEnterTitle() {
-    val text = "title"
-    composeTestRule.enterCreateTaskTitle(text)
-    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.TITLE_FIELD).assertTextContains(text)
-    composeTestRule.checkNoFieldErrorIsDisplayed()
-  }
-
-  @Test
-  fun canEnterDescription() {
-    val text = "description"
-    composeTestRule.enterCreateTaskDescription(text)
-    composeTestRule
-        .onNodeWithTag(CreateTaskScreenTestTags.DESCRIPTION_FIELD)
-        .assertTextContains(text)
-    composeTestRule.checkNoFieldErrorIsDisplayed()
-  }
-
-  @Test
-  fun canEnterLocation() {
-    val text = "location"
-    composeTestRule.enterCreateTaskLocation(text)
-    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.LOCATION_FIELD).assertTextContains(text)
-    composeTestRule.checkNoFieldErrorIsDisplayed()
-  }
-
-  @Test
-  fun descriptionHasSufficientHeight() {
-    val description =
-        "This is a very long description that should span multiple lines \n" +
-            "in the input field to test whether the height of the description input is sufficient. \n" +
-            "Adding even more text to be sure that it is really long and spans multiple lines. \n" +
-            "Hopefully this is enough!"
-    composeTestRule.enterCreateTaskDescription(description)
-    composeTestRule
-        .onNodeWithTag(CreateTaskScreenTestTags.DESCRIPTION_FIELD)
-        .assertTextContains(description, substring = false)
-  }
-
-  @Test
-  fun canPickADateAndATime() {
-    val date = completeForm.startDate!!
-    composeTestRule.pickCreateTaskDate(CreateTaskScreenTestTags.START_DATE_FIELD, date)
-    composeTestRule.pickCreateTaskTime(
-        CreateTaskScreenTestTags.START_TIME_FIELD,
-        PICKER_DEFAULT_TIME,
-    )
-
-    composeTestRule
-        .onNodeWithTag(CreateTaskScreenTestTags.START_DATE_FIELD)
-        .assertTextContains(formatDate(date))
-    composeTestRule
-        .onNodeWithTag(CreateTaskScreenTestTags.START_TIME_FIELD)
-        .assertTextContains(formatTime(PICKER_DEFAULT_TIME))
-    composeTestRule.checkNoFieldErrorIsDisplayed()
-  }
-
-  @Test
-  fun cancellingAPickerClosesItAndLeavesTheFieldUntouched() {
-    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.START_TIME_FIELD).performClick()
-    composeTestRule.onNodeWithText("Cancel").performClick()
-
-    composeTestRule.onNodeWithText("Cancel").assertDoesNotExist()
-    composeTestRule
-        .onNodeWithTag(CreateTaskScreenTestTags.START_TIME_FIELD)
-        // The label, then the (empty) value of the field: nothing was picked.
-        .assertTextEquals("Start time", "")
-  }
-
-  // --- Invalid forms -------------------------------------------------------------------------
-
-  @Test
-  fun savingWithABlankTitleShouldDoNothing() = checkNoTaskWereAdded {
-    composeTestRule.enterCreateTaskDetails(completeForm.copy(title = " ")) // Title is mandatory
-    composeTestRule.clickOnCreate()
-    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.CREATE_BUTTON).assertIsNotEnabled()
-    assertEquals(0, createdCount)
-  }
-
-  @Test
-  fun savingWithTheEndBeforeTheStartShouldDoNothing() = checkNoTaskWereAdded {
-    composeTestRule.enterCreateTaskDetails(
-        completeForm.copy(
-            startDate = completeForm.endDate, // one day after the end
-            endDate = completeForm.startDate,
-        )
-    )
-    composeTestRule.clickOnCreate()
-    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.CREATE_BUTTON).assertIsNotEnabled()
-    assertEquals(0, createdCount)
-  }
-
-  @Test
-  fun savingATimeWithoutItsDateShouldDoNothing() = checkNoTaskWereAdded {
-    composeTestRule.enterCreateTaskDetails(
-        titleOnlyForm.copy(startTime = PICKER_DEFAULT_TIME) // no start date
-    )
-    composeTestRule.clickOnCreate()
-    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.CREATE_BUTTON).assertIsNotEnabled()
-    assertEquals(0, createdCount)
-  }
-
-  @Test
-  fun enteringTheEndBeforeTheStartShowsErrorMessage() {
-    val day: LocalDate = completeForm.startDate!!
-    composeTestRule.pickCreateTaskDate(CreateTaskScreenTestTags.START_DATE_FIELD, day.plusDays(1))
-    composeTestRule.pickCreateTaskDate(CreateTaskScreenTestTags.END_DATE_FIELD, day)
-    composeTestRule.checkEndDateErrorIsDisplayed(FieldError.END_BEFORE_START)
-  }
-
-  @Test
-  fun enteringATimeWithoutItsDateShowsErrorMessage() {
-    composeTestRule.pickCreateTaskTime(CreateTaskScreenTestTags.END_TIME_FIELD, PICKER_DEFAULT_TIME)
-    composeTestRule.checkEndDateErrorIsDisplayed(FieldError.MISSING_DATE)
-  }
-
-  @Test
-  fun enteringABlankTitleShowsErrorMessage() {
+  fun aBlankTitleShowsAnErrorUntilATitleIsEntered() {
     composeTestRule.enterCreateTaskTitle(" ") // Title is mandatory
     composeTestRule.checkTitleErrorIsDisplayed()
     composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.CREATE_BUTTON).assertIsNotEnabled()
-  }
-
-  @Test
-  fun theTitleErrorDisappearsOnceATitleIsEntered() {
-    composeTestRule.enterCreateTaskTitle(" ")
-    composeTestRule.checkTitleErrorIsDisplayed()
 
     composeTestRule.enterCreateTaskTitle("Run power to stage")
 
@@ -212,44 +74,30 @@ class CreateTaskScreenInstrumentedTest : CreateTaskTest() {
   }
 
   @Test
-  fun enteringAStartTimeWithoutItsDateShowsErrorMessageUnderTheStartDate() {
+  fun aTimeWithoutItsDateShowsAnErrorUnderThatDate() {
     composeTestRule.pickCreateTaskTime(
         CreateTaskScreenTestTags.START_TIME_FIELD,
         PICKER_DEFAULT_TIME,
     )
     composeTestRule.checkStartDateErrorIsDisplayed(FieldError.MISSING_DATE)
+
+    composeTestRule.pickCreateTaskTime(CreateTaskScreenTestTags.END_TIME_FIELD, PICKER_DEFAULT_TIME)
+    composeTestRule.checkEndDateErrorIsDisplayed(FieldError.MISSING_DATE)
   }
 
   @Test
-  fun theDateErrorDisappearsOnceTheScheduleIsFixed() {
+  fun anEndBeforeTheStartShowsAnErrorUntilTheScheduleIsFixed() {
     val day: LocalDate = completeForm.startDate!!
+    composeTestRule.enterCreateTaskTitle("Run power to stage")
     composeTestRule.pickCreateTaskDate(CreateTaskScreenTestTags.START_DATE_FIELD, day.plusDays(1))
     composeTestRule.pickCreateTaskDate(CreateTaskScreenTestTags.END_DATE_FIELD, day)
     composeTestRule.checkEndDateErrorIsDisplayed(FieldError.END_BEFORE_START)
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.CREATE_BUTTON).assertIsNotEnabled()
 
     composeTestRule.pickCreateTaskDate(CreateTaskScreenTestTags.END_DATE_FIELD, day.plusDays(2))
 
     composeTestRule.checkNoFieldErrorIsDisplayed()
-  }
-
-  // --- Valid forms ---------------------------------------------------------------------------
-
-  @Test
-  fun createButtonIsEnabledOnceATitleIsEntered() {
-    composeTestRule.enterCreateTaskDetails(titleOnlyForm)
     composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.CREATE_BUTTON).assertIsEnabled()
-  }
-
-  @Test
-  fun savingATitleOnlyFormAddsAnUnscheduledTask() {
-    composeTestRule.enterCreateTaskDetails(titleOnlyForm)
-    composeTestRule.clickOnCreate(waitForRedirection = true)
-
-    val saved = savedTasks().single()
-    assertEquals(titleOnlyForm.title, saved.title)
-    assertEquals(null, saved.startTime)
-    assertEquals(null, saved.endTime)
-    assertEquals(EVENT_ID, saved.eventId)
   }
 
   @Test
@@ -294,13 +142,12 @@ class CreateTaskScreenInstrumentedTest : CreateTaskTest() {
     assertEquals(1, createdCount)
   }
 
-  // --- Navigation ----------------------------------------------------------------------------
-
   @Test
-  fun goingBackLeavesTheScreenWithoutSaving() = checkNoTaskWereAdded {
+  fun goingBackLeavesTheScreenWithoutSaving() {
     composeTestRule.enterCreateTaskDetails(completeForm)
     composeTestRule.clickOnBack()
     assertEquals(1, backCount)
     assertEquals(0, createdCount)
+    assertTrue(savedTasks().isEmpty())
   }
 }

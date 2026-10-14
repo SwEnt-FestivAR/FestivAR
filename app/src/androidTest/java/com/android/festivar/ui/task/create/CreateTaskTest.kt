@@ -22,15 +22,12 @@ import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
 import java.time.LocalTime
 import kotlinx.coroutines.runBlocking
-import org.junit.Assert.assertEquals
 import org.junit.Before
 
 /**
- * Superclass of the Create task screen tests. Before each test it builds a fresh local repository
- * and ViewModel, and it offers the actions and checks the tests share, so that a test reads as what
- * the user does.
- *
- * The subclass owns the compose rule and calls [showCreateTaskScreen] from its own `@Before`.
+ * Superclass of the Create task screen tests: a fresh repository and ViewModel before each test,
+ * and the actions and checks the tests share, so that a test reads as what the user does. The
+ * subclass owns the compose rule and calls [showCreateTaskScreen] from its own `@Before`.
  */
 abstract class CreateTaskTest {
   // FAKE: a real, working repository that keeps the tasks in memory instead of Firebase. The tests
@@ -38,10 +35,8 @@ abstract class CreateTaskTest {
   lateinit var repository: TasksRepositoryLocal
   lateinit var viewModel: CreateTaskViewModel
 
-  /** How many times the screen reported that the task was created. */
+  /** How many times the screen reported that the task was created, or that the user went back. */
   var createdCount = 0
-
-  /** How many times the screen reported that the user went back. */
   var backCount = 0
 
   /** While true, saving a task fails as if the device were offline. */
@@ -79,20 +74,11 @@ abstract class CreateTaskTest {
     }
   }
 
-  // --- Actions -------------------------------------------------------------------------------
+  private fun ComposeTestRule.enterText(tag: String, text: String) =
+      onNodeWithTag(tag).performScrollTo().performTextInput(text)
 
   fun ComposeTestRule.enterCreateTaskTitle(title: String) =
-      onNodeWithTag(CreateTaskScreenTestTags.TITLE_FIELD).performScrollTo().performTextInput(title)
-
-  fun ComposeTestRule.enterCreateTaskDescription(description: String) =
-      onNodeWithTag(CreateTaskScreenTestTags.DESCRIPTION_FIELD)
-          .performScrollTo()
-          .performTextInput(description)
-
-  fun ComposeTestRule.enterCreateTaskLocation(location: String) =
-      onNodeWithTag(CreateTaskScreenTestTags.LOCATION_FIELD)
-          .performScrollTo()
-          .performTextInput(location)
+      enterText(CreateTaskScreenTestTags.TITLE_FIELD, title)
 
   /**
    * Picks [date] in the date picker opened by the field [fieldTag]. The picker opens on the current
@@ -120,8 +106,12 @@ abstract class CreateTaskTest {
   /** Fills every field that [form] has a value for. */
   fun ComposeTestRule.enterCreateTaskDetails(form: CreateTaskUiState) {
     if (form.title.isNotEmpty()) enterCreateTaskTitle(form.title)
-    if (form.description.isNotEmpty()) enterCreateTaskDescription(form.description)
-    if (form.location.isNotEmpty()) enterCreateTaskLocation(form.location)
+    if (form.description.isNotEmpty()) {
+      enterText(CreateTaskScreenTestTags.DESCRIPTION_FIELD, form.description)
+    }
+    if (form.location.isNotEmpty()) {
+      enterText(CreateTaskScreenTestTags.LOCATION_FIELD, form.location)
+    }
     form.startDate?.let { pickCreateTaskDate(CreateTaskScreenTestTags.START_DATE_FIELD, it) }
     form.startTime?.let { pickCreateTaskTime(CreateTaskScreenTestTags.START_TIME_FIELD, it) }
     form.endDate?.let { pickCreateTaskDate(CreateTaskScreenTestTags.END_DATE_FIELD, it) }
@@ -137,18 +127,12 @@ abstract class CreateTaskTest {
     onNodeWithTag(CreateTaskScreenTestTags.BACK_BUTTON).assertIsDisplayed().performClick()
   }
 
-  // --- Checks --------------------------------------------------------------------------------
-
-  private fun errorMessage(error: FieldError): String =
-      InstrumentationRegistry.getInstrumentation()
-          .targetContext
-          .getString(fieldErrorMessageRes(error))
-
   private fun ComposeTestRule.checkErrorIsDisplayed(errorTag: String, error: FieldError) {
-    onNodeWithTag(errorTag)
-        .performScrollTo()
-        .assertIsDisplayed()
-        .assertTextEquals(errorMessage(error))
+    val message =
+        InstrumentationRegistry.getInstrumentation()
+            .targetContext
+            .getString(fieldErrorMessageRes(error))
+    onNodeWithTag(errorTag).performScrollTo().assertIsDisplayed().assertTextEquals(message)
   }
 
   fun ComposeTestRule.checkTitleErrorIsDisplayed(error: FieldError = FieldError.EMPTY_TITLE) =
@@ -164,13 +148,6 @@ abstract class CreateTaskTest {
     onNodeWithTag(CreateTaskScreenTestTags.TITLE_ERROR).assertDoesNotExist()
     onNodeWithTag(CreateTaskScreenTestTags.START_DATE_ERROR).assertDoesNotExist()
     onNodeWithTag(CreateTaskScreenTestTags.END_DATE_ERROR).assertDoesNotExist()
-  }
-
-  /** Runs [action] and checks that it did not add any task to the repository. */
-  fun checkNoTaskWereAdded(action: () -> Unit) {
-    val numberOfTasks = savedTasks().size
-    action()
-    assertEquals(numberOfTasks, savedTasks().size)
   }
 
   companion object {

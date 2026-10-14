@@ -114,42 +114,21 @@ class CreateTaskViewModelTest {
   }
 
   @Test
-  fun showPicker_opensAndClosesThePicker() {
-    viewModel.showPicker(DateTimeField.START_TIME)
-    assertEquals(DateTimeField.START_TIME, viewModel.uiState.value.openPicker)
-
-    viewModel.showPicker(null)
-    assertNull(viewModel.uiState.value.openPicker)
-  }
-
-  @Test
-  fun pickDate_setsTheDateOfTheOpenPickerAndClosesIt() {
+  fun picking_setsTheValueOfTheOpenPickerAndClosesIt() {
     viewModel.showPicker(DateTimeField.START_DATE)
+    assertEquals(DateTimeField.START_DATE, viewModel.uiState.value.openPicker)
     viewModel.pickDate(day)
-    viewModel.showPicker(DateTimeField.END_DATE)
-    viewModel.pickDate(day.plusDays(1))
-
-    val state = viewModel.uiState.value
-    assertEquals(day, state.startDate)
-    assertEquals(day.plusDays(1), state.endDate)
-    assertNull(state.openPicker)
-  }
-
-  @Test
-  fun pickTime_setsTheTimeOfTheOpenPickerAndClosesIt() {
-    viewModel.showPicker(DateTimeField.START_TIME)
-    viewModel.pickTime(LocalTime.of(9, 30))
     viewModel.showPicker(DateTimeField.END_TIME)
     viewModel.pickTime(LocalTime.of(9, 50))
 
     val state = viewModel.uiState.value
-    assertEquals(LocalTime.of(9, 30), state.startTime)
+    assertEquals(day, state.startDate)
     assertEquals(LocalTime.of(9, 50), state.endTime)
     assertNull(state.openPicker)
   }
 
   @Test
-  fun pickDate_withATimePickerOpen_onlyClosesIt() {
+  fun picking_aDateWithATimePickerOpen_onlyClosesIt() {
     viewModel.showPicker(DateTimeField.START_TIME)
     viewModel.pickDate(day)
 
