@@ -1,15 +1,21 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.authentication
 
 import android.os.Bundle
 import androidx.credentials.CustomCredential
+import com.android.festivar.model.user.User
+import com.android.festivar.model.user.UsersRepository
+import com.android.festivar.model.user.UsersRepositoryLocal
 import com.google.android.gms.tasks.Tasks
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.AuthCredential
 import com.google.firebase.auth.AuthResult
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -24,7 +30,7 @@ class AuthRepositoryFirebaseNullUserTest {
     val auth = mockk<FirebaseAuth>()
     every { auth.signInWithCredential(any<AuthCredential>()) } returns
         Tasks.forResult(noUserResult())
-    val repository = AuthRepositoryFirebase(firebaseAuth = auth)
+    val repository = newRepository(auth)
     val credential =
         CustomCredential(
             GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL,
@@ -41,7 +47,7 @@ class AuthRepositoryFirebaseNullUserTest {
     val auth = mockk<FirebaseAuth>()
     every { auth.signInWithEmailAndPassword(EMAIL, PASSWORD) } returns
         Tasks.forResult(noUserResult())
-    val repository = AuthRepositoryFirebase(firebaseAuth = auth)
+    val repository = newRepository(auth)
 
     val result = repository.signInWithEmailAndPassword(EMAIL, PASSWORD)
 
@@ -53,12 +59,39 @@ class AuthRepositoryFirebaseNullUserTest {
     val auth = mockk<FirebaseAuth>()
     every { auth.createUserWithEmailAndPassword(EMAIL, PASSWORD) } returns
         Tasks.forResult(noUserResult())
-    val repository = AuthRepositoryFirebase(firebaseAuth = auth)
+    val repository = newRepository(auth)
 
     val result = repository.signUpWithEmailAndPassword(EMAIL, PASSWORD)
 
     assertNoUserFailure(result)
   }
+
+  @Test
+  fun signUpWithEmailAndPassword_deletesAccountWhenProfileCreationFails() = runBlocking {
+    val firebaseUser =
+        mockk<FirebaseUser> {
+          every { uid } returns UID
+          every { email } returns EMAIL
+          every { delete() } returns Tasks.forResult<Void>(null)
+        }
+    val authResult = mockk<AuthResult> { every { user } returns firebaseUser }
+    val auth = mockk<FirebaseAuth>()
+    every { auth.createUserWithEmailAndPassword(EMAIL, PASSWORD) } returns
+        Tasks.forResult(authResult)
+    // A profile already using this uid makes addUser fail.
+    val repository = newRepository(auth, UsersRepositoryLocal(listOf(User(uid = UID))))
+
+    val result = repository.signUpWithEmailAndPassword(EMAIL, PASSWORD)
+
+    assertTrue(result.exceptionOrNull() is IllegalArgumentException)
+    verify(exactly = 1) { firebaseUser.delete() }
+  }
+
+  // A local users repository keeps the default Firestore one, unavailable here, from being built.
+  private fun newRepository(
+      auth: FirebaseAuth,
+      usersRepository: UsersRepository = UsersRepositoryLocal(),
+  ) = AuthRepositoryFirebase(firebaseAuth = auth, usersRepository = usersRepository)
 
   private fun noUserResult(): AuthResult = mockk { every { user } returns null }
 
@@ -68,6 +101,7 @@ class AuthRepositoryFirebaseNullUserTest {
   }
 
   private companion object {
+    const val UID = "auth-repository-uid"
     const val EMAIL = "auth-repository@example.com"
     const val PASSWORD = "Password123!"
   }
