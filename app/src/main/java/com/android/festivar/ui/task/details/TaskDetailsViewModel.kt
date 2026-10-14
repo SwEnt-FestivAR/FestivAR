@@ -91,8 +91,8 @@ class TaskDetailsViewModel(
   }
 
   /**
-   * Loads the task; on failure the error is set and the version already shown, if any, stays
-   * shown. Does nothing while an action is saving.
+   * Loads the task; on failure the error is set and the version already shown, if any, stays shown.
+   * Does nothing while an action is saving.
    */
   fun load() {
     if (_uiState.value.isUpdating) return
@@ -144,7 +144,9 @@ class TaskDetailsViewModel(
         throw e
       } catch (e: Exception) {
         Log.e(LOG_TAG, "Error saving task $taskId", e)
-        _uiState.update { it.copy(isUpdating = false, errorMsg = R.string.task_details_save_failed) }
+        _uiState.update {
+          it.copy(isUpdating = false, errorMsg = R.string.task_details_save_failed)
+        }
       }
     }
   }
