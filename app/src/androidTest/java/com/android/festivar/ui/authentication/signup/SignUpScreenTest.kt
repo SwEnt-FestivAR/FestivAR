@@ -19,6 +19,7 @@ import com.android.festivar.model.authentication.AuthRepository
 import com.google.firebase.auth.FirebaseUser
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -98,7 +99,7 @@ class SignUpScreenTest {
     composeTestRule.onNodeWithText(errorMessage).assertIsDisplayed()
     composeTestRule.onNodeWithText("OK").performClick()
     composeTestRule.waitForIdle()
-    assertEquals(null, viewModel.uiState.value.errorMsg)
+    assertNull(viewModel.uiState.value.errorMsg)
   }
 
   @Test
