@@ -31,19 +31,16 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.R
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.DateTimeRange
-import com.android.festivar.ui.components.DateTimeRowTags
 import com.android.festivar.ui.components.FestivarDateTimePickerDialog
 import com.android.festivar.ui.components.FestivarDateTimeRow
 import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.components.FestivarFieldWithError
 import com.android.festivar.ui.components.FestivarTextField
-import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
 import java.time.LocalTime
 
@@ -215,12 +212,9 @@ fun CreateTaskContent(
           dateError = state.startDateError,
           onDateClick = { actions.onShowPicker(DateTimeField.START_DATE) },
           onTimeClick = { actions.onShowPicker(DateTimeField.START_TIME) },
-          tags =
-              DateTimeRowTags(
-                  date = CreateTaskScreenTestTags.START_DATE_FIELD,
-                  dateError = CreateTaskScreenTestTags.START_DATE_ERROR,
-                  time = CreateTaskScreenTestTags.START_TIME_FIELD,
-              ),
+          dateTag = CreateTaskScreenTestTags.START_DATE_FIELD,
+          dateErrorTag = CreateTaskScreenTestTags.START_DATE_ERROR,
+          timeTag = CreateTaskScreenTestTags.START_TIME_FIELD,
       )
       FestivarDateTimeRow(
           dateLabel = stringResource(R.string.create_task_field_end_date),
@@ -230,12 +224,9 @@ fun CreateTaskContent(
           dateError = state.endDateError,
           onDateClick = { actions.onShowPicker(DateTimeField.END_DATE) },
           onTimeClick = { actions.onShowPicker(DateTimeField.END_TIME) },
-          tags =
-              DateTimeRowTags(
-                  date = CreateTaskScreenTestTags.END_DATE_FIELD,
-                  dateError = CreateTaskScreenTestTags.END_DATE_ERROR,
-                  time = CreateTaskScreenTestTags.END_TIME_FIELD,
-              ),
+          dateTag = CreateTaskScreenTestTags.END_DATE_FIELD,
+          dateErrorTag = CreateTaskScreenTestTags.END_DATE_ERROR,
+          timeTag = CreateTaskScreenTestTags.END_TIME_FIELD,
       )
     }
   }
@@ -247,24 +238,4 @@ fun CreateTaskContent(
       onTimePicked = actions.onTimePicked,
       onDismiss = { actions.onShowPicker(null) },
   )
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun CreateTaskContentPreview() {
-  AppTheme {
-    CreateTaskContent(
-        state =
-            CreateTaskUiState(
-                title = "Run power to stage",
-                description = "Extension reel is in the blue crate by the van.",
-                location = "Stage, north corner",
-                startDate = LocalDate.of(2026, 10, 17),
-                startTime = LocalTime.of(9, 30),
-                endDate = LocalDate.of(2026, 10, 17),
-                endTime = LocalTime.of(9, 50),
-            ),
-        actions = CreateTaskActions(),
-    )
-  }
 }

@@ -103,7 +103,7 @@ fun FestivarTimePickerDialog(
   )
 }
 
-/** A date or time field of a form with a start and an end. Each one opens its own picker. */
+/** A date or time field of a form with a start and an end, each opening its own picker. */
 enum class DateTimeField {
   START_DATE,
   START_TIME,
@@ -120,13 +120,9 @@ data class DateTimeRange(
 )
 
 /**
- * Shows the picker dialog of [field], or nothing when [field] is `null`. The end pickers open on
- * the start when no end is picked yet.
- *
- * @param range The values already picked, which the dialogs open on.
- * @param onDatePicked Called with the date chosen for [field]. The caller closes the dialog.
- * @param onTimePicked Called with the time chosen for [field]. The caller closes the dialog.
- * @param onDismiss Called when the dialog is cancelled.
+ * Shows the picker dialog of [field], or nothing when [field] is `null`. The dialogs open on the
+ * values of [range], and the end ones on the start while no end is picked. The caller closes the
+ * dialog after [onDatePicked] and [onTimePicked].
  */
 @Composable
 fun FestivarDateTimePickerDialog(
@@ -157,12 +153,10 @@ fun FestivarDateTimePickerDialog(
   }
 }
 
-/** Test tags of a [FestivarDateTimeRow]: its two fields and the error under the date. */
-data class DateTimeRowTags(val date: String, val dateError: String, val time: String)
-
 /**
  * A date field and a time field side by side, each opening its picker when tapped. [dateError]
- * marks both fields, and its message is shown under the date.
+ * marks both fields, and its message is shown under the date. The tags are the test tags of the
+ * date, of the error and of the time.
  */
 @Composable
 fun FestivarDateTimeRow(
@@ -173,17 +167,19 @@ fun FestivarDateTimeRow(
     dateError: FieldError?,
     onDateClick: () -> Unit,
     onTimeClick: () -> Unit,
-    tags: DateTimeRowTags,
+    dateTag: String,
+    dateErrorTag: String,
+    timeTag: String,
     modifier: Modifier = Modifier,
 ) {
   Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = modifier.fillMaxWidth()) {
-    FestivarFieldWithError(dateError, tags.dateError, Modifier.weight(1f)) {
+    FestivarFieldWithError(dateError, dateErrorTag, Modifier.weight(1f)) {
       FestivarPickerField(
           value = date?.let(::formatDate).orEmpty(),
           label = dateLabel,
           onClick = onDateClick,
           isError = dateError != null,
-          modifier = Modifier.testTag(tags.date),
+          modifier = Modifier.testTag(dateTag),
       )
     }
     FestivarPickerField(
@@ -192,7 +188,7 @@ fun FestivarDateTimeRow(
         onClick = onTimeClick,
         // As in Figma, an error marks the whole row; its message stays under the date.
         isError = dateError != null,
-        modifier = Modifier.weight(1f).testTag(tags.time),
+        modifier = Modifier.weight(1f).testTag(timeTag),
     )
   }
 }
