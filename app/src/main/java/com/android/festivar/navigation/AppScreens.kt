@@ -8,6 +8,7 @@ enum class AppScreens {
   SignUp,
   TaskOverview,
   EventOverview,
+  EventDetails,
   CreateEvent,
   CreateTask,
 }

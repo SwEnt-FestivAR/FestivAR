@@ -23,12 +23,16 @@ import androidx.navigation.compose.rememberNavController
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.authentication.AuthRepositoryFirebase
 import com.android.festivar.navigation.AppScreens
+import com.android.festivar.navigation.CreateEventNavigator
 import com.android.festivar.navigation.LoginNavigator
 import com.android.festivar.navigation.SignUpNavigator
+import com.android.festivar.navigation.TaskOverviewNavigator
 import com.android.festivar.ui.authentication.login.LoginScreen
 import com.android.festivar.ui.authentication.login.LoginViewModel
 import com.android.festivar.ui.authentication.signup.SignUpScreen
 import com.android.festivar.ui.authentication.signup.SignUpViewModel
+import com.android.festivar.ui.event.CreateEventScreen
+import com.android.festivar.ui.tasks.TaskOverviewScreen
 import com.android.festivar.ui.theme.AppTheme
 import kotlinx.coroutines.launch
 
@@ -99,8 +103,19 @@ fun FestivAR(
               ),
       )
     }
-    composable(route = AppScreens.TaskOverview.name) { ScreenName("task overview") }
-    composable(route = AppScreens.CreateEvent.name) { ScreenName("create event") }
+    composable(route = AppScreens.TaskOverview.name) {
+      val navigator = TaskOverviewNavigator(navController)
+      TaskOverviewScreen(
+          eventId = "",
+          onBack = navigator.onBack,
+          onOpenTask = navigator.onOpenTask,
+      )
+    }
+    composable(route = AppScreens.CreateEvent.name) {
+      val navigator = CreateEventNavigator(navController)
+      CreateEventScreen(onBack = navigator.onBack)
+    }
+    composable(route = AppScreens.EventDetails.name) { ScreenName("event details") }
     composable(route = AppScreens.CreateTask.name) { ScreenName("create task") }
   }
 }
