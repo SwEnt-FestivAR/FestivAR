@@ -64,7 +64,11 @@ class AuthRepositoryFirebase(
     }
   }
 
-  /** Creates the [User] document of [firebaseUser] in Firestore if it does not exist yet. */
+  /**
+   * Creates the [User] document of [firebaseUser] in Firestore if it does not exist yet.
+   *
+   * @param firebaseUser The [firebaseUser] that has to have its equivalent as a [User].
+   */
   private suspend fun ensureUserExists(firebaseUser: FirebaseUser) {
     try {
       usersRepository.getUser(firebaseUser.uid)
