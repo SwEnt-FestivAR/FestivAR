@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -92,7 +93,9 @@ fun CreateTaskScreen(
 ) {
   val state by viewModel.uiState.collectAsState()
 
-  LaunchedEffect(state.isCreated) { if (state.isCreated) onTaskCreated() }
+  // The latest callback is called, even if the caller passed a new one during the save.
+  val currentOnTaskCreated by rememberUpdatedState(onTaskCreated)
+  LaunchedEffect(state.isCreated) { if (state.isCreated) currentOnTaskCreated() }
 
   CreateTaskContent(
       state = state,
