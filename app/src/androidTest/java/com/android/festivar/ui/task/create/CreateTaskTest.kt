@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.create
 
 import androidx.compose.ui.test.assertIsDisplayed
@@ -13,6 +14,8 @@ import androidx.compose.ui.test.performTextInput
 import androidx.test.platform.app.InstrumentationRegistry
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepositoryLocal
+import com.android.festivar.ui.components.FieldError
+import com.android.festivar.ui.components.fieldErrorMessageRes
 import com.android.festivar.ui.components.hasDayOfMonth
 import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate

@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.create
 
 import android.os.Looper
@@ -7,6 +8,8 @@ import com.android.festivar.R
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
+import com.android.festivar.ui.components.DateTimeField
+import com.android.festivar.ui.components.FieldError
 import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -108,6 +111,52 @@ class CreateTaskViewModelTest {
 
     assertEquals(FieldError.MISSING_DATE, viewModel.uiState.value.endDateError)
     assertNull(viewModel.uiState.value.startDateError)
+  }
+
+  @Test
+  fun showPicker_opensAndClosesThePicker() {
+    viewModel.showPicker(DateTimeField.START_TIME)
+    assertEquals(DateTimeField.START_TIME, viewModel.uiState.value.openPicker)
+
+    viewModel.showPicker(null)
+    assertNull(viewModel.uiState.value.openPicker)
+  }
+
+  @Test
+  fun pickDate_setsTheDateOfTheOpenPickerAndClosesIt() {
+    viewModel.showPicker(DateTimeField.START_DATE)
+    viewModel.pickDate(day)
+    viewModel.showPicker(DateTimeField.END_DATE)
+    viewModel.pickDate(day.plusDays(1))
+
+    val state = viewModel.uiState.value
+    assertEquals(day, state.startDate)
+    assertEquals(day.plusDays(1), state.endDate)
+    assertNull(state.openPicker)
+  }
+
+  @Test
+  fun pickTime_setsTheTimeOfTheOpenPickerAndClosesIt() {
+    viewModel.showPicker(DateTimeField.START_TIME)
+    viewModel.pickTime(LocalTime.of(9, 30))
+    viewModel.showPicker(DateTimeField.END_TIME)
+    viewModel.pickTime(LocalTime.of(9, 50))
+
+    val state = viewModel.uiState.value
+    assertEquals(LocalTime.of(9, 30), state.startTime)
+    assertEquals(LocalTime.of(9, 50), state.endTime)
+    assertNull(state.openPicker)
+  }
+
+  @Test
+  fun pickDate_withATimePickerOpen_onlyClosesIt() {
+    viewModel.showPicker(DateTimeField.START_TIME)
+    viewModel.pickDate(day)
+
+    val state = viewModel.uiState.value
+    assertNull(state.startDate)
+    assertNull(state.endDate)
+    assertNull(state.openPicker)
   }
 
   @Test
