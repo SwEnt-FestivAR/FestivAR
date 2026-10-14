@@ -2,7 +2,6 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.authentication.signup
 
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -194,7 +193,6 @@ class SignUpScreenTest {
     var callbackInvoked = false
     composeTestRule.setContent {
       SignUpScreen(
-          modifier = Modifier,
           onSignInClick = { callbackInvoked = true },
           viewModel = viewModel,
       )
