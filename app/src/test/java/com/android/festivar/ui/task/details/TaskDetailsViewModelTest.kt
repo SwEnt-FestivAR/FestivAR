@@ -19,7 +19,6 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -171,7 +170,7 @@ class TaskDetailsViewModelTest {
   fun missingTask_setsErrorAndClearErrorResetsIt() {
     val vm = TaskDetailsViewModel("missing", me, repository)
     assertNull(vm.uiState.value.task)
-    assertNotNull(vm.uiState.value.errorMsg)
+    assertEquals("Unable to load the task.", vm.uiState.value.errorMsg)
     assertFalse(vm.uiState.value.isLoading)
     vm.clearError()
     assertNull(vm.uiState.value.errorMsg)
