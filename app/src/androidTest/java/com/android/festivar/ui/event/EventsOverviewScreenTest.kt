@@ -24,12 +24,11 @@ import com.android.festivar.model.user.User
 import com.android.festivar.ui.theme.AppTheme
 import java.time.ZoneId
 import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -45,7 +44,7 @@ class EventsOverviewScreenTest {
   private class EventsRepositoryImpl(
       events: List<Event> = listOf(),
       val error: Exception? = null,
-      val gate: CompletableDeferred<Unit>? = null,
+      @Volatile var gate: CompletableDeferred<Unit>? = null,
       private val local: EventsRepository = EventsRepositoryLocal(events),
   ) : EventsRepository by local {
     override suspend fun getEventsForUser(userId: String): List<Event> {
@@ -156,11 +155,6 @@ class EventsOverviewScreenTest {
             useUnmergedTree = true,
         )
         .assertIsDisplayed()
-  }
-
-  /** Formats a day the way the event cards do, e.g. "Sat 17 Oct". */
-  private fun formatDay(date: ZonedDateTime): String {
-    return date.format(DateTimeFormatter.ofPattern("EEE d MMM", Locale.getDefault()))
   }
 
   /**
@@ -364,8 +358,7 @@ class EventsOverviewScreenTest {
   fun sameDayEventShowsItsDayAndLocation() {
     setContent(withRepository = EventsRepositoryImpl(listOf(ongoingEvent)))
 
-    val dates = "${formatDay(ongoingEvent.startDate)} · Esplanade EPFL"
-    onEventItem(ongoingEvent, hasText(dates, substring = false))
+    onEventItem(ongoingEvent, hasText("Sat 17 Oct · Esplanade EPFL", substring = false))
   }
 
   /**
@@ -377,9 +370,7 @@ class EventsOverviewScreenTest {
     setContent(withRepository = EventsRepositoryImpl(listOf(pastEvent)))
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.PAST_CHIP).performClick()
 
-    val startDay = DateTimeFormatter.ofPattern("EEE d", Locale.getDefault())
-    val dates = "${pastEvent.startDate.format(startDay)} to ${formatDay(pastEvent.endDate)}"
-    onEventItem(pastEvent, hasText(dates, substring = false))
+    onEventItem(pastEvent, hasText("Fri 8 to Sat 9 May", substring = false))
   }
 
   /** Test that an event ending in another month shows the month of both its days. */
@@ -393,8 +384,7 @@ class EventsOverviewScreenTest {
     setContent(withRepository = EventsRepositoryImpl(listOf(event)))
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.UPCOMING_CHIP).performClick()
 
-    val dates = "${formatDay(event.startDate)} to ${formatDay(event.endDate)} · Satellite"
-    onEventItem(event, hasText(dates, substring = false))
+    onEventItem(event, hasText("Sat 31 Oct to Sun 1 Nov · Satellite", substring = false))
   }
 
   /**
@@ -466,6 +456,33 @@ class EventsOverviewScreenTest {
     composeTestRule
         .onNodeWithTag(EventsOverviewScreenTestTags.LOADING_INDICATOR)
         .assertDoesNotExist()
+    onEventItem(ongoingEvent, hasText(ongoingEvent.title))
+  }
+
+  /**
+   * Test that refreshing events already loaded keeps showing them instead of the loading indicator,
+   * e.g. when coming back to the screen.
+   */
+  @Test
+  fun refreshKeepsTheEventsShownInsteadOfTheLoadingIndicator() {
+    val repository = EventsRepositoryImpl(listOf(ongoingEvent))
+    val viewModel = createViewModel(withRepository = repository)
+    composeTestRule.waitUntil { !viewModel.uiState.value.isLoading }
+
+    // Hold the refresh started when the screen is shown
+    val gate = CompletableDeferred<Unit>()
+    repository.gate = gate
+    setContent(withRepository = repository, viewModel = viewModel)
+    composeTestRule.waitForIdle()
+    assertTrue(viewModel.uiState.value.isLoading)
+
+    composeTestRule
+        .onNodeWithTag(EventsOverviewScreenTestTags.LOADING_INDICATOR)
+        .assertDoesNotExist()
+    onEventItem(ongoingEvent, hasText(ongoingEvent.title))
+
+    gate.complete(Unit)
+    composeTestRule.waitUntil { !viewModel.uiState.value.isLoading }
     onEventItem(ongoingEvent, hasText(ongoingEvent.title))
   }
 
