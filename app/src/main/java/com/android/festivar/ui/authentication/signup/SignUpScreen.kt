@@ -47,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -162,7 +163,10 @@ private fun SignUpErrorSnackbar(
       action = {
         Box(modifier = Modifier, contentAlignment = Alignment.Center) {
           TextButton(onClick = onDismiss) {
-            Text(text = "OK", color = MaterialTheme.colorScheme.primary)
+            Text(
+                text = stringResource(R.string.signup_snackbar_ok),
+                color = MaterialTheme.colorScheme.primary,
+            )
           }
         }
       },
@@ -174,7 +178,7 @@ private fun SignUpErrorSnackbar(
     ) {
       Icon(
           painter = painterResource(R.drawable.ic_pennant),
-          contentDescription = "", // decorative, no need for desc
+          contentDescription = null,
           modifier = Modifier,
           tint = MaterialTheme.colorScheme.onSurfaceVariant,
       )
@@ -198,7 +202,7 @@ private fun SignUpTopBar(onBackClick: () -> Unit) {
     IconButton(onClick = onBackClick) {
       Icon(
           imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-          contentDescription = "Back",
+          contentDescription = stringResource(R.string.signup_back),
           tint = MaterialTheme.colorScheme.onSurface,
       )
     }
@@ -209,14 +213,14 @@ private fun SignUpTopBar(onBackClick: () -> Unit) {
 private fun SignUpHeader() {
   Column {
     Text(
-        text = "Create an account",
+        text = stringResource(R.string.signup_title),
         style = MaterialTheme.typography.displaySmall,
         color = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.testTag(SignUpScreenTestTags.CREATE_ACC_TITLE),
     )
     Spacer(modifier = Modifier.height(8.dp))
     Text(
-        text = "Your organizer adds you to an event by code once you are in.",
+        text = stringResource(R.string.signup_description),
         style = MaterialTheme.typography.bodyLarge,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -239,7 +243,7 @@ private fun SignUpFields(
     SignUpTextField(
         value = email,
         onValueChange = onEmailChange,
-        label = "Email",
+        label = stringResource(R.string.signup_email),
         tag = SignUpScreenTestTags.EMAIL_FIELD,
         keyboardType = KeyboardType.Email,
     )
@@ -247,7 +251,7 @@ private fun SignUpFields(
     PasswordTextField(
         value = password,
         onValueChange = onPasswordChange,
-        label = "Password",
+        label = stringResource(R.string.signup_password),
         tag = SignUpScreenTestTags.PASS_FIELD,
         isPasswordVisible = isPasswordVisible,
         onPasswordVisibilityChange = onPasswordVisibilityChange,
@@ -258,13 +262,13 @@ private fun SignUpFields(
     PasswordTextField(
         value = confirmPassword,
         onValueChange = onConfirmPasswordChange,
-        label = "Confirm password",
+        label = stringResource(R.string.signup_confirm_password),
         tag = SignUpScreenTestTags.PASS_CONFIRM_FIELD,
         isPasswordVisible = isPasswordVisible,
     )
     if (confirmPassword.isNotEmpty() && password != confirmPassword) {
       Text(
-          text = "Passwords do not match",
+          text = stringResource(R.string.signup_passwords_do_not_match),
           color = MaterialTheme.colorScheme.error,
           style = MaterialTheme.typography.bodySmall,
           modifier =
@@ -314,7 +318,7 @@ private fun PasswordTextField(
           if (showPasswordHint) {
             {
               Text(
-                  text = "8 characters or more.",
+                  text = stringResource(R.string.signup_password_hint),
                   color =
                       if (value.isNotEmpty() && !isPasswordValid) {
                         MaterialTheme.colorScheme.error
@@ -338,7 +342,8 @@ private fun PasswordTextField(
                         if (isPasswordVisible) Icons.Default.Visibility
                         else Icons.Default.VisibilityOff,
                     contentDescription =
-                        if (isPasswordVisible) "Hide password" else "Show password",
+                        if (isPasswordVisible) stringResource(R.string.signup_hide_password)
+                        else stringResource(R.string.signup_show_password),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
               }
@@ -369,11 +374,15 @@ private fun SignUpButton(
           ),
   ) {
     Text(
-        text = if (isLoading) "Signing up..." else "Create account",
+        text =
+            if (isLoading) stringResource(R.string.signup_signing_up)
+            else stringResource(R.string.signup_create_account),
         style = MaterialTheme.typography.labelLarge,
     )
   }
 }
+
+ng.signup_signing_up
 
 @Composable
 private fun fieldColors() =
@@ -388,8 +397,7 @@ private fun fieldColors() =
 @Composable
 private fun SignUpTerms() {
   Text(
-      text =
-          "By continuing you accept the terms and the privacy notice. Your phone number, if you add one later, is only shown to organizers.",
+      text = stringResource(R.string.signup_terms),
       style = MaterialTheme.typography.bodySmall,
       color = if (isSystemInDarkTheme()) onSurfaceMutedDark else onSurfaceMutedLight,
   )
@@ -403,7 +411,7 @@ private fun SignUpFooter(onSignInClick: () -> Unit) {
       verticalAlignment = Alignment.CenterVertically,
   ) {
     Text(
-        text = "Already have an account?",
+        text = stringResource(R.string.signup_already_have_account),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -413,7 +421,7 @@ private fun SignUpFooter(onSignInClick: () -> Unit) {
         modifier = Modifier.testTag(SignUpScreenTestTags.LOGIN_NOW_BUTTON),
     ) {
       Text(
-          text = "Sign in",
+          text = stringResource(R.string.signup_sign_in),
           style = MaterialTheme.typography.labelLarge,
           color = MaterialTheme.colorScheme.onPrimaryContainer,
       )
@@ -439,7 +447,12 @@ fun SignUpScreenPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun SignUpErrorSnackbarPreview() {
-  AppTheme { SignUpErrorSnackbar(message = "Email already used", onDismiss = {}) }
+  AppTheme {
+    SignUpErrorSnackbar(
+        message = stringResource(R.string.signup_preview_error),
+        onDismiss = {},
+    )
+  }
 }
 
 private object PreviewAuthRepository : AuthRepository {
