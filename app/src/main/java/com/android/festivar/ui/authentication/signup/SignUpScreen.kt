@@ -89,9 +89,7 @@ fun SignUpScreen(
     }
   }
 
-  if (uiState.isAuthenticated) {
-    onSignUpSuccess()
-  }
+  LaunchedEffect(uiState.isAuthenticated) { if (uiState.isAuthenticated) onSignUpSuccess() }
   Scaffold(
       modifier = modifier,
       snackbarHost = {
