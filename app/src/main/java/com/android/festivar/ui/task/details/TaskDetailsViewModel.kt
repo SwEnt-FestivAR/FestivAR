@@ -46,8 +46,8 @@ enum class TaskStatus {
  * @property task the task shown, or null until it is loaded (or if it could not be loaded).
  * @property status the badge of [task]; null while [task] is null.
  * @property isLoading true while the task is being loaded.
- * @property isUpdating true while an action is being saved, so a second tap does nothing.
- *   Actions are also disabled while [isLoading], so a reload cannot overwrite a saved change.
+ * @property isUpdating true while an action is being saved, so a second tap does nothing. Actions
+ *   are also disabled while [isLoading], so a reload cannot overwrite a saved change.
  * @property errorMsg the last failure, or null.
  */
 data class TaskDetailsUiState(
