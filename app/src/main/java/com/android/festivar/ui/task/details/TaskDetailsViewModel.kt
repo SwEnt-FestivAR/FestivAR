@@ -95,8 +95,8 @@ class TaskDetailsViewModel(
   }
 
   /**
-   * Loads the task; on failure the error is set and the last loaded task, if any, stays shown. Does
-   * nothing while an action is saving.
+   * Loads the task; on failure the error is set and the version already shown, if any, stays
+   * shown. Does nothing while an action is saving.
    */
   fun load() {
     if (_uiState.value.isUpdating) return
