@@ -194,9 +194,6 @@ class CreateTaskViewModel(
     showPicker(null)
   }
 
-  /** Clears the error message in the UI state. */
-  fun clearError() = _uiState.update { it.copy(errorMsg = null) }
-
   /**
    * Saves the task in the event [eventId] if the form is valid. Does nothing while a save is
    * running.

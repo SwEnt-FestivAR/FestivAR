@@ -155,9 +155,6 @@ class CreateTaskViewModelTest {
     assertFalse(state.isCreated)
     assertFalse(state.isSaving)
     assertTrue(state.canCreate)
-
-    vm.clearError()
-    assertNull(vm.uiState.value.errorMsg)
   }
 
   // A second tap while the first save is still running must not save the task twice. The fake
