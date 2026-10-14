@@ -27,9 +27,10 @@ import org.junit.Test
 class ProfileViewModelTest {
 
   /**
-   * A [UsersRepositoryLocal] serving [users]. It throws [getError] on every fetch and [editError] on
-   * every edit while they are set, and records every [User] it is asked to save. While [editGate] is
-   * set, an edit waits until the test completes it, so the tests can act during a save.
+   * A [UsersRepositoryLocal] serving [users]. It throws [getError] on every fetch and [editError]
+   * on every edit while they are set, and records every [User] it is asked to save. While
+   * [editGate] is set, an edit waits until the test completes it, so the tests can act during a
+   * save.
    */
   private class RecordingUsersRepository(
       users: List<User> = listOf(),
