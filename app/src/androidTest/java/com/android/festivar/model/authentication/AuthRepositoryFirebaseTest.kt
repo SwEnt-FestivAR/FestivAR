@@ -11,6 +11,7 @@ import com.google.firebase.auth.auth
 import java.util.UUID
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -107,6 +108,11 @@ class AuthRepositoryFirebaseTest {
     val result = repository.signInWithGoogle(credential)
 
     assertTrue(result.isFailure)
+  }
+
+  @After
+  fun tearDown() {
+    Firebase.auth.signOut()
   }
 
   private fun newEmail() = "auth-repository-${UUID.randomUUID()}@example.com"
