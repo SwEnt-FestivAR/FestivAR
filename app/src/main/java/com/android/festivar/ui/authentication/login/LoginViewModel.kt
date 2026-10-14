@@ -6,6 +6,7 @@ import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.exceptions.NoCredentialException
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
@@ -116,6 +117,8 @@ class LoginViewModel(private val authRepository: AuthRepository = AuthRepository
         throw cancellation
       } catch (cancellation: GetCredentialCancellationException) {
         Result.failure(IllegalStateException("Sign-in cancelled"))
+      } catch (exception: NoCredentialException) {
+        Result.failure(IllegalStateException("No credentials available"))
       } catch (exception: GetCredentialException) {
         Result.failure(IllegalStateException("Failed to get credentials"))
       } catch (exception: Exception) {
