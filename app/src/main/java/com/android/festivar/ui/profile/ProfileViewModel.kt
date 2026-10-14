@@ -3,6 +3,7 @@ package com.android.festivar.ui.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.model.event.Event
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import kotlinx.coroutines.CancellationException
@@ -13,6 +14,23 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 
+/**
+ * Represents the UI state of the Profile screen.
+ *
+ * @property user The signed in [User]. The object is here even if there is the [name] and [surname]
+ *  properties because it contains the initial information, it will be updated only if the
+ *  changes are saved.
+ * @property name The name of the [User], contains the current value that is written, may contain
+ * the modified value that is not saved.
+ * @property surname The surname of the [User], contains the current value that is written, may contain
+ *  * the modified value that is not saved.
+ * @property errorMsg An error message to show when fetching the [User] items fails. `null` if
+ *  *   there is no error.
+ * @property isLoading Whether the [User] items is currently being fetched.
+ * @property isSaving Whether the [User] item is being saved and updated with the new values.
+ * @property signedOut Whether the [User] signs out, keeps the information to block any other
+ * operation while de the [User] is being disconnected.
+ */
 data class ProfileUIState(
     val user: User? = null,
     val name: String = "",
@@ -25,6 +43,8 @@ data class ProfileUIState(
     /**
      * Whether the Save changes button can be pressed: the profile is loaded, no save is running,
      * no field is blank, and at least one field differs from the saved [user].
+     *
+     * The use of `.trim()` allows to delete the precedent and final spaces entered.
      */
     val canSave: Boolean
         get() {
@@ -38,6 +58,7 @@ data class ProfileUIState(
                 changed
         }
 }
+
 
 class ProfileViewModel (
     private val repository: UsersRepository, // = UsersRepositoryProvider.repository
