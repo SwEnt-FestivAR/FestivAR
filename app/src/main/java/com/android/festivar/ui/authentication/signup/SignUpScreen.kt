@@ -6,9 +6,11 @@ import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -45,6 +47,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -52,6 +55,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.credentials.Credential
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.android.festivar.R
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.ui.theme.AppTheme
 import com.android.festivar.ui.theme.onSurfaceMutedDark
@@ -98,16 +102,7 @@ fun SignUpScreen(
             // 64 dp to be above the SignUpFooter
             modifier = Modifier.padding(bottom = 64.dp),
         ) { data ->
-          Snackbar(
-              modifier = Modifier.testTag(SignUpScreenTestTags.ERROR_MESSAGE),
-              action = {
-                TextButton(onClick = { data.dismiss() }) {
-                  Text(text = "OK", color = MaterialTheme.colorScheme.primary)
-                }
-              },
-          ) {
-            Text(data.visuals.message)
-          }
+          SignUpErrorSnackbar(data.visuals.message) { data.dismiss() }
         }
       },
   ) { paddingValues ->
@@ -152,6 +147,42 @@ fun SignUpScreen(
         Spacer(modifier = Modifier.height(32.dp))
       }
       SignUpFooter(onSignInClick)
+    }
+  }
+}
+
+@Composable
+private fun SignUpErrorSnackbar(
+    message: String,
+    onDismiss: () -> Unit,
+) {
+  Snackbar(
+      modifier = Modifier.testTag(SignUpScreenTestTags.ERROR_MESSAGE),
+      action = {
+        Box(modifier = Modifier, contentAlignment = Alignment.Center) {
+          TextButton(onClick = onDismiss) {
+            Text(text = "OK", color = MaterialTheme.colorScheme.primary)
+          }
+        }
+      },
+  ) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+      Icon(
+          painter = painterResource(R.drawable.ic_pennant),
+          contentDescription = "", // decorative, no need for desc
+          modifier = Modifier,
+          tint = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
+      Text(
+          text = message,
+          style = MaterialTheme.typography.bodyMedium,
+          color = MaterialTheme.colorScheme.onError,
+          modifier = Modifier.align(Alignment.CenterVertically),
+      )
     }
   }
 }
@@ -395,15 +426,7 @@ fun SignUpScreenPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun SignUpErrorSnackbarPreview() {
-  AppTheme {
-    Snackbar(
-        action = {
-          TextButton(onClick = {}) { Text(text = "OK", color = MaterialTheme.colorScheme.primary) }
-        },
-    ) {
-      Text("Email already used")
-    }
-  }
+  AppTheme { SignUpErrorSnackbar(message = "Email already used", onDismiss = {}) }
 }
 
 private object PreviewAuthRepository : AuthRepository {
