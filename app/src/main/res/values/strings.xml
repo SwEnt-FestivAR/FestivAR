@@ -13,8 +13,8 @@
     <string name="create_task_field_start_time">Start time</string>
     <string name="create_task_field_end_date">End date</string>
     <string name="create_task_field_end_time">End time</string>
-    <string name="create_task_error_empty_title">Title cannot be empty</string>
-    <string name="create_task_error_missing_date">Pick a date for this time</string>
-    <string name="create_task_error_end_before_start">The end cannot be before the start</string>
+    <string name="field_error_empty_title">Title cannot be empty</string>
+    <string name="field_error_missing_date">Pick a date for this time</string>
+    <string name="field_error_end_before_start">The end cannot be before the start</string>
     <string name="create_task_error_save_failed">Unable to create the task.</string>
 </resources>
