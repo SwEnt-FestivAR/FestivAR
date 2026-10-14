@@ -1,3 +1,5 @@
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+
 package com.android.festivar.ui.profile
 
 import androidx.lifecycle.ViewModel
@@ -120,8 +122,9 @@ class ProfileViewModel (
         // If saving is disabled, quit the function.
         if (!state.canSave) return
 
-        // If there is no actual user, that shouldn't happen and throws and exception.
-        val original = state.user ?: throw IllegalStateException("The user shouldn't be null.")
+        // If there is no actual user, then this piece of code is not reached due to previous
+        // exit if (!state.canSave) return, in that case it exits also.
+        val original = state.user ?: return
 
         // Built from the fields as they are now, so typing during the save does not change what is
         // saved. copy keeps the email, joined events and assigned tasks of the original user.
@@ -194,7 +197,7 @@ class ProfileViewModel (
                 }
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: NoSuchElementException) {
+            } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
                         isLoading = false,
