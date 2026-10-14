@@ -161,11 +161,11 @@ private fun SignUpErrorSnackbar(
   Snackbar(
       modifier = Modifier.testTag(SignUpScreenTestTags.ERROR_MESSAGE),
       action = {
-        Box(modifier = Modifier, contentAlignment = Alignment.Center) {
+        Box(contentAlignment = Alignment.Center) {
           TextButton(onClick = onDismiss) {
             Text(
                 text = stringResource(R.string.signup_snackbar_ok),
-                color = MaterialTheme.colorScheme.primary,
+                color = MaterialTheme.colorScheme.inversePrimary,
             )
           }
         }
@@ -179,14 +179,11 @@ private fun SignUpErrorSnackbar(
       Icon(
           painter = painterResource(R.drawable.ic_pennant),
           contentDescription = null,
-          modifier = Modifier,
-          tint = MaterialTheme.colorScheme.onSurfaceVariant,
+          tint = MaterialTheme.colorScheme.inverseOnSurface,
       )
       Text(
           text = message,
           style = MaterialTheme.typography.bodyMedium,
-          color = MaterialTheme.colorScheme.onError,
-          modifier = Modifier.align(Alignment.CenterVertically),
       )
     }
   }
