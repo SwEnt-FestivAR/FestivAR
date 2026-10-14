@@ -191,6 +191,19 @@ class TaskDetailsViewModelTest {
   }
 
   @Test
+  fun failedReload_keepsTheTaskShownAndSetsTheError() {
+    val vm = viewModel(task())
+    repository.getFailure = IOException("offline")
+
+    vm.load()
+
+    assertEquals("Unable to load the task.", vm.uiState.value.errorMsg)
+    assertFalse(vm.uiState.value.isLoading)
+    assertEquals(TaskStatus.OPEN, vm.uiState.value.status)
+    assertEquals("Run power to stage", vm.uiState.value.task?.title)
+  }
+
+  @Test
   fun reloadWhileSaving_isIgnored() {
     repository.editGate = CompletableDeferred()
     val vm = viewModel(task())
