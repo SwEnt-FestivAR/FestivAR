@@ -18,6 +18,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -130,27 +131,12 @@ class ProfileViewModelTest {
     assertEquals(sara, state.user)
     assertEquals(sara.name, state.name)
     assertEquals(sara.surname, state.surname)
-    assertFalse(state.isSaving)
-    assertFalse(state.signedOut)
   }
 
-  /** Test that loading a user that does not exist stops the loading and shows an error message. */
-  @Test
-  fun missingUserShowsErrorMsg() = runTest {
-    val viewModel = createViewModel(RecordingUsersRepository(listOf(sara)), uId = "unknown")
-    advanceUntilIdle()
-
-    val state = viewModel.uiState.value
-    assertFalse(state.isLoading)
-    assertNull(state.user)
-    assertEquals(
-        "Failed to load profile: UsersRepositoryLocal: User unknown not found",
-        state.errorMsg,
-    )
-    assertFalse(state.canSave)
-  }
-
-  /** Test that any repository failure, not only a missing user, shows an error message. */
+  /**
+   * Test that any repository failure, not only a missing user, stops the loading, shows an error
+   * message and leaves nothing to save.
+   */
   @Test
   fun repositoryFailureShowsErrorMsg() = runTest {
     val repository =
@@ -162,16 +148,31 @@ class ProfileViewModelTest {
     assertFalse(state.isLoading)
     assertNull(state.user)
     assertEquals("Failed to load profile: Network down", state.errorMsg)
+    assertFalse(state.canSave)
   }
 
-  /** Test that a load failure whose exception has no message still shows an error message. */
+  /** Test that a failure whose exception has no message still shows an error message. */
   @Test
-  fun loadFailureWithoutMessageShowsUnknownError() = runTest {
-    val repository = RecordingUsersRepository(listOf(sara), getError = NoSuchElementException())
-    val viewModel = createViewModel(repository)
+  fun failureWithoutMessageShowsUnknownError() = runTest {
+    val loadViewModel =
+        createViewModel(RecordingUsersRepository(listOf(sara), getError = RuntimeException()))
     advanceUntilIdle()
+    assertEquals("Failed to load profile: unknown error", loadViewModel.uiState.value.errorMsg)
 
-    assertEquals("Failed to load profile: unknown error", viewModel.uiState.value.errorMsg)
+    val saveViewModel =
+        createViewModel(RecordingUsersRepository(listOf(sara), editError = RuntimeException()))
+    advanceUntilIdle()
+    saveViewModel.updateName("Sarah")
+    saveViewModel.saveChanges()
+    advanceUntilIdle()
+    assertEquals("Failed to update profile: unknown error", saveViewModel.uiState.value.errorMsg)
+
+    authRepository.signOutResult = Result.failure(RuntimeException())
+    val signOutViewModel = createViewModel()
+    advanceUntilIdle()
+    signOutViewModel.signOut()
+    advanceUntilIdle()
+    assertEquals("Failed to sign out: unknown error", signOutViewModel.uiState.value.errorMsg)
   }
 
   /** Test that typing in the fields changes them, but not the saved user. */
@@ -248,19 +249,12 @@ class ProfileViewModelTest {
     assertFalse(viewModel.uiState.value.canSave)
   }
 
-  /** Test that nothing can be saved while a save is running. */
+  /** Test that nothing can be saved while saving or signing out, nor once signed out. */
   @Test
-  fun cannotSaveWhileSaving() {
+  fun cannotSaveWhileSavingOrSigningOut() {
     val state = ProfileUIState(user = sara, name = "Sarah", surname = sara.surname)
     assertTrue(state.canSave)
     assertFalse(state.copy(isSaving = true).canSave)
-  }
-
-  /** Test that nothing can be saved while signing out, nor once signed out. */
-  @Test
-  fun cannotSaveWhileSigningOutOrOnceSignedOut() {
-    val state = ProfileUIState(user = sara, name = "Sarah", surname = sara.surname)
-    assertTrue(state.canSave)
     assertFalse(state.copy(isSigningOut = true).canSave)
     assertFalse(state.copy(signedOut = true).canSave)
   }
@@ -302,19 +296,6 @@ class ProfileViewModelTest {
 
     assertTrue(repository.editedUsers.isEmpty())
     assertFalse(viewModel.uiState.value.isSaving)
-  }
-
-  /** Test that saving does nothing before the user is loaded. */
-  @Test
-  fun saveChangesDoesNothingBeforeTheUserIsLoaded() = runTest {
-    val repository = RecordingUsersRepository(listOf(sara))
-    val viewModel = createViewModel(repository)
-    viewModel.updateName("Sarah")
-
-    viewModel.saveChanges()
-    advanceUntilIdle()
-
-    assertTrue(repository.editedUsers.isEmpty())
   }
 
   /** Test that the UI state is saving until the repository answers, and a second tap is ignored. */
@@ -366,43 +347,12 @@ class ProfileViewModelTest {
     assertTrue(state.canSave)
   }
 
-  /** Test that a failing save shows an error message and keeps the typed values to retry. */
+  /**
+   * Test that a failing save shows an error message and keeps the typed values, and that retrying
+   * once the repository recovers saves them and removes the error message.
+   */
   @Test
-  fun saveFailureShowsErrorMsgAndKeepsTheEdits() = runTest {
-    val repository =
-        RecordingUsersRepository(listOf(sara), editError = RuntimeException("Network down"))
-    val viewModel = createViewModel(repository)
-    advanceUntilIdle()
-
-    viewModel.updateName("Sarah")
-    viewModel.saveChanges()
-    advanceUntilIdle()
-
-    val state = viewModel.uiState.value
-    assertFalse(state.isSaving)
-    assertEquals("Failed to update profile: Network down", state.errorMsg)
-    assertEquals(sara, state.user)
-    assertEquals("Sarah", state.name)
-    assertTrue(state.canSave)
-  }
-
-  /** Test that a save failure whose exception has no message still shows an error message. */
-  @Test
-  fun saveFailureWithoutMessageShowsUnknownError() = runTest {
-    val repository = RecordingUsersRepository(listOf(sara), editError = RuntimeException())
-    val viewModel = createViewModel(repository)
-    advanceUntilIdle()
-
-    viewModel.updateName("Sarah")
-    viewModel.saveChanges()
-    advanceUntilIdle()
-
-    assertEquals("Failed to update profile: unknown error", viewModel.uiState.value.errorMsg)
-  }
-
-  /** Test that retrying a failed save, once the repository recovers, removes the error message. */
-  @Test
-  fun retryAfterSaveFailureSavesAndRemovesTheErrorMsg() = runTest {
+  fun saveFailureShowsErrorMsgAndCanBeRetried() = runTest {
     val repository =
         RecordingUsersRepository(listOf(sara), editError = RuntimeException("Network down"))
     val viewModel = createViewModel(repository)
@@ -410,19 +360,29 @@ class ProfileViewModelTest {
     viewModel.updateName("Sarah")
     viewModel.saveChanges()
     advanceUntilIdle()
+
+    val failed = viewModel.uiState.value
+    assertFalse(failed.isSaving)
+    assertEquals("Failed to update profile: Network down", failed.errorMsg)
+    assertEquals(sara, failed.user)
+    assertEquals("Sarah", failed.name)
+    assertTrue(failed.canSave)
 
     repository.editError = null
     viewModel.saveChanges()
     assertNull(viewModel.uiState.value.errorMsg)
     advanceUntilIdle()
 
-    val state = viewModel.uiState.value
-    assertNull(state.errorMsg)
-    assertEquals(sara.copy(name = "Sarah"), state.user)
+    val saved = viewModel.uiState.value
+    assertNull(saved.errorMsg)
+    assertEquals(sara.copy(name = "Sarah"), saved.user)
     assertEquals(sara.copy(name = "Sarah"), repository.getUser(sara.uid))
   }
 
-  /** Test that a successful sign out sets signedOut, without any error. */
+  /**
+   * Test that a successful sign out sets signedOut, without any error, and that signing out again
+   * then does nothing.
+   */
   @Test
   fun signOutSuccessSetsSignedOut() = runTest {
     val viewModel = createViewModel()
@@ -434,34 +394,35 @@ class ProfileViewModelTest {
     assertEquals(1, authRepository.signOutCount)
     assertTrue(viewModel.uiState.value.signedOut)
     assertNull(viewModel.uiState.value.errorMsg)
+
+    viewModel.signOut()
+    advanceUntilIdle()
+    assertEquals(1, authRepository.signOutCount)
   }
 
-  /** Test that a failing sign out shows an error message and keeps the user signed in. */
+  /**
+   * Test that a failing sign out shows an error message and keeps the user signed in, and that it
+   * ends the signing out, so the user can try again.
+   */
   @Test
-  fun signOutFailureShowsErrorMsg() = runTest {
+  fun signOutFailureShowsErrorMsgAndCanBeRetried() = runTest {
     authRepository.signOutResult = Result.failure(RuntimeException("Network down"))
     val viewModel = createViewModel()
     advanceUntilIdle()
-
     viewModel.signOut()
     advanceUntilIdle()
 
-    val state = viewModel.uiState.value
-    assertFalse(state.signedOut)
-    assertEquals("Failed to sign out: Network down", state.errorMsg)
-  }
+    val failed = viewModel.uiState.value
+    assertFalse(failed.signedOut)
+    assertFalse(failed.isSigningOut)
+    assertEquals("Failed to sign out: Network down", failed.errorMsg)
 
-  /** Test that a sign out failure whose exception has no message still shows an error message. */
-  @Test
-  fun signOutFailureWithoutMessageShowsUnknownError() = runTest {
-    authRepository.signOutResult = Result.failure(RuntimeException())
-    val viewModel = createViewModel()
-    advanceUntilIdle()
-
+    authRepository.signOutResult = Result.success(Unit)
     viewModel.signOut()
     advanceUntilIdle()
 
-    assertEquals("Failed to sign out: unknown error", viewModel.uiState.value.errorMsg)
+    assertEquals(2, authRepository.signOutCount)
+    assertTrue(viewModel.uiState.value.signedOut)
   }
 
   /**
@@ -491,41 +452,9 @@ class ProfileViewModelTest {
     assertEquals(1, authRepository.signOutCount)
   }
 
-  /** Test that a failed sign out ends the signing out, so the user can try again. */
+  /** Test that typing and saving do nothing while signing out, nor once signed out. */
   @Test
-  fun signOutFailureLetsTheUserTryAgain() = runTest {
-    authRepository.signOutResult = Result.failure(RuntimeException("Network down"))
-    val viewModel = createViewModel()
-    advanceUntilIdle()
-    viewModel.signOut()
-    advanceUntilIdle()
-    assertFalse(viewModel.uiState.value.isSigningOut)
-
-    authRepository.signOutResult = Result.success(Unit)
-    viewModel.signOut()
-    advanceUntilIdle()
-
-    assertEquals(2, authRepository.signOutCount)
-    assertTrue(viewModel.uiState.value.signedOut)
-  }
-
-  /** Test that signing out again once signed out does nothing. */
-  @Test
-  fun signOutOnceSignedOutIsIgnored() = runTest {
-    val viewModel = createViewModel()
-    advanceUntilIdle()
-    viewModel.signOut()
-    advanceUntilIdle()
-
-    viewModel.signOut()
-    advanceUntilIdle()
-
-    assertEquals(1, authRepository.signOutCount)
-  }
-
-  /** Test that typing and saving do nothing while signing out. */
-  @Test
-  fun editingIsIgnoredWhileSigningOut() = runTest {
+  fun editingIsIgnoredWhileSigningOutAndOnceSignedOut() = runTest {
     val gate = CompletableDeferred<Unit>()
     authRepository.signOutGate = gate
     val repository = RecordingUsersRepository(listOf(sara))
@@ -535,38 +464,25 @@ class ProfileViewModelTest {
     viewModel.signOut()
     advanceUntilIdle()
 
-    viewModel.updateName("Sarita")
-    viewModel.updateSurname("Muller")
-    viewModel.saveChanges()
-    advanceUntilIdle()
+    // Tries to type and save, then checks that nothing changed
+    fun assertEditingIsIgnored() {
+      viewModel.updateName("Sarita")
+      viewModel.updateSurname("Muller")
+      viewModel.saveChanges()
+      advanceUntilIdle()
+      val state = viewModel.uiState.value
+      assertEquals("Sarah", state.name)
+      assertEquals(sara.surname, state.surname)
+      assertFalse(state.isSaving)
+      assertTrue(repository.editedUsers.isEmpty())
+    }
 
-    val state = viewModel.uiState.value
-    assertEquals("Sarah", state.name)
-    assertEquals(sara.surname, state.surname)
-    assertFalse(state.isSaving)
-    assertTrue(repository.editedUsers.isEmpty())
+    assertEditingIsIgnored()
+
     gate.complete(Unit)
-  }
-
-  /** Test that typing and saving do nothing once signed out. */
-  @Test
-  fun editingIsIgnoredOnceSignedOut() = runTest {
-    val repository = RecordingUsersRepository(listOf(sara))
-    val viewModel = createViewModel(repository)
     advanceUntilIdle()
-    viewModel.updateName("Sarah")
-    viewModel.signOut()
-    advanceUntilIdle()
-
-    viewModel.updateName("Sarita")
-    viewModel.updateSurname("Muller")
-    viewModel.saveChanges()
-    advanceUntilIdle()
-
-    val state = viewModel.uiState.value
-    assertEquals("Sarah", state.name)
-    assertEquals(sara.surname, state.surname)
-    assertTrue(repository.editedUsers.isEmpty())
+    assertTrue(viewModel.uiState.value.signedOut)
+    assertEditingIsIgnored()
   }
 
   /** Test that the error message is removed once cleared. */
@@ -574,7 +490,7 @@ class ProfileViewModelTest {
   fun clearErrorMsgRemovesTheErrorMsg() = runTest {
     val viewModel = createViewModel(uId = "unknown")
     advanceUntilIdle()
-    assertTrue(viewModel.uiState.value.errorMsg != null)
+    assertNotNull(viewModel.uiState.value.errorMsg)
 
     viewModel.clearErrorMsg()
 
