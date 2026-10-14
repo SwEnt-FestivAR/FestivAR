@@ -128,15 +128,6 @@ class SignUpViewModelTest {
   }
 
   private class FakeAuthRepository : AuthRepository {
-    var googleSignInBehavior: suspend () -> Result<FirebaseUser> = {
-      Result.failure(UnsupportedOperationException("Not configured"))
-    }
-    var googleSignInCallCount = 0
-      private set
-
-    var lastGoogleCredential: Credential? = null
-      private set
-
     var signUpBehavior: suspend (String, String) -> Result<FirebaseUser> = { _, _ ->
       Result.failure(UnsupportedOperationException("Not configured"))
     }
@@ -160,9 +151,7 @@ class SignUpViewModelTest {
     }
 
     override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> {
-      googleSignInCallCount += 1
-      lastGoogleCredential = credential
-      return googleSignInBehavior()
+      return Result.failure(UnsupportedOperationException("Not used in these tests"))
     }
 
     override suspend fun signOut(): Result<Unit> = signOutBehavior()
