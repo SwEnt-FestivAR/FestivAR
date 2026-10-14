@@ -95,6 +95,7 @@ fun SignUpScreen(
       snackbarHost = {
         SnackbarHost(
             hostState = snackBarHostState,
+            // 64 dp to be above the SignUpFooter
             modifier = Modifier.padding(bottom = 64.dp),
         ) { data ->
           Snackbar(
@@ -112,8 +113,7 @@ fun SignUpScreen(
   ) { paddingValues ->
     Column(
         modifier =
-            modifier
-                .fillMaxSize()
+            Modifier.fillMaxSize()
                 .background(color = MaterialTheme.colorScheme.background)
                 .padding(paddingValues)
                 .padding(horizontal = 24.dp),
