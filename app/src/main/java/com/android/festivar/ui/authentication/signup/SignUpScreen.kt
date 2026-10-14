@@ -259,6 +259,8 @@ private fun SignUpFields(
         tag = SignUpScreenTestTags.PASS_CONFIRM_FIELD,
         isPasswordVisible = isPasswordVisible,
         onPasswordVisibilityChange = onPasswordVisibilityChange,
+        showPasswordDescription = stringResource(R.string.signup_show_confirmation_password),
+        hidePasswordDescription = stringResource(R.string.signup_hide_confirmation_password),
     )
     Text(
         text = stringResource(R.string.signup_password_hint),
@@ -306,6 +308,8 @@ private fun PasswordTextField(
     tag: String,
     isPasswordVisible: Boolean,
     onPasswordVisibilityChange: (() -> Unit)? = null,
+    showPasswordDescription: String = stringResource(R.string.signup_show_password),
+    hidePasswordDescription: String = stringResource(R.string.signup_hide_password),
 ) {
   OutlinedTextField(
       value = value,
@@ -325,8 +329,7 @@ private fun PasswordTextField(
                         if (isPasswordVisible) Icons.Default.Visibility
                         else Icons.Default.VisibilityOff,
                     contentDescription =
-                        if (isPasswordVisible) stringResource(R.string.signup_hide_password)
-                        else stringResource(R.string.signup_show_password),
+                        if (isPasswordVisible) hidePasswordDescription else showPasswordDescription,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
               }
