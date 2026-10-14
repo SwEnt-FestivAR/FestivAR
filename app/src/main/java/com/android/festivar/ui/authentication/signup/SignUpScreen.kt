@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -131,12 +130,14 @@ fun SignUpScreen(
             onConfirmPasswordChange = { viewModel.updateConfirmPassword(it) },
             isPasswordVisible = isPasswordVisible,
             onPasswordVisibilityChange = { isPasswordVisible = !isPasswordVisible },
+            isPasswordValid = uiState.isPasswordValid,
         )
         Spacer(modifier = Modifier.height(20.dp))
         SignUpButton(
             enabled =
                 uiState.email.isNotBlank() &&
                     uiState.password.isNotBlank() &&
+                    uiState.isPasswordValid &&
                     uiState.confirmPassword.isNotBlank() &&
                     uiState.password == uiState.confirmPassword,
             isLoading = uiState.isLoading,
@@ -232,6 +233,7 @@ private fun SignUpFields(
     onConfirmPasswordChange: (String) -> Unit,
     isPasswordVisible: Boolean,
     onPasswordVisibilityChange: () -> Unit,
+    isPasswordValid: Boolean,
 ) {
   Column {
     SignUpTextField(
@@ -249,6 +251,8 @@ private fun SignUpFields(
         tag = SignUpScreenTestTags.PASS_FIELD,
         isPasswordVisible = isPasswordVisible,
         onPasswordVisibilityChange = onPasswordVisibilityChange,
+        showPasswordHint = true,
+        isPasswordValid = isPasswordValid,
     )
     Spacer(modifier = Modifier.height(12.dp))
     PasswordTextField(
@@ -265,14 +269,6 @@ private fun SignUpFields(
           style = MaterialTheme.typography.bodySmall,
           modifier =
               Modifier.padding(top = 4.dp).testTag(SignUpScreenTestTags.PASSWORD_MISMATCH_ERROR),
-      )
-    }
-    if (password.isNotEmpty() && password.length < 8) {
-      Text(
-          text = "Password must be at least 8 characters.",
-          color = MaterialTheme.colorScheme.error,
-          style = MaterialTheme.typography.bodySmall,
-          modifier = Modifier.padding(top = 4.dp),
       )
     }
   }
@@ -306,12 +302,29 @@ private fun PasswordTextField(
     tag: String,
     isPasswordVisible: Boolean,
     onPasswordVisibilityChange: (() -> Unit)? = null,
+    showPasswordHint: Boolean = false,
+    isPasswordValid: Boolean = true,
 ) {
   OutlinedTextField(
       value = value,
       onValueChange = onValueChange,
       modifier = Modifier.fillMaxWidth().testTag(tag),
       label = { Text(label) },
+      supportingText =
+          if (showPasswordHint) {
+            {
+              Text(
+                  text = "8 characters or more.",
+                  color =
+                      if (value.isNotEmpty() && !isPasswordValid) {
+                        MaterialTheme.colorScheme.error
+                      } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                      },
+                  style = MaterialTheme.typography.bodySmall,
+              )
+            }
+          } else null,
       singleLine = true,
       visualTransformation =
           if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),

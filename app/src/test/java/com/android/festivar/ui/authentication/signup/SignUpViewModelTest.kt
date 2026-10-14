@@ -20,6 +20,17 @@ class SignUpViewModelTest {
   private val authRepository = FakeAuthRepository()
 
   @Test
+  fun updatePassword_tracksMinimumLength() {
+    val viewModel = SignUpViewModel(authRepository)
+
+    viewModel.updatePassword("1234567")
+    Assert.assertFalse(viewModel.uiState.value.isPasswordValid)
+
+    viewModel.updatePassword("12345678")
+    Assert.assertTrue(viewModel.uiState.value.isPasswordValid)
+  }
+
+  @Test
   fun signUp_setsLoadingThenUserOnSuccess() {
     val user = mockk<FirebaseUser>()
     val repositoryStarted = CompletableDeferred<Unit>()

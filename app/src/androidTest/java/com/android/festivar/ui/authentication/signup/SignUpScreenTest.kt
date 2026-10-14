@@ -146,7 +146,22 @@ class SignUpScreenTest {
 
     composeTestRule.onNodeWithTag(SignUpScreenTestTags.PASS_FIELD).performTextInput("short")
 
-    composeTestRule.onNodeWithText("Password must be at least 8 characters.").assertIsDisplayed()
+    composeTestRule.onNodeWithText("8 characters or more.").assertIsDisplayed()
+  }
+
+  @Test
+  fun shortPassword_disablesSignUpButton() {
+    composeTestRule.setContent { SignUpScreen(viewModel = viewModel) }
+
+    composeTestRule
+        .onNodeWithTag(SignUpScreenTestTags.EMAIL_FIELD)
+        .performTextInput("user@example.com")
+    composeTestRule.onNodeWithTag(SignUpScreenTestTags.PASS_FIELD).performTextInput("1234567")
+    composeTestRule
+        .onNodeWithTag(SignUpScreenTestTags.PASS_CONFIRM_FIELD)
+        .performTextInput("1234567")
+
+    composeTestRule.onNodeWithTag(SignUpScreenTestTags.SIGNUP_BUTTON).assertIsNotEnabled()
   }
 
   @Test

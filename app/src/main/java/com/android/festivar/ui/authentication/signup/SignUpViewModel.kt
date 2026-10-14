@@ -17,9 +17,12 @@ data class AuthUIState(
     val errorMsg: String? = null,
     val signedOut: Boolean = false,
     val password: String = "",
+    val isPasswordValid: Boolean = false,
     val confirmPassword: String = "",
     val email: String = "",
 )
+
+const val MIN_PASSWORD_LENGTH = 8
 
 class SignUpViewModel(private val authRepository: AuthRepository = AuthRepositoryFirebase()) :
     ViewModel() {
@@ -31,7 +34,9 @@ class SignUpViewModel(private val authRepository: AuthRepository = AuthRepositor
   }
 
   fun updatePassword(password: String) {
-    _uiState.update { it.copy(password = password) }
+    _uiState.update {
+      it.copy(password = password, isPasswordValid = password.length >= MIN_PASSWORD_LENGTH)
+    }
   }
 
   fun updateConfirmPassword(confirmPassword: String) {
@@ -48,6 +53,10 @@ class SignUpViewModel(private val authRepository: AuthRepository = AuthRepositor
       password: String,
   ) {
     if (_uiState.value.isLoading) return
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      _uiState.update { it.copy(errorMsg = "Password must be at least 8 characters.") }
+      return
+    }
     viewModelScope.launch {
       _uiState.value = AuthUIState(isLoading = true)
       val result =
