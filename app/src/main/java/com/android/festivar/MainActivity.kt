@@ -22,6 +22,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.authentication.AuthRepositoryFirebase
+import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.navigation.AppScreens
 import com.android.festivar.navigation.CreateEventNavigator
 import com.android.festivar.navigation.LoginNavigator
@@ -32,6 +33,7 @@ import com.android.festivar.ui.authentication.login.LoginViewModel
 import com.android.festivar.ui.authentication.signup.SignUpScreen
 import com.android.festivar.ui.authentication.signup.SignUpViewModel
 import com.android.festivar.ui.event.CreateEventScreen
+import com.android.festivar.ui.event.CreateEventViewModel
 import com.android.festivar.ui.tasks.TaskOverviewScreen
 import com.android.festivar.ui.theme.AppTheme
 import kotlinx.coroutines.launch
@@ -54,13 +56,15 @@ fun FestivAR(
     context: Context = LocalContext.current,
     credentialManager: CredentialManager = CredentialManager.create(context),
     authRepository: AuthRepository = remember { AuthRepositoryFirebase() },
+    startDestinationOverride: String? = null,
 ) {
   val navController = rememberNavController()
   val scope = rememberCoroutineScope()
 
   val startDestination =
-      if (authRepository.currentUser != null) AppScreens.EventOverview.name
-      else AppScreens.Login.name
+      startDestinationOverride
+          ?: if (authRepository.currentUser != null) AppScreens.EventOverview.name
+          else AppScreens.Login.name
 
   NavHost(
       navController = navController,
@@ -113,7 +117,10 @@ fun FestivAR(
     }
     composable(route = AppScreens.CreateEvent.name) {
       val navigator = CreateEventNavigator(navController)
-      CreateEventScreen(onBack = navigator.onBack)
+      CreateEventScreen(
+          viewModel = viewModel { CreateEventViewModel(EventsRepositoryLocal()) },
+          onBack = navigator.onBack,
+      )
     }
     composable(route = AppScreens.EventDetails.name) { ScreenName("event details") }
     composable(route = AppScreens.CreateTask.name) { ScreenName("create task") }
