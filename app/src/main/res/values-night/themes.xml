@@ -8,8 +8,8 @@
         <item name="android:windowLightNavigationBar">false</item>
     </style>
 
-    <!-- System start screen, the app's only splash: the burst on the background, shown while the
-         app starts, then Theme.AppTheme. -->
+    <!-- System start screen, the app's only splash: the burst and the wordmark on the background,
+         shown while the app starts, then Theme.AppTheme. -->
     <style name="Theme.App.Starting" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/background_dark</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/splash_icon</item>
