@@ -3,6 +3,7 @@ package com.android.festivar.ui.authentication.signup
 import android.content.Context
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.NoCredentialException
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
@@ -51,7 +52,11 @@ class SignUpViewModel(private val authRepository: AuthRepository = AuthRepositor
             GetSignInWithGoogleOption.Builder(context.getString(R.string.default_web_client_id))
                 .build()
         val request = GetCredentialRequest.Builder().addCredentialOption(option).build()
-        credentialManager.getCredential(context, request).credential
+        try {
+          credentialManager.getCredential(context, request).credential
+        } catch (exception: NoCredentialException) {
+          throw IllegalStateException("No credentials available", exception)
+        }
       }
           .fold(
               onSuccess = { authRepository.signInWithGoogle(it) },

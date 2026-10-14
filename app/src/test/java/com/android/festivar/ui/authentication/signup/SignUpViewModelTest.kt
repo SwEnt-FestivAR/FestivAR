@@ -5,6 +5,7 @@ import androidx.credentials.Credential
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.GetCredentialResponse
+import androidx.credentials.exceptions.NoCredentialException
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.authentication.AuthRepository
 import com.google.firebase.auth.FirebaseUser
@@ -96,6 +97,25 @@ class SignUpViewModelTest {
     Assert.assertFalse(state.isLoading)
     Assert.assertFalse(state.isAuthenticated)
     Assert.assertEquals("Unable to retrieve Google credentials", state.errorMsg)
+    Assert.assertEquals(0, authRepository.googleSignInCallCount)
+  }
+
+  @Test
+  fun googleSignUp_setsErrorWhenNoCredentialsAreAvailable() {
+    val context = mockk<Context>()
+    val credentialManager = mockk<CredentialManager>()
+    val failure = mockk<NoCredentialException>()
+    every { context.getString(com.android.festivar.R.string.default_web_client_id) } returns
+        "web-client-id"
+    coEvery { credentialManager.getCredential(context, any<GetCredentialRequest>()) } throws failure
+    val viewModel = SignUpViewModel(authRepository)
+
+    viewModel.googleSignUp(context, credentialManager)
+    val state = awaitState(viewModel) { it.errorMsg != null }
+
+    Assert.assertFalse(state.isLoading)
+    Assert.assertFalse(state.isAuthenticated)
+    Assert.assertEquals("No credentials available", state.errorMsg)
     Assert.assertEquals(0, authRepository.googleSignInCallCount)
   }
 
