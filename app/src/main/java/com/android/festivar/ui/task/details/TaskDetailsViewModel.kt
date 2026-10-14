@@ -95,8 +95,8 @@ class TaskDetailsViewModel(
   }
 
   /**
-   * Loads the task; on failure the error is set and the task stays null. Does nothing while an
-   * action is saving.
+   * Loads the task; on failure the error is set and the last loaded task, if any, stays shown.
+   * Does nothing while an action is saving.
    */
   fun load() {
     if (_uiState.value.isUpdating) return
@@ -118,20 +118,20 @@ class TaskDetailsViewModel(
    * Adds the current user to the task's assignees. Does nothing unless
    * [TaskDetailsUiState.canTake].
    */
-  fun take() = update({ it.canTake }) { it.addAssignee(currentUser) }
+  fun take() = saveIf({ it.canTake }) { it.addAssignee(currentUser) }
 
   /** Removes the current user from the assignees. Does nothing unless the task is yours. */
-  fun giveBack() = update({ it.canGiveBack }) { it.removeAssignee(currentUser) }
+  fun giveBack() = saveIf({ it.canGiveBack }) { it.removeAssignee(currentUser) }
 
   /** Completes the task. Does nothing unless the task is yours. */
-  fun markDone() = update({ it.canMarkDone }) { it.complete() }
+  fun markDone() = saveIf({ it.canMarkDone }) { it.complete() }
 
   /** Clears the error message. */
   fun clearError() = _uiState.update { it.copy(errorMsg = null) }
 
   // editTask overwrites the whole task, so two users acting at once can lose a change:
   // https://github.com/SwEnt-FestivAR/FestivAR/issues/186
-  private fun update(allowed: (TaskDetailsUiState) -> Boolean, change: (Task) -> Task) {
+  private fun saveIf(allowed: (TaskDetailsUiState) -> Boolean, change: (Task) -> Task) {
     // Checking and setting isUpdating in one step, so two taps cannot both start a save.
     val before = _uiState.getAndUpdate {
       if (allowed(it) && it.task != null) it.copy(isUpdating = true, errorMsg = null) else it
