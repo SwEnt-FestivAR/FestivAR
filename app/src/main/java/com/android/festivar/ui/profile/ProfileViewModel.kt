@@ -1,5 +1,4 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
-
 package com.android.festivar.ui.profile
 
 import androidx.lifecycle.ViewModel
@@ -23,16 +22,15 @@ import kotlinx.coroutines.launch
  * @property name The name of the [User], contains the current value that is written, may contain
  *   the modified value that is not saved.
  * @property surname The surname of the [User], contains the current value that is written, may
- *   contain
- *     * the modified value that is not saved.
- *
- * @property errorMsg An error message to show when fetching the [User] items fails. `null` if
- *     * there is no error.
- *
+ *   contain the modified value that is not saved.
+ * @property errorMsg An error message to show when an operation fails and contains the exact error
+ *   message.
  * @property isLoading Whether the [User] items is currently being fetched.
  * @property isSaving Whether the [User] item is being saved and updated with the new values.
  * @property signedOut Whether the [User] signs out, keeps the information to block any other
- *   operation while de the [User] is being disconnected.
+ *   operation while the [User] is being disconnected.
+ *     @property isSigningOut Whether the [User] is currently in the process of signing out, it
+ *       blocks any other operation while trying to disconnect the [User].
  */
 data class ProfileUIState(
     val user: User? = null,
@@ -42,6 +40,7 @@ data class ProfileUIState(
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
     val signedOut: Boolean = false,
+    val isSigningOut: Boolean = false,
 ) {
   /**
    * Whether the Save changes button can be pressed: the profile is loaded, no save is running, no
@@ -53,7 +52,12 @@ data class ProfileUIState(
     get() {
       val original = user ?: return false
       val changed = name.trim() != original.name || surname.trim() != original.surname
-      return !isSaving && name.isNotBlank() && surname.isNotBlank() && changed
+      return !isSaving &&
+          name.isNotBlank() &&
+          surname.isNotBlank() &&
+          changed &&
+          !signedOut &&
+          !isSigningOut
     }
 }
 
@@ -75,7 +79,7 @@ class ProfileViewModel(
   private val _uiState = MutableStateFlow(ProfileUIState())
   val uiState: StateFlow<ProfileUIState> = _uiState.asStateFlow()
 
-  /** Initialisation block that charges all data to be ready for display. */
+  /** Initialisation block that loads all data to be ready for display. */
   init {
     getUserInformation()
   }
@@ -86,29 +90,37 @@ class ProfileViewModel(
   }
 
   /**
-   * Sets the name typed in the Name field. The saved [ProfileUIState.user] is not changed.
+   * Sets the name typed in the Name field. The saved [ProfileUIState.user] is not changed. The
+   * function is stopped/canceled if the user is signing out as he cannot modify anything anymore.
    *
    * @param name The name that is being typed.
    */
   fun updateName(name: String) {
+    if (_uiState.value.signedOut || _uiState.value.isSigningOut) return
     _uiState.update { it.copy(name = name) }
   }
 
   /**
    * Sets the surname typed in the Surname field. The saved [ProfileUIState.user] is not changed.
+   * The function is stopped/canceled if the user is signing out as he cannot modify anything
+   * anymore.
    *
    * @param surname The surname that is being typed.
    */
   fun updateSurname(surname: String) {
+    if (_uiState.value.signedOut || _uiState.value.isSigningOut) return
     _uiState.update { it.copy(surname = surname) }
   }
 
   /**
-   * Utility function that saves the typed name and surname in the repository. Does nothing unless
+   * Function that saves the typed name and surname in the repository. Does nothing unless
    * [ProfileUIState.canSave], and checks [ProfileUIState.isSaving] so that a second tap will do
    * nothing until the save is completed or fails.
    */
   fun saveChanges() {
+    // If the user is signing out, no further changes can be made.
+    if (_uiState.value.signedOut || _uiState.value.isSigningOut) return
+
     val state = _uiState.value
 
     // If saving is disabled, quit the function.
@@ -129,7 +141,7 @@ class ProfileViewModel(
     // Set the current state to saving.
     _uiState.update { it.copy(isSaving = true, errorMsg = null) }
 
-    // Save the user modifications into the rpeository.
+    // Save the user modifications into the repository.
     viewModelScope.launch {
       try {
 
@@ -153,6 +165,13 @@ class ProfileViewModel(
    * to the login screen; on failure [ProfileUIState.errorMsg] is set.
    */
   fun signOut() {
+    // If the user is already signing out, it can't be run twice.
+    if (_uiState.value.signedOut || _uiState.value.isSigningOut) return
+
+    // Informs that the user is signing out.
+    _uiState.update { it.copy(isSigningOut = true) }
+
+    // Sign uot through the authentification repository.
     viewModelScope.launch {
       authRepository
           .signOut()
@@ -160,14 +179,17 @@ class ProfileViewModel(
               onSuccess = { _uiState.update { it.copy(signedOut = true) } },
               onFailure = { e ->
                 _uiState.update {
-                  it.copy(errorMsg = "Failed to sign out: ${e.message ?: "unknown error"}")
+                  it.copy(
+                      isSigningOut = false,
+                      errorMsg = "Failed to sign out: ${e.message ?: "unknown error"}",
+                  )
                 }
               },
           )
     }
   }
 
-  /** Utility function that fetches the [User] item from the repository and updates the UI state. */
+  /** Function that fetches the [User] item from the repository and updates the UI state. */
   private fun getUserInformation() {
     // Sets the state to loading so that the user can't already try to write the in the fields
     // while the information are not already set.

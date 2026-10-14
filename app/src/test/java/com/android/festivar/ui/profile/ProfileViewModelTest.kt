@@ -54,14 +54,21 @@ class ProfileViewModelTest {
     }
   }
 
-  /** An [AuthRepository] whose sign out returns [signOutResult] and counts its calls. */
-  private class FakeAuthRepository(var signOutResult: Result<Unit> = Result.success(Unit)) :
-      AuthRepository {
+  /**
+   * An [AuthRepository] whose sign out returns [signOutResult] and counts its calls. While
+   * [signOutGate] is set, a sign out waits until the test completes it, so the tests can act during
+   * a sign out.
+   */
+  private class FakeAuthRepository(
+      var signOutResult: Result<Unit> = Result.success(Unit),
+      var signOutGate: CompletableDeferred<Unit>? = null,
+  ) : AuthRepository {
     var signOutCount = 0
       private set
 
     override suspend fun signOut(): Result<Unit> {
       signOutCount += 1
+      signOutGate?.await()
       return signOutResult
     }
 
@@ -247,6 +254,15 @@ class ProfileViewModelTest {
     val state = ProfileUIState(user = sara, name = "Sarah", surname = sara.surname)
     assertTrue(state.canSave)
     assertFalse(state.copy(isSaving = true).canSave)
+  }
+
+  /** Test that nothing can be saved while signing out, nor once signed out. */
+  @Test
+  fun cannotSaveWhileSigningOutOrOnceSignedOut() {
+    val state = ProfileUIState(user = sara, name = "Sarah", surname = sara.surname)
+    assertTrue(state.canSave)
+    assertFalse(state.copy(isSigningOut = true).canSave)
+    assertFalse(state.copy(signedOut = true).canSave)
   }
 
   /**
@@ -446,6 +462,111 @@ class ProfileViewModelTest {
     advanceUntilIdle()
 
     assertEquals("Failed to sign out: unknown error", viewModel.uiState.value.errorMsg)
+  }
+
+  /**
+   * Test that the UI state is signing out until the repository answers, without being signed out
+   * yet, and that a second tap meanwhile is ignored.
+   */
+  @Test
+  fun isSigningOutUntilTheRepositoryAnswersAndASecondTapIsIgnored() = runTest {
+    val gate = CompletableDeferred<Unit>()
+    authRepository.signOutGate = gate
+    val viewModel = createViewModel()
+    advanceUntilIdle()
+
+    viewModel.signOut()
+    assertTrue(viewModel.uiState.value.isSigningOut)
+    advanceUntilIdle()
+    assertTrue(viewModel.uiState.value.isSigningOut)
+    assertFalse(viewModel.uiState.value.signedOut)
+
+    viewModel.signOut()
+    advanceUntilIdle()
+    assertEquals(1, authRepository.signOutCount)
+
+    gate.complete(Unit)
+    advanceUntilIdle()
+    assertTrue(viewModel.uiState.value.signedOut)
+    assertEquals(1, authRepository.signOutCount)
+  }
+
+  /** Test that a failed sign out ends the signing out, so the user can try again. */
+  @Test
+  fun signOutFailureLetsTheUserTryAgain() = runTest {
+    authRepository.signOutResult = Result.failure(RuntimeException("Network down"))
+    val viewModel = createViewModel()
+    advanceUntilIdle()
+    viewModel.signOut()
+    advanceUntilIdle()
+    assertFalse(viewModel.uiState.value.isSigningOut)
+
+    authRepository.signOutResult = Result.success(Unit)
+    viewModel.signOut()
+    advanceUntilIdle()
+
+    assertEquals(2, authRepository.signOutCount)
+    assertTrue(viewModel.uiState.value.signedOut)
+  }
+
+  /** Test that signing out again once signed out does nothing. */
+  @Test
+  fun signOutOnceSignedOutIsIgnored() = runTest {
+    val viewModel = createViewModel()
+    advanceUntilIdle()
+    viewModel.signOut()
+    advanceUntilIdle()
+
+    viewModel.signOut()
+    advanceUntilIdle()
+
+    assertEquals(1, authRepository.signOutCount)
+  }
+
+  /** Test that typing and saving do nothing while signing out. */
+  @Test
+  fun editingIsIgnoredWhileSigningOut() = runTest {
+    val gate = CompletableDeferred<Unit>()
+    authRepository.signOutGate = gate
+    val repository = RecordingUsersRepository(listOf(sara))
+    val viewModel = createViewModel(repository)
+    advanceUntilIdle()
+    viewModel.updateName("Sarah")
+    viewModel.signOut()
+    advanceUntilIdle()
+
+    viewModel.updateName("Sarita")
+    viewModel.updateSurname("Muller")
+    viewModel.saveChanges()
+    advanceUntilIdle()
+
+    val state = viewModel.uiState.value
+    assertEquals("Sarah", state.name)
+    assertEquals(sara.surname, state.surname)
+    assertFalse(state.isSaving)
+    assertTrue(repository.editedUsers.isEmpty())
+    gate.complete(Unit)
+  }
+
+  /** Test that typing and saving do nothing once signed out. */
+  @Test
+  fun editingIsIgnoredOnceSignedOut() = runTest {
+    val repository = RecordingUsersRepository(listOf(sara))
+    val viewModel = createViewModel(repository)
+    advanceUntilIdle()
+    viewModel.updateName("Sarah")
+    viewModel.signOut()
+    advanceUntilIdle()
+
+    viewModel.updateName("Sarita")
+    viewModel.updateSurname("Muller")
+    viewModel.saveChanges()
+    advanceUntilIdle()
+
+    val state = viewModel.uiState.value
+    assertEquals("Sarah", state.name)
+    assertEquals(sara.surname, state.surname)
+    assertTrue(repository.editedUsers.isEmpty())
   }
 
   /** Test that the error message is removed once cleared. */
