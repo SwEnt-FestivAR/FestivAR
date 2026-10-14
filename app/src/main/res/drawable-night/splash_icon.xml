@@ -5,8 +5,12 @@
      the wordmark as outlines since an icon cannot hold text. The system masks the icon to a
      centred circle of 192dp, so the whole is centred on that circle and scaled by 0.9778 to keep
      every point inside it.
-     Burst from the Logo/App icon component, wordmark from res/font/bricolage_grotesque.ttf. -->
+     Burst from the Logo/App icon component, wordmark from res/font/bricolage_grotesque.ttf.
+     Lint's VectorRaster and VectorPath warnings about drawing cost are ignored: the system splash
+     requires this 288dp size, the paths are the Figma logo as is, and it is drawn once per launch. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:ignore="VectorRaster,VectorPath"
     android:width="288dp"
     android:height="288dp"
     android:viewportWidth="288"
