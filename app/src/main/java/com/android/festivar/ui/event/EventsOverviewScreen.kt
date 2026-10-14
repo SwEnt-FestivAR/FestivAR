@@ -68,12 +68,12 @@ import com.android.festivar.model.event.Event
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.Avatar
 import com.android.festivar.ui.components.FilterChip
+import com.android.festivar.ui.components.formatDate
+import com.android.festivar.ui.components.formatDay
 import com.android.festivar.ui.theme.AppTheme
 import java.time.YearMonth
 import java.time.ZoneId
 import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 object EventsOverviewScreenTestTags {
   const val TITLE = "eventsOverviewTitle"
@@ -97,16 +97,14 @@ object EventsOverviewScreenTestTags {
  * end day is only shown if the [event] ends on another day, and its month is only repeated if it
  * ends in another month.
  */
-internal fun formatEventDates(event: Event, locale: Locale = Locale.getDefault()): String {
-  val fullDay = DateTimeFormatter.ofPattern("EEE d MMM", locale)
+internal fun formatEventDates(event: Event): String {
   val start = event.startDate.toLocalDate()
   val end = event.endDate.toLocalDate()
   val dates =
       when {
-        end == start -> start.format(fullDay)
-        YearMonth.from(end) == YearMonth.from(start) ->
-            "${start.format(DateTimeFormatter.ofPattern("EEE d", locale))} to ${end.format(fullDay)}"
-        else -> "${start.format(fullDay)} to ${end.format(fullDay)}"
+        end == start -> formatDate(start)
+        YearMonth.from(end) == YearMonth.from(start) -> "${formatDay(start)} to ${formatDate(end)}"
+        else -> "${formatDate(start)} to ${formatDate(end)}"
       }
   return if (event.location.isBlank()) dates else "$dates · ${event.location}"
 }
@@ -237,6 +235,7 @@ fun EventsOverviewContent(
       }
 
       when {
+        // Only on the first load: a later refresh keeps the current list instead of a spinner
         uiState.isLoading && uiState.hasNoEvents -> {
           Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
             CircularProgressIndicator(
