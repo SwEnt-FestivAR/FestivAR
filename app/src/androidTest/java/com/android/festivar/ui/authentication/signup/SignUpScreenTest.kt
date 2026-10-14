@@ -141,7 +141,7 @@ class SignUpScreenTest {
   }
 
   @Test
-  fun shortPassword_showsErrorMessage() {
+  fun passwordHint_isAlwaysDisplayed() {
     composeTestRule.setContent { SignUpScreen(viewModel = viewModel) }
 
     composeTestRule.onNodeWithTag(SignUpScreenTestTags.PASS_FIELD).performTextInput("short")

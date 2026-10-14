@@ -54,7 +54,9 @@ class SignUpViewModel(private val authRepository: AuthRepository = AuthRepositor
   ) {
     if (_uiState.value.isLoading) return
     if (password.length < MIN_PASSWORD_LENGTH) {
-      _uiState.update { it.copy(errorMsg = "Password must be at least 8 characters.") }
+      _uiState.update {
+        it.copy(errorMsg = "Password must be at least $MIN_PASSWORD_LENGTH characters.")
+      }
       return
     }
     viewModelScope.launch {

@@ -131,7 +131,6 @@ fun SignUpScreen(
             onConfirmPasswordChange = { viewModel.updateConfirmPassword(it) },
             isPasswordVisible = isPasswordVisible,
             onPasswordVisibilityChange = { isPasswordVisible = !isPasswordVisible },
-            isPasswordValid = uiState.isPasswordValid,
         )
         Spacer(modifier = Modifier.height(20.dp))
         SignUpButton(
@@ -234,7 +233,6 @@ private fun SignUpFields(
     onConfirmPasswordChange: (String) -> Unit,
     isPasswordVisible: Boolean,
     onPasswordVisibilityChange: () -> Unit,
-    isPasswordValid: Boolean,
 ) {
   Column {
     SignUpTextField(
@@ -252,8 +250,6 @@ private fun SignUpFields(
         tag = SignUpScreenTestTags.PASS_FIELD,
         isPasswordVisible = isPasswordVisible,
         onPasswordVisibilityChange = onPasswordVisibilityChange,
-        showPasswordHint = true,
-        isPasswordValid = isPasswordValid,
     )
     Spacer(modifier = Modifier.height(12.dp))
     PasswordTextField(
@@ -262,6 +258,13 @@ private fun SignUpFields(
         label = stringResource(R.string.signup_confirm_password),
         tag = SignUpScreenTestTags.PASS_CONFIRM_FIELD,
         isPasswordVisible = isPasswordVisible,
+        onPasswordVisibilityChange = onPasswordVisibilityChange,
+    )
+    Text(
+        text = stringResource(R.string.signup_password_hint),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = MaterialTheme.typography.bodySmall,
+        modifier = Modifier.padding(start = 4.dp, top = 6.dp),
     )
     if (confirmPassword.isNotEmpty() && password != confirmPassword) {
       Text(
@@ -303,29 +306,12 @@ private fun PasswordTextField(
     tag: String,
     isPasswordVisible: Boolean,
     onPasswordVisibilityChange: (() -> Unit)? = null,
-    showPasswordHint: Boolean = false,
-    isPasswordValid: Boolean = true,
 ) {
   OutlinedTextField(
       value = value,
       onValueChange = onValueChange,
       modifier = Modifier.fillMaxWidth().testTag(tag),
       label = { Text(label) },
-      supportingText =
-          if (showPasswordHint) {
-            {
-              Text(
-                  text = stringResource(R.string.signup_password_hint),
-                  color =
-                      if (value.isNotEmpty() && !isPasswordValid) {
-                        MaterialTheme.colorScheme.error
-                      } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                      },
-                  style = MaterialTheme.typography.bodySmall,
-              )
-            }
-          } else null,
       singleLine = true,
       visualTransformation =
           if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
