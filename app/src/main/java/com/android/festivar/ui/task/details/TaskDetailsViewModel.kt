@@ -3,8 +3,10 @@
 package com.android.festivar.ui.task.details
 
 import android.util.Log
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.android.festivar.R
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryProvider
@@ -18,12 +20,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 private const val LOG_TAG = "TaskDetailsViewModel"
-
-/** Shown when the task cannot be loaded. */
-private const val LOAD_FAILED_MESSAGE = "Unable to load the task."
-
-/** Shown when an action cannot be saved. */
-private const val SAVE_FAILED_MESSAGE = "Unable to save the change."
 
 /** The badge at the top of the Task details screen. */
 enum class TaskStatus {
@@ -48,14 +44,14 @@ enum class TaskStatus {
  * @property isLoading true while the task is being loaded.
  * @property isUpdating true while an action is being saved, so a second tap does nothing. Actions
  *   are also disabled while [isLoading], so a reload cannot overwrite a saved change.
- * @property errorMsg the last failure, or null.
+ * @property errorMsg the string resource of the last failure, or null.
  */
 data class TaskDetailsUiState(
     val task: Task? = null,
     val status: TaskStatus? = null,
     val isLoading: Boolean = true,
     val isUpdating: Boolean = false,
-    val errorMsg: String? = null,
+    @StringRes val errorMsg: Int? = null,
 ) {
   /** The "Take" button of an [TaskStatus.OPEN] task. */
   val canTake: Boolean
@@ -109,7 +105,7 @@ class TaskDetailsViewModel(
         throw e
       } catch (e: Exception) {
         Log.e(LOG_TAG, "Error loading task $taskId", e)
-        _uiState.update { it.copy(isLoading = false, errorMsg = LOAD_FAILED_MESSAGE) }
+        _uiState.update { it.copy(isLoading = false, errorMsg = R.string.task_details_load_failed) }
       }
     }
   }
@@ -148,7 +144,7 @@ class TaskDetailsViewModel(
         throw e
       } catch (e: Exception) {
         Log.e(LOG_TAG, "Error saving task $taskId", e)
-        _uiState.update { it.copy(isUpdating = false, errorMsg = SAVE_FAILED_MESSAGE) }
+        _uiState.update { it.copy(isUpdating = false, errorMsg = R.string.task_details_save_failed) }
       }
     }
   }

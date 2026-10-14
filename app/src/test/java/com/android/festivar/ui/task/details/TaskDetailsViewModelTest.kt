@@ -3,6 +3,7 @@
 package com.android.festivar.ui.task.details
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.festivar.R
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
@@ -170,7 +171,7 @@ class TaskDetailsViewModelTest {
   fun missingTask_setsErrorAndClearErrorResetsIt() {
     val vm = TaskDetailsViewModel("missing", me, repository)
     assertNull(vm.uiState.value.task)
-    assertEquals("Unable to load the task.", vm.uiState.value.errorMsg)
+    assertEquals(R.string.task_details_load_failed, vm.uiState.value.errorMsg)
     assertFalse(vm.uiState.value.isLoading)
     vm.clearError()
     assertNull(vm.uiState.value.errorMsg)
@@ -180,7 +181,7 @@ class TaskDetailsViewModelTest {
   fun reloadAfterFailure_showsTheTaskAndClearsTheError() {
     repository.getFailure = IOException("offline")
     val vm = viewModel(task())
-    assertEquals("Unable to load the task.", vm.uiState.value.errorMsg)
+    assertEquals(R.string.task_details_load_failed, vm.uiState.value.errorMsg)
     assertNull(vm.uiState.value.task)
 
     repository.getFailure = null
@@ -197,7 +198,7 @@ class TaskDetailsViewModelTest {
 
     vm.load()
 
-    assertEquals("Unable to load the task.", vm.uiState.value.errorMsg)
+    assertEquals(R.string.task_details_load_failed, vm.uiState.value.errorMsg)
     assertFalse(vm.uiState.value.isLoading)
     assertEquals(TaskStatus.OPEN, vm.uiState.value.status)
     assertEquals("Run power to stage", vm.uiState.value.task?.title)
@@ -334,7 +335,7 @@ class TaskDetailsViewModelTest {
     repository.editFailure = IOException("no network")
     vm.take()
 
-    assertEquals("Unable to save the change.", vm.uiState.value.errorMsg)
+    assertEquals(R.string.task_details_save_failed, vm.uiState.value.errorMsg)
     assertFalse(vm.uiState.value.isUpdating)
     assertEquals(TaskStatus.OPEN, vm.uiState.value.status)
     assertTrue(stored().assignees.isEmpty())
@@ -353,7 +354,7 @@ class TaskDetailsViewModelTest {
     repository.editFailure = IOException("no network")
     vm.giveBack()
 
-    assertEquals("Unable to save the change.", vm.uiState.value.errorMsg)
+    assertEquals(R.string.task_details_save_failed, vm.uiState.value.errorMsg)
     assertFalse(vm.uiState.value.isUpdating)
     assertEquals(TaskStatus.YOURS, vm.uiState.value.status)
     assertEquals(listOf(me), stored().assignees)
@@ -365,7 +366,7 @@ class TaskDetailsViewModelTest {
     repository.editFailure = IOException("no network")
     vm.markDone()
 
-    assertEquals("Unable to save the change.", vm.uiState.value.errorMsg)
+    assertEquals(R.string.task_details_save_failed, vm.uiState.value.errorMsg)
     assertFalse(vm.uiState.value.isUpdating)
     assertEquals(TaskStatus.YOURS, vm.uiState.value.status)
     assertFalse(stored().completed)

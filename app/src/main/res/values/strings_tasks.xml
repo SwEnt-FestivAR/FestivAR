@@ -28,4 +28,7 @@
     <string name="pin_mine">Your task</string>
     <string name="pin_taken">Taken task</string>
     <string name="pin_done">Done task</string>
+
+    <string name="task_details_load_failed">Unable to load the task.</string>
+    <string name="task_details_save_failed">Unable to save the change.</string>
 </resources>
