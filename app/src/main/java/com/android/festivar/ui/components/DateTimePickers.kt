@@ -161,8 +161,8 @@ fun FestivarDateTimePickerDialog(
 data class DateTimeRowTags(val date: String, val dateError: String, val time: String)
 
 /**
- * A date field and a time field side by side, each opening its picker when tapped. The message for
- * [dateError] is shown under the date.
+ * A date field and a time field side by side, each opening its picker when tapped. [dateError]
+ * marks both fields, and its message is shown under the date.
  */
 @Composable
 fun FestivarDateTimeRow(
@@ -190,6 +190,8 @@ fun FestivarDateTimeRow(
         value = time?.let(::formatTime).orEmpty(),
         label = timeLabel,
         onClick = onTimeClick,
+        // As in Figma, an error marks the whole row; its message stays under the date.
+        isError = dateError != null,
         modifier = Modifier.weight(1f).testTag(tags.time),
     )
   }

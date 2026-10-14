@@ -1,4 +1,5 @@
 <!-- Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com> -->
+<!-- Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com> -->
 <resources>
     <string name="app_name">FestivAR</string>
     <string name="title_activity_main">MainActivity</string>
@@ -13,8 +14,8 @@
     <string name="create_task_field_start_time">Start time</string>
     <string name="create_task_field_end_date">End date</string>
     <string name="create_task_field_end_time">End time</string>
-    <string name="field_error_empty_title">Title cannot be empty</string>
+    <string name="field_error_empty_title">Give the task a title</string>
     <string name="field_error_missing_date">Pick a date for this time</string>
-    <string name="field_error_end_before_start">The end cannot be before the start</string>
+    <string name="field_error_end_before_start">Ends before it starts</string>
     <string name="create_task_error_save_failed">Unable to create the task.</string>
 </resources>
