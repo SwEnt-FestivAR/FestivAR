@@ -16,6 +16,9 @@ interface UsersRepository {
   /**
    * Retrieves a specific [User] item by its unique identifier.
    *
+   * Besides the exceptions documented below, implementations backed by a remote storage may throw
+   * other exceptions when the storage cannot be reached or holds invalid data.
+   *
    * @param uId The unique identifier of the [User] item to retrieve.
    * @return The [User] item with the specified identifier.
    * @throws NoSuchElementException if the [User] item is not found.
@@ -35,6 +38,9 @@ interface UsersRepository {
   /**
    * Adds a new [User] item to the repository.
    *
+   * Besides the exceptions documented below, implementations backed by a remote storage may throw
+   * other exceptions when the storage cannot be reached or holds invalid data.
+   *
    * @param user The [User] item to add. Its [User.uid] must not be used by another [User] item.
    * @throws IllegalArgumentException if a [User] item with the same identifier already exists.
    */
@@ -42,6 +48,9 @@ interface UsersRepository {
 
   /**
    * Edits an existing [User] item in the repository.
+   *
+   * Besides the exceptions documented below, implementations backed by a remote storage may throw
+   * other exceptions when the storage cannot be reached or holds invalid data.
    *
    * @param uId The unique identifier of the [User] item to edit.
    * @param newValue The new value for the [User] item. Its [User.uid] must be equal to [uId].
@@ -52,6 +61,9 @@ interface UsersRepository {
 
   /**
    * Deletes a [User] item from the repository.
+   *
+   * Besides the exceptions documented below, implementations backed by a remote storage may throw
+   * other exceptions when the storage cannot be reached or holds invalid data.
    *
    * @param uId The unique identifier of the [User] item to delete.
    * @throws NoSuchElementException if the [User] item is not found.

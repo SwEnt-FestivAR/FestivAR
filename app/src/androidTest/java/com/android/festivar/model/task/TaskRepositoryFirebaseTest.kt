@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.task
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -11,6 +12,8 @@ import com.google.firebase.firestore.firestore
 import java.time.Duration
 import java.time.LocalDateTime
 import java.util.UUID
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
 import org.junit.After
@@ -187,7 +190,14 @@ class TaskRepositoryFirebaseTest {
 
   @Test
   fun editTask_throwsWhenTaskDoesNotExist() = runBlocking {
-    assertThrows { repository.editTask(task.taskId, task) }
+    assertThrowsOfType<NoSuchElementException> { repository.editTask(task.taskId, task) }
+  }
+
+  @Test
+  fun editTask_doesNotCreateTaskWhenTaskDoesNotExist() = runBlocking {
+    assertThrowsOfType<NoSuchElementException> { repository.editTask(task.taskId, task) }
+
+    assertThrowsOfType<NoSuchElementException> { repository.getTask(task.taskId) }
   }
 
   @Test
@@ -201,7 +211,30 @@ class TaskRepositoryFirebaseTest {
 
   @Test
   fun deleteTask_throwsWhenTaskDoesNotExist() = runBlocking {
-    assertThrows { repository.deleteTask(task.taskId) }
+    assertThrowsOfType<NoSuchElementException> { repository.deleteTask(task.taskId) }
+  }
+
+  @Test
+  fun deleteTask_throwsWhenTaskWasAlreadyDeleted() = runBlocking {
+    repository.addTask(task)
+    repository.deleteTask(task.taskId)
+
+    assertThrowsOfType<NoSuchElementException> { repository.deleteTask(task.taskId) }
+  }
+
+  @Test
+  fun deleteTask_concurrentDeletesOnlySucceedOnce() = runBlocking {
+    repository.addTask(task)
+
+    val results =
+        listOf(
+                async { runCatching { repository.deleteTask(task.taskId) } },
+                async { runCatching { repository.deleteTask(task.taskId) } },
+            )
+            .awaitAll()
+
+    assertEquals(1, results.count { it.isSuccess })
+    assertTrue(results.single { it.isFailure }.exceptionOrNull() is NoSuchElementException)
   }
 
   private fun newTask(): Task =
@@ -228,6 +261,18 @@ class TaskRepositoryFirebaseTest {
       thrown = true
     }
     assertTrue("Expected an exception", thrown)
+  }
+
+  private suspend inline fun <reified T : Throwable> assertThrowsOfType(
+      crossinline block: suspend () -> Unit,
+  ) {
+    var thrown: Throwable? = null
+    try {
+      block()
+    } catch (exception: Exception) {
+      thrown = exception
+    }
+    assertTrue("Expected ${T::class.java.simpleName} but got $thrown", thrown is T)
   }
 
   @Suppress("UNCHECKED_CAST")

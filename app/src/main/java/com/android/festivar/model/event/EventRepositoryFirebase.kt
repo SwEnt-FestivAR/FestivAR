@@ -52,13 +52,25 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
 
   override suspend fun editEvent(eventId: String, newValue: Event) {
     require(eventId == newValue.eventId) { "The edited Event must keep its existing eventId" }
-    eventCollection.document(eventId).update(toFirestoreData(newValue)).await()
+    val document = eventCollection.document(eventId)
+    db.runTransaction { transaction ->
+          if (!transaction.get(document).exists()) {
+            throw NoSuchElementException("Event '$eventId' does not exist.")
+          }
+          transaction.update(document, toFirestoreData(newValue))
+        }
+        .await()
   }
 
   override suspend fun deleteEvent(eventId: String) {
     val document = eventCollection.document(eventId)
-    check(document.get().await().exists()) { "Event '$eventId' does not exist" }
-    document.delete().await()
+    db.runTransaction { transaction ->
+          if (!transaction.get(document).exists()) {
+            throw NoSuchElementException("Event '$eventId' does not exist.")
+          }
+          transaction.delete(document)
+        }
+        .await()
   }
 
   private fun toFirestoreData(event: Event): Map<String, Any?> {
