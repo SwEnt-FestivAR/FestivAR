@@ -31,8 +31,7 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, authRepository: 
         onOpenTask = navigator.onOpenTask,
     )
   }
-  // navigate to this screen with
-  // navController.navigate("${AppScreens.CreateTask.name}/$eventId")
+  // The route carries the id of the event the new task belongs to.
   composable(
       route = "${AppScreens.CreateTask.name}/{eventId}",
       arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
