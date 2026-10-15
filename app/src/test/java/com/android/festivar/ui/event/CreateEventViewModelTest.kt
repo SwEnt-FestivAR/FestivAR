@@ -225,6 +225,72 @@ class CreateEventViewModelTest {
   }
 
   @Test
+  fun createEvent_whenUserIdIsBlank_doesNotAddMembers() = runBlocking {
+    val creatorViewModel =
+        CreateEventViewModel(
+            eventsRepository = repository,
+            userId = "",
+        )
+
+    creatorViewModel.updateName("Summer festival")
+    creatorViewModel.updateStartDate(startDate)
+    creatorViewModel.updateEndDate(endDate)
+    creatorViewModel.updateVenue("Main square")
+
+    creatorViewModel.createEvent()
+
+    var events: List<Event> = emptyList()
+    withTimeout(5_000.milliseconds) {
+      while (events.isEmpty()) {
+        events = repository.getAllEvents()
+        if (events.isEmpty()) delay(10.milliseconds)
+      }
+    }
+
+    assertEquals(1, events.size)
+    val createdEvent = events.single()
+    assertTrue(createdEvent.members.isEmpty())
+  }
+
+  @Test
+  fun createEvent_whenGetUserFails_addsFallbackMemberWithoutEditingUser() = runBlocking {
+    val usersRepo = UsersRepositoryLocal(emptyList())
+    val creatorViewModel =
+        CreateEventViewModel(
+            eventsRepository = repository,
+            usersRepository = usersRepo,
+            userId = "non-existent-user",
+        )
+
+    creatorViewModel.updateName("Summer festival")
+    creatorViewModel.updateStartDate(startDate)
+    creatorViewModel.updateEndDate(endDate)
+    creatorViewModel.updateVenue("Main square")
+
+    creatorViewModel.createEvent()
+
+    var events: List<Event> = emptyList()
+    withTimeout(5_000.milliseconds) {
+      while (events.isEmpty()) {
+        events = repository.getAllEvents()
+        if (events.isEmpty()) delay(10.milliseconds)
+      }
+    }
+
+    assertEquals(1, events.size)
+    val createdEvent = events.single()
+    assertEquals(listOf(User(uid = "non-existent-user")), createdEvent.members)
+
+    var userFetchFailed = false
+    try {
+      usersRepo.getUser("non-existent-user")
+    } catch (_: Exception) {
+      userFetchFailed = true
+    }
+    assertTrue(userFetchFailed)
+  }
+
+  @Test
   fun formIsComplete_isFalseForTheInitialState() {
     assertFalse(viewModel.formIsComplete())
   }
