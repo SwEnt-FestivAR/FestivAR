@@ -339,3 +339,24 @@ internal fun TaskDetailsYoursPreview() {
 internal fun TaskDetailsDonePreview() {
   AppTheme { TaskDetailsContent(previewState(TaskStatus.DONE)) }
 }
+
+/** The load failed: nothing to show, so the error offers Retry. */
+@Preview(showBackground = true, heightDp = 800)
+@Composable
+internal fun TaskDetailsLoadErrorPreview() {
+  val state =
+      TaskDetailsUiState(
+          currentUserId = previewUser.uid,
+          isLoading = false,
+          errorMsg = R.string.task_details_load_failed,
+      )
+  AppTheme { TaskDetailsContent(state) }
+}
+
+/** An action failed to save: the task stays shown and the error offers Dismiss. */
+@Preview(showBackground = true, heightDp = 800)
+@Composable
+internal fun TaskDetailsSaveErrorPreview() {
+  val state = previewState(TaskStatus.YOURS).copy(errorMsg = R.string.task_details_save_failed)
+  AppTheme { TaskDetailsContent(state) }
+}
