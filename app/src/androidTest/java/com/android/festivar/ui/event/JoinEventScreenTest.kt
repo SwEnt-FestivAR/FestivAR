@@ -7,9 +7,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertContentDescriptionEquals
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsFocused
@@ -17,6 +19,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
@@ -46,6 +49,12 @@ class JoinEventScreenTest {
           startDate = start,
           endDate = start.plusHours(5),
       )
+
+  /** Matches every node whose test tag starts with [prefix], whatever event id follows it. */
+  private fun hasTagPrefix(prefix: String) =
+      SemanticsMatcher("tag starts with $prefix") {
+        it.config.getOrNull(SemanticsProperties.TestTag)?.startsWith(prefix) == true
+      }
 
   private fun content(
       state: JoinEventUiState,
@@ -120,8 +129,10 @@ class JoinEventScreenTest {
     content(JoinEventUiState(code = "ZZZZZZ", notFound = true))
 
     composeTestRule.onNodeWithTag(JoinEventScreenTestTags.NOT_FOUND).assertIsDisplayed()
-    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.result("e1")).assertDoesNotExist()
-    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.join("e1")).assertDoesNotExist()
+    composeTestRule
+        .onAllNodes(hasTagPrefix(JoinEventScreenTestTags.result("")))
+        .assertCountEquals(0)
+    composeTestRule.onAllNodesWithText("Join as a volunteer").assertCountEquals(0)
   }
 
   @Test
