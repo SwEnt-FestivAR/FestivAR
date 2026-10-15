@@ -1,4 +1,5 @@
 // Written with the help of an AI coding assistant and reviewed line by line by the author.
+// Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 package com.android.festivar.ui.tasks
 
 import android.text.format.DateFormat
@@ -13,11 +14,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -31,13 +36,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.dropShadow
+import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.R
@@ -62,6 +72,7 @@ object TaskOverviewScreenTestTags {
   const val EMPTY = "overviewEmpty"
   const val ERROR_MESSAGE = "overviewError"
   const val RETRY = "overviewRetry"
+  const val ADD_TASK = "overviewAddTask"
 
   fun row(taskId: String) = "overviewRow$taskId"
 
@@ -70,7 +81,14 @@ object TaskOverviewScreenTestTags {
       "overviewSection${group.name}" + (day?.let { "_$it" } ?: "")
 }
 
-/** The task overview of [eventId], where a volunteer picks an open task. */
+/**
+ * The task overview of [eventId], where a volunteer picks an open task or adds one. The list
+ * reloads every time the screen comes back to the front, so a task created on the next screen shows
+ * up on return.
+ *
+ * @param onAddTask Called when the Add task button is tapped. Shown to every member for now, since
+ *   main's [com.android.festivar.model.event.Event] carries no owner or role yet.
+ */
 @Composable
 fun TaskOverviewScreen(
     eventId: String,
@@ -79,8 +97,10 @@ fun TaskOverviewScreen(
         viewModel(key = "$eventId:$userId") { TaskOverviewViewModel(eventId, userId) },
     onBack: () -> Unit = {},
     onOpenTask: (taskId: String) -> Unit = {},
+    onAddTask: () -> Unit = {},
 ) {
   val state by viewModel.uiState.collectAsStateWithLifecycle()
+  LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refresh() }
   TaskOverviewContent(
       state = state,
       onBack = onBack,
@@ -89,10 +109,15 @@ fun TaskOverviewScreen(
       onQueryChange = viewModel::setQuery,
       onRetry = viewModel::refresh,
       onOpenTask = onOpenTask,
+      onAddTask = onAddTask,
   )
 }
 
-/** The stateless overview: everything it shows comes from [state]. */
+/**
+ * The stateless overview: everything it shows comes from [state].
+ *
+ * @param onAddTask Called when the Add task button is tapped.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaskOverviewContent(
@@ -103,8 +128,10 @@ fun TaskOverviewContent(
     onQueryChange: (String) -> Unit = {},
     onRetry: () -> Unit = {},
     onOpenTask: (String) -> Unit = {},
+    onAddTask: () -> Unit = {},
 ) {
   Scaffold(
+      floatingActionButton = { AddTaskButton(onAddTask) },
       topBar = {
         TopAppBar(
             title = {
@@ -128,7 +155,7 @@ fun TaskOverviewContent(
               }
             },
         )
-      }
+      },
   ) { padding ->
     Column(Modifier.fillMaxSize().padding(padding).padding(top = 4.dp)) {
       if (state.searchOpen) {
@@ -181,7 +208,11 @@ fun TaskOverviewContent(
         )
       }
       val timeFormat = rememberTimeFormat()
-      LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 20.dp)) {
+      // The bottom padding keeps the last row clear of the Add task button
+      LazyColumn(
+          Modifier.weight(1f),
+          contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 88.dp),
+      ) {
         state.sections.forEach { section ->
           val sectionTag = TaskOverviewScreenTestTags.section(section.group, section.day)
           item(key = sectionTag) { SectionLabel(section.label(), Modifier.testTag(sectionTag)) }
@@ -204,6 +235,32 @@ fun TaskOverviewContent(
       }
     }
   }
+}
+
+/** The pill of the design: a lime extended button with its own floating shadow, no elevation. */
+@Composable
+private fun AddTaskButton(onClick: () -> Unit) {
+  ExtendedFloatingActionButton(
+      onClick = onClick,
+      shape = CircleShape,
+      containerColor = MaterialTheme.colorScheme.primary,
+      contentColor = MaterialTheme.colorScheme.onPrimary,
+      elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp),
+      icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+      text = { Text(stringResource(R.string.overview_add_task)) },
+      modifier =
+          Modifier.dropShadow(
+                  shape = CircleShape,
+                  shadow =
+                      Shadow(
+                          radius = 24.dp,
+                          color = MaterialTheme.colorScheme.onSurface,
+                          offset = DpOffset(0.dp, 8.dp),
+                          alpha = 0.14f,
+                      ),
+              )
+              .testTag(TaskOverviewScreenTestTags.ADD_TASK),
+  )
 }
 
 /** The load error in the theme's error colour, with a retry beside it. */

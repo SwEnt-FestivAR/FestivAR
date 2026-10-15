@@ -1,5 +1,6 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Gemini <noreply@google.com>
+// Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 package com.android.festivar.navigation
 
 import androidx.compose.runtime.LaunchedEffect
@@ -17,18 +18,19 @@ import com.android.festivar.ui.tasks.TaskOverviewScreen
 
 /** The destinations of the task feature. */
 fun NavGraphBuilder.taskGraph(navController: NavHostController, authRepository: AuthRepository) {
-  // navigate to this screen with
-  // navController.navigate(AppScreens.taskOverview(eventId))
+  // Reached through AppScreens.taskOverview(eventId)
   composable(
       route = "${AppScreens.TaskOverview.name}/{eventId}",
       arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
   ) { backStackEntry ->
     val navigator = TaskOverviewNavigator(navController)
+    val eventId = backStackEntry.arguments?.getString("eventId") ?: ""
     TaskOverviewScreen(
-        eventId = backStackEntry.arguments?.getString("eventId") ?: "",
+        eventId = eventId,
         userId = authRepository.currentUser?.uid ?: "",
         onBack = navigator.onBack,
         onOpenTask = navigator.onOpenTask,
+        onAddTask = { navigator.onAddTask(eventId) },
     )
   }
   // The route carries the id of the event the new task belongs to.
