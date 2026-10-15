@@ -9,9 +9,9 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.android.festivar.ScreenName
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.user.User
+import com.android.festivar.ui.task.create.CreateTaskScreen
 import com.android.festivar.ui.task.details.TaskDetailsScreen
 import com.android.festivar.ui.tasks.TaskOverviewScreen
 
@@ -29,6 +29,23 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, authRepository: 
         userId = authRepository.currentUser?.uid ?: "",
         onBack = navigator.onBack,
         onOpenTask = navigator.onOpenTask,
+    )
+  }
+  // The route carries the id of the event the new task belongs to.
+  composable(
+      route = "${AppScreens.CreateTask.name}/{eventId}",
+      arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
+  ) { backStackEntry ->
+    val eventId =
+        requireNotNull(backStackEntry.arguments?.getString("eventId")) {
+          "eventId argument is required"
+        }
+    require(eventId.isNotBlank()) { "eventId must not be blank" }
+    val navigator = CreateTaskNavigator(navController)
+    CreateTaskScreen(
+        eventId = eventId,
+        onBack = navigator.onBack,
+        onTaskCreated = navigator.onTaskCreated,
     )
   }
   composable(
@@ -63,5 +80,4 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, authRepository: 
         onBack = navigator.onBack,
     )
   }
-  composable(route = AppScreens.CreateTask.name) { ScreenName("create task") }
 }
