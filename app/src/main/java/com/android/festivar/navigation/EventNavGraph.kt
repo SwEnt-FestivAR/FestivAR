@@ -51,13 +51,21 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, authRepository:
   }
   composable(route = AppScreens.CreateEvent.name) {
     val navigator = CreateEventNavigator(navController)
+    val firebaseUser = authRepository.currentUser
+    val userId = runCatching { firebaseUser?.uid }.getOrDefault("") ?: ""
     CreateEventScreen(
-        viewModel = viewModel { CreateEventViewModel(EventRepositoryFirebase(Firebase.firestore)) },
+        viewModel =
+            viewModel {
+              CreateEventViewModel(
+                  eventsRepository = EventRepositoryFirebase(Firebase.firestore),
+                  usersRepository = UsersRepositoryProvider.repository,
+                  userId = userId,
+              )
+            },
         onBack = navigator.onBack,
     )
   }
-  // navigate to this screen with
-  // navController.navigate(AppScreens.eventDetails(eventId))
+  // Reached through AppScreens.eventDetails(eventId)
   composable(
       route = "${AppScreens.EventDetails.name}/{eventId}",
       arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
