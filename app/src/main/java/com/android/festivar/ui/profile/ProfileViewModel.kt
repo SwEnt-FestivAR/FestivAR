@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
+import com.android.festivar.model.user.UsersRepositoryProvider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,10 +26,10 @@ import kotlinx.coroutines.launch
  *   contain the modified value that is not saved.
  * @property errorMsg An error message to show when an operation fails and contains the exact error
  *   message.
- * @property isLoading Whether the [User] items is currently being fetched.
+ * @property isLoading Whether the [User] item is currently being fetched.
  * @property isSaving Whether the [User] item is being saved and updated with the new values.
  * @property signedOut Whether the [User] signs out, keeps the information to block any other
- *   operation while the [User] is being disconnected.
+ *   operation when the disconnection is occured.
  *     @property isSigningOut Whether the [User] is currently in the process of signing out, it
  *       blocks any other operation while trying to disconnect the [User].
  */
@@ -67,11 +68,11 @@ data class ProfileUIState(
  * Manages the UI state by fetching the [User] item through the [UsersRepository].
  *
  * @property repository The repository used to fetch the [User] item.
- * @property authRepository The repository used to fetch the [User] account or log him out.
+ * @property authRepository The repository used to fetch the [User] account or sign him out.
  * @property uId The current [User] unique identifier.
  */
 class ProfileViewModel(
-    private val repository: UsersRepository, // = UsersRepositoryProvider.repository
+    private val repository: UsersRepository = UsersRepositoryProvider.repository,
     private val authRepository: AuthRepository,
     private val uId: String,
 ) : ViewModel() {
@@ -171,7 +172,7 @@ class ProfileViewModel(
     // Informs that the user is signing out.
     _uiState.update { it.copy(isSigningOut = true) }
 
-    // Sign uot through the authentification repository.
+    // Sign uot through the authentication repository.
     viewModelScope.launch {
       authRepository
           .signOut()
@@ -191,7 +192,7 @@ class ProfileViewModel(
 
   /** Function that fetches the [User] item from the repository and updates the UI state. */
   private fun getUserInformation() {
-    // Sets the state to loading so that the user can't already try to write the in the fields
+    // Sets the state to loading so that the user can't already try to write in the fields
     // while the information are not already set.
     _uiState.update { it.copy(isLoading = true, errorMsg = null) }
 
