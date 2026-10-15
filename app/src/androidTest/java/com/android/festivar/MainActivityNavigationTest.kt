@@ -10,10 +10,19 @@ import androidx.credentials.Credential
 import androidx.credentials.CredentialManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.model.task.TasksRepositoryLocal
+import com.android.festivar.model.task.TasksRepositoryProvider
+import com.android.festivar.navigation.AppScreens
 import com.android.festivar.ui.authentication.login.LoginScreenTestTags
 import com.android.festivar.ui.authentication.signup.SignUpScreenTestTags
+import com.android.festivar.ui.event.CreateEventScreenTestTags
+import com.android.festivar.ui.tasks.TaskOverviewScreenTestTags
 import com.google.firebase.auth.FirebaseUser
+import io.mockk.MockKAnnotations
+import io.mockk.every
 import io.mockk.mockk
+import org.junit.After
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -21,6 +30,18 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class MainActivityNavigationTest {
   @get:Rule val composeTestRule = createComposeRule()
+
+  private val testUserId = "test-user-id"
+
+  private lateinit var firebaseUser: FirebaseUser
+
+  @Before
+  fun setUp() {
+    MockKAnnotations.init(this, relaxUnitFun = true)
+
+    firebaseUser = mockk { every { uid } returns testUserId }
+    every { firebaseUser.uid } returns "test-user-id"
+  }
 
   @Test
   fun loginNavigatesToSignUpAndBackToLogin() {
@@ -62,6 +83,38 @@ class MainActivityNavigationTest {
     composeTestRule.waitForIdle()
 
     composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  @Test
+  fun taskOverviewRouteDisplaysTaskOverviewScreen() {
+    TasksRepositoryProvider.repository = TasksRepositoryLocal()
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          authRepository = FakeAuthRepository(currentUser = firebaseUser),
+          startDestinationOverride = "${AppScreens.TaskOverview.name}/e1",
+      )
+    }
+
+    composeTestRule.onNodeWithTag(TaskOverviewScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  @Test
+  fun createEventRouteDisplaysCreateEventScreen() {
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          authRepository = FakeAuthRepository(currentUser = mockk()),
+          startDestinationOverride = AppScreens.CreateEvent.name,
+      )
+    }
+
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  @After
+  fun tearDown() {
+    TasksRepositoryProvider.reset()
   }
 }
 

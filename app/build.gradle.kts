@@ -212,6 +212,7 @@ tasks.register(name = "jacocoTestReport", type = JacocoReport::class) {
           "**/BuildConfig.*",
           "**/Manifest*.*",
           "**/*Test*.*",
+          "**/navigation/AppScreens*.class",
           "android/**/*.*",
       )
 
