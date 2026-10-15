@@ -2,6 +2,7 @@
 // Co-authored-by: Gemini <noreply@google.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 package com.android.festivar
 
 import androidx.compose.ui.test.assertIsDisplayed
@@ -31,6 +32,7 @@ import com.android.festivar.ui.authentication.signup.SignUpScreenTestTags
 import com.android.festivar.ui.components.AvatarTestTags
 import com.android.festivar.ui.event.CreateEventScreenTestTags
 import com.android.festivar.ui.event.EventsOverviewScreenTestTags
+import com.android.festivar.ui.event.JoinEventScreenTestTags
 import com.android.festivar.ui.profile.ProfileScreenTestTags
 import com.android.festivar.ui.task.create.CreateTaskScreenTestTags
 import com.android.festivar.ui.task.details.TaskDetailsScreenTestTags
@@ -139,7 +141,7 @@ class MainActivityNavigationTest {
     waitUntilTagExists(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON)
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON).performClick()
 
-    composeTestRule.onNodeWithText("Hello join event!").assertIsDisplayed()
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.TITLE).assertIsDisplayed()
   }
 
   @Test
