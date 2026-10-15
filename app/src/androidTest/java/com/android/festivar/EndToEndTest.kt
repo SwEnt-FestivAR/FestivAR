@@ -113,9 +113,9 @@ class EndToEndTest {
     // The join is stored on both sides: the event lists the member, the member lists the event
     asTheNewMember { uid ->
       val stored = EventRepositoryFirebase(Firebase.firestore).getEvent(event.eventId)
-      assertTrue(stored.members.any { it.uid == uid })
+      assertTrue("The event does not list the new member", stored.members.any { it.uid == uid })
       val user = UserRepositoryFirebase(Firebase.firestore).getUser(uid)
-      assertTrue(event.eventId in user.joinedEvents)
+      assertTrue("The member does not list the joined event", event.eventId in user.joinedEvents)
     }
   }
 
@@ -126,8 +126,8 @@ class EndToEndTest {
   }
 
   companion object {
-    // Sign up and Firestore round trips are slower than the fake auth tests
     private const val TAG = "EndToEndTest"
+    // A real sign up and the Firestore round trips are slower than the fake auth tests
     private const val TIMEOUT = 15_000L
     private const val PASSWORD = "Password123!"
     private const val EVENT_DETAILS_PLACEHOLDER = "Hello event details!"
