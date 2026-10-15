@@ -25,5 +25,6 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, authRepository: 
         onBack = navigator.onBack,
         onOpenTask = navigator.onOpenTask,
     )
-  }  composable(route = AppScreens.CreateTask.name) { ScreenName("create task") }
+  }
+  composable(route = AppScreens.CreateTask.name) { ScreenName("create task") }
 }
