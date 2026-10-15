@@ -28,6 +28,7 @@ import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -59,6 +60,8 @@ internal object LoginScreenTestTags {
   const val LOGIN_BUTTON = "login_button"
   const val GOOGLE_BUTTON = "google_sign_in_button"
   const val ERROR_MESSAGE = "login_error"
+
+  const val CREATE_ACC_BUTTON = "create_account_button"
 }
 
 /** Displays login fields and handles authentication events. */
@@ -85,7 +88,14 @@ fun LoginScreen(
       modifier = modifier,
       snackbarHost = {
         SnackbarHost(snackbarHostState) { data ->
-          Snackbar(modifier = Modifier.testTag(LoginScreenTestTags.ERROR_MESSAGE)) {
+          Snackbar(
+              modifier = Modifier.testTag(LoginScreenTestTags.ERROR_MESSAGE),
+              action = {
+                TextButton(onClick = { data.dismiss() }) {
+                  Text(text = "OK", color = MaterialTheme.colorScheme.primary)
+                }
+              },
+          ) {
             Text(data.visuals.message)
           }
         }
@@ -233,7 +243,9 @@ private fun LoginScreenContent(
           color = MaterialTheme.colorScheme.primary,
           fontSize = 12.sp,
           fontWeight = FontWeight.Bold,
-          modifier = Modifier.clickable(role = Role.Button, onClick = onSignUpClick),
+          modifier =
+              Modifier.clickable(role = Role.Button, onClick = onSignUpClick)
+                  .testTag(LoginScreenTestTags.CREATE_ACC_BUTTON),
       )
     }
   }
