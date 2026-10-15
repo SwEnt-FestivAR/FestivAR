@@ -1,9 +1,13 @@
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.model.authentication
 
 import androidx.credentials.Credential
 import com.google.firebase.auth.FirebaseUser
 
 interface AuthRepository {
+  val currentUser: FirebaseUser?
+    get() = null
+
   /** signs in with Google */
   suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser>
 
