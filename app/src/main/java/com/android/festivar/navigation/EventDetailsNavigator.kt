@@ -1,5 +1,7 @@
 package com.android.festivar.navigation
 
+// Co-authored-by: Copilot App
+
 import androidx.navigation.NavHostController
 
 class EventDetailsNavigator(private val navController: NavHostController) {
