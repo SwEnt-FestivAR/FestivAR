@@ -5,6 +5,7 @@ package com.android.festivar.model.task
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.FirebaseEmulatorSetup
 import com.android.festivar.model.user.User
+import com.android.festivar.model.user.UserRepositoryFirebase
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.DocumentSnapshot
@@ -12,6 +13,7 @@ import com.google.firebase.firestore.firestore
 import java.time.Duration
 import java.time.LocalDateTime
 import java.util.UUID
+import kotlin.coroutines.intrinsics.suspendCoroutineUninterceptedOrReturn
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
@@ -31,7 +33,12 @@ class TaskRepositoryFirebaseTest {
   @Before
   fun setUp() {
     FirebaseEmulatorSetup.configure()
-    runBlocking { Firebase.auth.signInAnonymously().await() }
+    runBlocking {
+      Firebase.auth.signInAnonymously().await()
+      val userRepo = UserRepositoryFirebase(Firebase.firestore)
+      userRepo.addUser(User("user-1"))
+      userRepo.addUser(User("user-2"))
+    }
     task = newTask()
     repository = TaskRepositoryFirebase(Firebase.firestore)
   }
@@ -42,6 +49,9 @@ class TaskRepositoryFirebaseTest {
       if (::task.isInitialized) {
         Firebase.firestore.collection(TASK_COLLECTION_PATH).document(task.taskId).delete().await()
       }
+      val userRepo = UserRepositoryFirebase(Firebase.firestore)
+      runCatching { userRepo.deleteUser("user-1") }
+      runCatching { userRepo.deleteUser("user-2") }
       Firebase.auth.signOut()
     }
   }
@@ -103,7 +113,7 @@ class TaskRepositoryFirebaseTest {
             mapOf(
                 "eventId" to "event-2",
                 "title" to "Minimal task",
-                "assignees" to listOf(mapOf("uid" to "user-2")),
+                "assignees" to listOf("user-2"),
             )
         )
         .await()
@@ -283,16 +293,17 @@ class TaskRepositoryFirebaseTest {
     return method.invoke(repository, task) as Map<String, Any?>
   }
 
-  private fun invokeDocumentToTask(document: DocumentSnapshot): Task {
+  private suspend fun invokeDocumentToTaskSuspend(document: DocumentSnapshot): Task {
     val method =
-        TaskRepositoryFirebase::class
-            .java
-            .getDeclaredMethod(
-                "documentToTask",
-                DocumentSnapshot::class.java,
-            )
+        TaskRepositoryFirebase::class.java.declaredMethods.first { it.name == "documentToTask" }
     method.isAccessible = true
-    return method.invoke(repository, document) as Task
+    return suspendCoroutineUninterceptedOrReturn<Task> { cont ->
+      method.invoke(repository, document, cont)
+    }
+  }
+
+  private fun invokeDocumentToTask(document: DocumentSnapshot): Task {
+    return runBlocking { invokeDocumentToTaskSuspend(document) }
   }
 
   private companion object {

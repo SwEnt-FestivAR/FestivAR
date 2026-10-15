@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.components
 
 import java.time.LocalDate
@@ -10,6 +11,11 @@ class DateTimeFormattersTest {
   @Test
   fun formatDate_usesShortWeekdayDayAndMonth() {
     assertEquals("Sat 17 Oct", formatDate(LocalDate.of(2026, 10, 17)))
+  }
+
+  @Test
+  fun formatDay_usesShortWeekdayAndDayWithoutMonth() {
+    assertEquals("Fri 16", formatDay(LocalDate.of(2026, 10, 16)))
   }
 
   @Test

@@ -1,7 +1,8 @@
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.model.event
 
 import com.android.festivar.model.task.TaskRepositoryFirebase
-import com.android.festivar.model.user.User
+import com.android.festivar.model.user.UserRepositoryFirebase
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import java.time.ZonedDateTime
@@ -16,6 +17,7 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
     get() = db.collection(EVENT_COLLECTION_PATH)
 
   private val taskRepository by lazy { TaskRepositoryFirebase(db) }
+  private val userRepo by lazy { UserRepositoryFirebase(db) }
 
   override fun getNewUid(): String {
     return UUID.randomUUID().toString()
@@ -97,25 +99,20 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
           taskRepository.getTask(taskId)
         }
 
+    val members =
+        (document.get("members") as? List<*>).orEmpty().map { value ->
+          val userId =
+              value as? String ?: throw IllegalArgumentException("Invalid member data: $value")
+          userRepo.getUser(userId)
+        }
+
     return Event(
         eventId = document.getString("eventId") ?: document.id,
         title =
             document.getString("title")
                 ?: throw IllegalArgumentException("Event '${document.id}' has missing title"),
         description = document.getString("description") ?: "",
-        members =
-            (document.get("members") as? List<*>).orEmpty().map { value ->
-              when (value) {
-                is String -> User(value, "", "")
-                is Map<*, *> ->
-                    User(
-                        uid = value["uid"] as? String ?: "",
-                        name = value["name"] as? String ?: "",
-                        surname = value["surname"] as? String ?: "",
-                    )
-                else -> throw IllegalArgumentException("Invalid member data: $value")
-              }
-            },
+        members = members,
         startDate = ZonedDateTime.parse(document.getString("startDate")),
         endDate = ZonedDateTime.parse(document.getString("endDate")),
         location = document.getString("location") ?: "",

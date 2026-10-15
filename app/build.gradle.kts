@@ -136,6 +136,7 @@ dependencies {
   implementation(libs.firebase.firestore)
   implementation(libs.googleid)
   implementation(libs.androidx.core.ktx)
+  implementation(libs.androidx.core.splashscreen)
   implementation(libs.androidx.appcompat)
   implementation(libs.firebase.auth)
   implementation(libs.material)
@@ -212,6 +213,7 @@ tasks.register(name = "jacocoTestReport", type = JacocoReport::class) {
           "**/BuildConfig.*",
           "**/Manifest*.*",
           "**/*Test*.*",
+          "**/navigation/AppScreens*.class",
           "android/**/*.*",
       )
 
