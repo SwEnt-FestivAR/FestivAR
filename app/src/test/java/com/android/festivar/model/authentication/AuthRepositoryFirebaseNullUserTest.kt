@@ -13,11 +13,15 @@ import com.google.firebase.auth.AuthCredential
 import com.google.firebase.auth.AuthResult
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
+import io.mockk.Runs
+import io.mockk.coEvery
 import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -85,6 +89,29 @@ class AuthRepositoryFirebaseNullUserTest {
 
     assertTrue(result.exceptionOrNull() is IllegalArgumentException)
     verify(exactly = 1) { firebaseUser.delete() }
+  }
+
+  /**
+   * Checks that a sign-in whose profile check fails, for example because Firestore is unavailable,
+   * does not leave the user signed in without a profile: the user is signed out so they can retry,
+   * and the original failure is returned for the caller to report.
+   */
+  @Test
+  fun signInWithEmailAndPassword_signsOutWhenProfileCheckFails() = runBlocking {
+    val firebaseUser = mockk<FirebaseUser> { every { uid } returns UID }
+    val authResult = mockk<AuthResult> { every { user } returns firebaseUser }
+    val auth = mockk<FirebaseAuth>()
+    every { auth.signInWithEmailAndPassword(EMAIL, PASSWORD) } returns Tasks.forResult(authResult)
+    every { auth.signOut() } just Runs
+    // A mock stands in for a Firestore outage, which the local repository cannot simulate.
+    val failure = IllegalStateException("Firestore unavailable")
+    val usersRepository = mockk<UsersRepository> { coEvery { getUser(UID) } throws failure }
+    val repository = newRepository(auth, usersRepository)
+
+    val result = repository.signInWithEmailAndPassword(EMAIL, PASSWORD)
+
+    assertSame(failure, result.exceptionOrNull())
+    verify(exactly = 1) { auth.signOut() }
   }
 
   // A local users repository keeps the default Firestore one, unavailable here, from being built.
