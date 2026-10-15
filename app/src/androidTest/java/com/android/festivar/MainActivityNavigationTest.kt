@@ -2,6 +2,7 @@
 // Co-authored-by: Gemini <noreply@google.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 package com.android.festivar
 
 import androidx.compose.ui.test.assertIsDisplayed
@@ -12,12 +13,15 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.credentials.Credential
 import androidx.credentials.CredentialManager
+import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventRepositoryFirebase
+import com.android.festivar.model.event.joinCodeOf
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.task.TasksRepositoryProvider
@@ -31,6 +35,7 @@ import com.android.festivar.ui.authentication.signup.SignUpScreenTestTags
 import com.android.festivar.ui.components.AvatarTestTags
 import com.android.festivar.ui.event.CreateEventScreenTestTags
 import com.android.festivar.ui.event.EventsOverviewScreenTestTags
+import com.android.festivar.ui.event.JoinEventScreenTestTags
 import com.android.festivar.ui.profile.ProfileScreenTestTags
 import com.android.festivar.ui.task.create.CreateTaskScreenTestTags
 import com.android.festivar.ui.task.details.TaskDetailsScreenTestTags
@@ -139,7 +144,87 @@ class MainActivityNavigationTest {
     waitUntilTagExists(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON)
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON).performClick()
 
-    composeTestRule.onNodeWithText("Hello join event!").assertIsDisplayed()
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  @Test
+  fun joinEventBackReturnsToEventsOverview() {
+    setSignedInContent()
+
+    waitUntilTagExists(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON)
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.BACK).performClick()
+
+    waitUntilTagExists(EventsOverviewScreenTestTags.TITLE)
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  @Test
+  fun joinEventWithoutSignedInUserNavigatesToLogin() {
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          authRepository = FakeAuthRepository(currentUser = null),
+          startDestinationOverride = AppScreens.JoinEvent.name,
+      )
+    }
+
+    waitUntilTagExists(LoginScreenTestTags.TITLE)
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  @Test
+  fun joinEventWithAValidCodeOpensTheEventDetails() {
+    // The join screen reads and writes the events in the Firestore emulator, whose rules need a
+    // signed-in user, and the ViewModel reads the stored profile back by uid before it writes
+    val start = ZonedDateTime.now().plusDays(1)
+    val event =
+        Event(
+            eventId = "join-${UUID.randomUUID()}",
+            title = "Joinable Event",
+            startDate = start,
+            endDate = start.plusHours(2),
+        )
+    // The joined user is written on the event as a member, and every later read of the events
+    // resolves its members in Firestore, so the stored profile must exist there too
+    val users = UserRepositoryFirebase(Firebase.firestore)
+    val events = EventRepositoryFirebase(Firebase.firestore)
+    runBlocking {
+      Firebase.auth.signInAnonymously().await()
+      users.addUser(storedUser)
+      events.addEvent(event)
+    }
+
+    try {
+      setSignedInContent()
+
+      waitUntilTagExists(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON)
+      composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON).performClick()
+      composeTestRule
+          .onNodeWithTag(JoinEventScreenTestTags.CODE_INPUT)
+          .performTextInput(joinCodeOf(event))
+      waitUntilTagExists(JoinEventScreenTestTags.join(event.eventId))
+      composeTestRule.onNodeWithTag(JoinEventScreenTestTags.join(event.eventId)).performClick()
+
+      composeTestRule.waitUntil(timeoutMillis = 10_000) {
+        composeTestRule
+            .onAllNodesWithText("Hello event details!")
+            .fetchSemanticsNodes()
+            .isNotEmpty()
+      }
+      composeTestRule.onNodeWithText("Hello event details!").assertIsDisplayed()
+
+      // The join screen was dropped from the back stack, so back lands on the overview
+      Espresso.pressBack()
+      waitUntilTagExists(EventsOverviewScreenTestTags.TITLE)
+      composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.TITLE).assertIsDisplayed()
+    } finally {
+      runBlocking {
+        runCatching { events.deleteEvent(event.eventId) }
+        runCatching { users.deleteUser(storedUser.uid) }
+        Firebase.auth.signOut()
+      }
+    }
   }
 
   @Test

@@ -1,5 +1,6 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 package com.android.festivar.navigation
 
 import androidx.compose.runtime.LaunchedEffect
@@ -12,6 +13,7 @@ import androidx.navigation.navArgument
 import com.android.festivar.ScreenName
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.event.EventRepositoryFirebase
+import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepositoryProvider
 import com.android.festivar.ui.event.CreateEventScreen
 import com.android.festivar.ui.event.CreateEventViewModel
@@ -19,6 +21,8 @@ import com.android.festivar.ui.event.EventDetailsScreen
 import com.android.festivar.ui.event.EventDetailsViewModel
 import com.android.festivar.ui.event.EventsOverviewScreen
 import com.android.festivar.ui.event.EventsOverviewViewModel
+import com.android.festivar.ui.event.JoinEventScreen
+import com.android.festivar.ui.event.JoinEventViewModel
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
 
@@ -49,13 +53,21 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, authRepository:
   }
   composable(route = AppScreens.CreateEvent.name) {
     val navigator = CreateEventNavigator(navController)
+    val firebaseUser = authRepository.currentUser
+    val userId = runCatching { firebaseUser?.uid }.getOrDefault("") ?: ""
     CreateEventScreen(
-        viewModel = viewModel { CreateEventViewModel(EventRepositoryFirebase(Firebase.firestore)) },
+        viewModel =
+            viewModel {
+              CreateEventViewModel(
+                  eventsRepository = EventRepositoryFirebase(Firebase.firestore),
+                  usersRepository = UsersRepositoryProvider.repository,
+                  userId = userId,
+              )
+            },
         onBack = navigator.onBack,
     )
   }
-  // navigate to this screen with
-  // navController.navigate(AppScreens.eventDetails(eventId))
+  // Reached through AppScreens.eventDetails(eventId)
   composable(
       route = "${AppScreens.EventDetails.name}/{eventId}",
       arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
@@ -70,5 +82,26 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, authRepository:
         onTasksButtonClicked = { navigator.onTasksButtonClicked(eventId) },
     )
   }
-  composable(route = AppScreens.JoinEvent.name) { ScreenName("join event") }
+  composable(route = AppScreens.JoinEvent.name) {
+    val navigator = JoinEventNavigator(navController)
+    val firebaseUser = authRepository.currentUser
+    if (firebaseUser == null) {
+      // Nobody is signed in, so there is nobody to join as
+      LaunchedEffect(Unit) { navigator.onSignedOut() }
+      return@composable
+    }
+    // The ViewModel reads the stored profile back by uid before it writes, so the uid is enough
+    JoinEventScreen(
+        viewModel =
+            viewModel {
+              JoinEventViewModel(
+                  User(uid = firebaseUser.uid),
+                  EventRepositoryFirebase(Firebase.firestore),
+                  UsersRepositoryProvider.repository,
+              )
+            },
+        onBack = navigator.onBack,
+        onOpenEvent = navigator.onOpenEvent,
+    )
+  }
 }
