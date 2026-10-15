@@ -114,14 +114,8 @@ fun FestivAR(
     // navigate to this screen with
     // navController.navigate("${AppScreens.TaskOverview.name}/$eventId")
     composable(
-        route = AppScreens.TaskOverview.name,
-        arguments =
-            listOf(
-                navArgument("eventId") {
-                  type = NavType.StringType
-                  defaultValue = ""
-                }
-            ),
+        route = "${AppScreens.TaskOverview.name}/{eventId}",
+        arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
     ) { backStackEntry ->
       val navigator = TaskOverviewNavigator(navController)
       TaskOverviewScreen(

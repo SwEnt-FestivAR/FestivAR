@@ -96,7 +96,7 @@ class MainActivityNavigationTest {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
           authRepository = FakeAuthRepository(currentUser = firebaseUser),
-          startDestinationOverride = AppScreens.TaskOverview.name,
+          startDestinationOverride = "${AppScreens.TaskOverview.name}/e1",
       )
     }
 
