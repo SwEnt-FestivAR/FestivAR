@@ -18,6 +18,9 @@ interface EventsRepository {
   /**
    * Retrieves a specific [Event] item by its unique identifier.
    *
+   * Besides the exceptions documented below, implementations backed by a remote storage may throw
+   * other exceptions when the storage cannot be reached or holds invalid data.
+   *
    * @param eventId The unique identifier of the [Event] item to retrieve.
    * @return The [Event] item with the specified identifier.
    * @throws NoSuchElementException if the [Event] item is not found.
@@ -35,6 +38,9 @@ interface EventsRepository {
   /**
    * Adds a new [Event] item to the repository.
    *
+   * Besides the exceptions documented below, implementations backed by a remote storage may throw
+   * other exceptions when the storage cannot be reached or holds invalid data.
+   *
    * @param event The [Event] item to add. Its [Event.eventId] must not be used by another [Event]
    *   item.
    * @throws IllegalArgumentException if an [Event] item with the same identifier already exists.
@@ -43,6 +49,9 @@ interface EventsRepository {
 
   /**
    * Edits an existing [Event] item in the repository.
+   *
+   * Besides the exceptions documented below, implementations backed by a remote storage may throw
+   * other exceptions when the storage cannot be reached or holds invalid data.
    *
    * @param eventId The unique identifier of the [Event] item to edit.
    * @param newValue The new value for the [Event] item. Its [Event.eventId] must be equal to
@@ -54,6 +63,9 @@ interface EventsRepository {
 
   /**
    * Deletes an [Event] item from the repository.
+   *
+   * Besides the exceptions documented below, implementations backed by a remote storage may throw
+   * other exceptions when the storage cannot be reached or holds invalid data.
    *
    * @param eventId The unique identifier of the [Event] item to delete.
    * @throws NoSuchElementException if the [Event] item is not found.
