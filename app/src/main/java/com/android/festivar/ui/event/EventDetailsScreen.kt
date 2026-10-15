@@ -3,6 +3,7 @@ package com.android.festivar.ui.event
 // Co-authored-by: Copilot App
 // Co-authored-by: Claude Sonnet 5.5
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -30,6 +31,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,8 +41,10 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.R
 import com.android.festivar.model.event.Event
+import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.formatEventDate
@@ -60,12 +66,31 @@ object EventDetailsScreenTestTags {
 /**
  * A screen for viewing event details.
  *
- * @param event The event whose details will be shown
+ * @param eventId The ID of the event whose details will be shown
  * @param onBack A callback to be invoked when the back button is clicked
  * @param onTasksButtonClicked A callback to be invoked when the "See tasks" button is clicked
  */
 @Composable
 fun EventDetailsScreen(
+    eventId: String,
+    viewModel: EventDetailsViewModel = viewModel(),
+    onBack: () -> Unit,
+    onTasksButtonClicked: () -> Unit,
+) {
+  LaunchedEffect(eventId) { viewModel.fetchEvent(eventId) }
+  val event by viewModel.event.collectAsState()
+
+  event?.let { event ->
+    EventDetailsContent(
+        event = event,
+        onBack = onBack,
+        onTasksButtonClicked = onTasksButtonClicked,
+    )
+  }
+}
+
+@Composable
+private fun EventDetailsContent(
     event: Event,
     onBack: () -> Unit,
     onTasksButtonClicked: () -> Unit,
@@ -239,9 +264,17 @@ private fun EventDetailsRow(
   }
 }
 
+@SuppressLint("ViewModelConstructorInComposable")
 @Composable
 private fun EventDetailsScreenPreview(event: Event) {
-  AppTheme { EventDetailsScreen(event = event, onTasksButtonClicked = {}, onBack = {}) }
+  AppTheme {
+    EventDetailsScreen(
+        eventId = event.eventId,
+        viewModel = EventDetailsViewModel(EventsRepositoryLocal(listOf(event))),
+        onTasksButtonClicked = {},
+        onBack = {},
+    )
+  }
 }
 
 @Preview

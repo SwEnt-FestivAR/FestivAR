@@ -2,12 +2,15 @@ package com.android.festivar.ui.event
 
 // Co-authored-by: Copilot App
 
+import android.annotation.SuppressLint
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.festivar.model.event.Event
+import com.android.festivar.model.event.EventsRepositoryLocal
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -22,9 +25,7 @@ class EventDetailsScreenTest {
   fun displaysEventDataAndTaggedElements() {
     val event = eventSameMonth
 
-    composeTestRule.setContent {
-      EventDetailsScreen(event = event, onTasksButtonClicked = {}, onBack = {})
-    }
+    setContent(event)
 
     listOf(
             EventDetailsScreenTestTags.BACK_BUTTON,
@@ -48,33 +49,25 @@ class EventDetailsScreenTest {
 
   @Test
   fun displaysSameDayEventDate() {
-    composeTestRule.setContent {
-      EventDetailsScreen(event = eventSameDay, onTasksButtonClicked = {}, onBack = {})
-    }
+    setContent(eventSameDay)
     composeTestRule.onNodeWithText("Fri 16 Oct").assertIsDisplayed()
   }
 
   @Test
   fun displaysDifferentMonthEventDate() {
-    composeTestRule.setContent {
-      EventDetailsScreen(event = eventDifferentMonth, onTasksButtonClicked = {}, onBack = {})
-    }
+    setContent(eventDifferentMonth)
     composeTestRule.onNodeWithText("Fri 16 Oct to Mon 16 Nov").assertIsDisplayed()
   }
 
   @Test
   fun displaysDifferentYearEventDate() {
-    composeTestRule.setContent {
-      EventDetailsScreen(event = eventDifferentYear, onTasksButtonClicked = {}, onBack = {})
-    }
+    setContent(eventDifferentYear)
     composeTestRule.onNodeWithText("Fri 16 Oct 2026 to Sat 16 Oct 2027").assertIsDisplayed()
   }
 
   @Test
   fun displaysNoTasksEventStatistics() {
-    composeTestRule.setContent {
-      EventDetailsScreen(event = eventNoTasks, onTasksButtonClicked = {}, onBack = {})
-    }
+    setContent(eventNoTasks)
     composeTestRule.onNodeWithText("0").assertIsDisplayed()
     composeTestRule.onNodeWithText("of 0").assertIsDisplayed()
   }
@@ -84,13 +77,7 @@ class EventDetailsScreenTest {
     var tasksButtonClicked = false
     val event = eventSameMonth
 
-    composeTestRule.setContent {
-      EventDetailsScreen(
-          event = event,
-          onTasksButtonClicked = { tasksButtonClicked = true },
-          onBack = {},
-      )
-    }
+    setContent(event, onTasksButtonClicked = { tasksButtonClicked = true })
 
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.SEE_TASKS_BUTTON).performClick()
 
@@ -102,16 +89,27 @@ class EventDetailsScreenTest {
     var backClicked = false
     val event = eventSameMonth
 
-    composeTestRule.setContent {
-      EventDetailsScreen(
-          event = event,
-          onTasksButtonClicked = {},
-          onBack = { backClicked = true },
-      )
-    }
+    setContent(event, onBack = { backClicked = true })
 
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.BACK_BUTTON).performClick()
 
     assertTrue(backClicked)
+  }
+
+  @SuppressLint("ViewModelConstructorInComposable")
+  private fun setContent(
+      event: Event,
+      onTasksButtonClicked: () -> Unit = {},
+      onBack: () -> Unit = {},
+  ) {
+    composeTestRule.setContent {
+      EventDetailsScreen(
+          eventId = event.eventId,
+          viewModel = EventDetailsViewModel(EventsRepositoryLocal(listOf(event))),
+          onTasksButtonClicked = onTasksButtonClicked,
+          onBack = onBack,
+      )
+    }
+    composeTestRule.waitForIdle()
   }
 }
