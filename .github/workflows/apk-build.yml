@@ -20,7 +20,35 @@ jobs:
       - name: Setup Gradle cache
         uses: gradle/gradle-build-action@v3
 
+      - name: Decode signing keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "Missing required GitHub Actions secret: $name" >&2
+              exit 1
+            fi
+          done
+          keystore="$RUNNER_TEMP/festivar-ci.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+          if ! keytool -list -keystore "$keystore" \
+            -storepass:env ANDROID_KEYSTORE_PASSWORD \
+            -alias "$ANDROID_KEY_ALIAS" >/dev/null 2>&1; then
+            echo "Unable to validate decoded keystore: keystore data, store password, or key alias is invalid." >&2
+            exit 1
+          fi
+
       - name: Build debug APK
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/festivar-ci.jks
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: ./gradlew assembleDebug
 
       - name: Upload APK
@@ -28,3 +56,4 @@ jobs:
         with:
           name: FestivAR-APK
           path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error

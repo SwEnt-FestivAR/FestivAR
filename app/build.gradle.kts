@@ -9,6 +9,18 @@ plugins {
   alias(libs.plugins.gms)
 }
 
+val ciKeystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
+val ciStorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+val ciKeyAlias = System.getenv("ANDROID_KEY_ALIAS")
+val ciKeyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+val ciSigningValues = listOf(ciKeystorePath, ciStorePassword, ciKeyAlias, ciKeyPassword)
+val ciSigningConfigured = ciSigningValues.any { !it.isNullOrBlank() }
+
+require(!ciSigningConfigured || ciSigningValues.all { !it.isNullOrBlank() }) {
+  "All ANDROID_KEYSTORE_PATH, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, and " +
+      "ANDROID_KEY_PASSWORD values must be set to use CI signing."
+}
+
 android {
   namespace = "com.android.festivar"
   compileSdk = 37
@@ -24,6 +36,17 @@ android {
     vectorDrawables { useSupportLibrary = true }
   }
 
+  signingConfigs {
+    if (ciSigningConfigured) {
+      create("ci") {
+        storeFile = file(requireNotNull(ciKeystorePath))
+        storePassword = requireNotNull(ciStorePassword)
+        keyAlias = requireNotNull(ciKeyAlias)
+        keyPassword = requireNotNull(ciKeyPassword)
+      }
+    }
+  }
+
   buildTypes {
     release {
       isMinifyEnabled = false
@@ -36,6 +59,9 @@ android {
     debug {
       enableUnitTestCoverage = true
       enableAndroidTestCoverage = true
+      if (ciSigningConfigured) {
+        signingConfig = signingConfigs.getByName("ci")
+      }
     }
   }
 
