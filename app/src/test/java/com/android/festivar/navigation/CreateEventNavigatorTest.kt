@@ -14,6 +14,6 @@ class CreateEventNavigatorTest {
   fun backClickNavigatesToEventOverview() {
     navigator.onBack()
 
-    verify { navController.navigate(AppScreens.EventOverview.name) }
+    verify { navController.popBackStack(AppScreens.EventOverview.name, inclusive = false) }
   }
 }

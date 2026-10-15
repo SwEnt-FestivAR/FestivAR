@@ -11,6 +11,8 @@ import androidx.credentials.Credential
 import androidx.credentials.CredentialManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.model.task.TasksRepositoryLocal
+import com.android.festivar.model.task.TasksRepositoryProvider
 import com.android.festivar.navigation.AppScreens
 import com.android.festivar.ui.authentication.login.LoginScreenTestTags
 import com.android.festivar.ui.authentication.signup.SignUpScreenTestTags
@@ -18,6 +20,7 @@ import com.android.festivar.ui.event.CreateEventScreenTestTags
 import com.android.festivar.ui.tasks.TaskOverviewScreenTestTags
 import com.google.firebase.auth.FirebaseUser
 import io.mockk.mockk
+import org.junit.After
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -73,6 +76,7 @@ class MainActivityNavigationTest {
 
   @Test
   fun taskOverviewRouteDisplaysTaskOverviewScreen() {
+    TasksRepositoryProvider.repository = TasksRepositoryLocal()
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
@@ -95,6 +99,11 @@ class MainActivityNavigationTest {
     }
 
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  @After
+  fun tearDown() {
+    TasksRepositoryProvider.reset()
   }
 }
 

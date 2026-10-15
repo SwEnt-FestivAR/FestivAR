@@ -17,12 +17,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.credentials.CredentialManager
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.authentication.AuthRepositoryFirebase
-import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.model.event.EventRepositoryFirebase
 import com.android.festivar.navigation.AppScreens
 import com.android.festivar.navigation.CreateEventNavigator
 import com.android.festivar.navigation.LoginNavigator
@@ -36,6 +38,8 @@ import com.android.festivar.ui.event.CreateEventScreen
 import com.android.festivar.ui.event.CreateEventViewModel
 import com.android.festivar.ui.tasks.TaskOverviewScreen
 import com.android.festivar.ui.theme.AppTheme
+import com.google.firebase.Firebase
+import com.google.firebase.firestore.firestore
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -107,10 +111,22 @@ fun FestivAR(
               ),
       )
     }
-    composable(route = AppScreens.TaskOverview.name) {
+    // navigate to this screen with
+    // navController.navigate("${AppScreens.TaskOverview.name}/$eventId")
+    composable(
+        route = AppScreens.TaskOverview.name,
+        arguments =
+            listOf(
+                navArgument("eventId") {
+                  type = NavType.StringType
+                  defaultValue = ""
+                }
+            ),
+    ) { backStackEntry ->
       val navigator = TaskOverviewNavigator(navController)
       TaskOverviewScreen(
-          eventId = "",
+          eventId = backStackEntry.arguments?.getString("eventId") ?: "",
+          userId = authRepository.currentUser?.uid ?: "",
           onBack = navigator.onBack,
           onOpenTask = navigator.onOpenTask,
       )
@@ -118,7 +134,8 @@ fun FestivAR(
     composable(route = AppScreens.CreateEvent.name) {
       val navigator = CreateEventNavigator(navController)
       CreateEventScreen(
-          viewModel = viewModel { CreateEventViewModel(EventsRepositoryLocal()) },
+          viewModel =
+              viewModel { CreateEventViewModel(EventRepositoryFirebase(Firebase.firestore)) },
           onBack = navigator.onBack,
       )
     }

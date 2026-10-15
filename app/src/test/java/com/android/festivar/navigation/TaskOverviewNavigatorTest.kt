@@ -14,6 +14,6 @@ class TaskOverviewNavigatorTest {
   fun backClickNavigatesToEventDetails() {
     navigator.onBack()
 
-    verify { navController.navigate(AppScreens.EventDetails.name) }
+    verify { navController.popBackStack(AppScreens.EventDetails.name, inclusive = false) }
   }
 }

@@ -4,7 +4,9 @@ package com.android.festivar.navigation
 import androidx.navigation.NavHostController
 
 class TaskOverviewNavigator(private val navController: NavHostController) {
-  val onBack: () -> Unit = { navController.navigate(AppScreens.EventDetails.name) }
+  val onBack: () -> Unit = {
+    navController.popBackStack(AppScreens.EventDetails.name, inclusive = false)
+  }
 
   val onOpenTask: (taskId: String) -> Unit = {}
 }

@@ -4,5 +4,7 @@ package com.android.festivar.navigation
 import androidx.navigation.NavHostController
 
 class CreateEventNavigator(private val navController: NavHostController) {
-  val onBack: () -> Unit = { navController.navigate(AppScreens.EventOverview.name) }
+  val onBack: () -> Unit = {
+    navController.popBackStack(AppScreens.EventOverview.name, inclusive = false)
+  }
 }
