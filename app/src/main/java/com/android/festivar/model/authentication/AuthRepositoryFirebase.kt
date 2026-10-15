@@ -25,7 +25,7 @@ class AuthRepositoryFirebase(
         val user =
             firebaseAuth.signInWithCredential(firebaseCredential).await().user
                 ?: throw IllegalStateException("Firebase sign-in returned no user")
-        ensureUserExists(user)
+        ensureUserExistsOrSignOut(user)
         user
       }
 
@@ -39,7 +39,7 @@ class AuthRepositoryFirebase(
       val user =
           firebaseAuth.signInWithEmailAndPassword(email, password).await().user
               ?: throw IllegalStateException("Firebase sign-in returned no user")
-      ensureUserExists(user)
+      ensureUserExistsOrSignOut(user)
       user
     }
   }
@@ -74,6 +74,25 @@ class AuthRepositoryFirebase(
       usersRepository.getUser(firebaseUser.uid)
     } catch (_: NoSuchElementException) {
       usersRepository.addUser(User(uid = firebaseUser.uid, email = firebaseUser.email.orEmpty()))
+    }
+  }
+
+  /**
+   * Tries to create the [User] document of [firebaseUser] in Firestore if it does not exist yet by
+   * calling the `ensureUserExists`. The main difference is that while `ensureUserExists` handles
+   * just the working of one exception. While not handling its proper other exceptions, it exposes
+   * itself to the same problem as it tries to solve, having a [FirebaseUser] connected while the
+   * corresponding [User] does not exist. If such a situation occurs, the user should be signed out
+   * so he can try again connecting.
+   *
+   * @param firebaseUser The [firebaseUser] that has to have its equivalent as a [User].
+   */
+  private suspend fun ensureUserExistsOrSignOut(firebaseUser: FirebaseUser) {
+    try {
+      ensureUserExists(firebaseUser)
+    } catch (e: Exception) {
+      firebaseAuth.signOut()
+      throw e
     }
   }
 }
