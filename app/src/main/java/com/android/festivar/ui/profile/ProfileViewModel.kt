@@ -153,7 +153,7 @@ class ProfileViewModel(
         _uiState.update {
           it.copy(
               isSaving = false,
-              errorMsg = "Failed to update profile: ${e.message ?: "unknown error"}",
+              errorMsg = "Failed to update profile: ${e.message ?: UNKNOWN_ERROR}",
           )
         }
       }
@@ -181,7 +181,7 @@ class ProfileViewModel(
                 _uiState.update {
                   it.copy(
                       isSigningOut = false,
-                      errorMsg = "Failed to sign out: ${e.message ?: "unknown error"}",
+                      errorMsg = "Failed to sign out: ${e.message ?: UNKNOWN_ERROR}",
                   )
                 }
               },
@@ -213,10 +213,13 @@ class ProfileViewModel(
         _uiState.update {
           it.copy(
               isLoading = false,
-              errorMsg = "Failed to load profile: ${e.message ?: "unknown error"}",
+              errorMsg = "Failed to load profile: ${e.message ?: UNKNOWN_ERROR}",
           )
         }
       }
     }
   }
 }
+
+/** When a specific exception without message is thrown, the message is replaced by this. */
+private const val UNKNOWN_ERROR = "unknown error"
