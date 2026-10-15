@@ -12,6 +12,7 @@ import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryProvider
 import com.android.festivar.model.user.User
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -39,20 +40,31 @@ enum class TaskStatus {
 /**
  * UI state of the Task details screen.
  *
+ * @property currentUserId the uid of the signed-in user, to tell if [task] is [TaskStatus.YOURS].
  * @property task the task shown, or null until it is loaded (or if it could not be loaded).
- * @property status the badge of [task]; null while [task] is null.
  * @property isLoading true while the task is being loaded.
  * @property isUpdating true while an action is being saved, so a second tap does nothing. Actions
  *   are also disabled while [isLoading], so a reload cannot overwrite a saved change.
  * @property errorMsg the string resource of the last failure, or null.
  */
 data class TaskDetailsUiState(
+    val currentUserId: String,
     val task: Task? = null,
-    val status: TaskStatus? = null,
     val isLoading: Boolean = true,
     val isUpdating: Boolean = false,
     @StringRes val errorMsg: Int? = null,
 ) {
+  /** The badge of [task], computed from it so the two cannot differ; null while [task] is null. */
+  val status: TaskStatus?
+    get() = task?.let {
+      when {
+        it.completed -> TaskStatus.DONE
+        it.assignees.any { user -> user.uid == currentUserId } -> TaskStatus.YOURS
+        it.assignees.size >= it.maxAssign -> TaskStatus.TAKEN
+        else -> TaskStatus.OPEN
+      }
+    }
+
   /** The "Take" button of an [TaskStatus.OPEN] task. */
   val canTake: Boolean
     get() = status == TaskStatus.OPEN && !isUpdating && !isLoading
@@ -83,8 +95,11 @@ class TaskDetailsViewModel(
     private val currentUser: User,
     private val repository: TasksRepository = TasksRepositoryProvider.repository,
 ) : ViewModel() {
-  private val _uiState = MutableStateFlow(TaskDetailsUiState())
+  private val _uiState = MutableStateFlow(TaskDetailsUiState(currentUserId = currentUser.uid))
   val uiState: StateFlow<TaskDetailsUiState> = _uiState.asStateFlow()
+
+  // isLoading starts true, so it cannot tell a running load from the initial state.
+  private var loadJob: Job? = null
 
   init {
     load()
@@ -92,15 +107,15 @@ class TaskDetailsViewModel(
 
   /**
    * Loads the task; on failure the error is set and the version already shown, if any, stays shown.
-   * Does nothing while an action is saving.
+   * Does nothing while an action is saving or another load is running.
    */
   fun load() {
-    if (_uiState.value.isUpdating) return
-    viewModelScope.launch {
+    if (_uiState.value.isUpdating || loadJob?.isActive == true) return
+    loadJob = viewModelScope.launch {
       _uiState.update { it.copy(isLoading = true) }
       try {
         val task = repository.getTask(taskId)
-        _uiState.update { show(it.copy(isLoading = false, errorMsg = null), task) }
+        _uiState.update { it.copy(task = task, isLoading = false, errorMsg = null) }
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
@@ -129,16 +144,16 @@ class TaskDetailsViewModel(
   // https://github.com/SwEnt-FestivAR/FestivAR/issues/186
   private fun saveIf(allowed: (TaskDetailsUiState) -> Boolean, change: (Task) -> Task) {
     // Checking and setting isUpdating in one step, so two taps cannot both start a save.
+    val canRun = { state: TaskDetailsUiState -> allowed(state) && state.task != null }
     val before = _uiState.getAndUpdate {
-      if (allowed(it) && it.task != null) it.copy(isUpdating = true, errorMsg = null) else it
+      if (canRun(it)) it.copy(isUpdating = true, errorMsg = null) else it
     }
-    val task = before.task
-    if (!allowed(before) || task == null) return
+    val task = before.task?.takeIf { canRun(before) } ?: return
     viewModelScope.launch {
       try {
         val updated = change(task)
         repository.editTask(taskId, updated)
-        _uiState.update { show(it.copy(isUpdating = false), updated) }
+        _uiState.update { it.copy(task = updated, isUpdating = false) }
       } catch (e: CancellationException) {
         _uiState.update { it.copy(isUpdating = false) }
         throw e
@@ -150,15 +165,4 @@ class TaskDetailsViewModel(
       }
     }
   }
-
-  private fun show(state: TaskDetailsUiState, task: Task) =
-      state.copy(task = task, status = statusOf(task))
-
-  private fun statusOf(task: Task): TaskStatus =
-      when {
-        task.completed -> TaskStatus.DONE
-        task.assignees.any { it.uid == currentUser.uid } -> TaskStatus.YOURS
-        task.assignees.size >= task.maxAssign -> TaskStatus.TAKEN
-        else -> TaskStatus.OPEN
-      }
 }
