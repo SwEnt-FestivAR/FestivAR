@@ -1,13 +1,13 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.model.task
 
-import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UserRepositoryFirebase
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import java.time.Duration
 import java.time.LocalDateTime
 import java.util.UUID
+import kotlin.collections.map
 import kotlinx.coroutines.tasks.await
 
 const val TASK_COLLECTION_PATH = "tasks"
@@ -90,7 +90,7 @@ class TaskRepositoryFirebase(
         "location" to task.location,
         "priority" to task.priority.name,
         "maxAssign" to task.maxAssign,
-        "assignees" to task.assignees.map(User::uid),
+        "assignees" to task.assignees.map { user -> user.uid },
         "completed" to task.completed,
     )
   }
@@ -117,6 +117,7 @@ class TaskRepositoryFirebase(
         priority = document.getString("priority")?.let(Priority::valueOf) ?: Priority.NONE,
         maxAssign = document.getLong("maxAssign")?.toInt() ?: 1,
         assignees = ass,
+        completed = document.getBoolean("completed") ?: false,
     )
   }
 

@@ -13,6 +13,7 @@ import com.google.firebase.firestore.firestore
 import java.time.Duration
 import java.time.LocalDateTime
 import java.util.UUID
+import kotlin.coroutines.intrinsics.suspendCoroutineUninterceptedOrReturn
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
@@ -112,7 +113,7 @@ class TaskRepositoryFirebaseTest {
             mapOf(
                 "eventId" to "event-2",
                 "title" to "Minimal task",
-                "assignees" to listOf(mapOf("uid" to "user-2")),
+                "assignees" to listOf("user-2"),
             )
         )
         .await()
@@ -292,16 +293,17 @@ class TaskRepositoryFirebaseTest {
     return method.invoke(repository, task) as Map<String, Any?>
   }
 
-  private fun invokeDocumentToTask(document: DocumentSnapshot): Task {
+  private suspend fun invokeDocumentToTaskSuspend(document: DocumentSnapshot): Task {
     val method =
-        TaskRepositoryFirebase::class
-            .java
-            .getDeclaredMethod(
-                "documentToTask",
-                DocumentSnapshot::class.java,
-            )
+        TaskRepositoryFirebase::class.java.declaredMethods.first { it.name == "documentToTask" }
     method.isAccessible = true
-    return method.invoke(repository, document) as Task
+    return suspendCoroutineUninterceptedOrReturn<Task> { cont ->
+      method.invoke(repository, document, cont)
+    }
+  }
+
+  private fun invokeDocumentToTask(document: DocumentSnapshot): Task {
+    return runBlocking { invokeDocumentToTaskSuspend(document) }
   }
 
   private companion object {
