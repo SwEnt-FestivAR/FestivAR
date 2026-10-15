@@ -1,5 +1,6 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Gemini <noreply@google.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.navigation
 
 // This enum defines the different screens in the app, used for navigation purposes.
@@ -8,7 +9,7 @@ enum class AppScreens {
   Login,
   SignUp,
   TaskOverview,
-  EventOverview,
+  EventsOverview,
   EventDetails,
   CreateEvent,
   CreateTask,

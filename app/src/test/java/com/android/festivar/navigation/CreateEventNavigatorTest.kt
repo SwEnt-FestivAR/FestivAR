@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.navigation
 
 import androidx.navigation.NavHostController
@@ -11,9 +12,9 @@ class CreateEventNavigatorTest {
   private val navigator = CreateEventNavigator(navController)
 
   @Test
-  fun backClickNavigatesToEventOverview() {
+  fun backClickNavigatesToEventsOverview() {
     navigator.onBack()
 
-    verify { navController.popBackStack(AppScreens.EventOverview.name, inclusive = false) }
+    verify { navController.popBackStack(AppScreens.EventsOverview.name, inclusive = false) }
   }
 }

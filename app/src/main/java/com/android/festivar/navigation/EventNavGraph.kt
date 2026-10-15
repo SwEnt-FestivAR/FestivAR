@@ -20,7 +20,7 @@ import kotlinx.coroutines.launch
 
 /** The destinations of the event feature. */
 fun NavGraphBuilder.eventGraph(navController: NavHostController, authRepository: AuthRepository) {
-  composable(route = AppScreens.EventOverview.name) {
+  composable(route = AppScreens.EventsOverview.name) {
     val scope = rememberCoroutineScope()
     ScreenName(
         "event overview, click to logout",

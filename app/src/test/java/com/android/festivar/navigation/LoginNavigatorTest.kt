@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.navigation
 
 import androidx.navigation.NavHostController
@@ -23,12 +24,12 @@ class LoginNavigatorTest {
   }
 
   @Test
-  fun signedInNavigatesToEventOverview() {
+  fun signedInNavigatesToEventsOverview() {
     val options = slot<NavOptionsBuilder.() -> Unit>()
 
     navigator.onSignedIn()
 
-    verify { navController.navigate(AppScreens.EventOverview.name, capture(options)) }
+    verify { navController.navigate(AppScreens.EventsOverview.name, capture(options)) }
     val navOptions = navOptions(options.captured)
     assertEquals(navController.graph.id, navOptions.popUpToId)
     assertTrue(navOptions.isPopUpToInclusive())
