@@ -1,8 +1,10 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Gemini <noreply@google.com>
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -11,6 +13,7 @@ import androidx.credentials.Credential
 import androidx.credentials.CredentialManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.task.TasksRepositoryProvider
 import com.android.festivar.navigation.AppScreens
@@ -18,11 +21,13 @@ import com.android.festivar.ui.authentication.login.LoginScreenTestTags
 import com.android.festivar.ui.authentication.signup.SignUpScreenTestTags
 import com.android.festivar.ui.event.CreateEventScreenTestTags
 import com.android.festivar.ui.task.create.CreateTaskScreenTestTags
+import com.android.festivar.ui.task.details.TaskDetailsScreenTestTags
 import com.android.festivar.ui.tasks.TaskOverviewScreenTestTags
 import com.google.firebase.auth.FirebaseUser
 import io.mockk.MockKAnnotations
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -41,8 +46,14 @@ class MainActivityNavigationTest {
   fun setUp() {
     MockKAnnotations.init(this, relaxUnitFun = true)
 
-    firebaseUser = mockk { every { uid } returns testUserId }
-    every { firebaseUser.uid } returns "test-user-id"
+    firebaseUser = mockk(relaxed = true) { every { uid } returns testUserId }
+  }
+
+  private fun seedTask(taskId: String = "t1", eventId: String = "e1", title: String = "Test Task") {
+    val localRepo = TasksRepositoryLocal()
+    val task = Task(taskId, eventId, title)
+    runBlocking { localRepo.addTask(task) }
+    TasksRepositoryProvider.repository = localRepo
   }
 
   @Test
@@ -94,7 +105,7 @@ class MainActivityNavigationTest {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
           authRepository = FakeAuthRepository(currentUser = firebaseUser),
-          startDestinationOverride = "${AppScreens.TaskOverview.name}/e1",
+          startDestinationOverride = AppScreens.taskOverview("e1"),
       )
     }
 
@@ -126,6 +137,68 @@ class MainActivityNavigationTest {
     }
 
     composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  @Test
+  fun taskDetailsRouteDisplaysTaskDetailsScreen() {
+    seedTask()
+
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          authRepository = FakeAuthRepository(currentUser = firebaseUser),
+          startDestinationOverride = AppScreens.taskDetails("t1"),
+      )
+    }
+
+    composeTestRule.waitUntil(5_000) {
+      composeTestRule
+          .onAllNodes(hasTestTag(TaskDetailsScreenTestTags.TITLE))
+          .fetchSemanticsNodes()
+          .isNotEmpty()
+    }
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  @Test
+  fun clickingTaskInOverviewNavigatesToTaskDetails() {
+    seedTask()
+
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          authRepository = FakeAuthRepository(currentUser = firebaseUser),
+          startDestinationOverride = AppScreens.taskOverview("e1"),
+      )
+    }
+
+    composeTestRule.waitUntil(5_000) {
+      composeTestRule
+          .onAllNodes(hasTestTag(TaskOverviewScreenTestTags.row("t1")))
+          .fetchSemanticsNodes()
+          .isNotEmpty()
+    }
+    composeTestRule.onNodeWithTag(TaskOverviewScreenTestTags.row("t1")).performClick()
+    composeTestRule.waitUntil(5_000) {
+      composeTestRule
+          .onAllNodes(hasTestTag(TaskDetailsScreenTestTags.TITLE))
+          .fetchSemanticsNodes()
+          .isNotEmpty()
+    }
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  @Test
+  fun taskDetailsRouteRedirectsToLoginWhenUserIsNull() {
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          authRepository = FakeAuthRepository(currentUser = null),
+          startDestinationOverride = AppScreens.taskDetails("t1"),
+      )
+    }
+
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
   }
 
   @After
