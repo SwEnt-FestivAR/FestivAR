@@ -121,6 +121,14 @@ fun JoinEventContent(
   val focus = remember { FocusRequester() }
   LaunchedEffect(Unit) { if (requestFocusOnEntry) focus.requestFocus() }
   val keyboard = LocalSoftwareKeyboardController.current
+  // A failed join leaves the field disabled then enabled again, which drops its focus and closes
+  // the keyboard; give both back so the person can retry without tapping a cell.
+  LaunchedEffect(state.isJoining, state.errorMsg) {
+    if (!state.isJoining && state.errorMsg != null) {
+      focus.requestFocus()
+      keyboard?.show()
+    }
+  }
   val codeFieldLabel = stringResource(R.string.join_event_code_field)
   val codeSoFar =
       if (state.code.isEmpty()) stringResource(R.string.join_event_code_empty)

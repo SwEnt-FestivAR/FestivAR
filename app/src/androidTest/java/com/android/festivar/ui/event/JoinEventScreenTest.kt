@@ -16,6 +16,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -192,6 +193,19 @@ class JoinEventScreenTest {
     content(JoinEventUiState())
 
     composeTestRule.onNodeWithTag(JoinEventScreenTestTags.cell(3)).performClick()
+
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.CODE_INPUT).assertIsFocused()
+  }
+
+  @Test
+  fun aFailedJoinGivesTheCodeFieldItsFocusBack() {
+    var state by mutableStateOf(JoinEventUiState(code = "VIDY26", matches = listOf(found)))
+    composeTestRule.setContent { JoinEventContent(state, {}, {}, {}) }
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.CODE_INPUT).assertIsNotFocused()
+
+    state = state.copy(isJoining = true)
+    composeTestRule.waitForIdle()
+    state = state.copy(isJoining = false, errorMsg = "offline")
 
     composeTestRule.onNodeWithTag(JoinEventScreenTestTags.CODE_INPUT).assertIsFocused()
   }
