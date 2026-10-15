@@ -222,6 +222,19 @@ class TaskDetailsViewModelTest {
   }
 
   @Test
+  fun reloadWhileLoading_isIgnored() {
+    repository.getGate = CompletableDeferred()
+    val vm = viewModel(task())
+    repository.getFailure = IOException("offline")
+
+    vm.load()
+    repository.getGate!!.complete(Unit)
+
+    assertNull(vm.uiState.value.errorMsg)
+    assertEquals(TaskStatus.OPEN, vm.uiState.value.status)
+  }
+
+  @Test
   fun actionsWhileReloading_doNothing() {
     val vm = viewModel(task(assignees = listOf(me), maxAssign = 2))
     repository.getGate = CompletableDeferred()
