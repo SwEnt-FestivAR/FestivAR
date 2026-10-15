@@ -1,5 +1,6 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Gemini <noreply@google.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar
 
 import androidx.compose.ui.test.assertIsDisplayed
@@ -15,10 +16,14 @@ import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.task.TasksRepositoryProvider
+import com.android.festivar.model.user.User
+import com.android.festivar.model.user.UsersRepositoryLocal
+import com.android.festivar.model.user.UsersRepositoryProvider
 import com.android.festivar.navigation.AppScreens
 import com.android.festivar.ui.authentication.login.LoginScreenTestTags
 import com.android.festivar.ui.authentication.signup.SignUpScreenTestTags
 import com.android.festivar.ui.event.CreateEventScreenTestTags
+import com.android.festivar.ui.profile.ProfileScreenTestTags
 import com.android.festivar.ui.task.details.TaskDetailsScreenTestTags
 import com.android.festivar.ui.tasks.TaskOverviewScreenTestTags
 import com.google.firebase.auth.FirebaseUser
@@ -185,9 +190,56 @@ class MainActivityNavigationTest {
     composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
   }
 
+  /** Puts a user with the uid of [firebaseUser] in the users repository, for the profile screen. */
+  private fun seedUser() {
+    UsersRepositoryProvider.repository =
+        UsersRepositoryLocal(listOf(User(uid = testUserId, name = "Ada", surname = "Lovelace")))
+  }
+
+  @Test
+  fun profileRouteDisplaysProfileScreen() {
+    seedUser()
+
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          authRepository = FakeAuthRepository(currentUser = firebaseUser),
+          startDestinationOverride = AppScreens.Profile.name,
+      )
+    }
+
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  @Test
+  fun profileSignOutReturnsToLogin() {
+    seedUser()
+
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          authRepository = FakeAuthRepository(currentUser = firebaseUser),
+          startDestinationOverride = AppScreens.Profile.name,
+      )
+    }
+
+    // The sign out button only shows once the profile is loaded
+    composeTestRule.waitUntil(5_000) {
+      composeTestRule
+          .onAllNodes(hasTestTag(ProfileScreenTestTags.SIGN_OUT_BUTTON))
+          .fetchSemanticsNodes()
+          .isNotEmpty()
+    }
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.SIGN_OUT_BUTTON).performClick()
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
   @After
   fun tearDown() {
     TasksRepositoryProvider.reset()
+    UsersRepositoryProvider.reset()
   }
 }
 
