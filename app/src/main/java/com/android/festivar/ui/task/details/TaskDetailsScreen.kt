@@ -314,24 +314,24 @@ private fun previewState(status: TaskStatus) =
 
 @Preview(showBackground = true, heightDp = 800)
 @Composable
-private fun TaskDetailsOpenPreview() {
+internal fun TaskDetailsOpenPreview() {
   AppTheme { TaskDetailsContent(previewState(TaskStatus.OPEN)) }
 }
 
 @Preview(showBackground = true, heightDp = 800)
 @Composable
-private fun TaskDetailsTakenPreview() {
+internal fun TaskDetailsTakenPreview() {
   AppTheme { TaskDetailsContent(previewState(TaskStatus.TAKEN)) }
 }
 
 @Preview(showBackground = true, heightDp = 800)
 @Composable
-private fun TaskDetailsYoursPreview() {
+internal fun TaskDetailsYoursPreview() {
   AppTheme { TaskDetailsContent(previewState(TaskStatus.YOURS)) }
 }
 
 @Preview(showBackground = true, heightDp = 800)
 @Composable
-private fun TaskDetailsDonePreview() {
+internal fun TaskDetailsDonePreview() {
   AppTheme { TaskDetailsContent(previewState(TaskStatus.DONE)) }
 }
