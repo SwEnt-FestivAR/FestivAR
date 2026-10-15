@@ -1,15 +1,10 @@
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.ui.authentication.signup
 
-import android.content.Context
 import androidx.credentials.Credential
-import androidx.credentials.CredentialManager
-import androidx.credentials.GetCredentialRequest
-import androidx.credentials.GetCredentialResponse
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.authentication.AuthRepository
 import com.google.firebase.auth.FirebaseUser
-import io.mockk.coEvery
-import io.mockk.every
 import io.mockk.mockk
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CompletableDeferred
@@ -25,108 +20,14 @@ class SignUpViewModelTest {
   private val authRepository = FakeAuthRepository()
 
   @Test
-  fun googleSignUp_setsLoadingThenUserOnSuccess() {
-    val context = mockk<Context>()
-    val credentialManager = mockk<CredentialManager>()
-    val credential = mockk<Credential>()
-    val user = mockk<FirebaseUser>()
-    val response = mockk<GetCredentialResponse>()
-    every { context.getString(com.android.festivar.R.string.default_web_client_id) } returns
-        "web-client-id"
-    every { response.credential } returns credential
-    coEvery { credentialManager.getCredential(context, any<GetCredentialRequest>()) } returns
-        response
-    val credentialManagerStarted = CompletableDeferred<Unit>()
-    val repositoryResponse = CompletableDeferred<Result<FirebaseUser>>()
-    authRepository.googleSignInBehavior = {
-      credentialManagerStarted.complete(Unit)
-      repositoryResponse.await()
-    }
+  fun updatePassword_tracksMinimumLength() {
     val viewModel = SignUpViewModel(authRepository)
 
-    viewModel.googleSignUp(context, credentialManager)
-    runBlocking { withTimeout(5_000.milliseconds) { credentialManagerStarted.await() } }
-    Assert.assertTrue(viewModel.uiState.value.isLoading)
+    viewModel.updatePassword("1234567")
+    Assert.assertFalse(viewModel.uiState.value.isPasswordValid)
 
-    repositoryResponse.complete(Result.success(user))
-    val state = awaitState(viewModel) { it.isAuthenticated || it.errorMsg != null }
-
-    Assert.assertFalse(state.isLoading)
-    Assert.assertTrue(state.isAuthenticated)
-    Assert.assertEquals(null, state.errorMsg)
-    Assert.assertSame(credential, authRepository.lastGoogleCredential)
-  }
-
-  @Test
-  fun googleSignUp_setsErrorWhenRepositoryFails() {
-    val context = mockk<Context>()
-    val credentialManager = mockk<CredentialManager>()
-    val credential = mockk<Credential>()
-    val response = mockk<GetCredentialResponse>()
-    val failure = IllegalStateException("Google account already exists")
-    every { context.getString(com.android.festivar.R.string.default_web_client_id) } returns
-        "web-client-id"
-    every { response.credential } returns credential
-    coEvery { credentialManager.getCredential(context, any<GetCredentialRequest>()) } returns
-        response
-    authRepository.googleSignInBehavior = { Result.failure<FirebaseUser>(failure) }
-    val viewModel = SignUpViewModel(authRepository)
-
-    viewModel.googleSignUp(context, credentialManager)
-    val state = awaitState(viewModel) { it.errorMsg != null }
-
-    Assert.assertFalse(state.isLoading)
-    Assert.assertFalse(state.isAuthenticated)
-    Assert.assertEquals("Google account already exists", state.errorMsg)
-  }
-
-  @Test
-  fun googleSignUp_setsErrorWhenCredentialManagerFails() {
-    val context = mockk<Context>()
-    val credentialManager = mockk<CredentialManager>()
-    val failure = IllegalStateException("Unable to retrieve Google credentials")
-    every { context.getString(com.android.festivar.R.string.default_web_client_id) } returns
-        "web-client-id"
-    coEvery { credentialManager.getCredential(context, any<GetCredentialRequest>()) } throws failure
-    val viewModel = SignUpViewModel(authRepository)
-
-    viewModel.googleSignUp(context, credentialManager)
-    val state = awaitState(viewModel) { it.errorMsg != null }
-
-    Assert.assertFalse(state.isLoading)
-    Assert.assertFalse(state.isAuthenticated)
-    Assert.assertEquals("Unable to retrieve Google credentials", state.errorMsg)
-    Assert.assertEquals(0, authRepository.googleSignInCallCount)
-  }
-
-  @Test
-  fun googleSignUp_ignoresDuplicateRequestWhileLoading() {
-    val context = mockk<Context>()
-    val credentialManager = mockk<CredentialManager>()
-    val credential = mockk<Credential>()
-    val response = mockk<GetCredentialResponse>()
-    val repositoryStarted = CompletableDeferred<Unit>()
-    val repositoryResponse = CompletableDeferred<Result<FirebaseUser>>()
-    every { context.getString(com.android.festivar.R.string.default_web_client_id) } returns
-        "web-client-id"
-    every { response.credential } returns credential
-    coEvery { credentialManager.getCredential(context, any<GetCredentialRequest>()) } returns
-        response
-    authRepository.googleSignInBehavior = {
-      repositoryStarted.complete(Unit)
-      repositoryResponse.await()
-    }
-    val viewModel = SignUpViewModel(authRepository)
-
-    viewModel.googleSignUp(context, credentialManager)
-    runBlocking { withTimeout(5_000.milliseconds) { repositoryStarted.await() } }
-    viewModel.googleSignUp(context, credentialManager)
-
-    Assert.assertTrue(viewModel.uiState.value.isLoading)
-    Assert.assertEquals(1, authRepository.googleSignInCallCount)
-
-    repositoryResponse.complete(Result.failure(IllegalStateException("test complete")))
-    awaitState(viewModel) { it.errorMsg != null }
+    viewModel.updatePassword("12345678")
+    Assert.assertTrue(viewModel.uiState.value.isPasswordValid)
   }
 
   @Test
@@ -149,7 +50,7 @@ class SignUpViewModelTest {
 
     Assert.assertFalse(state.isLoading)
     Assert.assertTrue(state.isAuthenticated)
-    Assert.assertEquals(null, state.errorMsg)
+    Assert.assertNull(state.errorMsg)
   }
 
   @Test
@@ -164,6 +65,21 @@ class SignUpViewModelTest {
     Assert.assertFalse(state.isLoading)
     Assert.assertEquals("Account already exists", state.errorMsg)
     Assert.assertFalse(state.isAuthenticated)
+  }
+
+  @Test
+  fun clearError_removesCurrentError() {
+    authRepository.signUpBehavior = { _, _ ->
+      Result.failure(IllegalStateException("Account already exists"))
+    }
+    val viewModel = SignUpViewModel(authRepository)
+
+    viewModel.signUp("user@example.com", "password")
+    awaitState(viewModel) { it.errorMsg != null }
+
+    viewModel.clearError()
+
+    Assert.assertNull(viewModel.uiState.value.errorMsg)
   }
 
   @Test
@@ -198,7 +114,7 @@ class SignUpViewModelTest {
 
     Assert.assertFalse(state.isLoading)
     Assert.assertTrue(state.signedOut)
-    Assert.assertEquals(null, state.errorMsg)
+    Assert.assertNull(state.errorMsg)
   }
 
   @Test
@@ -223,15 +139,6 @@ class SignUpViewModelTest {
   }
 
   private class FakeAuthRepository : AuthRepository {
-    var googleSignInBehavior: suspend () -> Result<FirebaseUser> = {
-      Result.failure(UnsupportedOperationException("Not configured"))
-    }
-    var googleSignInCallCount = 0
-      private set
-
-    var lastGoogleCredential: Credential? = null
-      private set
-
     var signUpBehavior: suspend (String, String) -> Result<FirebaseUser> = { _, _ ->
       Result.failure(UnsupportedOperationException("Not configured"))
     }
@@ -255,9 +162,7 @@ class SignUpViewModelTest {
     }
 
     override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> {
-      googleSignInCallCount += 1
-      lastGoogleCredential = credential
-      return googleSignInBehavior()
+      return Result.failure(UnsupportedOperationException("Not used in these tests"))
     }
 
     override suspend fun signOut(): Result<Unit> = signOutBehavior()

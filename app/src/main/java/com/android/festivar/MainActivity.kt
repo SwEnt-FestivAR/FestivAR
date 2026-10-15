@@ -65,7 +65,6 @@ fun FestivAR(
     composable(route = AppScreens.SignUp.name) {
       val navigator = SignUpNavigator(navController)
       SignUpScreen(
-          credentialManager = credentialManager,
           viewModel = viewModel { SignUpViewModel(authRepository) },
           onSignInClick = navigator.onSignInClick,
           onBackClick = navigator.onBackClick,

@@ -1,14 +1,10 @@
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.ui.authentication.signup
 
-import android.content.Context
-import androidx.credentials.CredentialManager
-import androidx.credentials.GetCredentialRequest
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.android.festivar.R
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.authentication.AuthRepositoryFirebase
-import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,9 +17,12 @@ data class AuthUIState(
     val errorMsg: String? = null,
     val signedOut: Boolean = false,
     val password: String = "",
+    val isPasswordValid: Boolean = false,
     val confirmPassword: String = "",
     val email: String = "",
 )
+
+const val MIN_PASSWORD_LENGTH = 8
 
 class SignUpViewModel(private val authRepository: AuthRepository = AuthRepositoryFirebase()) :
     ViewModel() {
@@ -35,34 +34,18 @@ class SignUpViewModel(private val authRepository: AuthRepository = AuthRepositor
   }
 
   fun updatePassword(password: String) {
-    _uiState.update { it.copy(password = password) }
+    _uiState.update {
+      it.copy(password = password, isPasswordValid = password.length >= MIN_PASSWORD_LENGTH)
+    }
   }
 
   fun updateConfirmPassword(confirmPassword: String) {
     _uiState.update { it.copy(confirmPassword = confirmPassword) }
   }
 
-  fun googleSignUp(context: Context, credentialManager: CredentialManager) {
-    if (_uiState.value.isLoading) return
-    viewModelScope.launch {
-      _uiState.value = AuthUIState(isLoading = true)
-      val result = runCatching {
-        val option =
-            GetSignInWithGoogleOption.Builder(context.getString(R.string.default_web_client_id))
-                .build()
-        val request = GetCredentialRequest.Builder().addCredentialOption(option).build()
-        credentialManager.getCredential(context, request).credential
-      }
-          .fold(
-              onSuccess = { authRepository.signInWithGoogle(it) },
-              onFailure = { Result.failure(it) },
-          )
-      _uiState.value =
-          result.fold(
-              onSuccess = { AuthUIState(isAuthenticated = true) },
-              onFailure = { AuthUIState(errorMsg = it.message ?: "Unable to sign up.") },
-          )
-    }
+  /** Clears the current authentication error. */
+  fun clearError() {
+    _uiState.update { it.copy(errorMsg = null) }
   }
 
   fun signUp(
@@ -70,6 +53,12 @@ class SignUpViewModel(private val authRepository: AuthRepository = AuthRepositor
       password: String,
   ) {
     if (_uiState.value.isLoading) return
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      _uiState.update {
+        it.copy(errorMsg = "Password must be at least $MIN_PASSWORD_LENGTH characters.")
+      }
+      return
+    }
     viewModelScope.launch {
       _uiState.value = AuthUIState(isLoading = true)
       val result =
