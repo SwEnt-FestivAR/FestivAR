@@ -15,6 +15,8 @@ import com.android.festivar.model.event.EventRepositoryFirebase
 import com.android.festivar.model.user.UsersRepositoryProvider
 import com.android.festivar.ui.event.CreateEventScreen
 import com.android.festivar.ui.event.CreateEventViewModel
+import com.android.festivar.ui.event.EventDetailsScreen
+import com.android.festivar.ui.event.EventDetailsViewModel
 import com.android.festivar.ui.event.EventsOverviewScreen
 import com.android.festivar.ui.event.EventsOverviewViewModel
 import com.google.firebase.Firebase
@@ -57,8 +59,16 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, authRepository:
   composable(
       route = "${AppScreens.EventDetails.name}/{eventId}",
       arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
-  ) {
-    ScreenName("event details")
+  ) { backStackEntry ->
+    val eventId = backStackEntry.arguments?.getString("eventId") ?: ""
+    require(eventId.isNotBlank()) { "eventId must not be blank" }
+    val navigator = EventDetailsNavigator(navController)
+    EventDetailsScreen(
+        eventId = eventId,
+        viewModel { EventDetailsViewModel(EventRepositoryFirebase(Firebase.firestore)) },
+        onBack = navigator.onBack,
+        onTasksButtonClicked = { navigator.onTasksButtonClicked(eventId) },
+    )
   }
   composable(route = AppScreens.JoinEvent.name) { ScreenName("join event") }
 }
