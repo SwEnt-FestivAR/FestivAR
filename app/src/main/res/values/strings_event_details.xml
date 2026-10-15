@@ -8,4 +8,5 @@
     <string name="event_details_address">Address</string>
     <string name="event_details_navigate_back">Navigate back</string>
     <string name="event_details_see_tasks">See tasks</string>
+    <string name="event_details_fetch_error">Something wrong happened while fetching the event. Please try again</string>
 </resources>

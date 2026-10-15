@@ -7,6 +7,7 @@ package com.android.festivar
 
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -19,7 +20,6 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.credentials.Credential
 import androidx.credentials.CredentialManager
-import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.event.Event
@@ -37,6 +37,7 @@ import com.android.festivar.ui.authentication.login.LoginScreenTestTags
 import com.android.festivar.ui.authentication.signup.SignUpScreenTestTags
 import com.android.festivar.ui.components.AvatarTestTags
 import com.android.festivar.ui.event.CreateEventScreenTestTags
+import com.android.festivar.ui.event.EventDetailsScreenTestTags
 import com.android.festivar.ui.event.EventsOverviewScreenTestTags
 import com.android.festivar.ui.event.JoinEventScreenTestTags
 import com.android.festivar.ui.profile.ProfileScreenTestTags
@@ -211,14 +212,18 @@ class MainActivityNavigationTest {
 
       composeTestRule.waitUntil(timeoutMillis = 10_000) {
         composeTestRule
-            .onAllNodesWithText("Hello event details!")
+            .onAllNodesWithTag(EventDetailsScreenTestTags.EVENT_NAME)
             .fetchSemanticsNodes()
             .isNotEmpty()
       }
-      composeTestRule.onNodeWithText("Hello event details!").assertIsDisplayed()
+      composeTestRule
+          .onNodeWithTag(EventDetailsScreenTestTags.EVENT_NAME)
+          .assertTextEquals(event.title)
 
       // The join screen was dropped from the back stack, so back lands on the overview
-      Espresso.pressBack()
+      composeTestRule
+          .onNodeWithTag(EventDetailsScreenTestTags.BACK_BUTTON)
+          .performClick()
       waitUntilTagExists(EventsOverviewScreenTestTags.TITLE)
       composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.TITLE).assertIsDisplayed()
     } finally {
@@ -286,7 +291,10 @@ class MainActivityNavigationTest {
       waitUntilTagExists(eventItem)
       composeTestRule.onNodeWithTag(eventItem).performClick()
 
-      composeTestRule.onNodeWithText("Hello event details!").assertIsDisplayed()
+      composeTestRule.waitUntil(timeoutMillis = 10_000) {
+        composeTestRule.onAllNodesWithText(event.title).fetchSemanticsNodes().isNotEmpty()
+      }
+      composeTestRule.onNodeWithText(event.title).assertIsDisplayed()
     } finally {
       runBlocking {
         runCatching { events.deleteEvent(event.eventId) }
@@ -306,7 +314,15 @@ class MainActivityNavigationTest {
       )
     }
 
-    composeTestRule.onNodeWithText("Hello event details!").assertIsDisplayed()
+    composeTestRule.waitUntil(timeoutMillis = 10_000) {
+      composeTestRule
+          .onAllNodesWithText("Something wrong happened while fetching the event. Please try again")
+          .fetchSemanticsNodes()
+          .isNotEmpty()
+    }
+    composeTestRule
+        .onNodeWithText("Something wrong happened while fetching the event. Please try again")
+        .assertIsDisplayed()
   }
 
   @Test

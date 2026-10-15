@@ -3,9 +3,11 @@ package com.android.festivar.ui.event
 // Co-authored-by: Copilot App
 // Co-authored-by: Claude Sonnet 5.5
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,6 +32,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,8 +42,10 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.R
 import com.android.festivar.model.event.Event
+import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.formatEventDate
@@ -60,100 +67,132 @@ object EventDetailsScreenTestTags {
 /**
  * A screen for viewing event details.
  *
- * @param event The event whose details will be shown
+ * @param eventId The ID of the event whose details will be shown
  * @param onBack A callback to be invoked when the back button is clicked
  * @param onTasksButtonClicked A callback to be invoked when the "See tasks" button is clicked
  */
 @Composable
 fun EventDetailsScreen(
-    event: Event,
+    eventId: String,
+    viewModel: EventDetailsViewModel = viewModel(),
     onBack: () -> Unit,
     onTasksButtonClicked: () -> Unit,
+) {
+  LaunchedEffect(Unit) { viewModel.fetchEvent(eventId) }
+  val uiState by viewModel.uiState.collectAsState()
+  val event = uiState.event
+
+  Scaffold(
+      containerColor = MaterialTheme.colorScheme.background,
+      topBar = { EventDetailsTopBar(onBack = onBack) },
+      bottomBar = {
+        if (event != null) {
+          EventDetailsBottomBar(onTasksButtonClicked = onTasksButtonClicked)
+        }
+      },
+  ) { paddingValues ->
+    when {
+      event != null ->
+          EventDetailsContent(
+              event = event,
+              modifier = Modifier.padding(paddingValues),
+          )
+      uiState.errorFetch ->
+          Box(
+              modifier = Modifier.fillMaxSize().padding(10.dp),
+              contentAlignment = Alignment.Center,
+          ) {
+            Text(
+                text = stringResource(R.string.event_details_fetch_error),
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
+          }
+    }
+  }
+}
+
+@Composable
+private fun EventDetailsContent(
+    event: Event,
+    modifier: Modifier = Modifier,
 ) {
   val openTasks = event.tasks.count { !it.completed }
   val date = formatEventDate(event)
   val owner = event.members.firstOrNull()?.name.orEmpty()
 
-  Scaffold(
-      containerColor = MaterialTheme.colorScheme.background,
-      topBar = { EventDetailsTopBar(onBack = onBack) },
-      bottomBar = { EventDetailsBottomBar(onTasksButtonClicked = onTasksButtonClicked) },
-  ) { paddingValues ->
-    Column(
-        modifier =
-            Modifier.fillMaxSize()
-                .padding(paddingValues)
-                .padding(start = 20.dp, top = 16.dp, end = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-      Text(
-          text = event.title,
-          modifier = Modifier.fillMaxWidth().testTag(EventDetailsScreenTestTags.EVENT_NAME),
-          color = MaterialTheme.colorScheme.onBackground,
-          style = MaterialTheme.typography.headlineMedium,
-      )
+  Column(
+      modifier = modifier.fillMaxSize().padding(start = 20.dp, top = 16.dp, end = 20.dp),
+      verticalArrangement = Arrangement.spacedBy(12.dp),
+      horizontalAlignment = Alignment.CenterHorizontally,
+  ) {
+    Text(
+        text = event.title,
+        modifier = Modifier.fillMaxWidth().testTag(EventDetailsScreenTestTags.EVENT_NAME),
+        color = MaterialTheme.colorScheme.onBackground,
+        style = MaterialTheme.typography.headlineMedium,
+    )
 
-      Row(
-          modifier =
-              Modifier.fillMaxWidth()
-                  .clip(RoundedCornerShape(12.dp))
-                  .background(MaterialTheme.colorScheme.surfaceContainerLow)
-                  .padding(14.dp)
-                  .testTag(EventDetailsScreenTestTags.OPEN_TASKS_STAT),
-          verticalAlignment = Alignment.CenterVertically,
-      ) {
-        Column {
-          Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = openTasks.toString(),
-                color = MaterialTheme.colorScheme.onSurface,
-                style = NumeralLarge,
-            )
-            Text(
-                text = stringResource(R.string.event_details_tasks_count, event.tasks.size),
-                modifier = Modifier.padding(start = 4.dp, top = 12.dp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodySmall,
-            )
-          }
+    Row(
+        modifier =
+            Modifier.fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                .padding(14.dp)
+                .testTag(EventDetailsScreenTestTags.OPEN_TASKS_STAT),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Column {
+        Row(verticalAlignment = Alignment.CenterVertically) {
           Text(
-              text = stringResource(R.string.event_details_tasks_still_open),
+              text = openTasks.toString(),
+              color = MaterialTheme.colorScheme.onSurface,
+              style = NumeralLarge,
+          )
+          Text(
+              text = stringResource(R.string.event_details_tasks_count, event.tasks.size),
+              modifier = Modifier.padding(start = 4.dp, top = 12.dp),
               color = MaterialTheme.colorScheme.onSurfaceVariant,
               style = MaterialTheme.typography.bodySmall,
           )
         }
+        Text(
+            text = stringResource(R.string.event_details_tasks_still_open),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodySmall,
+        )
       }
+    }
 
-      Column(
-          modifier =
-              Modifier.fillMaxWidth()
-                  .clip(RoundedCornerShape(12.dp))
-                  .background(MaterialTheme.colorScheme.surfaceContainerLowest)
-                  .border(
-                      1.dp,
-                      MaterialTheme.colorScheme.outlineVariant,
-                      RoundedCornerShape(12.dp),
-                  ),
-      ) {
-        EventDetailsRow(
-            label = stringResource(R.string.event_details_owner),
-            value = owner,
-            tag = EventDetailsScreenTestTags.OWNER_ROW,
-        )
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        EventDetailsRow(
-            label = stringResource(R.string.event_details_date),
-            value = date,
-            tag = EventDetailsScreenTestTags.DATE_ROW,
-        )
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        EventDetailsRow(
-            label = stringResource(R.string.event_details_address),
-            value = event.location,
-            tag = EventDetailsScreenTestTags.ADDRESS_ROW,
-        )
-      }
+    Column(
+        modifier =
+            Modifier.fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+                .border(
+                    1.dp,
+                    MaterialTheme.colorScheme.outlineVariant,
+                    RoundedCornerShape(12.dp),
+                ),
+    ) {
+      EventDetailsRow(
+          label = stringResource(R.string.event_details_owner),
+          value = owner,
+          tag = EventDetailsScreenTestTags.OWNER_ROW,
+      )
+      HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+      EventDetailsRow(
+          label = stringResource(R.string.event_details_date),
+          value = date,
+          tag = EventDetailsScreenTestTags.DATE_ROW,
+      )
+      HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+      EventDetailsRow(
+          label = stringResource(R.string.event_details_address),
+          value = event.location,
+          tag = EventDetailsScreenTestTags.ADDRESS_ROW,
+      )
     }
   }
 }
@@ -239,9 +278,31 @@ private fun EventDetailsRow(
   }
 }
 
+@SuppressLint("ViewModelConstructorInComposable")
 @Composable
 private fun EventDetailsScreenPreview(event: Event) {
-  AppTheme { EventDetailsScreen(event = event, onTasksButtonClicked = {}, onBack = {}) }
+  AppTheme {
+    EventDetailsScreen(
+        eventId = event.eventId,
+        viewModel = EventDetailsViewModel(EventsRepositoryLocal(listOf(event))),
+        onTasksButtonClicked = {},
+        onBack = {},
+    )
+  }
+}
+
+@SuppressLint("ViewModelConstructorInComposable")
+@Preview
+@Composable
+private fun FetchErrorPreview() {
+  AppTheme {
+    EventDetailsScreen(
+        eventId = eventSameMonth.eventId,
+        viewModel = EventDetailsViewModel(EventsRepositoryLocal(emptyList())),
+        onTasksButtonClicked = {},
+        onBack = {},
+    )
+  }
 }
 
 @Preview
