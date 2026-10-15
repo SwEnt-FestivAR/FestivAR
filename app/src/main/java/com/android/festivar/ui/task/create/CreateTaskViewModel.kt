@@ -1,12 +1,17 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.create
 
 import android.util.Log
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.android.festivar.R
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryProvider
+import com.android.festivar.ui.components.DateTimeField
+import com.android.festivar.ui.components.FieldError
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -18,18 +23,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
-
-/** What is wrong with a field of the Create task form, shown as a message under that field. */
-enum class FieldError {
-  /** The title was edited and is now blank. */
-  EMPTY_TITLE,
-
-  /** A time was picked without its date. */
-  MISSING_DATE,
-
-  /** The end is before the start. */
-  END_BEFORE_START,
-}
 
 /**
  * Everything the user typed in the Create task form, plus the rules that decide whether it can be
@@ -46,12 +39,15 @@ data class CreateTaskUiState(
     val startTime: LocalTime? = null,
     val endDate: LocalDate? = null,
     val endTime: LocalTime? = null,
+    // The field whose picker dialog is open, or null when none is.
+    val openPicker: DateTimeField? = null,
     val titleEdited: Boolean = false,
     // True while the task is being saved. It keeps a second tap on "Create task" from saving the
     // task twice (see canCreate).
     val isSaving: Boolean = false,
     val isCreated: Boolean = false,
-    val errorMsg: String? = null,
+    // String resource of the error to show (see R.string.create_task_error_save_failed), or null.
+    @StringRes val errorMsg: Int? = null,
 ) {
   val startDateTime: LocalDateTime?
     get() = startDate?.atTime(startTime ?: START_OF_DAY)
@@ -121,8 +117,8 @@ val END_OF_DAY: LocalTime = LocalTime.of(23, 59)
 
 private const val SAVE_TIMEOUT_MS = 15_000L
 
-/** The message shown when the task could not be saved, whatever the cause. */
-private const val SAVE_FAILED_MESSAGE = "Unable to create the task."
+/** The message shown when the task could not be saved, whatever the cause (a string resource). */
+@StringRes private val SAVE_FAILED_MESSAGE = R.string.create_task_error_save_failed
 
 /**
  * Holds the state of the Create task screen and saves the new task in [tasksRepository].
@@ -175,8 +171,28 @@ class CreateTaskViewModel(
   /** Sets the time the task ends. */
   fun updateEndTime(time: LocalTime) = edit { it.copy(endTime = time) }
 
-  /** Clears the error message in the UI state. */
-  fun clearError() = _uiState.update { it.copy(errorMsg = null) }
+  /** Opens the picker dialog of [field], or closes the open one when [field] is `null`. */
+  fun showPicker(field: DateTimeField?) = _uiState.update { it.copy(openPicker = field) }
+
+  /** Sets [date] in the field whose picker is open, then closes the picker. */
+  fun pickDate(date: LocalDate) {
+    when (_uiState.value.openPicker) {
+      DateTimeField.START_DATE -> updateStartDate(date)
+      DateTimeField.END_DATE -> updateEndDate(date)
+      else -> Unit
+    }
+    showPicker(null)
+  }
+
+  /** Sets [time] in the field whose picker is open, then closes the picker. */
+  fun pickTime(time: LocalTime) {
+    when (_uiState.value.openPicker) {
+      DateTimeField.START_TIME -> updateStartTime(time)
+      DateTimeField.END_TIME -> updateEndTime(time)
+      else -> Unit
+    }
+    showPicker(null)
+  }
 
   /**
    * Saves the task in the event [eventId] if the form is valid. Does nothing while a save is
