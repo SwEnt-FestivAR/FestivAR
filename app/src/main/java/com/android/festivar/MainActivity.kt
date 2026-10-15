@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
@@ -19,7 +18,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.credentials.CredentialManager
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -33,7 +31,6 @@ import com.android.festivar.ui.authentication.login.LoginScreen
 import com.android.festivar.ui.authentication.login.LoginViewModel
 import com.android.festivar.ui.authentication.signup.SignUpScreen
 import com.android.festivar.ui.authentication.signup.SignUpViewModel
-import com.android.festivar.ui.onboarding.splash.SplashViewModel
 import com.android.festivar.ui.theme.AppTheme
 import kotlinx.coroutines.launch
 
@@ -61,11 +58,9 @@ fun FestivAR(
   val navController = rememberNavController()
   val scope = rememberCoroutineScope()
 
-  // The first screen depends on whether a user is signed in
-  val splashViewModel = viewModel { SplashViewModel(authRepository) }
-  val splashState by splashViewModel.uiState.collectAsStateWithLifecycle()
   val startDestination =
-      if (splashState.isLoggedIn) AppScreens.EventOverview.name else AppScreens.Login.name
+      if (authRepository.currentUser != null) AppScreens.EventOverview.name
+      else AppScreens.Login.name
 
   NavHost(
       navController = navController,
