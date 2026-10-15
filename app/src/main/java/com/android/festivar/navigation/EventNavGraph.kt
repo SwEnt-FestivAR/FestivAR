@@ -10,7 +10,6 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.android.festivar.ScreenName
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.event.EventRepositoryFirebase
 import com.android.festivar.model.user.User
