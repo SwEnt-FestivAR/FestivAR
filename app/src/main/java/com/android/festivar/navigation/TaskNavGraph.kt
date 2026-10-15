@@ -6,8 +6,8 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.android.festivar.ScreenName
 import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.ui.task.create.CreateTaskScreen
 import com.android.festivar.ui.tasks.TaskOverviewScreen
 
 /** The destinations of the task feature. */
@@ -25,5 +25,17 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, authRepository: 
         onBack = navigator.onBack,
         onOpenTask = navigator.onOpenTask,
     )
-  }  composable(route = AppScreens.CreateTask.name) { ScreenName("create task") }
+  }  // navigate to this screen with
+  // navController.navigate("${AppScreens.CreateTask.name}/$eventId")
+  composable(
+      route = "${AppScreens.CreateTask.name}/{eventId}",
+      arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
+  ) { backStackEntry ->
+    val navigator = CreateTaskNavigator(navController)
+    CreateTaskScreen(
+        eventId = backStackEntry.arguments?.getString("eventId") ?: "",
+        onBack = navigator.onBack,
+        onTaskCreated = navigator.onTaskCreated,
+    )
+  }
 }
