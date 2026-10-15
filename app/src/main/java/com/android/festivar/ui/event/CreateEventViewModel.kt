@@ -37,7 +37,7 @@ enum class DateField {
 
 class CreateEventViewModel(
     private val eventsRepository: EventsRepository,
-    private val usersRepository: UsersRepository = UsersRepositoryProvider.repository,
+    private val usersRepository: UsersRepository? = null,
     private val userId: String = "",
 ) : ViewModel() {
   private val _uiState = MutableStateFlow(CreateEventUIState())
@@ -119,8 +119,9 @@ class CreateEventViewModel(
     viewModelScope.launch {
       val creator =
           if (userId.isNotBlank()) {
+            val repo = usersRepository ?: UsersRepositoryProvider.repository
             try {
-              usersRepository.getUser(userId)
+              repo.getUser(userId)
             } catch (_: Exception) {
               null
             }
@@ -143,8 +144,9 @@ class CreateEventViewModel(
       eventsRepository.addEvent(newEvent)
 
       if (creator != null) {
+        val repo = usersRepository ?: UsersRepositoryProvider.repository
         try {
-          usersRepository.editUser(creator.uid, creator.addJoinedEvent(newEvent.eventId))
+          repo.editUser(creator.uid, creator.addJoinedEvent(newEvent.eventId))
         } catch (_: Exception) {
           // If updating user joinedEvents fails, event is still created
         }
