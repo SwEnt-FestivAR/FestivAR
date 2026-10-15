@@ -5,9 +5,12 @@
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 package com.android.festivar
 
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -218,9 +221,7 @@ class MainActivityNavigationTest {
           .assertTextEquals(event.title)
 
       // The join screen was dropped from the back stack, so back lands on the overview
-      composeTestRule
-          .onNodeWithTag(EventDetailsScreenTestTags.BACK_BUTTON)
-          .performClick()
+      composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.BACK_BUTTON).performClick()
       waitUntilTagExists(EventsOverviewScreenTestTags.TITLE)
       composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.TITLE).assertIsDisplayed()
     } finally {
@@ -334,6 +335,37 @@ class MainActivityNavigationTest {
     }
 
     composeTestRule.onNodeWithTag(TaskOverviewScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  @Test
+  fun addTaskOnTheOverviewOpensCreateTaskAndTheNewTaskShowsOnReturn() {
+    TasksRepositoryProvider.repository = TasksRepositoryLocal()
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          authRepository = FakeAuthRepository(currentUser = firebaseUser),
+          startDestinationOverride = AppScreens.taskOverview("e1"),
+      )
+    }
+
+    waitUntilTagExists(TaskOverviewScreenTestTags.ADD_TASK)
+    composeTestRule.onNodeWithTag(TaskOverviewScreenTestTags.ADD_TASK).performClick()
+    waitUntilTagExists(CreateTaskScreenTestTags.TITLE)
+
+    composeTestRule
+        .onNodeWithTag(CreateTaskScreenTestTags.TITLE_FIELD)
+        .performTextInput("Hang the banner")
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.CREATE_BUTTON).performClick()
+
+    // The create screen pops itself once saved, and the overview reloads on return. The local
+    // repository numbers its ids from 0, so the first saved task is row "0"; the row tag is used
+    // because the title also sits in the create screen's field while that screen leaves.
+    waitUntilTagExists(TaskOverviewScreenTestTags.TITLE)
+    waitUntilTagExists(TaskOverviewScreenTestTags.row("0"))
+    composeTestRule
+        .onNodeWithTag(TaskOverviewScreenTestTags.row("0"))
+        .assertIsDisplayed()
+        .assert(hasAnyDescendant(hasText("Hang the banner")) or hasText("Hang the banner"))
   }
 
   @Test

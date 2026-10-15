@@ -24,6 +24,7 @@
     <string name="overview_people">%1$d of %2$d</string>
     <string name="overview_empty">Nothing here. Try another filter.</string>
     <string name="overview_retry">Retry</string>
+    <string name="overview_add_task">Add task</string>
 
     <string name="pin_open">Open task</string>
     <string name="pin_mine">Your task</string>

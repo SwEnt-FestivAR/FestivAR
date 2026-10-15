@@ -1,4 +1,5 @@
 // Written with the help of an AI coding assistant and reviewed line by line by the author.
+// Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 package com.android.festivar.ui.tasks
 
 import androidx.compose.ui.test.assertIsDisplayed
@@ -60,9 +61,19 @@ class TaskOverviewScreenTest {
     TasksRepositoryProvider.repository = original
   }
 
-  private fun setOverview(onBack: () -> Unit = {}, onOpenTask: (String) -> Unit = {}) {
+  private fun setOverview(
+      onBack: () -> Unit = {},
+      onOpenTask: (String) -> Unit = {},
+      onAddTask: () -> Unit = {},
+  ) {
     composeTestRule.setContent {
-      TaskOverviewScreen(EVENT, userId = ME, onBack = onBack, onOpenTask = onOpenTask)
+      TaskOverviewScreen(
+          EVENT,
+          userId = ME,
+          onBack = onBack,
+          onOpenTask = onOpenTask,
+          onAddTask = onAddTask,
+      )
     }
     composeTestRule.waitUntil(5_000) {
       composeTestRule
@@ -153,6 +164,20 @@ class TaskOverviewScreenTest {
         .onNodeWithTag(TaskOverviewScreenTestTags.row(bunting.taskId))
         .assertIsDisplayed()
     assertRowGone(power.taskId)
+  }
+
+  /** Turns red when the Add task button is dropped or no longer calls back. */
+  @Test
+  fun tappingAddTaskCallsOnAddTask() {
+    var adds = 0
+    setOverview(onAddTask = { adds++ })
+
+    composeTestRule
+        .onNodeWithTag(TaskOverviewScreenTestTags.ADD_TASK)
+        .assertIsDisplayed()
+        .performClick()
+
+    assertEquals(1, adds)
   }
 
   /** Turns red when the back button stops calling onBack. */
