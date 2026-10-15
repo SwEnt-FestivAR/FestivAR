@@ -8,8 +8,6 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.android.festivar.ui.components.formatDate
-import com.android.festivar.ui.components.formatDay
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -40,16 +38,45 @@ class EventDetailsScreenTest {
         .forEach { tag -> composeTestRule.onNodeWithTag(tag).assertIsDisplayed() }
 
     composeTestRule.onNodeWithText(event.title).assertIsDisplayed()
-    composeTestRule.onNodeWithText(event.members.firstOrNull()?.name.orEmpty()).assertIsDisplayed()
+    composeTestRule.onNodeWithText("Sami K.").assertIsDisplayed()
     composeTestRule.onNodeWithText(event.location).assertIsDisplayed()
     composeTestRule.onNodeWithText("${tasksListSize / 2}").assertIsDisplayed()
     composeTestRule.onNodeWithText("of $tasksListSize").assertIsDisplayed()
     composeTestRule.onNodeWithText("tasks still open").assertIsDisplayed()
-    composeTestRule
-        .onNodeWithText(
-            "${formatDay(event.startDate.toLocalDate())} to ${formatDate(event.endDate.toLocalDate())}"
-        )
-        .assertIsDisplayed()
+    composeTestRule.onNodeWithText("Fri 16 to Sun 18 Oct").assertIsDisplayed()
+  }
+
+  @Test
+  fun displaysSameDayEventDate() {
+    composeTestRule.setContent {
+      EventDetailsScreen(event = eventSameDay, onTasksButtonClicked = {}, onBack = {})
+    }
+    composeTestRule.onNodeWithText("Fri 16 Oct").assertIsDisplayed()
+  }
+
+  @Test
+  fun displaysDifferentMonthEventDate() {
+    composeTestRule.setContent {
+      EventDetailsScreen(event = eventDifferentMonth, onTasksButtonClicked = {}, onBack = {})
+    }
+    composeTestRule.onNodeWithText("Fri 16 Oct to Mon 16 Nov").assertIsDisplayed()
+  }
+
+  @Test
+  fun displaysDifferentYearEventDate() {
+    composeTestRule.setContent {
+      EventDetailsScreen(event = eventDifferentYear, onTasksButtonClicked = {}, onBack = {})
+    }
+    composeTestRule.onNodeWithText("Fri 16 Oct 2026 to Sat 16 Oct 2027").assertIsDisplayed()
+  }
+
+  @Test
+  fun displaysNoTasksEventStatistics() {
+    composeTestRule.setContent {
+      EventDetailsScreen(event = eventNoTasks, onTasksButtonClicked = {}, onBack = {})
+    }
+    composeTestRule.onNodeWithText("0").assertIsDisplayed()
+    composeTestRule.onNodeWithText("of 0").assertIsDisplayed()
   }
 
   @Test
