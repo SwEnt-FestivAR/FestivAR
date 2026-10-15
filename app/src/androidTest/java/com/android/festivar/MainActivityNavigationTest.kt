@@ -19,8 +19,11 @@ import com.android.festivar.ui.authentication.signup.SignUpScreenTestTags
 import com.android.festivar.ui.event.CreateEventScreenTestTags
 import com.android.festivar.ui.tasks.TaskOverviewScreenTestTags
 import com.google.firebase.auth.FirebaseUser
+import io.mockk.MockKAnnotations
+import io.mockk.every
 import io.mockk.mockk
 import org.junit.After
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -28,6 +31,18 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class MainActivityNavigationTest {
   @get:Rule val composeTestRule = createComposeRule()
+
+  private val testUserId = "test-user-id"
+
+  private lateinit var firebaseUser: FirebaseUser
+
+  @Before
+  fun setUp() {
+    MockKAnnotations.init(this, relaxUnitFun = true)
+
+    firebaseUser = mockk { every { uid } returns testUserId }
+    every { firebaseUser.uid } returns "test-user-id"
+  }
 
   @Test
   fun loginNavigatesToSignUpAndBackToLogin() {
@@ -80,7 +95,7 @@ class MainActivityNavigationTest {
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          authRepository = FakeAuthRepository(currentUser = mockk()),
+          authRepository = FakeAuthRepository(currentUser = firebaseUser),
           startDestinationOverride = AppScreens.TaskOverview.name,
       )
     }
