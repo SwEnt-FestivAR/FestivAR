@@ -171,6 +171,19 @@ class MainActivityNavigationTest {
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.TITLE).assertIsDisplayed()
   }
 
+  @Test
+  fun taskDetailsRouteRedirectsToLoginWhenUserIsNull() {
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          authRepository = FakeAuthRepository(currentUser = null),
+          startDestinationOverride = "${AppScreens.TaskDetails.name}/t1",
+      )
+    }
+
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
   @After
   fun tearDown() {
     TasksRepositoryProvider.reset()

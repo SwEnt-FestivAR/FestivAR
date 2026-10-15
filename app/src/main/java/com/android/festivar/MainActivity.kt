@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
@@ -147,13 +148,26 @@ fun FestivAR(
     ) { backStackEntry ->
       val taskId = backStackEntry.arguments?.getString("taskId") ?: ""
       val firebaseUser = authRepository.currentUser
-      val currentUser =
-          User(
-              uid = firebaseUser?.uid ?: "",
-              name = firebaseUser?.displayName.orEmpty(),
-              email = firebaseUser?.email.orEmpty(),
-          )
       val navigator = TaskDetailsNavigator(navController)
+
+      if (firebaseUser == null) {
+        LaunchedEffect(Unit) {
+          navController.navigate(AppScreens.Login.name) {
+            popUpTo(navController.graph.id) { inclusive = true }
+          }
+        }
+        return@composable
+      }
+
+      val currentUser =
+          remember(firebaseUser) {
+            User(
+                uid = firebaseUser.uid,
+                name = firebaseUser.displayName.orEmpty(),
+                email = firebaseUser.email.orEmpty(),
+            )
+          }
+
       TaskDetailsScreen(
           taskId = taskId,
           currentUser = currentUser,
