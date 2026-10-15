@@ -154,7 +154,8 @@ private fun Body(task: Task, status: TaskStatus) {
       style = MaterialTheme.typography.displaySmall,
       modifier = Modifier.testTag(TaskDetailsScreenTestTags.TITLE),
   )
-  whenLine(task)?.let { SubtitleText(it, TaskDetailsScreenTestTags.WHEN) }
+  val rangeFormat = stringResource(R.string.details_time_range)
+  whenLine(task, rangeFormat)?.let { SubtitleText(it, TaskDetailsScreenTestTags.WHEN) }
   if (task.location.isNotBlank()) {
     SubtitleText(
         stringResource(R.string.details_location, task.location),
@@ -270,13 +271,16 @@ private fun TaskStatus.pillStyle(): PillStyle =
       TaskStatus.DONE -> PillStyle.LIME
     }
 
-/** "Sat 17 Oct, 09:30 to 09:50", or "Sat 17 Oct, 09:30" without an end; null without a start. */
-internal fun whenLine(task: Task): String? {
+/**
+ * "Sat 17 Oct, 09:30 to 09:50" ([rangeFormat] joins the times), or "Sat 17 Oct, 09:30" without an
+ * end; null without a start.
+ */
+internal fun whenLine(task: Task, rangeFormat: String): String? {
   val start = task.startTime ?: return null
   val end = task.endTime
+  val startText = formatTime(start.toLocalTime())
   val times =
-      if (end != null) "${formatTime(start.toLocalTime())} to ${formatTime(end.toLocalTime())}"
-      else formatTime(start.toLocalTime())
+      if (end != null) rangeFormat.format(startText, formatTime(end.toLocalTime())) else startText
   return "${formatDate(start.toLocalDate())}, $times"
 }
 
