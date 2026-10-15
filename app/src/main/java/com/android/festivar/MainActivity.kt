@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar
 
 import android.content.Context
@@ -15,6 +16,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.credentials.CredentialManager
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
@@ -45,6 +47,8 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
+    // The system start screen is the app's only splash, shown while the app starts
+    installSplashScreen()
     super.onCreate(savedInstanceState)
 
     setContent { AppTheme { Surface(modifier = Modifier.fillMaxSize()) { FestivAR() } } }
