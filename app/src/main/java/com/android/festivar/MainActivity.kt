@@ -1,53 +1,31 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Gemini <noreply@google.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar
 
 import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.Role
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.credentials.CredentialManager
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.authentication.AuthRepositoryFirebase
-import com.android.festivar.model.event.EventRepositoryFirebase
-import com.android.festivar.model.user.User
 import com.android.festivar.navigation.AppScreens
-import com.android.festivar.navigation.CreateEventNavigator
-import com.android.festivar.navigation.LoginNavigator
-import com.android.festivar.navigation.SignUpNavigator
-import com.android.festivar.navigation.TaskDetailsNavigator
-import com.android.festivar.navigation.TaskOverviewNavigator
-import com.android.festivar.ui.authentication.login.LoginScreen
-import com.android.festivar.ui.authentication.login.LoginViewModel
-import com.android.festivar.ui.authentication.signup.SignUpScreen
-import com.android.festivar.ui.authentication.signup.SignUpViewModel
-import com.android.festivar.ui.event.CreateEventScreen
-import com.android.festivar.ui.event.CreateEventViewModel
-import com.android.festivar.ui.task.details.TaskDetailsScreen
-import com.android.festivar.ui.tasks.TaskOverviewScreen
+import com.android.festivar.navigation.authGraph
+import com.android.festivar.navigation.eventGraph
+import com.android.festivar.navigation.taskGraph
 import com.android.festivar.ui.theme.AppTheme
-import com.google.firebase.Firebase
-import com.google.firebase.firestore.firestore
-import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -72,7 +50,6 @@ fun FestivAR(
     startDestinationOverride: String? = null,
 ) {
   val navController = rememberNavController()
-  val scope = rememberCoroutineScope()
 
   val startDestination =
       startDestinationOverride
@@ -83,98 +60,9 @@ fun FestivAR(
       navController = navController,
       startDestination = startDestination,
   ) {
-    composable(route = AppScreens.SignUp.name) {
-      val navigator = SignUpNavigator(navController)
-      SignUpScreen(
-          viewModel = viewModel { SignUpViewModel(authRepository) },
-          onSignInClick = navigator.onSignInClick,
-          onBackClick = navigator.onBackClick,
-          onSignUpSuccess = navigator.onSignUpSuccess,
-      )
-    }
-    composable(route = AppScreens.Login.name) {
-      val navigator = LoginNavigator(navController)
-      LoginScreen(
-          credentialManager = credentialManager,
-          viewModel = viewModel { LoginViewModel(authRepository) },
-          onSignUpClick = navigator.onSignUpClick,
-          onSignedIn = navigator.onSignedIn,
-      )
-    }
-    composable(route = AppScreens.EventOverview.name) {
-      ScreenName(
-          "event overview, click to logout",
-          modifier =
-              Modifier.clickable(
-                  role = Role.Button,
-                  onClick = {
-                    scope.launch {
-                      authRepository.signOut().onSuccess {
-                        navController.navigate(AppScreens.Login.name) {
-                          popUpTo(navController.graph.id) { inclusive = true }
-                        }
-                      }
-                    }
-                  },
-              ),
-      )
-    }
-    // navigate to this screen with
-    // navController.navigate("${AppScreens.TaskOverview.name}/$eventId")
-    composable(
-        route = "${AppScreens.TaskOverview.name}/{eventId}",
-        arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
-    ) { backStackEntry ->
-      val navigator = TaskOverviewNavigator(navController)
-      TaskOverviewScreen(
-          eventId = backStackEntry.arguments?.getString("eventId") ?: "",
-          userId = authRepository.currentUser?.uid ?: "",
-          onBack = navigator.onBack,
-          onOpenTask = navigator.onOpenTask,
-      )
-    }
-    composable(route = AppScreens.CreateEvent.name) {
-      val navigator = CreateEventNavigator(navController)
-      CreateEventScreen(
-          viewModel =
-              viewModel { CreateEventViewModel(EventRepositoryFirebase(Firebase.firestore)) },
-          onBack = navigator.onBack,
-      )
-    }
-    composable(route = AppScreens.EventDetails.name) { ScreenName("event details") }
-    composable(
-        route = "${AppScreens.TaskDetails.name}/{taskId}",
-        arguments = listOf(navArgument("taskId") { type = NavType.StringType }),
-    ) { backStackEntry ->
-      val taskId = backStackEntry.arguments?.getString("taskId") ?: ""
-      val firebaseUser = authRepository.currentUser
-      val navigator = TaskDetailsNavigator(navController)
-
-      if (firebaseUser == null) {
-        LaunchedEffect(Unit) {
-          navController.navigate(AppScreens.Login.name) {
-            popUpTo(navController.graph.id) { inclusive = true }
-          }
-        }
-        return@composable
-      }
-
-      val currentUser =
-          remember(firebaseUser) {
-            User(
-                uid = firebaseUser.uid,
-                name = firebaseUser.displayName.orEmpty(),
-                email = firebaseUser.email.orEmpty(),
-            )
-          }
-
-      TaskDetailsScreen(
-          taskId = taskId,
-          currentUser = currentUser,
-          onBack = navigator.onBack,
-      )
-    }
-    composable(route = AppScreens.CreateTask.name) { ScreenName("create task") }
+    authGraph(navController, credentialManager, authRepository)
+    eventGraph(navController, authRepository)
+    taskGraph(navController, authRepository)
   }
 }
 
