@@ -31,6 +31,7 @@ import com.android.festivar.ui.authentication.signup.SignUpScreenTestTags
 import com.android.festivar.ui.components.AvatarTestTags
 import com.android.festivar.ui.event.CreateEventScreenTestTags
 import com.android.festivar.ui.event.EventsOverviewScreenTestTags
+import com.android.festivar.ui.profile.ProfileScreenTestTags
 import com.android.festivar.ui.task.create.CreateTaskScreenTestTags
 import com.android.festivar.ui.task.details.TaskDetailsScreenTestTags
 import com.android.festivar.ui.tasks.TaskOverviewScreenTestTags
@@ -115,7 +116,8 @@ class MainActivityNavigationTest {
 
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.USER_AVATAR).performClick()
 
-    composeTestRule.onNodeWithText("Hello profile!").assertIsDisplayed()
+    waitUntilTagExists(ProfileScreenTestTags.TITLE)
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.TITLE).assertIsDisplayed()
   }
 
   @Test
@@ -316,6 +318,65 @@ class MainActivityNavigationTest {
           credentialManager = mockk<CredentialManager>(relaxed = true),
           authRepository = FakeAuthRepository(currentUser = null),
           startDestinationOverride = AppScreens.taskDetails("t1"),
+      )
+    }
+
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  /** Puts a user with the uid of [firebaseUser] in the users repository, for the profile screen. */
+  private fun seedUser() {
+    UsersRepositoryProvider.repository =
+        UsersRepositoryLocal(listOf(User(uid = testUserId, name = "Ada", surname = "Lovelace")))
+  }
+
+  @Test
+  fun profileRouteDisplaysProfileScreen() {
+    seedUser()
+
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          authRepository = FakeAuthRepository(currentUser = firebaseUser),
+          startDestinationOverride = AppScreens.Profile.name,
+      )
+    }
+
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  @Test
+  fun profileSignOutReturnsToLogin() {
+    seedUser()
+
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          authRepository = FakeAuthRepository(currentUser = firebaseUser),
+          startDestinationOverride = AppScreens.Profile.name,
+      )
+    }
+
+    // The sign out button only shows once the profile is loaded
+    composeTestRule.waitUntil(5_000) {
+      composeTestRule
+          .onAllNodes(hasTestTag(ProfileScreenTestTags.SIGN_OUT_BUTTON))
+          .fetchSemanticsNodes()
+          .isNotEmpty()
+    }
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.SIGN_OUT_BUTTON).performClick()
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  @Test
+  fun profileRouteRedirectsToLoginWhenUserIsNull() {
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          authRepository = FakeAuthRepository(currentUser = null),
+          startDestinationOverride = AppScreens.Profile.name,
       )
     }
 

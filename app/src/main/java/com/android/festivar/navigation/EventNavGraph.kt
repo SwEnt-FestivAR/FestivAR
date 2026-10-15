@@ -61,5 +61,4 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, authRepository:
     ScreenName("event details")
   }
   composable(route = AppScreens.JoinEvent.name) { ScreenName("join event") }
-  composable(route = AppScreens.Profile.name) { ScreenName("profile") }
 }
