@@ -30,8 +30,8 @@ import kotlinx.coroutines.launch
  * @property isSaving Whether the [User] item is being saved and updated with the new values.
  * @property signedOut Whether the [User] signs out, keeps the information to block any other
  *   operation when the disconnection is occured.
- *     @property isSigningOut Whether the [User] is currently in the process of signing out, it
- *       blocks any other operation while trying to disconnect the [User].
+ * @property isSigningOut Whether the [User] is currently in the process of signing out, it blocks
+ *   any other operation while trying to disconnect the [User].
  */
 data class ProfileUIState(
     val user: User? = null,
@@ -92,24 +92,25 @@ class ProfileViewModel(
 
   /**
    * Sets the name typed in the Name field. The saved [ProfileUIState.user] is not changed. The
-   * function is stopped/canceled if the user is signing out as he cannot modify anything anymore.
+   * function is stopped/canceled if the user is signing out as he cannot modify anything anymore or
+   * if the screen is still loading.
    *
    * @param name The name that is being typed.
    */
   fun updateName(name: String) {
-    if (_uiState.value.signedOut || _uiState.value.isSigningOut) return
+    if (_uiState.value.signedOut || _uiState.value.isSigningOut || uiState.value.isLoading) return
     _uiState.update { it.copy(name = name) }
   }
 
   /**
    * Sets the surname typed in the Surname field. The saved [ProfileUIState.user] is not changed.
    * The function is stopped/canceled if the user is signing out as he cannot modify anything
-   * anymore.
+   * anymore or if the screen is still loading.
    *
    * @param surname The surname that is being typed.
    */
   fun updateSurname(surname: String) {
-    if (_uiState.value.signedOut || _uiState.value.isSigningOut) return
+    if (_uiState.value.signedOut || _uiState.value.isSigningOut || uiState.value.isLoading) return
     _uiState.update { it.copy(surname = surname) }
   }
 
@@ -120,16 +121,14 @@ class ProfileViewModel(
    */
   fun saveChanges() {
     // If the user is signing out, no further changes can be made.
-    if (_uiState.value.signedOut || _uiState.value.isSigningOut) return
+    if (_uiState.value.signedOut || _uiState.value.isSigningOut || uiState.value.isLoading) return
 
     val state = _uiState.value
 
     // If saving is disabled, quit the function.
     if (!state.canSave) return
 
-    // If there is no actual user, then this piece of code is not reached due to previous
-    // exit if (!state.canSave) return, in that case it exits also.
-    val original = state.user ?: return
+    val original = requireNotNull(state.user)
 
     // Built from the fields as they are now, so typing during the save does not change what is
     // saved. copy keeps the email, joined events and assigned tasks of the original user.
@@ -177,7 +176,7 @@ class ProfileViewModel(
       authRepository
           .signOut()
           .fold(
-              onSuccess = { _uiState.update { it.copy(signedOut = true) } },
+              onSuccess = { _uiState.update { it.copy(signedOut = true, isSigningOut = false) } },
               onFailure = { e ->
                 _uiState.update {
                   it.copy(
