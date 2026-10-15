@@ -56,8 +56,7 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, authRepository:
         onBack = navigator.onBack,
     )
   }
-  // navigate to this screen with
-  // navController.navigate(AppScreens.eventDetails(eventId))
+  // Reached through AppScreens.eventDetails(eventId)
   composable(
       route = "${AppScreens.EventDetails.name}/{eventId}",
       arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
