@@ -7,7 +7,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -138,19 +138,18 @@ fun EventDetailsScreen(
             label = "Owner",
             value = owner,
             tag = EventDetailsScreenTestTags.OWNER_ROW,
-            showDivider = true,
         )
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         EventDetailsRow(
             label = "Date",
             value = date,
             tag = EventDetailsScreenTestTags.DATE_ROW,
-            showDivider = true,
         )
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         EventDetailsRow(
             label = "Address",
             value = event.location,
             tag = EventDetailsScreenTestTags.ADDRESS_ROW,
-            showDivider = false,
         )
       }
     }
@@ -219,7 +218,6 @@ private fun EventDetailsRow(
     label: String,
     value: String,
     tag: String,
-    showDivider: Boolean,
 ) {
   Column(modifier = Modifier.fillMaxWidth().testTag(tag)) {
     Row(
@@ -236,14 +234,6 @@ private fun EventDetailsRow(
           text = value,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
           style = MaterialTheme.typography.bodyMedium,
-      )
-    }
-    if (showDivider) {
-      Box(
-          modifier =
-              Modifier.fillMaxWidth()
-                  .height(1.dp)
-                  .background(MaterialTheme.colorScheme.outlineVariant)
       )
     }
   }
