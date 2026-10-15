@@ -64,6 +64,7 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, authRepository:
               )
             },
         onBack = navigator.onBack,
+        onCreated = navigator.onCreated,
     )
   }
   // Reached through AppScreens.eventDetails(eventId)

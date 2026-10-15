@@ -1,21 +1,33 @@
 package com.android.festivar.ui.event
 
 // Co-authored-by: Copilot App
+// Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.android.festivar.R
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryProvider
 import java.time.ZonedDateTime
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/**
+ * UI state of the create event form.
+ *
+ * @property isSaving true while the event is being written, so the button is disabled and a second
+ *   tap is ignored.
+ * @property createdEventId the id of the event once it is saved; the screen then leaves.
+ * @property errorMsg the resource of the message shown under the button when the save failed.
+ */
 data class CreateEventUIState(
     val name: String = "",
     val startDate: ZonedDateTime? = null,
@@ -28,6 +40,9 @@ data class CreateEventUIState(
     val errorName: Boolean = false,
     val errorDate: Boolean = false,
     val errorVenue: Boolean = false,
+    val isSaving: Boolean = false,
+    val createdEventId: String? = null,
+    @StringRes val errorMsg: Int? = null,
 )
 
 enum class DateField {
@@ -35,6 +50,15 @@ enum class DateField {
   END,
 }
 
+/**
+ * Holds the create event form, validates it and saves the event with the signed-in user as its
+ * first member.
+ *
+ * @property eventsRepository where the event is written.
+ * @property usersRepository where the creator's profile is read and its joined events updated; the
+ *   provider's repository when null.
+ * @property userId the uid of the signed-in user, blank when nobody is.
+ */
 class CreateEventViewModel(
     private val eventsRepository: EventsRepository,
     private val usersRepository: UsersRepository? = null,
@@ -43,16 +67,21 @@ class CreateEventViewModel(
   private val _uiState = MutableStateFlow(CreateEventUIState())
   val uiState: StateFlow<CreateEventUIState> = _uiState.asStateFlow()
 
+  /** Applies an edit of the form; the save error is stale once the form changes, so it goes. */
+  private fun edit(change: (CreateEventUIState) -> CreateEventUIState) {
+    _uiState.update { change(it).copy(errorMsg = null) }
+  }
+
   fun updateName(newName: String) {
-    _uiState.update { it.copy(name = newName) }
+    edit { it.copy(name = newName) }
   }
 
   fun updateStartDate(newDate: ZonedDateTime) {
-    _uiState.update { it.copy(startDate = newDate) }
+    edit { it.copy(startDate = newDate) }
   }
 
   fun updateEndDate(newDate: ZonedDateTime) {
-    _uiState.update { it.copy(endDate = newDate) }
+    edit { it.copy(endDate = newDate) }
   }
 
   fun updateStartDateMillis(newDateMillis: Long) {
@@ -64,11 +93,11 @@ class CreateEventViewModel(
   }
 
   fun updateVenue(newVenue: String) {
-    _uiState.update { it.copy(venue = newVenue) }
+    edit { it.copy(venue = newVenue) }
   }
 
   fun updateNotes(newNotes: String) {
-    _uiState.update { it.copy(notes = newNotes) }
+    edit { it.copy(notes = newNotes) }
   }
 
   fun updateActiveDatePicker(newActiveDatePicker: DateField?) {
@@ -99,9 +128,10 @@ class CreateEventViewModel(
 
   fun endDateComesAfterStartDate(): Boolean {
     val state = _uiState.value
+    // Event itself requires a strictly later end, so equal dates are refused here, not thrown
     return state.startDate != null &&
         state.endDate != null &&
-        !state.endDate.isBefore(state.startDate)
+        state.endDate.isAfter(state.startDate)
   }
 
   fun formIsComplete(): Boolean {
@@ -115,42 +145,67 @@ class CreateEventViewModel(
     return formIsComplete() && endDateComesAfterStartDate()
   }
 
+  /**
+   * Saves the form as a new event with the creator as its first member. Ignored while a save runs
+   * or once one succeeded; a failure leaves the form as it is and sets
+   * [CreateEventUIState.errorMsg].
+   */
   fun createEvent() {
+    val state = _uiState.value
+    if (state.isSaving || state.createdEventId != null) return
+    if (!validEvent()) {
+      setErrors()
+      return
+    }
+    _uiState.update { it.copy(isSaving = true, errorMsg = null) }
     viewModelScope.launch {
-      val creator =
-          if (userId.isNotBlank()) {
-            val repo = usersRepository ?: UsersRepositoryProvider.repository
-            try {
-              repo.getUser(userId)
-            } catch (_: Exception) {
-              null
-            }
-          } else null
-
-      val fallbackCreator = creator ?: if (userId.isNotBlank()) User(uid = userId) else null
-      val membersList = if (fallbackCreator != null) listOf(fallbackCreator) else emptyList()
-
-      val newEvent =
-          Event(
-              eventId = eventsRepository.getNewUid(),
-              title = _uiState.value.name,
-              description = _uiState.value.notes,
-              members = membersList,
-              startDate = _uiState.value.startDate!!,
-              endDate = _uiState.value.endDate!!,
-              location = _uiState.value.venue,
-          )
-
-      eventsRepository.addEvent(newEvent)
-
-      if (creator != null) {
-        val repo = usersRepository ?: UsersRepositoryProvider.repository
-        try {
-          repo.editUser(creator.uid, creator.addJoinedEvent(newEvent.eventId))
-        } catch (_: Exception) {
-          // If updating user joinedEvents fails, event is still created
+      try {
+        save()
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        _uiState.update {
+          it.copy(isSaving = false, errorMsg = R.string.create_event_error_save_failed)
         }
       }
     }
+  }
+
+  private suspend fun save() {
+    val creator =
+        if (userId.isNotBlank()) {
+          val repo = usersRepository ?: UsersRepositoryProvider.repository
+          try {
+            repo.getUser(userId)
+          } catch (_: Exception) {
+            null
+          }
+        } else null
+
+    val fallbackCreator = creator ?: if (userId.isNotBlank()) User(uid = userId) else null
+    val membersList = if (fallbackCreator != null) listOf(fallbackCreator) else emptyList()
+
+    val newEvent =
+        Event(
+            eventId = eventsRepository.getNewUid(),
+            title = _uiState.value.name,
+            description = _uiState.value.notes,
+            members = membersList,
+            startDate = _uiState.value.startDate!!,
+            endDate = _uiState.value.endDate!!,
+            location = _uiState.value.venue,
+        )
+
+    eventsRepository.addEvent(newEvent)
+
+    if (creator != null) {
+      val repo = usersRepository ?: UsersRepositoryProvider.repository
+      try {
+        repo.editUser(creator.uid, creator.addJoinedEvent(newEvent.eventId))
+      } catch (_: Exception) {
+        // If updating user joinedEvents fails, event is still created
+      }
+    }
+    _uiState.update { it.copy(isSaving = false, createdEventId = newEvent.eventId) }
   }
 }

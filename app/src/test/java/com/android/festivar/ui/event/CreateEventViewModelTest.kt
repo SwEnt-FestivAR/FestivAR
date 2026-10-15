@@ -1,13 +1,17 @@
 package com.android.festivar.ui.event
 
 // Co-authored-by: Copilot App
+// Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 
+import com.android.festivar.R
 import com.android.festivar.model.event.Event
+import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepositoryLocal
 import java.time.ZonedDateTime
 import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -320,5 +324,115 @@ class CreateEventViewModelTest {
     viewModel.updateStartDate(startDate)
     viewModel.updateEndDate(endDate)
     viewModel.updateVenue("Main square")
+  }
+
+  /** A repository whose addEvent waits on [gate], so the saving state can be observed. */
+  private class GatedRepository(val gate: CompletableDeferred<Unit>) :
+      EventsRepository by EventsRepositoryLocal() {
+    var adds = 0
+
+    override suspend fun addEvent(event: Event) {
+      adds++
+      gate.await()
+    }
+  }
+
+  private class FailingRepository : EventsRepository by EventsRepositoryLocal() {
+    override suspend fun addEvent(event: Event): Unit = throw IllegalStateException("offline")
+  }
+
+  private suspend fun waitUntil(condition: () -> Boolean) {
+    withTimeout(5_000.milliseconds) { while (!condition()) delay(10.milliseconds) }
+  }
+
+  /** Red if the saving flag is never raised, or if a saved event does not report its id. */
+  @Test
+  fun createEvent_isSavingUntilTheEventIsWrittenThenReportsItsId() = runBlocking {
+    val repository = GatedRepository(CompletableDeferred())
+    val viewModel = CreateEventViewModel(repository)
+    viewModel.updateName("Summer festival")
+    viewModel.updateStartDate(startDate)
+    viewModel.updateEndDate(endDate)
+    viewModel.updateVenue("Main square")
+
+    viewModel.createEvent()
+    waitUntil { viewModel.uiState.value.isSaving }
+    assertNull(viewModel.uiState.value.createdEventId)
+
+    repository.gate.complete(Unit)
+    waitUntil { viewModel.uiState.value.createdEventId != null }
+    assertFalse(viewModel.uiState.value.isSaving)
+    assertNull(viewModel.uiState.value.errorMsg)
+  }
+
+  /** Red if a second tap during the save writes a second event. */
+  @Test
+  fun createEvent_ignoresASecondTapWhileSaving() = runBlocking {
+    val repository = GatedRepository(CompletableDeferred())
+    val viewModel = CreateEventViewModel(repository)
+    viewModel.updateName("Summer festival")
+    viewModel.updateStartDate(startDate)
+    viewModel.updateEndDate(endDate)
+    viewModel.updateVenue("Main square")
+
+    viewModel.createEvent()
+    waitUntil { viewModel.uiState.value.isSaving }
+    viewModel.createEvent()
+    // Asserted inside the gated window, so an unguarded second launch has had time to count
+    delay(200.milliseconds)
+    assertEquals(1, repository.adds)
+
+    repository.gate.complete(Unit)
+    waitUntil { viewModel.uiState.value.createdEventId != null }
+    assertEquals(1, repository.adds)
+  }
+
+  /** Red if a failed write crashes, wipes the form, or leaves the button disabled. */
+  @Test
+  fun createEvent_failureShowsAnErrorAndKeepsTheForm() = runBlocking {
+    val viewModel = CreateEventViewModel(FailingRepository())
+    viewModel.updateName("Summer festival")
+    viewModel.updateStartDate(startDate)
+    viewModel.updateEndDate(endDate)
+    viewModel.updateVenue("Main square")
+
+    viewModel.createEvent()
+    waitUntil { viewModel.uiState.value.errorMsg != null }
+
+    val state = viewModel.uiState.value
+    assertEquals(R.string.create_event_error_save_failed, state.errorMsg)
+    assertFalse(state.isSaving)
+    assertNull(state.createdEventId)
+    assertEquals("Summer festival", state.name)
+
+    // Editing the form clears the stale error
+    viewModel.updateName("Summer festival 2")
+    assertNull(viewModel.uiState.value.errorMsg)
+  }
+
+  /** Red if equal dates reach Event, whose init throws, instead of the date error. */
+  @Test
+  fun createEvent_withEqualDatesSetsTheDateErrorInsteadOfCrashing() {
+    viewModel.updateName("Summer festival")
+    viewModel.updateStartDate(startDate)
+    viewModel.updateEndDate(startDate)
+    viewModel.updateVenue("Main square")
+
+    viewModel.createEvent()
+
+    assertTrue(viewModel.uiState.value.errorDate)
+    assertFalse(viewModel.uiState.value.isSaving)
+  }
+
+  /** Red if a one day event, ending at the end of its day, is refused. */
+  @Test
+  fun aOneDayEventEndingAtTheEndOfItsDayIsValid() {
+    val day = ZonedDateTime.parse("2026-10-08T00:00:00+02:00")
+    viewModel.updateName("Summer festival")
+    viewModel.updateStartDate(day)
+    viewModel.updateEndDate(day.plusDays(1).minusSeconds(1))
+    viewModel.updateVenue("Main square")
+
+    assertTrue(viewModel.validEvent())
   }
 }

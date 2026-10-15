@@ -1,5 +1,6 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 package com.android.festivar.navigation
 
 import androidx.navigation.NavHostController
@@ -14,6 +15,13 @@ class CreateEventNavigatorTest {
   @Test
   fun backClickNavigatesToEventsOverview() {
     navigator.onBack()
+
+    verify { navController.popBackStack(AppScreens.EventsOverview.name, inclusive = false) }
+  }
+
+  @Test
+  fun createdNavigatesBackToEventsOverview() {
+    navigator.onCreated()
 
     verify { navController.popBackStack(AppScreens.EventsOverview.name, inclusive = false) }
   }
