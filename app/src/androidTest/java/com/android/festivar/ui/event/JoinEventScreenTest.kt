@@ -150,7 +150,7 @@ class JoinEventScreenTest {
   }
 
   @Test
-  fun anErrorMessageIsShownUnderTheCode() {
+  fun anErrorMessageIsShownUnderTheCards() {
     content(JoinEventUiState(code = "VIDY26", matches = listOf(found), errorMsg = "offline"))
 
     composeTestRule
