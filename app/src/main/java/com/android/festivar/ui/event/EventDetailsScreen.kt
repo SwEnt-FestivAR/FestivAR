@@ -1,6 +1,7 @@
 package com.android.festivar.ui.event
 
 // Co-authored-by: Copilot App
+// Co-authored-by: Claude Sonnet 5.5
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -9,7 +10,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -22,6 +22,7 @@ import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -77,26 +78,26 @@ fun EventDetailsScreen(
       bottomBar = { EventDetailsBottomBar(onTasksButtonClicked = onTasksButtonClicked) },
   ) { paddingValues ->
     Column(
-        modifier = Modifier.fillMaxSize().padding(paddingValues).padding(12.dp),
+        modifier =
+            Modifier.fillMaxSize()
+                .padding(paddingValues)
+                .padding(start = 20.dp, top = 16.dp, end = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
       Text(
           text = event.title,
-          modifier =
-              Modifier.fillMaxWidth()
-                  .padding(horizontal = 8.dp)
-                  .testTag(EventDetailsScreenTestTags.EVENT_NAME),
+          modifier = Modifier.fillMaxWidth().testTag(EventDetailsScreenTestTags.EVENT_NAME),
           color = MaterialTheme.colorScheme.onBackground,
-          style = MaterialTheme.typography.titleMedium,
+          style = MaterialTheme.typography.headlineMedium,
       )
-      Spacer(modifier = Modifier.height(14.dp))
 
       Row(
           modifier =
               Modifier.fillMaxWidth()
                   .clip(RoundedCornerShape(12.dp))
                   .background(MaterialTheme.colorScheme.surfaceContainerLow)
-                  .padding(horizontal = 12.dp, vertical = 12.dp)
+                  .padding(14.dp)
                   .testTag(EventDetailsScreenTestTags.OPEN_TASKS_STAT),
           verticalAlignment = Alignment.CenterVertically,
       ) {
@@ -121,16 +122,16 @@ fun EventDetailsScreen(
           )
         }
       }
-      Spacer(modifier = Modifier.height(14.dp))
 
       Column(
           modifier =
               Modifier.fillMaxWidth()
-                  .clip(RoundedCornerShape(10.dp))
+                  .clip(RoundedCornerShape(12.dp))
+                  .background(MaterialTheme.colorScheme.surfaceContainerLowest)
                   .border(
                       1.dp,
                       MaterialTheme.colorScheme.outlineVariant,
-                      RoundedCornerShape(10.dp),
+                      RoundedCornerShape(12.dp),
                   ),
       ) {
         EventDetailsRow(
@@ -165,6 +166,10 @@ private fun EventDetailsTopBar(onBack: () -> Unit) {
         IconButton(
             onClick = onBack,
             modifier = Modifier.testTag(EventDetailsScreenTestTags.BACK_BUTTON),
+            colors =
+                IconButtonDefaults.iconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                ),
         ) {
           Icon(
               imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
@@ -185,7 +190,7 @@ private fun EventDetailsBottomBar(onTasksButtonClicked: () -> Unit) {
   Row(
       modifier =
           Modifier.fillMaxWidth()
-              .padding(horizontal = 12.dp, vertical = 12.dp)
+              .padding(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 24.dp)
               .height(44.dp)
               .clip(RoundedCornerShape(10.dp))
               .background(MaterialTheme.colorScheme.primary)
@@ -218,7 +223,7 @@ private fun EventDetailsRow(
 ) {
   Column(modifier = Modifier.fillMaxWidth().testTag(tag)) {
     Row(
-        modifier = Modifier.fillMaxWidth().height(44.dp).padding(horizontal = 14.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
