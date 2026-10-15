@@ -21,6 +21,7 @@ import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
+import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.ui.theme.AppTheme
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -108,7 +109,12 @@ class EventsOverviewScreenTest {
       )
 
   private fun createViewModel(withRepository: EventsRepository): EventsOverviewViewModel {
-    return EventsOverviewViewModel(eventsRepository = withRepository, user = sara, now = { now })
+    return EventsOverviewViewModel(
+        eventsRepository = withRepository,
+        usersRepository = UsersRepositoryLocal(listOf(sara)),
+        uId = sara.uid,
+        now = { now },
+    )
   }
 
   private fun setContent(
