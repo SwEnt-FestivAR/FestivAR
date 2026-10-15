@@ -42,7 +42,7 @@ class EventDetailsViewModelTest {
     viewModel.fetchEvent(event.eventId)
     advanceUntilIdle()
 
-    assertEquals(event, viewModel.event.value)
+    assertEquals(event, viewModel.uiState.value.event)
   }
 
   @Test
@@ -59,7 +59,8 @@ class EventDetailsViewModelTest {
     viewModel.fetchEvent("missing")
     advanceUntilIdle()
 
-    assertNull(viewModel.event.value)
+    assertNull(viewModel.uiState.value.event)
+    assertEquals(true, viewModel.uiState.value.errorFetch)
   }
 
   private fun testEvent(eventId: String): Event {

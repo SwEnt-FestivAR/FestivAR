@@ -10,6 +10,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.event.Event
+import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -70,6 +71,33 @@ class EventDetailsScreenTest {
     setContent(eventNoTasks)
     composeTestRule.onNodeWithText("0").assertIsDisplayed()
     composeTestRule.onNodeWithText("of 0").assertIsDisplayed()
+  }
+
+  @SuppressLint("ViewModelConstructorInComposable")
+  @Test
+  fun displaysErrorWhenEventCannotBeFetched() {
+    composeTestRule.setContent {
+      EventDetailsScreen(
+          eventId = "missing",
+          viewModel =
+              EventDetailsViewModel(
+                  object : EventsRepository by EventsRepositoryLocal() {
+                    override suspend fun getEvent(eventId: String): Event {
+                      throw IllegalStateException("fetch failed")
+                    }
+                  }
+              ),
+          onTasksButtonClicked = {},
+          onBack = {},
+      )
+    }
+    composeTestRule.waitForIdle()
+
+    composeTestRule
+        .onNodeWithText(
+            "Something wrong happened while fetching the event. Please try again",
+        )
+        .assertIsDisplayed()
   }
 
   @Test
