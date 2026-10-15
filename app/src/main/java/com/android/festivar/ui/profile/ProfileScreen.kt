@@ -1,0 +1,222 @@
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+package com.android.festivar.ui.profile
+
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.android.festivar.model.user.User
+import com.android.festivar.ui.components.Avatar
+import com.android.festivar.ui.components.FestivarTextField
+
+/** Tags that the UI tests use to find the elements of the profile screen. */
+object ProfileScreenTestTags {
+  const val TITLE = "profileTitle"
+  const val BACK = "profileBack"
+  const val LOADING = "profileLoading"
+  const val AVATAR = "profileAvatar"
+  const val SURNAME_FIELD = "profileSurnameField"
+  const val NAME_FIELD = "profileNameField"
+  const val EMAIL = "profileEmail"
+  const val SAVE_BUTTON = "profileSaveButton"
+  const val SIGN_OUT_BUTTON = "profileSignOutButton"
+  const val ERROR_MESSAGE = "profileErrorMessage"
+}
+
+/**
+ * The profile screen, connected to its [profileViewModel]: it reads the UI state, shows the errors
+ * and reports the navigation to the caller.
+ *
+ * The screen is principally composed of:
+ * - a back arrow;
+ * - the Profile title;
+ * - the avatar of the [User];
+ * - the email of the [User], which cannot be changed;
+ * - a field that shows the surname and can be changed;
+ * - a field that shows the name and can be changed;
+ * - a button to save the changes typed in the fields;
+ * - a button to sign out.
+ *
+ * @param profileViewModel Holds the profile shown and edited by the screen.
+ * @param onBack Called when the user clicks on the back arrow of the top bar.
+ * @param onSignedOut Called once the user is signed out, so the caller can go to the login screen.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ProfileScreen(
+    profileViewModel: ProfileViewModel,
+    onBack: () -> Unit = {},
+    onSignedOut: () -> Unit = {},
+) {
+
+  val profileUIState by profileViewModel.uiState.collectAsState()
+  val snackbarHostState = remember { SnackbarHostState() }
+
+  // Shows each error once in the snackbar, then clears it so it does not come back.
+  LaunchedEffect(profileUIState.errorMsg) {
+    profileUIState.errorMsg?.let { error ->
+      snackbarHostState.showSnackbar(error)
+      profileViewModel.clearErrorMsg()
+    }
+  }
+
+  // Leaves the screen once the sign out succeeded.
+  LaunchedEffect(profileUIState.signedOut) { if (profileUIState.signedOut) onSignedOut() }
+
+  Scaffold(
+      topBar = {
+        TopAppBar(
+            title = {
+              Text(
+                  text = "Profile",
+                  style = MaterialTheme.typography.titleLarge,
+                  fontWeight = FontWeight.Bold,
+                  modifier = Modifier.testTag(ProfileScreenTestTags.TITLE),
+              )
+            },
+            navigationIcon = {
+              IconButton(onClick = onBack, Modifier.testTag(ProfileScreenTestTags.BACK)) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+              }
+            },
+        )
+      },
+      snackbarHost = {
+        SnackbarHost(snackbarHostState) { data ->
+          Snackbar(modifier = Modifier.testTag(ProfileScreenTestTags.ERROR_MESSAGE)) {
+            Text(data.visuals.message)
+          }
+        }
+      },
+  ) { padding ->
+    ProfileScreenContent(
+        uiState = profileUIState,
+        onSurnameChange = profileViewModel::updateSurname,
+        onNameChange = profileViewModel::updateName,
+        onSaveClick = profileViewModel::saveChanges,
+        onSignOutClick = profileViewModel::signOut,
+        modifier = Modifier.padding(padding),
+    )
+  }
+}
+
+/**
+ * What the profile screen draws for a given [uiState], without any ViewModel, so that previews and
+ * tests can show any state. It covers the body of the screen, not the top bar with the back arrow
+ * and the Profile title.
+ *
+ * @param uiState The state of the UI, taken from the ViewModel.
+ * @param onSurnameChange Called with the new surname when the user types in the Surname field.
+ * @param onNameChange Called with the new name when the user types in the Name field.
+ * @param onSaveClick Called when the user clicks on the Save changes button.
+ * @param onSignOutClick Called when the user clicks on the Sign out button.
+ * @param modifier The [Modifier] applied to the column that holds the body of the screen.
+ */
+@Composable
+internal fun ProfileScreenContent(
+    uiState: ProfileUIState,
+    onSurnameChange: (String) -> Unit,
+    onNameChange: (String) -> Unit,
+    onSaveClick: () -> Unit,
+    onSignOutClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+  Column(
+      modifier = modifier.fillMaxSize().padding(16.dp),
+      horizontalAlignment = Alignment.CenterHorizontally,
+  ) {
+    // Until the profile is loaded there is nothing to show or edit.
+    if (uiState.isLoading) {
+      Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+        CircularProgressIndicator(modifier = Modifier.testTag(ProfileScreenTestTags.LOADING))
+      }
+      return@Column
+    }
+
+    Spacer(modifier = Modifier.height(16.dp))
+
+    // The avatar shows the saved user, so its initials only change once the changes are saved.
+    // The email is shown under it and cannot be edited.
+    uiState.user?.let { user ->
+      Box(modifier = Modifier.testTag(ProfileScreenTestTags.AVATAR)) { Avatar(user = user) }
+      Spacer(modifier = Modifier.height(16.dp))
+      Text(
+          text = user.email,
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          modifier = Modifier.testTag(ProfileScreenTestTags.EMAIL),
+      )
+    }
+
+    Spacer(modifier = Modifier.height(24.dp))
+
+    FestivarTextField(
+        value = uiState.surname,
+        onValueChange = onSurnameChange,
+        label = "Surname",
+        modifier = Modifier.testTag(ProfileScreenTestTags.SURNAME_FIELD),
+    )
+    Spacer(modifier = Modifier.height(12.dp))
+    FestivarTextField(
+        value = uiState.name,
+        onValueChange = onNameChange,
+        label = "Name",
+        modifier = Modifier.testTag(ProfileScreenTestTags.NAME_FIELD),
+    )
+
+    // Takes all the free height, so the buttons sit at the bottom as in the design.
+    Spacer(modifier = Modifier.weight(1f))
+
+    Button(
+        onClick = onSaveClick,
+        enabled = uiState.canSave,
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth().height(48.dp).testTag(ProfileScreenTestTags.SAVE_BUTTON),
+    ) {
+      if (uiState.isSaving) {
+        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+      } else {
+        Text(text = "Save changes", fontWeight = FontWeight.SemiBold)
+      }
+    }
+    Spacer(modifier = Modifier.height(12.dp))
+    OutlinedButton(
+        onClick = onSignOutClick,
+        shape = RoundedCornerShape(12.dp),
+        modifier =
+            Modifier.fillMaxWidth().height(48.dp).testTag(ProfileScreenTestTags.SIGN_OUT_BUTTON),
+    ) {
+      Text(text = "Sign out", color = MaterialTheme.colorScheme.error)
+    }
+  }
+}
