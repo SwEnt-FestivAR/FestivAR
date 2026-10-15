@@ -248,6 +248,10 @@ private fun ErrorLine(message: String, retry: Boolean, onRetry: () -> Unit, onDi
     )
     TextButton(
         onClick = if (retry) onRetry else onDismiss,
+        colors =
+            ButtonDefaults.textButtonColors(
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            ),
         modifier = Modifier.testTag(TaskDetailsScreenTestTags.ERROR_ACTION),
     ) {
       Text(stringResource(if (retry) R.string.details_retry else R.string.details_dismiss))
