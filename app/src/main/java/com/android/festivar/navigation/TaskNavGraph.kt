@@ -36,9 +36,10 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, authRepository: 
       route = "${AppScreens.CreateTask.name}/{eventId}",
       arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
   ) { backStackEntry ->
+    requireNotNull(backStackEntry.arguments?.getString("eventId")) 
     val navigator = CreateTaskNavigator(navController)
     CreateTaskScreen(
-        eventId = backStackEntry.arguments?.getString("eventId") ?: "",
+        eventId = backStackEntry.arguments?.getString("eventId"),
         onBack = navigator.onBack,
         onTaskCreated = navigator.onTaskCreated,
     )
