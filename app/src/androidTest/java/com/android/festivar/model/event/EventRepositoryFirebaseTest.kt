@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.event
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -9,6 +10,8 @@ import com.google.firebase.auth.auth
 import com.google.firebase.firestore.firestore
 import java.time.ZonedDateTime
 import java.util.UUID
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
 import org.junit.After
@@ -132,7 +135,14 @@ class EventRepositoryFirebaseTest {
 
   @Test
   fun editEvent_unknownIdThrows() = runBlocking {
-    assertThrows { repository.editEvent(event.eventId, event) }
+    assertThrowsOfType<NoSuchElementException> { repository.editEvent(event.eventId, event) }
+  }
+
+  @Test
+  fun editEvent_doesNotCreateEventWhenEventDoesNotExist() = runBlocking {
+    assertThrowsOfType<NoSuchElementException> { repository.editEvent(event.eventId, event) }
+
+    assertThrowsOfType<NoSuchElementException> { repository.getEvent(event.eventId) }
   }
 
   @Test
@@ -146,7 +156,30 @@ class EventRepositoryFirebaseTest {
 
   @Test
   fun deleteEvent_unknownIdThrows() = runBlocking {
-    assertThrows { repository.deleteEvent(event.eventId) }
+    assertThrowsOfType<NoSuchElementException> { repository.deleteEvent(event.eventId) }
+  }
+
+  @Test
+  fun deleteEvent_throwsWhenEventWasAlreadyDeleted() = runBlocking {
+    repository.addEvent(event)
+    repository.deleteEvent(event.eventId)
+
+    assertThrowsOfType<NoSuchElementException> { repository.deleteEvent(event.eventId) }
+  }
+
+  @Test
+  fun deleteEvent_concurrentDeletesOnlySucceedOnce() = runBlocking {
+    repository.addEvent(event)
+
+    val results =
+        listOf(
+                async { runCatching { repository.deleteEvent(event.eventId) } },
+                async { runCatching { repository.deleteEvent(event.eventId) } },
+            )
+            .awaitAll()
+
+    assertEquals(1, results.count { it.isSuccess })
+    assertTrue(results.single { it.isFailure }.exceptionOrNull() is NoSuchElementException)
   }
 
   @Test
@@ -198,6 +231,18 @@ class EventRepositoryFirebaseTest {
       thrown = true
     }
     assertTrue("Expected an exception", thrown)
+  }
+
+  private suspend inline fun <reified T : Throwable> assertThrowsOfType(
+      crossinline block: suspend () -> Unit,
+  ) {
+    var thrown: Throwable? = null
+    try {
+      block()
+    } catch (exception: Exception) {
+      thrown = exception
+    }
+    assertTrue("Expected ${T::class.java.simpleName} but got $thrown", thrown is T)
   }
 
   @Suppress("UNCHECKED_CAST")
