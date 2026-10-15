@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Co-authored-by: Copilot App -->
+<resources>
+    <string name="event_details_tasks_count">of %1$d</string>
+    <string name="event_details_tasks_still_open">tasks still open</string>
+    <string name="event_details_owner">Owner</string>
+    <string name="event_details_date">Date</string>
+    <string name="event_details_address">Address</string>
+    <string name="event_details_navigate_back">Navigate back</string>
+    <string name="event_details_see_tasks">See tasks</string>
+</resources>
