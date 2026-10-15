@@ -5,6 +5,7 @@ package com.android.festivar.model.task
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.FirebaseEmulatorSetup
 import com.android.festivar.model.user.User
+import com.android.festivar.model.user.UserRepositoryFirebase
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.DocumentSnapshot
@@ -31,7 +32,12 @@ class TaskRepositoryFirebaseTest {
   @Before
   fun setUp() {
     FirebaseEmulatorSetup.configure()
-    runBlocking { Firebase.auth.signInAnonymously().await() }
+    runBlocking {
+      Firebase.auth.signInAnonymously().await()
+      val userRepo = UserRepositoryFirebase(Firebase.firestore)
+      userRepo.addUser(User("user-1"))
+      userRepo.addUser(User("user-2"))
+    }
     task = newTask()
     repository = TaskRepositoryFirebase(Firebase.firestore)
   }
@@ -42,6 +48,9 @@ class TaskRepositoryFirebaseTest {
       if (::task.isInitialized) {
         Firebase.firestore.collection(TASK_COLLECTION_PATH).document(task.taskId).delete().await()
       }
+      val userRepo = UserRepositoryFirebase(Firebase.firestore)
+      runCatching { userRepo.deleteUser("user-1") }
+      runCatching { userRepo.deleteUser("user-2") }
       Firebase.auth.signOut()
     }
   }

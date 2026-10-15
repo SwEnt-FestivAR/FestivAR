@@ -5,6 +5,7 @@ package com.android.festivar.model.event
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.FirebaseEmulatorSetup
 import com.android.festivar.model.user.User
+import com.android.festivar.model.user.UserRepositoryFirebase
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.firestore
@@ -35,7 +36,12 @@ class EventRepositoryFirebaseTest {
   @Before
   fun setUp() {
     FirebaseEmulatorSetup.configure()
-    runBlocking { Firebase.auth.signInAnonymously().await() }
+    runBlocking {
+      Firebase.auth.signInAnonymously().await()
+      val userRepo = UserRepositoryFirebase(Firebase.firestore)
+      userRepo.addUser(User("user-1"))
+      userRepo.addUser(User("user-2", "Alex", "Lee"))
+    }
     event =
         Event(
             eventId = "event-${UUID.randomUUID()}",
@@ -56,6 +62,9 @@ class EventRepositoryFirebaseTest {
       if (::event.isInitialized) {
         Firebase.firestore.collection("events").document(event.eventId).delete().await()
       }
+      val userRepo = UserRepositoryFirebase(Firebase.firestore)
+      runCatching { userRepo.deleteUser("user-1") }
+      runCatching { userRepo.deleteUser("user-2") }
       Firebase.auth.signOut()
     }
   }
@@ -183,14 +192,14 @@ class EventRepositoryFirebaseTest {
   }
 
   @Test
-  fun getEvent_deserializesMembersStoredAsMaps() = runBlocking {
+  fun getEvent_deserializesMemberIdsToUsers() = runBlocking {
     val document = Firebase.firestore.collection("events").document(event.eventId)
     document
         .set(
             mapOf(
                 "eventId" to event.eventId,
                 "title" to event.title,
-                "members" to listOf(mapOf("uid" to "user-2", "name" to "Alex", "surname" to "Lee")),
+                "members" to listOf("user-2"),
                 "startDate" to event.startDate.toString(),
                 "endDate" to event.endDate.toString(),
             )
