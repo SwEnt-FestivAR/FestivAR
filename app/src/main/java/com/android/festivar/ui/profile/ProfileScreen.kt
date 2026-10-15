@@ -34,18 +34,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.credentials.Credential
-import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.user.User
-import com.android.festivar.model.user.UsersRepository
-import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.ui.components.Avatar
 import com.android.festivar.ui.components.FestivarTextField
-import com.android.festivar.ui.theme.AppTheme
-import com.google.firebase.auth.FirebaseUser
-import kotlinx.coroutines.awaitCancellation
 
 /** Tags that the UI tests use to find the elements of the profile screen. */
 object ProfileScreenTestTags {
