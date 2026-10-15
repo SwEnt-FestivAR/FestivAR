@@ -195,6 +195,8 @@ tasks.withType<Test> {
 }
 
 tasks.register(name = "jacocoTestReport", type = JacocoReport::class) {
+  group = "verification"
+  description = "Generates the Jacoco code coverage report for the debug build."
   dependsOn("compileDebugKotlin")
   mustRunAfter("testDebugUnitTest", "connectedDebugAndroidTest")
 
