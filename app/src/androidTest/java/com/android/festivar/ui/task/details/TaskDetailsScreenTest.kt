@@ -1,10 +1,12 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.details
 
-import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onChild
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -25,7 +27,8 @@ import org.junit.runner.RunWith
 
 /**
  * Wiring only: the screen shows the ViewModel's state and calls back. The rules are unit tested.
- * Also draws the previews, so one that no longer compiles or crashes is caught by the tests.
+ * Also composes the previews once, so one that crashes is caught by the tests. What each state shows
+ * is tested in TaskDetailsContentTest.
  */
 @RunWith(AndroidJUnit4::class)
 class TaskDetailsScreenTest {
@@ -66,11 +69,6 @@ class TaskDetailsScreenTest {
           .onChild()
           .assertTextContains(label)
 
-  private fun assertPreview(label: String, preview: @Composable () -> Unit) {
-    composeTestRule.setContent(preview)
-    assertBadge(label)
-  }
-
   @Test
   fun showsTheLoadedTask() {
     showScreen()
@@ -96,27 +94,19 @@ class TaskDetailsScreenTest {
     assertEquals(1, backs)
   }
 
-  @Test fun openPreviewDraws() = assertPreview("Open") { TaskDetailsOpenPreview() }
-
-  @Test fun takenPreviewDraws() = assertPreview("Taken") { TaskDetailsTakenPreview() }
-
-  @Test fun yoursPreviewDraws() = assertPreview("Yours") { TaskDetailsYoursPreview() }
-
-  @Test fun donePreviewDraws() = assertPreview("Done") { TaskDetailsDonePreview() }
-
   @Test
-  fun loadErrorPreviewOffersRetry() {
-    composeTestRule.setContent { TaskDetailsLoadErrorPreview() }
-    composeTestRule
-        .onNodeWithTag(TaskDetailsScreenTestTags.ERROR_ACTION)
-        .assertTextContains("Retry")
-  }
-
-  @Test
-  fun saveErrorPreviewOffersDismiss() {
-    composeTestRule.setContent { TaskDetailsSaveErrorPreview() }
-    composeTestRule
-        .onNodeWithTag(TaskDetailsScreenTestTags.ERROR_ACTION)
-        .assertTextContains("Dismiss")
+  fun previewsCompose() {
+    composeTestRule.setContent {
+      Column {
+        TaskDetailsOpenPreview()
+        TaskDetailsTakenPreview()
+        TaskDetailsYoursPreview()
+        TaskDetailsDonePreview()
+        TaskDetailsLoadErrorPreview()
+        TaskDetailsSaveErrorPreview()
+      }
+    }
+    // Only the four previews that show a task have a status badge.
+    composeTestRule.onAllNodesWithTag(TaskDetailsScreenTestTags.STATUS_BADGE).assertCountEquals(4)
   }
 }
