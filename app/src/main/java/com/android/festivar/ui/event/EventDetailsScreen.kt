@@ -33,8 +33,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.android.festivar.R
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
@@ -108,14 +110,14 @@ fun EventDetailsScreen(
                 style = NumeralLarge,
             )
             Text(
-                text = "of ${event.tasks.size}",
+                text = stringResource(R.string.event_details_tasks_count, event.tasks.size),
                 modifier = Modifier.padding(start = 4.dp, top = 12.dp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall,
             )
           }
           Text(
-              text = "tasks still open",
+              text = stringResource(R.string.event_details_tasks_still_open),
               color = MaterialTheme.colorScheme.onSurfaceVariant,
               style = MaterialTheme.typography.bodySmall,
           )
@@ -134,19 +136,19 @@ fun EventDetailsScreen(
                   ),
       ) {
         EventDetailsRow(
-            label = "Owner",
+            label = stringResource(R.string.event_details_owner),
             value = owner,
             tag = EventDetailsScreenTestTags.OWNER_ROW,
         )
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         EventDetailsRow(
-            label = "Date",
+            label = stringResource(R.string.event_details_date),
             value = date,
             tag = EventDetailsScreenTestTags.DATE_ROW,
         )
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         EventDetailsRow(
-            label = "Address",
+            label = stringResource(R.string.event_details_address),
             value = event.location,
             tag = EventDetailsScreenTestTags.ADDRESS_ROW,
         )
@@ -171,7 +173,7 @@ private fun EventDetailsTopBar(onBack: () -> Unit) {
         ) {
           Icon(
               imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-              contentDescription = "Navigate back",
+              contentDescription = stringResource(R.string.event_details_navigate_back),
               tint = MaterialTheme.colorScheme.onSurface,
           )
         }
@@ -204,7 +206,7 @@ private fun EventDetailsBottomBar(onTasksButtonClicked: () -> Unit) {
         tint = MaterialTheme.colorScheme.onPrimary,
     )
     Text(
-        text = "See tasks",
+        text = stringResource(R.string.event_details_see_tasks),
         modifier = Modifier.padding(start = 8.dp),
         color = MaterialTheme.colorScheme.onPrimary,
         style = MaterialTheme.typography.labelLarge,
@@ -261,7 +263,6 @@ private fun EventDetailsScreenPreviewNoTasks() = EventDetailsScreenPreview(event
 @Preview
 @Composable
 private fun EventDetailsScreenPreviewDifferentYear() = EventDetailsScreenPreview(eventDifferentYear)
-
 
 val eventStartDate: ZonedDateTime =
     ZonedDateTime.of(2026, 10, 16, 10, 0, 0, 0, ZoneId.of("Europe/Zurich"))
