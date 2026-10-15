@@ -103,4 +103,20 @@ class TaskDetailsScreenTest {
   @Test fun yoursPreviewDraws() = assertPreview("Yours") { TaskDetailsYoursPreview() }
 
   @Test fun donePreviewDraws() = assertPreview("Done") { TaskDetailsDonePreview() }
+
+  @Test
+  fun loadErrorPreviewOffersRetry() {
+    composeTestRule.setContent { TaskDetailsLoadErrorPreview() }
+    composeTestRule
+        .onNodeWithTag(TaskDetailsScreenTestTags.ERROR_ACTION)
+        .assertTextContains("Retry")
+  }
+
+  @Test
+  fun saveErrorPreviewOffersDismiss() {
+    composeTestRule.setContent { TaskDetailsSaveErrorPreview() }
+    composeTestRule
+        .onNodeWithTag(TaskDetailsScreenTestTags.ERROR_ACTION)
+        .assertTextContains("Dismiss")
+  }
 }
