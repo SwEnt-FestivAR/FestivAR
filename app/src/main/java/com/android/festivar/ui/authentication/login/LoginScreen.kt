@@ -28,6 +28,7 @@ import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -87,7 +88,14 @@ fun LoginScreen(
       modifier = modifier,
       snackbarHost = {
         SnackbarHost(snackbarHostState) { data ->
-          Snackbar(modifier = Modifier.testTag(LoginScreenTestTags.ERROR_MESSAGE)) {
+          Snackbar(
+              modifier = Modifier.testTag(LoginScreenTestTags.ERROR_MESSAGE),
+              action = {
+                TextButton(onClick = { data.dismiss() }) {
+                  Text(text = "OK", color = MaterialTheme.colorScheme.primary)
+                }
+              },
+          ) {
             Text(data.visuals.message)
           }
         }
