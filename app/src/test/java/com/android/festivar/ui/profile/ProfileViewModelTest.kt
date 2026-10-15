@@ -151,28 +151,60 @@ class ProfileViewModelTest {
     assertFalse(state.canSave)
   }
 
-  /** Test that a failure whose exception has no message still shows an error message. */
+  /** Test that a load failure whose exception has no message still shows an error message. */
   @Test
-  fun failureWithoutMessageShowsUnknownError() = runTest {
-    val loadViewModel =
-        createViewModel(RecordingUsersRepository(listOf(sara), getError = RuntimeException()))
+  fun loadFailureWithoutMessageShowsUnknownError() = runTest {
+    val repository = RecordingUsersRepository(listOf(sara), getError = RuntimeException())
+    val viewModel = createViewModel(repository)
     advanceUntilIdle()
-    assertEquals("Failed to load profile: unknown error", loadViewModel.uiState.value.errorMsg)
 
-    val saveViewModel =
-        createViewModel(RecordingUsersRepository(listOf(sara), editError = RuntimeException()))
-    advanceUntilIdle()
-    saveViewModel.updateName("Sarah")
-    saveViewModel.saveChanges()
-    advanceUntilIdle()
-    assertEquals("Failed to update profile: unknown error", saveViewModel.uiState.value.errorMsg)
+    assertEquals("Failed to load profile: unknown error", viewModel.uiState.value.errorMsg)
+  }
 
+  /** Test that a save failure whose exception has no message still shows an error message. */
+  @Test
+  fun saveFailureWithoutMessageShowsUnknownError() = runTest {
+    val repository = RecordingUsersRepository(listOf(sara), editError = RuntimeException())
+    val viewModel = createViewModel(repository)
+    advanceUntilIdle()
+
+    viewModel.updateName("Sarah")
+    viewModel.saveChanges()
+    advanceUntilIdle()
+
+    assertEquals("Failed to update profile: unknown error", viewModel.uiState.value.errorMsg)
+  }
+
+  /** Test that a sign out failure whose exception has no message still shows an error message. */
+  @Test
+  fun signOutFailureWithoutMessageShowsUnknownError() = runTest {
     authRepository.signOutResult = Result.failure(RuntimeException())
-    val signOutViewModel = createViewModel()
+    val viewModel = createViewModel()
     advanceUntilIdle()
-    signOutViewModel.signOut()
+
+    viewModel.signOut()
     advanceUntilIdle()
-    assertEquals("Failed to sign out: unknown error", signOutViewModel.uiState.value.errorMsg)
+
+    assertEquals("Failed to sign out: unknown error", viewModel.uiState.value.errorMsg)
+  }
+
+  /**
+   * Test that typing while the user is loading does nothing, so the loaded values are not lost and
+   * nothing typed is overwritten by the load.
+   */
+  @Test
+  fun typingWhileLoadingIsIgnored() = runTest {
+    val viewModel = createViewModel()
+    assertTrue(viewModel.uiState.value.isLoading)
+
+    viewModel.updateName("Sarah")
+    viewModel.updateSurname("Muller")
+    assertEquals("", viewModel.uiState.value.name)
+    assertEquals("", viewModel.uiState.value.surname)
+
+    advanceUntilIdle()
+    assertEquals(sara.name, viewModel.uiState.value.name)
+    assertEquals(sara.surname, viewModel.uiState.value.surname)
   }
 
   /** Test that typing in the fields changes them, but not the saved user. */
@@ -380,8 +412,8 @@ class ProfileViewModelTest {
   }
 
   /**
-   * Test that a successful sign out sets signedOut, without any error, and that signing out again
-   * then does nothing.
+   * Test that a successful sign out sets signedOut and ends the signing out, without any error, and
+   * that signing out again then does nothing.
    */
   @Test
   fun signOutSuccessSetsSignedOut() = runTest {
@@ -393,6 +425,7 @@ class ProfileViewModelTest {
 
     assertEquals(1, authRepository.signOutCount)
     assertTrue(viewModel.uiState.value.signedOut)
+    assertFalse(viewModel.uiState.value.isSigningOut)
     assertNull(viewModel.uiState.value.errorMsg)
 
     viewModel.signOut()
