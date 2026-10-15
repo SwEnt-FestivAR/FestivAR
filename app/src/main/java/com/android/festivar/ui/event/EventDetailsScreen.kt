@@ -5,7 +5,6 @@ package com.android.festivar.ui.event
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,6 +17,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.TaskAlt
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -187,28 +188,28 @@ private fun EventDetailsTopBar(onBack: () -> Unit) {
 
 @Composable
 private fun EventDetailsBottomBar(onTasksButtonClicked: () -> Unit) {
-  Row(
+  Button(
+      onClick = onTasksButtonClicked,
       modifier =
           Modifier.fillMaxWidth()
               .padding(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 24.dp)
               .height(44.dp)
-              .clip(RoundedCornerShape(10.dp))
-              .background(MaterialTheme.colorScheme.primary)
-              .clickable(onClick = onTasksButtonClicked)
               .testTag(EventDetailsScreenTestTags.SEE_TASKS_BUTTON),
-      horizontalArrangement = Arrangement.Center,
-      verticalAlignment = Alignment.CenterVertically,
+      shape = RoundedCornerShape(10.dp),
+      colors =
+          ButtonDefaults.buttonColors(
+              containerColor = MaterialTheme.colorScheme.primary,
+              contentColor = MaterialTheme.colorScheme.onPrimary,
+          ),
   ) {
     Icon(
         imageVector = Icons.Outlined.TaskAlt,
         contentDescription = null,
         modifier = Modifier.size(24.dp),
-        tint = MaterialTheme.colorScheme.onPrimary,
     )
     Text(
         text = stringResource(R.string.event_details_see_tasks),
         modifier = Modifier.padding(start = 8.dp),
-        color = MaterialTheme.colorScheme.onPrimary,
         style = MaterialTheme.typography.labelLarge,
     )
   }
