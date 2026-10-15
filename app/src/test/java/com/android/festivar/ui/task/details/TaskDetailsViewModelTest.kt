@@ -47,7 +47,11 @@ private class ControlledRepository(val local: TasksRepositoryLocal = TasksReposi
   /** How many times [editTask] was called. */
   var editCalls = 0
 
+  /** How many times [getTask] was called. */
+  var getCalls = 0
+
   override suspend fun getTask(taskId: String): Task {
+    getCalls++
     getGate?.await()
     getFailure?.let { throw it }
     return local.getTask(taskId)
@@ -225,11 +229,11 @@ class TaskDetailsViewModelTest {
   fun reloadWhileLoading_isIgnored() {
     repository.getGate = CompletableDeferred()
     val vm = viewModel(task())
-    repository.getFailure = IOException("offline")
 
     vm.load()
     repository.getGate!!.complete(Unit)
 
+    assertEquals(1, repository.getCalls)
     assertNull(vm.uiState.value.errorMsg)
     assertEquals(TaskStatus.OPEN, vm.uiState.value.status)
   }
