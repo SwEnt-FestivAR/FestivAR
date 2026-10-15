@@ -1,14 +1,18 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.event
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.FirebaseEmulatorSetup
 import com.android.festivar.model.user.User
+import com.android.festivar.model.user.UserRepositoryFirebase
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.firestore
 import java.time.ZonedDateTime
 import java.util.UUID
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
 import org.junit.After
@@ -32,7 +36,12 @@ class EventRepositoryFirebaseTest {
   @Before
   fun setUp() {
     FirebaseEmulatorSetup.configure()
-    runBlocking { Firebase.auth.signInAnonymously().await() }
+    runBlocking {
+      Firebase.auth.signInAnonymously().await()
+      val userRepo = UserRepositoryFirebase(Firebase.firestore)
+      userRepo.addUser(User("user-1"))
+      userRepo.addUser(User("user-2", "Alex", "Lee"))
+    }
     event =
         Event(
             eventId = "event-${UUID.randomUUID()}",
@@ -53,6 +62,9 @@ class EventRepositoryFirebaseTest {
       if (::event.isInitialized) {
         Firebase.firestore.collection("events").document(event.eventId).delete().await()
       }
+      val userRepo = UserRepositoryFirebase(Firebase.firestore)
+      runCatching { userRepo.deleteUser("user-1") }
+      runCatching { userRepo.deleteUser("user-2") }
       Firebase.auth.signOut()
     }
   }
@@ -132,7 +144,14 @@ class EventRepositoryFirebaseTest {
 
   @Test
   fun editEvent_unknownIdThrows() = runBlocking {
-    assertThrows { repository.editEvent(event.eventId, event) }
+    assertThrowsOfType<NoSuchElementException> { repository.editEvent(event.eventId, event) }
+  }
+
+  @Test
+  fun editEvent_doesNotCreateEventWhenEventDoesNotExist() = runBlocking {
+    assertThrowsOfType<NoSuchElementException> { repository.editEvent(event.eventId, event) }
+
+    assertThrowsOfType<NoSuchElementException> { repository.getEvent(event.eventId) }
   }
 
   @Test
@@ -146,18 +165,41 @@ class EventRepositoryFirebaseTest {
 
   @Test
   fun deleteEvent_unknownIdThrows() = runBlocking {
-    assertThrows { repository.deleteEvent(event.eventId) }
+    assertThrowsOfType<NoSuchElementException> { repository.deleteEvent(event.eventId) }
   }
 
   @Test
-  fun getEvent_deserializesMembersStoredAsMaps() = runBlocking {
+  fun deleteEvent_throwsWhenEventWasAlreadyDeleted() = runBlocking {
+    repository.addEvent(event)
+    repository.deleteEvent(event.eventId)
+
+    assertThrowsOfType<NoSuchElementException> { repository.deleteEvent(event.eventId) }
+  }
+
+  @Test
+  fun deleteEvent_concurrentDeletesOnlySucceedOnce() = runBlocking {
+    repository.addEvent(event)
+
+    val results =
+        listOf(
+                async { runCatching { repository.deleteEvent(event.eventId) } },
+                async { runCatching { repository.deleteEvent(event.eventId) } },
+            )
+            .awaitAll()
+
+    assertEquals(1, results.count { it.isSuccess })
+    assertTrue(results.single { it.isFailure }.exceptionOrNull() is NoSuchElementException)
+  }
+
+  @Test
+  fun getEvent_deserializesMemberIdsToUsers() = runBlocking {
     val document = Firebase.firestore.collection("events").document(event.eventId)
     document
         .set(
             mapOf(
                 "eventId" to event.eventId,
                 "title" to event.title,
-                "members" to listOf(mapOf("uid" to "user-2", "name" to "Alex", "surname" to "Lee")),
+                "members" to listOf("user-2"),
                 "startDate" to event.startDate.toString(),
                 "endDate" to event.endDate.toString(),
             )
@@ -198,6 +240,18 @@ class EventRepositoryFirebaseTest {
       thrown = true
     }
     assertTrue("Expected an exception", thrown)
+  }
+
+  private suspend inline fun <reified T : Throwable> assertThrowsOfType(
+      crossinline block: suspend () -> Unit,
+  ) {
+    var thrown: Throwable? = null
+    try {
+      block()
+    } catch (exception: Exception) {
+      thrown = exception
+    }
+    assertTrue("Expected ${T::class.java.simpleName} but got $thrown", thrown is T)
   }
 
   @Suppress("UNCHECKED_CAST")

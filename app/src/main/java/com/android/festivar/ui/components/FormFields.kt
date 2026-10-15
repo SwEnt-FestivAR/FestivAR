@@ -1,6 +1,8 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.components
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
@@ -20,10 +22,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.android.festivar.R
 import com.android.festivar.ui.theme.AppTheme
 
 private val FieldShape = RoundedCornerShape(12.dp)
@@ -132,6 +137,50 @@ fun FestivarFieldError(message: String, modifier: Modifier = Modifier) {
       color = MaterialTheme.colorScheme.error,
       modifier = modifier.fillMaxWidth().padding(start = 16.dp, top = 4.dp),
   )
+}
+
+/** What is wrong with a field of a form, shown as a message under that field. */
+enum class FieldError {
+  /** The title was edited and is now blank. */
+  EMPTY_TITLE,
+
+  /** A time was picked without its date. */
+  MISSING_DATE,
+
+  /** The end is before the start. */
+  END_BEFORE_START,
+}
+
+/** The string resource of the message shown under a field for [error]. */
+@StringRes
+fun fieldErrorMessageRes(error: FieldError): Int =
+    when (error) {
+      FieldError.EMPTY_TITLE -> R.string.field_error_empty_title
+      FieldError.MISSING_DATE -> R.string.field_error_missing_date
+      FieldError.END_BEFORE_START -> R.string.field_error_end_before_start
+    }
+
+/**
+ * Shows [field] with the message for [error] under it, when there is one.
+ *
+ * @param errorTag Test tag of the error message.
+ */
+@Composable
+fun FestivarFieldWithError(
+    error: FieldError?,
+    errorTag: String,
+    modifier: Modifier = Modifier,
+    field: @Composable () -> Unit,
+) {
+  Column(modifier = modifier) {
+    field()
+    error?.let {
+      FestivarFieldError(
+          message = stringResource(fieldErrorMessageRes(it)),
+          modifier = Modifier.testTag(errorTag),
+      )
+    }
+  }
 }
 
 @Preview(showBackground = true)

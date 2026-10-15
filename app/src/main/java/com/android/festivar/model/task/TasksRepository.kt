@@ -17,6 +17,9 @@ interface TasksRepository {
   /**
    * Retrieves a specific [Task] item by its unique identifier.
    *
+   * Besides the exceptions documented below, implementations backed by a remote storage may throw
+   * other exceptions when the storage cannot be reached or holds invalid data.
+   *
    * @param taskId The unique identifier of the [Task] item to retrieve.
    * @return The [Task] item with the specified identifier.
    * @throws NoSuchElementException if the [Task] item is not found.
@@ -26,6 +29,9 @@ interface TasksRepository {
   /**
    * Adds a new [Task] item to the repository.
    *
+   * Besides the exceptions documented below, implementations backed by a remote storage may throw
+   * other exceptions when the storage cannot be reached or holds invalid data.
+   *
    * @param task The [Task] item to add. Its [Task.taskId] must not be used by another [Task] item.
    * @throws IllegalArgumentException if a [Task] item with the same identifier already exists.
    */
@@ -33,6 +39,9 @@ interface TasksRepository {
 
   /**
    * Edits an existing [Task] item in the repository.
+   *
+   * Besides the exceptions documented below, implementations backed by a remote storage may throw
+   * other exceptions when the storage cannot be reached or holds invalid data.
    *
    * @param taskId The unique identifier of the [Task] item to edit.
    * @param newValue The new value for the [Task] item. Its [Task.taskId] must be equal to [taskId].
@@ -43,6 +52,9 @@ interface TasksRepository {
 
   /**
    * Deletes a [Task] item from the repository.
+   *
+   * Besides the exceptions documented below, implementations backed by a remote storage may throw
+   * other exceptions when the storage cannot be reached or holds invalid data.
    *
    * @param taskId The unique identifier of the [Task] item to delete.
    * @throws NoSuchElementException if the [Task] item is not found.

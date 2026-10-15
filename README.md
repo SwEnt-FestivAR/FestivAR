@@ -1,3 +1,4 @@
+<!-- Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com> -->
 # FestivAR
 
 <p align="center">
@@ -50,7 +51,8 @@ The app will also be able to load the event from a local file.
 
 ## Figma link
 
-[Figma](https://www.figma.com/design/FR2FGrLHh8KjltNRZPUfCq/FestivAR?node-id=0-1&t=S9wukb6rD7mKojF4-1)
+- [M1 version](https://www.figma.com/design/FR2FGrLHh8KjltNRZPUfCq/FestivAR?version-id=2410585889599912352&node-id=0-1&p=f&viewport=1386%2C93%2C0.11&t=StTiqlcjbYU5XPci-0): the "Userflow" section of the Screens page is the current app. Its prototype starts at Splash.
+- [Whole file](https://www.figma.com/design/FR2FGrLHh8KjltNRZPUfCq/FestivAR?node-id=0-1&t=S9wukb6rD7mKojF4-1)
 
 ---
 

@@ -1,12 +1,13 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.model.task
 
-import com.android.festivar.model.user.User
+import com.android.festivar.model.user.UserRepositoryFirebase
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import java.time.Duration
 import java.time.LocalDateTime
 import java.util.UUID
+import kotlin.collections.map
 import kotlinx.coroutines.tasks.await
 
 const val TASK_COLLECTION_PATH = "tasks"
@@ -14,6 +15,9 @@ const val TASK_COLLECTION_PATH = "tasks"
 class TaskRepositoryFirebase(
     private val db: FirebaseFirestore,
 ) : TasksRepository {
+
+  private val userRepo by lazy { UserRepositoryFirebase(db) }
+
   private val taskCollection
     get() = db.collection(TASK_COLLECTION_PATH)
 
@@ -22,12 +26,9 @@ class TaskRepositoryFirebase(
   }
 
   override suspend fun getAllTasks(eventId: String): List<Task> {
-    return taskCollection
-        .whereEqualTo("eventId", eventId)
-        .get()
-        .await()
-        .documents
-        .map(::documentToTask)
+    return taskCollection.whereEqualTo("eventId", eventId).get().await().documents.map {
+      documentToTask(it)
+    }
   }
 
   override suspend fun getTask(taskId: String): Task {
@@ -54,13 +55,27 @@ class TaskRepositoryFirebase(
       newValue: Task,
   ) {
     require(taskId == newValue.taskId) { "The edited Task must keep its existing taskId." }
-    taskCollection.document(taskId).update(toFirestoreData(newValue)).await()
+    val document = taskCollection.document(taskId)
+    db.runTransaction { transaction ->
+          if (!transaction.get(document).exists()) {
+            throw NoSuchElementException("Task '$taskId' does not exist.")
+          }
+
+          transaction.update(document, toFirestoreData(newValue))
+        }
+        .await()
   }
 
   override suspend fun deleteTask(taskId: String) {
     val document = taskCollection.document(taskId)
-    check(document.get().await().exists()) { "Task '$taskId' does not exist." }
-    document.delete().await()
+    db.runTransaction { transaction ->
+          if (!transaction.get(document).exists()) {
+            throw NoSuchElementException("Task '$taskId' does not exist.")
+          }
+
+          transaction.delete(document)
+        }
+        .await()
   }
 
   private fun toFirestoreData(task: Task): Map<String, Any?> {
@@ -75,13 +90,20 @@ class TaskRepositoryFirebase(
         "location" to task.location,
         "priority" to task.priority.name,
         "maxAssign" to task.maxAssign,
-        "assignees" to task.assignees.map(User::uid),
+        "assignees" to task.assignees.map { user -> user.uid },
         "completed" to task.completed,
     )
   }
 
-  private fun documentToTask(document: DocumentSnapshot): Task {
+  private suspend fun documentToTask(document: DocumentSnapshot): Task {
     check(document.exists()) { "Task '${document.id}' does not exist." }
+
+    val ass =
+        (document.get("assignees") as? List<*>).orEmpty().map { value ->
+          val userId =
+              value as? String ?: throw IllegalArgumentException("Invalid member data: $value")
+          userRepo.getUser(userId)
+        }
 
     return Task(
         taskId = document.getString("taskId") ?: document.id,
@@ -94,18 +116,7 @@ class TaskRepositoryFirebase(
         location = document.getString("location") ?: "",
         priority = document.getString("priority")?.let(Priority::valueOf) ?: Priority.NONE,
         maxAssign = document.getLong("maxAssign")?.toInt() ?: 1,
-        assignees =
-            (document.get("assignees") as? List<*>).orEmpty().map { value ->
-              when (value) {
-                // When the assignee is stored as a string (the UID), we create a User with that
-                // UID.
-                is String -> User(value)
-                // When the assignee is stored as a map (with a "uid" field), we create a User with
-                // that UID.
-                is Map<*, *> -> User(value["uid"] as? String ?: error("Invalid assignee"))
-                else -> error("Invalid assignee")
-              }
-            },
+        assignees = ass,
         completed = document.getBoolean("completed") ?: false,
     )
   }

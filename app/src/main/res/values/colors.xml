@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com> -->
 <resources>
     <!-- Copies of backgroundLight and backgroundDark in ui/theme/Color.kt -->
     <color name="background_light">#FFFBFBF7</color>
     <color name="background_dark">#FF121410</color>
+
+    <!-- Splash icon colours, overridden in values-night. Copies of onBackgroundLight and
+         onPrimaryContainerLight in ui/theme/Color.kt, since the system draws the splash before
+         Compose starts. -->
+    <color name="splash_ink">#FF17180F</color>
+    <color name="splash_accent">#FF4A6600</color>
 </resources>

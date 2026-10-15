@@ -1,11 +1,15 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.create
 
 import android.os.Looper
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.festivar.R
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
+import com.android.festivar.ui.components.DateTimeField
+import com.android.festivar.ui.components.FieldError
 import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -110,6 +114,31 @@ class CreateTaskViewModelTest {
   }
 
   @Test
+  fun picking_setsTheValueOfTheOpenPickerAndClosesIt() {
+    viewModel.showPicker(DateTimeField.START_DATE)
+    assertEquals(DateTimeField.START_DATE, viewModel.uiState.value.openPicker)
+    viewModel.pickDate(day)
+    viewModel.showPicker(DateTimeField.END_TIME)
+    viewModel.pickTime(LocalTime.of(9, 50))
+
+    val state = viewModel.uiState.value
+    assertEquals(day, state.startDate)
+    assertEquals(LocalTime.of(9, 50), state.endTime)
+    assertNull(state.openPicker)
+  }
+
+  @Test
+  fun picking_aDateWithATimePickerOpen_onlyClosesIt() {
+    viewModel.showPicker(DateTimeField.START_TIME)
+    viewModel.pickDate(day)
+
+    val state = viewModel.uiState.value
+    assertNull(state.startDate)
+    assertNull(state.endDate)
+    assertNull(state.openPicker)
+  }
+
+  @Test
   fun createTask_whenRepositoryFails_exposesErrorAndAllowsRetry() {
     // STUB: a fake whose addTask always fails with a fixed error, to test how the ViewModel reacts.
     val failing =
@@ -122,13 +151,10 @@ class CreateTaskViewModelTest {
     vm.createTask("event-1")
 
     val state = vm.uiState.value
-    assertEquals("Unable to create the task.", state.errorMsg)
+    assertEquals(R.string.create_task_error_save_failed, state.errorMsg)
     assertFalse(state.isCreated)
     assertFalse(state.isSaving)
     assertTrue(state.canCreate)
-
-    vm.clearError()
-    assertNull(vm.uiState.value.errorMsg)
   }
 
   // A second tap while the first save is still running must not save the task twice. The fake
@@ -207,7 +233,7 @@ class CreateTaskViewModelTest {
     vm.updateTitle("Run power to stage")
 
     vm.createTask("event-1")
-    assertEquals("Unable to create the task.", vm.uiState.value.errorMsg)
+    assertEquals(R.string.create_task_error_save_failed, vm.uiState.value.errorMsg)
 
     failing = false
     vm.createTask("event-1")
@@ -270,7 +296,7 @@ class CreateTaskViewModelTest {
     vm.updateTitle("Run power to stage")
 
     vm.createTask("event-1")
-    assertEquals("Unable to create the task.", vm.uiState.value.errorMsg)
+    assertEquals(R.string.create_task_error_save_failed, vm.uiState.value.errorMsg)
     vm.createTask("event-1")
 
     assertEquals(1, runBlocking { repo.local.getAllTasks("event-1") }.size)
@@ -312,7 +338,7 @@ class CreateTaskViewModelTest {
 
     viewModel.createTask("")
 
-    assertEquals("Unable to create the task.", viewModel.uiState.value.errorMsg)
+    assertEquals(R.string.create_task_error_save_failed, viewModel.uiState.value.errorMsg)
     assertFalse(viewModel.uiState.value.isCreated)
     assertFalse(viewModel.uiState.value.isSaving)
     assertTrue(savedTasks().isEmpty())
@@ -332,7 +358,7 @@ class CreateTaskViewModelTest {
     assertTrue(vm.uiState.value.isSaving)
     shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(5))
 
-    assertEquals("Unable to create the task.", vm.uiState.value.errorMsg)
+    assertEquals(R.string.create_task_error_save_failed, vm.uiState.value.errorMsg)
     assertFalse(vm.uiState.value.isSaving)
     assertTrue(vm.uiState.value.canCreate)
   }

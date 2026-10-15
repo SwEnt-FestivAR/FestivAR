@@ -9,6 +9,7 @@ import androidx.credentials.GetCredentialRequest
 import androidx.credentials.GetCredentialResponse
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.exceptions.NoCredentialException
 import com.android.festivar.R
 import com.android.festivar.model.authentication.AuthRepository
 import com.google.firebase.auth.FirebaseUser
@@ -208,6 +209,23 @@ class LoginViewModelTest {
     shadowOf(Looper.getMainLooper()).idle()
 
     assertEquals("Failed to get credentials", viewModel.uiState.value.errorMsg)
+    assertFalse(viewModel.uiState.value.isLoading)
+    coVerify(exactly = 0) { authRepository.signInWithGoogle(any()) }
+  }
+
+  @Test
+  fun googleSignInWithNoCredentialsShowsClearMessage() {
+    val context = mockk<Context>()
+    val credentialManager = mockk<CredentialManager>()
+    val noCredentialException = mockk<NoCredentialException>()
+    every { context.getString(R.string.default_web_client_id) } returns "client-id"
+    coEvery { credentialManager.getCredential(context, any<GetCredentialRequest>()) } throws
+        noCredentialException
+
+    viewModel.signInWithGoogle(context, credentialManager)
+    shadowOf(Looper.getMainLooper()).idle()
+
+    assertEquals("No credentials available", viewModel.uiState.value.errorMsg)
     assertFalse(viewModel.uiState.value.isLoading)
     coVerify(exactly = 0) { authRepository.signInWithGoogle(any()) }
   }

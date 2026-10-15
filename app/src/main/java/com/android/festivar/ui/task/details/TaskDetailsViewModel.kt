@@ -1,0 +1,169 @@
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+package com.android.festivar.ui.task.details
+
+import android.util.Log
+import androidx.annotation.StringRes
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.android.festivar.R
+import com.android.festivar.model.task.Task
+import com.android.festivar.model.task.TasksRepository
+import com.android.festivar.model.task.TasksRepositoryProvider
+import com.android.festivar.model.user.User
+import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.getAndUpdate
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+private const val LOG_TAG = "TaskDetailsViewModel"
+
+/** The badge at the top of the Task details screen. */
+enum class TaskStatus {
+  /** Not done, and a place is left on it. */
+  OPEN,
+
+  /** Not done, and every place is held by someone else. */
+  TAKEN,
+
+  /** Not done, and the current user holds a place on it. */
+  YOURS,
+
+  /** The task is completed. */
+  DONE,
+}
+
+/**
+ * UI state of the Task details screen.
+ *
+ * @property currentUserId the uid of the signed-in user, to tell if [task] is [TaskStatus.YOURS].
+ * @property task the task shown, or null until it is loaded (or if it could not be loaded).
+ * @property isLoading true while the task is being loaded.
+ * @property isUpdating true while an action is being saved, so a second tap does nothing. Actions
+ *   are also disabled while [isLoading], so a reload cannot overwrite a saved change.
+ * @property errorMsg the string resource of the last failure, or null.
+ */
+data class TaskDetailsUiState(
+    val currentUserId: String,
+    val task: Task? = null,
+    val isLoading: Boolean = true,
+    val isUpdating: Boolean = false,
+    @StringRes val errorMsg: Int? = null,
+) {
+  /** The badge of [task], computed from it so the two cannot differ; null while [task] is null. */
+  val status: TaskStatus?
+    get() = task?.let {
+      when {
+        it.completed -> TaskStatus.DONE
+        it.assignees.any { user -> user.uid == currentUserId } -> TaskStatus.YOURS
+        it.assignees.size >= it.maxAssign -> TaskStatus.TAKEN
+        else -> TaskStatus.OPEN
+      }
+    }
+
+  /** The "Take" button of an [TaskStatus.OPEN] task. */
+  val canTake: Boolean
+    get() = status == TaskStatus.OPEN && !isUpdating && !isLoading
+
+  /** The "Give back" button of a [TaskStatus.YOURS] task. */
+  val canGiveBack: Boolean
+    get() = status == TaskStatus.YOURS && !isUpdating && !isLoading
+
+  /** The "Mark done" button of a [TaskStatus.YOURS] task. */
+  val canMarkDone: Boolean
+    get() = status == TaskStatus.YOURS && !isUpdating && !isLoading
+
+  /** Whether the actions bar is shown at all: only open and own tasks have one. */
+  val hasActions: Boolean
+    get() = status == TaskStatus.OPEN || status == TaskStatus.YOURS
+}
+
+/**
+ * Holds the state of the Task details screen and applies its three actions: take the task, give it
+ * back and mark it done. Each action saves the new version of the task in [repository] and shows it
+ * only once saved.
+ *
+ * @param taskId the task to show.
+ * @param currentUser the signed-in user. The caller must pass it: this class does not check that
+ *   someone is signed in.
+ */
+class TaskDetailsViewModel(
+    private val taskId: String,
+    private val currentUser: User,
+    private val repository: TasksRepository = TasksRepositoryProvider.repository,
+) : ViewModel() {
+  private val _uiState = MutableStateFlow(TaskDetailsUiState(currentUserId = currentUser.uid))
+  val uiState: StateFlow<TaskDetailsUiState> = _uiState.asStateFlow()
+
+  // isLoading starts true, so it cannot tell a running load from the initial state.
+  private var loadJob: Job? = null
+
+  init {
+    load()
+  }
+
+  /**
+   * Loads the task; on failure the error is set and the version already shown, if any, stays shown.
+   * Does nothing while an action is saving or another load is running.
+   */
+  fun load() {
+    if (_uiState.value.isUpdating || loadJob?.isActive == true) return
+    loadJob = viewModelScope.launch {
+      _uiState.update { it.copy(isLoading = true) }
+      try {
+        val task = repository.getTask(taskId)
+        _uiState.update { it.copy(task = task, isLoading = false, errorMsg = null) }
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        Log.e(LOG_TAG, "Error loading task $taskId", e)
+        _uiState.update { it.copy(isLoading = false, errorMsg = R.string.task_details_load_failed) }
+      }
+    }
+  }
+
+  /**
+   * Adds the current user to the task's assignees. Does nothing unless
+   * [TaskDetailsUiState.canTake].
+   */
+  fun take() = saveIf({ it.canTake }) { it.addAssignee(currentUser) }
+
+  /** Removes the current user from the assignees. Does nothing unless the task is yours. */
+  fun giveBack() = saveIf({ it.canGiveBack }) { it.removeAssignee(currentUser) }
+
+  /** Completes the task. Does nothing unless the task is yours. */
+  fun markDone() = saveIf({ it.canMarkDone }) { it.complete() }
+
+  /** Clears the error message. */
+  fun clearError() = _uiState.update { it.copy(errorMsg = null) }
+
+  // editTask overwrites the whole task, so two users acting at once can lose a change:
+  // https://github.com/SwEnt-FestivAR/FestivAR/issues/186
+  private fun saveIf(allowed: (TaskDetailsUiState) -> Boolean, change: (Task) -> Task) {
+    // Checking and setting isUpdating in one step, so two taps cannot both start a save.
+    val canRun = { state: TaskDetailsUiState -> allowed(state) && state.task != null }
+    val before = _uiState.getAndUpdate {
+      if (canRun(it)) it.copy(isUpdating = true, errorMsg = null) else it
+    }
+    val task = before.task?.takeIf { canRun(before) } ?: return
+    viewModelScope.launch {
+      try {
+        val updated = change(task)
+        repository.editTask(taskId, updated)
+        _uiState.update { it.copy(task = updated, isUpdating = false) }
+      } catch (e: CancellationException) {
+        _uiState.update { it.copy(isUpdating = false) }
+        throw e
+      } catch (e: Exception) {
+        Log.e(LOG_TAG, "Error saving task $taskId", e)
+        _uiState.update {
+          it.copy(isUpdating = false, errorMsg = R.string.task_details_save_failed)
+        }
+      }
+    }
+  }
+}

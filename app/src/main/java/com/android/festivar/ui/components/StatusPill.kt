@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.components
 
 import androidx.compose.foundation.background
@@ -26,22 +27,29 @@ enum class PillStyle {
   LIME,
   /** Ink with light text, e.g. "Ongoing". */
   INK,
+  /** Muted grey, e.g. "Open". */
+  MUTED,
+  /** Amber, e.g. "Taken". */
+  AMBER,
 }
 
 /** Status pill of the design, showing [label] with the given [style]. */
 @Composable
-fun StatusPill(label: String, style: PillStyle) {
+fun StatusPill(label: String, style: PillStyle, modifier: Modifier = Modifier) {
   val colors = MaterialTheme.colorScheme
   val (container, content) =
       when (style) {
         PillStyle.OUTLINED -> colors.surfaceContainerLowest to colors.onSurface
         PillStyle.LIME -> colors.primaryContainer to colors.onPrimaryContainer
         PillStyle.INK -> colors.secondaryContainer to colors.onSecondaryContainer
+        PillStyle.MUTED -> colors.surfaceContainerHigh to colors.onSurface
+        PillStyle.AMBER -> colors.tertiaryContainer to colors.onTertiaryContainer
       }
   Box(
       contentAlignment = Alignment.Center,
       modifier =
-          Modifier.height(24.dp)
+          modifier
+              .height(24.dp)
               .background(container, CircleShape)
               .then(
                   if (style == PillStyle.OUTLINED)
@@ -67,6 +75,8 @@ private fun StatusPillPreview() {
       StatusPill(label = "Closed", style = PillStyle.OUTLINED)
       StatusPill(label = "7 tasks open", style = PillStyle.LIME)
       StatusPill(label = "Ongoing", style = PillStyle.INK)
+      StatusPill(label = "Open", style = PillStyle.MUTED)
+      StatusPill(label = "Taken", style = PillStyle.AMBER)
     }
   }
 }
