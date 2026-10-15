@@ -47,6 +47,13 @@ class MainActivityNavigationTest {
     firebaseUser = mockk(relaxed = true) { every { uid } returns testUserId }
   }
 
+  private fun seedTask(taskId: String = "t1", eventId: String = "e1", title: String = "Test Task") {
+    val localRepo = TasksRepositoryLocal()
+    val task = Task(taskId, eventId, title)
+    runBlocking { localRepo.addTask(task) }
+    TasksRepositoryProvider.repository = localRepo
+  }
+
   @Test
   fun loginNavigatesToSignUpAndBackToLogin() {
     val authRepository = FakeAuthRepository(currentUser = null)
@@ -96,7 +103,7 @@ class MainActivityNavigationTest {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
           authRepository = FakeAuthRepository(currentUser = firebaseUser),
-          startDestinationOverride = "${AppScreens.TaskOverview.name}/e1",
+          startDestinationOverride = AppScreens.taskOverview("e1"),
       )
     }
 
@@ -118,16 +125,13 @@ class MainActivityNavigationTest {
 
   @Test
   fun taskDetailsRouteDisplaysTaskDetailsScreen() {
-    val localRepo = TasksRepositoryLocal()
-    val task = Task("t1", "e1", "Test Task")
-    runBlocking { localRepo.addTask(task) }
-    TasksRepositoryProvider.repository = localRepo
+    seedTask()
 
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
           authRepository = FakeAuthRepository(currentUser = firebaseUser),
-          startDestinationOverride = "${AppScreens.TaskDetails.name}/t1",
+          startDestinationOverride = AppScreens.taskDetails("t1"),
       )
     }
 
@@ -142,16 +146,13 @@ class MainActivityNavigationTest {
 
   @Test
   fun clickingTaskInOverviewNavigatesToTaskDetails() {
-    val localRepo = TasksRepositoryLocal()
-    val task = Task("t1", "e1", "Test Task")
-    runBlocking { localRepo.addTask(task) }
-    TasksRepositoryProvider.repository = localRepo
+    seedTask()
 
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
           authRepository = FakeAuthRepository(currentUser = firebaseUser),
-          startDestinationOverride = "${AppScreens.TaskOverview.name}/e1",
+          startDestinationOverride = AppScreens.taskOverview("e1"),
       )
     }
 
@@ -177,7 +178,7 @@ class MainActivityNavigationTest {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
           authRepository = FakeAuthRepository(currentUser = null),
-          startDestinationOverride = "${AppScreens.TaskDetails.name}/t1",
+          startDestinationOverride = AppScreens.taskDetails("t1"),
       )
     }
 

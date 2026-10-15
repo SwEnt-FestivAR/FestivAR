@@ -22,6 +22,6 @@ class TaskOverviewNavigatorTest {
   fun openTaskNavigatesToTaskDetails() {
     navigator.onOpenTask("task-123")
 
-    verify { navController.navigate("${AppScreens.TaskDetails.name}/task-123") }
+    verify { navController.navigate(AppScreens.taskDetails("task-123")) }
   }
 }

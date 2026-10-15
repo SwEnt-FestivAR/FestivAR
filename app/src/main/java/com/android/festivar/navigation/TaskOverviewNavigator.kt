@@ -10,6 +10,6 @@ class TaskOverviewNavigator(private val navController: NavHostController) {
   }
 
   val onOpenTask: (taskId: String) -> Unit = { taskId ->
-    navController.navigate("${AppScreens.TaskDetails.name}/$taskId")
+    navController.navigate(AppScreens.taskDetails(taskId))
   }
 }
