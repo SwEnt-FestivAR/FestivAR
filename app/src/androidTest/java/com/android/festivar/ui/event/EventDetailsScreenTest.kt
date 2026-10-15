@@ -9,7 +9,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.ui.components.formatDate
-import com.android.festivar.ui.components.formatDateWithoutMonth
+import com.android.festivar.ui.components.formatDay
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -47,7 +47,7 @@ class EventDetailsScreenTest {
     composeTestRule.onNodeWithText("tasks still open").assertIsDisplayed()
     composeTestRule
         .onNodeWithText(
-            "${formatDateWithoutMonth(event.startDate.toLocalDate())} to ${formatDate(event.endDate.toLocalDate())}"
+            "${formatDay(event.startDate.toLocalDate())} to ${formatDate(event.endDate.toLocalDate())}"
         )
         .assertIsDisplayed()
   }

@@ -38,8 +38,7 @@ import androidx.compose.ui.unit.dp
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
-import com.android.festivar.ui.components.formatDate
-import com.android.festivar.ui.components.formatDay
+import com.android.festivar.ui.components.formatEventDate
 import com.android.festivar.ui.theme.AppTheme
 import com.android.festivar.ui.theme.NumeralLarge
 import java.time.ZoneId
@@ -237,25 +236,32 @@ private fun EventDetailsRow(
   }
 }
 
-private fun formatEventDate(event: Event): String {
-  val start = formatDate(event.startDate.toLocalDate())
-  val end = formatDate(event.endDate.toLocalDate())
-  return if (event.startDate.month == event.endDate.month) {
-    if (event.startDate.dayOfMonth == event.endDate.dayOfMonth) {
-      start
-    } else {
-      "${formatDay(event.startDate.toLocalDate())} to $end"
-    }
-  } else {
-    "$start to $end"
-  }
+@Composable
+private fun EventDetailsScreenPreview(event: Event) {
+  AppTheme { EventDetailsScreen(event = event, onTasksButtonClicked = {}, onBack = {}) }
 }
 
 @Preview
 @Composable
-private fun EventDetailsScreenPreview() {
-  AppTheme { EventDetailsScreen(event = eventSameMonth, onTasksButtonClicked = {}, onBack = {}) }
-}
+private fun EventDetailsScreenPreviewSameMonth() = EventDetailsScreenPreview(eventSameMonth)
+
+@Preview
+@Composable
+private fun EventDetailsScreenPreviewSameDay() = EventDetailsScreenPreview(eventSameDay)
+
+@Preview
+@Composable
+private fun EventDetailsScreenPreviewDifferentMonth() =
+    EventDetailsScreenPreview(eventDifferentMonth)
+
+@Preview
+@Composable
+private fun EventDetailsScreenPreviewNoTasks() = EventDetailsScreenPreview(eventNoTasks)
+
+@Preview
+@Composable
+private fun EventDetailsScreenPreviewDifferentYear() = EventDetailsScreenPreview(eventDifferentYear)
+
 
 val eventStartDate: ZonedDateTime =
     ZonedDateTime.of(2026, 10, 16, 10, 0, 0, 0, ZoneId.of("Europe/Zurich"))
@@ -287,4 +293,5 @@ val eventSameMonth =
 val eventSameDay =
     eventSameMonth.copy(endDate = eventEndDate.withDayOfMonth(eventStartDate.dayOfMonth))
 val eventDifferentMonth = eventSameMonth.copy(endDate = eventStartDate.plusMonths(1))
-val eventNoTasksOpen = eventSameMonth.copy(tasks = emptyList())
+val eventDifferentYear = eventSameMonth.copy(endDate = eventStartDate.plusYears(1))
+val eventNoTasks = eventSameMonth.copy(tasks = emptyList())
