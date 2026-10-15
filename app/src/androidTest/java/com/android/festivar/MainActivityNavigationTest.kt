@@ -1,10 +1,13 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Gemini <noreply@google.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -15,16 +18,22 @@ import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.task.TasksRepositoryProvider
+import com.android.festivar.model.user.User
+import com.android.festivar.model.user.UsersRepositoryLocal
+import com.android.festivar.model.user.UsersRepositoryProvider
 import com.android.festivar.navigation.AppScreens
 import com.android.festivar.ui.authentication.login.LoginScreenTestTags
 import com.android.festivar.ui.authentication.signup.SignUpScreenTestTags
+import com.android.festivar.ui.components.AvatarTestTags
 import com.android.festivar.ui.event.CreateEventScreenTestTags
+import com.android.festivar.ui.event.EventsOverviewScreenTestTags
 import com.android.festivar.ui.task.details.TaskDetailsScreenTestTags
 import com.android.festivar.ui.tasks.TaskOverviewScreenTestTags
 import com.google.firebase.auth.FirebaseUser
 import io.mockk.MockKAnnotations
 import io.mockk.every
 import io.mockk.mockk
+import java.util.UUID
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Before
@@ -40,9 +49,20 @@ class MainActivityNavigationTest {
 
   private lateinit var firebaseUser: FirebaseUser
 
+  // The events overview fetches the events of the signed-in user from Firestore
+  private val signedInUid = "user-${UUID.randomUUID()}"
+
+  private val signedInUser = mockk<FirebaseUser> { every { uid } returns signedInUid }
+
+  // The avatar shows the initials of the stored profile of the signed-in user
+  private val storedUser = User(uid = signedInUid, name = "Sara", surname = "Keller")
+
   @Before
   fun setUp() {
+    FirebaseEmulatorSetup.configure()
     MockKAnnotations.init(this, relaxUnitFun = true)
+
+    UsersRepositoryProvider.repository = UsersRepositoryLocal(listOf(storedUser))
 
     firebaseUser = mockk(relaxed = true) { every { uid } returns testUserId }
   }
@@ -74,26 +94,68 @@ class MainActivityNavigationTest {
     composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
   }
 
-  // TODO when screen is actually in navigation, delete this test and use the real screen instead of
-  // the placeholder
   @Test
-  fun eventOverviewLogoutSignsOutAndReturnsToLogin() {
-    val authRepository = FakeAuthRepository(currentUser = mockk())
+  fun eventOverviewShowsStoredUserAndAvatarNavigatesToProfile() {
+    setSignedInContent()
 
+    composeTestRule.waitUntil(timeoutMillis = 10_000) {
+      composeTestRule.onAllNodesWithText("SK").fetchSemanticsNodes().isNotEmpty()
+    }
+    composeTestRule.onNodeWithText("SK").assertIsDisplayed()
+
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.USER_AVATAR).performClick()
+
+    composeTestRule.onNodeWithText("Hello profile!").assertIsDisplayed()
+  }
+
+  @Test
+  fun eventOverviewWithoutStoredUserShowsPersonIcon() {
+    UsersRepositoryProvider.repository = UsersRepositoryLocal()
+    setSignedInContent()
+
+    waitUntilTagExists(EventsOverviewScreenTestTags.USER_AVATAR)
+    composeTestRule
+        .onNodeWithTag(AvatarTestTags.PERSON_ICON, useUnmergedTree = true)
+        .assertIsDisplayed()
+  }
+
+  @Test
+  fun eventOverviewJoinNavigatesToJoinEvent() {
+    setSignedInContent()
+
+    // The new user has no events, so the "Join" button of the empty state shows once loaded
+    waitUntilTagExists(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON)
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON).performClick()
+
+    composeTestRule.onNodeWithText("Hello join event!").assertIsDisplayed()
+  }
+
+  @Test
+  fun eventOverviewWithoutSignedInUserNavigatesToLogin() {
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          authRepository = authRepository,
+          authRepository = FakeAuthRepository(currentUser = null),
+          startDestinationOverride = AppScreens.EventsOverview.name,
       )
     }
 
-    composeTestRule
-        .onNodeWithText("Hello event overview, click to logout!")
-        .assertIsDisplayed()
-        .performClick()
-    composeTestRule.waitForIdle()
-
+    waitUntilTagExists(LoginScreenTestTags.TITLE)
     composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  @Test
+  fun eventOverviewCreateNavigatesToCreateEventAndBack() {
+    setSignedInContent()
+
+    // The new user has no events, so the "Create" button of the empty state shows once loaded
+    waitUntilTagExists(EventsOverviewScreenTestTags.CREATE_EVENT_BUTTON)
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.CREATE_EVENT_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.TITLE).assertIsDisplayed()
+
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAVIGATION_BUTTON).performClick()
+    waitUntilTagExists(EventsOverviewScreenTestTags.TITLE)
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.TITLE).assertIsDisplayed()
   }
 
   @Test
@@ -188,6 +250,23 @@ class MainActivityNavigationTest {
   @After
   fun tearDown() {
     TasksRepositoryProvider.reset()
+    UsersRepositoryProvider.reset()
+  }
+
+  /** Shows the app as [signedInUser], so it starts on the events overview. */
+  private fun setSignedInContent() {
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          authRepository = FakeAuthRepository(currentUser = signedInUser),
+      )
+    }
+  }
+
+  private fun waitUntilTagExists(tag: String) {
+    composeTestRule.waitUntil(timeoutMillis = 10_000) {
+      composeTestRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
+    }
   }
 }
 
