@@ -24,9 +24,9 @@ import com.android.festivar.model.authentication.AuthRepositoryFirebase
 import com.android.festivar.navigation.AppScreens
 import com.android.festivar.navigation.authGraph
 import com.android.festivar.navigation.eventGraph
+import com.android.festivar.navigation.profileGraph
 import com.android.festivar.navigation.taskGraph
 import com.android.festivar.ui.theme.AppTheme
-import com.android.festivar.navigation.profileGraph
 
 class MainActivity : ComponentActivity() {
 

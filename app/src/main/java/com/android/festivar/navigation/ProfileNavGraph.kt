@@ -11,18 +11,18 @@ import com.android.festivar.ui.profile.ProfileViewModel
 
 /** The destinations of the profile feature. */
 fun NavGraphBuilder.profileGraph(navController: NavHostController, authRepository: AuthRepository) {
-    composable(route = AppScreens.Profile.name) {
-        val navigator = ProfileNavigator(navController)
-        ProfileScreen(
-            profileViewModel =
-                viewModel {
-                    ProfileViewModel(
-                        authRepository = authRepository,
-                        uId = authRepository.currentUser?.uid ?: "",
-                    )
-                },
-            onBack = navigator.onBack,
-            onSignedOut = navigator.onSignedOut,
-        )
-    }
+  composable(route = AppScreens.Profile.name) {
+    val navigator = ProfileNavigator(navController)
+    ProfileScreen(
+        profileViewModel =
+            viewModel {
+              ProfileViewModel(
+                  authRepository = authRepository,
+                  uId = authRepository.currentUser?.uid ?: "",
+              )
+            },
+        onBack = navigator.onBack,
+        onSignedOut = navigator.onSignedOut,
+    )
+  }
 }

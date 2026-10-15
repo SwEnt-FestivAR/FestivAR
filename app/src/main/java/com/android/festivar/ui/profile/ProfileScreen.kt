@@ -90,10 +90,8 @@ fun ProfileScreen(
     }
   }
 
-    // Leaves the screen once the sign out succeeded.
-    LaunchedEffect(profileUIState.signedOut) {
-        if (profileUIState.signedOut) onSignedOut()
-    }
+  // Leaves the screen once the sign out succeeded.
+  LaunchedEffect(profileUIState.signedOut) { if (profileUIState.signedOut) onSignedOut() }
 
   Scaffold(
       topBar = {
