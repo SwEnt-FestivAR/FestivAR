@@ -39,7 +39,7 @@ import com.android.festivar.model.event.Event
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.formatDate
-import com.android.festivar.ui.components.formatDateWithoutMonth
+import com.android.festivar.ui.components.formatDay
 import com.android.festivar.ui.theme.AppTheme
 import com.android.festivar.ui.theme.NumeralLarge
 import java.time.ZoneId
@@ -219,23 +219,21 @@ private fun EventDetailsRow(
     value: String,
     tag: String,
 ) {
-  Column(modifier = Modifier.fillMaxWidth().testTag(tag)) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-      Text(
-          text = label,
-          color = MaterialTheme.colorScheme.onSurface,
-          style = MaterialTheme.typography.bodyMedium,
-      )
-      Text(
-          text = value,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-          style = MaterialTheme.typography.bodyMedium,
-      )
-    }
+  Row(
+      modifier = Modifier.fillMaxWidth().testTag(tag).padding(horizontal = 16.dp, vertical = 14.dp),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.SpaceBetween,
+  ) {
+    Text(
+        text = label,
+        color = MaterialTheme.colorScheme.onSurface,
+        style = MaterialTheme.typography.bodyMedium,
+    )
+    Text(
+        text = value,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = MaterialTheme.typography.bodyMedium,
+    )
   }
 }
 
@@ -246,7 +244,7 @@ private fun formatEventDate(event: Event): String {
     if (event.startDate.dayOfMonth == event.endDate.dayOfMonth) {
       start
     } else {
-      "${formatDateWithoutMonth(event.startDate.toLocalDate())} to $end"
+      "${formatDay(event.startDate.toLocalDate())} to $end"
     }
   } else {
     "$start to $end"
