@@ -51,7 +51,7 @@ The app will also be able to load the event from a local file.
 
 ## Figma link
 
-- [M1 user flow](https://www.figma.com/design/FR2FGrLHh8KjltNRZPUfCq/FestivAR?node-id=2589-4888): the "Userflow" section of the Screens page is the current app. Its prototype starts at Splash.
+- [M1 version](https://www.figma.com/design/FR2FGrLHh8KjltNRZPUfCq/FestivAR?version-id=2410566102141975932&node-id=0-1&p=f&viewport=1619%2C403%2C0.13&t=StTiqlcjbYU5XPci-0): the "Userflow" section of the Screens page is the current app. Its prototype starts at Splash.
 - [Whole file](https://www.figma.com/design/FR2FGrLHh8KjltNRZPUfCq/FestivAR?node-id=0-1&t=S9wukb6rD7mKojF4-1)
 
 ---
