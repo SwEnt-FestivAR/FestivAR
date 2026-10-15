@@ -88,7 +88,8 @@ data class TaskDetailsUiState(
  * only once saved.
  *
  * @param taskId the task to show.
- * @param currentUser the signed-in user; the screen is only reachable when someone is signed in.
+ * @param currentUser the signed-in user. The caller must pass it: this class does not check that
+ *   someone is signed in.
  */
 class TaskDetailsViewModel(
     private val taskId: String,
