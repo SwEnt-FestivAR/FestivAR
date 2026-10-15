@@ -5,8 +5,9 @@ import androidx.navigation.NavHostController
 import com.android.festivar.model.event.Event
 
 class EventsOverviewNavigator(private val navController: NavHostController) {
-  // TODO: pass the event id once the event details screen is in the navigation graph
-  val onSelectEvent: (Event) -> Unit = { navController.navigate(AppScreens.EventDetails.name) }
+  val onSelectEvent: (Event) -> Unit = { event ->
+    navController.navigate(AppScreens.eventDetails(event.eventId))
+  }
 
   val onJoinEvent: () -> Unit = { navController.navigate(AppScreens.JoinEvent.name) }
 

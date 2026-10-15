@@ -18,6 +18,8 @@ enum class AppScreens {
   TaskDetails;
 
   companion object {
+    fun eventDetails(eventId: String) = "${EventDetails.name}/$eventId"
+
     fun taskDetails(taskId: String) = "${TaskDetails.name}/$taskId"
 
     fun taskOverview(eventId: String) = "${TaskOverview.name}/$eventId"

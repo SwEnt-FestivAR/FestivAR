@@ -6,7 +6,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import com.android.festivar.ScreenName
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.event.EventRepositoryFirebase
@@ -50,7 +52,14 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, authRepository:
         onBack = navigator.onBack,
     )
   }
-  composable(route = AppScreens.EventDetails.name) { ScreenName("event details") }
+  // navigate to this screen with
+  // navController.navigate(AppScreens.eventDetails(eventId))
+  composable(
+      route = "${AppScreens.EventDetails.name}/{eventId}",
+      arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
+  ) {
+    ScreenName("event details")
+  }
   composable(route = AppScreens.JoinEvent.name) { ScreenName("join event") }
   composable(route = AppScreens.Profile.name) { ScreenName("profile") }
 }

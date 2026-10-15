@@ -16,10 +16,13 @@ import androidx.credentials.Credential
 import androidx.credentials.CredentialManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.model.event.Event
+import com.android.festivar.model.event.EventRepositoryFirebase
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.task.TasksRepositoryProvider
 import com.android.festivar.model.user.User
+import com.android.festivar.model.user.UserRepositoryFirebase
 import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.model.user.UsersRepositoryProvider
 import com.android.festivar.navigation.AppScreens
@@ -31,12 +34,17 @@ import com.android.festivar.ui.event.EventsOverviewScreenTestTags
 import com.android.festivar.ui.task.create.CreateTaskScreenTestTags
 import com.android.festivar.ui.task.details.TaskDetailsScreenTestTags
 import com.android.festivar.ui.tasks.TaskOverviewScreenTestTags
+import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.auth.auth
+import com.google.firebase.firestore.firestore
 import io.mockk.MockKAnnotations
 import io.mockk.every
 import io.mockk.mockk
+import java.time.ZonedDateTime
 import java.util.UUID
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.tasks.await
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -158,6 +166,57 @@ class MainActivityNavigationTest {
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAVIGATION_BUTTON).performClick()
     waitUntilTagExists(EventsOverviewScreenTestTags.TITLE)
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  @Test
+  fun eventOverviewEventClickNavigatesToEventDetails() {
+    // The overview reads the events from the Firestore emulator, whose rules need a signed-in user
+    val now = ZonedDateTime.now()
+    val event =
+        Event(
+            eventId = "event-${UUID.randomUUID()}",
+            title = "Fête de l'Asso",
+            members = listOf(storedUser),
+            startDate = now.minusHours(1),
+            endDate = now.plusHours(5),
+        )
+    val users = UserRepositoryFirebase(Firebase.firestore)
+    val events = EventRepositoryFirebase(Firebase.firestore)
+    runBlocking {
+      Firebase.auth.signInAnonymously().await()
+      users.addUser(storedUser)
+      events.addEvent(event)
+    }
+
+    try {
+      setSignedInContent()
+
+      // The event is ongoing, so it is shown by default
+      val eventItem = EventsOverviewScreenTestTags.getTestTagForEventItem(event)
+      waitUntilTagExists(eventItem)
+      composeTestRule.onNodeWithTag(eventItem).performClick()
+
+      composeTestRule.onNodeWithText("Hello event details!").assertIsDisplayed()
+    } finally {
+      runBlocking {
+        runCatching { events.deleteEvent(event.eventId) }
+        runCatching { users.deleteUser(storedUser.uid) }
+        Firebase.auth.signOut()
+      }
+    }
+  }
+
+  @Test
+  fun eventDetailsRouteDisplaysEventDetailsScreen() {
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          authRepository = FakeAuthRepository(currentUser = signedInUser),
+          startDestinationOverride = AppScreens.eventDetails("e1"),
+      )
+    }
+
+    composeTestRule.onNodeWithText("Hello event details!").assertIsDisplayed()
   }
 
   @Test

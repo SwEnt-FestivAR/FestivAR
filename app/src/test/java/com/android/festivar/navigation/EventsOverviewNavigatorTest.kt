@@ -4,6 +4,7 @@ package com.android.festivar.navigation
 import androidx.navigation.NavHostController
 import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.navOptions
+import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
@@ -17,9 +18,9 @@ class EventsOverviewNavigatorTest {
 
   @Test
   fun selectEventNavigatesToEventDetails() {
-    navigator.onSelectEvent(mockk())
+    navigator.onSelectEvent(mockk { every { eventId } returns "e1" })
 
-    verify { navController.navigate(AppScreens.EventDetails.name) }
+    verify { navController.navigate(AppScreens.eventDetails("e1")) }
   }
 
   @Test
