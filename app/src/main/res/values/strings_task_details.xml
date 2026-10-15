@@ -1,0 +1,13 @@
+<resources>
+    <string name="details_status_open">Open</string>
+    <string name="details_status_taken">Taken</string>
+    <string name="details_status_yours">Yours</string>
+    <string name="details_status_done">Done</string>
+    <string name="details_description">Description</string>
+    <string name="details_take">Take this task</string>
+    <string name="details_give_back">Give it back</string>
+    <string name="details_mark_done">Mark done</string>
+    <string name="details_dismiss">Dismiss</string>
+    <string name="details_retry">Retry</string>
+    <string name="details_location">Location: %s</string>
+</resources>
