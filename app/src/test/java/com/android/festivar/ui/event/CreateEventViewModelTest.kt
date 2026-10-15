@@ -4,6 +4,8 @@ package com.android.festivar.ui.event
 
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.model.user.User
+import com.android.festivar.model.user.UsersRepositoryLocal
 import java.time.ZonedDateTime
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
@@ -186,6 +188,40 @@ class CreateEventViewModelTest {
         ),
         events.single(),
     )
+  }
+
+  @Test
+  fun createEvent_automaticallyAddsCreatorToEventMembersAndJoinedEvents() = runBlocking {
+    val creator = User(uid = "creator-123", name = "Alice", surname = "Smith")
+    val usersRepo = UsersRepositoryLocal(listOf(creator))
+    val creatorViewModel =
+        CreateEventViewModel(
+            eventsRepository = repository,
+            usersRepository = usersRepo,
+            userId = creator.uid,
+        )
+
+    creatorViewModel.updateName("Summer festival")
+    creatorViewModel.updateStartDate(startDate)
+    creatorViewModel.updateEndDate(endDate)
+    creatorViewModel.updateVenue("Main square")
+
+    creatorViewModel.createEvent()
+
+    var events: List<Event> = emptyList()
+    withTimeout(5_000.milliseconds) {
+      while (events.isEmpty()) {
+        events = repository.getAllEvents()
+        if (events.isEmpty()) delay(10.milliseconds)
+      }
+    }
+
+    assertEquals(1, events.size)
+    val createdEvent = events.single()
+    assertEquals(listOf(creator), createdEvent.members)
+
+    val updatedUser = usersRepo.getUser(creator.uid)
+    assertTrue(updatedUser.joinedEvents.contains(createdEvent.eventId))
   }
 
   @Test

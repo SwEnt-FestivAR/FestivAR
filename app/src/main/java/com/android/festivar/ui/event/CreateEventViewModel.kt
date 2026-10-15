@@ -6,6 +6,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
+import com.android.festivar.model.user.User
+import com.android.festivar.model.user.UsersRepository
+import com.android.festivar.model.user.UsersRepositoryProvider
 import java.time.ZonedDateTime
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -34,6 +37,8 @@ enum class DateField {
 
 class CreateEventViewModel(
     private val eventsRepository: EventsRepository,
+    private val usersRepository: UsersRepository = UsersRepositoryProvider.repository,
+    private val userId: String = "",
 ) : ViewModel() {
   private val _uiState = MutableStateFlow(CreateEventUIState())
   val uiState: StateFlow<CreateEventUIState> = _uiState.asStateFlow()
@@ -112,16 +117,37 @@ class CreateEventViewModel(
 
   fun createEvent() {
     viewModelScope.launch {
-      eventsRepository.addEvent(
+      val creator =
+          if (userId.isNotBlank()) {
+            try {
+              usersRepository.getUser(userId)
+            } catch (_: Exception) {
+              User(uid = userId)
+            }
+          } else null
+
+      val membersList = if (creator != null) listOf(creator) else emptyList()
+
+      val newEvent =
           Event(
               eventId = eventsRepository.getNewUid(),
               title = _uiState.value.name,
               description = _uiState.value.notes,
+              members = membersList,
               startDate = _uiState.value.startDate!!,
               endDate = _uiState.value.endDate!!,
               location = _uiState.value.venue,
           )
-      )
+
+      eventsRepository.addEvent(newEvent)
+
+      if (creator != null) {
+        try {
+          usersRepository.editUser(creator.uid, creator.addJoinedEvent(newEvent.eventId))
+        } catch (_: Exception) {
+          // If updating user joinedEvents fails, event is still created
+        }
+      }
     }
   }
 }
