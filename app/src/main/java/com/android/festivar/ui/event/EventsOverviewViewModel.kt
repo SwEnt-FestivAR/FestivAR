@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.user.User
+import com.android.festivar.model.user.UsersRepository
 import java.time.ZonedDateTime
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -32,7 +33,7 @@ enum class EventsFilter {
  * @property selectedFilter Which [Event] items are shown: [ongoingEvents], [upcomingEvents] or
  *   [pastEvents].
  * @property user The signed-in [User], whose avatar is shown in the top bar. `null` only until a
- *   ViewModel provides it.
+ *   ViewModel provides it, and only the identifier until the saved [User] is fetched.
  * @property isLoading Whether the [Event] items are currently being fetched.
  * @property errorMsg An error message to show when fetching the [Event] items fails. `null` if
  *   there is no error.
@@ -66,25 +67,34 @@ data class EventsOverviewUIState(
 /**
  * ViewModel of the Events Overview screen.
  *
- * Manages the UI state by fetching the [Event] items through the [EventsRepository].
+ * Manages the UI state by fetching the signed-in [User] through the [UsersRepository] and its
+ * [Event] items through the [EventsRepository].
  *
  * @property eventsRepository The repository used to fetch the [Event] items.
- * @property user The signed-in [User], whose [Event] items are shown.
+ * @property usersRepository The repository holding the [User] saved by the sign in or the sign up,
+ *   with the name and surname shown in the avatar.
+ * @property uId The signed-in [User] unique identifier.
  * @property now Gives the current time, used to split ongoing, upcoming and past [Event] items.
  */
 class EventsOverviewViewModel(
     private val eventsRepository: EventsRepository,
-    private val user: User,
+    private val usersRepository: UsersRepository,
+    private val uId: String,
     private val now: () -> ZonedDateTime = ZonedDateTime::now,
 ) : ViewModel() {
 
-  private val _uiState = MutableStateFlow(EventsOverviewUIState(user = user))
+  // Until the saved User is fetched, the avatar shows a person icon
+  private val _uiState = MutableStateFlow(EventsOverviewUIState(user = User(uid = uId)))
   val uiState: StateFlow<EventsOverviewUIState> = _uiState.asStateFlow()
+
+  /** The fetch of the [User] in progress, cancelled when a newer one starts. */
+  private var getUserJob: Job? = null
 
   /** The fetch of the [Event] items in progress, cancelled when a newer one starts. */
   private var getEventsJob: Job? = null
 
   init {
+    getUser()
     getEvents()
   }
 
@@ -98,21 +108,46 @@ class EventsOverviewViewModel(
     _uiState.update { it.copy(selectedFilter = filter) }
   }
 
-  /** Refreshes the UI state by fetching the [Event] items from the repository again. */
+  /**
+   * Refreshes the UI state by fetching the [User] and the [Event] items from the repositories
+   * again, e.g. after the profile was edited.
+   */
   fun refreshUIState() {
+    getUser()
     getEvents()
   }
 
   /**
-   * Fetches the [Event] items of [user] from the repository and updates the UI state. Cancels the
-   * previous fetch, so that an older result never overwrites a newer one.
+   * Fetches the signed-in [User] from the repository and shows it in the avatar. Cancels the
+   * previous fetch, so that an older result never overwrites a newer one. If it fails, the avatar
+   * keeps what it shows.
+   */
+  private fun getUser() {
+    getUserJob?.cancel()
+    getUserJob = viewModelScope.launch {
+      try {
+        val user = usersRepository.getUser(uId)
+        ensureActive()
+        _uiState.update { it.copy(user = user) }
+      } catch (e: CancellationException) {
+        // Cancelled by a newer fetch or because the ViewModel is cleared: not an error
+        throw e
+      } catch (e: Exception) {
+        // The events can still be shown: the avatar only misses the name and surname
+      }
+    }
+  }
+
+  /**
+   * Fetches the [Event] items of the signed-in [User] from the repository and updates the UI state.
+   * Cancels the previous fetch, so that an older result never overwrites a newer one.
    */
   private fun getEvents() {
     getEventsJob?.cancel()
     _uiState.update { it.copy(isLoading = true, errorMsg = null) }
     getEventsJob = viewModelScope.launch {
       try {
-        val events = eventsRepository.getEventsForUser(user.uid)
+        val events = eventsRepository.getEventsForUser(uId)
         // A newer fetch may have cancelled this one while the repository was fetching. A
         // repository that ignores cancellation still returns its events, so stop here before
         // these stale events reach the UI state.

@@ -54,7 +54,7 @@ fun FestivAR(
 
   val startDestination =
       startDestinationOverride
-          ?: if (authRepository.currentUser != null) AppScreens.EventOverview.name
+          ?: if (authRepository.currentUser != null) AppScreens.EventsOverview.name
           else AppScreens.Login.name
 
   NavHost(

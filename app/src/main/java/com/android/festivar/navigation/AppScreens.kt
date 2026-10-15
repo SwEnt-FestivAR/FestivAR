@@ -1,21 +1,25 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Gemini <noreply@google.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.navigation
 
 // This enum defines the different screens in the app, used for navigation purposes.
-// Put only fully implemented screens here
+// Screens without their real implementation yet show a placeholder in the navigation graph
 enum class AppScreens {
   Login,
   SignUp,
   TaskOverview,
-  EventOverview,
+  EventsOverview,
+  Profile,
+  JoinEvent,
   EventDetails,
   CreateEvent,
   CreateTask,
-  TaskDetails,
-  Profile;
+  TaskDetails;
 
   companion object {
+    fun eventDetails(eventId: String) = "${EventDetails.name}/$eventId"
+
     fun taskDetails(taskId: String) = "${TaskDetails.name}/$taskId"
 
     fun taskOverview(eventId: String) = "${TaskOverview.name}/$eventId"
