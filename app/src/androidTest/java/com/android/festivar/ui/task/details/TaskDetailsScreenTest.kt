@@ -27,8 +27,8 @@ import org.junit.runner.RunWith
 
 /**
  * Wiring only: the screen shows the ViewModel's state and calls back. The rules are unit tested.
- * Also composes the previews once, so one that crashes is caught by the tests. What each state shows
- * is tested in TaskDetailsContentTest.
+ * Also composes the previews once, so one that crashes is caught by the tests. What each state
+ * shows is tested in TaskDetailsContentTest.
  */
 @RunWith(AndroidJUnit4::class)
 class TaskDetailsScreenTest {
