@@ -1,16 +1,22 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.authentication
 
 import android.os.Bundle
 import androidx.credentials.CustomCredential
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.FirebaseEmulatorSetup
+import com.android.festivar.model.user.User
+import com.android.festivar.model.user.UserRepositoryFirebase
+import com.android.festivar.model.user.UsersRepository
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
+import com.google.firebase.firestore.firestore
 import java.util.UUID
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -22,17 +28,19 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class AuthRepositoryFirebaseTest {
+  private lateinit var usersRepository: UsersRepository
   private lateinit var repository: AuthRepositoryFirebase
 
   @Before
   fun setUp() {
     FirebaseEmulatorSetup.configure()
     Firebase.auth.signOut()
-    repository = AuthRepositoryFirebase()
+    usersRepository = UserRepositoryFirebase(Firebase.firestore)
+    repository = AuthRepositoryFirebase(usersRepository = usersRepository)
   }
 
   @Test
-  fun signUpWithEmailAndPassword_returnsCreatedUserAndSetsCurrentUser() = runBlocking {
+  fun signUpWithEmailAndPassword_returnsCreatedUserAndCreatesProfile() = runBlocking {
     val email = newEmail()
 
     val user = repository.signUpWithEmailAndPassword(email, PASSWORD).getOrThrow()
@@ -40,6 +48,7 @@ class AuthRepositoryFirebaseTest {
     assertEquals(email, user.email)
     assertNotNull(repository.currentUser)
     assertEquals(user.uid, repository.currentUser?.uid)
+    assertEquals(User(uid = user.uid, email = email), usersRepository.getUser(user.uid))
   }
 
   @Test
@@ -53,8 +62,9 @@ class AuthRepositoryFirebaseTest {
   }
 
   @Test
-  fun signInWithEmailAndPassword_returnsUserForValidCredentials() = runBlocking {
+  fun signInWithEmailAndPassword_returnsUserAndCreatesMissingProfile() = runBlocking {
     val email = newEmail()
+    // An account created without its profile, like the ones made before profiles existed.
     Firebase.auth.createUserWithEmailAndPassword(email, PASSWORD).await()
     Firebase.auth.signOut()
 
@@ -62,6 +72,19 @@ class AuthRepositoryFirebaseTest {
 
     assertEquals(email, user.email)
     assertEquals(user.uid, repository.currentUser?.uid)
+    assertEquals(User(uid = user.uid, email = email), usersRepository.getUser(user.uid))
+  }
+
+  @Test
+  fun signInWithEmailAndPassword_keepsExistingProfile() = runBlocking {
+    val user = repository.signUpWithEmailAndPassword(newEmail(), PASSWORD).getOrThrow()
+    val profile = usersRepository.getUser(user.uid).copy(name = "Ada", surname = "Lovelace")
+    usersRepository.editUser(user.uid, profile)
+    repository.signOut()
+
+    repository.signInWithEmailAndPassword(user.email!!, PASSWORD).getOrThrow()
+
+    assertEquals(profile, usersRepository.getUser(user.uid))
   }
 
   @Test
@@ -88,7 +111,7 @@ class AuthRepositoryFirebaseTest {
   }
 
   @Test
-  fun signInWithGoogle_returnsUserForEmulatorIdToken() = runBlocking {
+  fun signInWithGoogle_returnsUserAndCreatesProfile() = runBlocking {
     val email = newEmail()
     val idToken = """{"sub":"${UUID.randomUUID()}","email":"$email","email_verified":true}"""
     val data = Bundle().apply { putString("id_token", idToken) }
@@ -98,6 +121,7 @@ class AuthRepositoryFirebaseTest {
 
     assertEquals(email, user.email)
     assertEquals(user.uid, repository.currentUser?.uid)
+    assertEquals(User(uid = user.uid, email = email), usersRepository.getUser(user.uid))
   }
 
   @Test
@@ -107,6 +131,11 @@ class AuthRepositoryFirebaseTest {
     val result = repository.signInWithGoogle(credential)
 
     assertTrue(result.isFailure)
+  }
+
+  @After
+  fun tearDown() {
+    Firebase.auth.signOut()
   }
 
   private fun newEmail() = "auth-repository-${UUID.randomUUID()}@example.com"

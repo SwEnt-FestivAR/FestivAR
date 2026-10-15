@@ -54,13 +54,27 @@ class TaskRepositoryFirebase(
       newValue: Task,
   ) {
     require(taskId == newValue.taskId) { "The edited Task must keep its existing taskId." }
-    taskCollection.document(taskId).update(toFirestoreData(newValue)).await()
+    val document = taskCollection.document(taskId)
+    db.runTransaction { transaction ->
+          if (!transaction.get(document).exists()) {
+            throw NoSuchElementException("Task '$taskId' does not exist.")
+          }
+
+          transaction.update(document, toFirestoreData(newValue))
+        }
+        .await()
   }
 
   override suspend fun deleteTask(taskId: String) {
     val document = taskCollection.document(taskId)
-    check(document.get().await().exists()) { "Task '$taskId' does not exist." }
-    document.delete().await()
+    db.runTransaction { transaction ->
+          if (!transaction.get(document).exists()) {
+            throw NoSuchElementException("Task '$taskId' does not exist.")
+          }
+
+          transaction.delete(document)
+        }
+        .await()
   }
 
   private fun toFirestoreData(task: Task): Map<String, Any?> {
