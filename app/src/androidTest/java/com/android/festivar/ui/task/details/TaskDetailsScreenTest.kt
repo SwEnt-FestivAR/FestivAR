@@ -106,7 +106,7 @@ class TaskDetailsScreenTest {
         TaskDetailsSaveErrorPreview()
       }
     }
-    // Only the four previews that show a task have a status badge.
-    composeTestRule.onAllNodesWithTag(TaskDetailsScreenTestTags.STATUS_BADGE).assertCountEquals(4)
+    // Every preview but the load error shows a task, so has a status badge.
+    composeTestRule.onAllNodesWithTag(TaskDetailsScreenTestTags.STATUS_BADGE).assertCountEquals(5)
   }
 }
