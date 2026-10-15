@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.festivar
 
 import android.content.Context
@@ -25,10 +26,12 @@ import androidx.navigation.navArgument
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.authentication.AuthRepositoryFirebase
 import com.android.festivar.model.event.EventRepositoryFirebase
+import com.android.festivar.model.user.User
 import com.android.festivar.navigation.AppScreens
 import com.android.festivar.navigation.CreateEventNavigator
 import com.android.festivar.navigation.LoginNavigator
 import com.android.festivar.navigation.SignUpNavigator
+import com.android.festivar.navigation.TaskDetailsNavigator
 import com.android.festivar.navigation.TaskOverviewNavigator
 import com.android.festivar.ui.authentication.login.LoginScreen
 import com.android.festivar.ui.authentication.login.LoginViewModel
@@ -36,6 +39,7 @@ import com.android.festivar.ui.authentication.signup.SignUpScreen
 import com.android.festivar.ui.authentication.signup.SignUpViewModel
 import com.android.festivar.ui.event.CreateEventScreen
 import com.android.festivar.ui.event.CreateEventViewModel
+import com.android.festivar.ui.task.details.TaskDetailsScreen
 import com.android.festivar.ui.tasks.TaskOverviewScreen
 import com.android.festivar.ui.theme.AppTheme
 import com.google.firebase.Firebase
@@ -133,6 +137,25 @@ fun FestivAR(
       )
     }
     composable(route = AppScreens.EventDetails.name) { ScreenName("event details") }
+    composable(
+        route = "${AppScreens.TaskDetails.name}/{taskId}",
+        arguments = listOf(navArgument("taskId") { type = NavType.StringType }),
+    ) { backStackEntry ->
+      val taskId = backStackEntry.arguments?.getString("taskId") ?: ""
+      val firebaseUser = authRepository.currentUser
+      val currentUser =
+          User(
+              uid = firebaseUser?.uid ?: "",
+              name = firebaseUser?.displayName.orEmpty(),
+              email = firebaseUser?.email.orEmpty(),
+          )
+      val navigator = TaskDetailsNavigator(navController)
+      TaskDetailsScreen(
+          taskId = taskId,
+          currentUser = currentUser,
+          onBack = navigator.onBack,
+      )
+    }
     composable(route = AppScreens.CreateTask.name) { ScreenName("create task") }
   }
 }
