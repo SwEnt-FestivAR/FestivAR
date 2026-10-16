@@ -122,7 +122,13 @@ class EndToEndTest {
       composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.UPCOMING_CHIP).performClick()
       waitUntilTagExists(EventsOverviewScreenTestTags.getTestTagForEventItem(event))
 
-      signOutFromTheProfile()
+      signOutFromTheProfile(MEMBER_EMAIL)
+
+      // Signing back in through the login form lists the joined event again
+      logIn(MEMBER_EMAIL)
+      composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.UPCOMING_CHIP).performClick()
+      waitUntilTagExists(EventsOverviewScreenTestTags.getTestTagForEventItem(event))
+      signOutFromTheProfile(MEMBER_EMAIL)
 
       // The join and the task are stored: the event lists the member, the member lists the event,
       // and the task belongs to the event with the member on it
@@ -172,7 +178,7 @@ class EndToEndTest {
       Espresso.pressBack()
       waitUntilTagExists(EventsOverviewScreenTestTags.TITLE)
 
-      signOutFromTheProfile()
+      signOutFromTheProfile(ORGANIZER_EMAIL)
 
       // The organizer is the first member of the event they created
       asTheUser(ORGANIZER_EMAIL) { uid ->
@@ -208,12 +214,29 @@ class EndToEndTest {
     waitUntilTagExists(EventsOverviewScreenTestTags.TITLE)
   }
 
-  /** Opens the profile from the overview's avatar and signs out, back to the login screen. */
-  private fun signOutFromTheProfile() {
+  /** Signs in as the existing account [email] from the login form, to the events overview. */
+  private fun logIn(email: String) {
+    waitUntilTagExists(LoginScreenTestTags.TITLE)
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.EMAIL_INPUT).performTextInput(email)
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.PASSWORD_INPUT).performTextInput(PASSWORD)
+    Espresso.closeSoftKeyboard()
+    composeTestRule
+        .onNodeWithTag(LoginScreenTestTags.LOGIN_BUTTON)
+        .assertIsEnabled()
+        .performScrollTo()
+        .performClick()
+    waitUntilTagExists(EventsOverviewScreenTestTags.TITLE)
+  }
+
+  /**
+   * Opens the profile of [email] from the overview's avatar and signs out, back to the login screen.
+   */
+  private fun signOutFromTheProfile(email: String) {
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.USER_AVATAR).performClick()
     waitUntilTagExists(ProfileScreenTestTags.TITLE)
     // The sign out button only shows once the profile is loaded
     waitUntilTagExists(ProfileScreenTestTags.SIGN_OUT_BUTTON)
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.EMAIL).assertTextEquals(email)
     composeTestRule.onNodeWithTag(ProfileScreenTestTags.SIGN_OUT_BUTTON).performClick()
     waitUntilTagExists(LoginScreenTestTags.TITLE)
     composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
