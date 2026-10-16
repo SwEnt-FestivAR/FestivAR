@@ -221,9 +221,7 @@ class MainActivityNavigationTest {
           .assertTextEquals(event.title)
 
       // The join screen was dropped from the back stack, so back lands on the overview
-      composeTestRule
-          .onNodeWithTag(EventDetailsScreenTestTags.BACK_BUTTON)
-          .performClick()
+      composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.BACK_BUTTON).performClick()
       waitUntilTagExists(EventsOverviewScreenTestTags.TITLE)
       composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.TITLE).assertIsDisplayed()
     } finally {
