@@ -57,6 +57,7 @@ import java.time.ZonedDateTime
 object EventDetailsScreenTestTags {
   const val BACK_BUTTON = "backButton"
   const val EVENT_NAME = "eventName"
+  const val FETCH_ERROR = "eventDetailsFetchError"
   const val OPEN_TASKS_STAT = "openTasksStat"
   const val OWNER_ROW = "ownerRow"
   const val DATE_ROW = "dateRow"
@@ -107,6 +108,7 @@ fun EventDetailsScreen(
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.testTag(EventDetailsScreenTestTags.FETCH_ERROR),
             )
           }
     }

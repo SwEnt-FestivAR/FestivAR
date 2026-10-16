@@ -93,11 +93,7 @@ class EventDetailsScreenTest {
     }
     composeTestRule.waitForIdle()
 
-    composeTestRule
-        .onNodeWithText(
-            "Something wrong happened while fetching the event. Please try again",
-        )
-        .assertIsDisplayed()
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.FETCH_ERROR).assertIsDisplayed()
   }
 
   @Test
