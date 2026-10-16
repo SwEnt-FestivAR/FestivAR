@@ -7,6 +7,7 @@ import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -106,6 +107,24 @@ class EventDetailsViewModelTest {
     advanceUntilIdle()
 
     assertEquals(event, viewModel.uiState.value.event)
+    assertEquals(false, viewModel.uiState.value.errorFetch)
+  }
+
+  @Test
+  fun fetchEventDoesNotConvertCancellationExceptionIntoFetchError() = runTest {
+    val viewModel =
+        EventDetailsViewModel(
+            object : EventsRepository by EventsRepositoryLocal() {
+              override suspend fun getEvent(eventId: String): Event {
+                throw CancellationException("fetch cancelled")
+              }
+            }
+        )
+
+    viewModel.fetchEvent("event-1")
+    advanceUntilIdle()
+
+    assertNull(viewModel.uiState.value.event)
     assertEquals(false, viewModel.uiState.value.errorFetch)
   }
 
