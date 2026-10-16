@@ -223,7 +223,6 @@ class EndToEndTest {
     composeTestRule
         .onNodeWithTag(LoginScreenTestTags.LOGIN_BUTTON)
         .assertIsEnabled()
-        .performScrollTo()
         .performClick()
     waitUntilTagExists(EventsOverviewScreenTestTags.TITLE)
   }
