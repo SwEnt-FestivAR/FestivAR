@@ -24,6 +24,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -90,43 +91,13 @@ fun CreateEventScreen(
       containerColor = ScreenBackground,
       topBar = { CreateEventTopBar(onBack = onBack) },
       bottomBar = {
-        Column {
-          uiState.errorMsg?.let {
-            FestivarFieldError(
-                message = stringResource(it),
-                modifier = Modifier.testTag(CreateEventScreenTestTags.SAVE_ERROR),
-            )
-          }
-          Button(
-              onClick = {
-                if (viewModel.validEvent()) viewModel.createEvent() else viewModel.setErrors()
-              },
-              enabled = !uiState.isSaving,
-              modifier =
-                  Modifier.fillMaxWidth()
-                      .padding(horizontal = 12.dp, vertical = 12.dp)
-                      .height(48.dp)
-                      .testTag(CreateEventScreenTestTags.CREATE_BUTTON),
-              shape = RoundedCornerShape(8.dp),
-              colors =
-                  ButtonDefaults.buttonColors(
-                      containerColor = PrimaryButton,
-                      contentColor = Color(0xFF202020),
-                      disabledContainerColor = Color(0xFFE6E4DE),
-                      disabledContentColor = Color(0xFF99978F),
-                  ),
-          ) {
-            if (uiState.isSaving) {
-              CircularProgressIndicator(
-                  modifier = Modifier.size(16.dp).testTag(CreateEventScreenTestTags.SAVING),
-                  color = Color(0xFF99978F),
-                  strokeWidth = 2.dp,
-              )
-            } else {
-              Text(text = "Create event", fontWeight = FontWeight.Bold)
-            }
-          }
-        }
+        CreateEventSaveBar(
+            isSaving = uiState.isSaving,
+            errorMsg = uiState.errorMsg,
+            onCreate = {
+              if (viewModel.validEvent()) viewModel.createEvent() else viewModel.setErrors()
+            },
+        )
       },
   ) { padding ->
     Column(
@@ -224,31 +195,81 @@ fun CreateEventScreen(
   }
 
   uiState.activeDatePicker?.let { dateField ->
-    FestivarDatePickerDialog(
-        initial =
-            if (dateField == DateField.START) {
-              uiState.startDate?.toLocalDate()
-            } else {
-              uiState.endDate?.toLocalDate()
-            },
-        onConfirm = { selectedDate ->
-          // The form takes days: an event starts when its first day starts and ends when its last
-          // day ends, so a one day event is valid and stays ongoing until its midnight.
-          val zone = ZoneId.systemDefault()
-          if (dateField == DateField.START) {
-            val start = selectedDate.atStartOfDay(zone)
-            viewModel.updateStartDateMillis(start.toInstant().toEpochMilli())
-            viewModel.updateStartDate(start)
-          } else {
-            val end = selectedDate.plusDays(1).atStartOfDay(zone).minusSeconds(1)
-            viewModel.updateEndDateMillis(end.toInstant().toEpochMilli())
-            viewModel.updateEndDate(end)
-          }
-          viewModel.updateActiveDatePicker(null)
-        },
-        onDismiss = { viewModel.updateActiveDatePicker(null) },
-    )
+    CreateEventDatePicker(dateField = dateField, uiState = uiState, viewModel = viewModel)
   }
+}
+
+/**
+ * The save bar: the error line of a failed save above the Create button, a spinner while saving.
+ */
+@Composable
+private fun CreateEventSaveBar(isSaving: Boolean, errorMsg: Int?, onCreate: () -> Unit) {
+  Column {
+    errorMsg?.let {
+      FestivarFieldError(
+          message = stringResource(it),
+          modifier = Modifier.testTag(CreateEventScreenTestTags.SAVE_ERROR),
+      )
+    }
+    Button(
+        onClick = onCreate,
+        enabled = !isSaving,
+        modifier =
+            Modifier.fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 12.dp)
+                .height(48.dp)
+                .testTag(CreateEventScreenTestTags.CREATE_BUTTON),
+        shape = RoundedCornerShape(8.dp),
+        colors =
+            ButtonDefaults.buttonColors(
+                containerColor = PrimaryButton,
+                contentColor = Color(0xFF202020),
+                disabledContainerColor = Color(0xFFE6E4DE),
+                disabledContentColor = Color(0xFF99978F),
+            ),
+    ) {
+      if (isSaving) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(16.dp).testTag(CreateEventScreenTestTags.SAVING),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            strokeWidth = 2.dp,
+        )
+      } else {
+        Text(text = "Create event", fontWeight = FontWeight.Bold)
+      }
+    }
+  }
+}
+
+/**
+ * The date dialog of [dateField]. The form takes days: an event starts when its first day starts
+ * and ends when its last day ends, so a one day event is valid and stays ongoing until its
+ * midnight.
+ */
+@Composable
+private fun CreateEventDatePicker(
+    dateField: DateField,
+    uiState: CreateEventUIState,
+    viewModel: CreateEventViewModel,
+) {
+  val current = if (dateField == DateField.START) uiState.startDate else uiState.endDate
+  FestivarDatePickerDialog(
+      initial = current?.toLocalDate(),
+      onConfirm = { selectedDate ->
+        val zone = ZoneId.systemDefault()
+        if (dateField == DateField.START) {
+          val start = selectedDate.atStartOfDay(zone)
+          viewModel.updateStartDateMillis(start.toInstant().toEpochMilli())
+          viewModel.updateStartDate(start)
+        } else {
+          val end = selectedDate.plusDays(1).atStartOfDay(zone).minusSeconds(1)
+          viewModel.updateEndDateMillis(end.toInstant().toEpochMilli())
+          viewModel.updateEndDate(end)
+        }
+        viewModel.updateActiveDatePicker(null)
+      },
+      onDismiss = { viewModel.updateActiveDatePicker(null) },
+  )
 }
 
 private fun ZonedDateTime?.toDisplayDate(
