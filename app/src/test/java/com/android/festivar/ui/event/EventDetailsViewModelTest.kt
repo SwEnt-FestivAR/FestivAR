@@ -7,6 +7,7 @@ import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -61,6 +62,70 @@ class EventDetailsViewModelTest {
 
     assertNull(viewModel.uiState.value.event)
     assertEquals(true, viewModel.uiState.value.errorFetch)
+  }
+
+  @Test
+  fun failedRefetchClearsPreviouslyLoadedEvent() = runTest {
+    var shouldFail = false
+    val event = testEvent("event-1")
+    val repository =
+        object : EventsRepository by EventsRepositoryLocal(listOf(event)) {
+          override suspend fun getEvent(eventId: String): Event {
+            if (shouldFail) throw IllegalStateException("fetch failed")
+            return event
+          }
+        }
+    val viewModel = EventDetailsViewModel(repository)
+
+    viewModel.fetchEvent(event.eventId)
+    advanceUntilIdle()
+    shouldFail = true
+    viewModel.fetchEvent(event.eventId)
+    advanceUntilIdle()
+
+    assertNull(viewModel.uiState.value.event)
+    assertEquals(true, viewModel.uiState.value.errorFetch)
+  }
+
+  @Test
+  fun successfulRefetchClearsPreviousError() = runTest {
+    var shouldFail = true
+    val event = testEvent("event-1")
+    val repository =
+        object : EventsRepository by EventsRepositoryLocal(listOf(event)) {
+          override suspend fun getEvent(eventId: String): Event {
+            if (shouldFail) throw IllegalStateException("fetch failed")
+            return event
+          }
+        }
+    val viewModel = EventDetailsViewModel(repository)
+
+    viewModel.fetchEvent(event.eventId)
+    advanceUntilIdle()
+    shouldFail = false
+    viewModel.fetchEvent(event.eventId)
+    advanceUntilIdle()
+
+    assertEquals(event, viewModel.uiState.value.event)
+    assertEquals(false, viewModel.uiState.value.errorFetch)
+  }
+
+  @Test
+  fun fetchEventDoesNotConvertCancellationExceptionIntoFetchError() = runTest {
+    val viewModel =
+        EventDetailsViewModel(
+            object : EventsRepository by EventsRepositoryLocal() {
+              override suspend fun getEvent(eventId: String): Event {
+                throw CancellationException("fetch cancelled")
+              }
+            }
+        )
+
+    viewModel.fetchEvent("event-1")
+    advanceUntilIdle()
+
+    assertNull(viewModel.uiState.value.event)
+    assertEquals(false, viewModel.uiState.value.errorFetch)
   }
 
   private fun testEvent(eventId: String): Event {

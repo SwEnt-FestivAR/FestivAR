@@ -314,13 +314,11 @@ class MainActivityNavigationTest {
 
     composeTestRule.waitUntil(timeoutMillis = 10_000) {
       composeTestRule
-          .onAllNodesWithText("Something wrong happened while fetching the event. Please try again")
+          .onAllNodesWithTag(EventDetailsScreenTestTags.FETCH_ERROR)
           .fetchSemanticsNodes()
           .isNotEmpty()
     }
-    composeTestRule
-        .onNodeWithText("Something wrong happened while fetching the event. Please try again")
-        .assertIsDisplayed()
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.FETCH_ERROR).assertIsDisplayed()
   }
 
   @Test

@@ -5,6 +5,7 @@ package com.android.festivar.ui.event
 import android.annotation.SuppressLint
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -93,11 +94,20 @@ class EventDetailsScreenTest {
     }
     composeTestRule.waitForIdle()
 
-    composeTestRule
-        .onNodeWithText(
-            "Something wrong happened while fetching the event. Please try again",
-        )
-        .assertIsDisplayed()
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.FETCH_ERROR).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.BACK_BUTTON).assertIsDisplayed()
+    assertTrue(
+        composeTestRule
+            .onAllNodesWithTag(EventDetailsScreenTestTags.EVENT_NAME)
+            .fetchSemanticsNodes()
+            .isEmpty()
+    )
+    assertTrue(
+        composeTestRule
+            .onAllNodesWithTag(EventDetailsScreenTestTags.SEE_TASKS_BUTTON)
+            .fetchSemanticsNodes()
+            .isEmpty()
+    )
   }
 
   @Test
