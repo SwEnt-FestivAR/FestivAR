@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,6 +31,8 @@ class EventDetailsViewModel(
       try {
         val event = eventsRepository.getEvent(eventId)
         _uiState.update { it.copy(event = event) }
+      } catch (e: CancellationException) {
+        throw e
       } catch (_: Exception) {
         _uiState.update { it.copy(errorFetch = true) }
       }
