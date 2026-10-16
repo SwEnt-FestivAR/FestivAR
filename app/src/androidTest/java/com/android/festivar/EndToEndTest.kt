@@ -229,7 +229,8 @@ class EndToEndTest {
   }
 
   /**
-   * Opens the profile of [email] from the overview's avatar and signs out, back to the login screen.
+   * Opens the profile of [email] from the overview's avatar and signs out, back to the login
+   * screen.
    */
   private fun signOutFromTheProfile(email: String) {
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.USER_AVATAR).performClick()
