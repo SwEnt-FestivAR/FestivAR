@@ -220,10 +220,7 @@ class EndToEndTest {
     composeTestRule.onNodeWithTag(LoginScreenTestTags.EMAIL_INPUT).performTextInput(email)
     composeTestRule.onNodeWithTag(LoginScreenTestTags.PASSWORD_INPUT).performTextInput(PASSWORD)
     Espresso.closeSoftKeyboard()
-    composeTestRule
-        .onNodeWithTag(LoginScreenTestTags.LOGIN_BUTTON)
-        .assertIsEnabled()
-        .performClick()
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.LOGIN_BUTTON).assertIsEnabled().performClick()
     waitUntilTagExists(EventsOverviewScreenTestTags.TITLE)
   }
 
