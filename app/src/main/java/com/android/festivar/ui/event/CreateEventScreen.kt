@@ -1,6 +1,7 @@
 package com.android.festivar.ui.event
 
 // Co-authored-by: Copilot App
+// Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 
 import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.Arrangement
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -18,18 +20,22 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -62,44 +68,36 @@ object CreateEventScreenTestTags {
   const val ENDS_ERROR = "endsError"
   const val ADDRESS_ERROR = "addressError"
   const val CREATE_BUTTON = "createButton"
+  const val SAVING = "createEventSaving"
+  const val SAVE_ERROR = "createEventSaveError"
 }
 
-/** A screen for creating events. */
+/**
+ * A screen for creating events.
+ *
+ * @param onCreated Called once the event is saved, so the caller can leave the screen.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateEventScreen(
     viewModel: CreateEventViewModel = viewModel(),
     onBack: () -> Unit = {},
+    onCreated: () -> Unit = {},
 ) {
   val uiState by viewModel.uiState.collectAsState()
+  LaunchedEffect(uiState.createdEventId) { if (uiState.createdEventId != null) onCreated() }
 
   Scaffold(
       containerColor = ScreenBackground,
       topBar = { CreateEventTopBar(onBack = onBack) },
       bottomBar = {
-        Button(
-            onClick = {
+        CreateEventSaveBar(
+            isSaving = uiState.isSaving,
+            errorMsg = uiState.errorMsg,
+            onCreate = {
               if (viewModel.validEvent()) viewModel.createEvent() else viewModel.setErrors()
             },
-            modifier =
-                Modifier.fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 12.dp)
-                    .height(48.dp)
-                    .testTag(CreateEventScreenTestTags.CREATE_BUTTON),
-            shape = RoundedCornerShape(8.dp),
-            colors =
-                ButtonDefaults.buttonColors(
-                    containerColor = PrimaryButton,
-                    contentColor = Color(0xFF202020),
-                    disabledContainerColor = Color(0xFFE6E4DE),
-                    disabledContentColor = Color(0xFF99978F),
-                ),
-        ) {
-          Text(
-              text = "Create event",
-              fontWeight = FontWeight.Bold,
-          )
-        }
+        )
       },
   ) { padding ->
     Column(
@@ -197,27 +195,81 @@ fun CreateEventScreen(
   }
 
   uiState.activeDatePicker?.let { dateField ->
-    FestivarDatePickerDialog(
-        initial =
-            if (dateField == DateField.START) {
-              uiState.startDate?.toLocalDate()
-            } else {
-              uiState.endDate?.toLocalDate()
-            },
-        onConfirm = { selectedDate ->
-          val selectedDateTime = selectedDate.atStartOfDay(ZoneId.systemDefault())
-          if (dateField == DateField.START) {
-            viewModel.updateStartDateMillis(selectedDateTime.toInstant().toEpochMilli())
-            viewModel.updateStartDate(selectedDateTime)
-          } else {
-            viewModel.updateEndDateMillis(selectedDateTime.toInstant().toEpochMilli())
-            viewModel.updateEndDate(selectedDateTime)
-          }
-          viewModel.updateActiveDatePicker(null)
-        },
-        onDismiss = { viewModel.updateActiveDatePicker(null) },
-    )
+    CreateEventDatePicker(dateField = dateField, uiState = uiState, viewModel = viewModel)
   }
+}
+
+/**
+ * The save bar: the error line of a failed save above the Create button, a spinner while saving.
+ */
+@Composable
+private fun CreateEventSaveBar(isSaving: Boolean, errorMsg: Int?, onCreate: () -> Unit) {
+  Column {
+    errorMsg?.let {
+      FestivarFieldError(
+          message = stringResource(it),
+          modifier = Modifier.testTag(CreateEventScreenTestTags.SAVE_ERROR),
+      )
+    }
+    Button(
+        onClick = onCreate,
+        enabled = !isSaving,
+        modifier =
+            Modifier.fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 12.dp)
+                .height(48.dp)
+                .testTag(CreateEventScreenTestTags.CREATE_BUTTON),
+        shape = RoundedCornerShape(8.dp),
+        colors =
+            ButtonDefaults.buttonColors(
+                containerColor = PrimaryButton,
+                contentColor = Color(0xFF202020),
+                disabledContainerColor = Color(0xFFE6E4DE),
+                disabledContentColor = Color(0xFF99978F),
+            ),
+    ) {
+      if (isSaving) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(16.dp).testTag(CreateEventScreenTestTags.SAVING),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            strokeWidth = 2.dp,
+        )
+      } else {
+        Text(text = "Create event", fontWeight = FontWeight.Bold)
+      }
+    }
+  }
+}
+
+/**
+ * The date dialog of [dateField]. The form takes days: an event starts when its first day starts
+ * and ends when its last day ends, so a one day event is valid and stays ongoing until its
+ * midnight.
+ */
+@Composable
+private fun CreateEventDatePicker(
+    dateField: DateField,
+    uiState: CreateEventUIState,
+    viewModel: CreateEventViewModel,
+) {
+  val current = if (dateField == DateField.START) uiState.startDate else uiState.endDate
+  FestivarDatePickerDialog(
+      initial = current?.toLocalDate(),
+      onConfirm = { selectedDate ->
+        val zone = ZoneId.systemDefault()
+        if (dateField == DateField.START) {
+          val start = selectedDate.atStartOfDay(zone)
+          viewModel.updateStartDateMillis(start.toInstant().toEpochMilli())
+          viewModel.updateStartDate(start)
+        } else {
+          val end = selectedDate.plusDays(1).atStartOfDay(zone).minusSeconds(1)
+          viewModel.updateEndDateMillis(end.toInstant().toEpochMilli())
+          viewModel.updateEndDate(end)
+        }
+        viewModel.updateActiveDatePicker(null)
+      },
+      onDismiss = { viewModel.updateActiveDatePicker(null) },
+  )
 }
 
 private fun ZonedDateTime?.toDisplayDate(
