@@ -63,6 +63,52 @@ class EventDetailsViewModelTest {
     assertEquals(true, viewModel.uiState.value.errorFetch)
   }
 
+  @Test
+  fun failedRefetchClearsPreviouslyLoadedEvent() = runTest {
+    var shouldFail = false
+    val event = testEvent("event-1")
+    val repository =
+        object : EventsRepository by EventsRepositoryLocal(listOf(event)) {
+          override suspend fun getEvent(eventId: String): Event {
+            if (shouldFail) throw IllegalStateException("fetch failed")
+            return event
+          }
+        }
+    val viewModel = EventDetailsViewModel(repository)
+
+    viewModel.fetchEvent(event.eventId)
+    advanceUntilIdle()
+    shouldFail = true
+    viewModel.fetchEvent(event.eventId)
+    advanceUntilIdle()
+
+    assertNull(viewModel.uiState.value.event)
+    assertEquals(true, viewModel.uiState.value.errorFetch)
+  }
+
+  @Test
+  fun successfulRefetchClearsPreviousError() = runTest {
+    var shouldFail = true
+    val event = testEvent("event-1")
+    val repository =
+        object : EventsRepository by EventsRepositoryLocal(listOf(event)) {
+          override suspend fun getEvent(eventId: String): Event {
+            if (shouldFail) throw IllegalStateException("fetch failed")
+            return event
+          }
+        }
+    val viewModel = EventDetailsViewModel(repository)
+
+    viewModel.fetchEvent(event.eventId)
+    advanceUntilIdle()
+    shouldFail = false
+    viewModel.fetchEvent(event.eventId)
+    advanceUntilIdle()
+
+    assertEquals(event, viewModel.uiState.value.event)
+    assertEquals(false, viewModel.uiState.value.errorFetch)
+  }
+
   private fun testEvent(eventId: String): Event {
     val start = ZonedDateTime.of(2026, 10, 16, 10, 0, 0, 0, ZoneId.of("Europe/Zurich"))
     return Event(
