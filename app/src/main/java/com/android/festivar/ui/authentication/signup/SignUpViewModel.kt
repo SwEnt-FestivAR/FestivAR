@@ -60,28 +60,32 @@ class SignUpViewModel(private val authRepository: AuthRepository = AuthRepositor
       return
     }
     viewModelScope.launch {
-      _uiState.value = AuthUIState(isLoading = true)
+      _uiState.update { it.copy(isLoading = true, errorMsg = null) }
       val result =
           authRepository.signUpWithEmailAndPassword(
               email = email,
               password = password,
           )
-      _uiState.value =
-          result.fold(
-              onSuccess = { AuthUIState(isAuthenticated = true) },
-              onFailure = { AuthUIState(errorMsg = it.message ?: "Unable to sign up.") },
-          )
+      _uiState.update { state ->
+        result.fold(
+            onSuccess = { state.copy(isLoading = false, isAuthenticated = true) },
+            onFailure = {
+              state.copy(isLoading = false, errorMsg = it.message ?: "Unable to sign up.")
+            },
+        )
+      }
     }
   }
 
   fun signOut() {
     viewModelScope.launch {
       val result = authRepository.signOut()
-      _uiState.value =
-          result.fold(
-              onSuccess = { AuthUIState(signedOut = true) },
-              onFailure = { AuthUIState(errorMsg = it.message ?: "Unable to sign out.") },
-          )
+      _uiState.update { state ->
+        result.fold(
+            onSuccess = { state.copy(signedOut = true) },
+            onFailure = { state.copy(errorMsg = it.message ?: "Unable to sign out.") },
+        )
+      }
     }
   }
 }
