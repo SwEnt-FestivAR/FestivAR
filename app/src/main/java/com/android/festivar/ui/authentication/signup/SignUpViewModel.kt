@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.ui.authentication.checkPassword
+import com.android.festivar.ui.authentication.isEmailValid
 import com.android.festivar.ui.authentication.isPasswordValid
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,6 +22,12 @@ data class SignUpUIState(
     val isPasswordValid: Boolean = false,
     val confirmPassword: String = "",
     val email: String = "",
+    val canSubmit: Boolean =
+        isPasswordValid(password) &&
+            isPasswordValid(confirmPassword) &&
+            isEmailValid(email) &&
+            password == confirmPassword &&
+            !isLoading,
 )
 
 class SignUpViewModel(private val authRepository: AuthRepository) : ViewModel() {
