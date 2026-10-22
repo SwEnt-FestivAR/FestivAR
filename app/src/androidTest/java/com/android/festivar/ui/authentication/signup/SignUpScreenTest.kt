@@ -193,7 +193,7 @@ class SignUpScreenTest {
     var callbackInvoked = false
     composeTestRule.setContent {
       SignUpScreen(
-          onBackClick = { callbackInvoked = true },
+          onSignInClick = { callbackInvoked = true },
           viewModel = viewModel,
       )
     }
