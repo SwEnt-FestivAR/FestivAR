@@ -4,6 +4,8 @@ package com.android.festivar.ui.authentication.signup
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.ui.authentication.checkPassword
+import com.android.festivar.ui.authentication.isPasswordValid
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,20 +23,16 @@ data class AuthUIState(
     val email: String = "",
 )
 
-const val MIN_PASSWORD_LENGTH = 8
-
 class SignUpViewModel(private val authRepository: AuthRepository) : ViewModel() {
   private val _uiState = MutableStateFlow(AuthUIState())
   val uiState: StateFlow<AuthUIState> = _uiState.asStateFlow()
 
   fun updateEmail(email: String) {
-    _uiState.update { it.copy(email = email) }
+    _uiState.update { it.copy(email = email.trim()) }
   }
 
   fun updatePassword(password: String) {
-    _uiState.update {
-      it.copy(password = password, isPasswordValid = password.length >= MIN_PASSWORD_LENGTH)
-    }
+    _uiState.update { it.copy(password = password, isPasswordValid = isPasswordValid(password)) }
   }
 
   fun updateConfirmPassword(confirmPassword: String) {
@@ -51,17 +49,16 @@ class SignUpViewModel(private val authRepository: AuthRepository) : ViewModel() 
       password: String,
   ) {
     if (_uiState.value.isLoading) return
-    if (password.length < MIN_PASSWORD_LENGTH) {
-      _uiState.update {
-        it.copy(errorMsg = "Password must be at least $MIN_PASSWORD_LENGTH characters.")
-      }
+    val passwdChk = checkPassword(password)
+    if (passwdChk != "") {
+      _uiState.update { it.copy(errorMsg = passwdChk) }
       return
     }
     _uiState.update { it.copy(isLoading = true, errorMsg = null) }
     viewModelScope.launch {
       val result =
           authRepository.signUpWithEmailAndPassword(
-              email = email,
+              email = email.trim(),
               password = password,
           )
       _uiState.update { state ->

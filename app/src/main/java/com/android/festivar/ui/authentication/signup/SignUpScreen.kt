@@ -57,6 +57,8 @@ import androidx.credentials.Credential
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.R
 import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.ui.authentication.isEmailValid
+import com.android.festivar.ui.authentication.isPasswordValid
 import com.android.festivar.ui.theme.AppTheme
 import com.android.festivar.ui.theme.onSurfaceMutedDark
 import com.android.festivar.ui.theme.onSurfaceMutedLight
@@ -143,10 +145,9 @@ fun SignUpScreen(
         Spacer(modifier = Modifier.height(20.dp))
         SignUpButton(
             enabled =
-                uiState.email.isNotBlank() &&
-                    uiState.password.isNotBlank() &&
-                    uiState.isPasswordValid &&
-                    uiState.confirmPassword.isNotBlank() &&
+                isPasswordValid(uiState.password) &&
+                    isPasswordValid(uiState.confirmPassword) &&
+                    isEmailValid(uiState.email) &&
                     uiState.password == uiState.confirmPassword &&
                     !uiState.isLoading,
             isLoading = uiState.isLoading,
