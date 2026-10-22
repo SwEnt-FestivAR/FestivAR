@@ -1,6 +1,19 @@
 package com.android.festivar.ui.authentication
 
+import java.util.regex.Pattern
+
 private const val MIN_PASSWORD_LENGTH = 8
+
+private val EMAIL_ADDRESS =
+    Pattern.compile(
+        "[a-zA-Z0-9\\+\\.\\_\\%\\-\\+]{1,256}" +
+            "\\@" +
+            "[a-zA-Z0-9][a-zA-Z0-9\\-]{0,64}" +
+            "(" +
+            "\\." +
+            "[a-zA-Z0-9][a-zA-Z0-9\\-]{0,25}" +
+            ")+"
+    )
 
 /**
  * Checks if the provided email is valid.
@@ -9,7 +22,7 @@ private const val MIN_PASSWORD_LENGTH = 8
  * @return True if the email is valid, false otherwise.
  */
 fun isEmailValid(email: String): Boolean {
-  return email.isNotBlank() && android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
+  return email.isNotBlank() && EMAIL_ADDRESS.matcher(email).matches()
 }
 
 /**

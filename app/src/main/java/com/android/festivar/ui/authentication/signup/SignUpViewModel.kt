@@ -17,7 +17,6 @@ data class SignUpUIState(
     val isLoading: Boolean = false,
     val isAuthenticated: Boolean = false,
     val errorMsg: String? = null,
-    val signedOut: Boolean = false,
     val password: String = "",
     val isPasswordValid: Boolean = false,
     val confirmPassword: String = "",
@@ -37,7 +36,7 @@ class SignUpViewModel(private val authRepository: AuthRepository) : ViewModel() 
   val uiState: StateFlow<SignUpUIState> = _uiState.asStateFlow()
 
   fun updateEmail(email: String) {
-    _uiState.update { it.copy(email = email.trim()) }
+    _uiState.update { it.copy(email = email) }
   }
 
   fun updatePassword(password: String) {

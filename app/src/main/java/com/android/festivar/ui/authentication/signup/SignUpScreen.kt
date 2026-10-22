@@ -348,7 +348,7 @@ private fun SignUpButton(
               containerColor = MaterialTheme.colorScheme.primary,
               contentColor = MaterialTheme.colorScheme.onPrimary,
               disabledContainerColor = MaterialTheme.colorScheme.outlineVariant,
-              disabledContentColor = MaterialTheme.colorScheme.outlineVariant,
+              disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
           ),
   ) {
     Text(
