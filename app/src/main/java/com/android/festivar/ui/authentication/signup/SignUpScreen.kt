@@ -147,7 +147,8 @@ fun SignUpScreen(
                     uiState.password.isNotBlank() &&
                     uiState.isPasswordValid &&
                     uiState.confirmPassword.isNotBlank() &&
-                    uiState.password == uiState.confirmPassword,
+                    uiState.password == uiState.confirmPassword &&
+                    !uiState.isLoading,
             isLoading = uiState.isLoading,
             onClick = { viewModel.signUp(uiState.email, uiState.password) },
         )
