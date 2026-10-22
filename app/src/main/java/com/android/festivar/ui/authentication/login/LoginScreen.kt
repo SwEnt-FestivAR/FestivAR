@@ -2,7 +2,6 @@
 package com.android.festivar.ui.authentication.login
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -21,6 +20,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -38,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -50,7 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.credentials.CredentialManager
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.android.festivar.resources.GoogleLogo
+import com.android.festivar.R
 import com.android.festivar.ui.theme.AppTheme
 
 internal object LoginScreenTestTags {
@@ -267,7 +268,10 @@ private fun GoogleSignInButton(onClick: () -> Unit, enabled: Boolean) {
       modifier = Modifier.fillMaxWidth().height(44.dp).testTag(LoginScreenTestTags.GOOGLE_BUTTON),
   ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-      Image(imageVector = GoogleLogo, contentDescription = null, modifier = Modifier.size(18.dp))
+      Icon(
+          painter = painterResource(id = R.drawable.ic_google_logo),
+          contentDescription = "Google Logo",
+      )
       Text(
           text = "Continue with Google",
           color = MaterialTheme.colorScheme.onSurface,
