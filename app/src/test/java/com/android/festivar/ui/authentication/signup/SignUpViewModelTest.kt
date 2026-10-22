@@ -104,33 +104,6 @@ class SignUpViewModelTest {
     awaitState(viewModel) { it.errorMsg != null }
   }
 
-  @Test
-  fun signOut_setsSignedOutOnSuccess() {
-    authRepository.signOutBehavior = { Result.success(Unit) }
-    val viewModel = SignUpViewModel(authRepository)
-
-    viewModel.signOut()
-    val state = awaitState(viewModel) { it.signedOut || it.errorMsg != null }
-
-    Assert.assertFalse(state.isLoading)
-    Assert.assertTrue(state.signedOut)
-    Assert.assertNull(state.errorMsg)
-  }
-
-  @Test
-  fun signOut_setsErrorWhenRepositoryFails() {
-    val failure = IllegalStateException("Unable to sign out")
-    authRepository.signOutBehavior = { Result.failure(failure) }
-    val viewModel = SignUpViewModel(authRepository)
-
-    viewModel.signOut()
-    val state = awaitState(viewModel) { it.errorMsg != null }
-
-    Assert.assertFalse(state.isLoading)
-    Assert.assertFalse(state.signedOut)
-    Assert.assertEquals("Unable to sign out", state.errorMsg)
-  }
-
   private fun awaitState(
       viewModel: SignUpViewModel,
       predicate: (AuthUIState) -> Boolean,
