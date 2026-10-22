@@ -4,7 +4,6 @@ package com.android.festivar.ui.authentication.signup
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.model.authentication.AuthRepository
-import com.android.festivar.model.authentication.AuthRepositoryFirebase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,8 +23,7 @@ data class AuthUIState(
 
 const val MIN_PASSWORD_LENGTH = 8
 
-class SignUpViewModel(private val authRepository: AuthRepository = AuthRepositoryFirebase()) :
-    ViewModel() {
+class SignUpViewModel(private val authRepository: AuthRepository) : ViewModel() {
   private val _uiState = MutableStateFlow(AuthUIState())
   val uiState: StateFlow<AuthUIState> = _uiState.asStateFlow()
 
