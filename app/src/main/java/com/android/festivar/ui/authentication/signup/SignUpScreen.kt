@@ -46,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -230,7 +231,7 @@ private fun SignUpFields(
     onPasswordVisibilityChange: () -> Unit,
 ) {
   Column {
-    SignUpTextField(
+    SignUpEmailField(
         value = email,
         onValueChange = onEmailChange,
         label = stringResource(R.string.signup_email),
@@ -245,6 +246,7 @@ private fun SignUpFields(
         tag = SignUpScreenTestTags.PASS_FIELD,
         isPasswordVisible = isPasswordVisible,
         onPasswordVisibilityChange = onPasswordVisibilityChange,
+        imeAction = ImeAction.Next,
     )
     Spacer(modifier = Modifier.height(12.dp))
     PasswordTextField(
@@ -256,6 +258,7 @@ private fun SignUpFields(
         onPasswordVisibilityChange = onPasswordVisibilityChange,
         showPasswordDescription = stringResource(R.string.signup_show_confirmation_password),
         hidePasswordDescription = stringResource(R.string.signup_hide_confirmation_password),
+        imeAction = ImeAction.Done,
     )
     Text(
         text = stringResource(R.string.signup_password_hint),
@@ -276,19 +279,20 @@ private fun SignUpFields(
 }
 
 @Composable
-private fun SignUpTextField(
+private fun SignUpEmailField(
     value: String,
     onValueChange: (String) -> Unit,
     label: String,
     tag: String,
-    keyboardType: KeyboardType = KeyboardType.Text,
+    keyboardType: KeyboardType = KeyboardType.Email,
+    imeAction: ImeAction = ImeAction.Next,
 ) {
   FestivarTextField(
       value = value,
       onValueChange = onValueChange,
       label = label,
       modifier = Modifier.testTag(tag),
-      keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+      keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
   )
 }
 
@@ -302,6 +306,7 @@ private fun PasswordTextField(
     onPasswordVisibilityChange: (() -> Unit)? = null,
     showPasswordDescription: String = stringResource(R.string.signup_show_password),
     hidePasswordDescription: String = stringResource(R.string.signup_hide_password),
+    imeAction: ImeAction = ImeAction.Next,
 ) {
   FestivarTextField(
       value = value,
@@ -310,7 +315,8 @@ private fun PasswordTextField(
       modifier = Modifier.testTag(tag),
       visualTransformation =
           if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-      keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+      keyboardOptions =
+          KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = imeAction),
       trailingIcon =
           onPasswordVisibilityChange?.let { onToggle ->
             {

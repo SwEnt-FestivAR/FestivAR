@@ -22,13 +22,15 @@ data class SignUpUIState(
     val isPasswordValid: Boolean = false,
     val confirmPassword: String = "",
     val email: String = "",
-    val canSubmit: Boolean =
+) {
+  val canSubmit: Boolean
+    get() =
         isPasswordValid(password) &&
             isPasswordValid(confirmPassword) &&
             isEmailValid(email) &&
             password == confirmPassword &&
-            !isLoading,
-)
+            !isLoading
+}
 
 class SignUpViewModel(private val authRepository: AuthRepository) : ViewModel() {
   private val _uiState = MutableStateFlow(SignUpUIState())
