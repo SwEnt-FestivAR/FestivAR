@@ -25,6 +25,7 @@ import kotlinx.coroutines.launch
 data class LoginUIState(
     val email: String = "",
     val password: String = "",
+    val isPasswordVisible: Boolean = false,
     val isLoading: Boolean = false,
     val errorMsg: String? = null,
     val user: FirebaseUser? = null,
@@ -46,6 +47,11 @@ class LoginViewModel(private val authRepository: AuthRepository = AuthRepository
   /** Updates the password and clears any prior error. */
   fun updatePassword(password: String) {
     _uiState.update { it.copy(password = password, errorMsg = null) }
+  }
+
+  /** Toggles whether the password is displayed in plain text. */
+  fun togglePasswordVisibility() {
+    _uiState.update { it.copy(isPasswordVisible = !it.isPasswordVisible) }
   }
 
   /** Signs in with the current email and password. */
@@ -126,5 +132,10 @@ class LoginViewModel(private val authRepository: AuthRepository = AuthRepository
       }
 
   private fun Throwable.errorMessage(): String =
-      message ?: "Authentication failed. Please try again."
+      when (message) {
+        "Sign-in cancelled" -> "Sign-in cancelled"
+        "No credentials available" -> "No credentials available"
+        "Failed to get credentials" -> "Failed to get credentials"
+        else -> "Unable to sign in. Check your details and try again."
+      }
 }
