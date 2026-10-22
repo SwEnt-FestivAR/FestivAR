@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-data class AuthUIState(
+data class SignUpUIState(
     val isLoading: Boolean = false,
     val isAuthenticated: Boolean = false,
     val errorMsg: String? = null,
@@ -24,8 +24,8 @@ data class AuthUIState(
 )
 
 class SignUpViewModel(private val authRepository: AuthRepository) : ViewModel() {
-  private val _uiState = MutableStateFlow(AuthUIState())
-  val uiState: StateFlow<AuthUIState> = _uiState.asStateFlow()
+  private val _uiState = MutableStateFlow(SignUpUIState())
+  val uiState: StateFlow<SignUpUIState> = _uiState.asStateFlow()
 
   fun updateEmail(email: String) {
     _uiState.update { it.copy(email = email.trim()) }

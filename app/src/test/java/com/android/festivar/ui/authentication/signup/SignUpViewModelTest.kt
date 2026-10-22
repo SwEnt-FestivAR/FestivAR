@@ -106,8 +106,8 @@ class SignUpViewModelTest {
 
   private fun awaitState(
       viewModel: SignUpViewModel,
-      predicate: (AuthUIState) -> Boolean,
-  ): AuthUIState = runBlocking {
+      predicate: (SignUpUIState) -> Boolean,
+  ): SignUpUIState = runBlocking {
     withTimeout(5_000.milliseconds) { viewModel.uiState.first(predicate) }
   }
 
