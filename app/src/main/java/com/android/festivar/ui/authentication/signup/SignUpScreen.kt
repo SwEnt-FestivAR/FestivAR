@@ -95,11 +95,10 @@ fun SignUpScreen(
   LaunchedEffect(uiState.isAuthenticated) { if (uiState.isAuthenticated) onSignUpSuccess() }
   Scaffold(
       modifier = modifier,
+      bottomBar = { SignUpFooter(onSignInClick) },
       snackbarHost = {
         SnackbarHost(
             hostState = snackBarHostState,
-            // 64 dp to be above the SignUpFooter
-            modifier = Modifier.padding(bottom = 64.dp),
         ) { data ->
           SignUpErrorSnackbar(data.visuals.message) { data.dismiss() }
         }
@@ -110,46 +109,41 @@ fun SignUpScreen(
             Modifier.fillMaxSize()
                 .background(color = MaterialTheme.colorScheme.background)
                 .padding(paddingValues)
-                .padding(horizontal = 24.dp),
+                .padding(horizontal = 24.dp)
+                .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.Start,
     ) {
-      Column(
-          modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
-          horizontalAlignment = Alignment.Start,
-      ) {
-        SignUpTopBar(onSignInClick)
-        Spacer(modifier = Modifier.height(16.dp))
-        SignUpHeader()
-        Spacer(modifier = Modifier.height(24.dp))
-        SignUpFields(
-            email = uiState.email,
-            onEmailChange = { viewModel.updateEmail(it) },
-            password = uiState.password,
-            onPasswordChange = { viewModel.updatePassword(it) },
-            confirmPassword = uiState.confirmPassword,
-            onConfirmPasswordChange = { viewModel.updateConfirmPassword(it) },
-            isPasswordVisible = isPasswordVisible,
-            onPasswordVisibilityChange = { isPasswordVisible = !isPasswordVisible },
+      SignUpTopBar(onSignInClick)
+      Spacer(modifier = Modifier.height(16.dp))
+      SignUpHeader()
+      Spacer(modifier = Modifier.height(24.dp))
+      SignUpFields(
+          email = uiState.email,
+          onEmailChange = { viewModel.updateEmail(it) },
+          password = uiState.password,
+          onPasswordChange = { viewModel.updatePassword(it) },
+          confirmPassword = uiState.confirmPassword,
+          onConfirmPasswordChange = { viewModel.updateConfirmPassword(it) },
+          isPasswordVisible = isPasswordVisible,
+          onPasswordVisibilityChange = { isPasswordVisible = !isPasswordVisible },
+      )
+      uiState.errorMsg?.let { error ->
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = error,
+            color = MaterialTheme.colorScheme.error,
+            style = MaterialTheme.typography.bodySmall,
         )
-        uiState.errorMsg?.let { error ->
-          Spacer(modifier = Modifier.height(8.dp))
-          Text(
-              text = error,
-              color = MaterialTheme.colorScheme.error,
-              style = MaterialTheme.typography.bodySmall,
-          )
-        }
-        Spacer(modifier = Modifier.height(20.dp))
-        SignUpButton(
-            enabled = uiState.canSubmit,
-            isLoading = uiState.isLoading,
-            onClick = { viewModel.signUp(uiState.email, uiState.password) },
-        )
-        Spacer(modifier = Modifier.height(24.dp))
-        SignUpTerms()
-        Spacer(modifier = Modifier.height(32.dp))
       }
-      SignUpFooter(onSignInClick)
+      Spacer(modifier = Modifier.height(20.dp))
+      SignUpButton(
+          enabled = uiState.canSubmit,
+          isLoading = uiState.isLoading,
+          onClick = { viewModel.signUp(uiState.email, uiState.password) },
+      )
+      Spacer(modifier = Modifier.height(24.dp))
+      SignUpTerms()
+      Spacer(modifier = Modifier.height(32.dp))
     }
   }
 }
