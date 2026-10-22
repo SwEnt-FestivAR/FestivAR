@@ -124,14 +124,6 @@ fun SignUpScreen(
           isPasswordVisible = isPasswordVisible,
           onPasswordVisibilityChange = { isPasswordVisible = !isPasswordVisible },
       )
-      uiState.errorMsg?.let { error ->
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = error,
-            color = MaterialTheme.colorScheme.error,
-            style = MaterialTheme.typography.bodySmall,
-        )
-      }
       Spacer(modifier = Modifier.height(20.dp))
       SignUpButton(
           enabled = uiState.canSubmit,
