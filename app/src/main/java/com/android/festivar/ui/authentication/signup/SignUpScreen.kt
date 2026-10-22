@@ -28,8 +28,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
@@ -57,6 +55,7 @@ import androidx.credentials.Credential
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.R
 import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.theme.AppTheme
 import com.android.festivar.ui.theme.onSurfaceMutedDark
 import com.android.festivar.ui.theme.onSurfaceMutedLight
@@ -284,15 +283,12 @@ private fun SignUpTextField(
     tag: String,
     keyboardType: KeyboardType = KeyboardType.Text,
 ) {
-  OutlinedTextField(
+  FestivarTextField(
       value = value,
       onValueChange = onValueChange,
-      modifier = Modifier.fillMaxWidth().testTag(tag),
-      label = { Text(label) },
-      singleLine = true,
+      label = label,
+      modifier = Modifier.testTag(tag),
       keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-      shape = RoundedCornerShape(12.dp),
-      colors = fieldColors(),
   )
 }
 
@@ -307,12 +303,11 @@ private fun PasswordTextField(
     showPasswordDescription: String = stringResource(R.string.signup_show_password),
     hidePasswordDescription: String = stringResource(R.string.signup_hide_password),
 ) {
-  OutlinedTextField(
+  FestivarTextField(
       value = value,
       onValueChange = onValueChange,
-      modifier = Modifier.fillMaxWidth().testTag(tag),
-      label = { Text(label) },
-      singleLine = true,
+      label = label,
+      modifier = Modifier.testTag(tag),
       visualTransformation =
           if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
       keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -331,8 +326,6 @@ private fun PasswordTextField(
               }
             }
           },
-      shape = RoundedCornerShape(12.dp),
-      colors = fieldColors(),
   )
 }
 
@@ -363,16 +356,6 @@ private fun SignUpButton(
     )
   }
 }
-
-@Composable
-private fun fieldColors() =
-    OutlinedTextFieldDefaults.colors(
-        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-        focusedBorderColor = MaterialTheme.colorScheme.outline,
-        focusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-        cursorColor = MaterialTheme.colorScheme.onSurface,
-    )
 
 @Composable
 private fun SignUpTerms() {
