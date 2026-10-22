@@ -4,7 +4,6 @@ package com.android.festivar.ui.authentication.signup
 
 import android.annotation.SuppressLint
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -58,8 +57,6 @@ import com.android.festivar.R
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.theme.AppTheme
-import com.android.festivar.ui.theme.onSurfaceMutedDark
-import com.android.festivar.ui.theme.onSurfaceMutedLight
 import com.google.firebase.auth.FirebaseUser
 
 object SignUpScreenTestTags {
@@ -368,7 +365,7 @@ private fun SignUpTerms() {
   Text(
       text = stringResource(R.string.signup_terms),
       style = MaterialTheme.typography.bodySmall,
-      color = if (isSystemInDarkTheme()) onSurfaceMutedDark else onSurfaceMutedLight,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
   )
 }
 
