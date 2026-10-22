@@ -23,7 +23,6 @@ fun NavGraphBuilder.authGraph(
     SignUpScreen(
         viewModel = viewModel { SignUpViewModel(authRepository) },
         onSignInClick = navigator.onSignInClick,
-        onBackClick = navigator.onBackClick,
         onSignUpSuccess = navigator.onSignUpSuccess,
     )
   }

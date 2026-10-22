@@ -5,11 +5,9 @@ package com.android.festivar.navigation
 import androidx.navigation.NavHostController
 
 class SignUpNavigator(private val navController: NavHostController) {
+  // Also used for the back button as the only way to come to the sign up screen is from the login
+  // screen.
   val onSignInClick: () -> Unit = {
-    navController.popBackStack(AppScreens.Login.name, inclusive = false)
-  }
-
-  val onBackClick: () -> Unit = {
     navController.popBackStack(AppScreens.Login.name, inclusive = false)
   }
 
