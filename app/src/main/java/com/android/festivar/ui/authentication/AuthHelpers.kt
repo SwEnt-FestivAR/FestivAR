@@ -1,6 +1,6 @@
 package com.android.festivar.ui.authentication
 
-const val MIN_PASSWORD_LENGTH = 8
+private const val MIN_PASSWORD_LENGTH = 8
 
 /**
  * Checks if the provided email is valid.
