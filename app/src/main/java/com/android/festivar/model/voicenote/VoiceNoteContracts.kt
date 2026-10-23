@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
  *
  * - the recorder implements [VoiceRecorder];
  * - the storage implements [VocalNoteStorage];
- * - the UI implements [VoicePlayer] for playback and shows [RecorderState] and
+ * - the player implements [VoicePlayer] for playback, and the UI shows [RecorderState] and
  *   [PlayerState];
  * - the task details view model wires them together with the TasksRepository.
  */
