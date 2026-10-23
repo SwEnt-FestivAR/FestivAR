@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.task
 
 import com.android.festivar.model.user.User
@@ -264,6 +265,94 @@ class TaskTest {
       assertInvalid(estimatedTimeMessage) {
         Task(taskId = "t1", eventId = "e1", title = "Task", estimatedTime = duration)
       }
+    }
+  }
+
+  // ---------------------------------------------------------------------------------------- //
+  // Vocal notes
+  // ---------------------------------------------------------------------------------------- //
+
+  private fun vocalNote(id: String) =
+      VocalNote(id, "https://example.com/$id.m4a", Duration.ZERO, start)
+
+  private val bareTask = Task(taskId = "t1", eventId = "e1", title = "Task")
+
+  /** A task has no vocal note and no owner unless given. */
+  @Test
+  fun init_succeeds_withoutVocalNoteAndOwner() {
+    assertNull(bareTask.vocalNote)
+    assertNull(bareTask.ownerId)
+  }
+
+  /** A task keeps the vocal note and the owner it is given. */
+  @Test
+  fun init_succeeds_withVocalNoteAndOwner() {
+    val task = bareTask.copy(vocalNote = vocalNote("a"), ownerId = "owner")
+
+    assertEquals(vocalNote("a"), task.vocalNote)
+    assertEquals("owner", task.ownerId)
+  }
+
+  /** A blank ownerId is refused; null (no owner) is allowed. */
+  @Test
+  fun init_fails_whenOwnerIdIsBlank() {
+    for (blank in blankStrings) {
+      assertInvalid("The ownerId cannot be empty.") { bareTask.copy(ownerId = blank) }
+    }
+  }
+
+  /** Only the owner can manage the vocal note; a task without owner has no manager. */
+  @Test
+  fun canManageVocalNote_isTrueOnlyForTheOwner() {
+    val task = bareTask.copy(ownerId = "owner")
+
+    assertTrue(task.canManageVocalNote("owner"))
+    assertFalse(task.canManageVocalNote("someone"))
+    assertFalse(task.canManageVocalNote(""))
+    assertFalse(bareTask.canManageVocalNote("owner"))
+  }
+
+  /** Attaching a note returns a new task and leaves the original untouched. */
+  @Test
+  fun attachVocalNote_returnsATaskHoldingTheNote() {
+    val task = bareTask.attachVocalNote(vocalNote("a"))
+
+    assertEquals(vocalNote("a"), task.vocalNote)
+    assertNull(bareTask.vocalNote)
+  }
+
+  /** A task has only one note: attaching a second one fails until the first is removed. */
+  @Test
+  fun attachVocalNote_fails_whenTheTaskAlreadyHasOne() {
+    val task = bareTask.attachVocalNote(vocalNote("a"))
+
+    val exception =
+        assertThrows(IllegalStateException::class.java) { task.attachVocalNote(vocalNote("b")) }
+    assertEquals("The task already has a voice note.", exception.message)
+    assertEquals(vocalNote("b"), task.removeVocalNote().attachVocalNote(vocalNote("b")).vocalNote)
+  }
+
+  /** Removing the note returns a task without one. */
+  @Test
+  fun removeVocalNote_returnsATaskWithoutNote() {
+    assertNull(bareTask.attachVocalNote(vocalNote("a")).removeVocalNote().vocalNote)
+  }
+
+  /** There is nothing to remove from a task without note. */
+  @Test
+  fun removeVocalNote_fails_whenTheTaskHasNone() {
+    val exception = assertThrows(IllegalStateException::class.java) { bareTask.removeVocalNote() }
+    assertEquals("The task has no voice note.", exception.message)
+  }
+
+  /** The other changes of a task keep its vocal note and owner. */
+  @Test
+  fun otherChanges_keepVocalNoteAndOwner() {
+    val task = bareTask.copy(vocalNote = vocalNote("a"), ownerId = "owner")
+
+    for (changed in listOf(task.complete(), task.addAssignee(User("u1")))) {
+      assertEquals(vocalNote("a"), changed.vocalNote)
+      assertEquals("owner", changed.ownerId)
     }
   }
 

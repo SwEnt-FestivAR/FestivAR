@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.task
 
 import com.android.festivar.model.user.User
@@ -25,7 +26,11 @@ import java.time.LocalDateTime
  * - [maxAssign] is never lower than the number of [assignees];
  * - a [User] is assigned at most once, identified by its [User.uid] (no duplicates);
  * - [endTime] is not before [startTime];
- * - [estimatedTime] is not negative.
+ * - [estimatedTime] is not negative;
+ * - [ownerId] is not blank when it is set.
+ *
+ * A [Task] holds at most one [VocalNote]. Only its owner ([ownerId]) can attach or remove it; see
+ * [canManageVocalNote].
  *
  * @property taskId Unique identifier of the [Task].
  * @property eventId Identifier of the [Event] the [Task] belongs to.
@@ -40,6 +45,9 @@ import java.time.LocalDateTime
  * @property maxAssign Maximum number of people who can join or be assigned to the [Task].
  * @property assignees People who joined or were assigned the [Task].
  * @property completed Whether the [Task] has been completed.
+ * @property vocalNote The voice note of the [Task], or `null` if it has none.
+ * @property ownerId The [User.uid] of the task owner (the organizer who created it), or `null` for
+ *   a task saved before owners existed: nobody owns such a task.
  */
 data class Task(
     val taskId: String,
@@ -54,6 +62,8 @@ data class Task(
     val maxAssign: Int = 1,
     val assignees: List<User> = emptyList(),
     val completed: Boolean = false,
+    val vocalNote: VocalNote? = null,
+    val ownerId: String? = null,
 ) {
 
   init {
@@ -71,6 +81,35 @@ data class Task(
     require(estimatedTime == null || !estimatedTime.isNegative) {
       "estimatedTime cannot be negative."
     }
+    require(ownerId == null || ownerId.isNotBlank()) { "The ownerId cannot be empty." }
+  }
+
+  /**
+   * Whether the user [userId] may attach or remove the voice note: only the owner can.
+   *
+   * @param userId The [User.uid] of the user asking.
+   */
+  fun canManageVocalNote(userId: String): Boolean = ownerId != null && ownerId == userId
+
+  /**
+   * Attaches the voice note by returning a version of `this` holding [note]. A [Task] has only one
+   * voice note: to change it, call [removeVocalNote] first.
+   *
+   * @throws IllegalStateException If the [Task] already has a voice note.
+   */
+  fun attachVocalNote(note: VocalNote): Task {
+    check(vocalNote == null) { "The task already has a voice note." }
+    return copy(vocalNote = note)
+  }
+
+  /**
+   * Removes the voice note by returning a version of `this` without one.
+   *
+   * @throws IllegalStateException If the [Task] has no voice note.
+   */
+  fun removeVocalNote(): Task {
+    check(vocalNote != null) { "The task has no voice note." }
+    return copy(vocalNote = null)
   }
 
   /**
