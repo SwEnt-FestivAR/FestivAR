@@ -47,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -57,6 +58,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.credentials.CredentialManager
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.android.festivar.R
 import com.android.festivar.resources.GoogleLogo
 import com.android.festivar.ui.theme.AppTheme
 
@@ -99,7 +101,10 @@ fun LoginScreen(
               modifier = Modifier.testTag(LoginScreenTestTags.ERROR_MESSAGE),
               action = {
                 TextButton(onClick = { data.dismiss() }) {
-                  Text(text = "OK", color = MaterialTheme.colorScheme.primary)
+                  Text(
+                      text = stringResource(R.string.signup_snackbar_ok),
+                      color = MaterialTheme.colorScheme.primary,
+                  )
                 }
               },
           ) {
@@ -143,7 +148,7 @@ private fun LoginScreenContent(
       verticalArrangement = Arrangement.spacedBy(12.dp),
   ) {
     Text(
-        text = "FestivAR",
+        text = stringResource(R.string.app_name),
         color = MaterialTheme.colorScheme.onSurface,
         style = MaterialTheme.typography.titleLarge,
         modifier = Modifier.testTag(LoginScreenTestTags.TITLE),
@@ -153,7 +158,7 @@ private fun LoginScreenContent(
 
     LoginInputField(
         value = uiState.email,
-        label = "Email",
+        label = stringResource(R.string.signup_email),
         keyboardOptions =
             KeyboardOptions(
                 capitalization = KeyboardCapitalization.None,
@@ -166,7 +171,7 @@ private fun LoginScreenContent(
     )
     LoginInputField(
         value = uiState.password,
-        label = "Password",
+        label = stringResource(R.string.signup_password),
         keyboardOptions =
             KeyboardOptions(
                 capitalization = KeyboardCapitalization.None,
@@ -187,7 +192,8 @@ private fun LoginScreenContent(
                     if (uiState.isPasswordVisible) Icons.Default.Visibility
                     else Icons.Default.VisibilityOff,
                 contentDescription =
-                    if (uiState.isPasswordVisible) "Hide password" else "Show password",
+                    if (uiState.isPasswordVisible) stringResource(R.string.signup_hide_password)
+                    else stringResource(R.string.signup_show_password),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
           }
@@ -199,7 +205,7 @@ private fun LoginScreenContent(
 
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
       Text(
-          text = "Forgot password?",
+          text = stringResource(R.string.login_forgot_password),
           color = MaterialTheme.colorScheme.onPrimaryContainer,
           style = MaterialTheme.typography.labelMedium,
       )
@@ -221,7 +227,7 @@ private fun LoginScreenContent(
         )
       } else {
         Text(
-            text = "Sign in",
+            text = stringResource(R.string.signup_sign_in),
             color = MaterialTheme.colorScheme.onPrimary,
             style = MaterialTheme.typography.labelLarge,
         )
@@ -238,7 +244,7 @@ private fun LoginScreenContent(
           color = MaterialTheme.colorScheme.outlineVariant,
       )
       Text(
-          text = "or",
+          text = stringResource(R.string.login_or),
           color = MaterialTheme.colorScheme.onSurfaceVariant,
           style = MaterialTheme.typography.bodySmall,
           modifier = Modifier.padding(horizontal = 10.dp),
@@ -260,12 +266,12 @@ private fun LoginScreenContent(
         modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
     ) {
       Text(
-          text = "New here? ",
+          text = stringResource(R.string.login_new_here),
           color = MaterialTheme.colorScheme.onSurfaceVariant,
           style = MaterialTheme.typography.bodySmall,
       )
       Text(
-          text = "Create an account",
+          text = stringResource(R.string.signup_title),
           color = MaterialTheme.colorScheme.onPrimaryContainer,
           style = MaterialTheme.typography.labelMedium,
           modifier =
@@ -294,7 +300,7 @@ private fun GoogleSignInButton(onClick: () -> Unit, enabled: Boolean) {
     Row(verticalAlignment = Alignment.CenterVertically) {
       Image(imageVector = GoogleLogo, contentDescription = null, modifier = Modifier.size(18.dp))
       Text(
-          text = "Continue with Google",
+          text = stringResource(R.string.login_continue_with_google),
           color = MaterialTheme.colorScheme.onSurface,
           style = MaterialTheme.typography.labelLarge,
           modifier = Modifier.padding(start = 8.dp),
