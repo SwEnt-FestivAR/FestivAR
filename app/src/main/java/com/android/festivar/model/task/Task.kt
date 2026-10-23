@@ -30,9 +30,8 @@ import java.time.LocalDateTime
  * - [estimatedTime] is not negative;
  * - [ownerId] is not blank when it is set.
  *
- * A [Task] holds at most one [VocalNote]. Only its owner ([ownerId]) may attach or remove it, but
- * [attachVocalNote] and [removeVocalNote] do not check it: the caller must test
- * [canManageVocalNote] first.
+ * A [Task] holds at most one [VocalNote]. Only its owner ([ownerId]) may attach or remove it:
+ * [attachVocalNote] and [removeVocalNote] refuse any other user.
  *
  * @property taskId Unique identifier of the [Task].
  * @property eventId Identifier of the [Event] the [Task] belongs to.
@@ -87,7 +86,8 @@ data class Task(
   }
 
   /**
-   * Whether the user [userId] may attach or remove the voice note: only the owner can.
+   * Whether the user [userId] may attach or remove the voice note: only the owner can. Lets the
+   * screen hide the buttons; [attachVocalNote] and [removeVocalNote] enforce it anyway.
    *
    * @param userId The [User.uid] of the user asking.
    */
@@ -97,9 +97,12 @@ data class Task(
    * Attaches the voice note by returning a version of `this` holding [note]. A [Task] has only one
    * voice note: to change it, call [removeVocalNote] first.
    *
-   * @throws IllegalStateException If the [Task] already has a voice note.
+   * @param userId The [User.uid] of the user attaching the note.
+   * @throws IllegalStateException If [userId] is not the owner, or if the [Task] already has a
+   *   voice note.
    */
-  fun attachVocalNote(note: VocalNote): Task {
+  fun attachVocalNote(note: VocalNote, userId: String): Task {
+    check(canManageVocalNote(userId)) { "Only the owner can attach a voice note." }
     check(vocalNote == null) { "The task already has a voice note." }
     return copy(vocalNote = note)
   }
@@ -107,9 +110,11 @@ data class Task(
   /**
    * Removes the voice note by returning a version of `this` without one.
    *
-   * @throws IllegalStateException If the [Task] has no voice note.
+   * @param userId The [User.uid] of the user removing the note.
+   * @throws IllegalStateException If [userId] is not the owner, or if the [Task] has no voice note.
    */
-  fun removeVocalNote(): Task {
+  fun removeVocalNote(userId: String): Task {
+    check(canManageVocalNote(userId)) { "Only the owner can remove a voice note." }
     check(vocalNote != null) { "The task has no voice note." }
     return copy(vocalNote = null)
   }

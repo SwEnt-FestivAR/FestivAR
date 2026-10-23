@@ -277,6 +277,7 @@ class TaskTest {
       VocalNote(id, "https://example.com/$id.m4a", Duration.ZERO, start)
 
   private val bareTask = Task(taskId = "t1", eventId = "e1", title = "Task")
+  private val ownedTask = bareTask.copy(ownerId = "owner")
 
   /** A task has no vocal note and no owner unless given. */
   @Test
@@ -307,41 +308,71 @@ class TaskTest {
   /** Attaching a note returns a new task and leaves the original untouched. */
   @Test
   fun attachVocalNote_returnsATaskHoldingTheNote() {
-    val task = bareTask.attachVocalNote(vocalNote("a"))
+    val task = ownedTask.attachVocalNote(vocalNote("a"), "owner")
 
     assertEquals(vocalNote("a"), task.vocalNote)
-    assertNull(bareTask.vocalNote)
+    assertNull(ownedTask.vocalNote)
   }
 
   /** A task has only one note: attaching a second one fails. */
   @Test
   fun attachVocalNote_fails_whenTheTaskAlreadyHasOne() {
-    val task = bareTask.attachVocalNote(vocalNote("a"))
+    val task = ownedTask.attachVocalNote(vocalNote("a"), "owner")
 
     val exception =
-        assertThrows(IllegalStateException::class.java) { task.attachVocalNote(vocalNote("b")) }
+        assertThrows(IllegalStateException::class.java) {
+          task.attachVocalNote(vocalNote("b"), "owner")
+        }
     assertEquals("The task already has a voice note.", exception.message)
+  }
+
+  /** Only the owner can attach a note; a task without owner accepts nobody. */
+  @Test
+  fun attachVocalNote_fails_whenTheUserIsNotTheOwner() {
+    for (task in listOf(ownedTask, bareTask)) {
+      val exception =
+          assertThrows(IllegalStateException::class.java) {
+            task.attachVocalNote(vocalNote("a"), "someone")
+          }
+      assertEquals("Only the owner can attach a voice note.", exception.message)
+    }
   }
 
   /** The note can be replaced by removing the first one. */
   @Test
   fun attachVocalNote_succeeds_afterTheNoteWasRemoved() {
-    val task = bareTask.attachVocalNote(vocalNote("a"))
+    val task = ownedTask.attachVocalNote(vocalNote("a"), "owner")
 
-    assertEquals(vocalNote("b"), task.removeVocalNote().attachVocalNote(vocalNote("b")).vocalNote)
+    val replaced = task.removeVocalNote("owner").attachVocalNote(vocalNote("b"), "owner")
+
+    assertEquals(vocalNote("b"), replaced.vocalNote)
   }
 
   /** Removing the note returns a task without one. */
   @Test
   fun removeVocalNote_returnsATaskWithoutNote() {
-    assertNull(bareTask.attachVocalNote(vocalNote("a")).removeVocalNote().vocalNote)
+    val task = ownedTask.attachVocalNote(vocalNote("a"), "owner")
+
+    assertNull(task.removeVocalNote("owner").vocalNote)
   }
 
   /** There is nothing to remove from a task without note. */
   @Test
   fun removeVocalNote_fails_whenTheTaskHasNone() {
-    val exception = assertThrows(IllegalStateException::class.java) { bareTask.removeVocalNote() }
+    val exception =
+        assertThrows(IllegalStateException::class.java) { ownedTask.removeVocalNote("owner") }
     assertEquals("The task has no voice note.", exception.message)
+  }
+
+  /** Only the owner can remove the note, and it stays on the task otherwise. */
+  @Test
+  fun removeVocalNote_fails_whenTheUserIsNotTheOwner() {
+    val task = ownedTask.attachVocalNote(vocalNote("a"), "owner")
+
+    val exception =
+        assertThrows(IllegalStateException::class.java) { task.removeVocalNote("someone") }
+    assertEquals("Only the owner can remove a voice note.", exception.message)
+    assertEquals(vocalNote("a"), task.vocalNote)
   }
 
   /** The other changes of a task keep its vocal note and owner. */
