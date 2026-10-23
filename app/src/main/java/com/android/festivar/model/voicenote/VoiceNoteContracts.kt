@@ -16,7 +16,10 @@ import kotlinx.coroutines.flow.StateFlow
  * - the task details view model wires them together with the TasksRepository.
  */
 
-/** A finished recording, waiting to be uploaded. */
+/**
+ * A finished recording, waiting to be uploaded. The [file] is only a handle: the model never opens
+ * it.
+ */
 data class RecordedAudio(val file: File, val duration: Duration) {
   init {
     require(!duration.isNegative) { "The duration cannot be negative." }

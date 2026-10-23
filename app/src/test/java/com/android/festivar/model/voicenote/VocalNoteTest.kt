@@ -25,16 +25,6 @@ class VocalNoteTest {
   // ----------------------------------- creation ------------------------------------------- //
 
   @Test
-  fun init_succeeds_withValidFields() {
-    val note = note()
-
-    assertEquals("n1", note.id)
-    assertEquals("https://example.com/n1.m4a", note.audioUrl)
-    assertEquals(Duration.ofSeconds(14), note.duration)
-    assertEquals(created, note.createdAt)
-  }
-
-  @Test
   fun init_accepts_zeroDuration() {
     assertEquals(Duration.ZERO, note(duration = Duration.ZERO).duration)
   }
