@@ -79,6 +79,8 @@ interface VocalNoteStorage {
    * Deletes the audio file at [audioUrl], a URL returned by [upload].
    *
    * Deleting a file that does not exist is not an error.
+   *
+   * @throws java.io.IOException if the storage cannot be reached or refuses the deletion.
    */
   suspend fun delete(audioUrl: String)
 }
