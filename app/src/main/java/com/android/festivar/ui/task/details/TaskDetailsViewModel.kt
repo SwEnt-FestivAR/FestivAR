@@ -278,7 +278,8 @@ class TaskDetailsViewModel(
       var url: String? = null
       try {
         url = storage.upload(task.taskId, audio)
-        val updated = task.attachVocalNote(VocalNote(newId(), url, audio.duration, now()))
+        val updated =
+            task.attachVocalNote(VocalNote(newId(), url, audio.duration, now()), currentUser.uid)
         repository.editTask(taskId, updated)
         pendingAudio = null
         audio.file.delete()
@@ -343,7 +344,7 @@ class TaskDetailsViewModel(
     val note = task.vocalNote ?: return
     viewModelScope.launch {
       try {
-        val updated = task.removeVocalNote()
+        val updated = task.removeVocalNote(currentUser.uid)
         repository.editTask(taskId, updated)
         if ((player?.state?.value as? PlayerState.Playing)?.audioUrl == note.audioUrl) {
           player?.stop()
