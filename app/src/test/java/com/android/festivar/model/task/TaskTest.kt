@@ -3,6 +3,7 @@
 package com.android.festivar.model.task
 
 import com.android.festivar.model.user.User
+import com.android.festivar.model.voicenote.VocalNote
 import java.time.Duration
 import java.time.LocalDateTime
 import junit.framework.TestCase.assertEquals
