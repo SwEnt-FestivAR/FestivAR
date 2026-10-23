@@ -33,8 +33,8 @@ class LoginViewModelTest {
   private val viewModel = LoginViewModel(authRepository)
 
   @Test
-  fun initiallyHasNoUser() {
-    assertNull(viewModel.uiState.value.user)
+  fun initiallyIsNotSignedIn() {
+    assertFalse(viewModel.uiState.value.isSignedIn)
   }
 
   @Test
@@ -58,7 +58,7 @@ class LoginViewModelTest {
     shadowOf(Looper.getMainLooper()).idle()
 
     assertFalse(viewModel.uiState.value.isLoading)
-    assertEquals(user, viewModel.uiState.value.user)
+    assertTrue(viewModel.uiState.value.isSignedIn)
     assertNull(viewModel.uiState.value.errorMsg)
     coVerify(exactly = 1) {
       authRepository.signInWithEmailAndPassword("user@example.com", "secret")
@@ -104,7 +104,7 @@ class LoginViewModelTest {
     viewModel.signIn()
     shadowOf(Looper.getMainLooper()).idle()
 
-    assertNull(viewModel.uiState.value.user)
+    assertFalse(viewModel.uiState.value.isSignedIn)
     assertFalse(viewModel.uiState.value.isLoading)
     assertEquals(
         "Unable to sign in. Check your details and try again.",
@@ -128,7 +128,7 @@ class LoginViewModelTest {
     result.complete(Result.success(user))
     shadowOf(Looper.getMainLooper()).idle()
 
-    assertEquals(user, viewModel.uiState.value.user)
+    assertTrue(viewModel.uiState.value.isSignedIn)
     assertFalse(viewModel.uiState.value.isLoading)
     coVerify(exactly = 1) {
       authRepository.signInWithEmailAndPassword("user@example.com", "secret")
@@ -170,7 +170,7 @@ class LoginViewModelTest {
     viewModel.signInWithGoogle(context, credentialManager)
     shadowOf(Looper.getMainLooper()).idle()
 
-    assertEquals(user, viewModel.uiState.value.user)
+    assertTrue(viewModel.uiState.value.isSignedIn)
     assertFalse(viewModel.uiState.value.isLoading)
     coVerify(exactly = 1) { authRepository.signInWithGoogle(credential) }
   }
@@ -268,7 +268,7 @@ class LoginViewModelTest {
     result.complete(Result.success(user))
     shadowOf(Looper.getMainLooper()).idle()
 
-    assertEquals(user, viewModel.uiState.value.user)
+    assertTrue(viewModel.uiState.value.isSignedIn)
     assertFalse(viewModel.uiState.value.isLoading)
     coVerify(exactly = 1) { authRepository.signInWithGoogle(credential) }
   }

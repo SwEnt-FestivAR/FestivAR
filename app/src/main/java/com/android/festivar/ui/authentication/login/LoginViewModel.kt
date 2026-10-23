@@ -28,7 +28,7 @@ data class LoginUIState(
     val isPasswordVisible: Boolean = false,
     val isLoading: Boolean = false,
     val errorMsg: String? = null,
-    val user: FirebaseUser? = null,
+    val isSignedIn: Boolean = false,
 )
 
 /** Handles email and Google authentication for the login screen. */
@@ -102,10 +102,10 @@ class LoginViewModel(private val authRepository: AuthRepository = AuthRepository
       val result = runRepositoryCall(operation)
       _uiState.update { state ->
         result.fold(
-            onSuccess = { user ->
+            onSuccess = {
               state.copy(
                   isLoading = false,
-                  user = user,
+                  isSignedIn = true,
               )
             },
             onFailure = { state.copy(isLoading = false, errorMsg = it.errorMessage()) },

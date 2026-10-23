@@ -61,14 +61,14 @@ import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.theme.AppTheme
 
 internal object LoginScreenTestTags {
-  const val TITLE = "login_title"
-  const val EMAIL_INPUT = "login_email_input"
-  const val PASSWORD_INPUT = "login_password_input"
-  const val LOGIN_BUTTON = "login_button"
-  const val GOOGLE_BUTTON = "google_sign_in_button"
-  const val ERROR_MESSAGE = "login_error"
+  const val TITLE = "loginTitle"
+  const val EMAIL_INPUT = "loginEmailInput"
+  const val PASSWORD_INPUT = "loginPasswordInput"
+  const val LOGIN_BUTTON = "loginButton"
+  const val GOOGLE_BUTTON = "googleSignInButton"
+  const val ERROR_MESSAGE = "loginError"
 
-  const val CREATE_ACC_BUTTON = "create_account_button"
+  const val CREATE_ACC_BUTTON = "createAccountButton"
 }
 
 /** Displays login fields and handles authentication events. */
@@ -83,7 +83,7 @@ fun LoginScreen(
   val context = LocalContext.current
   val uiState by viewModel.uiState.collectAsState()
   val snackbarHostState = remember { SnackbarHostState() }
-  LaunchedEffect(uiState.user) { if (uiState.user != null) onSignedIn() }
+  LaunchedEffect(uiState.isSignedIn) { if (uiState.isSignedIn) onSignedIn() }
   LaunchedEffect(uiState.errorMsg) {
     uiState.errorMsg?.let { error ->
       snackbarHostState.showSnackbar(error)
