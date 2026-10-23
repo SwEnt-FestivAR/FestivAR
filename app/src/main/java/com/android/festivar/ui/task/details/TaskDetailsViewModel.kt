@@ -10,11 +10,11 @@ import com.android.festivar.R
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryProvider
-import com.android.festivar.model.task.VocalNote
 import com.android.festivar.model.user.User
 import com.android.festivar.model.voicenote.PlayerState
 import com.android.festivar.model.voicenote.RecordedAudio
 import com.android.festivar.model.voicenote.RecorderState
+import com.android.festivar.model.voicenote.VocalNote
 import com.android.festivar.model.voicenote.VocalNoteStorage
 import com.android.festivar.model.voicenote.VoicePlayer
 import com.android.festivar.model.voicenote.VoiceRecorder

@@ -4,10 +4,10 @@ package com.android.festivar.ui.task.details
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
 import com.android.festivar.model.task.Task
-import com.android.festivar.model.task.VocalNote
 import com.android.festivar.model.user.User
 import com.android.festivar.model.voicenote.PlayerState
 import com.android.festivar.model.voicenote.RecorderState
+import com.android.festivar.model.voicenote.VocalNote
 import com.android.festivar.model.voicenote.VoiceRecorderException
 import java.io.IOException
 import java.time.Duration
