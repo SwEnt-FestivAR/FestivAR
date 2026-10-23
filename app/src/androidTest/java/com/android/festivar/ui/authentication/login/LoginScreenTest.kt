@@ -70,7 +70,9 @@ class LoginScreenTest {
     composeTestRule.onNodeWithTag(LoginScreenTestTags.LOGIN_BUTTON).performClick()
 
     composeTestRule.onNodeWithTag(LoginScreenTestTags.ERROR_MESSAGE).assertIsDisplayed()
-    composeTestRule.onNodeWithText("Not used in this UI test").assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText("Unable to sign in. Check your details and try again.")
+        .assertIsDisplayed()
   }
 
   @Test
@@ -83,9 +85,15 @@ class LoginScreenTest {
       )
     }
 
+    composeTestRule
+        .onNodeWithTag(LoginScreenTestTags.EMAIL_INPUT)
+        .performTextInput("user@example.com")
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.PASSWORD_INPUT).performTextInput("secret")
     composeTestRule.onNodeWithTag(LoginScreenTestTags.PASSWORD_INPUT).performImeAction()
 
-    composeTestRule.onNodeWithText("Not used in this UI test").assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText("Unable to sign in. Check your details and try again.")
+        .assertIsDisplayed()
   }
 
   @Test
