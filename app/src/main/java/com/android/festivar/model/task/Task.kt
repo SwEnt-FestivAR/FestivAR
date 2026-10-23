@@ -30,8 +30,9 @@ import java.time.LocalDateTime
  * - [estimatedTime] is not negative;
  * - [ownerId] is not blank when it is set.
  *
- * A [Task] holds at most one [VocalNote]. Only its owner ([ownerId]) can attach or remove it; see
- * [canManageVocalNote].
+ * A [Task] holds at most one [VocalNote]. Only its owner ([ownerId]) may attach or remove it, but
+ * [attachVocalNote] and [removeVocalNote] do not check it: the caller must test
+ * [canManageVocalNote] first.
  *
  * @property taskId Unique identifier of the [Task].
  * @property eventId Identifier of the [Event] the [Task] belongs to.
@@ -90,7 +91,7 @@ data class Task(
    *
    * @param userId The [User.uid] of the user asking.
    */
-  fun canManageVocalNote(userId: String): Boolean = ownerId != null && ownerId == userId
+  fun canManageVocalNote(userId: String): Boolean = ownerId == userId
 
   /**
    * Attaches the voice note by returning a version of `this` holding [note]. A [Task] has only one

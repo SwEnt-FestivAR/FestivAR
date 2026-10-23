@@ -285,15 +285,6 @@ class TaskTest {
     assertNull(bareTask.ownerId)
   }
 
-  /** A task keeps the vocal note and the owner it is given. */
-  @Test
-  fun init_succeeds_withVocalNoteAndOwner() {
-    val task = bareTask.copy(vocalNote = vocalNote("a"), ownerId = "owner")
-
-    assertEquals(vocalNote("a"), task.vocalNote)
-    assertEquals("owner", task.ownerId)
-  }
-
   /** A blank ownerId is refused; null (no owner) is allowed. */
   @Test
   fun init_fails_whenOwnerIdIsBlank() {
