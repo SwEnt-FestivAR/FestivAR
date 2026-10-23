@@ -7,7 +7,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.task.Task
-import com.android.festivar.model.task.VocalNote
+import com.android.festivar.model.voicenote.VocalNote
 import com.android.festivar.ui.theme.AppTheme
 import com.android.festivar.ui.voicenote.VoiceNoteCallbacks
 import com.android.festivar.ui.voicenote.VoiceNoteTestTags
