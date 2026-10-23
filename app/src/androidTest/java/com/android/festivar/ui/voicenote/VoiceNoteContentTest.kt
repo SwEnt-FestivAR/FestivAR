@@ -167,8 +167,11 @@ class VoiceNoteContentTest {
   @Test
   fun deniedMicrophoneShowsTheNoteAndDisablesRecording() {
     show(VoiceNoteUiState(canManage = true, micDenied = true))
-    tag(VoiceNoteTestTags.MIC_DENIED)
-        .assertTextContains("Microphone is off for FestivAR", substring = true)
+    // The tag is on the card and the text is in a child node, so each is checked on its own.
+    tag(VoiceNoteTestTags.MIC_DENIED).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText("Microphone is off for FestivAR", substring = true)
+        .assertIsDisplayed()
     tag(VoiceNoteTestTags.OPEN_SETTINGS).performClick()
     tag(VoiceNoteTestTags.VOICE_NOTE_RECORD).performTouchInput {
       down(center)
