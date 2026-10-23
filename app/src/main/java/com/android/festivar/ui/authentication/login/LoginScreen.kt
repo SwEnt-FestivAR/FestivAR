@@ -4,7 +4,6 @@ package com.android.festivar.ui.authentication.login
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -31,7 +30,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
@@ -48,7 +46,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -60,6 +57,7 @@ import androidx.credentials.CredentialManager
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.R
 import com.android.festivar.resources.GoogleLogo
+import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.theme.AppTheme
 
 internal object LoginScreenTestTags {
@@ -156,22 +154,23 @@ private fun LoginScreenContent(
 
     Spacer(modifier = Modifier.height(20.dp))
 
-    LoginInputField(
+    FestivarTextField(
         value = uiState.email,
+        onValueChange = onEmailChange,
         label = stringResource(R.string.signup_email),
+        modifier = Modifier.fillMaxWidth().testTag(LoginScreenTestTags.EMAIL_INPUT),
         keyboardOptions =
             KeyboardOptions(
                 capitalization = KeyboardCapitalization.None,
                 keyboardType = KeyboardType.Email,
                 imeAction = ImeAction.Next,
             ),
-        onValueChange = onEmailChange,
-        testTag = LoginScreenTestTags.EMAIL_INPUT,
-        modifier = Modifier.fillMaxWidth(),
     )
-    LoginInputField(
+    FestivarTextField(
         value = uiState.password,
+        onValueChange = onPasswordChange,
         label = stringResource(R.string.signup_password),
+        modifier = Modifier.fillMaxWidth().testTag(LoginScreenTestTags.PASSWORD_INPUT),
         keyboardOptions =
             KeyboardOptions(
                 capitalization = KeyboardCapitalization.None,
@@ -179,6 +178,7 @@ private fun LoginScreenContent(
                 imeAction = ImeAction.Done,
             ),
         keyboardActions = KeyboardActions(onDone = { onLoginClick() }),
+        singleLine = true,
         visualTransformation =
             if (uiState.isPasswordVisible) {
               VisualTransformation.None
@@ -198,9 +198,6 @@ private fun LoginScreenContent(
             )
           }
         },
-        onValueChange = onPasswordChange,
-        testTag = LoginScreenTestTags.PASSWORD_INPUT,
-        modifier = Modifier.fillMaxWidth(),
     )
 
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -270,14 +267,16 @@ private fun LoginScreenContent(
           color = MaterialTheme.colorScheme.onSurfaceVariant,
           style = MaterialTheme.typography.bodySmall,
       )
-      Text(
-          text = stringResource(R.string.signup_title),
-          color = MaterialTheme.colorScheme.onPrimaryContainer,
-          style = MaterialTheme.typography.labelMedium,
-          modifier =
-              Modifier.clickable(role = Role.Button, onClick = onSignUpClick)
-                  .testTag(LoginScreenTestTags.CREATE_ACC_BUTTON),
-      )
+      TextButton(
+          onClick = onSignUpClick,
+          modifier = Modifier.testTag(LoginScreenTestTags.CREATE_ACC_BUTTON),
+      ) {
+        Text(
+            text = stringResource(R.string.signup_title),
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            style = MaterialTheme.typography.labelMedium,
+        )
+      }
     }
   }
 }
@@ -307,33 +306,6 @@ private fun GoogleSignInButton(onClick: () -> Unit, enabled: Boolean) {
       )
     }
   }
-}
-
-@Composable
-private fun LoginInputField(
-    value: String,
-    label: String,
-    keyboardOptions: KeyboardOptions,
-    keyboardActions: KeyboardActions = KeyboardActions.Default,
-    onValueChange: (String) -> Unit,
-    testTag: String,
-    modifier: Modifier = Modifier,
-    visualTransformation: VisualTransformation = VisualTransformation.None,
-    trailingIcon: (@Composable () -> Unit)? = null,
-) {
-  OutlinedTextField(
-      value = value,
-      onValueChange = onValueChange,
-      singleLine = true,
-      keyboardOptions = keyboardOptions,
-      keyboardActions = keyboardActions,
-      visualTransformation = visualTransformation,
-      trailingIcon = trailingIcon,
-      label = { Text(label) },
-      textStyle = MaterialTheme.typography.bodyLarge,
-      shape = RoundedCornerShape(12.dp),
-      modifier = modifier.height(56.dp).testTag(testTag),
-  )
 }
 
 @Preview(showBackground = true, widthDp = 290, heightDp = 638)

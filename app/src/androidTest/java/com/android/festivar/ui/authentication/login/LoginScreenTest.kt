@@ -1,6 +1,7 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.ui.authentication.login
 
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
@@ -10,6 +11,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextInput
 import androidx.credentials.Credential
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -17,6 +19,7 @@ import com.android.festivar.model.authentication.AuthRepository
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -68,6 +71,40 @@ class LoginScreenTest {
 
     composeTestRule.onNodeWithTag(LoginScreenTestTags.ERROR_MESSAGE).assertIsDisplayed()
     composeTestRule.onNodeWithText("Not used in this UI test").assertIsDisplayed()
+  }
+
+  @Test
+  fun passwordDoneImeActionSignsIn() {
+    val loginViewModel = LoginViewModel(UnusedAuthRepository)
+    composeTestRule.setContent {
+      LoginScreen(
+          viewModel = loginViewModel,
+          onSignUpClick = {},
+      )
+    }
+
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.PASSWORD_INPUT).performImeAction()
+
+    composeTestRule.onNodeWithText("Not used in this UI test").assertIsDisplayed()
+  }
+
+  @Test
+  fun createAccountFooterUsesButtonAndNavigatesOnClick() {
+    var signUpClicked = false
+    val loginViewModel = LoginViewModel(UnusedAuthRepository)
+    composeTestRule.setContent {
+      LoginScreen(
+          viewModel = loginViewModel,
+          onSignUpClick = { signUpClicked = true },
+      )
+    }
+
+    composeTestRule
+        .onNodeWithTag(LoginScreenTestTags.CREATE_ACC_BUTTON)
+        .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+        .performClick()
+
+    composeTestRule.runOnIdle { assertTrue(signUpClicked) }
   }
 
   @Test
