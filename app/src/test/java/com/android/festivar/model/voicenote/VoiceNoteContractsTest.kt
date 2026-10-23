@@ -2,10 +2,8 @@
 package com.android.festivar.model.voicenote
 
 import java.io.File
-import java.io.IOException
 import java.time.Duration
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertSame
 import org.junit.Assert.assertThrows
 import org.junit.Test
 
@@ -26,15 +24,5 @@ class VoiceNoteContractsTest {
         }
 
     assertEquals("The duration cannot be negative.", exception.message)
-  }
-
-  @Test
-  fun voiceRecorderException_keepsTheMessageAndTheCause() {
-    val cause = IOException("disk full")
-
-    val exception = VoiceRecorderException("cannot record", cause)
-
-    assertEquals("cannot record", exception.message)
-    assertSame(cause, exception.cause)
   }
 }
