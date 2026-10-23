@@ -1,9 +1,9 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.voicenote
 
-import com.android.festivar.model.task.VocalNote
 import com.android.festivar.model.voicenote.PlayerState
 import com.android.festivar.model.voicenote.RecorderState
+import com.android.festivar.model.voicenote.VocalNote
 import java.time.Duration
 import java.time.LocalDateTime
 import org.junit.Assert.assertEquals
