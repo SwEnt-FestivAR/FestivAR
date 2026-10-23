@@ -313,7 +313,7 @@ class TaskTest {
     assertNull(bareTask.vocalNote)
   }
 
-  /** A task has only one note: attaching a second one fails until the first is removed. */
+  /** A task has only one note: attaching a second one fails. */
   @Test
   fun attachVocalNote_fails_whenTheTaskAlreadyHasOne() {
     val task = bareTask.attachVocalNote(vocalNote("a"))
@@ -321,6 +321,13 @@ class TaskTest {
     val exception =
         assertThrows(IllegalStateException::class.java) { task.attachVocalNote(vocalNote("b")) }
     assertEquals("The task already has a voice note.", exception.message)
+  }
+
+  /** The note can be replaced by removing the first one. */
+  @Test
+  fun attachVocalNote_succeeds_afterTheNoteWasRemoved() {
+    val task = bareTask.attachVocalNote(vocalNote("a"))
+
     assertEquals(vocalNote("b"), task.removeVocalNote().attachVocalNote(vocalNote("b")).vocalNote)
   }
 

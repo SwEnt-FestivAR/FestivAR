@@ -9,9 +9,9 @@ import kotlinx.coroutines.flow.StateFlow
  * Contracts between the voice note modules. Each module implements or uses only these types, so
  * the modules never depend on each other's code:
  *
- * - recording (issue 208) implements [VoiceRecorder];
- * - storage (issue 209) implements [VocalNoteStorage];
- * - the UI (issue 207) implements [VoicePlayer] for playback and shows [RecorderState] and
+ * - the recorder implements [VoiceRecorder];
+ * - the storage implements [VocalNoteStorage];
+ * - the UI implements [VoicePlayer] for playback and shows [RecorderState] and
  *   [PlayerState];
  * - the task details view model wires them together with the TasksRepository.
  */
@@ -28,7 +28,7 @@ sealed interface RecorderState {
   /** Not recording. */
   data object Idle : RecorderState
 
-  /** Recording since [elapsed]. */
+  /** Recording for [elapsed]. */
   data class Recording(val elapsed: Duration) : RecorderState
 }
 
@@ -68,7 +68,7 @@ interface VocalNoteStorage {
   /**
    * Uploads [audio] for the task [taskId] and returns the URL where it can be played from.
    *
-   * Implementations backed by a remote storage throw when it cannot be reached.
+   * @throws java.io.IOException if the storage cannot be reached or refuses the file.
    */
   suspend fun upload(taskId: String, audio: RecordedAudio): String
 
