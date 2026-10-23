@@ -13,6 +13,7 @@ import com.android.festivar.model.task.TasksRepositoryProvider
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.FieldError
 import java.time.LocalTime
+import java.time.ZonedDateTime
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,7 +22,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
-import java.time.ZonedDateTime
 
 /**
  * Everything the user typed in the Create task form, plus the rules that decide whether it can be
@@ -31,22 +31,22 @@ import java.time.ZonedDateTime
  * [END_OF_DAY]. So a start on Saturday at 09:30 and an end date of Saturday is a valid task.
  */
 data class CreateTaskUiState(
-  val title: String = "",
-  val description: String = "",
-  val location: String = "",
-  val startDate: ZonedDateTime? = null,
-  val startTime: LocalTime? = null,
-  val endDate: ZonedDateTime? = null,
-  val endTime: LocalTime? = null,
+    val title: String = "",
+    val description: String = "",
+    val location: String = "",
+    val startDate: ZonedDateTime? = null,
+    val startTime: LocalTime? = null,
+    val endDate: ZonedDateTime? = null,
+    val endTime: LocalTime? = null,
     // The field whose picker dialog is open, or null when none is.
-  val openPicker: DateTimeField? = null,
-  val titleEdited: Boolean = false,
+    val openPicker: DateTimeField? = null,
+    val titleEdited: Boolean = false,
     // True while the task is being saved. It keeps a second tap on "Create task" from saving the
     // task twice (see canCreate).
-  val isSaving: Boolean = false,
-  val isCreated: Boolean = false,
+    val isSaving: Boolean = false,
+    val isCreated: Boolean = false,
     // String resource of the error to show (see R.string.create_task_error_save_failed), or null.
-  @StringRes val errorMsg: Int? = null,
+    @StringRes val errorMsg: Int? = null,
 ) {
   val startDateTime: ZonedDateTime?
     get() = startDate?.with(startTime ?: START_OF_DAY)

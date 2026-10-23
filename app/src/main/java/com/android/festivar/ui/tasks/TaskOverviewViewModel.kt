@@ -10,6 +10,7 @@ import java.time.Clock
 import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZonedDateTime
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -22,7 +23,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import java.time.ZonedDateTime
 
 /** The overview's single-select filter chips. */
 enum class OverviewFilter {
@@ -191,7 +191,7 @@ class TaskOverviewViewModel(
         .flatMap { listOf(it.startTime!!.minusHours(1), endOf(it)) }
         .filter { it.isAfter(now) }
         .plus(midnight)
-        .minBy { it.toInstant()}
+        .minBy { it.toInstant() }
   }
 
   /** Whether the signed-in user holds [task]; always false with nobody signed in. */
@@ -255,8 +255,8 @@ class TaskOverviewViewModel(
 
   /** When a started task stops being under way: its end, or midnight of its start day. */
   private fun endOf(task: Task): ZonedDateTime {
-      val start = task.startTime!!
-      return task.endTime ?: start.toLocalDate().plusDays(1).atStartOfDay(start.zone)
+    val start = task.startTime!!
+    return task.endTime ?: start.toLocalDate().plusDays(1).atStartOfDay(start.zone)
   }
 
   /** Which day a task's section sits under, then which part of that day. */

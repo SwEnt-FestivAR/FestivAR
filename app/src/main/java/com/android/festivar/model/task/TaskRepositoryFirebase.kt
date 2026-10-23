@@ -5,10 +5,10 @@ import com.android.festivar.model.user.UserRepositoryFirebase
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import java.time.Duration
+import java.time.ZonedDateTime
 import java.util.UUID
 import kotlin.collections.map
 import kotlinx.coroutines.tasks.await
-import java.time.ZonedDateTime
 
 const val TASK_COLLECTION_PATH = "tasks"
 

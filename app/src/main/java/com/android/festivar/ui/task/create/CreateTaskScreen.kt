@@ -104,10 +104,9 @@ fun CreateTaskScreen(
               onDescriptionChange = viewModel::updateDescription,
               onLocationChange = viewModel::updateLocation,
               onShowPicker = viewModel::showPicker,
-              onDatePicked = {
-                  date ->
-                    viewModel.pickDate(date.atStartOfDay(ZoneId.systemDefault()))
-                 },
+              onDatePicked = { date ->
+                viewModel.pickDate(date.atStartOfDay(ZoneId.systemDefault()))
+              },
               onTimePicked = viewModel::pickTime,
               onCreate = { viewModel.createTask(eventId) },
           ),
@@ -237,12 +236,13 @@ fun CreateTaskContent(
 
   FestivarDateTimePickerDialog(
       field = state.openPicker,
-      range = DateTimeRange(
-          state.startDate?.toLocalDate(),
-          state.startTime,
-          state.endDate?.toLocalDate(),
-          state.endTime
-      ),
+      range =
+          DateTimeRange(
+              state.startDate?.toLocalDate(),
+              state.startTime,
+              state.endDate?.toLocalDate(),
+              state.endTime,
+          ),
       onDatePicked = actions.onDatePicked,
       onTimePicked = actions.onTimePicked,
       onDismiss = { actions.onShowPicker(null) },
