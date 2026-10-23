@@ -1,5 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
-package com.android.festivar.model.task
+package com.android.festivar.model.voicenote
 
 import java.time.Duration
 import java.time.LocalDateTime

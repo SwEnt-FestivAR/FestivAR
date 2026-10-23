@@ -1,13 +1,13 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
-package com.android.festivar.model.task
+package com.android.festivar.model.voicenote
 
 import java.time.Duration
 import java.time.LocalDateTime
 
 /**
- * The voice note of a [Task], so that its assignees can listen to the explanations instead of
- * reading them. It only holds the data: the audio file itself lives at [audioUrl]. How it is stored
- * in the database is up to the repository.
+ * The voice note of a task, so that its assignees can listen to the explanations instead of reading
+ * them. It only holds the data: the audio file itself lives at [audioUrl]. How it is stored in the
+ * database is up to the repository.
  *
  * A [VocalNote] is immutable. Every new version goes through the `init` block, so the rules below
  * always hold:
