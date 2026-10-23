@@ -16,9 +16,9 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.up
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.android.festivar.model.task.VocalNote
 import com.android.festivar.model.voicenote.PlayerState
 import com.android.festivar.model.voicenote.RecorderState
+import com.android.festivar.model.voicenote.VocalNote
 import com.android.festivar.ui.theme.AppTheme
 import java.time.Duration
 import java.time.LocalDateTime

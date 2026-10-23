@@ -30,7 +30,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
-import com.android.festivar.model.task.VocalNote
+import com.android.festivar.model.voicenote.VocalNote
 import com.android.festivar.ui.components.SectionLabel
 import com.android.festivar.ui.components.formatTime
 

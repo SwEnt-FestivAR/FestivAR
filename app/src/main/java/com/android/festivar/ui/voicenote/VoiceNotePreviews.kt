@@ -8,9 +8,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.android.festivar.model.task.VocalNote
 import com.android.festivar.model.voicenote.PlayerState
 import com.android.festivar.model.voicenote.RecorderState
+import com.android.festivar.model.voicenote.VocalNote
 import com.android.festivar.ui.theme.AppTheme
 import java.time.Duration
 import java.time.LocalDateTime
