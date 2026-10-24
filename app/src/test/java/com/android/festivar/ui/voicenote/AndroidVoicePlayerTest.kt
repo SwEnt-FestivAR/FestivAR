@@ -11,7 +11,11 @@ import org.junit.Test
 
 /** The player driven by fake playbacks, so no real [android.media.MediaPlayer] is needed. */
 class AndroidVoicePlayerTest {
-  private class FakePlayback(private val failToPrepare: Boolean = false) : AudioPlayback {
+  private class FakePlayback(
+      private val failToPrepare: Boolean = false,
+      private val crashOnPrepare: Boolean = false,
+      private val failToRelease: Boolean = false,
+  ) : AudioPlayback {
     var url: String? = null
     var started = false
     var released = false
@@ -26,6 +30,7 @@ class AndroidVoicePlayerTest {
         onError: () -> Unit,
     ) {
       if (failToPrepare) throw IOException("no network")
+      if (crashOnPrepare) throw IllegalStateException("bad state")
       this.url = url
       this.onPrepared = onPrepared
       this.onCompleted = onCompleted
@@ -38,6 +43,7 @@ class AndroidVoicePlayerTest {
 
     override fun release() {
       released = true
+      if (failToRelease) throw IllegalStateException("already released")
     }
 
     fun prepared() = onPrepared()
@@ -49,12 +55,20 @@ class AndroidVoicePlayerTest {
 
   private val playbacks = mutableListOf<FakePlayback>()
   private var failNext = false
+  private var crashNext = false
+  private var releaseFails = false
+  private var createFails = false
   private lateinit var player: AndroidVoicePlayer
 
   @Before
   fun setUp() {
     player =
-        AndroidVoicePlayer(AudioPlaybackFactory { FakePlayback(failNext).also { playbacks += it } })
+        AndroidVoicePlayer(
+            AudioPlaybackFactory {
+              if (createFails) throw IllegalStateException("no player")
+              FakePlayback(failNext, crashNext, releaseFails).also { playbacks += it }
+            }
+        )
   }
 
   @Test
@@ -95,6 +109,30 @@ class AndroidVoicePlayerTest {
     player.play("u1")
     assertEquals(PlayerState.Failed("u1"), player.state.value)
     assertTrue(playbacks.single().released)
+  }
+
+  @Test
+  fun aLoadThatCrashesFails() {
+    crashNext = true
+    player.play("u1")
+    assertEquals(PlayerState.Failed("u1"), player.state.value)
+    assertTrue(playbacks.single().released)
+  }
+
+  @Test
+  fun aPlayerThatCannotBeCreatedFails() {
+    createFails = true
+    player.play("u1")
+    assertEquals(PlayerState.Failed("u1"), player.state.value)
+    assertTrue(playbacks.isEmpty())
+  }
+
+  @Test
+  fun aReleaseThatThrowsIsIgnored() {
+    releaseFails = true
+    player.play("u1")
+    player.stop()
+    assertEquals(PlayerState.Idle, player.state.value)
   }
 
   @Test

@@ -83,4 +83,20 @@ class VoiceNoteUiStateTest {
     assertFalse(VoiceNoteUiState(canManage = false, micDenied = true).hasNotices)
     assertTrue(VoiceNoteUiState(note = note, player = PlayerState.Failed(note.audioUrl)).hasNotices)
   }
+
+  @Test
+  fun callbacksAreSafeToCallByDefault() {
+    // A screen that is only shown, like a preview, gives no callbacks: pressing does nothing.
+    with(VoiceNoteCallbacks()) {
+      onTogglePlay()
+      onDelete()
+      onConfirmDelete()
+      onDismissDelete()
+      onRecordStart()
+      onRecordRelease()
+      onRecordCancel()
+      onRetry()
+      onOpenSettings()
+    }
+  }
 }
