@@ -3,9 +3,10 @@ package com.android.festivar.ui.voicenote
 
 import com.android.festivar.model.voicenote.PlayerState
 import com.android.festivar.model.voicenote.RecorderState
-import com.android.festivar.model.voicenote.VocalNote
+import com.android.festivar.model.voicenote.VoiceNote
 import java.time.Duration
-import java.time.LocalDateTime
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -13,11 +14,11 @@ import org.junit.Test
 
 class VoiceNoteUiStateTest {
   private val note =
-      VocalNote(
+      VoiceNote(
           "n1",
           "https://x/n1.m4a",
           Duration.ofSeconds(14),
-          LocalDateTime.of(2026, 10, 17, 9, 12),
+          ZonedDateTime.of(2026, 10, 17, 9, 12, 0, 0, ZoneOffset.UTC),
       )
 
   @Test
