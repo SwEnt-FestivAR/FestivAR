@@ -10,19 +10,34 @@ import kotlinx.coroutines.flow.StateFlow
  * the modules never depend on each other's code:
  *
  * - the recorder implements [VoiceRecorder];
- * - the storage implements [VocalNoteStorage];
+ * - the storage implements [VoiceNoteStorage];
  * - the player implements [VoicePlayer] for playback, and the UI shows [RecorderState] and
  *   [PlayerState];
  * - the task details view model wires them together with the TasksRepository.
+ *
+ * To add a voice note to a task (the caller is the task details view model):
+ * 1. check the microphone permission, then call [VoiceRecorder.start];
+ * 2. call [VoiceRecorder.stop] to get the [RecordedAudio] (or [VoiceRecorder.cancel] to drop it);
+ * 3. call [VoiceNoteStorage.upload] with the task id and the [RecordedAudio] to get the audio URL;
+ * 4. delete the temporary [RecordedAudio.file], whether the upload succeeded or failed;
+ * 5. build a [VoiceNote] with that URL and call [Task.attachVoiceNote];
+ * 6. save the returned [Task] with the TasksRepository.
+ *
+ * To remove it: call [Task.removeVoiceNote], save the returned [Task], then call
+ * [VoiceNoteStorage.delete] with the old audio URL. To listen to it: call [VoicePlayer.play] with
+ * the audio URL, and call [VoicePlayer.release] when the screen is closed.
  */
 
 /**
  * A finished recording, waiting to be uploaded. The [file] is only a handle: the model never opens
- * it.
+ * it. The [duration] is positive: the recorder refuses a recording that is too short.
+ *
+ * The [file] is temporary. Whoever received this [RecordedAudio] from [VoiceRecorder.stop] owns it
+ * and must delete it once the upload has succeeded or been given up.
  */
 data class RecordedAudio(val file: File, val duration: Duration) {
   init {
-    require(!duration.isNegative) { "The duration cannot be negative." }
+    require(duration.isPositive()) { "The duration must be positive." }
   }
 }
 
@@ -47,7 +62,8 @@ interface VoiceRecorder {
   val state: StateFlow<RecorderState>
 
   /**
-   * Starts recording into a new temporary file.
+   * Starts recording into a new temporary file. If the recording fails, the recorder deletes that
+   * file itself.
    *
    * @throws IllegalStateException if a recording is already running.
    * @throws VoiceRecorderException if the recording cannot start.
@@ -55,7 +71,8 @@ interface VoiceRecorder {
   fun start()
 
   /**
-   * Stops the recording and returns it.
+   * Stops the recording and returns it. The caller then owns the temporary file (see
+   * [RecordedAudio]). If the recording is unusable, the recorder deletes the file and throws.
    *
    * @throws IllegalStateException if nothing is being recorded.
    * @throws VoiceRecorderException if the recording is unusable (for example too short).
@@ -67,11 +84,13 @@ interface VoiceRecorder {
 }
 
 /** Keeps the audio files of the voice notes in a remote storage. */
-interface VocalNoteStorage {
+interface VoiceNoteStorage {
   /**
    * Uploads [audio] for the task [taskId] and returns the URL where it can be played from.
    *
-   * @throws java.io.IOException if the storage cannot be reached or refuses the file.
+   * @throws java.io.IOException if the storage cannot be reached or refuses the file. An
+   *   implementation converts its own exceptions (for example Firebase's `StorageException`) to an
+   *   [java.io.IOException], so callers do not depend on the storage used.
    */
   suspend fun upload(taskId: String, audio: RecordedAudio): String
 
@@ -80,7 +99,8 @@ interface VocalNoteStorage {
    *
    * Deleting a file that does not exist is not an error.
    *
-   * @throws java.io.IOException if the storage cannot be reached or refuses the deletion.
+   * @throws java.io.IOException if the storage cannot be reached or refuses the deletion. Other
+   *   exceptions are converted as for [upload].
    */
   suspend fun delete(audioUrl: String)
 }

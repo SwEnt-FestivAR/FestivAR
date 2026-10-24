@@ -3,7 +3,7 @@
 package com.android.festivar.model.task
 
 import com.android.festivar.model.user.User
-import com.android.festivar.model.voicenote.VocalNote
+import com.android.festivar.model.voicenote.VoiceNote
 import java.time.Duration
 import java.time.LocalDateTime
 
@@ -30,8 +30,11 @@ import java.time.LocalDateTime
  * - [estimatedTime] is not negative;
  * - [ownerId] is not blank when it is set.
  *
- * A [Task] holds at most one [VocalNote]. Only its owner ([ownerId]) may attach or remove it:
- * [attachVocalNote] and [removeVocalNote] refuse any other user.
+ * A [Task] holds at most one [VoiceNote]. Only its owner ([ownerId]) may attach or remove it:
+ * [attachVoiceNote] and [removeVoiceNote] refuse any other user. These only change the [Task]: the
+ * `TasksRepository` does not save [voiceNote] and [ownerId] yet (that comes with the voice note
+ * storage). Until then they stay in memory, which breaks nothing: both default to `null`, so
+ * reading and writing a [Task] works as before.
  *
  * @property taskId Unique identifier of the [Task].
  * @property eventId Identifier of the [Event] the [Task] belongs to.
@@ -46,9 +49,10 @@ import java.time.LocalDateTime
  * @property maxAssign Maximum number of people who can join or be assigned to the [Task].
  * @property assignees People who joined or were assigned the [Task].
  * @property completed Whether the [Task] has been completed.
- * @property vocalNote The voice note of the [Task], or `null` if it has none.
+ * @property voiceNote The voice note of the [Task], or `null` if it has none.
  * @property ownerId The [User.uid] of the task owner (the organizer who created it), or `null` for
- *   a task saved before owners existed: nobody owns such a task.
+ *   a task saved before owners existed: nobody owns such a task. The owner is set when the task is
+ *   created and is never transferred.
  */
 data class Task(
     val taskId: String,
@@ -63,7 +67,7 @@ data class Task(
     val maxAssign: Int = 1,
     val assignees: List<User> = emptyList(),
     val completed: Boolean = false,
-    val vocalNote: VocalNote? = null,
+    val voiceNote: VoiceNote? = null,
     val ownerId: String? = null,
 ) {
 
@@ -87,36 +91,41 @@ data class Task(
 
   /**
    * Whether the user [userId] may attach or remove the voice note: only the owner can. Lets the
-   * screen hide the buttons; [attachVocalNote] and [removeVocalNote] enforce it anyway.
+   * screen hide the buttons; [attachVoiceNote] and [removeVoiceNote] enforce it anyway.
    *
    * @param userId The [User.uid] of the user asking.
    */
-  fun canManageVocalNote(userId: String): Boolean = ownerId == userId
+  fun canManageVoiceNote(userId: String): Boolean = ownerId == userId
 
   /**
    * Attaches the voice note by returning a version of `this` holding [note]. A [Task] has only one
-   * voice note: to change it, call [removeVocalNote] first.
+   * voice note: to change it, call [removeVoiceNote] first.
    *
    * @param userId The [User.uid] of the user attaching the note.
-   * @throws IllegalStateException If [userId] is not the owner, or if the [Task] already has a
-   *   voice note.
+   * @throws SecurityException If [userId] is not the owner.
+   * @throws IllegalStateException If the [Task] already has a voice note.
    */
-  fun attachVocalNote(note: VocalNote, userId: String): Task {
-    check(canManageVocalNote(userId)) { "Only the owner can attach a voice note." }
-    check(vocalNote == null) { "The task already has a voice note." }
-    return copy(vocalNote = note)
+  fun attachVoiceNote(note: VoiceNote, userId: String): Task {
+    if (!canManageVoiceNote(userId))
+        throw SecurityException("Only the owner can attach a voice note.")
+    check(voiceNote == null) { "The task already has a voice note." }
+    return copy(voiceNote = note)
   }
 
   /**
-   * Removes the voice note by returning a version of `this` without one.
+   * Removes the voice note by returning a version of `this` without one. Only the reference is
+   * removed, not the audio file: the caller must also call `VoiceNoteStorage.delete` with the
+   * note's `audioUrl`.
    *
    * @param userId The [User.uid] of the user removing the note.
-   * @throws IllegalStateException If [userId] is not the owner, or if the [Task] has no voice note.
+   * @throws SecurityException If [userId] is not the owner.
+   * @throws IllegalStateException If the [Task] has no voice note.
    */
-  fun removeVocalNote(userId: String): Task {
-    check(canManageVocalNote(userId)) { "Only the owner can remove a voice note." }
-    check(vocalNote != null) { "The task has no voice note." }
-    return copy(vocalNote = null)
+  fun removeVoiceNote(userId: String): Task {
+    if (!canManageVoiceNote(userId))
+        throw SecurityException("Only the owner can remove a voice note.")
+    check(voiceNote != null) { "The task has no voice note." }
+    return copy(voiceNote = null)
   }
 
   /**
