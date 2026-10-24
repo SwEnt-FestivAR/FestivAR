@@ -127,7 +127,7 @@ private fun ForgotPasswordScreenContent(
       uiState.successMessage?.let {
         Text(
             text = it,
-            color = MaterialTheme.colorScheme.primary,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.testTag(ForgotPasswordScreenTestTags.SUCCESS_MESSAGE),
         )
@@ -149,7 +149,7 @@ private fun ForgotPasswordScreenContent(
       ) {
         Text(
             text = "Return to login",
-            color = MaterialTheme.colorScheme.primary,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
             style = MaterialTheme.typography.labelLarge,
         )
       }

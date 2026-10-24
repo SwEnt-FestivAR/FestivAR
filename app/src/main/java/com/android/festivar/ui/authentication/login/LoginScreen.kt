@@ -77,6 +77,7 @@ fun LoginScreen(
     modifier: Modifier = Modifier,
     viewModel: LoginViewModel = viewModel(),
     onSignUpClick: () -> Unit,
+    onForgotPasswordClick: () -> Unit = {},
     onSignedIn: () -> Unit = {},
     credentialManager: CredentialManager = CredentialManager.create(LocalContext.current),
 ) {
@@ -118,6 +119,7 @@ fun LoginScreen(
         onTogglePasswordVisibility = viewModel::togglePasswordVisibility,
         onLoginClick = viewModel::signIn,
         onGoogleSignInClick = { viewModel.signInWithGoogle(context, credentialManager) },
+        onForgotPasswordClick = onForgotPasswordClick,
         onSignUpClick = onSignUpClick,
         modifier = Modifier.padding(padding),
     )
@@ -132,6 +134,7 @@ private fun LoginScreenContent(
     onTogglePasswordVisibility: () -> Unit,
     onLoginClick: () -> Unit,
     onGoogleSignInClick: () -> Unit,
+    onForgotPasswordClick: () -> Unit,
     onSignUpClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -201,11 +204,13 @@ private fun LoginScreenContent(
     )
 
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-      Text(
-          text = stringResource(R.string.login_forgot_password),
-          color = MaterialTheme.colorScheme.onPrimaryContainer,
-          style = MaterialTheme.typography.labelMedium,
-      )
+      TextButton(onClick = onForgotPasswordClick) {
+        Text(
+            text = stringResource(R.string.login_forgot_password),
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            style = MaterialTheme.typography.labelMedium,
+        )
+      }
     }
 
     Button(
@@ -319,6 +324,7 @@ private fun LoginScreenPreview() {
         onTogglePasswordVisibility = {},
         onLoginClick = {},
         onGoogleSignInClick = {},
+        onForgotPasswordClick = {},
         onSignUpClick = {},
     )
   }
