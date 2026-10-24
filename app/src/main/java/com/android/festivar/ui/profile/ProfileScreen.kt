@@ -7,9 +7,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
@@ -155,7 +158,7 @@ internal fun ProfileScreenContent(
     modifier: Modifier = Modifier,
 ) {
   Column(
-      modifier = modifier.fillMaxSize().padding(16.dp),
+      modifier = modifier.fillMaxSize().imePadding().padding(16.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
   ) {
     // Until the profile is loaded there is nothing to show or edit.
@@ -182,39 +185,45 @@ internal fun ProfileScreenContent(
 
 
 
-    Spacer(modifier = Modifier.height(16.dp))
+    Column(
+        modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Spacer(modifier = Modifier.height(16.dp))
 
-    // The avatar shows the saved user, so its initials only change once the changes are saved.
-    // The email is shown under it and cannot be edited.
-    uiState.user?.let { user ->
-      Box(modifier = Modifier.testTag(ProfileScreenTestTags.AVATAR)) { Avatar(user = user) }
-      Spacer(modifier = Modifier.height(16.dp))
-      Text(
-          text = user.email,
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-          modifier = Modifier.testTag(ProfileScreenTestTags.EMAIL),
-      )
+        // The avatar shows the saved user, so its initials only change once the changes are saved.
+        // The email is shown under it and cannot be edited.
+        uiState.user?.let { user ->
+            Box(modifier = Modifier.testTag(ProfileScreenTestTags.AVATAR)) { Avatar(user = user) }
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = user.email,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.testTag(ProfileScreenTestTags.EMAIL),
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        FestivarTextField(
+            value = uiState.surname,
+            onValueChange = onSurnameChange,
+            label = "Surname",
+            modifier = Modifier.testTag(ProfileScreenTestTags.SURNAME_FIELD),
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        FestivarTextField(
+            value = uiState.name,
+            onValueChange = onNameChange,
+            label = "Name",
+            modifier = Modifier.testTag(ProfileScreenTestTags.NAME_FIELD),
+        )
     }
 
-    Spacer(modifier = Modifier.height(24.dp))
 
-    FestivarTextField(
-        value = uiState.surname,
-        onValueChange = onSurnameChange,
-        label = "Surname",
-        modifier = Modifier.testTag(ProfileScreenTestTags.SURNAME_FIELD),
-    )
-    Spacer(modifier = Modifier.height(12.dp))
-    FestivarTextField(
-        value = uiState.name,
-        onValueChange = onNameChange,
-        label = "Name",
-        modifier = Modifier.testTag(ProfileScreenTestTags.NAME_FIELD),
-    )
 
-    // Takes all the free height, so the buttons sit at the bottom as in the design.
-    Spacer(modifier = Modifier.weight(1f))
+      Spacer(modifier = Modifier.height(16.dp))
 
     Button(
         onClick = onSaveClick,
