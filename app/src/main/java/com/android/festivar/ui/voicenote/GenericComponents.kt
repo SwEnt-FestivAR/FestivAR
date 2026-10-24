@@ -4,20 +4,29 @@ package com.android.festivar.ui.voicenote
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.android.festivar.R
 import com.android.festivar.ui.theme.AppTheme
 
 /*
@@ -25,12 +34,16 @@ import com.android.festivar.ui.theme.AppTheme
  * meant to be promoted to ui/components when another screen needs them.
  */
 
-/** A bar fixed to the bottom of a screen, above the system navigation bar, holding [content]. */
+/**
+ * A bar fixed to the bottom of a screen, above the system navigation bar, holding [content]. It
+ * keeps the colour of the page, as the composer of the design does.
+ */
 @Composable
 fun FixedBottomBar(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-  Surface(modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface) {
+  Surface(modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.background) {
     Column(
-        Modifier.navigationBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp),
+        Modifier.navigationBarsPadding()
+            .padding(start = 20.dp, top = 8.dp, end = 20.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
         content = content,
     )
@@ -49,38 +62,62 @@ fun NoticeSnackbar(
     modifier: Modifier = Modifier,
     actionModifier: Modifier = Modifier,
 ) {
-  Snackbar(
-      modifier = modifier,
-      action = {
-        TextButton(onClick = onAction, modifier = actionModifier) {
-          Text(actionLabel, color = MaterialTheme.colorScheme.inversePrimary)
-        }
-      },
+  Surface(
+      modifier.fillMaxWidth(),
+      shape = MaterialTheme.shapes.medium,
+      color = MaterialTheme.colorScheme.inverseSurface,
+      contentColor = MaterialTheme.colorScheme.inverseOnSurface,
   ) {
-    Text(message)
+    Row(
+        Modifier.padding(start = 16.dp, top = 12.dp, end = 8.dp, bottom = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Icon(painterResource(R.drawable.ic_pennant), contentDescription = null, Modifier.size(20.dp))
+      Text(message, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+      TextButton(onClick = onAction, modifier = actionModifier) {
+        Text(actionLabel, color = MaterialTheme.colorScheme.inversePrimary)
+      }
+    }
   }
 }
 
-/** An information note: [message] on a muted card, with an optional [action] under it. */
+/**
+ * An information note: [message] on a muted card with an info icon, and an optional [action] under
+ * it (a full width button, as in the design).
+ */
 @Composable
 fun InfoNote(
     message: String,
     modifier: Modifier = Modifier,
     action: (@Composable () -> Unit)? = null,
 ) {
-  Surface(
-      modifier.fillMaxWidth(),
-      shape = MaterialTheme.shapes.medium,
-      color = MaterialTheme.colorScheme.surfaceVariant,
-  ) {
-    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-      Text(
-          message,
-          style = MaterialTheme.typography.bodyMedium,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-      )
-      action?.invoke()
+  Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Surface(
+        Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+    ) {
+      Row(
+          Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+          horizontalArrangement = Arrangement.spacedBy(12.dp),
+          verticalAlignment = Alignment.CenterVertically,
+      ) {
+        Icon(
+            Icons.Outlined.Info,
+            contentDescription = null,
+            Modifier.size(20.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            message,
+            Modifier.weight(1f),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
     }
+    action?.invoke()
   }
 }
 
@@ -100,15 +137,18 @@ fun ConfirmDialog(
   AlertDialog(
       onDismissRequest = onDismiss,
       modifier = modifier,
+      shape = RoundedCornerShape(20.dp),
       title = { Text(title) },
-      text = { Text(text) },
+      text = { Text(text, style = MaterialTheme.typography.bodyMedium) },
       confirmButton = {
-        TextButton(onClick = onConfirm, modifier = confirmModifier) {
+        TextButton(onClick = onConfirm, modifier = confirmModifier.height(52.dp)) {
           Text(confirmLabel, color = MaterialTheme.colorScheme.error)
         }
       },
       dismissButton = {
-        TextButton(onClick = onDismiss, modifier = dismissModifier) { Text(dismissLabel) }
+        TextButton(onClick = onDismiss, modifier = dismissModifier.height(52.dp)) {
+          Text(dismissLabel, color = MaterialTheme.colorScheme.onSurface)
+        }
       },
   )
 }
@@ -136,7 +176,15 @@ internal fun InfoNotePreview() {
   AppTheme {
     InfoNote(
         "Microphone is off for FestivAR. Turn it on in Settings to record a note.",
-        action = { OutlinedButton(onClick = {}) { Text("Open settings") } },
+        action = {
+          OutlinedButton(
+              onClick = {},
+              modifier = Modifier.fillMaxWidth().height(52.dp),
+              shape = MaterialTheme.shapes.medium,
+          ) {
+            Text("Open settings")
+          }
+        },
     )
   }
 }
