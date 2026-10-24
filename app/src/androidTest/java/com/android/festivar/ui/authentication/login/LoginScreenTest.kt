@@ -116,6 +116,23 @@ class LoginScreenTest {
   }
 
   @Test
+  fun forgotPasswordButtonInvokesCallback() {
+    var forgotPasswordClicked = false
+    val loginViewModel = LoginViewModel(UnusedAuthRepository)
+    composeTestRule.setContent {
+      LoginScreen(
+          viewModel = loginViewModel,
+          onSignUpClick = {},
+          onForgotPasswordClick = { forgotPasswordClicked = true },
+      )
+    }
+
+    composeTestRule.onNodeWithText("Forgot password?").performClick()
+
+    composeTestRule.runOnIdle { assertTrue(forgotPasswordClicked) }
+  }
+
+  @Test
   fun googleSignInButtonIsDisabledWhileAnotherSignInIsLoading() {
     val authRepository = DeferredAuthRepository()
     val loadingViewModel = LoginViewModel(authRepository)

@@ -13,6 +13,7 @@ import androidx.credentials.Credential
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.authentication.AuthRepository
 import com.google.firebase.auth.FirebaseUser
+import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -81,6 +82,23 @@ class ForgotPasswordScreenTest {
   }
 
   @Test
+  fun pendingRequestDisablesButtonUntilRequestCompletes() {
+    val result = CompletableDeferred<Result<Unit>>()
+    authRepository.pendingResetResult = result
+    composeTestRule.setContent { ForgotPasswordScreen(viewModel = viewModel, onReturnToLogin = {}) }
+    composeTestRule
+        .onNodeWithTag(ForgotPasswordScreenTestTags.EMAIL_INPUT)
+        .performTextInput("user@example.com")
+
+    composeTestRule.onNodeWithTag(ForgotPasswordScreenTestTags.SEND_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(ForgotPasswordScreenTestTags.SEND_BUTTON).assertIsNotEnabled()
+
+    result.complete(Result.success(Unit))
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithTag(ForgotPasswordScreenTestTags.SUCCESS_MESSAGE).assertIsDisplayed()
+  }
+
+  @Test
   fun returnButtonInvokesCallback() {
     var returnedToLogin = false
     composeTestRule.setContent {
@@ -97,10 +115,11 @@ class ForgotPasswordScreenTest {
       private set
 
     var resetResult: Result<Unit> = Result.success(Unit)
+    var pendingResetResult: CompletableDeferred<Result<Unit>>? = null
 
     override suspend fun forgotPassword(email: String): Result<Unit> {
       lastResetEmail = email
-      return resetResult
+      return pendingResetResult?.await() ?: resetResult
     }
 
     override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> =
