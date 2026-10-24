@@ -488,7 +488,7 @@ class MainActivityNavigationTest {
       )
     }
 
-    // The sign out button only shows once the profile is loaded
+    // The sign out button only shows once the profile load ends
     composeTestRule.waitUntil(5_000) {
       composeTestRule
           .onAllNodes(hasTestTag(ProfileScreenTestTags.SIGN_OUT_BUTTON))

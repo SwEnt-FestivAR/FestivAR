@@ -37,7 +37,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.android.festivar.R
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.Avatar
 import com.android.festivar.ui.components.FestivarTextField
@@ -87,8 +89,9 @@ fun ProfileScreen(
   val snackbarHostState = remember { SnackbarHostState() }
 
   // Shows each error once in the snackbar, then clears it so it does not come back.
-  LaunchedEffect(profileUIState.errorMsg) {
-    profileUIState.errorMsg?.let { error ->
+  val errorMsg = profileUIState.errorMsg?.let { stringResource(it) }
+  LaunchedEffect(errorMsg) {
+    errorMsg?.let { error ->
       snackbarHostState.showSnackbar(error)
       profileViewModel.clearErrorMsg()
     }
@@ -102,14 +105,14 @@ fun ProfileScreen(
         TopAppBar(
             title = {
               Text(
-                  text = "Profile",
+                  text = stringResource(R.string.profile_title),
                   style = MaterialTheme.typography.titleLarge,
                   modifier = Modifier.testTag(ProfileScreenTestTags.TITLE),
               )
             },
             navigationIcon = {
               IconButton(onClick = onBack, Modifier.testTag(ProfileScreenTestTags.BACK)) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.profile_back))
               }
             },
         )
@@ -175,7 +178,7 @@ internal fun ProfileScreenContent(
                   onClick = onRetryClick,
                   modifier = Modifier.testTag(ProfileScreenTestTags.RETRY_BUTTON),
               ) {
-                  Text(text = "Retry")
+                  Text(text = stringResource(R.string.profile_retry))
               }
           }
           SignOutButton(onClick = onSignOutClick, isSigningOut = uiState.isSigningOut, signedOut = uiState.signedOut)
@@ -208,14 +211,14 @@ internal fun ProfileScreenContent(
         FestivarTextField(
             value = uiState.surname,
             onValueChange = onSurnameChange,
-            label = "Surname",
+            label = stringResource(R.string.profile_field_surname),
             modifier = Modifier.testTag(ProfileScreenTestTags.SURNAME_FIELD),
         )
         Spacer(modifier = Modifier.height(12.dp))
         FestivarTextField(
             value = uiState.name,
             onValueChange = onNameChange,
-            label = "Name",
+            label = stringResource(R.string.profile_field_name),
             modifier = Modifier.testTag(ProfileScreenTestTags.NAME_FIELD),
         )
     }
@@ -233,7 +236,7 @@ internal fun ProfileScreenContent(
       if (uiState.isSaving) {
         CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
       } else {
-        Text(text = "Save changes", style = MaterialTheme.typography.labelLarge)
+        Text(text = stringResource(R.string.profile_save), style = MaterialTheme.typography.labelLarge)
       }
     }
     Spacer(modifier = Modifier.height(12.dp))
@@ -255,7 +258,7 @@ private fun SignOutButton(onClick: () -> Unit, isSigningOut: Boolean, signedOut:
         if (isSigningOut) {
             CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
         } else {
-            Text(text = "Sign out")
+            Text(text = stringResource(R.string.profile_sign_out))
         }
     }
 }

@@ -1,8 +1,11 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.profile
 
+import android.util.Log
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.android.festivar.R
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
@@ -14,6 +17,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+private const val LOG_TAG = "ProfileViewModel"
+
 /**
  * Represents the UI state of the Profile screen.
  *
@@ -24,8 +29,7 @@ import kotlinx.coroutines.launch
  *   the modified value that is not saved.
  * @property surname The surname of the [User], contains the current value that is written, may
  *   contain the modified value that is not saved.
- * @property errorMsg An error message to show when an operation fails and contains the exact error
- *   message.
+ * @property errorMsg The string resource of the last failure, or null.
  * @property isLoading Whether the [User] item is currently being fetched.
  * @property isSaving Whether the [User] item is being saved and updated with the new values.
  * @property signedOut Whether the [User] signs out, keeps the information to block any other
@@ -37,7 +41,7 @@ data class ProfileUIState(
     val user: User? = null,
     val name: String = "",
     val surname: String = "",
-    val errorMsg: String? = null,
+    @StringRes val errorMsg: Int? = null,
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
     val signedOut: Boolean = false,
@@ -150,12 +154,8 @@ class ProfileViewModel(
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
-        _uiState.update {
-          it.copy(
-              isSaving = false,
-              errorMsg = "Failed to update profile: ${e.message ?: UNKNOWN_ERROR}",
-          )
-        }
+        Log.e(LOG_TAG, "Error saving user $uId", e)
+        _uiState.update { it.copy(isSaving = false, errorMsg = R.string.profile_save_failed) }
       }
     }
   }
@@ -178,11 +178,9 @@ class ProfileViewModel(
           .fold(
               onSuccess = { _uiState.update { it.copy(signedOut = true, isSigningOut = false) } },
               onFailure = { e ->
+                Log.e(LOG_TAG, "Error signing out", e)
                 _uiState.update {
-                  it.copy(
-                      isSigningOut = false,
-                      errorMsg = "Failed to sign out: ${e.message ?: UNKNOWN_ERROR}",
-                  )
+                  it.copy(isSigningOut = false, errorMsg = R.string.profile_sign_out_failed)
                 }
               },
           )
@@ -212,17 +210,10 @@ class ProfileViewModel(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            _uiState.update {
-                it.copy(
-                    isLoading = false,
-                    errorMsg = "Failed to load profile: ${e.message ?: UNKNOWN_ERROR}",
-                )
-            }
+            Log.e(LOG_TAG, "Error loading user $uId", e)
+            _uiState.update { it.copy(isLoading = false, errorMsg = R.string.profile_load_failed) }
         }
     }
 
   }
 }
-
-/** When a specific exception without message is thrown, the message is replaced by this. */
-private const val UNKNOWN_ERROR = "unknown error"

@@ -1,0 +1,13 @@
+<!-- Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com> -->
+<resources>
+    <string name="profile_title">Profile</string>
+    <string name="profile_back">Back</string>
+    <string name="profile_field_surname">Surname</string>
+    <string name="profile_field_name">Name</string>
+    <string name="profile_save">Save changes</string>
+    <string name="profile_sign_out">Sign out</string>
+    <string name="profile_retry">Retry</string>
+    <string name="profile_load_failed">Unable to load your profile.</string>
+    <string name="profile_save_failed">Unable to update your profile.</string>
+    <string name="profile_sign_out_failed">Unable to sign out.</string>
+</resources>
