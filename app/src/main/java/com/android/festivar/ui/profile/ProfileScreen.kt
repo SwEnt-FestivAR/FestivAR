@@ -176,7 +176,7 @@ internal fun ProfileScreenContent(
                   Text(text = "Retry")
               }
           }
-          SignOutButton(onClick = onSignOutClick)
+          SignOutButton(onClick = onSignOutClick, isSigningOut = uiState.isSigningOut, signedOut = uiState.signedOut)
           return@Column
       }
 
@@ -230,18 +230,23 @@ internal fun ProfileScreenContent(
     }
     Spacer(modifier = Modifier.height(12.dp))
 
-    SignOutButton(onClick = onSignOutClick)
+    SignOutButton(onClick = onSignOutClick, isSigningOut = uiState.isSigningOut, signedOut = uiState.signedOut)
   }
 }
 
 @Composable
-private fun SignOutButton(onClick: () -> Unit) {
+private fun SignOutButton(onClick: () -> Unit, isSigningOut: Boolean, signedOut: Boolean) {
     OutlinedButton(
         onClick = onClick,
+        enabled = !isSigningOut && !signedOut,
         shape = RoundedCornerShape(12.dp),
         modifier =
             Modifier.fillMaxWidth().height(48.dp).testTag(ProfileScreenTestTags.SIGN_OUT_BUTTON),
     ) {
-        Text(text = "Sign out", color = MaterialTheme.colorScheme.error)
+        if (isSigningOut) {
+            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+        } else {
+            Text(text = "Sign out", color = MaterialTheme.colorScheme.error)
+        }
     }
 }
