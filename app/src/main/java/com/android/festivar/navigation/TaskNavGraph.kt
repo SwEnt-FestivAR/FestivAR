@@ -46,6 +46,11 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, authRepository: 
     val navigator = CreateTaskNavigator(navController)
     CreateTaskScreen(
         eventId = eventId,
+        // Blank when nobody is signed in: the view model then refuses to save. Read once, when the
+        // route is composed, so it does not follow a sign-out while the screen is open. The blank
+        // fallback and that missing follow-up are left to the signed-out redirect of #261, which
+        // will replace them.
+        ownerId = authRepository.currentUser?.uid.orEmpty(),
         onBack = navigator.onBack,
         onTaskCreated = navigator.onTaskCreated,
     )
