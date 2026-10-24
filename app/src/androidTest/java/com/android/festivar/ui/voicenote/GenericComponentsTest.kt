@@ -103,4 +103,30 @@ class GenericComponentsTest {
 
     assertEquals(listOf("dismiss"), events)
   }
+
+  // The previews are drawn here, so that one that no longer compiles or crashes is caught by the
+  // tests and not only in Android Studio.
+
+  @Test
+  fun previews_showTheBarTheNoticeAndTheNote() {
+    composeTestRule.setContent {
+      Column {
+        FixedBottomBarPreview()
+        NoticeSnackbarPreview()
+        InfoNotePreview()
+      }
+    }
+
+    text("Hold to record").assertIsDisplayed()
+    text("Voice note not sent. Check your connection.").assertIsDisplayed()
+    text("Open settings").assertIsDisplayed()
+  }
+
+  @Test
+  fun confirmDialogPreview_showsTheDialog() {
+    composeTestRule.setContent { ConfirmDialogPreview() }
+
+    text("Delete this voice note?").assertIsDisplayed()
+    text("Keep it").assertIsDisplayed()
+  }
 }
