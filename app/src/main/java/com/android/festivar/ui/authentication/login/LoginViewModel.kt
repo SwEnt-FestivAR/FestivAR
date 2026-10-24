@@ -21,13 +21,18 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+private const val SIGN_IN_CANCELLED = "Sign-in cancelled"
+private const val NO_CREDENTIALS_AVAILABLE = "No credentials available"
+private const val FAILED_TO_GET_CREDENTIALS = "Failed to get credentials"
+
 /** State displayed by the login screen. */
 data class LoginUIState(
     val email: String = "",
     val password: String = "",
+    val isPasswordVisible: Boolean = false,
     val isLoading: Boolean = false,
     val errorMsg: String? = null,
-    val user: FirebaseUser? = null,
+    val isSignedIn: Boolean = false,
 )
 
 /** Handles email and Google authentication for the login screen. */
@@ -46,6 +51,11 @@ class LoginViewModel(private val authRepository: AuthRepository = AuthRepository
   /** Updates the password and clears any prior error. */
   fun updatePassword(password: String) {
     _uiState.update { it.copy(password = password, errorMsg = null) }
+  }
+
+  /** Toggles whether the password is displayed in plain text. */
+  fun togglePasswordVisibility() {
+    _uiState.update { it.copy(isPasswordVisible = !it.isPasswordVisible) }
   }
 
   /** Signs in with the current email and password. */
@@ -96,10 +106,10 @@ class LoginViewModel(private val authRepository: AuthRepository = AuthRepository
       val result = runRepositoryCall(operation)
       _uiState.update { state ->
         result.fold(
-            onSuccess = { user ->
+            onSuccess = {
               state.copy(
                   isLoading = false,
-                  user = user,
+                  isSignedIn = true,
               )
             },
             onFailure = { state.copy(isLoading = false, errorMsg = it.errorMessage()) },
@@ -116,15 +126,20 @@ class LoginViewModel(private val authRepository: AuthRepository = AuthRepository
       } catch (cancellation: CancellationException) {
         throw cancellation
       } catch (cancellation: GetCredentialCancellationException) {
-        Result.failure(IllegalStateException("Sign-in cancelled"))
+        Result.failure(IllegalStateException(SIGN_IN_CANCELLED))
       } catch (exception: NoCredentialException) {
-        Result.failure(IllegalStateException("No credentials available"))
+        Result.failure(IllegalStateException(NO_CREDENTIALS_AVAILABLE))
       } catch (exception: GetCredentialException) {
-        Result.failure(IllegalStateException("Failed to get credentials"))
+        Result.failure(IllegalStateException(FAILED_TO_GET_CREDENTIALS))
       } catch (exception: Exception) {
         Result.failure<Nothing>(exception)
       }
 
   private fun Throwable.errorMessage(): String =
-      message ?: "Authentication failed. Please try again."
+      when (message) {
+        SIGN_IN_CANCELLED -> SIGN_IN_CANCELLED
+        NO_CREDENTIALS_AVAILABLE -> NO_CREDENTIALS_AVAILABLE
+        FAILED_TO_GET_CREDENTIALS -> FAILED_TO_GET_CREDENTIALS
+        else -> "Unable to sign in. Check your details and try again."
+      }
 }
