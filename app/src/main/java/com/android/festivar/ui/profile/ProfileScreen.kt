@@ -50,6 +50,7 @@ object ProfileScreenTestTags {
   const val EMAIL = "profileEmail"
   const val SAVE_BUTTON = "profileSaveButton"
   const val SIGN_OUT_BUTTON = "profileSignOutButton"
+  const val RETRY_BUTTON = "profileRetryButton"
   const val ERROR_MESSAGE = "profileErrorMessage"
 }
 
@@ -125,6 +126,7 @@ fun ProfileScreen(
         onNameChange = profileViewModel::updateName,
         onSaveClick = profileViewModel::saveChanges,
         onSignOutClick = profileViewModel::signOut,
+        onRetryClick = profileViewModel::getUserInformation,
         modifier = Modifier.padding(padding),
     )
   }
@@ -149,6 +151,7 @@ internal fun ProfileScreenContent(
     onNameChange: (String) -> Unit,
     onSaveClick: () -> Unit,
     onSignOutClick: () -> Unit,
+    onRetryClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
   Column(
@@ -162,6 +165,22 @@ internal fun ProfileScreenContent(
       }
       return@Column
     }
+
+      // The load failed: there is nothing to edit, so only offer to try again or to sign out.
+      if (uiState.user == null) {
+          Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+              Button(
+                  onClick = onRetryClick,
+                  modifier = Modifier.testTag(ProfileScreenTestTags.RETRY_BUTTON),
+              ) {
+                  Text(text = "Retry")
+              }
+          }
+          SignOutButton(onClick = onSignOutClick)
+          return@Column
+      }
+
+
 
     Spacer(modifier = Modifier.height(16.dp))
 
@@ -210,13 +229,19 @@ internal fun ProfileScreenContent(
       }
     }
     Spacer(modifier = Modifier.height(12.dp))
+
+    SignOutButton(onClick = onSignOutClick)
+  }
+}
+
+@Composable
+private fun SignOutButton(onClick: () -> Unit) {
     OutlinedButton(
-        onClick = onSignOutClick,
+        onClick = onClick,
         shape = RoundedCornerShape(12.dp),
         modifier =
             Modifier.fillMaxWidth().height(48.dp).testTag(ProfileScreenTestTags.SIGN_OUT_BUTTON),
     ) {
-      Text(text = "Sign out", color = MaterialTheme.colorScheme.error)
+        Text(text = "Sign out", color = MaterialTheme.colorScheme.error)
     }
-  }
 }

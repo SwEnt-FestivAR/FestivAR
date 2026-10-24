@@ -190,34 +190,37 @@ class ProfileViewModel(
   }
 
   /** Function that fetches the [User] item from the repository and updates the UI state. */
-  private fun getUserInformation() {
+  fun getUserInformation() {
+    if(_uiState.value.isLoading) return;
+
     // Sets the state to loading so that the user can't already try to write in the fields
     // while the information are not already set.
     _uiState.update { it.copy(isLoading = true, errorMsg = null) }
 
     // Fetch the information from the repository.
     viewModelScope.launch {
-      try {
-        val user = repository.getUser(uId)
-        _uiState.update {
-          it.copy(
-              user = user,
-              name = user.name,
-              surname = user.surname,
-              isLoading = false,
-          )
+        try {
+            val user = repository.getUser(uId)
+            _uiState.update {
+                it.copy(
+                    user = user,
+                    name = user.name,
+                    surname = user.surname,
+                    isLoading = false,
+                )
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    errorMsg = "Failed to load profile: ${e.message ?: UNKNOWN_ERROR}",
+                )
+            }
         }
-      } catch (e: CancellationException) {
-        throw e
-      } catch (e: Exception) {
-        _uiState.update {
-          it.copy(
-              isLoading = false,
-              errorMsg = "Failed to load profile: ${e.message ?: UNKNOWN_ERROR}",
-          )
-        }
-      }
     }
+
   }
 }
 
