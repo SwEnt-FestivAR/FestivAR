@@ -543,6 +543,9 @@ class FakeAuthRepository(override val currentUser: FirebaseUser?) : AuthReposito
 
   override suspend fun signOut(): Result<Unit> = Result.success(Unit)
 
+  override suspend fun forgotPassword(email: String): Result<Unit> =
+      Result.failure(UnsupportedOperationException())
+
   override suspend fun signInWithEmailAndPassword(
       email: String,
       password: String,

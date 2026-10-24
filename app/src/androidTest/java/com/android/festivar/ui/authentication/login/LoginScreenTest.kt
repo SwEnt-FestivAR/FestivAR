@@ -103,6 +103,9 @@ private class DeferredAuthRepository : AuthRepository {
   override suspend fun signOut(): Result<Unit> =
       Result.failure(UnsupportedOperationException("Not used in this UI test"))
 
+  override suspend fun forgotPassword(email: String): Result<Unit> =
+      Result.failure(UnsupportedOperationException("Not used in this UI test"))
+
   override suspend fun signInWithEmailAndPassword(
       email: String,
       password: String,
@@ -120,6 +123,9 @@ private object UnusedAuthRepository : AuthRepository {
       Result.failure(UnsupportedOperationException("Not used in this UI test"))
 
   override suspend fun signOut(): Result<Unit> =
+      Result.failure(UnsupportedOperationException("Not used in this UI test"))
+
+  override suspend fun forgotPassword(email: String): Result<Unit> =
       Result.failure(UnsupportedOperationException("Not used in this UI test"))
 
   override suspend fun signInWithEmailAndPassword(
