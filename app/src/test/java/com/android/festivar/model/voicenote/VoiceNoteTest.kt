@@ -2,20 +2,21 @@
 package com.android.festivar.model.voicenote
 
 import java.time.Duration
-import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Test
 
-class VocalNoteTest {
+class VoiceNoteTest {
 
-  private val created = LocalDateTime.of(2026, 10, 17, 9, 30, 15)
+  private val created = ZonedDateTime.of(2026, 10, 17, 9, 30, 15, 0, ZoneId.of("UTC"))
 
   private fun note(
       id: String = "n1",
       audioUrl: String = "https://example.com/n1.m4a",
       duration: Duration = Duration.ofSeconds(14),
-  ) = VocalNote(id, audioUrl, duration, created)
+  ) = VoiceNote(id, audioUrl, duration, created)
 
   private fun assertInvalid(expectedMessage: String, build: () -> Any?) {
     val exception = assertThrows(IllegalArgumentException::class.java) { build() }
@@ -25,8 +26,8 @@ class VocalNoteTest {
   // ----------------------------------- creation ------------------------------------------- //
 
   @Test
-  fun init_accepts_zeroDuration() {
-    assertEquals(Duration.ZERO, note(duration = Duration.ZERO).duration)
+  fun init_rejects_zeroDuration() {
+    assertInvalid("The duration must be positive.") { note(duration = Duration.ZERO) }
   }
 
   @Test
@@ -43,6 +44,6 @@ class VocalNoteTest {
 
   @Test
   fun init_rejects_negativeDuration() {
-    assertInvalid("The duration cannot be negative.") { note(duration = Duration.ofMillis(-1)) }
+    assertInvalid("The duration must be positive.") { note(duration = Duration.ofMillis(-1)) }
   }
 }
