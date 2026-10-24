@@ -112,7 +112,10 @@ fun ProfileScreen(
             },
             navigationIcon = {
               IconButton(onClick = onBack, Modifier.testTag(ProfileScreenTestTags.BACK)) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.profile_back))
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.profile_back),
+                )
               }
             },
         )
@@ -171,61 +174,61 @@ internal fun ProfileScreenContent(
       return@Column
     }
 
-      // The load failed: there is nothing to edit, so only offer to try again or to sign out.
-      if (uiState.user == null) {
-          Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-              Button(
-                  onClick = onRetryClick,
-                  modifier = Modifier.testTag(ProfileScreenTestTags.RETRY_BUTTON),
-              ) {
-                  Text(text = stringResource(R.string.profile_retry))
-              }
-          }
-          SignOutButton(onClick = onSignOutClick, isSigningOut = uiState.isSigningOut, signedOut = uiState.signedOut)
-          return@Column
+    // The load failed: there is nothing to edit, so only offer to try again or to sign out.
+    if (uiState.user == null) {
+      Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+        Button(
+            onClick = onRetryClick,
+            modifier = Modifier.testTag(ProfileScreenTestTags.RETRY_BUTTON),
+        ) {
+          Text(text = stringResource(R.string.profile_retry))
+        }
       }
-
-
+      SignOutButton(
+          onClick = onSignOutClick,
+          isSigningOut = uiState.isSigningOut,
+          signedOut = uiState.signedOut,
+      )
+      return@Column
+    }
 
     Column(
         modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+      Spacer(modifier = Modifier.height(16.dp))
+
+      // The avatar shows the saved user, so its initials only change once the changes are saved.
+      // The email is shown under it and cannot be edited.
+      uiState.user?.let { user ->
+        Box(modifier = Modifier.testTag(ProfileScreenTestTags.AVATAR)) { Avatar(user = user) }
         Spacer(modifier = Modifier.height(16.dp))
-
-        // The avatar shows the saved user, so its initials only change once the changes are saved.
-        // The email is shown under it and cannot be edited.
-        uiState.user?.let { user ->
-            Box(modifier = Modifier.testTag(ProfileScreenTestTags.AVATAR)) { Avatar(user = user) }
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = user.email,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.testTag(ProfileScreenTestTags.EMAIL),
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        FestivarTextField(
-            value = uiState.surname,
-            onValueChange = onSurnameChange,
-            label = stringResource(R.string.profile_field_surname),
-            modifier = Modifier.testTag(ProfileScreenTestTags.SURNAME_FIELD),
+        Text(
+            text = user.email,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.testTag(ProfileScreenTestTags.EMAIL),
         )
-        Spacer(modifier = Modifier.height(12.dp))
-        FestivarTextField(
-            value = uiState.name,
-            onValueChange = onNameChange,
-            label = stringResource(R.string.profile_field_name),
-            modifier = Modifier.testTag(ProfileScreenTestTags.NAME_FIELD),
-        )
+      }
+
+      Spacer(modifier = Modifier.height(24.dp))
+
+      FestivarTextField(
+          value = uiState.surname,
+          onValueChange = onSurnameChange,
+          label = stringResource(R.string.profile_field_surname),
+          modifier = Modifier.testTag(ProfileScreenTestTags.SURNAME_FIELD),
+      )
+      Spacer(modifier = Modifier.height(12.dp))
+      FestivarTextField(
+          value = uiState.name,
+          onValueChange = onNameChange,
+          label = stringResource(R.string.profile_field_name),
+          modifier = Modifier.testTag(ProfileScreenTestTags.NAME_FIELD),
+      )
     }
 
-
-
-      Spacer(modifier = Modifier.height(16.dp))
+    Spacer(modifier = Modifier.height(16.dp))
 
     Button(
         onClick = onSaveClick,
@@ -236,29 +239,36 @@ internal fun ProfileScreenContent(
       if (uiState.isSaving) {
         CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
       } else {
-        Text(text = stringResource(R.string.profile_save), style = MaterialTheme.typography.labelLarge)
+        Text(
+            text = stringResource(R.string.profile_save),
+            style = MaterialTheme.typography.labelLarge,
+        )
       }
     }
     Spacer(modifier = Modifier.height(12.dp))
 
-    SignOutButton(onClick = onSignOutClick, isSigningOut = uiState.isSigningOut, signedOut = uiState.signedOut)
+    SignOutButton(
+        onClick = onSignOutClick,
+        isSigningOut = uiState.isSigningOut,
+        signedOut = uiState.signedOut,
+    )
   }
 }
 
 @Composable
 private fun SignOutButton(onClick: () -> Unit, isSigningOut: Boolean, signedOut: Boolean) {
-    OutlinedButton(
-        onClick = onClick,
-        enabled = !isSigningOut && !signedOut,
-        shape = RoundedCornerShape(12.dp),
-        modifier =
-            Modifier.fillMaxWidth().height(48.dp).testTag(ProfileScreenTestTags.SIGN_OUT_BUTTON),
-        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-    ) {
-        if (isSigningOut) {
-            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-        } else {
-            Text(text = stringResource(R.string.profile_sign_out))
-        }
+  OutlinedButton(
+      onClick = onClick,
+      enabled = !isSigningOut && !signedOut,
+      shape = RoundedCornerShape(12.dp),
+      modifier =
+          Modifier.fillMaxWidth().height(48.dp).testTag(ProfileScreenTestTags.SIGN_OUT_BUTTON),
+      colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+  ) {
+    if (isSigningOut) {
+      CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+    } else {
+      Text(text = stringResource(R.string.profile_sign_out))
     }
+  }
 }

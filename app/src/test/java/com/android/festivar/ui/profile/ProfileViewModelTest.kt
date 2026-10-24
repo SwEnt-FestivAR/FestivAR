@@ -158,8 +158,8 @@ class ProfileViewModelTest {
   }
 
   /**
-   * Test that loading again after a failed load, once the repository recovers, fills the fields
-   * and removes the error message.
+   * Test that loading again after a failed load, once the repository recovers, fills the fields and
+   * removes the error message.
    */
   @Test
   fun retryAfterAFailedLoadLoadsTheUser() = runTest {
