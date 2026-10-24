@@ -28,13 +28,13 @@ import java.time.LocalDateTime
  * - a [User] is assigned at most once, identified by its [User.uid] (no duplicates);
  * - [endTime] is not before [startTime];
  * - [estimatedTime] is not negative;
- * - [ownerId] is not blank when it is set.
+ * - [ownerId] is not blank.
  *
  * A [Task] holds at most one [VoiceNote]. Only its owner ([ownerId]) may attach or remove it:
  * [attachVoiceNote] and [removeVoiceNote] refuse any other user. These only change the [Task]: the
- * `TasksRepository` does not save [voiceNote] and [ownerId] yet (that comes with the voice note
- * storage). Until then they stay in memory, which breaks nothing: both default to `null`, so
- * reading and writing a [Task] works as before.
+ * `TasksRepository` does not save [voiceNote] yet (that comes with the voice note storage). Until
+ * then it stays in memory, which breaks nothing: it defaults to `null`, so reading and writing a
+ * [Task] works as before.
  *
  * @property taskId Unique identifier of the [Task].
  * @property eventId Identifier of the [Event] the [Task] belongs to.
@@ -50,9 +50,8 @@ import java.time.LocalDateTime
  * @property assignees People who joined or were assigned the [Task].
  * @property completed Whether the [Task] has been completed.
  * @property voiceNote The voice note of the [Task], or `null` if it has none.
- * @property ownerId The [User.uid] of the task owner (the organizer who created it), or `null` for
- *   a task saved before owners existed: nobody owns such a task. The owner is set when the task is
- *   created and is never transferred.
+ * @property ownerId The [User.uid] of the task owner (the user who created it). Every task has one.
+ *   It is set when the task is created and is never transferred.
  */
 data class Task(
     val taskId: String,
@@ -68,7 +67,7 @@ data class Task(
     val assignees: List<User> = emptyList(),
     val completed: Boolean = false,
     val voiceNote: VoiceNote? = null,
-    val ownerId: String? = null,
+    val ownerId: String,
 ) {
 
   init {
@@ -86,7 +85,7 @@ data class Task(
     require(estimatedTime == null || !estimatedTime.isNegative) {
       "estimatedTime cannot be negative."
     }
-    require(ownerId == null || ownerId.isNotBlank()) { "The ownerId cannot be empty." }
+    require(ownerId.isNotBlank()) { "The ownerId cannot be empty." }
   }
 
   /**

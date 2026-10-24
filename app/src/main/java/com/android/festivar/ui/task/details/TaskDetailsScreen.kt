@@ -302,6 +302,7 @@ private val previewTask =
         endTime = LocalDateTime.of(2026, 10, 17, 9, 50),
         location = "Stage, north corner",
         maxAssign = 1,
+        ownerId = previewUser.uid,
     )
 
 private val previewOtherUser = User("u2", "Yasser", "Ameur")
