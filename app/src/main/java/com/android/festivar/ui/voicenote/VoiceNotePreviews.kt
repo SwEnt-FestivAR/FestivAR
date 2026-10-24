@@ -10,17 +10,18 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.model.voicenote.PlayerState
 import com.android.festivar.model.voicenote.RecorderState
-import com.android.festivar.model.voicenote.VocalNote
+import com.android.festivar.model.voicenote.VoiceNote
 import com.android.festivar.ui.theme.AppTheme
 import java.time.Duration
-import java.time.LocalDateTime
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
 
 private val previewNote =
-    VocalNote(
+    VoiceNote(
         id = "n1",
         audioUrl = "https://example.com/n1.m4a",
         duration = Duration.ofSeconds(14),
-        createdAt = LocalDateTime.of(2026, 10, 17, 9, 12),
+        createdAt = ZonedDateTime.of(2026, 10, 17, 9, 12, 0, 0, ZoneOffset.UTC),
     )
 
 private val callbacks = VoiceNoteCallbacks()
