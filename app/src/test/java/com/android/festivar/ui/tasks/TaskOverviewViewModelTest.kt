@@ -9,9 +9,9 @@ import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
-import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
+import java.time.ZonedDateTime
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -33,8 +33,7 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class TaskOverviewViewModelTest {
-  private val zone = ZoneId.of("Europe/Zurich")
-  private val clock = SettableClock(at(10, 0).atZone(zone).toInstant(), zone)
+  private val clock = SettableClock(at(10, 0).toInstant(), ZONE)
   private val dispatcher = UnconfinedTestDispatcher()
   private val me = User("me")
   private val ana = User("ana")
@@ -563,8 +562,10 @@ class TaskOverviewViewModelTest {
   private companion object {
     const val EVENT = "fete"
     val DAY: LocalDate = LocalDate.of(2026, 7, 1)
+    val ZONE: ZoneId = ZoneId.of("Europe/Zurich")
 
-    /** A time on [DAY], the day every seeded task lives on. */
-    fun at(hour: Int, minute: Int): LocalDateTime = DAY.atTime(hour, minute)
+    /** A time on [DAY] in [ZONE], the day and zone every seeded task lives in. */
+    fun at(hour: Int, minute: Int): ZonedDateTime =
+        ZonedDateTime.of(DAY, LocalTime.of(hour, minute), ZONE)
   }
 }

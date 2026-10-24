@@ -5,7 +5,7 @@ import com.android.festivar.model.user.UserRepositoryFirebase
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import java.time.Duration
-import java.time.LocalDateTime
+import java.time.ZonedDateTime
 import java.util.UUID
 import kotlin.collections.map
 import kotlinx.coroutines.tasks.await
@@ -110,8 +110,8 @@ class TaskRepositoryFirebase(
         eventId = document.getString("eventId").required("eventId", document.id),
         title = document.getString("title").required("title", document.id),
         description = document.getString("description") ?: "",
-        startTime = document.getString("startTime")?.let(LocalDateTime::parse),
-        endTime = document.getString("endTime")?.let(LocalDateTime::parse),
+        startTime = document.getString("startTime")?.let(ZonedDateTime::parse),
+        endTime = document.getString("endTime")?.let(ZonedDateTime::parse),
         estimatedTime = document.getLong("estimatedTime")?.let(Duration::ofNanos),
         location = document.getString("location") ?: "",
         priority = document.getString("priority")?.let(Priority::valueOf) ?: Priority.NONE,

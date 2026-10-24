@@ -87,7 +87,7 @@ class CreateTaskScreenInstrumentedTest : CreateTaskTest() {
 
   @Test
   fun anEndBeforeTheStartShowsAnErrorUntilTheScheduleIsFixed() {
-    val day: LocalDate = completeForm.startDate!!
+    val day: LocalDate = completeForm.startDate!!.toLocalDate()
     composeTestRule.enterCreateTaskTitle("Run power to stage")
     composeTestRule.pickCreateTaskDate(CreateTaskScreenTestTags.START_DATE_FIELD, day.plusDays(1))
     composeTestRule.pickCreateTaskDate(CreateTaskScreenTestTags.END_DATE_FIELD, day)
