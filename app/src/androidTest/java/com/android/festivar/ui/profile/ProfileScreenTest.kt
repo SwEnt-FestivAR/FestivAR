@@ -1,6 +1,7 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.profile
 
+import androidx.annotation.StringRes
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
@@ -17,6 +18,8 @@ import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextReplacement
 import androidx.credentials.Credential
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import com.android.festivar.R
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
@@ -54,6 +57,26 @@ class ProfileScreenTest {
   private fun neverLoadingUsers() =
       object : UsersRepository by users {
         override suspend fun getUser(uId: String): User = awaitCancellation()
+      }
+
+  /** A users repository whose first fetch fails with `offline`, and whose next fetches work. */
+  private fun usersFailingTheFirstLoad() =
+      object : UsersRepository by users {
+        private var failed = false
+
+        override suspend fun getUser(uId: String): User {
+          if (!failed) {
+            failed = true
+            throw IllegalStateException("offline")
+          }
+          return users.getUser(uId)
+        }
+      }
+
+  /** An [AuthRepository] whose sign out never ends, so the profile stays signing out. */
+  private fun neverSigningOut() =
+      object : AuthRepository by FakeAuthRepository() {
+        override suspend fun signOut(): Result<Unit> = awaitCancellation()
       }
 
   /** An [AuthRepository] whose sign out returns [signOutResult]. */
@@ -102,6 +125,9 @@ class ProfileScreenTest {
       }
 
   private fun saveButton() = composeTestRule.onNodeWithTag(ProfileScreenTestTags.SAVE_BUTTON)
+
+  private fun string(@StringRes id: Int) =
+      InstrumentationRegistry.getInstrumentation().targetContext.getString(id)
 
   /** Turns red when the title, the back arrow, the avatar, a field or a button disappears. */
   @Test
@@ -195,17 +221,34 @@ class ProfileScreenTest {
     saveButton().performClick()
 
     waitForTag(ProfileScreenTestTags.ERROR_MESSAGE)
-    composeTestRule.onNodeWithText("Failed to update profile: offline").assertIsDisplayed()
+    composeTestRule.onNodeWithText(string(R.string.profile_save_failed)).assertIsDisplayed()
   }
 
-  /** Turns red when a failed load stops showing its error in the snackbar. */
+  /**
+   * Turns red when a failed load stops showing its error in the snackbar, or shows the form instead
+   * of Retry.
+   */
   @Test
   fun failedLoadShowsTheError() {
     setProfile(usersRepository = UsersRepositoryLocal(), waitForLoad = false)
 
     waitForTag(ProfileScreenTestTags.ERROR_MESSAGE)
-    composeTestRule.onNodeWithText("Failed to load profile", substring = true).assertIsDisplayed()
-    saveButton().assertIsNotEnabled()
+    composeTestRule.onNodeWithText(string(R.string.profile_load_failed)).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.RETRY_BUTTON).assertIsDisplayed()
+    saveButton().assertDoesNotExist()
+  }
+
+  /** Turns red when Retry stops loading the profile again after a failed load. */
+  @Test
+  fun retryAfterAFailedLoadShowsTheProfile() {
+    setProfile(usersRepository = usersFailingTheFirstLoad(), waitForLoad = false)
+    waitForTag(ProfileScreenTestTags.RETRY_BUTTON)
+
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.RETRY_BUTTON).performClick()
+
+    waitForTag(ProfileScreenTestTags.AVATAR)
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.NAME_FIELD).assertTextContains(yasser.name)
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.RETRY_BUTTON).assertDoesNotExist()
   }
 
   /** Turns red when Sign out stops reaching the auth repository or stops calling onSignedOut. */
@@ -218,6 +261,16 @@ class ProfileScreenTest {
 
     composeTestRule.waitUntil(5_000) { signedOut }
     assertTrue(viewModel.uiState.value.signedOut)
+  }
+
+  /** Turns red when Sign out stays enabled while the sign out is running. */
+  @Test
+  fun signOutIsDisabledWhileSigningOut() {
+    setProfile(authRepository = neverSigningOut())
+
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.SIGN_OUT_BUTTON).performClick()
+
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.SIGN_OUT_BUTTON).assertIsNotEnabled()
   }
 
   /**
@@ -234,7 +287,7 @@ class ProfileScreenTest {
     composeTestRule.onNodeWithTag(ProfileScreenTestTags.SIGN_OUT_BUTTON).performClick()
 
     waitForTag(ProfileScreenTestTags.ERROR_MESSAGE)
-    composeTestRule.onNodeWithText("Failed to sign out: offline").assertIsDisplayed()
+    composeTestRule.onNodeWithText(string(R.string.profile_sign_out_failed)).assertIsDisplayed()
     assertFalse(signedOut)
   }
 

@@ -7,12 +7,16 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -33,8 +37,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.android.festivar.R
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.Avatar
 import com.android.festivar.ui.components.FestivarTextField
@@ -50,6 +55,7 @@ object ProfileScreenTestTags {
   const val EMAIL = "profileEmail"
   const val SAVE_BUTTON = "profileSaveButton"
   const val SIGN_OUT_BUTTON = "profileSignOutButton"
+  const val RETRY_BUTTON = "profileRetryButton"
   const val ERROR_MESSAGE = "profileErrorMessage"
 }
 
@@ -83,8 +89,9 @@ fun ProfileScreen(
   val snackbarHostState = remember { SnackbarHostState() }
 
   // Shows each error once in the snackbar, then clears it so it does not come back.
-  LaunchedEffect(profileUIState.errorMsg) {
-    profileUIState.errorMsg?.let { error ->
+  val errorMsg = profileUIState.errorMsg?.let { stringResource(it) }
+  LaunchedEffect(errorMsg) {
+    errorMsg?.let { error ->
       snackbarHostState.showSnackbar(error)
       profileViewModel.clearErrorMsg()
     }
@@ -98,15 +105,17 @@ fun ProfileScreen(
         TopAppBar(
             title = {
               Text(
-                  text = "Profile",
+                  text = stringResource(R.string.profile_title),
                   style = MaterialTheme.typography.titleLarge,
-                  fontWeight = FontWeight.Bold,
                   modifier = Modifier.testTag(ProfileScreenTestTags.TITLE),
               )
             },
             navigationIcon = {
               IconButton(onClick = onBack, Modifier.testTag(ProfileScreenTestTags.BACK)) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.profile_back),
+                )
               }
             },
         )
@@ -125,6 +134,7 @@ fun ProfileScreen(
         onNameChange = profileViewModel::updateName,
         onSaveClick = profileViewModel::saveChanges,
         onSignOutClick = profileViewModel::signOut,
+        onRetryClick = profileViewModel::getUserInformation,
         modifier = Modifier.padding(padding),
     )
   }
@@ -149,10 +159,11 @@ internal fun ProfileScreenContent(
     onNameChange: (String) -> Unit,
     onSaveClick: () -> Unit,
     onSignOutClick: () -> Unit,
+    onRetryClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
   Column(
-      modifier = modifier.fillMaxSize().padding(16.dp),
+      modifier = modifier.fillMaxSize().imePadding().padding(16.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
   ) {
     // Until the profile is loaded there is nothing to show or edit.
@@ -163,39 +174,61 @@ internal fun ProfileScreenContent(
       return@Column
     }
 
-    Spacer(modifier = Modifier.height(16.dp))
+    // The load failed: there is nothing to edit, so only offer to try again or to sign out.
+    if (uiState.user == null) {
+      Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+        Button(
+            onClick = onRetryClick,
+            modifier = Modifier.testTag(ProfileScreenTestTags.RETRY_BUTTON),
+        ) {
+          Text(text = stringResource(R.string.profile_retry))
+        }
+      }
+      SignOutButton(
+          onClick = onSignOutClick,
+          isSigningOut = uiState.isSigningOut,
+          signedOut = uiState.signedOut,
+      )
+      return@Column
+    }
 
-    // The avatar shows the saved user, so its initials only change once the changes are saved.
-    // The email is shown under it and cannot be edited.
-    uiState.user?.let { user ->
-      Box(modifier = Modifier.testTag(ProfileScreenTestTags.AVATAR)) { Avatar(user = user) }
+    Column(
+        modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
       Spacer(modifier = Modifier.height(16.dp))
-      Text(
-          text = user.email,
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-          modifier = Modifier.testTag(ProfileScreenTestTags.EMAIL),
+
+      // The avatar shows the saved user, so its initials only change once the changes are saved.
+      // The email is shown under it and cannot be edited.
+      uiState.user.let { user ->
+        Box(modifier = Modifier.testTag(ProfileScreenTestTags.AVATAR)) { Avatar(user = user) }
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = user.email,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.testTag(ProfileScreenTestTags.EMAIL),
+        )
+      }
+
+      Spacer(modifier = Modifier.height(24.dp))
+
+      FestivarTextField(
+          value = uiState.surname,
+          onValueChange = onSurnameChange,
+          label = stringResource(R.string.profile_field_surname),
+          modifier = Modifier.testTag(ProfileScreenTestTags.SURNAME_FIELD),
+      )
+      Spacer(modifier = Modifier.height(12.dp))
+      FestivarTextField(
+          value = uiState.name,
+          onValueChange = onNameChange,
+          label = stringResource(R.string.profile_field_name),
+          modifier = Modifier.testTag(ProfileScreenTestTags.NAME_FIELD),
       )
     }
 
-    Spacer(modifier = Modifier.height(24.dp))
-
-    FestivarTextField(
-        value = uiState.surname,
-        onValueChange = onSurnameChange,
-        label = "Surname",
-        modifier = Modifier.testTag(ProfileScreenTestTags.SURNAME_FIELD),
-    )
-    Spacer(modifier = Modifier.height(12.dp))
-    FestivarTextField(
-        value = uiState.name,
-        onValueChange = onNameChange,
-        label = "Name",
-        modifier = Modifier.testTag(ProfileScreenTestTags.NAME_FIELD),
-    )
-
-    // Takes all the free height, so the buttons sit at the bottom as in the design.
-    Spacer(modifier = Modifier.weight(1f))
+    Spacer(modifier = Modifier.height(16.dp))
 
     Button(
         onClick = onSaveClick,
@@ -206,17 +239,36 @@ internal fun ProfileScreenContent(
       if (uiState.isSaving) {
         CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
       } else {
-        Text(text = "Save changes", fontWeight = FontWeight.SemiBold)
+        Text(
+            text = stringResource(R.string.profile_save),
+            style = MaterialTheme.typography.labelLarge,
+        )
       }
     }
     Spacer(modifier = Modifier.height(12.dp))
-    OutlinedButton(
+
+    SignOutButton(
         onClick = onSignOutClick,
-        shape = RoundedCornerShape(12.dp),
-        modifier =
-            Modifier.fillMaxWidth().height(48.dp).testTag(ProfileScreenTestTags.SIGN_OUT_BUTTON),
-    ) {
-      Text(text = "Sign out", color = MaterialTheme.colorScheme.error)
+        isSigningOut = uiState.isSigningOut,
+        signedOut = uiState.signedOut,
+    )
+  }
+}
+
+@Composable
+private fun SignOutButton(onClick: () -> Unit, isSigningOut: Boolean, signedOut: Boolean) {
+  OutlinedButton(
+      onClick = onClick,
+      enabled = !isSigningOut && !signedOut,
+      shape = RoundedCornerShape(12.dp),
+      modifier =
+          Modifier.fillMaxWidth().height(48.dp).testTag(ProfileScreenTestTags.SIGN_OUT_BUTTON),
+      colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+  ) {
+    if (isSigningOut) {
+      CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+    } else {
+      Text(text = stringResource(R.string.profile_sign_out))
     }
   }
 }
