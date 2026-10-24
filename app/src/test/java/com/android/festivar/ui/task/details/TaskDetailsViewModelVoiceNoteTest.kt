@@ -7,11 +7,12 @@ import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import com.android.festivar.model.voicenote.PlayerState
 import com.android.festivar.model.voicenote.RecorderState
-import com.android.festivar.model.voicenote.VocalNote
+import com.android.festivar.model.voicenote.VoiceNote
 import com.android.festivar.model.voicenote.VoiceRecorderException
 import java.io.IOException
 import java.time.Duration
-import java.time.LocalDateTime
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -35,19 +36,19 @@ import org.junit.runner.RunWith
 class TaskDetailsViewModelVoiceNoteTest {
   private val repository = EditFailingRepository()
   private val recorder = FakeVoiceRecorder()
-  private val storage = FakeVocalNoteStorage()
+  private val storage = FakeVoiceNoteStorage()
   private val player = FakeVoicePlayer()
   private val owner = User(uid = "owner")
   private val volunteer = User(uid = "volunteer")
-  private val recordedAt = LocalDateTime.of(2026, 10, 17, 9, 12)
+  private val recordedAt = ZonedDateTime.of(2026, 10, 17, 9, 12, 0, 0, ZoneOffset.UTC)
   private var ids = 0
 
   private val note =
-      VocalNote(
+      VoiceNote(
           "n1",
           "https://fake/t1/old.m4a",
           Duration.ofSeconds(4),
-          LocalDateTime.of(2026, 1, 1, 8, 0),
+          ZonedDateTime.of(2026, 1, 1, 8, 0, 0, 0, ZoneOffset.UTC),
       )
 
   @Before
@@ -60,12 +61,12 @@ class TaskDetailsViewModelVoiceNoteTest {
     Dispatchers.resetMain()
   }
 
-  private fun task(vocalNote: VocalNote? = null, ownerId: String? = "owner") =
+  private fun task(voiceNote: VoiceNote? = null, ownerId: String? = "owner") =
       Task(
           taskId = "t1",
           eventId = "e1",
           title = "Run power to stage",
-          vocalNote = vocalNote,
+          voiceNote = voiceNote,
           ownerId = ownerId,
       )
 
@@ -148,7 +149,7 @@ class TaskDetailsViewModelVoiceNoteTest {
     vm.finishRecording()
 
     assertEquals(listOf("t1"), storage.uploads)
-    val saved = stored().vocalNote
+    val saved = stored().voiceNote
     assertNotNull(saved)
     assertEquals("id-1", saved!!.id)
     assertEquals("https://fake/t1/1.m4a", saved.audioUrl)
@@ -173,7 +174,7 @@ class TaskDetailsViewModelVoiceNoteTest {
     val vm = viewModel(task(note))
     vm.record()
     assertEquals(0, recorder.starts)
-    assertEquals(note, stored().vocalNote)
+    assertEquals(note, stored().voiceNote)
   }
 
   @Test
@@ -208,7 +209,7 @@ class TaskDetailsViewModelVoiceNoteTest {
     vm.record()
     assertEquals(R.string.voice_note_record_failed, vm.uiState.value.errorMsg)
     assertTrue(storage.uploads.isEmpty())
-    assertNull(stored().vocalNote)
+    assertNull(stored().voiceNote)
   }
 
   @Test
@@ -228,7 +229,7 @@ class TaskDetailsViewModelVoiceNoteTest {
     vm.record()
     assertTrue(vm.voiceNote.value.sendFailed)
     assertTrue(vm.voiceNote.value.hasNotices)
-    assertNull(stored().vocalNote)
+    assertNull(stored().voiceNote)
     assertFalse(vm.uiState.value.isUpdating)
     assertTrue(recorder.lastAudio!!.file.exists())
 
@@ -236,7 +237,7 @@ class TaskDetailsViewModelVoiceNoteTest {
     vm.retryVoiceNote()
 
     assertFalse(vm.voiceNote.value.sendFailed)
-    assertNotNull(stored().vocalNote)
+    assertNotNull(stored().voiceNote)
     assertFalse(recorder.lastAudio!!.file.exists())
     assertEquals(1, recorder.starts) // retried without recording again
   }
@@ -249,11 +250,11 @@ class TaskDetailsViewModelVoiceNoteTest {
 
     assertTrue(vm.voiceNote.value.sendFailed)
     assertEquals(listOf("https://fake/t1/1.m4a"), storage.deletions)
-    assertNull(stored().vocalNote)
+    assertNull(stored().voiceNote)
 
     repository.editFailure = null
     vm.retryVoiceNote()
-    assertNotNull(stored().vocalNote)
+    assertNotNull(stored().voiceNote)
     assertEquals(2, storage.uploads.size)
   }
 
@@ -282,7 +283,7 @@ class TaskDetailsViewModelVoiceNoteTest {
     assertFalse(vm.uiState.value.canTake)
     gate.complete(Unit)
     assertFalse(vm.uiState.value.isUpdating)
-    assertNotNull(stored().vocalNote)
+    assertNotNull(stored().voiceNote)
   }
 
   // Deleting
@@ -296,7 +297,7 @@ class TaskDetailsViewModelVoiceNoteTest {
     vm.confirmDeleteVoiceNote()
 
     assertFalse(vm.voiceNote.value.showDeleteConfirm)
-    assertNull(stored().vocalNote)
+    assertNull(stored().voiceNote)
     assertNull(vm.voiceNote.value.note)
     assertEquals(listOf(note.audioUrl), storage.deletions)
     assertTrue(vm.voiceNote.value.showRecordBar) // the owner can record again
@@ -308,7 +309,7 @@ class TaskDetailsViewModelVoiceNoteTest {
     vm.requestDeleteVoiceNote()
     vm.dismissDeleteVoiceNote()
     assertFalse(vm.voiceNote.value.showDeleteConfirm)
-    assertEquals(note, stored().vocalNote)
+    assertEquals(note, stored().voiceNote)
     assertTrue(storage.deletions.isEmpty())
   }
 
@@ -318,7 +319,7 @@ class TaskDetailsViewModelVoiceNoteTest {
     volunteerVm.requestDeleteVoiceNote()
     volunteerVm.confirmDeleteVoiceNote()
     assertFalse(volunteerVm.voiceNote.value.showDeleteConfirm)
-    assertEquals(note, stored().vocalNote)
+    assertEquals(note, stored().voiceNote)
     assertTrue(storage.deletions.isEmpty())
   }
 
@@ -334,7 +335,7 @@ class TaskDetailsViewModelVoiceNoteTest {
     storage.deleteFailure = IOException("offline")
     val vm = viewModel(task(note))
     vm.confirmDeleteVoiceNote()
-    assertNull(stored().vocalNote)
+    assertNull(stored().voiceNote)
     assertNull(vm.uiState.value.errorMsg)
   }
 
@@ -346,7 +347,7 @@ class TaskDetailsViewModelVoiceNoteTest {
     vm.confirmDeleteVoiceNote()
 
     assertEquals(R.string.task_details_save_failed, vm.uiState.value.errorMsg)
-    assertEquals(note, stored().vocalNote)
+    assertEquals(note, stored().voiceNote)
     assertEquals(note, vm.voiceNote.value.note)
     assertTrue(storage.deletions.isEmpty())
     assertFalse(vm.uiState.value.isUpdating)

@@ -30,7 +30,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
-import com.android.festivar.model.voicenote.VocalNote
+import com.android.festivar.model.voicenote.VoiceNote
 import com.android.festivar.ui.components.SectionLabel
 import com.android.festivar.ui.components.formatTime
 
@@ -101,7 +101,7 @@ fun VoiceNoteSection(
 
 /** The note: who and when, then the player and, for the owner, the trash. */
 @Composable
-private fun VoiceNoteRow(note: VocalNote, state: VoiceNoteUiState, callbacks: VoiceNoteCallbacks) {
+private fun VoiceNoteRow(note: VoiceNote, state: VoiceNoteUiState, callbacks: VoiceNoteCallbacks) {
   Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
     val time = formatTime(note.createdAt.toLocalTime())
     Text(
