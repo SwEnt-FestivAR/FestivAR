@@ -15,7 +15,7 @@ class TaskDetailsScreenHelpersTest {
   private val start = LocalDateTime.of(2026, 10, 17, 9, 30)
 
   private fun task(startTime: LocalDateTime? = null, endTime: LocalDateTime? = null) =
-      Task("t", "e", "Title", startTime = startTime, endTime = endTime)
+      Task("t", "e", "Title", startTime = startTime, endTime = endTime, ownerId = "owner-1")
 
   @Test
   fun whenLine_showsDateAndTimes() {

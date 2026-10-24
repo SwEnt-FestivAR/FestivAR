@@ -1,3 +1,4 @@
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.task
 
@@ -17,6 +18,7 @@ class TasksRepositoryLocalTest {
 
   private val task =
       Task(
+          ownerId = "owner-1",
           taskId = "1",
           eventId = "event1",
           title = "Task",

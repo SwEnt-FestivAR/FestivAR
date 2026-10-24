@@ -38,6 +38,7 @@ class TaskDetailsContentTest {
           location = "Stage, north corner",
           maxAssign = 2,
           assignees = listOf(sami),
+          ownerId = "owner-1",
       )
 
   /** The state seen by [sami]; the status is derived from [task] as the ViewModel does. */
@@ -116,7 +117,9 @@ class TaskDetailsContentTest {
 
   @Test
   fun takenTaskHasNoActions() =
-      assertNoActions(Task("t2", "e1", "Full", maxAssign = 1, assignees = listOf(yasser)))
+      assertNoActions(
+          Task("t2", "e1", "Full", maxAssign = 1, assignees = listOf(yasser), ownerId = "owner-1")
+      )
 
   @Test fun doneTaskHasNoActions() = assertNoActions(task.complete())
 

@@ -1,3 +1,4 @@
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Written with the help of an AI coding assistant and reviewed line by line by the author.
 package com.android.festivar.ui.tasks
 
@@ -41,6 +42,7 @@ class TaskOverviewViewModelTest {
 
   private val power =
       Task(
+          ownerId = "owner-1",
           taskId = "power",
           eventId = EVENT,
           title = "Run power to stage",
@@ -50,8 +52,17 @@ class TaskOverviewViewModelTest {
           maxAssign = 2,
           assignees = listOf(me),
       )
-  private val tables = Task("tables", EVENT, "Set up tables", startTime = at(8, 0))
-  private val bar = Task("bar", EVENT, "Clean the bar", startTime = at(9, 0), completed = true)
+  private val tables =
+      Task("tables", EVENT, "Set up tables", startTime = at(8, 0), ownerId = "owner-1")
+  private val bar =
+      Task(
+          "bar",
+          EVENT,
+          "Clean the bar",
+          startTime = at(9, 0),
+          completed = true,
+          ownerId = "owner-1",
+      )
   private val bunting =
       Task(
           "bunting",
@@ -60,13 +71,28 @@ class TaskOverviewViewModelTest {
           startTime = at(11, 30),
           estimatedTime = Duration.ofMinutes(90),
           location = "Marquee A",
+          ownerId = "owner-1",
       )
   private val sound =
-      Task("sound", EVENT, "Sound check", startTime = at(15, 0), assignees = listOf(ana))
-  private val gate = Task("gate", EVENT, "Close the gate", startTime = at(20, 0))
-  private val litter = Task("litter", EVENT, "Pick up litter")
+      Task(
+          "sound",
+          EVENT,
+          "Sound check",
+          startTime = at(15, 0),
+          assignees = listOf(ana),
+          ownerId = "owner-1",
+      )
+  private val gate =
+      Task("gate", EVENT, "Close the gate", startTime = at(20, 0), ownerId = "owner-1")
+  private val litter = Task("litter", EVENT, "Pick up litter", ownerId = "owner-1")
   private val elsewhere =
-      Task("elsewhere", "other-event", "Other event's task", startTime = at(10, 30))
+      Task(
+          "elsewhere",
+          "other-event",
+          "Other event's task",
+          startTime = at(10, 30),
+          ownerId = "owner-1",
+      )
 
   private lateinit var repository: TasksRepositoryLocal
 
@@ -210,12 +236,24 @@ class TaskOverviewViewModelTest {
   fun tasksAreGroupedByDayThenIntoTheFiveGroupsInOrder() {
     runBlocking {
       listOf(
-              Task("yesterday", EVENT, "Fold the tents", startTime = at(9, 0).minusDays(1)),
-              Task("tomorrow", EVENT, "Unfold the tents", startTime = at(9, 0).plusDays(1)),
-              Task("chairs", EVENT, "Arrange chairs", startTime = at(11, 30)),
-              Task("noon", EVENT, "Serve lunch", startTime = at(12, 0)),
-              Task("late", EVENT, "Clear the tables", startTime = at(17, 59)),
-              Task("six", EVENT, "Light the lanterns", startTime = at(18, 0)),
+              Task(
+                  "yesterday",
+                  EVENT,
+                  "Fold the tents",
+                  startTime = at(9, 0).minusDays(1),
+                  ownerId = "owner-1",
+              ),
+              Task(
+                  "tomorrow",
+                  EVENT,
+                  "Unfold the tents",
+                  startTime = at(9, 0).plusDays(1),
+                  ownerId = "owner-1",
+              ),
+              Task("chairs", EVENT, "Arrange chairs", startTime = at(11, 30), ownerId = "owner-1"),
+              Task("noon", EVENT, "Serve lunch", startTime = at(12, 0), ownerId = "owner-1"),
+              Task("late", EVENT, "Clear the tables", startTime = at(17, 59), ownerId = "owner-1"),
+              Task("six", EVENT, "Light the lanterns", startTime = at(18, 0), ownerId = "owner-1"),
           )
           .forEach { repository.addTask(it) }
     }
@@ -335,7 +373,15 @@ class TaskOverviewViewModelTest {
   fun theNowSectionMovesToTheNewDayAtMidnight() {
     val onlyDawn = TasksRepositoryLocal()
     runBlocking {
-      onlyDawn.addTask(Task("dawn", EVENT, "Open the gates", startTime = at(0, 15).plusDays(1)))
+      onlyDawn.addTask(
+          Task(
+              "dawn",
+              EVENT,
+              "Open the gates",
+              startTime = at(0, 15).plusDays(1),
+              ownerId = "owner-1",
+          )
+      )
     }
     val viewModel = overview(repo = onlyDawn)
     val screen = watch(viewModel)
@@ -359,7 +405,14 @@ class TaskOverviewViewModelTest {
   fun aTaskWithAnEndLeavesNowWhenItEnds() {
     runBlocking {
       repository.addTask(
-          Task("lights", EVENT, "Focus the lights", startTime = at(10, 30), endTime = at(10, 45))
+          Task(
+              "lights",
+              EVENT,
+              "Focus the lights",
+              startTime = at(10, 30),
+              endTime = at(10, 45),
+              ownerId = "owner-1",
+          )
       )
     }
     val viewModel = overview()
@@ -473,7 +526,9 @@ class TaskOverviewViewModelTest {
   @Test
   fun refreshShowsATaskAddedAfterTheFirstLoad() {
     val viewModel = overview()
-    runBlocking { repository.addTask(Task("water", EVENT, "Fill the water tanks")) }
+    runBlocking {
+      repository.addTask(Task("water", EVENT, "Fill the water tanks", ownerId = "owner-1"))
+    }
 
     viewModel.refresh()
 

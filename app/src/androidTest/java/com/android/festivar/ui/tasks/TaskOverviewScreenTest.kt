@@ -1,3 +1,4 @@
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Written with the help of an AI coding assistant and reviewed line by line by the author.
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 package com.android.festivar.ui.tasks
@@ -41,10 +42,14 @@ class TaskOverviewScreenTest {
           estimatedTime = Duration.ofMinutes(80),
           location = "Stage",
           maxAssign = 2,
+          ownerId = "owner-1",
       )
-  private val bunting = Task("bunting", EVENT, "Hang bunting", location = "Marquee A")
-  private val sound = Task("sound", EVENT, "Sound check", assignees = listOf(User(ME)))
-  private val elsewhere = Task("elsewhere", "other-event", "Other event's task")
+  private val bunting =
+      Task("bunting", EVENT, "Hang bunting", location = "Marquee A", ownerId = "owner-1")
+  private val sound =
+      Task("sound", EVENT, "Sound check", assignees = listOf(User(ME)), ownerId = "owner-1")
+  private val elsewhere =
+      Task("elsewhere", "other-event", "Other event's task", ownerId = "owner-1")
 
   private lateinit var original: TasksRepository
 
