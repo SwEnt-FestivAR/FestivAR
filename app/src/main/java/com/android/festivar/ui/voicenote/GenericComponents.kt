@@ -9,13 +9,16 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.android.festivar.ui.theme.AppTheme
 
 /*
  * Generic building blocks with no voice note logic inside: only texts and callbacks. They are
@@ -108,4 +111,47 @@ fun ConfirmDialog(
         TextButton(onClick = onDismiss, modifier = dismissModifier) { Text(dismissLabel) }
       },
   )
+}
+
+@Preview(showBackground = true)
+@Composable
+internal fun FixedBottomBarPreview() {
+  AppTheme {
+    FixedBottomBar {
+      Text("Hold to record")
+      Text("Give it back")
+    }
+  }
+}
+
+@Preview(showBackground = true)
+@Composable
+internal fun NoticeSnackbarPreview() {
+  AppTheme { NoticeSnackbar("Voice note not sent. Check your connection.", "Retry", onAction = {}) }
+}
+
+@Preview(showBackground = true)
+@Composable
+internal fun InfoNotePreview() {
+  AppTheme {
+    InfoNote(
+        "Microphone is off for FestivAR. Turn it on in Settings to record a note.",
+        action = { OutlinedButton(onClick = {}) { Text("Open settings") } },
+    )
+  }
+}
+
+@Preview(showBackground = true)
+@Composable
+internal fun ConfirmDialogPreview() {
+  AppTheme {
+    ConfirmDialog(
+        title = "Delete this voice note?",
+        text = "The volunteers on this task will no longer be able to hear it.",
+        confirmLabel = "Delete",
+        dismissLabel = "Keep it",
+        onConfirm = {},
+        onDismiss = {},
+    )
+  }
 }
