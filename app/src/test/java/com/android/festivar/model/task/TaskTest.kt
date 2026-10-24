@@ -330,7 +330,7 @@ class TaskTest {
   fun attachVoiceNote_fails_whenTheUserIsNotTheOwner() {
     for (task in listOf(ownedTask, bareTask)) {
       val exception =
-          assertThrows(IllegalStateException::class.java) {
+          assertThrows(SecurityException::class.java) {
             task.attachVoiceNote(voiceNote("a"), "someone")
           }
       assertEquals("Only the owner can attach a voice note.", exception.message)
@@ -368,8 +368,7 @@ class TaskTest {
   fun removeVoiceNote_fails_whenTheUserIsNotTheOwner() {
     val task = ownedTask.attachVoiceNote(voiceNote("a"), "owner")
 
-    val exception =
-        assertThrows(IllegalStateException::class.java) { task.removeVoiceNote("someone") }
+    val exception = assertThrows(SecurityException::class.java) { task.removeVoiceNote("someone") }
     assertEquals("Only the owner can remove a voice note.", exception.message)
     assertEquals(voiceNote("a"), task.voiceNote)
   }

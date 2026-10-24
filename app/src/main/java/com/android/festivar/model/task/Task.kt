@@ -102,11 +102,12 @@ data class Task(
    * voice note: to change it, call [removeVoiceNote] first.
    *
    * @param userId The [User.uid] of the user attaching the note.
-   * @throws IllegalStateException If [userId] is not the owner, or if the [Task] already has a
-   *   voice note.
+   * @throws SecurityException If [userId] is not the owner.
+   * @throws IllegalStateException If the [Task] already has a voice note.
    */
   fun attachVoiceNote(note: VoiceNote, userId: String): Task {
-    check(canManageVoiceNote(userId)) { "Only the owner can attach a voice note." }
+    if (!canManageVoiceNote(userId))
+        throw SecurityException("Only the owner can attach a voice note.")
     check(voiceNote == null) { "The task already has a voice note." }
     return copy(voiceNote = note)
   }
@@ -117,10 +118,12 @@ data class Task(
    * note's `audioUrl`.
    *
    * @param userId The [User.uid] of the user removing the note.
-   * @throws IllegalStateException If [userId] is not the owner, or if the [Task] has no voice note.
+   * @throws SecurityException If [userId] is not the owner.
+   * @throws IllegalStateException If the [Task] has no voice note.
    */
   fun removeVoiceNote(userId: String): Task {
-    check(canManageVoiceNote(userId)) { "Only the owner can remove a voice note." }
+    if (!canManageVoiceNote(userId))
+        throw SecurityException("Only the owner can remove a voice note.")
     check(voiceNote != null) { "The task has no voice note." }
     return copy(voiceNote = null)
   }
