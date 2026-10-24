@@ -4,7 +4,6 @@ package com.android.festivar.ui.authentication.signup
 
 import android.annotation.SuppressLint
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,8 +27,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
@@ -48,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -57,9 +55,8 @@ import androidx.credentials.Credential
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.R
 import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.theme.AppTheme
-import com.android.festivar.ui.theme.onSurfaceMutedDark
-import com.android.festivar.ui.theme.onSurfaceMutedLight
 import com.google.firebase.auth.FirebaseUser
 
 object SignUpScreenTestTags {
@@ -96,11 +93,10 @@ fun SignUpScreen(
   LaunchedEffect(uiState.isAuthenticated) { if (uiState.isAuthenticated) onSignUpSuccess() }
   Scaffold(
       modifier = modifier,
+      bottomBar = { SignUpFooter(onSignInClick) },
       snackbarHost = {
         SnackbarHost(
             hostState = snackBarHostState,
-            // 64 dp to be above the SignUpFooter
-            modifier = Modifier.padding(bottom = 64.dp),
         ) { data ->
           SignUpErrorSnackbar(data.visuals.message) { data.dismiss() }
         }
@@ -111,43 +107,33 @@ fun SignUpScreen(
             Modifier.fillMaxSize()
                 .background(color = MaterialTheme.colorScheme.background)
                 .padding(paddingValues)
-                .padding(horizontal = 24.dp),
+                .padding(horizontal = 24.dp)
+                .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.Start,
     ) {
-      Column(
-          modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
-          horizontalAlignment = Alignment.Start,
-      ) {
-        SignUpTopBar(onBackClick)
-        Spacer(modifier = Modifier.height(16.dp))
-        SignUpHeader()
-        Spacer(modifier = Modifier.height(24.dp))
-        SignUpFields(
-            email = uiState.email,
-            onEmailChange = { viewModel.updateEmail(it) },
-            password = uiState.password,
-            onPasswordChange = { viewModel.updatePassword(it) },
-            confirmPassword = uiState.confirmPassword,
-            onConfirmPasswordChange = { viewModel.updateConfirmPassword(it) },
-            isPasswordVisible = isPasswordVisible,
-            onPasswordVisibilityChange = { isPasswordVisible = !isPasswordVisible },
-        )
-        Spacer(modifier = Modifier.height(20.dp))
-        SignUpButton(
-            enabled =
-                uiState.email.isNotBlank() &&
-                    uiState.password.isNotBlank() &&
-                    uiState.isPasswordValid &&
-                    uiState.confirmPassword.isNotBlank() &&
-                    uiState.password == uiState.confirmPassword,
-            isLoading = uiState.isLoading,
-            onClick = { viewModel.signUp(uiState.email, uiState.password) },
-        )
-        Spacer(modifier = Modifier.height(24.dp))
-        SignUpTerms()
-        Spacer(modifier = Modifier.height(32.dp))
-      }
-      SignUpFooter(onSignInClick)
+      SignUpTopBar(onBackClick)
+      Spacer(modifier = Modifier.height(16.dp))
+      SignUpHeader()
+      Spacer(modifier = Modifier.height(24.dp))
+      SignUpFields(
+          email = uiState.email,
+          onEmailChange = { viewModel.updateEmail(it) },
+          password = uiState.password,
+          onPasswordChange = { viewModel.updatePassword(it) },
+          confirmPassword = uiState.confirmPassword,
+          onConfirmPasswordChange = { viewModel.updateConfirmPassword(it) },
+          isPasswordVisible = isPasswordVisible,
+          onPasswordVisibilityChange = { isPasswordVisible = !isPasswordVisible },
+      )
+      Spacer(modifier = Modifier.height(20.dp))
+      SignUpButton(
+          enabled = uiState.canSubmit,
+          isLoading = uiState.isLoading,
+          onClick = { viewModel.signUp(uiState.email, uiState.password) },
+      )
+      Spacer(modifier = Modifier.height(24.dp))
+      SignUpTerms()
+      Spacer(modifier = Modifier.height(32.dp))
     }
   }
 }
@@ -235,7 +221,7 @@ private fun SignUpFields(
     onPasswordVisibilityChange: () -> Unit,
 ) {
   Column {
-    SignUpTextField(
+    SignUpEmailField(
         value = email,
         onValueChange = onEmailChange,
         label = stringResource(R.string.signup_email),
@@ -250,6 +236,7 @@ private fun SignUpFields(
         tag = SignUpScreenTestTags.PASS_FIELD,
         isPasswordVisible = isPasswordVisible,
         onPasswordVisibilityChange = onPasswordVisibilityChange,
+        imeAction = ImeAction.Next,
     )
     Spacer(modifier = Modifier.height(12.dp))
     PasswordTextField(
@@ -261,6 +248,7 @@ private fun SignUpFields(
         onPasswordVisibilityChange = onPasswordVisibilityChange,
         showPasswordDescription = stringResource(R.string.signup_show_confirmation_password),
         hidePasswordDescription = stringResource(R.string.signup_hide_confirmation_password),
+        imeAction = ImeAction.Done,
     )
     Text(
         text = stringResource(R.string.signup_password_hint),
@@ -281,22 +269,20 @@ private fun SignUpFields(
 }
 
 @Composable
-private fun SignUpTextField(
+private fun SignUpEmailField(
     value: String,
     onValueChange: (String) -> Unit,
     label: String,
     tag: String,
-    keyboardType: KeyboardType = KeyboardType.Text,
+    keyboardType: KeyboardType = KeyboardType.Email,
+    imeAction: ImeAction = ImeAction.Next,
 ) {
-  OutlinedTextField(
+  FestivarTextField(
       value = value,
       onValueChange = onValueChange,
-      modifier = Modifier.fillMaxWidth().testTag(tag),
-      label = { Text(label) },
-      singleLine = true,
-      keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-      shape = RoundedCornerShape(12.dp),
-      colors = fieldColors(),
+      label = label,
+      modifier = Modifier.testTag(tag),
+      keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
   )
 }
 
@@ -310,16 +296,17 @@ private fun PasswordTextField(
     onPasswordVisibilityChange: (() -> Unit)? = null,
     showPasswordDescription: String = stringResource(R.string.signup_show_password),
     hidePasswordDescription: String = stringResource(R.string.signup_hide_password),
+    imeAction: ImeAction = ImeAction.Next,
 ) {
-  OutlinedTextField(
+  FestivarTextField(
       value = value,
       onValueChange = onValueChange,
-      modifier = Modifier.fillMaxWidth().testTag(tag),
-      label = { Text(label) },
-      singleLine = true,
+      label = label,
+      modifier = Modifier.testTag(tag),
       visualTransformation =
           if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-      keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+      keyboardOptions =
+          KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = imeAction),
       trailingIcon =
           onPasswordVisibilityChange?.let { onToggle ->
             {
@@ -335,8 +322,6 @@ private fun PasswordTextField(
               }
             }
           },
-      shape = RoundedCornerShape(12.dp),
-      colors = fieldColors(),
   )
 }
 
@@ -355,8 +340,8 @@ private fun SignUpButton(
           ButtonDefaults.buttonColors(
               containerColor = MaterialTheme.colorScheme.primary,
               contentColor = MaterialTheme.colorScheme.onPrimary,
-              disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-              disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f),
+              disabledContainerColor = MaterialTheme.colorScheme.outlineVariant,
+              disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
           ),
   ) {
     Text(
@@ -369,21 +354,11 @@ private fun SignUpButton(
 }
 
 @Composable
-private fun fieldColors() =
-    OutlinedTextFieldDefaults.colors(
-        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-        focusedBorderColor = MaterialTheme.colorScheme.outline,
-        focusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-        cursorColor = MaterialTheme.colorScheme.onSurface,
-    )
-
-@Composable
 private fun SignUpTerms() {
   Text(
       text = stringResource(R.string.signup_terms),
       style = MaterialTheme.typography.bodySmall,
-      color = if (isSystemInDarkTheme()) onSurfaceMutedDark else onSurfaceMutedLight,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
   )
 }
 
