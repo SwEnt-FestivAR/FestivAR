@@ -7,7 +7,7 @@ import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.voicenote.PlayerState
 import com.android.festivar.model.voicenote.RecordedAudio
 import com.android.festivar.model.voicenote.RecorderState
-import com.android.festivar.model.voicenote.VocalNoteStorage
+import com.android.festivar.model.voicenote.VoiceNoteStorage
 import com.android.festivar.model.voicenote.VoicePlayer
 import com.android.festivar.model.voicenote.VoiceRecorder
 import java.io.File
@@ -60,8 +60,8 @@ class FakeVoiceRecorder : VoiceRecorder {
   }
 }
 
-/** A [VocalNoteStorage] in memory: remembers the calls, can fail and can be made to wait. */
-class FakeVocalNoteStorage : VocalNoteStorage {
+/** A [VoiceNoteStorage] in memory: remembers the calls, can fail and can be made to wait. */
+class FakeVoiceNoteStorage : VoiceNoteStorage {
   /** Thrown by [upload] when not null. */
   var uploadFailure: Exception? = null
 

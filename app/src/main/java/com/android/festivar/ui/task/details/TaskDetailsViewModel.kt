@@ -14,13 +14,13 @@ import com.android.festivar.model.user.User
 import com.android.festivar.model.voicenote.PlayerState
 import com.android.festivar.model.voicenote.RecordedAudio
 import com.android.festivar.model.voicenote.RecorderState
-import com.android.festivar.model.voicenote.VocalNote
-import com.android.festivar.model.voicenote.VocalNoteStorage
+import com.android.festivar.model.voicenote.VoiceNote
+import com.android.festivar.model.voicenote.VoiceNoteStorage
 import com.android.festivar.model.voicenote.VoicePlayer
 import com.android.festivar.model.voicenote.VoiceRecorder
 import com.android.festivar.model.voicenote.VoiceRecorderException
 import com.android.festivar.ui.voicenote.VoiceNoteUiState
-import java.time.LocalDateTime
+import java.time.ZonedDateTime
 import java.util.UUID
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Job
@@ -120,10 +120,10 @@ class TaskDetailsViewModel(
     private val currentUser: User,
     private val repository: TasksRepository = TasksRepositoryProvider.repository,
     private val recorder: VoiceRecorder? = null,
-    private val storage: VocalNoteStorage? = null,
+    private val storage: VoiceNoteStorage? = null,
     private val player: VoicePlayer? = null,
     private val newId: () -> String = { UUID.randomUUID().toString() },
-    private val now: () -> LocalDateTime = { LocalDateTime.now() },
+    private val now: () -> ZonedDateTime = { ZonedDateTime.now() },
 ) : ViewModel() {
   private val _uiState = MutableStateFlow(TaskDetailsUiState(currentUserId = currentUser.uid))
   val uiState: StateFlow<TaskDetailsUiState> = _uiState.asStateFlow()
@@ -149,7 +149,7 @@ class TaskDetailsViewModel(
               player?.state ?: flowOf(PlayerState.Idle),
           ) { state, flags, recorderState, playerState ->
             VoiceNoteUiState(
-                note = state.task?.vocalNote,
+                note = state.task?.voiceNote,
                 canManage = canManageVoiceNote(state),
                 recorder = recorderState,
                 player = playerState,
@@ -206,18 +206,18 @@ class TaskDetailsViewModel(
 
   /** Only the task owner manages the note, and only if there is something to record and store. */
   private fun canManageVoiceNote(state: TaskDetailsUiState): Boolean =
-      recorder != null && storage != null && state.task?.canManageVocalNote(currentUser.uid) == true
+      recorder != null && storage != null && state.task?.canManageVoiceNote(currentUser.uid) == true
 
   /** The owner can record only while the task has no note, and when nothing else is saving. */
   private fun canRecord(state: TaskDetailsUiState): Boolean =
       canManageVoiceNote(state) &&
-          state.task?.vocalNote == null &&
+          state.task?.voiceNote == null &&
           !state.isUpdating &&
           !state.isLoading
 
   private fun canDeleteVoiceNote(state: TaskDetailsUiState): Boolean =
       canManageVoiceNote(state) &&
-          state.task?.vocalNote != null &&
+          state.task?.voiceNote != null &&
           !state.isUpdating &&
           !state.isLoading
 
@@ -279,7 +279,7 @@ class TaskDetailsViewModel(
       try {
         url = storage.upload(task.taskId, audio)
         val updated =
-            task.attachVocalNote(VocalNote(newId(), url, audio.duration, now()), currentUser.uid)
+            task.attachVoiceNote(VoiceNote(newId(), url, audio.duration, now()), currentUser.uid)
         repository.editTask(taskId, updated)
         pendingAudio = null
         audio.file.delete()
@@ -298,7 +298,7 @@ class TaskDetailsViewModel(
     }
   }
 
-  private suspend fun deleteFileQuietly(storage: VocalNoteStorage, url: String) {
+  private suspend fun deleteFileQuietly(storage: VoiceNoteStorage, url: String) {
     try {
       storage.delete(url)
     } catch (e: CancellationException) {
@@ -311,7 +311,7 @@ class TaskDetailsViewModel(
   /** Plays the voice note, or stops it if it is playing. */
   fun togglePlay() {
     val player = player ?: return
-    val url = _uiState.value.task?.vocalNote?.audioUrl ?: return
+    val url = _uiState.value.task?.voiceNote?.audioUrl ?: return
     if ((player.state.value as? PlayerState.Playing)?.audioUrl == url) player.stop()
     else player.play(url)
   }
@@ -341,10 +341,10 @@ class TaskDetailsViewModel(
       if (canDeleteVoiceNote(it)) it.copy(isUpdating = true, errorMsg = null) else it
     }
     val task = before.task?.takeIf { canDeleteVoiceNote(before) } ?: return
-    val note = task.vocalNote ?: return
+    val note = task.voiceNote ?: return
     viewModelScope.launch {
       try {
-        val updated = task.removeVocalNote(currentUser.uid)
+        val updated = task.removeVoiceNote(currentUser.uid)
         repository.editTask(taskId, updated)
         if ((player?.state?.value as? PlayerState.Playing)?.audioUrl == note.audioUrl) {
           player?.stop()
