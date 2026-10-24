@@ -21,6 +21,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+private const val SIGN_IN_CANCELLED = "Sign-in cancelled"
+private const val NO_CREDENTIALS_AVAILABLE = "No credentials available"
+private const val FAILED_TO_GET_CREDENTIALS = "Failed to get credentials"
+
 /** State displayed by the login screen. */
 data class LoginUIState(
     val email: String = "",
@@ -122,20 +126,20 @@ class LoginViewModel(private val authRepository: AuthRepository = AuthRepository
       } catch (cancellation: CancellationException) {
         throw cancellation
       } catch (cancellation: GetCredentialCancellationException) {
-        Result.failure(IllegalStateException("Sign-in cancelled"))
+        Result.failure(IllegalStateException(SIGN_IN_CANCELLED))
       } catch (exception: NoCredentialException) {
-        Result.failure(IllegalStateException("No credentials available"))
+        Result.failure(IllegalStateException(NO_CREDENTIALS_AVAILABLE))
       } catch (exception: GetCredentialException) {
-        Result.failure(IllegalStateException("Failed to get credentials"))
+        Result.failure(IllegalStateException(FAILED_TO_GET_CREDENTIALS))
       } catch (exception: Exception) {
         Result.failure<Nothing>(exception)
       }
 
   private fun Throwable.errorMessage(): String =
       when (message) {
-        "Sign-in cancelled" -> "Sign-in cancelled"
-        "No credentials available" -> "No credentials available"
-        "Failed to get credentials" -> "Failed to get credentials"
+        SIGN_IN_CANCELLED -> SIGN_IN_CANCELLED
+        NO_CREDENTIALS_AVAILABLE -> NO_CREDENTIALS_AVAILABLE
+        FAILED_TO_GET_CREDENTIALS -> FAILED_TO_GET_CREDENTIALS
         else -> "Unable to sign in. Check your details and try again."
       }
 }
