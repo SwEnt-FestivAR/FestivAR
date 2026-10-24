@@ -12,17 +12,11 @@ class VoiceNoteContractsTest {
   private val file = File("note.m4a")
 
   @Test
-  fun recordedAudio_acceptsAZeroDuration() {
-    assertEquals(Duration.ZERO, RecordedAudio(file, Duration.ZERO).duration)
-  }
+  fun recordedAudio_refusesAZeroOrNegativeDuration() {
+    listOf(Duration.ZERO, Duration.ofMillis(-1)).forEach {
+      val exception = assertThrows(IllegalArgumentException::class.java) { RecordedAudio(file, it) }
 
-  @Test
-  fun recordedAudio_refusesANegativeDuration() {
-    val exception =
-        assertThrows(IllegalArgumentException::class.java) {
-          RecordedAudio(file, Duration.ofMillis(-1))
-        }
-
-    assertEquals("The duration cannot be negative.", exception.message)
+      assertEquals("The duration must be positive.", exception.message)
+    }
   }
 }
