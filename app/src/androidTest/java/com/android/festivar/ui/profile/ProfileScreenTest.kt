@@ -61,6 +61,9 @@ class ProfileScreenTest {
       AuthRepository {
     override suspend fun signOut(): Result<Unit> = signOutResult
 
+    override suspend fun forgotPassword(email: String): Result<Unit> =
+        Result.failure(UnsupportedOperationException("Not used in this UI test"))
+
     override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> =
         Result.failure(UnsupportedOperationException("Not used in this UI test"))
 

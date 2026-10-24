@@ -115,6 +115,25 @@ class MainActivityNavigationTest {
   }
 
   @Test
+  fun loginNavigatesToForgotPasswordAndBackToLogin() {
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          authRepository = FakeAuthRepository(currentUser = null),
+      )
+    }
+
+    composeTestRule.onNodeWithText("Forgot password?").performClick()
+    composeTestRule
+        .onNodeWithText("Enter your email address to retrieve your password")
+        .assertIsDisplayed()
+
+    composeTestRule.onNodeWithText("Return to login").performClick()
+
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  @Test
   fun eventOverviewShowsStoredUserAndAvatarNavigatesToProfile() {
     setSignedInContent()
 
@@ -542,6 +561,9 @@ class FakeAuthRepository(override val currentUser: FirebaseUser?) : AuthReposito
       Result.failure(UnsupportedOperationException())
 
   override suspend fun signOut(): Result<Unit> = Result.success(Unit)
+
+  override suspend fun forgotPassword(email: String): Result<Unit> =
+      Result.failure(UnsupportedOperationException())
 
   override suspend fun signInWithEmailAndPassword(
       email: String,

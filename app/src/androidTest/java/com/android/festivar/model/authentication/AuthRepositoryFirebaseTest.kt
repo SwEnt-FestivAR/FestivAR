@@ -100,6 +100,23 @@ class AuthRepositoryFirebaseTest {
   }
 
   @Test
+  fun forgotPassword_returnsSuccessForExistingEmail() = runBlocking {
+    val email = newEmail()
+    Firebase.auth.createUserWithEmailAndPassword(email, PASSWORD).await()
+
+    val result = repository.forgotPassword(email)
+
+    assertTrue(result.isSuccess)
+  }
+
+  @Test
+  fun forgotPassword_returnsFailureForInvalidEmail() = runBlocking {
+    val result = repository.forgotPassword("")
+
+    assertTrue(result.isFailure)
+  }
+
+  @Test
   fun signOut_clearsCurrentUser() = runBlocking {
     repository.signUpWithEmailAndPassword(newEmail(), PASSWORD).getOrThrow()
     assertNotNull(repository.currentUser)

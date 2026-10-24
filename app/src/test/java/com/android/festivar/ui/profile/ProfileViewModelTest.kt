@@ -73,6 +73,9 @@ class ProfileViewModelTest {
       return signOutResult
     }
 
+    override suspend fun forgotPassword(email: String): Result<Unit> =
+        Result.failure(UnsupportedOperationException("Not used"))
+
     override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> =
         Result.failure(UnsupportedOperationException("Not used"))
 

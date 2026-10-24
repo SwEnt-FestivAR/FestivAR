@@ -31,6 +31,11 @@ class AuthRepositoryFirebase(
 
   override suspend fun signOut(): Result<Unit> = runCatching { firebaseAuth.signOut() }
 
+  override suspend fun forgotPassword(email: String): Result<Unit> = runCatching {
+    firebaseAuth.sendPasswordResetEmail(email).await()
+    Unit
+  }
+
   override suspend fun signInWithEmailAndPassword(
       email: String,
       password: String,
