@@ -36,7 +36,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.Avatar
@@ -104,7 +103,6 @@ fun ProfileScreen(
               Text(
                   text = "Profile",
                   style = MaterialTheme.typography.titleLarge,
-                  fontWeight = FontWeight.Bold,
                   modifier = Modifier.testTag(ProfileScreenTestTags.TITLE),
               )
             },
@@ -234,7 +232,7 @@ internal fun ProfileScreenContent(
       if (uiState.isSaving) {
         CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
       } else {
-        Text(text = "Save changes", fontWeight = FontWeight.SemiBold)
+        Text(text = "Save changes", style = MaterialTheme.typography.labelLarge)
       }
     }
     Spacer(modifier = Modifier.height(12.dp))
