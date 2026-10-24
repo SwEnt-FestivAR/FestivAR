@@ -3,7 +3,7 @@ package com.android.festivar.ui.voicenote
 
 import com.android.festivar.model.voicenote.PlayerState
 import com.android.festivar.model.voicenote.RecorderState
-import com.android.festivar.model.voicenote.VocalNote
+import com.android.festivar.model.voicenote.VoiceNote
 import java.time.Duration
 
 /**
@@ -19,7 +19,7 @@ import java.time.Duration
  * @property showDeleteConfirm Whether the dialog asking to confirm the deletion is open.
  */
 data class VoiceNoteUiState(
-    val note: VocalNote? = null,
+    val note: VoiceNote? = null,
     val canManage: Boolean = false,
     val recorder: RecorderState = RecorderState.Idle,
     val player: PlayerState = PlayerState.Idle,

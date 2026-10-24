@@ -21,6 +21,7 @@ import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -32,8 +33,17 @@ class LoginViewModelTest {
   private val viewModel = LoginViewModel(authRepository)
 
   @Test
-  fun initiallyHasNoUser() {
-    assertNull(viewModel.uiState.value.user)
+  fun initiallyIsNotSignedIn() {
+    assertFalse(viewModel.uiState.value.isSignedIn)
+  }
+
+  @Test
+  fun togglePasswordVisibilityUpdatesState() {
+    assertFalse(viewModel.uiState.value.isPasswordVisible)
+
+    viewModel.togglePasswordVisibility()
+
+    assertTrue(viewModel.uiState.value.isPasswordVisible)
   }
 
   @Test
@@ -48,7 +58,7 @@ class LoginViewModelTest {
     shadowOf(Looper.getMainLooper()).idle()
 
     assertFalse(viewModel.uiState.value.isLoading)
-    assertEquals(user, viewModel.uiState.value.user)
+    assertTrue(viewModel.uiState.value.isSignedIn)
     assertNull(viewModel.uiState.value.errorMsg)
     coVerify(exactly = 1) {
       authRepository.signInWithEmailAndPassword("user@example.com", "secret")
@@ -94,9 +104,12 @@ class LoginViewModelTest {
     viewModel.signIn()
     shadowOf(Looper.getMainLooper()).idle()
 
-    assertNull(viewModel.uiState.value.user)
+    assertFalse(viewModel.uiState.value.isSignedIn)
     assertFalse(viewModel.uiState.value.isLoading)
-    assertEquals("Invalid credentials", viewModel.uiState.value.errorMsg)
+    assertEquals(
+        "Unable to sign in. Check your details and try again.",
+        viewModel.uiState.value.errorMsg,
+    )
   }
 
   @Test
@@ -115,7 +128,7 @@ class LoginViewModelTest {
     result.complete(Result.success(user))
     shadowOf(Looper.getMainLooper()).idle()
 
-    assertEquals(user, viewModel.uiState.value.user)
+    assertTrue(viewModel.uiState.value.isSignedIn)
     assertFalse(viewModel.uiState.value.isLoading)
     coVerify(exactly = 1) {
       authRepository.signInWithEmailAndPassword("user@example.com", "secret")
@@ -134,7 +147,10 @@ class LoginViewModelTest {
     viewModel.signIn()
     shadowOf(Looper.getMainLooper()).idle()
 
-    assertEquals("Authentication failed. Please try again.", viewModel.uiState.value.errorMsg)
+    assertEquals(
+        "Unable to sign in. Check your details and try again.",
+        viewModel.uiState.value.errorMsg,
+    )
     assertFalse(viewModel.uiState.value.isLoading)
   }
 
@@ -154,7 +170,7 @@ class LoginViewModelTest {
     viewModel.signInWithGoogle(context, credentialManager)
     shadowOf(Looper.getMainLooper()).idle()
 
-    assertEquals(user, viewModel.uiState.value.user)
+    assertTrue(viewModel.uiState.value.isSignedIn)
     assertFalse(viewModel.uiState.value.isLoading)
     coVerify(exactly = 1) { authRepository.signInWithGoogle(credential) }
   }
@@ -175,7 +191,10 @@ class LoginViewModelTest {
     viewModel.signInWithGoogle(context, credentialManager)
     shadowOf(Looper.getMainLooper()).idle()
 
-    assertEquals("Google sign-in rejected", viewModel.uiState.value.errorMsg)
+    assertEquals(
+        "Unable to sign in. Check your details and try again.",
+        viewModel.uiState.value.errorMsg,
+    )
     assertFalse(viewModel.uiState.value.isLoading)
   }
 
@@ -249,7 +268,7 @@ class LoginViewModelTest {
     result.complete(Result.success(user))
     shadowOf(Looper.getMainLooper()).idle()
 
-    assertEquals(user, viewModel.uiState.value.user)
+    assertTrue(viewModel.uiState.value.isSignedIn)
     assertFalse(viewModel.uiState.value.isLoading)
     coVerify(exactly = 1) { authRepository.signInWithGoogle(credential) }
   }
