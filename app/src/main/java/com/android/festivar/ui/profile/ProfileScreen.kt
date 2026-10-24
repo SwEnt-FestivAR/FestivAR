@@ -16,6 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -249,11 +250,12 @@ private fun SignOutButton(onClick: () -> Unit, isSigningOut: Boolean, signedOut:
         shape = RoundedCornerShape(12.dp),
         modifier =
             Modifier.fillMaxWidth().height(48.dp).testTag(ProfileScreenTestTags.SIGN_OUT_BUTTON),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
     ) {
         if (isSigningOut) {
             CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
         } else {
-            Text(text = "Sign out", color = MaterialTheme.colorScheme.error)
+            Text(text = "Sign out")
         }
     }
 }
