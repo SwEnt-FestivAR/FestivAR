@@ -62,6 +62,7 @@ import com.android.festivar.ui.theme.AppTheme
 
 internal object LoginScreenTestTags {
   const val TITLE = "loginTitle"
+  const val CATCHPHRASE = "loginCatchphrase"
   const val EMAIL_INPUT = "loginEmailInput"
   const val PASSWORD_INPUT = "loginPasswordInput"
   const val LOGIN_BUTTON = "loginButton"
@@ -148,11 +149,26 @@ private fun LoginScreenContent(
               .verticalScroll(rememberScrollState()),
       verticalArrangement = Arrangement.spacedBy(12.dp),
   ) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+      Spacer(modifier = Modifier.size(20.dp))
+      Text(
+          text = stringResource(R.string.app_name),
+          color = MaterialTheme.colorScheme.onSurface,
+          style = MaterialTheme.typography.titleMedium,
+          modifier = Modifier.padding(start = 8.dp).testTag(LoginScreenTestTags.TITLE),
+      )
+    }
+
     Text(
-        text = stringResource(R.string.app_name),
+        text = stringResource(R.string.login_catchphrase),
         color = MaterialTheme.colorScheme.onSurface,
-        style = MaterialTheme.typography.titleLarge,
-        modifier = Modifier.testTag(LoginScreenTestTags.TITLE),
+        style = MaterialTheme.typography.displaySmall,
+        modifier = Modifier.testTag(LoginScreenTestTags.CATCHPHRASE),
+    )
+    Text(
+        text = stringResource(R.string.login_description),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = MaterialTheme.typography.bodyLarge,
     )
 
     Spacer(modifier = Modifier.height(20.dp))

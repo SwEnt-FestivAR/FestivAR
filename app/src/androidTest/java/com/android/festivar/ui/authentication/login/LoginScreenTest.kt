@@ -40,6 +40,11 @@ class LoginScreenTest {
     }
 
     composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.CATCHPHRASE).assertIsDisplayed()
+    composeTestRule.onNodeWithText("Every table in the right place.").assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText("Create events and tasks, and keep everything in one place.")
+        .assertIsDisplayed()
     composeTestRule.onNodeWithTag(LoginScreenTestTags.EMAIL_INPUT).assertIsDisplayed()
     composeTestRule
         .onNodeWithTag(LoginScreenTestTags.PASSWORD_INPUT)
