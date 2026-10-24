@@ -7,13 +7,14 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.task.Task
-import com.android.festivar.model.voicenote.VocalNote
+import com.android.festivar.model.voicenote.VoiceNote
 import com.android.festivar.ui.theme.AppTheme
 import com.android.festivar.ui.voicenote.VoiceNoteCallbacks
 import com.android.festivar.ui.voicenote.VoiceNoteTestTags
 import com.android.festivar.ui.voicenote.VoiceNoteUiState
 import java.time.Duration
-import java.time.LocalDateTime
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -26,11 +27,11 @@ class TaskDetailsVoiceNoteContentTest {
   @get:Rule val composeTestRule = createComposeRule()
 
   private val note =
-      VocalNote(
+      VoiceNote(
           "n1",
           "https://x/n1.m4a",
           Duration.ofSeconds(14),
-          LocalDateTime.of(2026, 10, 17, 9, 12),
+          ZonedDateTime.of(2026, 10, 17, 9, 12, 0, 0, ZoneOffset.UTC),
       )
 
   private val task =
