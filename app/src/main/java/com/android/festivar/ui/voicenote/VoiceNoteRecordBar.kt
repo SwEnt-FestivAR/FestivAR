@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -176,7 +177,9 @@ fun VoiceNoteNotices(
           action = {
             OutlinedButton(
                 onClick = callbacks.onOpenSettings,
-                modifier = Modifier.testTag(VoiceNoteTestTags.OPEN_SETTINGS),
+                modifier =
+                    Modifier.fillMaxWidth().height(52.dp).testTag(VoiceNoteTestTags.OPEN_SETTINGS),
+                shape = MaterialTheme.shapes.medium,
             ) {
               Text(stringResource(R.string.voice_note_open_settings))
             }
