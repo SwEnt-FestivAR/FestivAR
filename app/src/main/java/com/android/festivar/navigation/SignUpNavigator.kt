@@ -11,6 +11,8 @@ class SignUpNavigator(private val navController: NavHostController) {
     navController.popBackStack(AppScreens.Login.name, inclusive = false)
   }
 
+  val onBackClick: () -> Unit = onSignInClick
+
   val onSignUpSuccess: () -> Unit = {
     navController.navigate(AppScreens.EventsOverview.name) {
       popUpTo(navController.graph.id) { inclusive = true }

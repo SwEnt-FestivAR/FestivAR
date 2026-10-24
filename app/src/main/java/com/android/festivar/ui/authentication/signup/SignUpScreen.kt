@@ -74,6 +74,7 @@ object SignUpScreenTestTags {
 fun SignUpScreen(
     modifier: Modifier = Modifier,
     onSignInClick: () -> Unit = {},
+    onBackClick: () -> Unit = {},
     viewModel: SignUpViewModel = viewModel(),
     onSignUpSuccess: () -> Unit = {},
 ) {
@@ -110,7 +111,7 @@ fun SignUpScreen(
                 .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.Start,
     ) {
-      SignUpTopBar(onSignInClick)
+      SignUpTopBar(onBackClick)
       Spacer(modifier = Modifier.height(16.dp))
       SignUpHeader()
       Spacer(modifier = Modifier.height(24.dp))
@@ -395,6 +396,7 @@ fun SignUpScreenPreview() {
     SignUpScreen(
         modifier = Modifier.fillMaxSize(),
         onSignInClick = {},
+        onBackClick = {},
         viewModel = SignUpViewModel(PreviewAuthRepository),
         onSignUpSuccess = {},
     )

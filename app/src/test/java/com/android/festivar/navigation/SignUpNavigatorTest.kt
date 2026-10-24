@@ -24,6 +24,13 @@ class SignUpNavigatorTest {
   }
 
   @Test
+  fun backClickPopsBackStack() {
+    navigator.onBackClick()
+
+    verify { navController.popBackStack(AppScreens.Login.name, inclusive = false) }
+  }
+
+  @Test
   fun signUpSuccessNavigatesToEventsOverview() {
     val options = slot<NavOptionsBuilder.() -> Unit>()
 
