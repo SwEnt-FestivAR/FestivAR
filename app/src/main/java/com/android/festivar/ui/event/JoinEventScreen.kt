@@ -54,7 +54,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.festivar.R
 import com.android.festivar.model.event.JOIN_CODE_LENGTH
+import com.android.festivar.ui.components.formatDate
+import com.android.festivar.ui.components.formatTime
 import com.android.festivar.ui.theme.AppTheme
+import java.time.ZoneId
+import java.time.ZonedDateTime
 
 /** Test tags of the join event screen. */
 object JoinEventScreenTestTags {
@@ -278,7 +282,8 @@ private fun FoundCard(found: FoundEventUi, enabled: Boolean, onJoin: () -> Unit)
     Text(
         stringResource(
             R.string.join_event_found_line,
-            found.dateLine,
+            formatDate(found.start.toLocalDate()),
+            formatTime(found.start.toLocalTime()),
             pluralStringResource(R.plurals.join_event_members, found.members, found.members),
         ),
         style = MaterialTheme.typography.bodySmall,
@@ -301,6 +306,7 @@ private fun FoundCard(found: FoundEventUi, enabled: Boolean, onJoin: () -> Unit)
 @Preview
 @Composable
 private fun JoinEventContentPreview() {
+  val previewStart = ZonedDateTime.of(2026, 10, 17, 10, 0, 0, 0, ZoneId.of("Europe/Zurich"))
   AppTheme {
     JoinEventContent(
         state =
@@ -308,8 +314,8 @@ private fun JoinEventContentPreview() {
                 code = "VIDY26",
                 matches =
                     listOf(
-                        FoundEventUi("e1", "Vidy Festival", "Sat 17 Oct", 12),
-                        FoundEventUi("e2", "Vidy Afterparty", "Sat 17 Oct", 3),
+                        FoundEventUi("e1", "Vidy Festival", previewStart, 12),
+                        FoundEventUi("e2", "Vidy Afterparty", previewStart, 3),
                     ),
             ),
         onBack = {},

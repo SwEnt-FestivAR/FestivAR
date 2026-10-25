@@ -42,7 +42,8 @@ import org.junit.runner.RunWith
 class JoinEventScreenTest {
   @get:Rule val composeTestRule = createComposeRule()
 
-  private val found = FoundEventUi("e1", "Vidy Festival", "Sat 17 Oct", 12)
+  private val cardStart = ZonedDateTime.of(2026, 10, 17, 10, 0, 0, 0, ZoneId.of("Europe/Zurich"))
+  private val found = FoundEventUi("e1", "Vidy Festival", cardStart, 12)
   private val start = ZonedDateTime.of(2030, 10, 17, 18, 0, 0, 0, ZoneId.of("UTC"))
   private val event =
       Event(
@@ -110,7 +111,7 @@ class JoinEventScreenTest {
   @Test
   fun twoEventsSharingACodeShowTwoCardsAndTheTappedOneIsJoined() {
     val joins = mutableListOf<String>()
-    val other = FoundEventUi("e2", "Vidy Afterparty", "Sat 17 Oct", 3)
+    val other = FoundEventUi("e2", "Vidy Afterparty", cardStart, 3)
     content(
         JoinEventUIState(code = "VIDY26", matches = listOf(found, other)),
         onJoin = { joins.add(it) },
@@ -177,7 +178,7 @@ class JoinEventScreenTest {
 
     composeTestRule
         .onNodeWithTag(JoinEventScreenTestTags.resultLine("e1"), useUnmergedTree = true)
-        .assertTextEquals("Sat 17 Oct, 1 member")
+        .assertTextEquals("Sat 17 Oct, 10:00, 1 member")
   }
 
   @Test
@@ -186,7 +187,7 @@ class JoinEventScreenTest {
 
     composeTestRule
         .onNodeWithTag(JoinEventScreenTestTags.resultLine("e1"), useUnmergedTree = true)
-        .assertTextEquals("Sat 17 Oct, 3 members")
+        .assertTextEquals("Sat 17 Oct, 10:00, 3 members")
   }
 
   @Test

@@ -30,7 +30,7 @@
     <string name="join_event_code_cell">Code character %1$d</string>
     <string name="join_event_code_empty">Code is empty</string>
     <string name="join_event_code_so_far">Code so far: %1$s</string>
-    <string name="join_event_found_line">%1$s, %2$s</string>
+    <string name="join_event_found_line">%1$s, %2$s, %3$s</string>
     <plurals name="join_event_members">
         <item quantity="one">%d member</item>
         <item quantity="other">%d members</item>

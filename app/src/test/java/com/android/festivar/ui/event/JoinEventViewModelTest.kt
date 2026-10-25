@@ -168,7 +168,7 @@ class JoinEventViewModelTest {
         FoundEventUi(
             id = "fete2026",
             name = "Fete de l'Asso 2026",
-            dateLine = "Sat 17 Oct, 10:00",
+            start = start,
             members = 1,
         ),
         viewModel.uiState.value.matches.single(),

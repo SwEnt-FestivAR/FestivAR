@@ -9,8 +9,7 @@ import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.JOIN_CODE_LENGTH
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
-import com.android.festivar.ui.components.formatDate
-import com.android.festivar.ui.components.formatTime
+import java.time.ZonedDateTime
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,10 +23,15 @@ import kotlinx.coroutines.launch
  *
  * @property id the event identifier, passed back to [JoinEventViewModel.join] it.
  * @property name the event title shown in the result card.
- * @property dateLine when it starts, e.g. `Sat 17 Oct, 10:00`.
+ * @property start when it starts; the screen formats it, e.g. `Sat 17 Oct, 10:00`.
  * @property members how many people already belong to it.
  */
-data class FoundEventUi(val id: String, val name: String, val dateLine: String, val members: Int)
+data class FoundEventUi(
+    val id: String,
+    val name: String,
+    val start: ZonedDateTime,
+    val members: Int,
+)
 
 /**
  * UI state of the join screen.
@@ -103,9 +107,7 @@ class JoinEventViewModel(
       FoundEventUi(
           id = event.eventId,
           name = event.title,
-          dateLine =
-              "${formatDate(event.startDate.toLocalDate())}, " +
-                  formatTime(event.startDate.toLocalTime()),
+          start = event.startDate,
           members = event.members.size,
       )
 
