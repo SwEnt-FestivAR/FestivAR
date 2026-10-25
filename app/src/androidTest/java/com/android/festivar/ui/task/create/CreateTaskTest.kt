@@ -21,8 +21,6 @@ import com.android.festivar.ui.components.hasDayOfMonth
 import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
 import java.time.LocalTime
-import java.time.ZoneId
-import java.time.ZonedDateTime
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
 
@@ -114,13 +112,9 @@ abstract class CreateTaskTest {
     if (form.location.isNotEmpty()) {
       enterText(CreateTaskScreenTestTags.LOCATION_FIELD, form.location)
     }
-    form.startDate?.let {
-      pickCreateTaskDate(CreateTaskScreenTestTags.START_DATE_FIELD, it.toLocalDate())
-    }
+    form.startDate?.let { pickCreateTaskDate(CreateTaskScreenTestTags.START_DATE_FIELD, it) }
     form.startTime?.let { pickCreateTaskTime(CreateTaskScreenTestTags.START_TIME_FIELD, it) }
-    form.endDate?.let {
-      pickCreateTaskDate(CreateTaskScreenTestTags.END_DATE_FIELD, it.toLocalDate())
-    }
+    form.endDate?.let { pickCreateTaskDate(CreateTaskScreenTestTags.END_DATE_FIELD, it) }
     form.endTime?.let { pickCreateTaskTime(CreateTaskScreenTestTags.END_TIME_FIELD, it) }
   }
 
@@ -163,12 +157,8 @@ abstract class CreateTaskTest {
     /** The time a time picker proposes when its field is still empty. */
     val PICKER_DEFAULT_TIME: LocalTime = LocalTime.of(9, 0)
 
-    /**
-     * The date picker only offers the current month, so the sample dates are taken from it. They
-     * are in the device's zone, the one the screen gives the picked dates.
-     */
-    private val firstOfMonth: ZonedDateTime =
-        LocalDate.now().withDayOfMonth(1).atStartOfDay(ZoneId.systemDefault())
+    /** The date picker only offers the current month, so the sample dates are taken from it. */
+    private val firstOfMonth: LocalDate = LocalDate.now().withDayOfMonth(1)
 
     /** A form with every field filled and a valid schedule. */
     val completeForm =

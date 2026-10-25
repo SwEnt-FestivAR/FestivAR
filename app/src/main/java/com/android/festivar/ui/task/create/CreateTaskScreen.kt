@@ -233,13 +233,7 @@ fun CreateTaskContent(
 
   FestivarDateTimePickerDialog(
       field = state.openPicker,
-      range =
-          DateTimeRange(
-              state.startDate,
-              state.startTime,
-              state.endDate,
-              state.endTime,
-          ),
+      range = DateTimeRange(state.startDate, state.startTime, state.endDate, state.endTime),
       onDatePicked = actions.onDatePicked,
       onTimePicked = actions.onTimePicked,
       onDismiss = { actions.onShowPicker(null) },

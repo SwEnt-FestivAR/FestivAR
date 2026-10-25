@@ -33,9 +33,9 @@ class CreateTaskViewModelTest {
   // read the saved tasks back from it. There is no mock in this file: nothing checks that a method
   // was called, the tests check the state and what was stored.
   private val repository = TasksRepositoryLocal()
-  private val viewModel = CreateTaskViewModel(repository)
   private val zone = ZoneId.of("Europe/Zurich")
-  private val day = LocalDate.of(2026, 10, 17).atStartOfDay(zone)
+  private val viewModel = CreateTaskViewModel(repository, zone = zone)
+  private val day = LocalDate.of(2026, 10, 17)
 
   private fun savedTasks(): List<Task> = runBlocking { repository.getAllTasks("event-1") }
 
@@ -388,8 +388,8 @@ class CreateTaskViewModelTest {
 
 class CreateTaskUiStateTest {
   private val zone = ZoneId.of("Europe/Zurich")
-  private val day = LocalDate.of(2026, 10, 17).atStartOfDay(zone)
-  private val valid = CreateTaskUiState(title = "Run power to stage")
+  private val day = LocalDate.of(2026, 10, 17)
+  private val valid = CreateTaskUiState(title = "Run power to stage", zone = zone)
 
   @Test
   fun emptyForm_cannotBeCreated() {

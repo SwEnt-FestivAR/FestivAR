@@ -12,7 +12,9 @@ import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryProvider
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.FieldError
+import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
@@ -22,8 +24,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
-import java.time.LocalDate
-import java.time.ZoneId
 
 /**
  * Everything the user typed in the Create task form, plus the rules that decide whether it can be
@@ -33,24 +33,24 @@ import java.time.ZoneId
  * [END_OF_DAY]. So a start on Saturday at 09:30 and an end date of Saturday is a valid task.
  */
 data class CreateTaskUiState(
-  val title: String = "",
-  val description: String = "",
-  val location: String = "",
-  val startDate: LocalDate? = null,
-  val startTime: LocalTime? = null,
-  val endDate: LocalDate? = null,
-  val endTime: LocalTime? = null,
+    val title: String = "",
+    val description: String = "",
+    val location: String = "",
+    val startDate: LocalDate? = null,
+    val startTime: LocalTime? = null,
+    val endDate: LocalDate? = null,
+    val endTime: LocalTime? = null,
     // The field whose picker dialog is open, or null when none is.
-  val openPicker: DateTimeField? = null,
-  val titleEdited: Boolean = false,
+    val openPicker: DateTimeField? = null,
+    val titleEdited: Boolean = false,
     // True while the task is being saved. It keeps a second tap on "Create task" from saving the
     // task twice (see canCreate).
-  val isSaving: Boolean = false,
-  val isCreated: Boolean = false,
-  // The time zone of the picked dates and times; the device's one by default.
-  val zone: ZoneId = ZoneId.systemDefault(),
+    val isSaving: Boolean = false,
+    val isCreated: Boolean = false,
+    // The time zone of the picked dates and times; the device's one by default.
+    val zone: ZoneId = ZoneId.systemDefault(),
     // String resource of the error to show (see R.string.create_task_error_save_failed), or null.
-  @StringRes val errorMsg: Int? = null,
+    @StringRes val errorMsg: Int? = null,
 ) {
   val startDateTime: ZonedDateTime?
     get() = startDate?.atTime(startTime ?: START_OF_DAY)?.atZone(zone)
@@ -135,7 +135,8 @@ private const val SAVE_TIMEOUT_MS = 15_000L
  */
 class CreateTaskViewModel(
     private val tasksRepository: TasksRepository = TasksRepositoryProvider.repository,
-    private val saveTimeoutMs: Long = SAVE_TIMEOUT_MS, zone: ZoneId = ZoneId.systemDefault(),
+    private val saveTimeoutMs: Long = SAVE_TIMEOUT_MS,
+    zone: ZoneId = ZoneId.systemDefault(),
 ) : ViewModel() {
   // The id of the task being created and the event it was created for. They are kept across
   // retries: if a save timed out or failed after reaching the server, the retry targets the same
