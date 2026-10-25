@@ -1,5 +1,5 @@
 // Written with the help of an AI coding assistant and reviewed line by line by the author.
-package com.android.festivar.ui.tasks
+package com.android.festivar.ui.task.overview
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains

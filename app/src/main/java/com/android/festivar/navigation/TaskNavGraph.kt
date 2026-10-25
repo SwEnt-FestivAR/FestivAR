@@ -14,7 +14,7 @@ import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.task.create.CreateTaskScreen
 import com.android.festivar.ui.task.details.TaskDetailsScreen
-import com.android.festivar.ui.tasks.TaskOverviewScreen
+import com.android.festivar.ui.task.overview.TaskOverviewScreen
 
 /** The destinations of the task feature. */
 fun NavGraphBuilder.taskGraph(navController: NavHostController, authRepository: AuthRepository) {
