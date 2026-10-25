@@ -19,7 +19,7 @@ class AudioRepositoryFirebase(storageRef: StorageReference) : AudioRepository {
 
   override suspend fun getAudio(fileName: String): Audio {
     val ref = audioRef.child(fileName)
-    val localFile = withContext(IO) { File.createTempFile("audio_", ".mp3") }
+    val localFile = withContext(IO) { File.createTempFile("audio_${getNewUid()}", ".mp3") }
     try {
       ref.getFile(localFile).await()
       val downloadUrl = ref.downloadUrl.await().toString()
