@@ -1,3 +1,4 @@
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.event
 
@@ -79,9 +80,15 @@ class EventsOverviewScreenTest {
           location = "Esplanade EPFL",
           tasks =
               listOf(
-                  Task(taskId = "t1", eventId = "0", title = "Set up the bar"),
-                  Task(taskId = "t2", eventId = "0", title = "Sound check", completed = true),
-                  Task(taskId = "t3", eventId = "0", title = "Clean up"),
+                  Task(ownerId = "owner-1", taskId = "t1", eventId = "0", title = "Set up the bar"),
+                  Task(
+                      ownerId = "owner-1",
+                      taskId = "t2",
+                      eventId = "0",
+                      title = "Sound check",
+                      completed = true,
+                  ),
+                  Task(ownerId = "owner-1", taskId = "t3", eventId = "0", title = "Clean up"),
               ),
       )
 
@@ -94,7 +101,10 @@ class EventsOverviewScreenTest {
           startDate = getDate(2026, 10, 19, hour = 20),
           endDate = getDate(2026, 10, 20, hour = 1),
           location = "Satellite",
-          tasks = listOf(Task(taskId = "t4", eventId = "1", title = "Book the band")),
+          tasks =
+              listOf(
+                  Task(ownerId = "owner-1", taskId = "t4", eventId = "1", title = "Book the band")
+              ),
       )
 
   private val pastEvent =

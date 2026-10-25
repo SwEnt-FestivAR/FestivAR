@@ -62,7 +62,7 @@ class CreateTaskViewModelTest {
     viewModel.updateTitle("Run power to stage")
     viewModel.updateLocation("Stage, north corner")
 
-    viewModel.createTask("event-1")
+    viewModel.createTask("event-1", "owner-1")
 
     val saved = savedTasks().single()
     assertEquals("Run power to stage", saved.title)
@@ -74,8 +74,66 @@ class CreateTaskViewModelTest {
   }
 
   @Test
+  fun createTask_makesTheSignedInUserTheOwner() {
+    viewModel.updateTitle("Run power to stage")
+
+    viewModel.createTask("event-1", "owner-1")
+
+    assertEquals("owner-1", savedTasks().single().ownerId)
+    assertTrue(viewModel.uiState.value.isCreated)
+  }
+
+  @Test
+  fun createTask_withBlankOwner_savesNothingAndShowsTheSaveError() {
+    viewModel.updateTitle("Run power to stage")
+
+    viewModel.createTask("event-1", "  ")
+
+    assertTrue(savedTasks().isEmpty())
+    assertFalse(viewModel.uiState.value.isCreated)
+    assertEquals(R.string.create_task_error_save_failed, viewModel.uiState.value.errorMsg)
+  }
+
+  @Test
+  fun createTask_afterABlankOwner_worksOnceTheOwnerIsGiven() {
+    viewModel.updateTitle("Run power to stage")
+    viewModel.createTask("event-1", "")
+
+    viewModel.createTask("event-1", "owner-1")
+
+    assertEquals("owner-1", savedTasks().single().ownerId)
+    assertNull(viewModel.uiState.value.errorMsg)
+  }
+
+  @Test
+  fun toTask_carriesTheOwner() {
+    val form = CreateTaskUiState(title = "Run power to stage")
+
+    assertEquals("owner-1", form.toTask("t1", "e1", "owner-1").ownerId)
+  }
+
+  @Test
+  fun toTask_refusesABlankOwner() {
+    val form = CreateTaskUiState(title = "Run power to stage")
+
+    assertThrows(IllegalArgumentException::class.java) { form.toTask("t1", "e1", " ") }
+  }
+
+  @Test
+  fun createTask_retryAfterAFailedSave_keepsTheOwner() {
+    val repo = StoredThenFailed()
+    val vm = CreateTaskViewModel(repo)
+    vm.updateTitle("Run power to stage")
+
+    vm.createTask("event-1", "owner-1")
+    vm.createTask("event-1", "owner-1")
+
+    assertEquals("owner-1", runBlocking { repo.local.getAllTasks("event-1") }.single().ownerId)
+  }
+
+  @Test
   fun createTask_withBlankTitle_savesNothing() {
-    viewModel.createTask("event-1")
+    viewModel.createTask("event-1", "owner-1")
 
     assertTrue(savedTasks().isEmpty())
     assertFalse(viewModel.uiState.value.isCreated)
@@ -87,7 +145,7 @@ class CreateTaskViewModelTest {
     viewModel.updateStartDate(day)
     viewModel.updateEndDate(day.minusDays(1))
 
-    viewModel.createTask("event-1")
+    viewModel.createTask("event-1", "owner-1")
 
     assertTrue(savedTasks().isEmpty())
     assertEquals(FieldError.END_BEFORE_START, viewModel.uiState.value.endDateError)
@@ -150,7 +208,7 @@ class CreateTaskViewModelTest {
     val vm = CreateTaskViewModel(failing)
     vm.updateTitle("Run power to stage")
 
-    vm.createTask("event-1")
+    vm.createTask("event-1", "owner-1")
 
     val state = vm.uiState.value
     assertEquals(R.string.create_task_error_save_failed, state.errorMsg)
@@ -179,9 +237,9 @@ class CreateTaskViewModelTest {
     val vm = CreateTaskViewModel(slow)
     vm.updateTitle("Run power to stage")
 
-    vm.createTask("event-1")
+    vm.createTask("event-1", "owner-1")
     assertTrue(vm.uiState.value.isSaving)
-    vm.createTask("event-1")
+    vm.createTask("event-1", "owner-1")
     gate.complete(Unit)
     shadowOf(Looper.getMainLooper()).idle()
 
@@ -208,7 +266,7 @@ class CreateTaskViewModelTest {
     val vm = CreateTaskViewModel(slow)
     vm.updateTitle("Run power to stage")
 
-    vm.createTask("event-1")
+    vm.createTask("event-1", "owner-1")
     vm.updateTitle("Something else")
     gate.complete(Unit)
     shadowOf(Looper.getMainLooper()).idle()
@@ -234,11 +292,11 @@ class CreateTaskViewModelTest {
     val vm = CreateTaskViewModel(flaky)
     vm.updateTitle("Run power to stage")
 
-    vm.createTask("event-1")
+    vm.createTask("event-1", "owner-1")
     assertEquals(R.string.create_task_error_save_failed, vm.uiState.value.errorMsg)
 
     failing = false
-    vm.createTask("event-1")
+    vm.createTask("event-1", "owner-1")
 
     val state = vm.uiState.value
     assertNull(state.errorMsg)
@@ -259,7 +317,7 @@ class CreateTaskViewModelTest {
     val vm = CreateTaskViewModel(cancelled)
     vm.updateTitle("Run power to stage")
 
-    vm.createTask("event-1")
+    vm.createTask("event-1", "owner-1")
 
     assertNull(vm.uiState.value.errorMsg)
     assertFalse(vm.uiState.value.isCreated)
@@ -297,9 +355,9 @@ class CreateTaskViewModelTest {
     val vm = CreateTaskViewModel(repo)
     vm.updateTitle("Run power to stage")
 
-    vm.createTask("event-1")
+    vm.createTask("event-1", "owner-1")
     assertEquals(R.string.create_task_error_save_failed, vm.uiState.value.errorMsg)
-    vm.createTask("event-1")
+    vm.createTask("event-1", "owner-1")
 
     assertEquals(1, runBlocking { repo.local.getAllTasks("event-1") }.size)
     assertTrue(vm.uiState.value.isCreated)
@@ -311,10 +369,10 @@ class CreateTaskViewModelTest {
     val repo = StoredThenFailed()
     val vm = CreateTaskViewModel(repo)
     vm.updateTitle("Run power to stage")
-    vm.createTask("event-1")
+    vm.createTask("event-1", "owner-1")
 
     vm.updateTitle("Run power to the main stage")
-    vm.createTask("event-1")
+    vm.createTask("event-1", "owner-1")
 
     val saved = runBlocking { repo.local.getAllTasks("event-1") }.single()
     assertEquals("Run power to the main stage", saved.title)
@@ -326,9 +384,9 @@ class CreateTaskViewModelTest {
     val repo = StoredThenFailed()
     val vm = CreateTaskViewModel(repo)
     vm.updateTitle("Run power to stage")
-    vm.createTask("event-1")
+    vm.createTask("event-1", "owner-1")
 
-    vm.createTask("event-2")
+    vm.createTask("event-2", "owner-1")
 
     assertEquals(1, runBlocking { repo.local.getAllTasks("event-1") }.size)
     assertEquals(1, runBlocking { repo.local.getAllTasks("event-2") }.size)
@@ -338,7 +396,7 @@ class CreateTaskViewModelTest {
   fun createTask_withBlankEventId_reportsAnErrorInsteadOfCrashing() {
     viewModel.updateTitle("Run power to stage")
 
-    viewModel.createTask("")
+    viewModel.createTask("", "owner-1")
 
     assertEquals(R.string.create_task_error_save_failed, viewModel.uiState.value.errorMsg)
     assertFalse(viewModel.uiState.value.isCreated)
@@ -356,7 +414,7 @@ class CreateTaskViewModelTest {
     val vm = CreateTaskViewModel(hanging, saveTimeoutMs = 1_000)
     vm.updateTitle("Run power to stage")
 
-    vm.createTask("event-1")
+    vm.createTask("event-1", "owner-1")
     assertTrue(vm.uiState.value.isSaving)
     shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(5))
 
@@ -368,7 +426,7 @@ class CreateTaskViewModelTest {
   @Test
   fun updates_afterTheTaskIsCreated_areIgnored() {
     viewModel.updateTitle("Run power to stage")
-    viewModel.createTask("event-1")
+    viewModel.createTask("event-1", "owner-1")
 
     viewModel.updateTitle("Something else")
 
@@ -379,8 +437,8 @@ class CreateTaskViewModelTest {
   fun createTask_afterASuccess_isIgnored() {
     viewModel.updateTitle("Run power to stage")
 
-    viewModel.createTask("event-1")
-    viewModel.createTask("event-1")
+    viewModel.createTask("event-1", "owner-1")
+    viewModel.createTask("event-1", "owner-1")
 
     assertEquals(1, savedTasks().size)
   }
@@ -489,7 +547,7 @@ class CreateTaskUiStateTest {
   // Both dates without a time: the task covers the whole day, and is saved that way.
   @Test
   fun toTask_withDatesOnly_coversTheWholeDay() {
-    val task = valid.copy(startDate = day, endDate = day).toTask("t1", "e1")
+    val task = valid.copy(startDate = day, endDate = day).toTask("t1", "e1", "owner-1")
     assertEquals(ZonedDateTime.of(2026, 10, 17, 0, 0, 0, 0, zone), task.startTime)
     assertEquals(ZonedDateTime.of(2026, 10, 17, 23, 59, 0, 0, zone), task.endTime)
   }
@@ -529,7 +587,7 @@ class CreateTaskUiStateTest {
                 endDate = day,
                 endTime = LocalTime.of(9, 50),
             )
-            .toTask(taskId = "t1", eventId = "e1")
+            .toTask(taskId = "t1", eventId = "e1", ownerId = "owner-1")
 
     assertEquals("t1", task.taskId)
     assertEquals("e1", task.eventId)
@@ -542,21 +600,23 @@ class CreateTaskUiStateTest {
 
   @Test
   fun toTask_withoutSchedule_leavesTimesNull() {
-    val task = valid.toTask("t1", "e1")
+    val task = valid.toTask("t1", "e1", "owner-1")
     assertNull(task.startTime)
     assertNull(task.endTime)
   }
 
   @Test
   fun toTask_withBlankTitle_isRejected() {
-    assertThrows(IllegalArgumentException::class.java) { CreateTaskUiState().toTask("t1", "e1") }
+    assertThrows(IllegalArgumentException::class.java) {
+      CreateTaskUiState().toTask("t1", "e1", "owner-1")
+    }
   }
 
   @Test
   fun toTask_withTimeWithoutDate_isRejected() {
     val form = valid.copy(startTime = LocalTime.of(9, 30))
 
-    assertThrows(IllegalArgumentException::class.java) { form.toTask("t1", "e1") }
+    assertThrows(IllegalArgumentException::class.java) { form.toTask("t1", "e1", "owner-1") }
   }
 
   @Test
@@ -569,6 +629,6 @@ class CreateTaskUiStateTest {
   fun toTask_withEndBeforeStart_isRejected() {
     val form = valid.copy(startDate = day, endDate = day.minusDays(1))
 
-    assertThrows(IllegalArgumentException::class.java) { form.toTask("t1", "e1") }
+    assertThrows(IllegalArgumentException::class.java) { form.toTask("t1", "e1", "owner-1") }
   }
 }

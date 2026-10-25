@@ -46,6 +46,9 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, authRepository: 
     val navigator = CreateTaskNavigator(navController)
     CreateTaskScreen(
         eventId = eventId,
+        // Blank when nobody is signed in: the view model then refuses to save (redirect left to
+        // #261).
+        ownerId = authRepository.currentUser?.uid.orEmpty(),
         onBack = navigator.onBack,
         onTaskCreated = navigator.onTaskCreated,
     )
