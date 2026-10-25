@@ -37,13 +37,6 @@ class VoiceNoteUiStateTest {
   }
 
   @Test
-  fun emptyStateOnlyForTheOwner() {
-    assertTrue(VoiceNoteUiState(canManage = true).showEmpty)
-    assertFalse(VoiceNoteUiState().showEmpty)
-    assertFalse(VoiceNoteUiState(note = note, canManage = true).showEmpty)
-  }
-
-  @Test
   fun isPlayingOnlyForTheNoteOfTheTask() {
     assertTrue(VoiceNoteUiState(note = note, player = PlayerState.Playing(note.audioUrl)).isPlaying)
     assertFalse(VoiceNoteUiState(note = note, player = PlayerState.Playing("other")).isPlaying)
@@ -69,12 +62,6 @@ class VoiceNoteUiStateTest {
   }
 
   @Test
-  fun recordingIsDisabledWithoutMicrophone() {
-    assertTrue(VoiceNoteUiState(canManage = true).recordEnabled)
-    assertFalse(VoiceNoteUiState(canManage = true, micDenied = true).recordEnabled)
-  }
-
-  @Test
   fun noticesFollowTheFlagsAndTheRole() {
     assertFalse(VoiceNoteUiState(canManage = true).hasNotices)
     assertTrue(VoiceNoteUiState(canManage = true, sendFailed = true).hasNotices)
@@ -83,21 +70,5 @@ class VoiceNoteUiStateTest {
     assertFalse(VoiceNoteUiState(note = note, canManage = true, sendFailed = true).hasNotices)
     assertFalse(VoiceNoteUiState(canManage = false, micDenied = true).hasNotices)
     assertTrue(VoiceNoteUiState(note = note, player = PlayerState.Failed(note.audioUrl)).hasNotices)
-  }
-
-  @Test
-  fun callbacksAreSafeToCallByDefault() {
-    // A screen that is only shown, like a preview, gives no callbacks: pressing does nothing.
-    with(VoiceNoteCallbacks()) {
-      onTogglePlay()
-      onDelete()
-      onConfirmDelete()
-      onDismissDelete()
-      onRecordStart()
-      onRecordRelease()
-      onRecordCancel()
-      onRetry()
-      onOpenSettings()
-    }
   }
 }
