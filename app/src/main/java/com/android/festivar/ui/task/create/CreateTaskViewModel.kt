@@ -22,6 +22,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
+import java.time.LocalDate
+import java.time.ZoneId
 
 /**
  * Everything the user typed in the Create task form, plus the rules that decide whether it can be
@@ -31,28 +33,30 @@ import kotlinx.coroutines.withTimeout
  * [END_OF_DAY]. So a start on Saturday at 09:30 and an end date of Saturday is a valid task.
  */
 data class CreateTaskUiState(
-    val title: String = "",
-    val description: String = "",
-    val location: String = "",
-    val startDate: ZonedDateTime? = null,
-    val startTime: LocalTime? = null,
-    val endDate: ZonedDateTime? = null,
-    val endTime: LocalTime? = null,
+  val title: String = "",
+  val description: String = "",
+  val location: String = "",
+  val startDate: LocalDate? = null,
+  val startTime: LocalTime? = null,
+  val endDate: LocalDate? = null,
+  val endTime: LocalTime? = null,
     // The field whose picker dialog is open, or null when none is.
-    val openPicker: DateTimeField? = null,
-    val titleEdited: Boolean = false,
+  val openPicker: DateTimeField? = null,
+  val titleEdited: Boolean = false,
     // True while the task is being saved. It keeps a second tap on "Create task" from saving the
     // task twice (see canCreate).
-    val isSaving: Boolean = false,
-    val isCreated: Boolean = false,
+  val isSaving: Boolean = false,
+  val isCreated: Boolean = false,
+  // The time zone of the picked dates and times; the device's one by default.
+  val zone: ZoneId = ZoneId.systemDefault(),
     // String resource of the error to show (see R.string.create_task_error_save_failed), or null.
-    @StringRes val errorMsg: Int? = null,
+  @StringRes val errorMsg: Int? = null,
 ) {
   val startDateTime: ZonedDateTime?
-    get() = startDate?.with(startTime ?: START_OF_DAY)
+    get() = startDate?.atTime(startTime ?: START_OF_DAY)?.atZone(zone)
 
   val endDateTime: ZonedDateTime?
-    get() = endDate?.with(endTime ?: END_OF_DAY)
+    get() = endDate?.atTime(endTime ?: END_OF_DAY)?.atZone(zone)
 
   /**
    * The title error. It only appears once the title has been edited, so that an untouched form does
@@ -127,10 +131,11 @@ private const val SAVE_TIMEOUT_MS = 15_000L
  * @param saveTimeoutMs How long a save may last before it is reported as failed, so that the form
  *   never stays stuck in the saving state. A failed save is followed by a read of the task under
  *   the same timeout, so the saving state lasts at most twice this long.
+ * @param zone The time zone of the created task's start and end. The device's one by default.
  */
 class CreateTaskViewModel(
     private val tasksRepository: TasksRepository = TasksRepositoryProvider.repository,
-    private val saveTimeoutMs: Long = SAVE_TIMEOUT_MS,
+    private val saveTimeoutMs: Long = SAVE_TIMEOUT_MS, zone: ZoneId = ZoneId.systemDefault(),
 ) : ViewModel() {
   // The id of the task being created and the event it was created for. They are kept across
   // retries: if a save timed out or failed after reaching the server, the retry targets the same
@@ -139,7 +144,7 @@ class CreateTaskViewModel(
   private var pendingEventId: String? = null
 
   // Create task UI state
-  private val _uiState = MutableStateFlow(CreateTaskUiState())
+  private val _uiState = MutableStateFlow(CreateTaskUiState(zone = zone))
   val uiState: StateFlow<CreateTaskUiState> = _uiState.asStateFlow()
 
   // Functions to update the UI state.
@@ -159,13 +164,13 @@ class CreateTaskViewModel(
   fun updateLocation(location: String) = edit { it.copy(location = location) }
 
   /** Sets the date the task starts. */
-  fun updateStartDate(date: ZonedDateTime) = edit { it.copy(startDate = date) }
+  fun updateStartDate(date: LocalDate) = edit { it.copy(startDate = date) }
 
   /** Sets the time the task starts. */
   fun updateStartTime(time: LocalTime) = edit { it.copy(startTime = time) }
 
   /** Sets the date the task ends. */
-  fun updateEndDate(date: ZonedDateTime) = edit { it.copy(endDate = date) }
+  fun updateEndDate(date: LocalDate) = edit { it.copy(endDate = date) }
 
   /** Sets the time the task ends. */
   fun updateEndTime(time: LocalTime) = edit { it.copy(endTime = time) }
@@ -174,7 +179,7 @@ class CreateTaskViewModel(
   fun showPicker(field: DateTimeField?) = _uiState.update { it.copy(openPicker = field) }
 
   /** Sets [date] in the field whose picker is open, then closes the picker. */
-  fun pickDate(date: ZonedDateTime) {
+  fun pickDate(date: LocalDate) {
     when (_uiState.value.openPicker) {
       DateTimeField.START_DATE -> updateStartDate(date)
       DateTimeField.END_DATE -> updateEndDate(date)

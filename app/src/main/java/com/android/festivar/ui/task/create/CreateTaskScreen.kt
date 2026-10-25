@@ -43,7 +43,6 @@ import com.android.festivar.ui.components.FestivarFieldWithError
 import com.android.festivar.ui.components.FestivarTextField
 import java.time.LocalDate
 import java.time.LocalTime
-import java.time.ZoneId
 
 object CreateTaskScreenTestTags {
   const val BACK_BUTTON = "createTaskBackButton"
@@ -104,9 +103,7 @@ fun CreateTaskScreen(
               onDescriptionChange = viewModel::updateDescription,
               onLocationChange = viewModel::updateLocation,
               onShowPicker = viewModel::showPicker,
-              onDatePicked = { date ->
-                viewModel.pickDate(date.atStartOfDay(ZoneId.systemDefault()))
-              },
+              onDatePicked = viewModel::pickDate,
               onTimePicked = viewModel::pickTime,
               onCreate = { viewModel.createTask(eventId) },
           ),
@@ -210,7 +207,7 @@ fun CreateTaskContent(
       FestivarDateTimeRow(
           dateLabel = stringResource(R.string.create_task_field_start_date),
           timeLabel = stringResource(R.string.create_task_field_start_time),
-          date = state.startDate?.toLocalDate(),
+          date = state.startDate,
           time = state.startTime,
           dateError = state.startDateError,
           onDateClick = { actions.onShowPicker(DateTimeField.START_DATE) },
@@ -222,7 +219,7 @@ fun CreateTaskContent(
       FestivarDateTimeRow(
           dateLabel = stringResource(R.string.create_task_field_end_date),
           timeLabel = stringResource(R.string.create_task_field_end_time),
-          date = state.endDate?.toLocalDate(),
+          date = state.endDate,
           time = state.endTime,
           dateError = state.endDateError,
           onDateClick = { actions.onShowPicker(DateTimeField.END_DATE) },
@@ -238,9 +235,9 @@ fun CreateTaskContent(
       field = state.openPicker,
       range =
           DateTimeRange(
-              state.startDate?.toLocalDate(),
+              state.startDate,
               state.startTime,
-              state.endDate?.toLocalDate(),
+              state.endDate,
               state.endTime,
           ),
       onDatePicked = actions.onDatePicked,
