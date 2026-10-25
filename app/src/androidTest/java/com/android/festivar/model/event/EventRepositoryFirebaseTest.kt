@@ -91,6 +91,7 @@ class EventRepositoryFirebaseTest {
     assertEquals(event.location, data["location"])
     assertEquals(emptyList<String>(), data["tasks"])
     assertEquals(event.closed, data["closed"])
+    assertEquals(joinCodeOf(event), data["joinCode"])
   }
 
   @Test
