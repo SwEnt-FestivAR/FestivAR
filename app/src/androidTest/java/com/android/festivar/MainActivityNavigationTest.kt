@@ -398,6 +398,21 @@ class MainActivityNavigationTest {
     composeTestRule.onNodeWithTag(TaskOverviewScreenTestTags.TITLE).assertDoesNotExist()
   }
 
+  /** Turns red when the blank eventId check runs before the sign-in check and crashes the app. */
+  @Test
+  fun aSignedOutUserOnABlankOverviewRouteReachesTheLogin() {
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          authRepository = FakeAuthRepository(currentUser = null),
+          startDestinationOverride = AppScreens.taskOverview(" "),
+      )
+    }
+
+    waitUntilTagExists(LoginScreenTestTags.TITLE)
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
   @Test
   fun addTaskOnTheOverviewOpensCreateTaskAndTheNewTaskShowsOnReturn() {
     TasksRepositoryProvider.repository = TasksRepositoryLocal()

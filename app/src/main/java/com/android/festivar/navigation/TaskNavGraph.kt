@@ -27,13 +27,17 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, authRepository: 
       arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
   ) { backStackEntry ->
     val navigator = TaskOverviewNavigator(navController)
-    val eventId = backStackEntry.arguments?.getString("eventId") ?: ""
     val firebaseUser = authRepository.currentUser
     if (firebaseUser == null) {
       // Nobody is signed in, so there is nobody whose tasks to mark as mine
       LaunchedEffect(Unit) { navigator.onSignedOut() }
       return@composable
     }
+    val eventId =
+        requireNotNull(backStackEntry.arguments?.getString("eventId")) {
+          "eventId argument is required"
+        }
+    require(eventId.isNotBlank()) { "eventId must not be blank" }
     TaskOverviewScreen(
         viewModel =
             viewModel(key = "$eventId:${firebaseUser.uid}") {
