@@ -11,6 +11,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.ui.components.formatDate
 import io.mockk.spyk
 import io.mockk.verify
 import java.time.LocalDate
@@ -68,6 +69,8 @@ class CreateEventScreenTest {
 
   @Test
   fun fieldsReceiveInput() {
+    val startDate = LocalDate.now()
+    val endDate = startDate.plusDays(1)
     composeTestRule
         .onNodeWithTag(CreateEventScreenTestTags.NAME_FIELD)
         .performTextInput("Summer festival")
@@ -82,17 +85,11 @@ class CreateEventScreenTest {
     composeTestRule.onNodeWithText("Main square").assertIsDisplayed()
     composeTestRule.onNodeWithText("Bring the stage equipment").assertIsDisplayed()
 
-    selectDate(CreateEventScreenTestTags.START_DATE_FIELD, LocalDate.now())
-    selectDate(CreateEventScreenTestTags.END_DATE_FIELD, LocalDate.now().plusDays(1))
+    selectDate(CreateEventScreenTestTags.START_DATE_FIELD, startDate)
+    selectDate(CreateEventScreenTestTags.END_DATE_FIELD, endDate)
 
-    val expectedStartDate =
-        DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
-            .withLocale(Locale.getDefault())
-            .format(LocalDate.now())
-    val expectedEndDate =
-        DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
-            .withLocale(Locale.getDefault())
-            .format(LocalDate.now().plusDays(1))
+    val expectedStartDate = formatDate(startDate)
+    val expectedEndDate = formatDate(endDate)
     composeTestRule.onNodeWithText(expectedStartDate).assertIsDisplayed()
     composeTestRule.onNodeWithText(expectedEndDate).assertIsDisplayed()
 

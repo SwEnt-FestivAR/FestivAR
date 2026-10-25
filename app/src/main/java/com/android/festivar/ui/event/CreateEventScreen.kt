@@ -46,13 +46,10 @@ import com.android.festivar.ui.components.FestivarDatePickerDialog
 import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.components.FestivarPickerField
 import com.android.festivar.ui.components.FestivarTextField
+import com.android.festivar.ui.components.formatDate
 import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
 import java.time.ZoneId
-import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
-import java.util.Locale
 
 private val ScreenBackground = Color(0xFFFFFEF9)
 private val PrimaryButton = Color(0xFFC7F21A)
@@ -201,14 +198,14 @@ fun CreateEventContent(
 
       Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         FestivarPickerField(
-            value = state.startDate.toDisplayDate(),
+            value = state.startDate?.let { formatDate(it.toLocalDate()) } ?: "",
             onClick = actions.onStartDateClick,
             label = "Starts",
             isError = state.errorDate && state.startDate == null,
             modifier = Modifier.weight(1f).testTag(CreateEventScreenTestTags.START_DATE_FIELD),
         )
         FestivarPickerField(
-            value = state.endDate.toDisplayDate(),
+            value = state.endDate?.let { formatDate(it.toLocalDate()) } ?: "",
             onClick = actions.onEndDateClick,
             label = "Ends",
             isError = state.errorDate,
@@ -322,13 +319,6 @@ private fun CreateEventDatePicker(
       onDismiss = onDismiss,
   )
 }
-
-private fun ZonedDateTime?.toDisplayDate(
-    locale: Locale = Locale.getDefault(),
-): String =
-    this?.let {
-      DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale).format(it)
-    } ?: ""
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
