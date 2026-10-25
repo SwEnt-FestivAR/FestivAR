@@ -255,13 +255,14 @@ class TaskOverviewViewModel(
 
   /** When a started task stops being under way: its end, or midnight of its start day. */
   private fun endOf(task: Task): ZonedDateTime {
-    val start = task.startTime!!
+    val start = task.startTime!!.withZoneSameInstant(clock.zone)
     return task.endTime ?: start.toLocalDate().plusDays(1).atStartOfDay(start.zone)
   }
 
   /** Which day a task's section sits under, then which part of that day. */
   private fun sectionOf(task: Task, now: ZonedDateTime): Section {
-    val start = task.startTime ?: return null to OverviewGroup.ANYTIME
+    val start =
+        task.startTime?.withZoneSameInstant(now.zone) ?: return null to OverviewGroup.ANYTIME
     val startsWithinTheHour = !start.isBefore(now) && !start.isAfter(now.plusHours(1))
     val underWay = !start.isAfter(now) && now.isBefore(endOf(task))
     return when {
@@ -279,7 +280,7 @@ class TaskOverviewViewModel(
           location = task.location,
           peopleNeeded = task.maxAssign,
           estimatedMinutes = task.estimatedTime?.toMinutes()?.toInt(),
-          startTime = task.startTime?.toLocalTime(),
+          startTime = task.startTime?.withZoneSameInstant(clock.zone)?.toLocalTime(),
           assigned = task.assignees.size,
           isMine = isMine(task),
           isFull = isFull(task),

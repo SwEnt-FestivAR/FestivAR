@@ -399,6 +399,23 @@ class TaskOverviewViewModelTest {
     assertFalse(rows.getValue("sound").isMine)
   }
 
+  /** Turns red when a task is grouped or shown in the zone it was saved in, not the viewer's. */
+  @Test
+  fun aTaskIsGroupedAndShownInTheViewersZone() {
+    // Sunday 01:00 in Zurich is Saturday 19:00 in New York, where the viewer is.
+    runBlocking {
+      repository.addTask(Task("night", EVENT, "Lock the stage", startTime = at(1, 0).plusDays(1)))
+    }
+    val newYork = clock.withZone(ZoneId.of("America/New_York"))
+    val viewModel = TaskOverviewViewModel(EVENT, me.uid, repository, newYork)
+
+    val section =
+        viewModel.uiState.value.sections.single { s -> s.rows.any { it.task.taskId == "night" } }
+    assertEquals(DAY, section.day)
+    assertEquals(OverviewGroup.EVENING, section.group)
+    assertEquals(LocalTime.of(19, 0), section.rows.single { it.task.taskId == "night" }.startTime)
+  }
+
   /** Turns red when the OPEN chip and the full badge disagree on when a task is full. */
   @Test
   fun aFullTaskIsNeverOpen() {
