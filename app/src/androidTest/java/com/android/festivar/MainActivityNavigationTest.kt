@@ -321,6 +321,53 @@ class MainActivityNavigationTest {
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.FETCH_ERROR).assertIsDisplayed()
   }
 
+  /** Turns red when back from the overview pops some other entry than the overview itself. */
+  @Test
+  fun backFromTheTaskOverviewReturnsToTheEventDetails() {
+    // The see tasks button only shows once the event is read from the Firestore emulator, whose
+    // rules need a signed-in user
+    TasksRepositoryProvider.repository = TasksRepositoryLocal()
+    val start = ZonedDateTime.now().plusDays(1)
+    val event =
+        Event(
+            eventId = "back-${UUID.randomUUID()}",
+            title = "Event With Tasks",
+            startDate = start,
+            endDate = start.plusHours(2),
+        )
+    val events = EventRepositoryFirebase(Firebase.firestore)
+    runBlocking {
+      Firebase.auth.signInAnonymously().await()
+      events.addEvent(event)
+    }
+
+    try {
+      composeTestRule.setContent {
+        FestivAR(
+            credentialManager = mockk<CredentialManager>(relaxed = true),
+            authRepository = FakeAuthRepository(currentUser = signedInUser),
+            startDestinationOverride = AppScreens.eventDetails(event.eventId),
+        )
+      }
+
+      waitUntilTagExists(EventDetailsScreenTestTags.SEE_TASKS_BUTTON)
+      composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.SEE_TASKS_BUTTON).performClick()
+      waitUntilTagExists(TaskOverviewScreenTestTags.BACK)
+      composeTestRule.onNodeWithTag(TaskOverviewScreenTestTags.BACK).performClick()
+
+      waitUntilTagExists(EventDetailsScreenTestTags.EVENT_NAME)
+      composeTestRule
+          .onNodeWithTag(EventDetailsScreenTestTags.EVENT_NAME)
+          .assertTextEquals(event.title)
+      composeTestRule.onNodeWithTag(TaskOverviewScreenTestTags.TITLE).assertDoesNotExist()
+    } finally {
+      runBlocking {
+        runCatching { events.deleteEvent(event.eventId) }
+        Firebase.auth.signOut()
+      }
+    }
+  }
+
   @Test
   fun taskOverviewRouteDisplaysTaskOverviewScreen() {
     TasksRepositoryProvider.repository = TasksRepositoryLocal()

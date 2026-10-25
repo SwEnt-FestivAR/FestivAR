@@ -6,10 +6,13 @@ package com.android.festivar.navigation
 
 import androidx.navigation.NavHostController
 
+/**
+ * Where the task overview can go: back to whatever opened it, to a task, or to the task creation of
+ * the event.
+ */
 class TaskOverviewNavigator(private val navController: NavHostController) {
-  val onBack: () -> Unit = {
-    navController.popBackStack("${AppScreens.EventDetails.name}/{eventId}", inclusive = false)
-  }
+  /** Pops the overview, so back works however the overview was reached. */
+  val onBack: () -> Unit = { navController.popBackStack() }
 
   val onOpenTask: (taskId: String) -> Unit = { taskId ->
     navController.navigate(AppScreens.taskDetails(taskId))

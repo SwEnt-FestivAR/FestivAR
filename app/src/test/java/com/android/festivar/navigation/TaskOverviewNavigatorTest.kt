@@ -13,13 +13,12 @@ class TaskOverviewNavigatorTest {
   private val navController = mockk<NavHostController>(relaxed = true)
   private val navigator = TaskOverviewNavigator(navController)
 
+  /** Turns red when back pops to a fixed route, which strands a user who came another way. */
   @Test
-  fun backClickNavigatesToEventDetails() {
+  fun backClickPopsBackStack() {
     navigator.onBack()
 
-    verify {
-      navController.popBackStack("${AppScreens.EventDetails.name}/{eventId}", inclusive = false)
-    }
+    verify { navController.popBackStack() }
   }
 
   @Test
