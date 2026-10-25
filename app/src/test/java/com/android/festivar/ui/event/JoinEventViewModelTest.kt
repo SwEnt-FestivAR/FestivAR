@@ -96,10 +96,11 @@ class JoinEventViewModelTest {
 
   private fun joinedEvents(uid: String) = runBlocking { users.getUser(uid) }.joinedEvents
 
-  /** An events repository whose lookup of all events fails with `offline`. */
+  /** An events repository whose lookup by join code fails with `offline`. */
   private fun offlineEvents() =
       object : EventsRepository by events {
-        override suspend fun getAllEvents(): List<Event> = throw IllegalStateException("offline")
+        override suspend fun getEventsByJoinCode(code: String): List<Event> =
+            throw IllegalStateException("offline")
       }
 
   @Test
@@ -128,6 +129,31 @@ class JoinEventViewModelTest {
 
     assertEquals(emptyList<FoundEventUi>(), viewModel.uiState.value.matches)
     assertFalse(viewModel.uiState.value.notFound)
+  }
+
+  @Test
+  fun aLookupAsksTheRepositoryForTheCodeOnceAndNeverDownloadsEveryEvent() {
+    var byCode = 0
+    var all = 0
+    val counting =
+        object : EventsRepository by events {
+          override suspend fun getEventsByJoinCode(code: String): List<Event> {
+            byCode++
+            return events.getEventsByJoinCode(code)
+          }
+
+          override suspend fun getAllEvents(): List<Event> {
+            all++
+            return events.getAllEvents()
+          }
+        }
+    val viewModel = viewModel(eventsRepository = counting)
+
+    viewModel.setCode("FETE20")
+
+    assertEquals(1, byCode)
+    assertEquals(0, all)
+    assertEquals("fete2026", viewModel.uiState.value.matches.single().id)
   }
 
   @Test
@@ -342,12 +368,12 @@ class JoinEventViewModelTest {
     var calls = 0
     val flaky =
         object : EventsRepository by events {
-          override suspend fun getAllEvents(): List<Event> {
+          override suspend fun getEventsByJoinCode(code: String): List<Event> {
             if (calls++ == 0) {
               gate.await()
               throw IllegalStateException("late")
             }
-            return events.getAllEvents()
+            return events.getEventsByJoinCode(code)
           }
         }
     val viewModel = viewModel(eventsRepository = flaky)
@@ -365,9 +391,9 @@ class JoinEventViewModelTest {
     var lookups = 0
     val counting =
         object : EventsRepository by events {
-          override suspend fun getAllEvents(): List<Event> {
+          override suspend fun getEventsByJoinCode(code: String): List<Event> {
             lookups++
-            return events.getAllEvents()
+            return events.getEventsByJoinCode(code)
           }
         }
     val viewModel = viewModel(eventsRepository = counting)
@@ -409,9 +435,9 @@ class JoinEventViewModelTest {
     val gate = CompletableDeferred<Unit>()
     val slow =
         object : EventsRepository by events {
-          override suspend fun getAllEvents(): List<Event> {
+          override suspend fun getEventsByJoinCode(code: String): List<Event> {
             gate.await()
-            return events.getAllEvents()
+            return events.getEventsByJoinCode(code)
           }
         }
     val viewModel = viewModel(eventsRepository = slow)
@@ -444,9 +470,9 @@ class JoinEventViewModelTest {
     var lookups = 0
     val flaky =
         object : EventsRepository by events {
-          override suspend fun getAllEvents(): List<Event> {
+          override suspend fun getEventsByJoinCode(code: String): List<Event> {
             if (lookups++ == 0) throw IllegalStateException("offline")
-            return events.getAllEvents()
+            return events.getEventsByJoinCode(code)
           }
         }
     val viewModel = viewModel(eventsRepository = flaky)
@@ -464,7 +490,8 @@ class JoinEventViewModelTest {
   fun aLookupFailingWithoutAMessageFallsBackToAGenericOne() {
     val failing =
         object : EventsRepository by events {
-          override suspend fun getAllEvents(): List<Event> = throw RuntimeException()
+          override suspend fun getEventsByJoinCode(code: String): List<Event> =
+              throw RuntimeException()
         }
     val viewModel = viewModel(eventsRepository = failing)
 

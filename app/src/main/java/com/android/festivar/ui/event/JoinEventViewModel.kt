@@ -7,7 +7,6 @@ import androidx.lifecycle.viewModelScope
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.JOIN_CODE_LENGTH
-import com.android.festivar.model.event.joinCodeOf
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.ui.components.formatDate
@@ -84,7 +83,7 @@ class JoinEventViewModel(
   /** Lists every event whose code is [code], unless the code changed while the lookup ran. */
   private suspend fun lookUp(code: String) {
     try {
-      val matches = eventsRepository.getAllEvents().filter { joinCodeOf(it) == code }.map(::cardOf)
+      val matches = eventsRepository.getEventsByJoinCode(code).map(::cardOf)
       updateIfStillTyped(code) { it.copy(matches = matches, notFound = matches.isEmpty()) }
     } catch (e: CancellationException) {
       throw e
