@@ -128,6 +128,43 @@ class EventRepositoryFirebaseTest {
     }
   }
 
+  /**
+   * Red if the document lacks the `joinCode` field or the query reads another one. The looked up
+   * event has a bare UUID id, so its code is six random hex digits and a document another test left
+   * in the emulator cannot share it; the class fixture's `event-` ids have only sixteen codes.
+   */
+  @Test
+  fun getEventsByJoinCode_returnsOnlyTheEventsWithThatCode() = runBlocking {
+    val coded = event.copy(eventId = UUID.randomUUID().toString())
+    repository.addEvent(coded)
+    repository.addEvent(event)
+
+    try {
+      assertEquals(listOf(coded), repository.getEventsByJoinCode(joinCodeOf(coded)))
+      assertTrue(repository.getEventsByJoinCode("ZZZZZZ").isEmpty())
+    } finally {
+      Firebase.firestore.collection("events").document(coded.eventId).delete().await()
+    }
+  }
+
+  /** Red if one malformed document carrying the code makes the whole lookup fail. */
+  @Test
+  fun getEventsByJoinCode_skipsAMalformedDocumentAndReturnsTheGoodEventAlone() = runBlocking {
+    val coded = event.copy(eventId = UUID.randomUUID().toString())
+    repository.addEvent(coded)
+    val events = Firebase.firestore.collection("events")
+    val broken = events.document("${coded.eventId}-broken")
+    // No title, so the mapper cannot build an event from it.
+    broken.set(mapOf("eventId" to broken.id, "joinCode" to joinCodeOf(coded))).await()
+
+    try {
+      assertEquals(listOf(coded), repository.getEventsByJoinCode(joinCodeOf(coded)))
+    } finally {
+      events.document(coded.eventId).delete().await()
+      broken.delete().await()
+    }
+  }
+
   @Test
   fun editEvent_updatesExistingEvent() = runBlocking {
     repository.addEvent(event)

@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.event
 
 import com.android.festivar.model.task.TaskRepositoryFirebase
@@ -7,6 +8,7 @@ import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import java.time.ZonedDateTime
 import java.util.UUID
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.tasks.await
 
 private const val EVENT_COLLECTION_PATH = "events"
@@ -38,6 +40,16 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
   override suspend fun getEventsForUser(userId: String): List<Event> {
     return eventCollection.whereArrayContains("members", userId).get().await().documents.map {
       documentToEvent(it)
+    }
+  }
+
+  override suspend fun getEventsByJoinCode(code: String): List<Event> {
+    // A malformed document yields no event instead of failing the whole lookup. Cancellation is
+    // rethrown, so a lookup cancelled while it reads members or tasks never returns a partial list.
+    return eventCollection.whereEqualTo("joinCode", code).get().await().documents.mapNotNull {
+      runCatching { documentToEvent(it) }
+          .onFailure { error -> if (error is CancellationException) throw error }
+          .getOrNull()
     }
   }
 

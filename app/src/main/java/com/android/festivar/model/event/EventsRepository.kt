@@ -1,3 +1,4 @@
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.event
 
 import com.android.festivar.model.user.User
@@ -34,6 +35,20 @@ interface EventsRepository {
    * @return The list of [Event] items whose members contain this [User].
    */
   suspend fun getEventsForUser(userId: String): List<Event>
+
+  /**
+   * Retrieves the [Event] items whose join code is [code], as [joinCodeOf] spells it: uppercase
+   * letters and digits. Usually one item; several when event identifiers share their first six
+   * letters and digits, and none when no event carries the code. A stored event that cannot be read
+   * is left out instead of failing the lookup.
+   *
+   * Firestore stores the code on each document, so a change to [joinCodeOf] or [JOIN_CODE_LENGTH]
+   * makes every stored code stale and needs a backfill of the existing events.
+   *
+   * @param code The join code an organizer shared.
+   * @return The list of [Event] items with this join code, possibly empty.
+   */
+  suspend fun getEventsByJoinCode(code: String): List<Event>
 
   /**
    * Adds a new [Event] item to the repository.

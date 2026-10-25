@@ -35,6 +35,10 @@ class EventsRepositoryLocal(initialEvents: List<Event> = emptyList()) : EventsRe
     return events.filter { event -> event.members.any { it.uid == userId } }
   }
 
+  override suspend fun getEventsByJoinCode(code: String): List<Event> {
+    return events.filter { joinCodeOf(it) == code }
+  }
+
   override suspend fun addEvent(event: Event) {
     require(events.none { it.eventId == event.eventId }) {
       "EventsRepositoryLocal: an Event with eventId ${event.eventId} already exists"
