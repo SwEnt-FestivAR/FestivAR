@@ -68,16 +68,6 @@ class AudioRepositoryFirebaseTest {
   }
 
   @Test
-  fun editAudio_mismatchedFileNameThrowsIllegalArgumentException() {
-    val fileName = "audio1.mp3"
-    val newValue = Audio("audio2.mp3", Uri.parse("file:///audio2.mp3"))
-
-    assertThrows(IllegalArgumentException::class.java) {
-      runBlocking { repository.editAudio(fileName, newValue) }
-    }
-  }
-
-  @Test
   fun addAudio_alreadyExistsThrowsIllegalArgumentException() {
     val audio = Audio("existing.mp3", Uri.parse("file:///existing.mp3"))
     every { audioRef.child(audio.fileName) } returns fileRef

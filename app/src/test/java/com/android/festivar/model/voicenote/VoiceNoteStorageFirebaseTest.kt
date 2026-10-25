@@ -88,6 +88,62 @@ class VoiceNoteStorageFirebaseTest {
   }
 
   @Test
+  fun delete_actualFirebaseUrl_deletesCorrectFileName() = runTest {
+    val audioUrl =
+        "https://firebasestorage.googleapis.com/v0/b/festivar-9a339.firebasestorage.app/o/audio%2Ftask1_12345.m4a?alt=media&token=7d4d9a9g9j2k4k"
+
+    storage.delete(audioUrl)
+
+    coVerify { audioRepository.deleteAudio("task1_12345.m4a") }
+  }
+
+  @Test
+  fun delete_actualFirebaseUrlWithoutAudioPrefix_deletesCorrectFileName() = runTest {
+    val audioUrl =
+        "https://firebasestorage.googleapis.com/v0/b/festivar-9a339.firebasestorage.app/o/task1_12345.m4a?alt=media&token=7d4d9a9g9j2k4k"
+
+    storage.delete(audioUrl)
+
+    coVerify { audioRepository.deleteAudio("task1_12345.m4a") }
+  }
+
+  @Test
+  fun delete_urlWithoutOParam_deletesCorrectFileName() = runTest {
+    val audioUrl = "https://example.com/audio/task1_12345.m4a?alt=media"
+
+    storage.delete(audioUrl)
+
+    coVerify { audioRepository.deleteAudio("task1_12345.m4a") }
+  }
+
+  @Test
+  fun delete_plainFileName_deletesCorrectFileName() = runTest {
+    val audioUrl = "task1_12345.m4a"
+
+    storage.delete(audioUrl)
+
+    coVerify { audioRepository.deleteAudio("task1_12345.m4a") }
+  }
+
+  @Test
+  fun delete_malformedUrlWithInvalidEncoding_fallsBackToLastSegment() = runTest {
+    val audioUrl = "https://example.com/o/audio%2"
+
+    storage.delete(audioUrl)
+
+    coVerify { audioRepository.deleteAudio("audio%2") }
+  }
+
+  @Test
+  fun delete_urlExtractingToBlankFileName_doesNotCallDeleteAudio() = runTest {
+    val audioUrl = "https://example.com/o/audio%2F?alt=media"
+
+    storage.delete(audioUrl)
+
+    coVerify(exactly = 0) { audioRepository.deleteAudio(any()) }
+  }
+
+  @Test
   fun delete_blankUrlDoesNothing() = runTest {
     storage.delete("")
     storage.delete("   ")
