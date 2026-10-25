@@ -45,6 +45,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -62,6 +63,7 @@ import com.android.festivar.ui.theme.AppTheme
 
 internal object LoginScreenTestTags {
   const val TITLE = "loginTitle"
+  const val LOGO = "loginLogo"
   const val CATCHPHRASE = "loginCatchphrase"
   const val EMAIL_INPUT = "loginEmailInput"
   const val PASSWORD_INPUT = "loginPasswordInput"
@@ -150,7 +152,11 @@ private fun LoginScreenContent(
       verticalArrangement = Arrangement.spacedBy(12.dp),
   ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-      Spacer(modifier = Modifier.size(20.dp))
+      Image(
+          painter = painterResource(R.drawable.app_logo),
+          contentDescription = null,
+          modifier = Modifier.size(24.dp).testTag(LoginScreenTestTags.LOGO),
+      )
       Text(
           text = stringResource(R.string.app_name),
           color = MaterialTheme.colorScheme.onSurface,

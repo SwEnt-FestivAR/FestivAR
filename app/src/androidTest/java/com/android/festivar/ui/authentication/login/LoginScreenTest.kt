@@ -40,6 +40,7 @@ class LoginScreenTest {
     }
 
     composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.LOGO).assertIsDisplayed()
     composeTestRule.onNodeWithTag(LoginScreenTestTags.CATCHPHRASE).assertIsDisplayed()
     composeTestRule.onNodeWithText("Every table in the right place.").assertIsDisplayed()
     composeTestRule
