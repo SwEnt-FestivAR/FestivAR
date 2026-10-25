@@ -1,8 +1,10 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.details
 
 import com.android.festivar.model.task.Task
-import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -12,9 +14,9 @@ class TaskDetailsScreenHelpersTest {
     const val RANGE = "%1\$s to %2\$s"
   }
 
-  private val start = LocalDateTime.of(2026, 10, 17, 9, 30)
+  private val start = ZonedDateTime.of(2026, 10, 17, 9, 30, 0, 0, ZoneId.of("Europe/Zurich"))
 
-  private fun task(startTime: LocalDateTime? = null, endTime: LocalDateTime? = null) =
+  private fun task(startTime: ZonedDateTime? = null, endTime: ZonedDateTime? = null) =
       Task("t", "e", "Title", startTime = startTime, endTime = endTime, ownerId = "owner-1")
 
   @Test

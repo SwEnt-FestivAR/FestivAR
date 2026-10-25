@@ -1,5 +1,6 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Written with the help of an AI coding assistant and reviewed line by line by the author.
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.tasks
 
 import com.android.festivar.model.task.Task
@@ -10,9 +11,9 @@ import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
-import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
+import java.time.ZonedDateTime
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -34,8 +35,7 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class TaskOverviewViewModelTest {
-  private val zone = ZoneId.of("Europe/Zurich")
-  private val clock = SettableClock(at(10, 0).atZone(zone).toInstant(), zone)
+  private val clock = SettableClock(at(10, 0).toInstant(), ZONE)
   private val dispatcher = UnconfinedTestDispatcher()
   private val me = User("me")
   private val ana = User("ana")
@@ -453,6 +453,31 @@ class TaskOverviewViewModelTest {
     assertFalse(rows.getValue("sound").isMine)
   }
 
+  /** Turns red when a task is grouped or shown in the zone it was saved in, not the viewer's. */
+  @Test
+  fun aTaskIsGroupedAndShownInTheViewersZone() {
+    // Sunday 01:00 in Zurich is Saturday 19:00 in New York, where the viewer is.
+    runBlocking {
+      repository.addTask(
+          Task(
+              "night",
+              EVENT,
+              "Lock the stage",
+              startTime = at(1, 0).plusDays(1),
+              ownerId = "owner-1",
+          )
+      )
+    }
+    val newYork = clock.withZone(ZoneId.of("America/New_York"))
+    val viewModel = TaskOverviewViewModel(EVENT, me.uid, repository, newYork)
+
+    val section =
+        viewModel.uiState.value.sections.single { s -> s.rows.any { it.task.taskId == "night" } }
+    assertEquals(DAY, section.day)
+    assertEquals(OverviewGroup.EVENING, section.group)
+    assertEquals(LocalTime.of(19, 0), section.rows.single { it.task.taskId == "night" }.startTime)
+  }
+
   /** Turns red when the OPEN chip and the full badge disagree on when a task is full. */
   @Test
   fun aFullTaskIsNeverOpen() {
@@ -618,8 +643,10 @@ class TaskOverviewViewModelTest {
   private companion object {
     const val EVENT = "fete"
     val DAY: LocalDate = LocalDate.of(2026, 7, 1)
+    val ZONE: ZoneId = ZoneId.of("Europe/Zurich")
 
-    /** A time on [DAY], the day every seeded task lives on. */
-    fun at(hour: Int, minute: Int): LocalDateTime = DAY.atTime(hour, minute)
+    /** A time on [DAY] in [ZONE], the day and zone every seeded task lives in. */
+    fun at(hour: Int, minute: Int): ZonedDateTime =
+        ZonedDateTime.of(DAY, LocalTime.of(hour, minute), ZONE)
   }
 }

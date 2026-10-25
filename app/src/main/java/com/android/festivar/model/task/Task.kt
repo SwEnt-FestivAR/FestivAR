@@ -5,7 +5,7 @@ package com.android.festivar.model.task
 import com.android.festivar.model.user.User
 import com.android.festivar.model.voicenote.VoiceNote
 import java.time.Duration
-import java.time.LocalDateTime
+import java.time.ZonedDateTime
 
 /**
  * Represents a [Task] in the FestivAR application. A [Task] is something, in the context of an
@@ -58,8 +58,8 @@ data class Task(
     val eventId: String,
     val title: String,
     val description: String = "",
-    val startTime: LocalDateTime? = null,
-    val endTime: LocalDateTime? = null,
+    val startTime: ZonedDateTime? = null,
+    val endTime: ZonedDateTime? = null,
     val estimatedTime: Duration? = null,
     val location: String = "",
     val priority: Priority = Priority.NONE,

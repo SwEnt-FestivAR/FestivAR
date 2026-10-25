@@ -5,8 +5,8 @@ package com.android.festivar.model.task
 import com.android.festivar.model.user.User
 import com.android.festivar.model.voicenote.VoiceNote
 import java.time.Duration
-import java.time.LocalDateTime
-import java.time.ZoneOffset
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertFalse
 import junit.framework.TestCase.assertNull
@@ -26,7 +26,7 @@ class TaskTest {
   private val timeMessage = "endTime must not be before startTime."
   private val estimatedTimeMessage = "estimatedTime cannot be negative."
 
-  private val start = LocalDateTime.of(2026, 7, 1, 14, 0)
+  private val start = ZonedDateTime.of(2026, 7, 1, 14, 0, 0, 0, ZoneId.of("Europe/Zurich"))
 
   /** Strings that are blank, so refused for taskId, eventId and title. */
   private val blankStrings = listOf("", " ", "   ", "\t", "\n", " \t\n ")
@@ -270,6 +270,40 @@ class TaskTest {
     }
   }
 
+  /**
+   * The instants are compared, not the clock readings: 13:30 in London is after 14:00 in Zurich.
+   */
+  @Test
+  fun init_succeeds_whenEndTimeIsALaterInstantInAnotherZone() {
+    val end = ZonedDateTime.of(2026, 7, 1, 13, 30, 0, 0, ZoneId.of("Europe/London"))
+    val task =
+        Task(
+            taskId = "t1",
+            eventId = "e1",
+            title = "Task",
+            startTime = start,
+            endTime = end,
+            ownerId = "owner-1",
+        )
+    assertEquals(end, task.endTime)
+  }
+
+  /** 14:30 in Tokyo reads later than 14:00 in Zurich, but is hours before it, so it is refused. */
+  @Test
+  fun init_fails_whenEndTimeIsAnEarlierInstantInAnotherZone() {
+    val end = ZonedDateTime.of(2026, 7, 1, 14, 30, 0, 0, ZoneId.of("Asia/Tokyo"))
+    assertInvalid(timeMessage) {
+      Task(
+          taskId = "t1",
+          eventId = "e1",
+          title = "Task",
+          startTime = start,
+          endTime = end,
+          ownerId = "owner-1",
+      )
+    }
+  }
+
   // ---------------------------------------------------------------------------------------- //
   // estimatedTime
   // ---------------------------------------------------------------------------------------- //
@@ -318,7 +352,7 @@ class TaskTest {
           id,
           "https://example.com/$id.m4a",
           Duration.ofSeconds(5),
-          start.atZone(ZoneOffset.UTC),
+          start,
       )
 
   private val ownedTask = Task(ownerId = "owner", taskId = "t1", eventId = "e1", title = "Task")

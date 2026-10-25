@@ -12,7 +12,8 @@ import com.google.firebase.auth.auth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.firestore
 import java.time.Duration
-import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import java.util.UUID
 import kotlin.coroutines.intrinsics.suspendCoroutineUninterceptedOrReturn
 import kotlinx.coroutines.async
@@ -275,8 +276,8 @@ class TaskRepositoryFirebaseTest {
           eventId = "event-1",
           title = "Task",
           description = "Description",
-          startTime = LocalDateTime.of(2026, 7, 1, 14, 0),
-          endTime = LocalDateTime.of(2026, 7, 1, 16, 0),
+          startTime = ZonedDateTime.of(2026, 7, 1, 14, 0, 0, 0, ZoneId.of("Europe/Zurich")),
+          endTime = ZonedDateTime.of(2026, 7, 1, 16, 0, 0, 0, ZoneId.of("Europe/Zurich")),
           estimatedTime = Duration.ofHours(1),
           location = "EPFL",
           priority = Priority.MEDIUM,
