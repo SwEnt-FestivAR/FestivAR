@@ -178,6 +178,18 @@ class JoinEventViewModelTest {
   }
 
   @Test
+  fun theCardOfAnEventTheUserBelongsToIsFlaggedAsMemberAndAStrangersCardIsNot() {
+    val member = viewModel(userId = sami.uid)
+    val stranger = viewModel(userId = ada.uid)
+
+    member.setCode("FETE20")
+    stranger.setCode("FETE20")
+
+    assertTrue(member.uiState.value.matches.single().isMember)
+    assertFalse(stranger.uiState.value.matches.single().isMember)
+  }
+
+  @Test
   fun sixCharactersThatMatchNothingSayNotFoundAndJoinChangesNothing() {
     val viewModel = viewModel()
 
@@ -286,6 +298,22 @@ class JoinEventViewModelTest {
     assertEquals(R.string.join_event_join_failed, viewModel.uiState.value.errorRes)
     assertFalse(viewModel.uiState.value.isJoining)
     assertEquals(emptyList<String>(), joinedEvents(ada.uid))
+  }
+
+  @Test
+  fun aMemberWhoseOpenFailsIsToldTheEventCouldNotBeOpenedNotJoined() {
+    val failing =
+        object : UsersRepository by users {
+          override suspend fun getUser(uId: String): User = throw IllegalStateException("offline")
+        }
+    val viewModel = viewModel(userId = sami.uid, usersRepository = failing)
+    viewModel.setCode("FETE20")
+
+    viewModel.join("fete2026")
+
+    assertEquals(R.string.join_event_open_failed, viewModel.uiState.value.errorRes)
+    assertFalse(viewModel.uiState.value.isJoining)
+    assertNull(viewModel.uiState.value.joinedEventId)
   }
 
   @Test

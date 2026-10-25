@@ -76,6 +76,9 @@ object JoinEventScreenTestTags {
 
   fun resultLine(eventId: String) = "joinEventResultLine$eventId"
 
+  /** The line telling the person they already belong to the event [eventId]. */
+  fun alreadyMember(eventId: String) = "joinEventAlreadyMember$eventId"
+
   fun join(eventId: String) = "joinEventJoin$eventId"
 }
 
@@ -263,7 +266,10 @@ fun JoinEventContent(
   }
 }
 
-/** One matched event: its name, start and member count, and the button that joins it. */
+/**
+ * One matched event: its name, start and member count, and the button that joins it. When the
+ * person already belongs to it, a line says so and the button opens the event instead.
+ */
 @Composable
 private fun FoundCard(found: FoundEventUi, enabled: Boolean, onJoin: () -> Unit) {
   Column(
@@ -288,6 +294,14 @@ private fun FoundCard(found: FoundEventUi, enabled: Boolean, onJoin: () -> Unit)
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.testTag(JoinEventScreenTestTags.resultLine(found.id)),
     )
+    if (found.isMember) {
+      Text(
+          stringResource(R.string.join_event_already_member),
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          modifier = Modifier.testTag(JoinEventScreenTestTags.alreadyMember(found.id)),
+      )
+    }
     Spacer(Modifier.height(12.dp))
     Button(
         onClick = onJoin,
@@ -296,7 +310,8 @@ private fun FoundCard(found: FoundEventUi, enabled: Boolean, onJoin: () -> Unit)
             Modifier.fillMaxWidth().height(48.dp).testTag(JoinEventScreenTestTags.join(found.id)),
         shape = RoundedCornerShape(8.dp),
     ) {
-      Text(text = stringResource(R.string.join_event_join))
+      val label = if (found.isMember) R.string.join_event_open else R.string.join_event_join
+      Text(text = stringResource(label))
     }
   }
 }
@@ -313,7 +328,7 @@ private fun JoinEventContentPreview() {
                 matches =
                     listOf(
                         FoundEventUi("e1", "Vidy Festival", previewStart, 12),
-                        FoundEventUi("e2", "Vidy Afterparty", previewStart, 3),
+                        FoundEventUi("e2", "Vidy Afterparty", previewStart, 3, isMember = true),
                     ),
             ),
         onBack = {},
