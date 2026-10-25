@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.event
 
 import androidx.compose.runtime.getValue
@@ -58,7 +59,7 @@ class JoinEventScreenTest {
       }
 
   private fun content(
-      state: JoinEventUiState,
+      state: JoinEventUIState,
       onBack: () -> Unit = {},
       onCode: (String) -> Unit = {},
       onJoin: (String) -> Unit = {},
@@ -82,7 +83,7 @@ class JoinEventScreenTest {
   @Test
   fun typingInTheCodeFieldSendsTheTextToTheViewModel() {
     var typed = ""
-    content(JoinEventUiState(), onCode = { typed = it })
+    content(JoinEventUIState(), onCode = { typed = it })
 
     composeTestRule.onNodeWithTag(JoinEventScreenTestTags.CODE_INPUT).performTextInput("ab12")
 
@@ -92,7 +93,7 @@ class JoinEventScreenTest {
   @Test
   fun aFoundEventShowsItsNameAndItsJoinButtonPassesItsId() {
     val joins = mutableListOf<String>()
-    content(JoinEventUiState(code = "VIDY26", matches = listOf(found)), onJoin = { joins.add(it) })
+    content(JoinEventUIState(code = "VIDY26", matches = listOf(found)), onJoin = { joins.add(it) })
 
     composeTestRule.onNodeWithTag(JoinEventScreenTestTags.result("e1")).assertIsDisplayed()
     composeTestRule
@@ -111,7 +112,7 @@ class JoinEventScreenTest {
     val joins = mutableListOf<String>()
     val other = FoundEventUi("e2", "Vidy Afterparty", "Sat 17 Oct", 3)
     content(
-        JoinEventUiState(code = "VIDY26", matches = listOf(found, other)),
+        JoinEventUIState(code = "VIDY26", matches = listOf(found, other)),
         onJoin = { joins.add(it) },
     )
 
@@ -127,7 +128,7 @@ class JoinEventScreenTest {
 
   @Test
   fun anUnknownCodeShowsNotFoundAndNoJoin() {
-    content(JoinEventUiState(code = "ZZZZZZ", notFound = true))
+    content(JoinEventUIState(code = "ZZZZZZ", notFound = true))
 
     composeTestRule.onNodeWithTag(JoinEventScreenTestTags.NOT_FOUND).assertIsDisplayed()
     composeTestRule
@@ -138,21 +139,21 @@ class JoinEventScreenTest {
 
   @Test
   fun joinIsDisabledWhileTheJoinIsRunning() {
-    content(JoinEventUiState(code = "VIDY26", matches = listOf(found), isJoining = true))
+    content(JoinEventUIState(code = "VIDY26", matches = listOf(found), isJoining = true))
 
     composeTestRule.onNodeWithTag(JoinEventScreenTestTags.join("e1")).assertIsNotEnabled()
   }
 
   @Test
   fun theCodeFieldIsDisabledWhileTheJoinIsRunning() {
-    content(JoinEventUiState(code = "VIDY26", matches = listOf(found), isJoining = true))
+    content(JoinEventUIState(code = "VIDY26", matches = listOf(found), isJoining = true))
 
     composeTestRule.onNodeWithTag(JoinEventScreenTestTags.CODE_INPUT).assertIsNotEnabled()
   }
 
   @Test
   fun anErrorMessageIsShownUnderTheCards() {
-    content(JoinEventUiState(code = "VIDY26", matches = listOf(found), errorMsg = "offline"))
+    content(JoinEventUIState(code = "VIDY26", matches = listOf(found), errorMsg = "offline"))
 
     composeTestRule
         .onNodeWithTag(JoinEventScreenTestTags.ERROR_MESSAGE)
@@ -163,7 +164,7 @@ class JoinEventScreenTest {
   @Test
   fun backCallsOnBack() {
     var backs = 0
-    content(JoinEventUiState(), onBack = { backs++ })
+    content(JoinEventUIState(), onBack = { backs++ })
 
     composeTestRule.onNodeWithTag(JoinEventScreenTestTags.BACK).performClick()
 
@@ -172,7 +173,7 @@ class JoinEventScreenTest {
 
   @Test
   fun oneMemberIsWrittenInTheSingular() {
-    content(JoinEventUiState(code = "VIDY26", matches = listOf(found.copy(members = 1))))
+    content(JoinEventUIState(code = "VIDY26", matches = listOf(found.copy(members = 1))))
 
     composeTestRule
         .onNodeWithTag(JoinEventScreenTestTags.resultLine("e1"), useUnmergedTree = true)
@@ -181,7 +182,7 @@ class JoinEventScreenTest {
 
   @Test
   fun severalMembersAreWrittenInThePlural() {
-    content(JoinEventUiState(code = "VIDY26", matches = listOf(found.copy(members = 3))))
+    content(JoinEventUIState(code = "VIDY26", matches = listOf(found.copy(members = 3))))
 
     composeTestRule
         .onNodeWithTag(JoinEventScreenTestTags.resultLine("e1"), useUnmergedTree = true)
@@ -190,7 +191,7 @@ class JoinEventScreenTest {
 
   @Test
   fun tappingACellFocusesTheCodeField() {
-    content(JoinEventUiState())
+    content(JoinEventUIState())
 
     composeTestRule.onNodeWithTag(JoinEventScreenTestTags.cell(3)).performClick()
 
@@ -199,7 +200,7 @@ class JoinEventScreenTest {
 
   @Test
   fun aFailedJoinGivesTheCodeFieldItsFocusBack() {
-    var state by mutableStateOf(JoinEventUiState(code = "VIDY26", matches = listOf(found)))
+    var state by mutableStateOf(JoinEventUIState(code = "VIDY26", matches = listOf(found)))
     composeTestRule.setContent { JoinEventContent(state, {}, {}, {}) }
     composeTestRule.onNodeWithTag(JoinEventScreenTestTags.CODE_INPUT).assertIsNotFocused()
 
@@ -278,7 +279,7 @@ class JoinEventScreenTest {
 
   @Test
   fun eachCodeCellIsAButtonNamedByItsPosition() {
-    content(JoinEventUiState())
+    content(JoinEventUIState())
 
     for (i in 0 until 6) {
       composeTestRule
@@ -292,7 +293,7 @@ class JoinEventScreenTest {
   fun theCodeRowAndTheHiddenFieldAreDescribedForAScreenReader() {
     composeTestRule.setContent {
       var code by remember { mutableStateOf("") }
-      JoinEventContent(JoinEventUiState(code = code), {}, { code = it }, {})
+      JoinEventContent(JoinEventUIState(code = code), {}, { code = it }, {})
     }
 
     composeTestRule.onNode(hasContentDescription("Code is empty")).assertExists()

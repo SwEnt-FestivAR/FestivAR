@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.event
 
 import androidx.lifecycle.ViewModel
@@ -41,7 +42,7 @@ data class FoundEventUi(val id: String, val name: String, val dateLine: String, 
  *   [JoinEventViewModel.onEventOpened] once the screen opened it.
  * @property errorMsg an error message to show when the lookup or the join fails, or `null`.
  */
-data class JoinEventUiState(
+data class JoinEventUIState(
     val code: String = "",
     val matches: List<FoundEventUi> = emptyList(),
     val notFound: Boolean = false,
@@ -63,8 +64,8 @@ class JoinEventViewModel(
     private val eventsRepository: EventsRepository,
     private val usersRepository: UsersRepository,
 ) : ViewModel() {
-  private val _uiState = MutableStateFlow(JoinEventUiState())
-  val uiState: StateFlow<JoinEventUiState> = _uiState.asStateFlow()
+  private val _uiState = MutableStateFlow(JoinEventUIState())
+  val uiState: StateFlow<JoinEventUIState> = _uiState.asStateFlow()
 
   /** Keeps the letters and digits of [raw], uppercased, and looks the code up once complete. */
   fun setCode(raw: String) {
@@ -95,7 +96,7 @@ class JoinEventViewModel(
   /**
    * Applies [change] only while [code] is still the typed one: a later keystroke owns the state.
    */
-  private fun updateIfStillTyped(code: String, change: (JoinEventUiState) -> JoinEventUiState) {
+  private fun updateIfStillTyped(code: String, change: (JoinEventUIState) -> JoinEventUIState) {
     _uiState.update { if (it.code == code) change(it) else it }
   }
 
@@ -111,7 +112,7 @@ class JoinEventViewModel(
 
   /**
    * Makes the signed-in person a member of the matched event [eventId], writing only what is still
-   * missing. Ignored unless [eventId] is among [JoinEventUiState.matches] and no join is running.
+   * missing. Ignored unless [eventId] is among [JoinEventUIState.matches] and no join is running.
    */
   fun join(eventId: String) {
     val state = _uiState.value

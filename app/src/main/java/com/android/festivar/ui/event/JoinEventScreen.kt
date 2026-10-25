@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.event
 
 import androidx.compose.foundation.background
@@ -112,7 +113,7 @@ fun JoinEventScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun JoinEventContent(
-    state: JoinEventUiState,
+    state: JoinEventUIState,
     onBack: () -> Unit,
     onCode: (String) -> Unit,
     onJoin: (eventId: String) -> Unit,
@@ -303,7 +304,7 @@ private fun JoinEventContentPreview() {
   AppTheme {
     JoinEventContent(
         state =
-            JoinEventUiState(
+            JoinEventUIState(
                 code = "VIDY26",
                 matches =
                     listOf(
