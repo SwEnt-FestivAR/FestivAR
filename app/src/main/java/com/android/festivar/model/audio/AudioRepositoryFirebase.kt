@@ -1,0 +1,45 @@
+package com.android.festivar.model.audio
+
+import androidx.core.net.toUri
+import com.google.firebase.storage.StorageReference
+import java.io.File
+import java.util.UUID
+import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.withContext
+
+private const val AUDIO_COLLECTION_PATH = "audios"
+
+class AudioRepositoryFirebase(storageRef: StorageReference) : AudioRepository {
+  val audioRef = storageRef.child("audio")
+
+  override fun getNewUid(): String {
+    return UUID.randomUUID().toString()
+  }
+
+  override suspend fun getAudio(fileName: String): Audio {
+    val ref = audioRef.child(fileName)
+    val localFile = withContext(IO) { File.createTempFile(audioRef.toString(), "mp3") }
+    ref.getFile(localFile)
+    return Audio(localFile.toUri(), ref.downloadUrl.toString())
+  }
+
+  override suspend fun addAudio(audio: Audio) {
+    val ref = audio.uri.lastPathSegment?.let { audioRef.child(it) }
+    require(ref != null) { "Can't access firebase storage" }
+    ref.putFile(audio.uri)
+    audio.url = ref.downloadUrl.toString()
+  }
+
+  override suspend fun editAudio(
+      uri: String,
+      newValue: Audio,
+  ) {
+    deleteAudio(uri)
+    addAudio(newValue)
+  }
+
+  override suspend fun deleteAudio(fileName: String) {
+    val ref = audioRef.child(fileName)
+    ref.delete()
+  }
+}
