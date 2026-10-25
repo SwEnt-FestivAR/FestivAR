@@ -115,7 +115,7 @@ class MainActivityNavigationTest {
     composeTestRule.onNodeWithTag(SignUpScreenTestTags.CREATE_ACC_TITLE).assertIsDisplayed()
 
     composeTestRule.onNodeWithTag(SignUpScreenTestTags.LOGIN_NOW_BUTTON).performClick()
-    composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).performScrollTo().assertIsDisplayed()
   }
 
   @Test
