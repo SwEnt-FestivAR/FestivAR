@@ -21,7 +21,6 @@ import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.v2.createComposeRule
-import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
@@ -54,6 +53,17 @@ class JoinEventScreenTest {
           startDate = start,
           endDate = start.plusHours(5),
       )
+
+  /** The app's string [id] formatted with [args], so no expected text is written out here. */
+  private fun string(id: Int, vararg args: Any): String =
+      InstrumentationRegistry.getInstrumentation().targetContext.getString(id, *args)
+
+  /** The app's plural [id] for [count]. */
+  private fun plural(id: Int, count: Int): String =
+      InstrumentationRegistry.getInstrumentation()
+          .targetContext
+          .resources
+          .getQuantityString(id, count, count)
 
   /** Matches every node whose test tag starts with [prefix], whatever event id follows it. */
   private fun hasTagPrefix(prefix: String) =
@@ -137,7 +147,7 @@ class JoinEventScreenTest {
     composeTestRule
         .onAllNodes(hasTagPrefix(JoinEventScreenTestTags.result("")))
         .assertCountEquals(0)
-    composeTestRule.onAllNodesWithText("Join as a volunteer").assertCountEquals(0)
+    composeTestRule.onAllNodes(hasTagPrefix(JoinEventScreenTestTags.join(""))).assertCountEquals(0)
   }
 
   @Test
@@ -167,11 +177,7 @@ class JoinEventScreenTest {
     composeTestRule
         .onNodeWithTag(JoinEventScreenTestTags.ERROR_MESSAGE)
         .assertIsDisplayed()
-        .assertTextEquals(
-            InstrumentationRegistry.getInstrumentation()
-                .targetContext
-                .getString(R.string.join_event_join_failed)
-        )
+        .assertTextEquals(string(R.string.join_event_join_failed))
   }
 
   @Test
@@ -190,7 +196,14 @@ class JoinEventScreenTest {
 
     composeTestRule
         .onNodeWithTag(JoinEventScreenTestTags.resultLine("e1"), useUnmergedTree = true)
-        .assertTextEquals("Sat 17 Oct, 10:00, 1 member")
+        .assertTextEquals(
+            string(
+                R.string.join_event_found_line,
+                "Sat 17 Oct",
+                "10:00",
+                plural(R.plurals.join_event_members, 1),
+            )
+        )
   }
 
   @Test
@@ -199,7 +212,14 @@ class JoinEventScreenTest {
 
     composeTestRule
         .onNodeWithTag(JoinEventScreenTestTags.resultLine("e1"), useUnmergedTree = true)
-        .assertTextEquals("Sat 17 Oct, 10:00, 3 members")
+        .assertTextEquals(
+            string(
+                R.string.join_event_found_line,
+                "Sat 17 Oct",
+                "10:00",
+                plural(R.plurals.join_event_members, 3),
+            )
+        )
   }
 
   @Test
@@ -297,7 +317,7 @@ class JoinEventScreenTest {
     for (i in 0 until 6) {
       composeTestRule
           .onNodeWithTag(JoinEventScreenTestTags.cell(i))
-          .assertContentDescriptionEquals("Code character ${i + 1}")
+          .assertContentDescriptionEquals(string(R.string.join_event_code_cell, i + 1))
           .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
     }
   }
@@ -309,11 +329,17 @@ class JoinEventScreenTest {
       JoinEventContent(JoinEventUIState(code = code), {}, { code = it }, {})
     }
 
-    composeTestRule.onNode(hasContentDescription("Code is empty")).assertExists()
-    composeTestRule.onNode(hasContentDescription("Join code")).assertExists()
+    composeTestRule
+        .onNode(hasContentDescription(string(R.string.join_event_code_empty)))
+        .assertExists()
+    composeTestRule
+        .onNode(hasContentDescription(string(R.string.join_event_code_field)))
+        .assertExists()
 
     composeTestRule.onNodeWithTag(JoinEventScreenTestTags.CODE_INPUT).performTextInput("AB12")
 
-    composeTestRule.onNode(hasContentDescription("Code so far: AB12")).assertExists()
+    composeTestRule
+        .onNode(hasContentDescription(string(R.string.join_event_code_so_far, "AB12")))
+        .assertExists()
   }
 }

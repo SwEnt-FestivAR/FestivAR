@@ -365,20 +365,18 @@ class JoinEventViewModelTest {
   }
 
   @Test
-  fun aLateLookupFailureForAnOldCodeIsNotShownUnderTheNewCode() {
+  fun aCancelledLookupIsNotReportedAsAFailure() {
+    // Only the first lookup suspends; cancelling it throws a CancellationException out of await.
     val gate = CompletableDeferred<Unit>()
     var calls = 0
-    val flaky =
+    val slow =
         object : EventsRepository by events {
           override suspend fun getEventsByJoinCode(code: String): List<Event> {
-            if (calls++ == 0) {
-              gate.await()
-              throw IllegalStateException("late")
-            }
+            if (calls++ == 0) gate.await()
             return events.getEventsByJoinCode(code)
           }
         }
-    val viewModel = viewModel(eventsRepository = flaky)
+    val viewModel = viewModel(eventsRepository = slow)
     viewModel.setCode("FETE20")
     viewModel.setCode("NOEL12")
 
@@ -433,7 +431,7 @@ class JoinEventViewModelTest {
   }
 
   @Test
-  fun aLookupFinishingAfterTheCodeWasEditedIsDropped() {
+  fun shorteningTheCodeCancelsTheRunningLookupSoItsMatchesNeverShow() {
     val gate = CompletableDeferred<Unit>()
     val slow =
         object : EventsRepository by events {
