@@ -1,21 +1,29 @@
 // Co-authored-by: Gemini <gemini@google.com>
 package com.android.festivar.model.audio
 
-import android.net.Uri
+import androidx.core.net.toUri
+import java.io.File
+import java.time.Duration
 
 /**
- * Represents an [Audio] item in the FestivAR application.
+ * Represents an audio recording or file in the FestivAR application.
  *
- * @property fileName The unique file name / identifier of the audio item.
- * @property uri The local or source URI of the audio file.
- * @property url The remote download URL of the audio file.
+ * @property file The local file handle of the audio recording.
+ * @property duration Length of the recording.
+ * @property url The remote download URL of the audio file once uploaded.
  */
 data class Audio(
-    val fileName: String,
-    val uri: Uri,
+    val file: File,
+    val duration: Duration = Duration.ZERO,
     var url: String = "",
 ) {
+  val fileName: String
+    get() = file.name
+
+  val uri
+    get() = file.toUri()
+
   init {
-    require(fileName.isNotBlank()) { "The fileName cannot be empty." }
+    require(duration.isZero || duration.isPositive) { "The duration must be non-negative." }
   }
 }

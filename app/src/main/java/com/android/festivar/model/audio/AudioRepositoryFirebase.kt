@@ -1,37 +1,77 @@
 // Co-authored-by: Gemini <gemini@google.com>
 package com.android.festivar.model.audio
 
+import com.google.firebase.storage.StorageException
 import com.google.firebase.storage.StorageReference
+import java.io.IOException
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
 import java.util.UUID
 import kotlinx.coroutines.tasks.await
 
 class AudioRepositoryFirebase(storageRef: StorageReference) : AudioRepository {
-  val audioRef = storageRef.child("audio")
+  val audioRef = storageRef.child("audio").child("voice-note")
 
   override fun getNewUid(): String {
     return UUID.randomUUID().toString()
   }
 
-  override suspend fun addAudio(audio: Audio) {
-    val ref = audioRef.child(audio.fileName)
+  override suspend fun upload(audio: Audio): String {
     try {
-      ref.metadata.await()
-      throw IllegalArgumentException("An Audio with fileName '${audio.fileName}' already exists.")
+      val extension = audio.file.extension.let { if (it.isNotBlank()) ".$it" else ".m4a" }
+      val fileName = "${getNewUid()}$extension"
+      val ref = audioRef.child(fileName)
+      ref.putFile(audio.uri).await()
+      val downloadUrl = ref.downloadUrl.await().toString()
+      audio.url = downloadUrl
+      return downloadUrl.ifBlank {
+        throw IOException("Audio upload did not return a valid download URL.")
+      }
     } catch (e: Exception) {
-      if (e is IllegalArgumentException) throw e
-      // If object not found exception, file does not exist yet, which is expected for add
+      if (e is IOException) throw e
+      throw IOException("Failed to upload audio file.", e)
     }
-    ref.putFile(audio.uri).await()
-    audio.url = ref.downloadUrl.await().toString()
   }
 
-  override suspend fun deleteAudio(fileName: String) {
-    val ref = audioRef.child(fileName)
+  override suspend fun delete(audioUrl: String) {
+    if (audioUrl.isBlank()) return
     try {
-      ref.metadata.await()
-    } catch (_: Exception) {
-      throw NoSuchElementException("Audio '$fileName' does not exist.")
+      val fileName = extractFileName(audioUrl)
+      if (fileName.isNotBlank()) {
+        val ref = audioRef.child(fileName)
+        ref.delete().await()
+      }
+    } catch (e: Exception) {
+      if (
+          e is StorageException && e.errorCode == StorageException.ERROR_OBJECT_NOT_FOUND ||
+              e.message?.contains("Object does not exist") == true ||
+              e is NoSuchElementException
+      ) {
+        // Deleting a non-existent file is non-fatal per contract.
+        return
+      }
+      throw IOException("Failed to delete audio file.", e)
     }
-    ref.delete().await()
+  }
+
+  private fun extractFileName(url: String): String {
+    return try {
+      val withoutQuery = url.substringBefore('?')
+      val oIndex = withoutQuery.indexOf("/o/")
+      val path =
+          if (oIndex != -1) {
+            withoutQuery.substring(oIndex + 3)
+          } else {
+            withoutQuery.substringAfterLast('/')
+          }
+      val decoded = URLDecoder.decode(path, StandardCharsets.UTF_8.name())
+      if (decoded.startsWith("audio/")) {
+        decoded.removePrefix("audio/")
+      } else {
+        decoded
+      }
+    } catch (_: Exception) {
+      url.substringAfterLast('/')
+    }
   }
 }

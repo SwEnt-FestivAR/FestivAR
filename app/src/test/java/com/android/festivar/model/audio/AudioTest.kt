@@ -1,7 +1,8 @@
 // Co-authored-by: Gemini <gemini@google.com>
 package com.android.festivar.model.audio
 
-import androidx.core.net.toUri
+import java.io.File
+import java.time.Duration
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Test
@@ -11,38 +12,35 @@ import org.robolectric.RobolectricTestRunner
 @RunWith(RobolectricTestRunner::class)
 class AudioTest {
 
-  private val sampleUri = "file:///tmp/sample.mp3".toUri()
+  private val tempFile = File.createTempFile("sample", ".m4a")
 
   @Test
-  fun init_withValidFileName_succeeds() {
+  fun init_withValidFile_succeeds() {
     val audio =
-        Audio(fileName = "sample.mp3", uri = sampleUri, url = "https://example.com/sample.mp3")
-    assertEquals("sample.mp3", audio.fileName)
-    assertEquals(sampleUri, audio.uri)
-    assertEquals("https://example.com/sample.mp3", audio.url)
+        Audio(
+            file = tempFile,
+            duration = Duration.ofSeconds(5),
+            url = "https://example.com/sample.m4a",
+        )
+    assertEquals(tempFile, audio.file)
+    assertEquals(tempFile.name, audio.fileName)
+    assertEquals(Duration.ofSeconds(5), audio.duration)
+    assertEquals("https://example.com/sample.m4a", audio.url)
   }
 
   @Test
-  fun init_defaultUrl_isEmpty() {
-    val audio = Audio(fileName = "sample.mp3", uri = sampleUri)
+  fun init_defaultDurationAndUrl_areDefaulted() {
+    val audio = Audio(file = tempFile)
+    assertEquals(Duration.ZERO, audio.duration)
     assertEquals("", audio.url)
   }
 
   @Test
-  fun init_withEmptyFileName_throwsIllegalArgumentException() {
+  fun init_withNegativeDuration_throwsIllegalArgumentException() {
     val exception =
-        assertThrows(IllegalArgumentException::class.java) { Audio(fileName = "", uri = sampleUri) }
-    assertEquals("The fileName cannot be empty.", exception.message)
-  }
-
-  @Test
-  fun init_withBlankFileName_throwsIllegalArgumentException() {
-    listOf(" ", "\t", "\n", "   ").forEach { blankName ->
-      val exception =
-          assertThrows(IllegalArgumentException::class.java) {
-            Audio(fileName = blankName, uri = sampleUri)
-          }
-      assertEquals("The fileName cannot be empty.", exception.message)
-    }
+        assertThrows(IllegalArgumentException::class.java) {
+          Audio(file = tempFile, duration = Duration.ofMillis(-1))
+        }
+    assertEquals("The duration must be non-negative.", exception.message)
   }
 }

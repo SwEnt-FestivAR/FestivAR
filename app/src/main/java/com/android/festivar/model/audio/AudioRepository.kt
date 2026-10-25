@@ -1,29 +1,26 @@
+// Co-authored-by: Gemini <gemini@google.com>
 package com.android.festivar.model.audio
+
+import java.io.IOException
 
 interface AudioRepository {
 
-  /** Generates and returns a new unique identifier for an [Audio] item. */
+  /** Generates and returns a new unique identifier for an audio item. */
   fun getNewUid(): String
 
   /**
-   * Adds a new [Audio] item to the repository.
+   * Uploads [audio] into remote storage and returns the URL where it can be played from.
    *
-   * Besides the exceptions documented below, implementations backed by a remote storage may throw
-   * other exceptions when the storage cannot be reached or holds invalid data.
-   *
-   * @param audio The [Audio] item to add item.
-   * @throws IllegalArgumentException if an [Audio] item with the same identifier already exists.
+   * @throws IOException if the storage cannot be reached or refuses the file.
    */
-  suspend fun addAudio(audio: Audio)
+  suspend fun upload(audio: Audio): String
 
   /**
-   * Deletes an [Audio] item from the repository.
+   * Deletes the audio file at [audioUrl].
    *
-   * Besides the exceptions documented below, implementations backed by a remote storage may throw
-   * other exceptions when the storage cannot be reached or holds invalid data.
+   * Deleting a file that does not exist is not an error.
    *
-   * @param fileName The unique identifier of the [Audio] item to delete.
-   * @throws NoSuchElementException if the [Audio] item is not found.
+   * @throws IOException if the storage cannot be reached or refuses the deletion.
    */
-  suspend fun deleteAudio(fileName: String)
+  suspend fun delete(audioUrl: String)
 }
