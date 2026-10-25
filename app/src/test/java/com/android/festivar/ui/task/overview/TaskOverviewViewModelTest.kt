@@ -88,9 +88,12 @@ class TaskOverviewViewModelTest {
     Dispatchers.resetMain()
   }
 
-  /** A ViewModel on [EVENT] with the settable clock, signed in as [me] unless told otherwise. */
+  /**
+   * A ViewModel on [EVENT] with the settable clock, signed in as [me] unless told otherwise, with
+   * one [TaskOverviewViewModel.refresh] called the way the screen's first resume does.
+   */
   private fun overview(userId: String? = me.uid, repo: TasksRepository = repository) =
-      TaskOverviewViewModel(EVENT, userId, repo, clock)
+      TaskOverviewViewModel(EVENT, userId, repo, clock).also { it.refresh() }
 
   /** The ids of every visible row, in section then row order. */
   private fun TaskOverviewUiState.visibleIds() = sections.flatMap { section ->
@@ -112,6 +115,33 @@ class TaskOverviewViewModelTest {
     clock.advance(by)
     dispatcher.scheduler.advanceTimeBy(by.toMillis())
     dispatcher.scheduler.runCurrent()
+  }
+
+  /**
+   * Turns red when the ViewModel loads on its own at construction, which on top of the screen's
+   * resume load fetches the tasks twice on open.
+   */
+  @Test
+  fun aNewViewModelReadsNothingAndStaysLoadingUntilTheFirstRefresh() {
+    val counting = CountingRepository(repository)
+
+    val state = TaskOverviewViewModel(EVENT, me.uid, counting, clock).uiState.value
+
+    assertEquals(0, counting.loads)
+    assertTrue(state.isLoading)
+    assertTrue(state.sections.isEmpty())
+  }
+
+  /** Turns red when one refresh reads the repository more than once, or not at all. */
+  @Test
+  fun oneRefreshIsExactlyOneLoad() {
+    val counting = CountingRepository(repository)
+    val viewModel = TaskOverviewViewModel(EVENT, me.uid, counting, clock)
+
+    viewModel.refresh()
+
+    assertEquals(1, counting.loads)
+    assertFalse(viewModel.uiState.value.isLoading)
   }
 
   /** Turns red when the ViewModel stops asking the repository for [EVENT]'s tasks only. */
@@ -409,6 +439,7 @@ class TaskOverviewViewModelTest {
     }
     val newYork = clock.withZone(ZoneId.of("America/New_York"))
     val viewModel = TaskOverviewViewModel(EVENT, me.uid, repository, newYork)
+    viewModel.refresh()
 
     val section =
         viewModel.uiState.value.sections.single { s -> s.rows.any { it.task.taskId == "night" } }
@@ -553,6 +584,17 @@ class TaskOverviewViewModelTest {
 
     override suspend fun getAllTasks(eventId: String): List<Task> =
         if (failing) throw IllegalStateException("Network down") else inner.getAllTasks(eventId)
+  }
+
+  /** Reads through [inner] and counts every load in [loads]. */
+  private class CountingRepository(private val inner: TasksRepositoryLocal) :
+      TasksRepository by inner {
+    var loads = 0
+
+    override suspend fun getAllTasks(eventId: String): List<Task> {
+      loads++
+      return inner.getAllTasks(eventId)
+    }
   }
 
   /** Answers each load only when the test completes that call's entry in [calls]. */

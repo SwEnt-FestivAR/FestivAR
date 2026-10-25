@@ -72,8 +72,8 @@ data class OverviewSectionUi(
  *
  * @property counts how many tasks each chip holds, before the search applies.
  * @property sections the visible rows, day by day and then by part of the day, in start order.
- * @property isLoading true while a load runs, the first one and every
- *   [TaskOverviewViewModel.refresh].
+ * @property isLoading true until the first load lands, and again while every
+ *   [TaskOverviewViewModel.refresh] runs.
  */
 data class TaskOverviewUiState(
     val filter: OverviewFilter = OverviewFilter.OPEN,
@@ -93,6 +93,9 @@ data class TaskOverviewUiState(
  * and not yet past its [Task.endTime], or past midnight of its start day when it has no end. The
  * NOW group follows the clock on its own while something collects [uiState], and only at the
  * instants a task changes group, never on a fixed timer.
+ *
+ * Nothing loads until [refresh] is called: the screen calls it on every resume, the first one
+ * included, so a load at construction would fetch the tasks twice on open.
  *
  * @param userId the current user, or null when nobody is signed in (MINE is then empty).
  * @param repository where the event's tasks are read: the app's one unless a test passes its own.
@@ -114,7 +117,6 @@ class TaskOverviewViewModel(
   private val tasksChanged = Channel<Unit>(Channel.CONFLATED)
 
   init {
-    refresh()
     viewModelScope.launch {
       _uiState.subscriptionCount
           .map { it > 0 }

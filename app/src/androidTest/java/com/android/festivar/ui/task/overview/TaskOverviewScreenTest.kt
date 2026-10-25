@@ -13,9 +13,11 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.task.Task
+import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.user.User
 import java.time.Duration
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -46,6 +48,9 @@ class TaskOverviewScreenTest {
 
   private val repository = TasksRepositoryLocal()
 
+  /** The screen's view of [repository], counting how often it loads. */
+  private val counting = CountingRepository(repository)
+
   /** Seeds this event's three tasks and one of another event. */
   @Before
   fun setUp() {
@@ -58,7 +63,7 @@ class TaskOverviewScreenTest {
       onOpenTask: (String) -> Unit = {},
       onAddTask: () -> Unit = {},
   ) {
-    val viewModel = TaskOverviewViewModel(EVENT, ME, repository)
+    val viewModel = TaskOverviewViewModel(EVENT, ME, counting)
     composeTestRule.setContent {
       TaskOverviewScreen(
           viewModel,
@@ -181,6 +186,26 @@ class TaskOverviewScreenTest {
     composeTestRule.onNodeWithTag(TaskOverviewScreenTestTags.BACK).performClick()
 
     assertTrue(back)
+  }
+
+  /** Turns red when a second load effect beside the resume load fetches the tasks again on open. */
+  @Test
+  fun openingTheScreenLoadsTheTasksExactlyOnce() {
+    setOverview()
+    composeTestRule.waitForIdle()
+
+    assertEquals(1, counting.loads.get())
+  }
+
+  /** Reads through [inner] and counts every load in [loads]. */
+  private class CountingRepository(private val inner: TasksRepositoryLocal) :
+      TasksRepository by inner {
+    val loads = AtomicInteger()
+
+    override suspend fun getAllTasks(eventId: String): List<Task> {
+      loads.incrementAndGet()
+      return inner.getAllTasks(eventId)
+    }
   }
 
   private companion object {
