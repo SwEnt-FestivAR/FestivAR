@@ -1,4 +1,5 @@
 // Written with the help of an AI coding assistant and reviewed line by line by the author.
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.overview
 
 import androidx.lifecycle.ViewModel
@@ -94,6 +95,7 @@ data class TaskOverviewUiState(
  * instants a task changes group, never on a fixed timer.
  *
  * @param userId the current user, or null when nobody is signed in (MINE is then empty).
+ * @param repository where the event's tasks are read: the app's one unless a test passes its own.
  * @param clock decides what "now" is, so the NOW group can be tested.
  */
 class TaskOverviewViewModel(

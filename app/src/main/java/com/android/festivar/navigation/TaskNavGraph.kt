@@ -1,10 +1,12 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Gemini <noreply@google.com>
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.navigation
 
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -15,6 +17,7 @@ import com.android.festivar.model.user.User
 import com.android.festivar.ui.task.create.CreateTaskScreen
 import com.android.festivar.ui.task.details.TaskDetailsScreen
 import com.android.festivar.ui.task.overview.TaskOverviewScreen
+import com.android.festivar.ui.task.overview.TaskOverviewViewModel
 
 /** The destinations of the task feature. */
 fun NavGraphBuilder.taskGraph(navController: NavHostController, authRepository: AuthRepository) {
@@ -25,9 +28,12 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, authRepository: 
   ) { backStackEntry ->
     val navigator = TaskOverviewNavigator(navController)
     val eventId = backStackEntry.arguments?.getString("eventId") ?: ""
+    val userId = authRepository.currentUser?.uid ?: ""
     TaskOverviewScreen(
-        eventId = eventId,
-        userId = authRepository.currentUser?.uid ?: "",
+        viewModel =
+            viewModel(key = "$eventId:$userId") {
+              TaskOverviewViewModel(eventId, userId)
+            },
         onBack = navigator.onBack,
         onOpenTask = navigator.onOpenTask,
         onAddTask = { navigator.onAddTask(eventId) },

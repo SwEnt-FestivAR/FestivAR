@@ -1,5 +1,6 @@
 // Written with the help of an AI coding assistant and reviewed line by line by the author.
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.overview
 
 import androidx.compose.ui.test.assertIsDisplayed
@@ -12,13 +13,10 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.task.Task
-import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
-import com.android.festivar.model.task.TasksRepositoryProvider
 import com.android.festivar.model.user.User
 import java.time.Duration
 import kotlinx.coroutines.runBlocking
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -46,30 +44,24 @@ class TaskOverviewScreenTest {
   private val sound = Task("sound", EVENT, "Sound check", assignees = listOf(User(ME)))
   private val elsewhere = Task("elsewhere", "other-event", "Other event's task")
 
-  private lateinit var original: TasksRepository
+  private val repository = TasksRepositoryLocal()
 
+  /** Seeds this event's three tasks and one of another event. */
   @Before
   fun setUp() {
-    original = TasksRepositoryProvider.repository
-    val repository = TasksRepositoryLocal()
     runBlocking { listOf(power, bunting, sound, elsewhere).forEach { repository.addTask(it) } }
-    TasksRepositoryProvider.repository = repository
   }
 
-  @After
-  fun tearDown() {
-    TasksRepositoryProvider.repository = original
-  }
-
+  /** Shows the overview of [EVENT] for [ME] over the seeded repository, once its rows are in. */
   private fun setOverview(
       onBack: () -> Unit = {},
       onOpenTask: (String) -> Unit = {},
       onAddTask: () -> Unit = {},
   ) {
+    val viewModel = TaskOverviewViewModel(EVENT, ME, repository)
     composeTestRule.setContent {
       TaskOverviewScreen(
-          EVENT,
-          userId = ME,
+          viewModel,
           onBack = onBack,
           onOpenTask = onOpenTask,
           onAddTask = onAddTask,
