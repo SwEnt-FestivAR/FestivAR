@@ -46,7 +46,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
@@ -166,7 +165,6 @@ fun JoinEventContent(
       Text(
           text = stringResource(R.string.join_event_title),
           style = MaterialTheme.typography.headlineLarge,
-          fontWeight = FontWeight.Bold,
           modifier = Modifier.testTag(JoinEventScreenTestTags.TITLE),
       )
       Spacer(Modifier.height(8.dp))
@@ -298,7 +296,7 @@ private fun FoundCard(found: FoundEventUi, enabled: Boolean, onJoin: () -> Unit)
             Modifier.fillMaxWidth().height(48.dp).testTag(JoinEventScreenTestTags.join(found.id)),
         shape = RoundedCornerShape(8.dp),
     ) {
-      Text(text = stringResource(R.string.join_event_join), fontWeight = FontWeight.Bold)
+      Text(text = stringResource(R.string.join_event_join))
     }
   }
 }
