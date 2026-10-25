@@ -382,6 +382,22 @@ class MainActivityNavigationTest {
     composeTestRule.onNodeWithTag(TaskOverviewScreenTestTags.TITLE).assertIsDisplayed()
   }
 
+  /** Turns red when the overview is shown to a signed-out user instead of sending them to login. */
+  @Test
+  fun taskOverviewRouteRedirectsToLoginWhenUserIsNull() {
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          authRepository = FakeAuthRepository(currentUser = null),
+          startDestinationOverride = AppScreens.taskOverview("e1"),
+      )
+    }
+
+    waitUntilTagExists(LoginScreenTestTags.TITLE)
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(TaskOverviewScreenTestTags.TITLE).assertDoesNotExist()
+  }
+
   @Test
   fun addTaskOnTheOverviewOpensCreateTaskAndTheNewTaskShowsOnReturn() {
     TasksRepositoryProvider.repository = TasksRepositoryLocal()

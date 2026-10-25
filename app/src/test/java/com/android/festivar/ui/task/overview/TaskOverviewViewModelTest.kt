@@ -92,7 +92,7 @@ class TaskOverviewViewModelTest {
    * A ViewModel on [EVENT] with the settable clock, signed in as [me] unless told otherwise, with
    * one [TaskOverviewViewModel.refresh] called the way the screen's first resume does.
    */
-  private fun overview(userId: String? = me.uid, repo: TasksRepository = repository) =
+  private fun overview(userId: String = me.uid, repo: TasksRepository = repository) =
       TaskOverviewViewModel(EVENT, userId, repo, clock).also { it.refresh() }
 
   /** The ids of every visible row, in section then row order. */
@@ -188,16 +188,16 @@ class TaskOverviewViewModelTest {
     assertEquals(7, viewModel.uiState.value.visibleIds().size)
   }
 
-  /** Turns red when MINE matches tasks without a signed-in user's uid. */
+  /** Turns red when MINE matches a task held by someone else, or any assigned task. */
   @Test
-  fun mineNeedsTheUsersUid() {
-    val viewModel = overview(userId = null)
+  fun mineHoldsOnlyTheTasksOfTheSignedInUser() {
+    val viewModel = overview(userId = ana.uid)
     viewModel.selectFilter(OverviewFilter.MINE)
 
     val state = viewModel.uiState.value
 
-    assertEquals(0, state.counts[OverviewFilter.MINE])
-    assertTrue(state.sections.isEmpty())
+    assertEquals(1, state.counts[OverviewFilter.MINE])
+    assertEquals(listOf("sound"), state.visibleIds())
   }
 
   /** Turns red when search stops matching title or location case-insensitively, or blank. */

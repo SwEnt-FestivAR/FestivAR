@@ -28,11 +28,16 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, authRepository: 
   ) { backStackEntry ->
     val navigator = TaskOverviewNavigator(navController)
     val eventId = backStackEntry.arguments?.getString("eventId") ?: ""
-    val userId = authRepository.currentUser?.uid ?: ""
+    val firebaseUser = authRepository.currentUser
+    if (firebaseUser == null) {
+      // Nobody is signed in, so there is nobody whose tasks to mark as mine
+      LaunchedEffect(Unit) { navigator.onSignedOut() }
+      return@composable
+    }
     TaskOverviewScreen(
         viewModel =
-            viewModel(key = "$eventId:$userId") {
-              TaskOverviewViewModel(eventId, userId)
+            viewModel(key = "$eventId:${firebaseUser.uid}") {
+              TaskOverviewViewModel(eventId, firebaseUser.uid)
             },
         onBack = navigator.onBack,
         onOpenTask = navigator.onOpenTask,
