@@ -1,4 +1,5 @@
 // Written with the help of an AI coding assistant and reviewed line by line by the author.
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.tasks
 
 import com.android.festivar.model.task.Task
