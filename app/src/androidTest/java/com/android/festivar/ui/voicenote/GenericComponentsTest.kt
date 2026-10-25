@@ -1,6 +1,7 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.voicenote
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.test.assertIsDisplayed
@@ -92,5 +93,29 @@ class GenericComponentsTest {
     text("Keep it").performClick()
 
     assertEquals(listOf("dismiss"), events)
+  }
+
+  // The previews are drawn here, so that one that no longer compiles or crashes is caught by the
+  // tests and not only in Android Studio.
+
+  @Test
+  fun previews_showTheBarAndTheNote() {
+    composeTestRule.setContent {
+      Column {
+        FixedBottomBarPreview()
+        InfoNotePreview()
+      }
+    }
+
+    text("Hold to record").assertIsDisplayed()
+    text("Open settings").assertIsDisplayed()
+  }
+
+  @Test
+  fun confirmDialogPreview_showsTheDialog() {
+    composeTestRule.setContent { ConfirmDialogPreview() }
+
+    text("Delete this voice note?").assertIsDisplayed()
+    text("Keep it").assertIsDisplayed()
   }
 }

@@ -30,4 +30,13 @@ class NoticeSnackbarTest {
 
     assertEquals(listOf("action"), events)
   }
+
+  @Test
+  fun previewShowsTheNotice() {
+    composeTestRule.setContent { NoticeSnackbarPreview() }
+
+    composeTestRule
+        .onNodeWithText("Voice note not sent. Check your connection.")
+        .assertIsDisplayed()
+  }
 }
