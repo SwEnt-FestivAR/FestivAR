@@ -217,6 +217,42 @@ class TaskOverviewViewModelTest {
     assertEquals(5, viewModel.uiState.value.visibleIds().size)
   }
 
+  /**
+   * Turns red when a search that finds nothing stops carrying its trimmed query, or when a matching
+   * or blank query still claims there are no results.
+   */
+  @Test
+  fun aSearchThatFindsNothingCarriesItsTrimmedQueryAndOnlyThen() {
+    val viewModel = overview()
+    viewModel.toggleSearch()
+
+    viewModel.setQuery("  zzz ")
+    assertEquals("zzz", viewModel.uiState.value.noResultsFor)
+
+    viewModel.setQuery("power")
+    assertNull(viewModel.uiState.value.noResultsFor)
+
+    viewModel.setQuery("   ")
+    assertNull(viewModel.uiState.value.noResultsFor)
+  }
+
+  /**
+   * Turns red when the no-results check runs over every task instead of the chip's rows: the done
+   * bar task matches nothing under OPEN, and is found under DONE.
+   */
+  @Test
+  fun noResultsIsDecidedWithinTheSelectedChip() {
+    val viewModel = overview()
+    viewModel.toggleSearch()
+    viewModel.selectFilter(OverviewFilter.OPEN)
+
+    viewModel.setQuery("Clean the bar")
+    assertEquals("Clean the bar", viewModel.uiState.value.noResultsFor)
+
+    viewModel.selectFilter(OverviewFilter.DONE)
+    assertNull(viewModel.uiState.value.noResultsFor)
+  }
+
   /** Turns red when closing the search keeps the old query filtering the rows. */
   @Test
   fun closingTheSearchClearsTheQuery() {

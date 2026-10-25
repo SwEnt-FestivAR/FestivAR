@@ -74,6 +74,8 @@ data class OverviewSectionUi(
  * @property sections the visible rows, day by day and then by part of the day, in start order.
  * @property isLoading true until the first load lands, and again while every
  *   [TaskOverviewViewModel.refresh] runs.
+ * @property noResultsFor the trimmed query when it is not blank and no task matches it, so the
+ *   screen names the search instead of the empty line; null otherwise.
  */
 data class TaskOverviewUiState(
     val filter: OverviewFilter = OverviewFilter.OPEN,
@@ -83,6 +85,7 @@ data class TaskOverviewUiState(
     val sections: List<OverviewSectionUi> = emptyList(),
     val isLoading: Boolean = true,
     val errorMsg: String? = null,
+    val noResultsFor: String? = null,
 )
 
 /**
@@ -237,7 +240,8 @@ class TaskOverviewViewModel(
             .map { (section, rows) ->
               OverviewSectionUi(section.second, rows.map { row(it) }, section.first)
             }
-    return state.copy(sections = sections, counts = counts())
+    val noResultsFor = query.takeIf { it.isNotEmpty() && sections.isEmpty() }
+    return state.copy(sections = sections, counts = counts(), noResultsFor = noResultsFor)
   }
 
   /** Every chip's count in one pass over the tasks. */

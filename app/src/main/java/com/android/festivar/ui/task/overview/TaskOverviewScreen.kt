@@ -68,6 +68,7 @@ object TaskOverviewScreenTestTags {
   const val CHIP_ALL = "overviewChipAll"
   const val LOADING = "overviewLoading"
   const val EMPTY = "overviewEmpty"
+  const val NO_RESULTS = "overviewNoResults"
   const val ERROR_MESSAGE = "overviewError"
   const val RETRY = "overviewRetry"
   const val ADD_TASK = "overviewAddTask"
@@ -194,13 +195,20 @@ fun TaskOverviewContent(
         )
       }
       if (!state.isLoading && state.errorMsg == null && state.sections.isEmpty()) {
+        // A search that finds nothing under this chip names the query instead of the filter hint
+        val (message, tag) =
+            if (state.noResultsFor != null) {
+              stringResource(R.string.overview_no_results, state.noResultsFor) to
+                  TaskOverviewScreenTestTags.NO_RESULTS
+            } else {
+              stringResource(R.string.overview_empty) to TaskOverviewScreenTestTags.EMPTY
+            }
         Text(
-            stringResource(R.string.overview_empty),
+            message,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
-            modifier =
-                Modifier.fillMaxWidth().padding(20.dp).testTag(TaskOverviewScreenTestTags.EMPTY),
+            modifier = Modifier.fillMaxWidth().padding(20.dp).testTag(tag),
         )
       }
       val timeFormat = rememberTimeFormat()
