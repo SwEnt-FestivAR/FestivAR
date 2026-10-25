@@ -71,7 +71,7 @@ class JoinEventScreenTest {
     val user = User(uid = "u1")
     val viewModel =
         JoinEventViewModel(
-            user,
+            user.uid,
             EventsRepositoryLocal(listOf(event)),
             UsersRepositoryLocal(listOf(user)),
         )
@@ -254,7 +254,7 @@ class JoinEventScreenTest {
     val user = User(uid = "u1")
     val viewModel =
         JoinEventViewModel(
-            user,
+            user.uid,
             EventsRepositoryLocal(listOf(event)),
             UsersRepositoryLocal(listOf(user)),
         )

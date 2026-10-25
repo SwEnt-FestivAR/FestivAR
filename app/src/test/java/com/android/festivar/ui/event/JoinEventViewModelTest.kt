@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.event
 
 import com.android.festivar.model.event.Event
@@ -82,10 +83,10 @@ class JoinEventViewModelTest {
   }
 
   private fun viewModel(
-      user: User = ada,
+      userId: String = ada.uid,
       eventsRepository: EventsRepository = events,
       usersRepository: UsersRepository = users,
-  ) = JoinEventViewModel(user, eventsRepository, usersRepository)
+  ) = JoinEventViewModel(userId, eventsRepository, usersRepository)
 
   private fun memberIds(eventId: String) = runBlocking {
     events.getEvent(eventId)
@@ -186,7 +187,7 @@ class JoinEventViewModelTest {
 
   @Test
   fun joiningAnEventThePersonAlreadyBelongsToAddsNoSecondMembership() {
-    val viewModel = viewModel(user = sami)
+    val viewModel = viewModel(userId = sami.uid)
     viewModel.setCode("FETE20")
 
     viewModel.join("fete2026")
@@ -262,7 +263,7 @@ class JoinEventViewModelTest {
   fun aUserWhoseRecordHoldsTheEventButIsMissingFromItsMembersEndsWithOneMembershipOnEachSide() {
     val halfJoined = ada.addJoinedEvent("fete2026")
     val halfUsers = UsersRepositoryLocal(listOf(halfJoined, sami))
-    val viewModel = viewModel(user = halfJoined, usersRepository = halfUsers)
+    val viewModel = viewModel(userId = halfJoined.uid, usersRepository = halfUsers)
     viewModel.setCode("FETE20")
 
     viewModel.join("fete2026")
@@ -303,7 +304,7 @@ class JoinEventViewModelTest {
   fun joiningKeepsTheOtherJoinedEventsAndTheAssignedTasksOfTheStoredUser() {
     val stored = ada.addJoinedEvent("noel-12").addAssignedTask("task-1")
     val storedUsers = UsersRepositoryLocal(listOf(stored, sami))
-    val viewModel = viewModel(user = ada, usersRepository = storedUsers)
+    val viewModel = viewModel(userId = ada.uid, usersRepository = storedUsers)
     viewModel.setCode("FETE20")
 
     viewModel.join("fete2026")

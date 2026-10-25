@@ -53,14 +53,14 @@ data class JoinEventUIState(
 )
 
 /**
- * Looks events up by their code as it is typed, and joins the chosen one as the signed-in [user].
+ * Looks events up by their code as it is typed, and joins the chosen one as the signed-in person.
  *
- * @property user The signed-in [User] who joins.
+ * @property userId The uid of the signed-in person who joins; their stored [User] is read by it.
  * @property eventsRepository The repository used to look the events up and to add the member.
  * @property usersRepository The repository holding the [User], whose joined events are updated.
  */
 class JoinEventViewModel(
-    private val user: User,
+    private val userId: String,
     private val eventsRepository: EventsRepository,
     private val usersRepository: UsersRepository,
 ) : ViewModel() {
@@ -122,7 +122,7 @@ class JoinEventViewModel(
       try {
         // Both sides are read again and only the missing one is written, so a join that stopped
         // halfway earlier is repaired instead of failing as "already joined" forever.
-        val stored = usersRepository.getUser(user.uid)
+        val stored = usersRepository.getUser(userId)
         val event = eventsRepository.getEvent(eventId)
         if (event.members.none { it.uid == stored.uid }) {
           eventsRepository.editEvent(event.eventId, event.addMember(stored))
