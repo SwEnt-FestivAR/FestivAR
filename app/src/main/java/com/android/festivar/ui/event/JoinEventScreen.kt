@@ -127,8 +127,8 @@ fun JoinEventContent(
   val keyboard = LocalSoftwareKeyboardController.current
   // A failed join leaves the field disabled then enabled again, which drops its focus and closes
   // the keyboard; give both back so the person can retry without tapping a cell.
-  LaunchedEffect(state.isJoining, state.errorMsg) {
-    if (!state.isJoining && state.errorMsg != null) {
+  LaunchedEffect(state.isJoining, state.errorRes) {
+    if (!state.isJoining && state.errorRes != null) {
       focus.requestFocus()
       keyboard?.show()
     }
@@ -250,10 +250,10 @@ fun JoinEventContent(
             modifier = Modifier.testTag(JoinEventScreenTestTags.NOT_FOUND),
         )
       }
-      state.errorMsg?.let {
+      state.errorRes?.let {
         Spacer(Modifier.height(8.dp))
         Text(
-            it,
+            stringResource(it),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error,
             modifier = Modifier.testTag(JoinEventScreenTestTags.ERROR_MESSAGE),

@@ -26,6 +26,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import com.android.festivar.R
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.joinCodeOf
@@ -154,12 +156,22 @@ class JoinEventScreenTest {
 
   @Test
   fun anErrorMessageIsShownUnderTheCards() {
-    content(JoinEventUIState(code = "VIDY26", matches = listOf(found), errorMsg = "offline"))
+    content(
+        JoinEventUIState(
+            code = "VIDY26",
+            matches = listOf(found),
+            errorRes = R.string.join_event_join_failed,
+        )
+    )
 
     composeTestRule
         .onNodeWithTag(JoinEventScreenTestTags.ERROR_MESSAGE)
         .assertIsDisplayed()
-        .assertTextEquals("offline")
+        .assertTextEquals(
+            InstrumentationRegistry.getInstrumentation()
+                .targetContext
+                .getString(R.string.join_event_join_failed)
+        )
   }
 
   @Test
@@ -207,7 +219,7 @@ class JoinEventScreenTest {
 
     state = state.copy(isJoining = true)
     composeTestRule.waitForIdle()
-    state = state.copy(isJoining = false, errorMsg = "offline")
+    state = state.copy(isJoining = false, errorRes = R.string.join_event_join_failed)
 
     composeTestRule.onNodeWithTag(JoinEventScreenTestTags.CODE_INPUT).assertIsFocused()
   }

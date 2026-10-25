@@ -2,8 +2,11 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.event
 
+import android.util.Log
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.android.festivar.R
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.JOIN_CODE_LENGTH
@@ -17,6 +20,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+private const val LOG_TAG = "JoinEventViewModel"
 
 /**
  * An event a typed code matched.
@@ -43,7 +48,8 @@ data class FoundEventUi(
  * @property isJoining whether a join is in progress, so a second tap is ignored.
  * @property joinedEventId the id of the event just joined, or `null`; once set the screen opens the
  *   event and [JoinEventViewModel.onEventOpened] consumes it.
- * @property errorMsg an error message to show when the lookup or the join fails, or `null`.
+ * @property errorRes the string resource of the message to show when the lookup or the join fails,
+ *   or `null`; the raw exception text never reaches the screen.
  */
 data class JoinEventUIState(
     val code: String = "",
@@ -51,7 +57,7 @@ data class JoinEventUIState(
     val notFound: Boolean = false,
     val isJoining: Boolean = false,
     val joinedEventId: String? = null,
-    val errorMsg: String? = null,
+    @StringRes val errorRes: Int? = null,
 )
 
 /**
@@ -79,9 +85,9 @@ class JoinEventViewModel(
     // A join keeps its code, and a keystroke that filtering drops changes nothing, unless the
     // last attempt failed: retyping the same code then retries.
     if (current.isJoining || current.joinedEventId != null) return
-    if (code == current.code && current.errorMsg == null) return
+    if (code == current.code && current.errorRes == null) return
     _uiState.update {
-      it.copy(code = code, matches = emptyList(), notFound = false, errorMsg = null)
+      it.copy(code = code, matches = emptyList(), notFound = false, errorRes = null)
     }
     // The lookup of the previous code is stale now: a later keystroke owns the state.
     lookup?.cancel()
@@ -99,7 +105,8 @@ class JoinEventViewModel(
     } catch (e: CancellationException) {
       throw e
     } catch (e: Exception) {
-      _uiState.update { it.copy(errorMsg = e.message ?: "Could not find the event") }
+      Log.e(LOG_TAG, "Error looking up the code $code", e)
+      _uiState.update { it.copy(errorRes = R.string.join_event_lookup_failed) }
     }
   }
 
@@ -118,7 +125,7 @@ class JoinEventViewModel(
   fun join(eventId: String) {
     val state = _uiState.value
     if (state.isJoining || state.matches.none { it.id == eventId }) return
-    _uiState.update { it.copy(isJoining = true, errorMsg = null) }
+    _uiState.update { it.copy(isJoining = true, errorRes = null) }
     viewModelScope.launch {
       try {
         // Both sides are read again and only the missing one is written, so a join that stopped
@@ -135,9 +142,8 @@ class JoinEventViewModel(
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
-        _uiState.update {
-          it.copy(isJoining = false, errorMsg = e.message ?: "Could not join the event")
-        }
+        Log.e(LOG_TAG, "Error joining event $eventId", e)
+        _uiState.update { it.copy(isJoining = false, errorRes = R.string.join_event_join_failed) }
       }
     }
   }

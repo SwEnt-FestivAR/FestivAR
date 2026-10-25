@@ -24,6 +24,8 @@
     <string name="join_event_title">Join by code</string>
     <string name="join_event_subtitle">Enter the six character code the organizer shared with you.</string>
     <string name="join_event_not_found">No event matches this code.</string>
+    <string name="join_event_lookup_failed">Could not look the code up. Try again.</string>
+    <string name="join_event_join_failed">Could not join the event. Try again.</string>
     <string name="join_event_several">Several events share this code. Pick yours.</string>
     <string name="join_event_join">Join as a volunteer</string>
     <string name="join_event_code_field">Join code</string>
