@@ -13,8 +13,9 @@ import com.android.festivar.model.task.TasksRepositoryProvider
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.FieldError
 import java.time.LocalDate
-import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -46,14 +47,16 @@ data class CreateTaskUiState(
     // task twice (see canCreate).
     val isSaving: Boolean = false,
     val isCreated: Boolean = false,
+    // The time zone of the picked dates and times; the device's one by default.
+    val zone: ZoneId = ZoneId.systemDefault(),
     // String resource of the error to show (see R.string.create_task_error_save_failed), or null.
     @StringRes val errorMsg: Int? = null,
 ) {
-  val startDateTime: LocalDateTime?
-    get() = startDate?.atTime(startTime ?: START_OF_DAY)
+  val startDateTime: ZonedDateTime?
+    get() = startDate?.atTime(startTime ?: START_OF_DAY)?.atZone(zone)
 
-  val endDateTime: LocalDateTime?
-    get() = endDate?.atTime(endTime ?: END_OF_DAY)
+  val endDateTime: ZonedDateTime?
+    get() = endDate?.atTime(endTime ?: END_OF_DAY)?.atZone(zone)
 
   /**
    * The title error. It only appears once the title has been edited, so that an untouched form does
@@ -128,10 +131,12 @@ private const val SAVE_TIMEOUT_MS = 15_000L
  * @param saveTimeoutMs How long a save may last before it is reported as failed, so that the form
  *   never stays stuck in the saving state. A failed save is followed by a read of the task under
  *   the same timeout, so the saving state lasts at most twice this long.
+ * @param zone The time zone of the created task's start and end. The device's one by default.
  */
 class CreateTaskViewModel(
     private val tasksRepository: TasksRepository = TasksRepositoryProvider.repository,
     private val saveTimeoutMs: Long = SAVE_TIMEOUT_MS,
+    zone: ZoneId = ZoneId.systemDefault(),
 ) : ViewModel() {
   // The id of the task being created and the event it was created for. They are kept across
   // retries: if a save timed out or failed after reaching the server, the retry targets the same
@@ -140,7 +145,7 @@ class CreateTaskViewModel(
   private var pendingEventId: String? = null
 
   // Create task UI state
-  private val _uiState = MutableStateFlow(CreateTaskUiState())
+  private val _uiState = MutableStateFlow(CreateTaskUiState(zone = zone))
   val uiState: StateFlow<CreateTaskUiState> = _uiState.asStateFlow()
 
   // Functions to update the UI state.

@@ -12,8 +12,9 @@ import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.FieldError
 import java.time.Duration
 import java.time.LocalDate
-import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
@@ -32,7 +33,8 @@ class CreateTaskViewModelTest {
   // read the saved tasks back from it. There is no mock in this file: nothing checks that a method
   // was called, the tests check the state and what was stored.
   private val repository = TasksRepositoryLocal()
-  private val viewModel = CreateTaskViewModel(repository)
+  private val zone = ZoneId.of("Europe/Zurich")
+  private val viewModel = CreateTaskViewModel(repository, zone = zone)
   private val day = LocalDate.of(2026, 10, 17)
 
   private fun savedTasks(): List<Task> = runBlocking { repository.getAllTasks("event-1") }
@@ -51,8 +53,8 @@ class CreateTaskViewModelTest {
     assertEquals("Run power to stage", state.title)
     assertEquals("Blue crate", state.description)
     assertEquals("Stage", state.location)
-    assertEquals(LocalDateTime.of(2026, 10, 17, 9, 30), state.startDateTime)
-    assertEquals(LocalDateTime.of(2026, 10, 17, 9, 50), state.endDateTime)
+    assertEquals(ZonedDateTime.of(2026, 10, 17, 9, 30, 0, 0, zone), state.startDateTime)
+    assertEquals(ZonedDateTime.of(2026, 10, 17, 9, 50, 0, 0, zone), state.endDateTime)
   }
 
   @Test
@@ -385,8 +387,9 @@ class CreateTaskViewModelTest {
 }
 
 class CreateTaskUiStateTest {
+  private val zone = ZoneId.of("Europe/Zurich")
   private val day = LocalDate.of(2026, 10, 17)
-  private val valid = CreateTaskUiState(title = "Run power to stage")
+  private val valid = CreateTaskUiState(title = "Run power to stage", zone = zone)
 
   @Test
   fun emptyForm_cannotBeCreated() {
@@ -413,7 +416,10 @@ class CreateTaskUiStateTest {
 
   @Test
   fun dateWithoutTime_startsAtMidnight() {
-    assertEquals(day.atStartOfDay(), valid.copy(startDate = day).startDateTime)
+    assertEquals(
+        ZonedDateTime.of(2026, 10, 17, 0, 0, 0, 0, zone),
+        valid.copy(startDate = day).startDateTime,
+    )
   }
 
   @Test
@@ -467,7 +473,10 @@ class CreateTaskUiStateTest {
 
   @Test
   fun endDateWithoutTime_endsAtTheLastMinuteOfTheDay() {
-    assertEquals(day.atTime(23, 59), valid.copy(endDate = day).endDateTime)
+    assertEquals(
+        ZonedDateTime.of(2026, 10, 17, 23, 59, 0, 0, zone),
+        valid.copy(endDate = day).endDateTime,
+    )
   }
 
   // The day before the start, even as a whole day, ends before the start.
@@ -481,8 +490,8 @@ class CreateTaskUiStateTest {
   @Test
   fun toTask_withDatesOnly_coversTheWholeDay() {
     val task = valid.copy(startDate = day, endDate = day).toTask("t1", "e1")
-    assertEquals(day.atStartOfDay(), task.startTime)
-    assertEquals(day.atTime(23, 59), task.endTime)
+    assertEquals(ZonedDateTime.of(2026, 10, 17, 0, 0, 0, 0, zone), task.startTime)
+    assertEquals(ZonedDateTime.of(2026, 10, 17, 23, 59, 0, 0, zone), task.endTime)
   }
 
   @Test
@@ -527,8 +536,8 @@ class CreateTaskUiStateTest {
     assertEquals("Run power to stage", task.title)
     assertEquals("Extension reel is in the blue crate.", task.description)
     assertEquals("Stage, north corner", task.location)
-    assertEquals(LocalDateTime.of(2026, 10, 17, 9, 30), task.startTime)
-    assertEquals(LocalDateTime.of(2026, 10, 17, 9, 50), task.endTime)
+    assertEquals(ZonedDateTime.of(2026, 10, 17, 9, 30, 0, 0, zone), task.startTime)
+    assertEquals(ZonedDateTime.of(2026, 10, 17, 9, 50, 0, 0, zone), task.endTime)
   }
 
   @Test
