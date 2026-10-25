@@ -12,6 +12,7 @@ import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.ui.components.formatDate
 import com.android.festivar.ui.components.formatTime
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -66,6 +67,9 @@ class JoinEventViewModel(
   private val _uiState = MutableStateFlow(JoinEventUIState())
   val uiState: StateFlow<JoinEventUIState> = _uiState.asStateFlow()
 
+  /** The running lookup of the typed code, if any. */
+  private var lookup: Job? = null
+
   /** Keeps the letters and digits of [raw], uppercased, and looks the code up once complete. */
   fun setCode(raw: String) {
     val code = raw.uppercase().filter { it.isLetterOrDigit() }.take(JOIN_CODE_LENGTH)
@@ -77,26 +81,24 @@ class JoinEventViewModel(
     _uiState.update {
       it.copy(code = code, matches = emptyList(), notFound = false, errorMsg = null)
     }
-    if (code.length == JOIN_CODE_LENGTH) viewModelScope.launch { lookUp(code) }
-  }
-
-  /** Lists every event whose code is [code], unless the code changed while the lookup ran. */
-  private suspend fun lookUp(code: String) {
-    try {
-      val matches = eventsRepository.getEventsByJoinCode(code).map(::cardOf)
-      updateIfStillTyped(code) { it.copy(matches = matches, notFound = matches.isEmpty()) }
-    } catch (e: CancellationException) {
-      throw e
-    } catch (e: Exception) {
-      updateIfStillTyped(code) { it.copy(errorMsg = e.message ?: "Could not find the event") }
-    }
+    // The lookup of the previous code is stale now: a later keystroke owns the state.
+    lookup?.cancel()
+    lookup = if (code.length == JOIN_CODE_LENGTH) viewModelScope.launch { lookUp(code) } else null
   }
 
   /**
-   * Applies [change] only while [code] is still the typed one: a later keystroke owns the state.
+   * Lists every event whose code is [code]. [setCode] cancels it when the code changes, so its
+   * result always belongs to the typed code.
    */
-  private fun updateIfStillTyped(code: String, change: (JoinEventUIState) -> JoinEventUIState) {
-    _uiState.update { if (it.code == code) change(it) else it }
+  private suspend fun lookUp(code: String) {
+    try {
+      val matches = eventsRepository.getEventsByJoinCode(code).map(::cardOf)
+      _uiState.update { it.copy(matches = matches, notFound = matches.isEmpty()) }
+    } catch (e: CancellationException) {
+      throw e
+    } catch (e: Exception) {
+      _uiState.update { it.copy(errorMsg = e.message ?: "Could not find the event") }
+    }
   }
 
   private fun cardOf(event: Event) =

@@ -10,6 +10,7 @@ import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryLocal
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -20,6 +21,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -449,6 +451,36 @@ class JoinEventViewModelTest {
     assertEquals("FETE2", viewModel.uiState.value.code)
     assertEquals(emptyList<FoundEventUi>(), viewModel.uiState.value.matches)
     assertFalse(viewModel.uiState.value.notFound)
+  }
+
+  @Test
+  fun changingTheCodeCancelsTheRunningLookupSoItsResultNeverShows() {
+    val gate = CompletableDeferred<Unit>()
+    var cancelled: CancellationException? = null
+    var calls = 0
+    val slow =
+        object : EventsRepository by events {
+          override suspend fun getEventsByJoinCode(code: String): List<Event> {
+            if (calls++ == 0) {
+              try {
+                gate.await()
+              } catch (e: CancellationException) {
+                cancelled = e
+                throw e
+              }
+            }
+            return events.getEventsByJoinCode(code)
+          }
+        }
+    val viewModel = viewModel(eventsRepository = slow)
+    viewModel.setCode("FETE20")
+
+    viewModel.setCode("NOEL12")
+    gate.complete(Unit)
+
+    assertNotNull(cancelled)
+    assertEquals("NOEL12", viewModel.uiState.value.code)
+    assertEquals(listOf("noel-12"), viewModel.uiState.value.matches.map { it.id })
   }
 
   @Test
