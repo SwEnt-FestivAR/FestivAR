@@ -37,9 +37,8 @@ data class FoundEventUi(val id: String, val name: String, val dateLine: String, 
  *   ids share their first six letters and digits, so the person picks the right one.
  * @property notFound true when six characters match no event.
  * @property isJoining whether a join is in progress, so a second tap is ignored.
- * @property joined true once the person is a member; the screen then opens the event.
- * @property joinedEventId the id of the event just joined, consumed by
- *   [JoinEventViewModel.onEventOpened] once the screen opened it.
+ * @property joinedEventId the id of the event just joined, or `null`; once set the screen opens the
+ *   event and [JoinEventViewModel.onEventOpened] consumes it.
  * @property errorMsg an error message to show when the lookup or the join fails, or `null`.
  */
 data class JoinEventUIState(
@@ -47,7 +46,6 @@ data class JoinEventUIState(
     val matches: List<FoundEventUi> = emptyList(),
     val notFound: Boolean = false,
     val isJoining: Boolean = false,
-    val joined: Boolean = false,
     val joinedEventId: String? = null,
     val errorMsg: String? = null,
 )
@@ -76,7 +74,7 @@ class JoinEventViewModel(
     val current = _uiState.value
     // A join keeps its code, and a keystroke that filtering drops changes nothing, unless the
     // last attempt failed: retyping the same code then retries.
-    if (current.isJoining || current.joined) return
+    if (current.isJoining || current.joinedEventId != null) return
     if (code == current.code && current.errorMsg == null) return
     _uiState.update {
       it.copy(code = code, matches = emptyList(), notFound = false, errorMsg = null)
@@ -131,7 +129,7 @@ class JoinEventViewModel(
         if (event.eventId !in stored.joinedEvents) {
           usersRepository.editUser(stored.uid, stored.addJoinedEvent(event.eventId))
         }
-        _uiState.update { it.copy(isJoining = false, joined = true, joinedEventId = eventId) }
+        _uiState.update { it.copy(isJoining = false, joinedEventId = eventId) }
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
@@ -144,6 +142,6 @@ class JoinEventViewModel(
 
   /** Called by the screen once it navigated, so a re-entry does not open the event again. */
   fun onEventOpened() {
-    _uiState.update { it.copy(joined = false, joinedEventId = null) }
+    _uiState.update { it.copy(joinedEventId = null) }
   }
 }
