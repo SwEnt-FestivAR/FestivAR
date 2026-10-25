@@ -54,20 +54,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.dropShadow
-import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.Avatar
 import com.android.festivar.ui.components.FilterChip
+import com.android.festivar.ui.components.floatingShadow
 import com.android.festivar.ui.components.formatDate
 import com.android.festivar.ui.components.formatDay
 import com.android.festivar.ui.theme.AppTheme
@@ -370,17 +368,7 @@ private fun EventActionsMenu(onJoinEvent: () -> Unit, onAddEvent: () -> Unit) {
   var expanded by rememberSaveable { mutableStateOf(false) }
   // The design has its own floating shadow instead of the Material elevation
   val elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
-  val floatingShadow =
-      Modifier.dropShadow(
-          shape = CircleShape,
-          shadow =
-              Shadow(
-                  radius = 24.dp,
-                  color = MaterialTheme.colorScheme.onSurface,
-                  offset = DpOffset(0.dp, 8.dp),
-                  alpha = 0.14f,
-              ),
-      )
+  val fabShadow = Modifier.floatingShadow(CircleShape, MaterialTheme.colorScheme.onSurface)
 
   BackHandler(enabled = expanded) { expanded = false }
 
@@ -405,7 +393,7 @@ private fun EventActionsMenu(onJoinEvent: () -> Unit, onAddEvent: () -> Unit) {
               onJoinEvent()
             },
             elevation = elevation,
-            modifier = floatingShadow.testTag(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON),
+            modifier = fabShadow.testTag(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON),
         )
         EventActionButton(
             label = "Create",
@@ -415,7 +403,7 @@ private fun EventActionsMenu(onJoinEvent: () -> Unit, onAddEvent: () -> Unit) {
               onAddEvent()
             },
             elevation = elevation,
-            modifier = floatingShadow.testTag(EventsOverviewScreenTestTags.CREATE_EVENT_BUTTON),
+            modifier = fabShadow.testTag(EventsOverviewScreenTestTags.CREATE_EVENT_BUTTON),
         )
       }
     }
@@ -425,7 +413,7 @@ private fun EventActionsMenu(onJoinEvent: () -> Unit, onAddEvent: () -> Unit) {
         containerColor = MaterialTheme.colorScheme.primary,
         contentColor = MaterialTheme.colorScheme.onPrimary,
         elevation = elevation,
-        modifier = floatingShadow.testTag(EventsOverviewScreenTestTags.EVENT_ACTIONS_BUTTON),
+        modifier = fabShadow.testTag(EventsOverviewScreenTestTags.EVENT_ACTIONS_BUTTON),
     ) {
       Icon(
           painter = painterResource(if (expanded) R.drawable.ic_close else R.drawable.ic_add),

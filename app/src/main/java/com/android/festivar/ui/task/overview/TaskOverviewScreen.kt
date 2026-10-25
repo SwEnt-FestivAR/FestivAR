@@ -37,15 +37,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.dropShadow
-import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -56,6 +53,7 @@ import com.android.festivar.ui.components.Hairline
 import com.android.festivar.ui.components.PinKind
 import com.android.festivar.ui.components.SectionLabel
 import com.android.festivar.ui.components.TaskRow
+import com.android.festivar.ui.components.floatingShadow
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -247,16 +245,7 @@ private fun AddTaskButton(onClick: () -> Unit) {
       icon = { Icon(Icons.Filled.Add, contentDescription = null) },
       text = { Text(stringResource(R.string.overview_add_task)) },
       modifier =
-          Modifier.dropShadow(
-                  shape = CircleShape,
-                  shadow =
-                      Shadow(
-                          radius = 24.dp,
-                          color = MaterialTheme.colorScheme.onSurface,
-                          offset = DpOffset(0.dp, 8.dp),
-                          alpha = 0.14f,
-                      ),
-              )
+          Modifier.floatingShadow(CircleShape, MaterialTheme.colorScheme.onSurface)
               .testTag(TaskOverviewScreenTestTags.ADD_TASK),
   )
 }
