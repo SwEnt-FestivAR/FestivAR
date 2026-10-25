@@ -1,5 +1,4 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
-//
 package com.android.festivar.ui.authentication.login
 
 import androidx.compose.foundation.BorderStroke

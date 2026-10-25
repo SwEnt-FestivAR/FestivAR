@@ -12,6 +12,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.credentials.Credential
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -116,6 +117,7 @@ class LoginScreenTest {
     composeTestRule
         .onNodeWithTag(LoginScreenTestTags.CREATE_ACC_BUTTON)
         .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+        .performScrollTo()
         .performClick()
 
     composeTestRule.runOnIdle { assertTrue(signUpClicked) }
