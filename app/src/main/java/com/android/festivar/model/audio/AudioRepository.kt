@@ -34,12 +34,12 @@ interface AudioRepository {
    * Besides the exceptions documented below, implementations backed by a remote storage may throw
    * other exceptions when the storage cannot be reached or holds invalid data.
    *
-   * @param uri The unique identifier of the [Audio] item to edit.
-   * @param newValue The new value for the [Audio] item. [uri].
-   * @throws IllegalArgumentException if [newValue] does not have the same identifier as [uri].
+   * @param fileName The unique identifier of the [Audio] item to edit.
+   * @param newValue The new value for the [Audio] item. [fileName].
+   * @throws IllegalArgumentException if [newValue] does not have the same identifier as [fileName].
    * @throws NoSuchElementException if the [Audio] item is not found.
    */
-  suspend fun editAudio(uri: String, newValue: Audio)
+  suspend fun editAudio(fileName: String, newValue: Audio)
 
   /**
    * Deletes an [Audio] item from the repository.
