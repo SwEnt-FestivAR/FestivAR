@@ -1,7 +1,9 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
-package com.android.festivar.model.voicenote
+package com.android.festivar.model.audio
 
-import com.android.festivar.model.audio.Audio
+import androidx.core.net.toUri
+import java.io.File
+import java.io.IOException
 import java.time.Duration
 import kotlinx.coroutines.flow.StateFlow
 
@@ -28,6 +30,29 @@ import kotlinx.coroutines.flow.StateFlow
  * the audio URL, and call [VoicePlayer.release] when the screen is closed.
  */
 
+/**
+ * Represents an audio recording or file in the FestivAR application.
+ *
+ * @property file The local file handle of the audio recording.
+ * @property duration Length of the recording.
+ * @property url The remote download URL of the audio file once uploaded.
+ */
+data class Audio(
+    val file: File,
+    val duration: Duration = Duration.ZERO,
+    var url: String = "",
+) {
+  val fileName: String
+    get() = file.name
+
+  val uri
+    get() = file.toUri()
+
+  init {
+    require(duration.isZero || duration.isPositive) { "The duration must be non-negative." }
+  }
+}
+
 /** What a [VoiceRecorder] is doing. */
 sealed interface RecorderState {
   /** Not recording. */
@@ -35,6 +60,28 @@ sealed interface RecorderState {
 
   /** Recording for [elapsed]. */
   data class Recording(val elapsed: Duration) : RecorderState
+}
+
+interface AudioRepository {
+
+  /** Generates and returns a new unique identifier for an audio item. */
+  fun getNewUid(): String
+
+  /**
+   * Uploads [audio] into remote storage and returns the URL where it can be played from.
+   *
+   * @throws IOException if the storage cannot be reached or refuses the file.
+   */
+  suspend fun upload(audio: Audio, taskId: String): String
+
+  /**
+   * Deletes the audio file at [audioUrl].
+   *
+   * Deleting a file that does not exist is not an error.
+   *
+   * @throws IOException if the storage cannot be reached or refuses the deletion.
+   */
+  suspend fun delete(audioUrl: String)
 }
 
 /** A recording could not be started or finished (microphone busy, no space, too short...). */

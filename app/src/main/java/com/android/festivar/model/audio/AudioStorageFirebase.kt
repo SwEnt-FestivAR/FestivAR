@@ -9,18 +9,18 @@ import java.nio.charset.StandardCharsets
 import java.util.UUID
 import kotlinx.coroutines.tasks.await
 
-class AudioRepositoryFirebase(storageRef: StorageReference) : AudioRepository {
+class AudioStorageFirebase(storageRef: StorageReference) : AudioRepository {
   val audioRef = storageRef.child("audio").child("voice-note")
 
   override fun getNewUid(): String {
     return UUID.randomUUID().toString()
   }
 
-  override suspend fun upload(audio: Audio): String {
+  override suspend fun upload(audio: Audio, taskId: String): String {
     try {
       val extension = audio.file.extension.let { if (it.isNotBlank()) ".$it" else ".m4a" }
       val fileName = "${getNewUid()}$extension"
-      val ref = audioRef.child(fileName)
+      val ref = audioRef.child(taskId).child(fileName)
       ref.putFile(audio.uri).await()
       val downloadUrl = ref.downloadUrl.await().toString()
       audio.url = downloadUrl

@@ -29,7 +29,7 @@ class AudioRepositoryFirebaseTest {
   private lateinit var audioRef: StorageReference
   private lateinit var voiceNoteRef: StorageReference
   private lateinit var fileRef: StorageReference
-  private lateinit var repository: AudioRepositoryFirebase
+  private lateinit var repository: AudioStorageFirebase
   private val tempFile = File.createTempFile("test_audio", ".m4a")
   private val audio = Audio(tempFile, Duration.ofSeconds(5))
 
@@ -43,8 +43,9 @@ class AudioRepositoryFirebaseTest {
     every { storageRef.child("audio") } returns audioRef
     every { audioRef.child("voice-note") } returns voiceNoteRef
     every { voiceNoteRef.child(any()) } returns fileRef
+    every { fileRef.child(any()) } returns fileRef
 
-    repository = AudioRepositoryFirebase(storageRef)
+    repository = AudioStorageFirebase(storageRef)
   }
 
   @Test
@@ -71,7 +72,7 @@ class AudioRepositoryFirebaseTest {
     every { fileRef.putFile(any()) } returns uploadTask
     every { fileRef.downloadUrl } returns Tasks.forResult(Uri.parse(expectedUrl))
 
-    val url = repository.upload(audio)
+    val url = repository.upload(audio, "task1")
 
     assertEquals(expectedUrl, url)
     assertEquals(expectedUrl, audio.url)
@@ -87,7 +88,7 @@ class AudioRepositoryFirebaseTest {
 
     every { fileRef.putFile(any()) } returns uploadTask
 
-    assertThrows(IOException::class.java) { runBlocking { repository.upload(audio) } }
+    assertThrows(IOException::class.java) { runBlocking { repository.upload(audio, "task1") } }
   }
 
   @Test
@@ -103,7 +104,7 @@ class AudioRepositoryFirebaseTest {
     every { fileRef.downloadUrl } returns Tasks.forResult(Uri.parse(""))
 
     val exception =
-        assertThrows(IOException::class.java) { runBlocking { repository.upload(audio) } }
+        assertThrows(IOException::class.java) { runBlocking { repository.upload(audio, "task1") } }
     assertEquals("Audio upload did not return a valid download URL.", exception.message)
   }
 
