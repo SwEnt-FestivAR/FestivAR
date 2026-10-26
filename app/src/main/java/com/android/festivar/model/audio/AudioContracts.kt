@@ -62,28 +62,6 @@ sealed interface RecorderState {
   data class Recording(val elapsed: Duration) : RecorderState
 }
 
-interface AudioRepository {
-
-  /** Generates and returns a new unique identifier for an audio item. */
-  fun getNewUid(): String
-
-  /**
-   * Uploads [audio] into remote storage and returns the URL where it can be played from.
-   *
-   * @throws IOException if the storage cannot be reached or refuses the file.
-   */
-  suspend fun upload(audio: Audio, taskId: String): String
-
-  /**
-   * Deletes the audio file at [audioUrl].
-   *
-   * Deleting a file that does not exist is not an error.
-   *
-   * @throws IOException if the storage cannot be reached or refuses the deletion.
-   */
-  suspend fun delete(audioUrl: String)
-}
-
 /** A recording could not be started or finished (microphone busy, no space, too short...). */
 class VoiceRecorderException(message: String, cause: Throwable? = null) : Exception(message, cause)
 
@@ -115,6 +93,28 @@ interface VoiceRecorder {
 
   /** Stops the recording and deletes its file. Does nothing if nothing is being recorded. */
   fun cancel()
+}
+
+interface AudioRepository {
+
+  /** Generates and returns a new unique identifier for an audio item. */
+  fun getNewUid(): String
+
+  /**
+   * Uploads [audio] into remote storage and returns the URL where it can be played from.
+   *
+   * @throws IOException if the storage cannot be reached or refuses the file.
+   */
+  suspend fun upload(audio: Audio, taskId: String): String
+
+  /**
+   * Deletes the audio file at [audioUrl].
+   *
+   * Deleting a file that does not exist is not an error.
+   *
+   * @throws IOException if the storage cannot be reached or refuses the deletion.
+   */
+  suspend fun delete(audioUrl: String)
 }
 
 /** What a [VoicePlayer] is doing. */
