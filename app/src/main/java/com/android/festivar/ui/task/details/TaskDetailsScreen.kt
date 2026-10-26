@@ -303,6 +303,7 @@ private val previewTask =
         endTime = ZonedDateTime.of(2026, 10, 17, 9, 50, 0, 0, ZoneId.of("Europe/Zurich")),
         location = "Stage, north corner",
         maxAssign = 1,
+        ownerId = previewUser.uid,
     )
 
 private val previewOtherUser = User("u2", "Yasser", "Ameur")

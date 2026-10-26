@@ -1,3 +1,4 @@
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.task
@@ -115,6 +116,7 @@ class TaskRepositoryFirebaseTest {
                 "eventId" to "event-2",
                 "title" to "Minimal task",
                 "assignees" to listOf("user-2"),
+                "ownerId" to "owner-1",
             )
         )
         .await()
@@ -122,6 +124,7 @@ class TaskRepositoryFirebaseTest {
     try {
       assertEquals(
           Task(
+              ownerId = "owner-1",
               taskId = documentId,
               eventId = "event-2",
               title = "Minimal task",
@@ -129,6 +132,24 @@ class TaskRepositoryFirebaseTest {
           ),
           invokeDocumentToTask(document.get().await()),
       )
+    } finally {
+      document.delete().await()
+    }
+  }
+
+  @Test
+  fun documentToTask_failsWhenTheOwnerIsMissing() = runBlocking {
+    val documentId = "task-${UUID.randomUUID()}"
+    val document = Firebase.firestore.collection(TASK_COLLECTION_PATH).document(documentId)
+    document.set(mapOf("eventId" to "event-2", "title" to "Old task")).await()
+
+    try {
+      val failure = runCatching { invokeDocumentToTask(document.get().await()) }.exceptionOrNull()
+
+      // The method is called through reflection, so the real error is wrapped.
+      val cause = (failure as? java.lang.reflect.InvocationTargetException)?.cause ?: failure
+      assertTrue(cause is IllegalStateException)
+      assertEquals("Task '$documentId' has missing ownerId", cause?.message)
     } finally {
       document.delete().await()
     }
@@ -250,6 +271,7 @@ class TaskRepositoryFirebaseTest {
 
   private fun newTask(): Task =
       Task(
+          ownerId = "owner-1",
           taskId = "task-${UUID.randomUUID()}",
           eventId = "event-1",
           title = "Task",

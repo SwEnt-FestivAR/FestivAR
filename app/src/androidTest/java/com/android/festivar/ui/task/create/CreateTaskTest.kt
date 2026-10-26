@@ -66,6 +66,7 @@ abstract class CreateTaskTest {
       AppTheme {
         CreateTaskScreen(
             eventId = EVENT_ID,
+            ownerId = "owner-1",
             viewModel = viewModel,
             onBack = { backCount++ },
             onTaskCreated = { createdCount++ },
