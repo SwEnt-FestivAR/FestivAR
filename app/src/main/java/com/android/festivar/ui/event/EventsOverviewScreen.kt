@@ -335,7 +335,12 @@ private fun InlineError(message: String, onRetry: () -> Unit) {
         color = MaterialTheme.colorScheme.error,
         modifier = Modifier.weight(1f),
     )
-    TextButton(onClick = onRetry, modifier = Modifier.testTag(EventsOverviewScreenTestTags.RETRY)) {
+    TextButton(
+        onClick = onRetry,
+        colors =
+            ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
+        modifier = Modifier.testTag(EventsOverviewScreenTestTags.RETRY),
+    ) {
       Text(text = stringResource(R.string.events_overview_retry))
     }
   }
