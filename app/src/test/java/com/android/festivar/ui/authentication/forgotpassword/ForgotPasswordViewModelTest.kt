@@ -6,6 +6,7 @@ import com.android.festivar.model.authentication.AuthRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -94,6 +95,19 @@ class ForgotPasswordViewModelTest {
         ForgotPasswordError.REQUEST_FAILED,
         viewModel.uiState.value.error,
     )
+  }
+
+  @Test
+  fun requestCancellationIsNotShownAsRequestFailure() {
+    coEvery { authRepository.forgotPassword("user@example.com") } throws
+        CancellationException("Request cancelled")
+    viewModel.updateEmail("user@example.com")
+
+    viewModel.sendPasswordResetEmail()
+    shadowOf(Looper.getMainLooper()).idle()
+
+    assertNull(viewModel.uiState.value.error)
+    assertFalse(viewModel.uiState.value.isRequestSuccessful)
   }
 
   @Test
