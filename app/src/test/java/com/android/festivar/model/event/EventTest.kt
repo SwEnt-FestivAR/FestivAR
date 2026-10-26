@@ -1,3 +1,4 @@
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.event
 
@@ -33,7 +34,8 @@ class EventTest {
   private val outsider = User("outsider")
 
   /** Builds a valid task of the event "e1" with the given identifier. */
-  private fun task(taskId: String): Task = Task(taskId = taskId, eventId = "e1", title = "Task")
+  private fun task(taskId: String): Task =
+      Task(ownerId = "owner-1", taskId = taskId, eventId = "e1", title = "Task")
 
   /** Builds an event with valid default values, so that only the given fields matter. */
   private fun event(

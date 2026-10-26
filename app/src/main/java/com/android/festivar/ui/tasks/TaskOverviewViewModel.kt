@@ -9,8 +9,8 @@ import com.android.festivar.model.task.TasksRepositoryProvider
 import java.time.Clock
 import java.time.Duration
 import java.time.LocalDate
-import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.ZonedDateTime
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -167,7 +167,7 @@ class TaskOverviewViewModel(
   private suspend fun followTheClock() {
     _uiState.update { derive(it) }
     while (true) {
-      val now = LocalDateTime.now(clock)
+      val now = ZonedDateTime.now(clock)
       val boundary = nextBoundary(now)
       if (boundary == null) {
         tasksChanged.receive()
@@ -183,15 +183,15 @@ class TaskOverviewViewModel(
    * The next instant after [now] at which some task changes group: it comes within the hour, it
    * ends, or the day turns. Null when no unfinished task has a start, so nothing ever moves.
    */
-  private fun nextBoundary(now: LocalDateTime): LocalDateTime? {
+  private fun nextBoundary(now: ZonedDateTime): ZonedDateTime? {
     val timed = tasks.filter { !it.completed && it.startTime != null }
     if (timed.isEmpty()) return null
-    val midnight = now.toLocalDate().plusDays(1).atStartOfDay()
+    val midnight = now.toLocalDate().plusDays(1).atStartOfDay(now.zone)
     return timed
         .flatMap { listOf(it.startTime!!.minusHours(1), endOf(it)) }
         .filter { it.isAfter(now) }
         .plus(midnight)
-        .min()
+        .minBy { it.toInstant() }
   }
 
   /** Whether the signed-in user holds [task]; always false with nobody signed in. */
@@ -217,7 +217,7 @@ class TaskOverviewViewModel(
    */
   private fun derive(state: TaskOverviewUiState): TaskOverviewUiState {
     val query = state.query.trim()
-    val now = LocalDateTime.now(clock)
+    val now = ZonedDateTime.now(clock)
     val sections =
         tasks
             .filter {
@@ -254,12 +254,15 @@ class TaskOverviewViewModel(
   }
 
   /** When a started task stops being under way: its end, or midnight of its start day. */
-  private fun endOf(task: Task): LocalDateTime =
-      task.endTime ?: task.startTime!!.toLocalDate().plusDays(1).atStartOfDay()
+  private fun endOf(task: Task): ZonedDateTime {
+    val start = task.startTime!!.withZoneSameInstant(clock.zone)
+    return task.endTime ?: start.toLocalDate().plusDays(1).atStartOfDay(start.zone)
+  }
 
   /** Which day a task's section sits under, then which part of that day. */
-  private fun sectionOf(task: Task, now: LocalDateTime): Section {
-    val start = task.startTime ?: return null to OverviewGroup.ANYTIME
+  private fun sectionOf(task: Task, now: ZonedDateTime): Section {
+    val start =
+        task.startTime?.withZoneSameInstant(now.zone) ?: return null to OverviewGroup.ANYTIME
     val startsWithinTheHour = !start.isBefore(now) && !start.isAfter(now.plusHours(1))
     val underWay = !start.isAfter(now) && now.isBefore(endOf(task))
     return when {
@@ -277,7 +280,7 @@ class TaskOverviewViewModel(
           location = task.location,
           peopleNeeded = task.maxAssign,
           estimatedMinutes = task.estimatedTime?.toMinutes()?.toInt(),
-          startTime = task.startTime?.toLocalTime(),
+          startTime = task.startTime?.withZoneSameInstant(clock.zone)?.toLocalTime(),
           assigned = task.assignees.size,
           isMine = isMine(task),
           isFull = isFull(task),

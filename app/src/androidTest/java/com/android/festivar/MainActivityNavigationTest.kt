@@ -89,7 +89,7 @@ class MainActivityNavigationTest {
 
   private fun seedTask(taskId: String = "t1", eventId: String = "e1", title: String = "Test Task") {
     val localRepo = TasksRepositoryLocal()
-    val task = Task(taskId, eventId, title)
+    val task = Task(taskId, eventId, title, ownerId = "owner-1")
     runBlocking { localRepo.addTask(task) }
     TasksRepositoryProvider.repository = localRepo
   }
