@@ -125,7 +125,7 @@ class MainActivityNavigationTest {
 
     composeTestRule.onNodeWithText("Forgot password?").performClick()
     composeTestRule
-        .onNodeWithText("Enter your email address to retrieve your password")
+        .onNodeWithText("Enter your email address to reset your password")
         .assertIsDisplayed()
 
     composeTestRule.onNodeWithText("Return to login").performClick()
