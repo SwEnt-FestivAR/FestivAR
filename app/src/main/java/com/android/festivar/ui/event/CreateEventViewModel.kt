@@ -12,6 +12,9 @@ import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryProvider
+import com.android.festivar.ui.components.DateTimeField
+import java.time.LocalDate
+import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,7 +39,7 @@ data class CreateEventUIState(
     val endDateMillis: Long? = null,
     val venue: String = "",
     val notes: String = "",
-    val activeDatePicker: DateField? = null,
+    val activeDatePicker: DateTimeField? = null,
     val errorName: Boolean = false,
     val errorDate: Boolean = false,
     val errorVenue: Boolean = false,
@@ -44,11 +47,6 @@ data class CreateEventUIState(
     val createdEventId: String? = null,
     @StringRes val errorMsg: Int? = null,
 )
-
-enum class DateField {
-  START,
-  END,
-}
 
 /**
  * Holds the create event form, validates it and saves the event with the signed-in user as its
@@ -100,8 +98,26 @@ class CreateEventViewModel(
     edit { it.copy(notes = newNotes) }
   }
 
-  fun updateActiveDatePicker(newActiveDatePicker: DateField?) {
+  fun updateActiveDatePicker(newActiveDatePicker: DateTimeField?) {
     _uiState.update { it.copy(activeDatePicker = newActiveDatePicker) }
+  }
+
+  fun pickDate(date: LocalDate) {
+    val zone = ZoneId.systemDefault()
+    when (_uiState.value.activeDatePicker) {
+      DateTimeField.START_DATE -> {
+        val start = date.atStartOfDay(zone)
+        updateStartDateMillis(start.toInstant().toEpochMilli())
+        updateStartDate(start)
+      }
+      DateTimeField.END_DATE -> {
+        val end = date.plusDays(1).atStartOfDay(zone).minusSeconds(1)
+        updateEndDateMillis(end.toInstant().toEpochMilli())
+        updateEndDate(end)
+      }
+      else -> Unit
+    }
+    updateActiveDatePicker(null)
   }
 
   fun removeErrorName() {

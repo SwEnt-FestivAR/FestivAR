@@ -9,6 +9,8 @@ import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepositoryLocal
+import com.android.festivar.ui.components.DateTimeField
+import java.time.LocalDate
 import java.time.ZonedDateTime
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CompletableDeferred
@@ -79,10 +81,21 @@ class CreateEventViewModelTest {
 
   @Test
   fun updateActiveDatePickerWorks() {
-    viewModel.updateActiveDatePicker(DateField.START)
-    assertEquals(DateField.START, viewModel.uiState.value.activeDatePicker)
+    viewModel.updateActiveDatePicker(DateTimeField.START_DATE)
+    assertEquals(DateTimeField.START_DATE, viewModel.uiState.value.activeDatePicker)
 
     viewModel.updateActiveDatePicker(null)
+    assertNull(viewModel.uiState.value.activeDatePicker)
+  }
+
+  @Test
+  fun pickDateUpdatesTheSelectedDateAndClosesThePicker() {
+    val selectedDate = LocalDate.of(2026, 10, 17)
+    viewModel.updateActiveDatePicker(DateTimeField.START_DATE)
+
+    viewModel.pickDate(selectedDate)
+
+    assertEquals(selectedDate, viewModel.uiState.value.startDate?.toLocalDate())
     assertNull(viewModel.uiState.value.activeDatePicker)
   }
 
