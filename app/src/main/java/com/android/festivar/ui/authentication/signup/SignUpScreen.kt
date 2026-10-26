@@ -73,9 +73,9 @@ object SignUpScreenTestTags {
 @Composable
 fun SignUpScreen(
     modifier: Modifier = Modifier,
+    viewModel: SignUpViewModel,
     onSignInClick: () -> Unit = {},
     onBackClick: () -> Unit = {},
-    viewModel: SignUpViewModel = viewModel(),
     onSignUpSuccess: () -> Unit = {},
 ) {
   var isPasswordVisible by remember { mutableStateOf(false) }

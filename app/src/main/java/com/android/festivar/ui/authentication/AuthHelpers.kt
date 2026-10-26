@@ -29,10 +29,10 @@ fun isEmailValid(email: String): Boolean {
  * Checks if the provided password is valid.
  *
  * @param password The password to check.
- * @return An empty string if the password is valid, otherwise an error message.
+ * @return A null string if the password is valid, otherwise an error message.
  */
-fun checkPassword(password: String): String {
-  if (password.length >= MIN_PASSWORD_LENGTH) return ""
+fun checkPassword(password: String): String? {
+  if (password.length >= MIN_PASSWORD_LENGTH) return null
   return "Password must be at least $MIN_PASSWORD_LENGTH characters."
 }
 
@@ -43,5 +43,5 @@ fun checkPassword(password: String): String {
  * @return True if the password is valid, false otherwise.
  */
 fun isPasswordValid(password: String): Boolean {
-  return checkPassword(password) == ""
+  return checkPassword(password) == null
 }

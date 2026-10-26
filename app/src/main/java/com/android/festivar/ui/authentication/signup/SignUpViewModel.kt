@@ -18,7 +18,6 @@ data class SignUpUIState(
     val isAuthenticated: Boolean = false,
     val errorMsg: String? = null,
     val password: String = "",
-    val isPasswordValid: Boolean = false,
     val confirmPassword: String = "",
     val email: String = "",
 ) {
@@ -40,7 +39,7 @@ class SignUpViewModel(private val authRepository: AuthRepository) : ViewModel() 
   }
 
   fun updatePassword(password: String) {
-    _uiState.update { it.copy(password = password, isPasswordValid = isPasswordValid(password)) }
+    _uiState.update { it.copy(password = password) }
   }
 
   fun updateConfirmPassword(confirmPassword: String) {
@@ -58,7 +57,7 @@ class SignUpViewModel(private val authRepository: AuthRepository) : ViewModel() 
   ) {
     if (_uiState.value.isLoading) return
     val passwdChk = checkPassword(password)
-    if (passwdChk != "") {
+    if (passwdChk != null) {
       _uiState.update { it.copy(errorMsg = passwdChk) }
       return
     }
