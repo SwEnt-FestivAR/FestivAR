@@ -110,6 +110,13 @@ class AuthRepositoryFirebaseTest {
   }
 
   @Test
+  fun forgotPassword_returnsSuccessForUnknownEmail() = runBlocking {
+    val result = repository.forgotPassword(newEmail())
+
+    assertTrue(result.isSuccess)
+  }
+
+  @Test
   fun forgotPassword_returnsFailureForInvalidEmail() = runBlocking {
     val result = repository.forgotPassword("")
 

@@ -16,9 +16,14 @@ import kotlinx.coroutines.launch
 data class ForgotPasswordUIState(
     val email: String = "",
     val isLoading: Boolean = false,
-    val successMessage: String? = null,
-    val errorMessage: String? = null,
+    val isRequestSuccessful: Boolean = false,
+    val error: ForgotPasswordError? = null,
 )
+
+enum class ForgotPasswordError {
+  EMPTY_EMAIL,
+  REQUEST_FAILED,
+}
 
 /** Handles password reset requests. */
 class ForgotPasswordViewModel(
@@ -31,19 +36,19 @@ class ForgotPasswordViewModel(
 
   /** Updates the email and clears previous feedback. */
   fun updateEmail(email: String) {
-    _uiState.update { it.copy(email = email, successMessage = null, errorMessage = null) }
+    _uiState.update { it.copy(email = email, isRequestSuccessful = false, error = null) }
   }
 
   /** Sends a password reset email to the entered address. */
   fun sendPasswordResetEmail() {
     val state = _uiState.value
-    if (state.isLoading) return
+    if (state.isLoading || state.isRequestSuccessful) return
     if (state.email.isBlank()) {
-      _uiState.update { it.copy(errorMessage = "Enter your email address") }
+      _uiState.update { it.copy(error = ForgotPasswordError.EMPTY_EMAIL) }
       return
     }
 
-    _uiState.update { it.copy(isLoading = true, successMessage = null, errorMessage = null) }
+    _uiState.update { it.copy(isLoading = true, isRequestSuccessful = false, error = null) }
     viewModelScope.launch {
       val result =
           try {
@@ -55,19 +60,9 @@ class ForgotPasswordViewModel(
           }
       _uiState.update { currentState ->
         result.fold(
-            onSuccess = {
-              currentState.copy(
-                  isLoading = false,
-                  successMessage =
-                      "If an account exists for this email, you’ll receive a password reset email.",
-              )
-            },
+            onSuccess = { currentState.copy(isLoading = false, isRequestSuccessful = true) },
             onFailure = {
-              currentState.copy(
-                  isLoading = false,
-                  errorMessage =
-                      it.message ?: "Unable to send password reset email. Please try again.",
-              )
+              currentState.copy(isLoading = false, error = ForgotPasswordError.REQUEST_FAILED)
             },
         )
       }

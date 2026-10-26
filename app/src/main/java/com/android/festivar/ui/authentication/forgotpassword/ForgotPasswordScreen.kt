@@ -25,12 +25,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.android.festivar.R
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.theme.AppTheme
 
@@ -78,7 +80,7 @@ private fun ForgotPasswordScreenContent(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
       Text(
-          text = "Enter your email address to retrieve your password",
+          text = stringResource(R.string.forgot_password_prompt),
           color = MaterialTheme.colorScheme.onSurface,
           style = MaterialTheme.typography.titleLarge,
       )
@@ -88,7 +90,7 @@ private fun ForgotPasswordScreenContent(
       FestivarTextField(
           value = uiState.email,
           onValueChange = onEmailChange,
-          label = "Email",
+          label = stringResource(R.string.signup_email),
           keyboardOptions =
               KeyboardOptions(
                   capitalization = KeyboardCapitalization.None,
@@ -100,7 +102,8 @@ private fun ForgotPasswordScreenContent(
 
       Button(
           onClick = onSendResetEmail,
-          enabled = uiState.email.isNotBlank() && !uiState.isLoading,
+          enabled =
+              uiState.email.isNotBlank() && !uiState.isLoading && !uiState.isRequestSuccessful,
           shape = RoundedCornerShape(8.dp),
           contentPadding = PaddingValues(0.dp),
           colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
@@ -117,24 +120,29 @@ private fun ForgotPasswordScreenContent(
           )
         } else {
           Text(
-              text = "Send reset password email",
+              text = stringResource(R.string.forgot_password_send),
               color = MaterialTheme.colorScheme.onPrimary,
               style = MaterialTheme.typography.labelLarge,
           )
         }
       }
 
-      uiState.successMessage?.let {
+      if (uiState.isRequestSuccessful) {
         Text(
-            text = it,
+            text = stringResource(R.string.forgot_password_success),
             color = MaterialTheme.colorScheme.onPrimaryContainer,
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.testTag(ForgotPasswordScreenTestTags.SUCCESS_MESSAGE),
         )
       }
-      uiState.errorMessage?.let {
+      uiState.error?.let { error ->
+        val message =
+            when (error) {
+              ForgotPasswordError.EMPTY_EMAIL -> R.string.forgot_password_empty_email
+              ForgotPasswordError.REQUEST_FAILED -> R.string.forgot_password_request_failed
+            }
         Text(
-            text = it,
+            text = stringResource(message),
             color = MaterialTheme.colorScheme.error,
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.testTag(ForgotPasswordScreenTestTags.ERROR_MESSAGE),
@@ -148,7 +156,7 @@ private fun ForgotPasswordScreenContent(
           modifier = Modifier.testTag(ForgotPasswordScreenTestTags.RETURN_BUTTON),
       ) {
         Text(
-            text = "Return to login",
+            text = stringResource(R.string.forgot_password_return_to_login),
             color = MaterialTheme.colorScheme.onPrimaryContainer,
             style = MaterialTheme.typography.labelLarge,
         )
