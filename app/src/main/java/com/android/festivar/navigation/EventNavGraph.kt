@@ -11,7 +11,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.android.festivar.model.authentication.AuthRepository
-import com.android.festivar.model.event.EventRepositoryFirebase
+import com.android.festivar.model.event.EventsRepositoryProvider
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepositoryProvider
 import com.android.festivar.ui.event.CreateEventScreen
@@ -22,8 +22,6 @@ import com.android.festivar.ui.event.EventsOverviewScreen
 import com.android.festivar.ui.event.EventsOverviewViewModel
 import com.android.festivar.ui.event.JoinEventScreen
 import com.android.festivar.ui.event.JoinEventViewModel
-import com.google.firebase.Firebase
-import com.google.firebase.firestore.firestore
 
 /** The destinations of the event feature. */
 fun NavGraphBuilder.eventGraph(navController: NavHostController, authRepository: AuthRepository) {
@@ -38,7 +36,7 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, authRepository:
           eventsOverviewViewModel =
               viewModel {
                 EventsOverviewViewModel(
-                    EventRepositoryFirebase(Firebase.firestore),
+                    EventsRepositoryProvider.repository,
                     UsersRepositoryProvider.repository,
                     firebaseUser.uid,
                 )
@@ -58,7 +56,7 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, authRepository:
         viewModel =
             viewModel {
               CreateEventViewModel(
-                  eventsRepository = EventRepositoryFirebase(Firebase.firestore),
+                  eventsRepository = EventsRepositoryProvider.repository,
                   usersRepository = UsersRepositoryProvider.repository,
                   userId = userId,
               )
@@ -77,7 +75,7 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, authRepository:
     val navigator = EventDetailsNavigator(navController)
     EventDetailsScreen(
         eventId = eventId,
-        viewModel { EventDetailsViewModel(EventRepositoryFirebase(Firebase.firestore)) },
+        viewModel { EventDetailsViewModel(EventsRepositoryProvider.repository) },
         onBack = navigator.onBack,
         onTasksButtonClicked = { navigator.onTasksButtonClicked(eventId) },
     )
@@ -96,7 +94,7 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, authRepository:
             viewModel {
               JoinEventViewModel(
                   User(uid = firebaseUser.uid),
-                  EventRepositoryFirebase(Firebase.firestore),
+                  EventsRepositoryProvider.repository,
                   UsersRepositoryProvider.repository,
               )
             },
