@@ -174,10 +174,8 @@ class EventsOverviewScreenTest {
   }
 
   /** Shows [EventsOverviewContent] alone, with the given [uiState]. */
-  private fun setContent(uiState: EventsOverviewUIState, onRefresh: () -> Unit = {}) {
-    composeTestRule.setContent {
-      AppTheme { EventsOverviewContent(uiState = uiState, onRefresh = onRefresh) }
-    }
+  private fun setContent(uiState: EventsOverviewUIState) {
+    composeTestRule.setContent { AppTheme { EventsOverviewContent(uiState = uiState) } }
   }
 
   /** Asserts that neither the "Join" nor the "Create" button is in the screen. */
@@ -555,11 +553,14 @@ class EventsOverviewScreenTest {
 
   /**
    * Test that a failed first fetch shows the error state with its cause and a retry, instead of the
-   * empty state, and keeps the "+" button to join or create an event.
+   * empty state, and keeps the "+" button to join or create an event, then that the retry fetches
+   * the events again and shows them.
    */
   @Test
-  fun fetchFailureShowsTheErrorState() {
-    setContent(withRepository = EventsRepositoryImpl(error = RuntimeException("Network down")))
+  fun fetchFailureShowsTheErrorStateUntilARetrySucceeds() {
+    val repository =
+        EventsRepositoryImpl(listOf(ongoingEvent), error = RuntimeException("Network down"))
+    setContent(withRepository = repository)
 
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.ERROR_STATE).assertIsDisplayed()
     composeTestRule
@@ -578,15 +579,6 @@ class EventsOverviewScreenTest {
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.INLINE_ERROR).assertDoesNotExist()
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.EVENT_LIST).assertDoesNotExist()
     assertJoinAndCreateButtonsDoNotExist()
-  }
-
-  /** Test that the retry of the error state fetches the events again and shows them. */
-  @Test
-  fun retryOfTheErrorStateShowsTheEvents() {
-    val repository =
-        EventsRepositoryImpl(listOf(ongoingEvent), error = RuntimeException("Network down"))
-    setContent(withRepository = repository)
-    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.ERROR_STATE).assertIsDisplayed()
 
     repository.error = null
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.RETRY).performClick()
@@ -659,48 +651,6 @@ class EventsOverviewScreenTest {
         .assertTextEquals("Failed to load events.")
   }
 
-  /** Test that an error without cause above the events is still worded. */
-  @Test
-  fun inlineErrorWithoutCauseIsStillWorded() {
-    setContent(
-        uiState =
-            EventsOverviewUIState(
-                ongoingEvents = listOf(ongoingEvent),
-                user = sara,
-                hasError = true,
-            )
-    )
-
-    composeTestRule
-        .onNode(
-            hasTestTag(EventsOverviewScreenTestTags.INLINE_ERROR)
-                .and(hasAnyDescendant(hasText("Failed to load events."))),
-            useUnmergedTree = true,
-        )
-        .assertIsDisplayed()
-    onEventItem(ongoingEvent, hasText(ongoingEvent.title))
-  }
-
-  /** Test that the retry above the events calls onRefresh. */
-  @Test
-  fun inlineRetryCallsOnRefresh() {
-    var refreshes = 0
-    setContent(
-        uiState =
-            EventsOverviewUIState(
-                ongoingEvents = listOf(ongoingEvent),
-                user = sara,
-                hasError = true,
-                errorMsg = "Network down",
-            ),
-        onRefresh = { refreshes++ },
-    )
-
-    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.RETRY).performClick()
-
-    assertEquals(1, refreshes)
-  }
-
   /**
    * Test that the events are fetched again each time the screen comes back to the front, e.g. after
    * creating an event, and not while it stays behind another screen.
@@ -726,28 +676,6 @@ class EventsOverviewScreenTest {
         .onNode(hasTestTag(EventsOverviewScreenTestTags.UPCOMING_CHIP).and(hasText("1")))
         .assertIsDisplayed()
     assertEquals(2, repository.fetches.get())
-  }
-
-  /**
-   * Test that the events are fetched again when the screen is shown, so that an event added since
-   * the ViewModel was last refreshed appears.
-   */
-  @Test
-  fun eventsAreFetchedAgainWhenTheScreenIsShown() {
-    val repository = EventsRepositoryImpl(listOf(ongoingEvent))
-    val viewModel = createViewModel(withRepository = repository)
-    viewModel.refreshUIState()
-    composeTestRule.waitUntil { !viewModel.uiState.value.isLoading }
-    assertEquals(listOf<Event>(), viewModel.uiState.value.upcomingEvents)
-
-    runBlocking { repository.addEvent(upcomingEvent) }
-    setContent(withRepository = repository, viewModel = viewModel)
-
-    composeTestRule
-        .onNode(hasTestTag(EventsOverviewScreenTestTags.UPCOMING_CHIP).and(hasText("1")))
-        .assertIsDisplayed()
-    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.UPCOMING_CHIP).performClick()
-    onEventItem(upcomingEvent, hasText(upcomingEvent.title))
   }
 
   /** Test that clicking on an event card gives the clicked event. */

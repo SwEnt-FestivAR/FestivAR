@@ -429,30 +429,22 @@ class EventsOverviewViewModelTest {
 
   /**
    * Test that a failing repository stops the loading and sets the error, with the cause given by
-   * the repository as is: the screen words the error itself.
+   * the repository as is, or without a cause if its exception has no message: the screen words the
+   * error itself.
    */
   @Test
   fun repositoryFailureSetsTheErrorAndItsCause() = runTest {
-    val repository = RecordingEventsRepository(error = RuntimeException("Network down"))
-    val viewModel = createViewModel(withRepository = repository)
-    advanceUntilIdle()
+    mapOf(RuntimeException("Network down") to "Network down", NoSuchElementException() to null)
+        .forEach { (error, cause) ->
+          val viewModel = createViewModel(RecordingEventsRepository(error = error))
+          advanceUntilIdle()
 
-    val state = viewModel.uiState.value
-    assertFalse(state.isLoading)
-    assertTrue(state.hasError)
-    assertEquals("Network down", state.errorMsg)
-    assertTrue(state.hasNoEvents)
-  }
-
-  /** Test that a failure whose exception has no message still sets the error, without a cause. */
-  @Test
-  fun failureWithoutMessageSetsTheErrorWithoutCause() = runTest {
-    val repository = RecordingEventsRepository(error = NoSuchElementException())
-    val viewModel = createViewModel(withRepository = repository)
-    advanceUntilIdle()
-
-    assertTrue(viewModel.uiState.value.hasError)
-    assertNull(viewModel.uiState.value.errorMsg)
+          val state = viewModel.uiState.value
+          assertFalse(state.isLoading)
+          assertTrue(state.hasError)
+          assertEquals(cause, state.errorMsg)
+          assertTrue(state.hasNoEvents)
+        }
   }
 
   /**
@@ -548,15 +540,16 @@ class EventsOverviewViewModelTest {
 
   /**
    * Test that refreshing after the repository recovers shows the events and removes the error and
-   * its cause.
+   * its cause, and that the failed first load left the choice of the filter to this successful one.
    */
   @Test
-  fun refreshAfterFailureShowsTheEventsWithoutError() = runTest {
+  fun refreshAfterFailureShowsTheEventsWithoutErrorAndSelectsTheFilter() = runTest {
     val repository =
-        RecordingEventsRepository(listOf(ongoingEvent), error = RuntimeException("Network down"))
+        RecordingEventsRepository(listOf(upcomingEvent), error = RuntimeException("Network down"))
     val viewModel = createViewModel(withRepository = repository)
     advanceUntilIdle()
     assertTrue(viewModel.uiState.value.hasError)
+    assertEquals(EventsFilter.ONGOING, viewModel.uiState.value.selectedFilter)
 
     repository.error = null
     viewModel.refreshUIState()
@@ -566,7 +559,8 @@ class EventsOverviewViewModelTest {
     assertFalse(state.isLoading)
     assertFalse(state.hasError)
     assertNull(state.errorMsg)
-    assertEquals(listOf(ongoingEvent), state.ongoingEvents)
+    assertEquals(listOf(upcomingEvent), state.upcomingEvents)
+    assertEquals(EventsFilter.UPCOMING, state.selectedFilter)
   }
 
   /**
@@ -620,22 +614,6 @@ class EventsOverviewViewModelTest {
 
     assertEquals(listOf(ongoingEvent), viewModel.uiState.value.ongoingEvents)
     assertEquals(EventsFilter.PAST, viewModel.uiState.value.selectedFilter)
-  }
-
-  /** Test that a failed first load leaves the choice of the filter to the next successful one. */
-  @Test
-  fun failedFirstLoadLeavesTheFilterToTheNextOne() = runTest {
-    val repository =
-        RecordingEventsRepository(listOf(upcomingEvent), error = RuntimeException("Network down"))
-    val viewModel = createViewModel(withRepository = repository)
-    advanceUntilIdle()
-    assertEquals(EventsFilter.ONGOING, viewModel.uiState.value.selectedFilter)
-
-    repository.error = null
-    viewModel.refreshUIState()
-    advanceUntilIdle()
-
-    assertEquals(EventsFilter.UPCOMING, viewModel.uiState.value.selectedFilter)
   }
 
   /**
