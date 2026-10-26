@@ -56,18 +56,6 @@ class CreateEventViewModelTest {
   }
 
   @Test
-  fun updateStartDateMillisWorks() {
-    viewModel.updateStartDateMillis(1_000L)
-    assertEquals(1_000L, viewModel.uiState.value.startDateMillis)
-  }
-
-  @Test
-  fun updateEndDateMillisWorks() {
-    viewModel.updateEndDateMillis(2_000L)
-    assertEquals(2_000L, viewModel.uiState.value.endDateMillis)
-  }
-
-  @Test
   fun updateVenueWorks() {
     viewModel.updateVenue("Main square")
     assertEquals("Main square", viewModel.uiState.value.venue)

@@ -35,8 +35,6 @@ data class CreateEventUIState(
     val name: String = "",
     val startDate: ZonedDateTime? = null,
     val endDate: ZonedDateTime? = null,
-    val startDateMillis: Long? = null,
-    val endDateMillis: Long? = null,
     val venue: String = "",
     val notes: String = "",
     val activeDatePicker: DateTimeField? = null,
@@ -82,14 +80,6 @@ class CreateEventViewModel(
     edit { it.copy(endDate = newDate) }
   }
 
-  fun updateStartDateMillis(newDateMillis: Long) {
-    _uiState.update { it.copy(startDateMillis = newDateMillis) }
-  }
-
-  fun updateEndDateMillis(newDateMillis: Long) {
-    _uiState.update { it.copy(endDateMillis = newDateMillis) }
-  }
-
   fun updateVenue(newVenue: String) {
     edit { it.copy(venue = newVenue) }
   }
@@ -107,12 +97,10 @@ class CreateEventViewModel(
     when (_uiState.value.activeDatePicker) {
       DateTimeField.START_DATE -> {
         val start = date.atStartOfDay(zone)
-        updateStartDateMillis(start.toInstant().toEpochMilli())
         updateStartDate(start)
       }
       DateTimeField.END_DATE -> {
         val end = date.plusDays(1).atStartOfDay(zone).minusSeconds(1)
-        updateEndDateMillis(end.toInstant().toEpochMilli())
         updateEndDate(end)
       }
       else -> Unit
