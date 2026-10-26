@@ -1,0 +1,23 @@
+<!-- Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com> -->
+<resources>
+    <string name="events_overview_title">Events overview</string>
+    <string name="events_overview_chip_ongoing">Ongoing</string>
+    <string name="events_overview_chip_upcoming">Upcoming</string>
+    <string name="events_overview_chip_past">Past</string>
+    <string name="events_overview_empty_title">No events yet</string>
+    <string name="events_overview_empty_subtitle">Join or create an event.</string>
+    <string name="events_overview_no_ongoing">You have no ongoing event.</string>
+    <string name="events_overview_no_upcoming">You have no upcoming event.</string>
+    <string name="events_overview_no_past">You have no past event.</string>
+    <string name="events_overview_join">Join</string>
+    <string name="events_overview_create">Create</string>
+    <string name="events_overview_close">Close</string>
+    <string name="events_overview_actions">Join or create an event</string>
+    <!-- The start and end days of an event, e.g. "Fri 16 to Sun 18 Oct" -->
+    <string name="events_overview_dates_range">%1$s to %2$s</string>
+    <!-- The days of an event, then its location, e.g. "Fri 16 Oct · Parc de Vidy" -->
+    <string name="events_overview_dates_location">%1$s · %2$s</string>
+    <string name="events_overview_error">Failed to load events: %1$s</string>
+    <string name="events_overview_error_no_cause">Failed to load events.</string>
+    <string name="events_overview_retry">Retry</string>
+</resources>

@@ -1,7 +1,6 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.event
 
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
@@ -24,9 +23,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -34,6 +33,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
@@ -43,8 +43,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -54,20 +56,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.dropShadow
-import androidx.compose.ui.graphics.shadow.Shadow
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import com.android.festivar.R
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.Avatar
 import com.android.festivar.ui.components.FilterChip
+import com.android.festivar.ui.components.floatingShadow
 import com.android.festivar.ui.components.formatDate
 import com.android.festivar.ui.components.formatDay
 import com.android.festivar.ui.theme.AppTheme
@@ -88,6 +90,11 @@ object EventsOverviewScreenTestTags {
   const val EVENT_ACTIONS_BUTTON = "eventActionsFab"
   const val JOIN_EVENT_BUTTON = "joinEventFab"
   const val CREATE_EVENT_BUTTON = "createEventFab"
+  const val ERROR_STATE = "eventsOverviewErrorState"
+  const val ERROR_MESSAGE = "eventsOverviewErrorMessage"
+  const val INLINE_ERROR = "eventsOverviewInlineError"
+  const val RETRY = "eventsOverviewRetry"
+  const val PULL_TO_REFRESH = "eventsOverviewPullToRefresh"
 
   fun getTestTagForEventItem(event: Event): String = "eventItem${event.eventId}"
 }
@@ -97,20 +104,26 @@ object EventsOverviewScreenTestTags {
  * end day is only shown if the [event] ends on another day, and its month is only repeated if it
  * ends in another month.
  */
-internal fun formatEventDates(event: Event): String {
+@Composable
+private fun formatEventDates(event: Event): String {
   val start = event.startDate.toLocalDate()
   val end = event.endDate.toLocalDate()
   val dates =
       when {
         end == start -> formatDate(start)
-        YearMonth.from(end) == YearMonth.from(start) -> "${formatDay(start)} to ${formatDate(end)}"
-        else -> "${formatDate(start)} to ${formatDate(end)}"
+        YearMonth.from(end) == YearMonth.from(start) ->
+            stringResource(R.string.events_overview_dates_range, formatDay(start), formatDate(end))
+        else ->
+            stringResource(R.string.events_overview_dates_range, formatDate(start), formatDate(end))
       }
-  return if (event.location.isBlank()) dates else "$dates · ${event.location}"
+  return if (event.location.isBlank()) dates
+  else stringResource(R.string.events_overview_dates_location, dates, event.location)
 }
 
 /**
- * Screen showing the [Event] items of the user, split between ongoing, upcoming and past ones.
+ * Screen showing the [Event] items of the user, split between ongoing, upcoming and past ones. The
+ * [Event] items are fetched again every time the screen comes back to the front, e.g. after adding
+ * a new one, and when the user pulls the list down.
  *
  * @param eventsOverviewViewModel The ViewModel providing the [Event] items.
  * @param onSelectEvent Called when the user clicks on an [Event] card.
@@ -122,30 +135,18 @@ internal fun formatEventDates(event: Event): String {
 fun EventsOverviewScreen(
     eventsOverviewViewModel: EventsOverviewViewModel,
     onSelectEvent: (Event) -> Unit = {},
-    // TODO: navigate to the join event screen once the app has navigation
     onJoinEvent: () -> Unit = {},
-    // TODO: navigate to the new event screen once the app has navigation
     onAddEvent: () -> Unit = {},
-    // TODO: navigate to the profile screen once the app has navigation
     onSelectAvatar: () -> Unit = {},
 ) {
-  val context = LocalContext.current
   val uiState by eventsOverviewViewModel.uiState.collectAsState()
 
-  // Fetch the events again when the screen is shown, e.g. after adding a new one
-  LaunchedEffect(Unit) { eventsOverviewViewModel.refreshUIState() }
-
-  // Show error message if fetching the events fails
-  LaunchedEffect(uiState.errorMsg) {
-    uiState.errorMsg?.let { message ->
-      Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-      eventsOverviewViewModel.clearErrorMsg()
-    }
-  }
+  LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { eventsOverviewViewModel.refreshUIState() }
 
   EventsOverviewContent(
       uiState = uiState,
       onSelectFilter = eventsOverviewViewModel::selectFilter,
+      onRefresh = eventsOverviewViewModel::refreshUIState,
       onSelectEvent = onSelectEvent,
       onJoinEvent = onJoinEvent,
       onAddEvent = onAddEvent,
@@ -158,15 +159,18 @@ fun EventsOverviewScreen(
  *
  * @param uiState The state to display.
  * @param onSelectFilter Called when the user clicks on the "Ongoing", "Upcoming" or "Past" chip.
+ * @param onRefresh Called when the user pulls the list down or clicks on "Retry".
  * @param onSelectEvent Called when the user clicks on an [Event] card.
  * @param onJoinEvent Called when the user clicks on the "Join" button.
  * @param onAddEvent Called when the user clicks on the "Create" button.
  * @param onSelectAvatar Called when the user clicks on its avatar in the top bar.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EventsOverviewContent(
     uiState: EventsOverviewUIState,
     onSelectFilter: (EventsFilter) -> Unit = {},
+    onRefresh: () -> Unit = {},
     onSelectEvent: (Event) -> Unit = {},
     onJoinEvent: () -> Unit = {},
     onAddEvent: () -> Unit = {},
@@ -174,31 +178,30 @@ fun EventsOverviewContent(
 ) {
   Scaffold(
       topBar = {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            modifier =
-                Modifier.statusBarsPadding()
-                    .fillMaxWidth()
-                    .height(64.dp)
-                    .padding(start = 20.dp, end = 12.dp),
-        ) {
-          Text(
-              text = "Events overview",
-              style = MaterialTheme.typography.titleLarge,
-              color = MaterialTheme.colorScheme.onSurface,
-              modifier = Modifier.weight(1f).testTag(EventsOverviewScreenTestTags.TITLE),
-          )
-          uiState.user?.let { user ->
-            Box(modifier = Modifier.testTag(EventsOverviewScreenTestTags.USER_AVATAR)) {
-              Avatar(user = user, onClick = onSelectAvatar)
-            }
-          }
-        }
+        TopAppBar(
+            title = {
+              Text(
+                  text = stringResource(R.string.events_overview_title),
+                  style = MaterialTheme.typography.titleLarge,
+                  modifier = Modifier.testTag(EventsOverviewScreenTestTags.TITLE),
+              )
+            },
+            actions = {
+              uiState.user?.let { user ->
+                Box(
+                    modifier =
+                        Modifier.padding(end = 12.dp)
+                            .testTag(EventsOverviewScreenTestTags.USER_AVATAR)
+                ) {
+                  Avatar(user = user, onClick = onSelectAvatar)
+                }
+              }
+            },
+        )
       },
       floatingActionButton = {
-        // The empty state has its own "Join" and "Create" buttons
-        if (!uiState.hasNoEvents) {
+        // The empty state has its own "Join" and "Create" buttons, the error state has none
+        if (uiState.hasError || !uiState.hasNoEvents) {
           EventActionsMenu(onJoinEvent = onJoinEvent, onAddEvent = onAddEvent)
         }
       },
@@ -212,21 +215,21 @@ fun EventsOverviewContent(
           modifier = Modifier.padding(horizontal = 20.dp),
       ) {
         FilterChip(
-            label = "Ongoing",
+            label = stringResource(R.string.events_overview_chip_ongoing),
             count = uiState.ongoingEvents.size,
             selected = uiState.selectedFilter == EventsFilter.ONGOING,
             onClick = { onSelectFilter(EventsFilter.ONGOING) },
             modifier = Modifier.testTag(EventsOverviewScreenTestTags.ONGOING_CHIP),
         )
         FilterChip(
-            label = "Upcoming",
+            label = stringResource(R.string.events_overview_chip_upcoming),
             count = uiState.upcomingEvents.size,
             selected = uiState.selectedFilter == EventsFilter.UPCOMING,
             onClick = { onSelectFilter(EventsFilter.UPCOMING) },
             modifier = Modifier.testTag(EventsOverviewScreenTestTags.UPCOMING_CHIP),
         )
         FilterChip(
-            label = "Past",
+            label = stringResource(R.string.events_overview_chip_past),
             count = uiState.pastEvents.size,
             selected = uiState.selectedFilter == EventsFilter.PAST,
             onClick = { onSelectFilter(EventsFilter.PAST) },
@@ -234,50 +237,143 @@ fun EventsOverviewContent(
         )
       }
 
-      when {
-        // Only on the first load: a later refresh keeps the current list instead of a spinner
-        uiState.isLoading && uiState.hasNoEvents -> {
-          Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
-            CircularProgressIndicator(
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.testTag(EventsOverviewScreenTestTags.LOADING_INDICATOR),
-            )
-          }
-        }
-        uiState.hasNoEvents -> {
-          EmptyEventsState(onJoinEvent = onJoinEvent, onAddEvent = onAddEvent)
-        }
-        uiState.shownEvents.isEmpty() -> {
-          Text(
-              text =
-                  when (uiState.selectedFilter) {
-                    EventsFilter.ONGOING -> "You have no ongoing event."
-                    EventsFilter.UPCOMING -> "You have no upcoming event."
-                    EventsFilter.PAST -> "You have no past event."
-                  },
-              style = MaterialTheme.typography.bodySmall,
-              color = MaterialTheme.colorScheme.onSurfaceVariant,
-              modifier =
-                  Modifier.padding(horizontal = 20.dp)
-                      .testTag(EventsOverviewScreenTestTags.EMPTY_EVENT_LIST_MSG),
-          )
-        }
-        else -> {
-          // A new list state for each filter, so that switching filter starts back at the top
-          val listState = key(uiState.selectedFilter) { rememberLazyListState() }
-          LazyColumn(
-              state = listState,
-              verticalArrangement = Arrangement.spacedBy(16.dp),
-              // Bottom padding so that the last card can scroll above the floating button
-              contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 88.dp),
-              modifier = Modifier.fillMaxSize().testTag(EventsOverviewScreenTestTags.EVENT_LIST),
-          ) {
-            items(uiState.shownEvents, key = { it.eventId }) { event ->
-              EventItem(event = event, onClick = { onSelectEvent(event) })
-            }
+      // With events shown, a failed refresh keeps them and only adds a line above them
+      if (uiState.hasError && !uiState.hasNoEvents) {
+        InlineError(message = errorMessage(uiState), onRetry = onRefresh)
+      }
+
+      PullToRefreshBox(
+          // With no events, the loading state below already shows a progress indicator
+          isRefreshing = uiState.isLoading && !uiState.hasNoEvents,
+          onRefresh = onRefresh,
+          modifier = Modifier.fillMaxSize().testTag(EventsOverviewScreenTestTags.PULL_TO_REFRESH),
+      ) {
+        // A new list state for each filter, so that switching filter starts back at the top
+        val listState = key(uiState.selectedFilter) { rememberLazyListState() }
+        val showsEvents = !uiState.hasNoEvents && uiState.shownEvents.isNotEmpty()
+        // Every state is in a list, so that the user can pull it down to refresh. Only a list of
+        // events gets the tag: the loading, error and empty states are not a list for the user.
+        LazyColumn(
+            state = listState,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            // Bottom padding so that the last card can scroll above the floating button
+            contentPadding =
+                PaddingValues(
+                    start = 20.dp,
+                    end = 20.dp,
+                    bottom = if (showsEvents) 88.dp else 0.dp,
+                ),
+            modifier =
+                Modifier.fillMaxSize()
+                    .then(
+                        if (showsEvents) Modifier.testTag(EventsOverviewScreenTestTags.EVENT_LIST)
+                        else Modifier
+                    ),
+        ) {
+          when {
+            // Only on the first load: a later refresh keeps the current list instead of a spinner
+            uiState.isLoading && uiState.hasNoEvents ->
+                item {
+                  Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.testTag(EventsOverviewScreenTestTags.LOADING_INDICATOR),
+                    )
+                  }
+                }
+            uiState.hasError && uiState.hasNoEvents ->
+                item { ErrorState(message = errorMessage(uiState), onRetry = onRefresh) }
+            uiState.hasNoEvents ->
+                item { EmptyEventsState(onJoinEvent = onJoinEvent, onAddEvent = onAddEvent) }
+            uiState.shownEvents.isEmpty() ->
+                item {
+                  Text(
+                      text =
+                          stringResource(
+                              when (uiState.selectedFilter) {
+                                EventsFilter.ONGOING -> R.string.events_overview_no_ongoing
+                                EventsFilter.UPCOMING -> R.string.events_overview_no_upcoming
+                                EventsFilter.PAST -> R.string.events_overview_no_past
+                              }
+                          ),
+                      style = MaterialTheme.typography.bodySmall,
+                      color = MaterialTheme.colorScheme.onSurfaceVariant,
+                      modifier =
+                          Modifier.testTag(EventsOverviewScreenTestTags.EMPTY_EVENT_LIST_MSG),
+                  )
+                }
+            else ->
+                items(uiState.shownEvents, key = { it.eventId }) { event ->
+                  EventItem(event = event, onClick = { onSelectEvent(event) })
+                }
           }
         }
       }
+    }
+  }
+}
+
+/** The error of the [uiState], with its cause if the repository gave one. */
+@Composable
+private fun errorMessage(uiState: EventsOverviewUIState): String =
+    uiState.errorMsg?.let { stringResource(R.string.events_overview_error, it) }
+        ?: stringResource(R.string.events_overview_error_no_cause)
+
+/** The load error in the theme's error colour, with a retry beside it, shown above the events. */
+@Composable
+private fun InlineError(message: String, onRetry: () -> Unit) {
+  Row(
+      verticalAlignment = Alignment.CenterVertically,
+      modifier =
+          Modifier.fillMaxWidth()
+              .padding(horizontal = 20.dp)
+              .testTag(EventsOverviewScreenTestTags.INLINE_ERROR),
+  ) {
+    Text(
+        text = message,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.error,
+        modifier = Modifier.weight(1f),
+    )
+    TextButton(onClick = onRetry, modifier = Modifier.testTag(EventsOverviewScreenTestTags.RETRY)) {
+      Text(text = stringResource(R.string.events_overview_retry))
+    }
+  }
+}
+
+/**
+ * Error state of the [EventsOverviewScreen], shown instead of the empty state when the [Event]
+ * items could not be fetched and none is shown. It offers to retry.
+ */
+@Composable
+private fun LazyItemScope.ErrorState(message: String, onRetry: () -> Unit) {
+  Column(
+      verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
+      horizontalAlignment = Alignment.CenterHorizontally,
+      modifier =
+          Modifier.fillParentMaxSize()
+              .padding(horizontal = 24.dp)
+              .testTag(EventsOverviewScreenTestTags.ERROR_STATE),
+  ) {
+    Text(
+        text = message,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.error,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.testTag(EventsOverviewScreenTestTags.ERROR_MESSAGE),
+    )
+    OutlinedButton(
+        onClick = onRetry,
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        colors =
+            ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
+        modifier = Modifier.testTag(EventsOverviewScreenTestTags.RETRY),
+    ) {
+      Text(
+          text = stringResource(R.string.events_overview_retry),
+          style = MaterialTheme.typography.labelLarge,
+      )
     }
   }
 }
@@ -287,13 +383,14 @@ fun EventsOverviewContent(
  * to join or to create one.
  */
 @Composable
-private fun EmptyEventsState(onJoinEvent: () -> Unit, onAddEvent: () -> Unit) {
+private fun LazyItemScope.EmptyEventsState(onJoinEvent: () -> Unit, onAddEvent: () -> Unit) {
   val buttonShape = RoundedCornerShape(12.dp)
   val buttonPadding = PaddingValues(horizontal = 20.dp)
   Column(
       verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
       horizontalAlignment = Alignment.CenterHorizontally,
-      modifier = Modifier.fillMaxSize().padding(horizontal = 44.dp),
+      // The list already has a 20dp side padding
+      modifier = Modifier.fillParentMaxSize().padding(horizontal = 24.dp),
   ) {
     Icon(
         painter = painterResource(R.drawable.ic_event),
@@ -302,14 +399,14 @@ private fun EmptyEventsState(onJoinEvent: () -> Unit, onAddEvent: () -> Unit) {
         modifier = Modifier.size(56.dp),
     )
     Text(
-        text = "No events yet",
+        text = stringResource(R.string.events_overview_empty_title),
         style = MaterialTheme.typography.headlineSmall,
         color = MaterialTheme.colorScheme.onSurface,
         textAlign = TextAlign.Center,
         modifier = Modifier.testTag(EventsOverviewScreenTestTags.EMPTY_TITLE),
     )
     Text(
-        text = "Join or create an event.",
+        text = stringResource(R.string.events_overview_empty_subtitle),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         textAlign = TextAlign.Center,
@@ -337,7 +434,11 @@ private fun EmptyEventsState(onJoinEvent: () -> Unit, onAddEvent: () -> Unit) {
       ) {
         Icon(painter = painterResource(R.drawable.ic_groups), contentDescription = null)
         Spacer(modifier = Modifier.width(10.dp))
-        Text(text = "Join", style = MaterialTheme.typography.labelLarge, maxLines = 1)
+        Text(
+            text = stringResource(R.string.events_overview_join),
+            style = MaterialTheme.typography.labelLarge,
+            maxLines = 1,
+        )
       }
       Button(
           onClick = onAddEvent,
@@ -355,7 +456,11 @@ private fun EmptyEventsState(onJoinEvent: () -> Unit, onAddEvent: () -> Unit) {
       ) {
         Icon(painter = painterResource(R.drawable.ic_add), contentDescription = null)
         Spacer(modifier = Modifier.width(10.dp))
-        Text(text = "Create", style = MaterialTheme.typography.labelLarge, maxLines = 1)
+        Text(
+            text = stringResource(R.string.events_overview_create),
+            style = MaterialTheme.typography.labelLarge,
+            maxLines = 1,
+        )
       }
     }
   }
@@ -370,17 +475,7 @@ private fun EventActionsMenu(onJoinEvent: () -> Unit, onAddEvent: () -> Unit) {
   var expanded by rememberSaveable { mutableStateOf(false) }
   // The design has its own floating shadow instead of the Material elevation
   val elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
-  val floatingShadow =
-      Modifier.dropShadow(
-          shape = CircleShape,
-          shadow =
-              Shadow(
-                  radius = 24.dp,
-                  color = MaterialTheme.colorScheme.onSurface,
-                  offset = DpOffset(0.dp, 8.dp),
-                  alpha = 0.14f,
-              ),
-      )
+  val floatingShadow = Modifier.floatingShadow(MaterialTheme.colorScheme.onSurface)
 
   BackHandler(enabled = expanded) { expanded = false }
 
@@ -398,7 +493,7 @@ private fun EventActionsMenu(onJoinEvent: () -> Unit, onAddEvent: () -> Unit) {
           verticalArrangement = Arrangement.spacedBy(12.dp),
       ) {
         EventActionButton(
-            label = "Join",
+            label = stringResource(R.string.events_overview_join),
             icon = R.drawable.ic_groups,
             onClick = {
               expanded = false
@@ -408,7 +503,7 @@ private fun EventActionsMenu(onJoinEvent: () -> Unit, onAddEvent: () -> Unit) {
             modifier = floatingShadow.testTag(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON),
         )
         EventActionButton(
-            label = "Create",
+            label = stringResource(R.string.events_overview_create),
             icon = R.drawable.ic_add,
             onClick = {
               expanded = false
@@ -429,7 +524,10 @@ private fun EventActionsMenu(onJoinEvent: () -> Unit, onAddEvent: () -> Unit) {
     ) {
       Icon(
           painter = painterResource(if (expanded) R.drawable.ic_close else R.drawable.ic_add),
-          contentDescription = if (expanded) "Close" else "Join or create an event",
+          contentDescription =
+              stringResource(
+                  if (expanded) R.string.events_overview_close else R.string.events_overview_actions
+              ),
       )
     }
   }
@@ -458,7 +556,7 @@ private fun EventActionButton(
 
 /** Card showing an [event]: its title, then its days and location. */
 @Composable
-fun EventItem(event: Event, onClick: () -> Unit) {
+private fun EventItem(event: Event, onClick: () -> Unit) {
   val shape = RoundedCornerShape(20.dp)
   Column(
       verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -484,7 +582,6 @@ fun EventItem(event: Event, onClick: () -> Unit) {
   }
 }
 
-/** Preview * */
 @Preview(showBackground = true, widthDp = 412, heightDp = 915)
 @Composable
 private fun EventsOverviewContentPreview() {

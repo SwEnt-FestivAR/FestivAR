@@ -35,8 +35,10 @@ enum class EventsFilter {
  * @property user The signed-in [User], whose avatar is shown in the top bar. `null` only until a
  *   ViewModel provides it, and only the identifier until the saved [User] is fetched.
  * @property isLoading Whether the [Event] items are currently being fetched.
- * @property errorMsg An error message to show when fetching the [Event] items fails. `null` if
- *   there is no error.
+ * @property hasError Whether the last fetch of the [Event] items failed. It stays `true` until a
+ *   fetch succeeds, so the screen can keep showing the error with a retry.
+ * @property errorMsg The cause of the failed fetch, as given by the repository. `null` if there is
+ *   no error, or if the repository gave no cause. The screen words the error itself.
  */
 data class EventsOverviewUIState(
     val ongoingEvents: List<Event> = emptyList(),
@@ -45,6 +47,7 @@ data class EventsOverviewUIState(
     val selectedFilter: EventsFilter = EventsFilter.ONGOING,
     val user: User? = null,
     val isLoading: Boolean = false,
+    val hasError: Boolean = false,
     val errorMsg: String? = null,
 ) {
   /** The [Event] items selected by [selectedFilter]. */
@@ -68,7 +71,9 @@ data class EventsOverviewUIState(
  * ViewModel of the Events Overview screen.
  *
  * Manages the UI state by fetching the signed-in [User] through the [UsersRepository] and its
- * [Event] items through the [EventsRepository].
+ * [Event] items through the [EventsRepository]. Nothing is fetched until [refreshUIState] is
+ * called: the screen calls it each time it is shown. Until the first fetch, the UI state is already
+ * loading.
  *
  * @property eventsRepository The repository used to fetch the [Event] items.
  * @property usersRepository The repository holding the [User] saved by the sign in or the sign up,
@@ -83,8 +88,11 @@ class EventsOverviewViewModel(
     private val now: () -> ZonedDateTime = ZonedDateTime::now,
 ) : ViewModel() {
 
-  // Until the saved User is fetched, the avatar shows a person icon
-  private val _uiState = MutableStateFlow(EventsOverviewUIState(user = User(uid = uId)))
+  // Until the saved User is fetched, the avatar shows a person icon. Loading from the start:
+  // nothing is fetched until the screen calls refreshUIState on resume, and until then the screen
+  // must show its progress indicator, not its empty state.
+  private val _uiState =
+      MutableStateFlow(EventsOverviewUIState(user = User(uid = uId), isLoading = true))
   val uiState: StateFlow<EventsOverviewUIState> = _uiState.asStateFlow()
 
   /** The fetch of the [User] in progress, cancelled when a newer one starts. */
@@ -93,24 +101,22 @@ class EventsOverviewViewModel(
   /** The fetch of the [Event] items in progress, cancelled when a newer one starts. */
   private var getEventsJob: Job? = null
 
-  init {
-    getUser()
-    getEvents()
-  }
-
-  /** Clears the error message in the UI state. */
-  fun clearErrorMsg() {
-    _uiState.update { it.copy(errorMsg = null) }
-  }
+  /**
+   * Whether the filter is already chosen, by the user or by the first successful fetch of the
+   * [Event] items. Until then, a successful fetch picks the default filter; afterwards a refresh
+   * never overrides it.
+   */
+  private var isFilterChosen = false
 
   /** Selects which [Event] items are shown. */
   fun selectFilter(filter: EventsFilter) {
+    isFilterChosen = true
     _uiState.update { it.copy(selectedFilter = filter) }
   }
 
   /**
-   * Refreshes the UI state by fetching the [User] and the [Event] items from the repositories
-   * again, e.g. after the profile was edited.
+   * Refreshes the UI state by fetching the [User] and the [Event] items from the repositories, e.g.
+   * when the screen is shown again after the profile was edited, or when the user retries.
    */
   fun refreshUIState() {
     getUser()
@@ -140,11 +146,12 @@ class EventsOverviewViewModel(
 
   /**
    * Fetches the [Event] items of the signed-in [User] from the repository and updates the UI state.
-   * Cancels the previous fetch, so that an older result never overwrites a newer one.
+   * Cancels the previous fetch, so that an older result never overwrites a newer one. A failure
+   * keeps the [Event] items already shown, and the error stays until a fetch succeeds.
    */
   private fun getEvents() {
     getEventsJob?.cancel()
-    _uiState.update { it.copy(isLoading = true, errorMsg = null) }
+    _uiState.update { it.copy(isLoading = true) }
     getEventsJob = viewModelScope.launch {
       try {
         val events = eventsRepository.getEventsForUser(uId)
@@ -155,12 +162,17 @@ class EventsOverviewViewModel(
         val currentTime = now()
         val (past, notPast) = events.partition { it.isPast(currentTime) }
         val (upcoming, ongoing) = notPast.partition { it.startDate.isAfter(currentTime) }
+        val choosesFilter = !isFilterChosen
+        isFilterChosen = true
         _uiState.update {
           it.copy(
               ongoingEvents = ongoing.sortedBy { event -> event.startDate },
               upcomingEvents = upcoming.sortedBy { event -> event.startDate },
               pastEvents = past.sortedByDescending { event -> event.endDate },
+              selectedFilter =
+                  if (choosesFilter) defaultFilter(ongoing, upcoming, past) else it.selectedFilter,
               isLoading = false,
+              hasError = false,
               errorMsg = null,
           )
         }
@@ -168,13 +180,24 @@ class EventsOverviewViewModel(
         // Cancelled by a newer fetch or because the ViewModel is cleared: not an error
         throw e
       } catch (e: Exception) {
-        _uiState.update {
-          it.copy(
-              isLoading = false,
-              errorMsg = "Failed to load events: ${e.message ?: "unknown error"}",
-          )
-        }
+        _uiState.update { it.copy(isLoading = false, hasError = true, errorMsg = e.message) }
       }
     }
   }
+
+  /**
+   * The filter shown after the first load: the first one with [Event] items among ongoing, upcoming
+   * and past, or [EventsFilter.ONGOING] if there is none.
+   */
+  private fun defaultFilter(
+      ongoing: List<Event>,
+      upcoming: List<Event>,
+      past: List<Event>,
+  ): EventsFilter =
+      when {
+        ongoing.isNotEmpty() -> EventsFilter.ONGOING
+        upcoming.isNotEmpty() -> EventsFilter.UPCOMING
+        past.isNotEmpty() -> EventsFilter.PAST
+        else -> EventsFilter.ONGOING
+      }
 }

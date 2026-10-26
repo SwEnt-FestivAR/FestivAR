@@ -2,6 +2,7 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.event
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
@@ -15,6 +16,12 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.event.Event
@@ -26,10 +33,10 @@ import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.ui.theme.AppTheme
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -41,19 +48,30 @@ class EventsOverviewScreenTest {
 
   /**
    * An [EventsRepositoryLocal] serving [events]. It throws [error] on every fetch of the events of
-   * a user when it is set, and waits for [gate] to be completed before answering when it is set.
+   * a user while it is set, waits for [gate] to be completed before answering when it is set, and
+   * counts the [fetches].
    */
   private class EventsRepositoryImpl(
       events: List<Event> = listOf(),
-      val error: Exception? = null,
+      @Volatile var error: Exception? = null,
       @Volatile var gate: CompletableDeferred<Unit>? = null,
       private val local: EventsRepository = EventsRepositoryLocal(events),
   ) : EventsRepository by local {
+    val fetches = AtomicInteger()
+
     override suspend fun getEventsForUser(userId: String): List<Event> {
+      fetches.incrementAndGet()
       gate?.await()
       error?.let { throw it }
       return local.getEventsForUser(userId)
     }
+  }
+
+  /** A [LifecycleOwner] whose state the test moves itself, e.g. to send the screen to the back. */
+  private class TestLifecycleOwner : LifecycleOwner {
+    val registry = LifecycleRegistry.createUnsafe(this)
+    override val lifecycle: Lifecycle
+      get() = registry
   }
 
   private fun getDate(year: Int, month: Int, day: Int, hour: Int = 0): ZonedDateTime {
@@ -134,19 +152,32 @@ class EventsOverviewScreenTest {
       onAddEvent: () -> Unit = {},
       onSelectAvatar: () -> Unit = {},
       viewModel: EventsOverviewViewModel = createViewModel(withRepository),
+      lifecycleOwner: LifecycleOwner? = null,
   ): EventsOverviewViewModel {
     composeTestRule.setContent {
-      AppTheme {
-        EventsOverviewScreen(
-            eventsOverviewViewModel = viewModel,
-            onSelectEvent = onSelectEvent,
-            onJoinEvent = onJoinEvent,
-            onAddEvent = onAddEvent,
-            onSelectAvatar = onSelectAvatar,
-        )
+      // Without a lifecycleOwner, the screen follows the activity of the test, already resumed
+      CompositionLocalProvider(
+          LocalLifecycleOwner provides (lifecycleOwner ?: LocalLifecycleOwner.current)
+      ) {
+        AppTheme {
+          EventsOverviewScreen(
+              eventsOverviewViewModel = viewModel,
+              onSelectEvent = onSelectEvent,
+              onJoinEvent = onJoinEvent,
+              onAddEvent = onAddEvent,
+              onSelectAvatar = onSelectAvatar,
+          )
+        }
       }
     }
     return viewModel
+  }
+
+  /** Shows [EventsOverviewContent] alone, with the given [uiState]. */
+  private fun setContent(uiState: EventsOverviewUIState, onRefresh: () -> Unit = {}) {
+    composeTestRule.setContent {
+      AppTheme { EventsOverviewContent(uiState = uiState, onRefresh = onRefresh) }
+    }
   }
 
   /** Asserts that neither the "Join" nor the "Create" button is in the screen. */
@@ -233,6 +264,23 @@ class EventsOverviewScreenTest {
         .assertIsDisplayed()
   }
 
+  /**
+   * Test that, without ongoing events, the first category with events is shown, here the upcoming
+   * one.
+   */
+  @Test
+  fun firstCategoryWithEventsIsShownByDefault() {
+    setContent(withRepository = EventsRepositoryImpl(listOf(upcomingEvent, pastEvent)))
+
+    onEventItem(upcomingEvent, hasText(upcomingEvent.title))
+    composeTestRule
+        .onNodeWithTag(EventsOverviewScreenTestTags.getTestTagForEventItem(pastEvent))
+        .assertDoesNotExist()
+    composeTestRule
+        .onNodeWithTag(EventsOverviewScreenTestTags.EMPTY_EVENT_LIST_MSG)
+        .assertDoesNotExist()
+  }
+
   /** Test that the ongoing events are shown by default. */
   @Test
   fun ongoingEventsAreShownByDefault() {
@@ -288,6 +336,8 @@ class EventsOverviewScreenTest {
     setContent(withRepository = EventsRepositoryImpl(listOf(pastEvent)))
     val message = composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.EMPTY_EVENT_LIST_MSG)
 
+    // The past events are shown first, as the only category with events
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.ONGOING_CHIP).performClick()
     message.assertIsDisplayed().assertTextEquals("You have no ongoing event.")
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.UPCOMING_CHIP).performClick()
     message.assertIsDisplayed().assertTextEquals("You have no upcoming event.")
@@ -483,6 +533,7 @@ class EventsOverviewScreenTest {
   fun refreshKeepsTheEventsShownInsteadOfTheLoadingIndicator() {
     val repository = EventsRepositoryImpl(listOf(ongoingEvent))
     val viewModel = createViewModel(withRepository = repository)
+    viewModel.refreshUIState()
     composeTestRule.waitUntil { !viewModel.uiState.value.isLoading }
 
     // Hold the refresh started when the screen is shown
@@ -502,29 +553,190 @@ class EventsOverviewScreenTest {
     onEventItem(ongoingEvent, hasText(ongoingEvent.title))
   }
 
-  /** Test that the error message is shown then cleared when fetching the events fails. */
+  /**
+   * Test that a failed first fetch shows the error state with its cause and a retry, instead of the
+   * empty state, and keeps the "+" button to join or create an event.
+   */
   @Test
-  fun fetchFailureClearsTheErrorMsg() {
-    val repository = EventsRepositoryImpl(error = RuntimeException("Network down"))
-    val viewModel = setContent(withRepository = repository)
+  fun fetchFailureShowsTheErrorState() {
+    setContent(withRepository = EventsRepositoryImpl(error = RuntimeException("Network down")))
 
-    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.ERROR_STATE).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(EventsOverviewScreenTestTags.ERROR_MESSAGE)
+        .assertIsDisplayed()
+        .assertTextEquals("Failed to load events: Network down")
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.RETRY).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(EventsOverviewScreenTestTags.EVENT_ACTIONS_BUTTON)
+        .assertIsDisplayed()
 
-    assertNull(viewModel.uiState.value.errorMsg)
     composeTestRule
         .onNodeWithTag(EventsOverviewScreenTestTags.LOADING_INDICATOR)
         .assertDoesNotExist()
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.EMPTY_TITLE).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.INLINE_ERROR).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.EVENT_LIST).assertDoesNotExist()
+    assertJoinAndCreateButtonsDoNotExist()
+  }
+
+  /** Test that the retry of the error state fetches the events again and shows them. */
+  @Test
+  fun retryOfTheErrorStateShowsTheEvents() {
+    val repository =
+        EventsRepositoryImpl(listOf(ongoingEvent), error = RuntimeException("Network down"))
+    setContent(withRepository = repository)
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.ERROR_STATE).assertIsDisplayed()
+
+    repository.error = null
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.RETRY).performClick()
+
+    onEventItem(ongoingEvent, hasText(ongoingEvent.title))
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.ERROR_STATE).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.RETRY).assertDoesNotExist()
+  }
+
+  /**
+   * Test that a failed refresh, here by pulling the list down, keeps the events shown and only adds
+   * the error above them, which goes away once a retry succeeds.
+   */
+  @Test
+  fun failedRefreshKeepsTheEventsWithAnInlineError() {
+    val repository = EventsRepositoryImpl(listOf(ongoingEvent))
+    setContent(withRepository = repository)
+    onEventItem(ongoingEvent, hasText(ongoingEvent.title))
+
+    repository.error = RuntimeException("Network down")
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.PULL_TO_REFRESH).performTouchInput {
+      swipeDown()
+    }
+
+    composeTestRule.waitUntil { repository.fetches.get() == 2 }
+    composeTestRule
+        .onNode(
+            hasTestTag(EventsOverviewScreenTestTags.INLINE_ERROR)
+                .and(hasAnyDescendant(hasText("Failed to load events: Network down"))),
+            useUnmergedTree = true,
+        )
+        .assertIsDisplayed()
+    onEventItem(ongoingEvent, hasText(ongoingEvent.title))
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.ERROR_STATE).assertDoesNotExist()
+
+    repository.error = null
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.RETRY).performClick()
+
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.INLINE_ERROR).assertDoesNotExist()
+    onEventItem(ongoingEvent, hasText(ongoingEvent.title))
+  }
+
+  /**
+   * Test that the empty state can be pulled down too, so that an event joined elsewhere since
+   * appears.
+   */
+  @Test
+  fun pullingTheEmptyStateDownFetchesTheEventsAgain() {
+    val repository = EventsRepositoryImpl()
+    setContent(withRepository = repository)
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.EMPTY_TITLE).assertIsDisplayed()
+
+    runBlocking { repository.addEvent(ongoingEvent) }
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.PULL_TO_REFRESH).performTouchInput {
+      swipeDown()
+    }
+
+    composeTestRule.waitUntil { repository.fetches.get() == 2 }
+    onEventItem(ongoingEvent, hasText(ongoingEvent.title))
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.EMPTY_TITLE).assertDoesNotExist()
+  }
+
+  /** Test that the error state of an error without cause is still worded. */
+  @Test
+  fun errorWithoutCauseIsStillWorded() {
+    setContent(uiState = EventsOverviewUIState(user = sara, hasError = true))
+
+    composeTestRule
+        .onNodeWithTag(EventsOverviewScreenTestTags.ERROR_MESSAGE)
+        .assertTextEquals("Failed to load events.")
+  }
+
+  /** Test that an error without cause above the events is still worded. */
+  @Test
+  fun inlineErrorWithoutCauseIsStillWorded() {
+    setContent(
+        uiState =
+            EventsOverviewUIState(
+                ongoingEvents = listOf(ongoingEvent),
+                user = sara,
+                hasError = true,
+            )
+    )
+
+    composeTestRule
+        .onNode(
+            hasTestTag(EventsOverviewScreenTestTags.INLINE_ERROR)
+                .and(hasAnyDescendant(hasText("Failed to load events."))),
+            useUnmergedTree = true,
+        )
+        .assertIsDisplayed()
+    onEventItem(ongoingEvent, hasText(ongoingEvent.title))
+  }
+
+  /** Test that the retry above the events calls onRefresh. */
+  @Test
+  fun inlineRetryCallsOnRefresh() {
+    var refreshes = 0
+    setContent(
+        uiState =
+            EventsOverviewUIState(
+                ongoingEvents = listOf(ongoingEvent),
+                user = sara,
+                hasError = true,
+                errorMsg = "Network down",
+            ),
+        onRefresh = { refreshes++ },
+    )
+
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.RETRY).performClick()
+
+    assertEquals(1, refreshes)
+  }
+
+  /**
+   * Test that the events are fetched again each time the screen comes back to the front, e.g. after
+   * creating an event, and not while it stays behind another screen.
+   */
+  @Test
+  fun eventsAreFetchedAgainWhenTheScreenIsResumed() {
+    val repository = EventsRepositoryImpl(listOf(ongoingEvent))
+    val lifecycleOwner = TestLifecycleOwner()
+    composeTestRule.runOnUiThread { lifecycleOwner.registry.currentState = Lifecycle.State.RESUMED }
+    setContent(withRepository = repository, lifecycleOwner = lifecycleOwner)
+    onEventItem(ongoingEvent, hasText(ongoingEvent.title))
+    assertEquals(1, repository.fetches.get())
+
+    // Another screen comes to the front, where the user joins an event
+    composeTestRule.runOnUiThread { lifecycleOwner.registry.currentState = Lifecycle.State.CREATED }
+    runBlocking { repository.addEvent(upcomingEvent) }
+    composeTestRule.waitForIdle()
+    assertEquals(1, repository.fetches.get())
+
+    composeTestRule.runOnUiThread { lifecycleOwner.registry.currentState = Lifecycle.State.RESUMED }
+
+    composeTestRule
+        .onNode(hasTestTag(EventsOverviewScreenTestTags.UPCOMING_CHIP).and(hasText("1")))
+        .assertIsDisplayed()
+    assertEquals(2, repository.fetches.get())
   }
 
   /**
    * Test that the events are fetched again when the screen is shown, so that an event added since
-   * the ViewModel was created appears.
+   * the ViewModel was last refreshed appears.
    */
   @Test
   fun eventsAreFetchedAgainWhenTheScreenIsShown() {
     val repository = EventsRepositoryImpl(listOf(ongoingEvent))
     val viewModel = createViewModel(withRepository = repository)
+    viewModel.refreshUIState()
     composeTestRule.waitUntil { !viewModel.uiState.value.isLoading }
     assertEquals(listOf<Event>(), viewModel.uiState.value.upcomingEvents)
 
