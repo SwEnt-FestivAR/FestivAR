@@ -49,5 +49,18 @@ data class Announcement(
         require(links.distinct().size == links.size) { "A link is duplicated." }
     }
 
+    /**
+     * Returns a new version of `this` but with the [title] changed with the given parameter, so an
+     * edited version.
+     *
+     * @param newTitle The new [title] for the edited [Announcement].
+     * @return The [Announcement] but with [title] replaced by [newTitle].
+     * @throws IllegalArgumentException If the given [newTitle] is empty.
+     */
+    fun editTitle(newTitle: String): Announcement {
+        require(newTitle.isNotBlank()) { "The title cannot be empty." }
+        return copy(title = newTitle)
+    }
+
 
 }
