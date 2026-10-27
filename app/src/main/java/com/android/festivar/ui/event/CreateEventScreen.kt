@@ -45,10 +45,11 @@ import com.android.festivar.ui.components.DateTimeRange
 import com.android.festivar.ui.components.FestivarDateTimePickerDialog
 import com.android.festivar.ui.components.FestivarDateTimeRow
 import com.android.festivar.ui.components.FestivarFieldError
+import com.android.festivar.ui.components.FestivarFieldWithError
 import com.android.festivar.ui.components.FestivarTextField
-import com.android.festivar.ui.components.FieldError
 import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
+import java.time.LocalTime
 
 private val ScreenBackground = Color(0xFFFFFEF9)
 private val PrimaryButton = Color(0xFFC7F21A)
@@ -79,6 +80,7 @@ class CreateEventActions(
     val onVenueChange: (String) -> Unit = {},
     val onNotesChange: (String) -> Unit = {},
     val onDatePicked: (LocalDate) -> Unit = {},
+    val onTimePicked: (LocalTime) -> Unit = {},
     val onCreate: () -> Unit = {},
 )
 
@@ -103,29 +105,13 @@ fun CreateEventScreen(
       actions =
           CreateEventActions(
               onBack = onBack,
-              onNameChange = {
-                if (uiState.errorName) {
-                  viewModel.removeErrorName()
-                }
-                viewModel.updateName(it)
-              },
-              onShowPicker = { field ->
-                if (uiState.errorDate) {
-                  viewModel.removeErrorDate()
-                }
-                viewModel.updateActiveDatePicker(field)
-              },
-              onVenueChange = {
-                if (uiState.errorVenue) {
-                  viewModel.removeErrorVenue()
-                }
-                viewModel.updateVenue(it)
-              },
+              onNameChange = viewModel::updateName,
+              onShowPicker = viewModel::showPicker,
+              onVenueChange = viewModel::updateVenue,
               onNotesChange = viewModel::updateNotes,
               onDatePicked = viewModel::pickDate,
-              onCreate = {
-                if (viewModel.validEvent()) viewModel.createEvent() else viewModel.setErrors()
-              },
+              onTimePicked = viewModel::pickTime,
+              onCreate = viewModel::createEvent,
           ),
       modifier = modifier,
   )
@@ -148,6 +134,7 @@ fun CreateEventContent(
       topBar = { CreateEventTopBar(onBack = actions.onBack) },
       bottomBar = {
         CreateEventSaveBar(
+            canCreate = state.canCreate,
             isSaving = state.isSaving,
             errorMsg = state.errorMsg,
             onCreate = actions.onCreate,
@@ -161,17 +148,13 @@ fun CreateEventContent(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 12.dp),
     ) {
-      FestivarTextField(
-          value = state.name,
-          onValueChange = actions.onNameChange,
-          label = "Event name",
-          isError = state.errorName,
-          modifier = Modifier.testTag(CreateEventScreenTestTags.NAME_FIELD),
-      )
-      if (state.errorName) {
-        FestivarFieldError(
-            message = "Give the event a name",
-            modifier = Modifier.testTag(CreateEventScreenTestTags.NAME_ERROR),
+      FestivarFieldWithError(state.nameError, CreateEventScreenTestTags.NAME_ERROR) {
+        FestivarTextField(
+            value = state.name,
+            onValueChange = actions.onNameChange,
+            label = "Event name",
+            isError = state.nameError != null,
+            modifier = Modifier.testTag(CreateEventScreenTestTags.NAME_FIELD),
         )
       }
       Spacer(modifier = Modifier.height(14.dp))
@@ -179,16 +162,11 @@ fun CreateEventContent(
       FestivarDateTimeRow(
           dateLabel = "Starts",
           timeLabel = "Start time",
-          date = state.startDate?.toLocalDate(),
+          date = state.startDate,
           time = null,
-          dateError =
-              if (state.errorDate && state.startDate == null) {
-                FieldError.MISSING_DATE
-              } else {
-                null
-              },
+          dateError = state.startDateError,
           onDateClick = { actions.onShowPicker(DateTimeField.START_DATE) },
-          onTimeClick = {},
+          onTimeClick = { actions.onShowPicker(DateTimeField.START_TIME) },
           dateTag = CreateEventScreenTestTags.START_DATE_FIELD,
           dateErrorTag = CreateEventScreenTestTags.ENDS_ERROR,
           timeTag = CreateEventScreenTestTags.START_TIME_FIELD,
@@ -198,16 +176,11 @@ fun CreateEventContent(
       FestivarDateTimeRow(
           dateLabel = "Ends",
           timeLabel = "End time",
-          date = state.endDate?.toLocalDate(),
+          date = state.endDate,
           time = null,
-          dateError =
-              if (state.errorDate && state.startDate != null) {
-                if (state.endDate == null) FieldError.MISSING_DATE else FieldError.END_BEFORE_START
-              } else {
-                null
-              },
+          dateError = state.endDateError,
           onDateClick = { actions.onShowPicker(DateTimeField.END_DATE) },
-          onTimeClick = {},
+          onTimeClick = { actions.onShowPicker(DateTimeField.END_TIME) },
           dateTag = CreateEventScreenTestTags.END_DATE_FIELD,
           dateErrorTag = CreateEventScreenTestTags.ENDS_ERROR,
           timeTag = CreateEventScreenTestTags.END_TIME_FIELD,
@@ -218,15 +191,8 @@ fun CreateEventContent(
           value = state.venue,
           onValueChange = actions.onVenueChange,
           label = "Venue",
-          isError = state.errorVenue,
           modifier = Modifier.testTag(CreateEventScreenTestTags.LOCATION_FIELD),
       )
-      if (state.errorVenue) {
-        FestivarFieldError(
-            message = "Say where it happens",
-            modifier = Modifier.testTag(CreateEventScreenTestTags.ADDRESS_ERROR),
-        )
-      }
       Spacer(modifier = Modifier.height(8.dp))
 
       FestivarTextField(
@@ -241,14 +207,16 @@ fun CreateEventContent(
   }
 
   FestivarDateTimePickerDialog(
-      field = state.activeDatePicker,
+      field = state.openPicker,
       range =
           DateTimeRange(
-              startDate = state.startDate?.toLocalDate(),
-              endDate = state.endDate?.toLocalDate(),
+              startDate = state.startDate,
+              endDate = state.endDate,
+              startTime = state.startTime,
+              endTime = state.endTime,
           ),
       onDatePicked = actions.onDatePicked,
-      onTimePicked = {},
+      onTimePicked = actions.onTimePicked,
       onDismiss = { actions.onShowPicker(null) },
   )
 }
@@ -257,7 +225,12 @@ fun CreateEventContent(
  * The save bar: the error line of a failed save above the Create button, a spinner while saving.
  */
 @Composable
-private fun CreateEventSaveBar(isSaving: Boolean, errorMsg: Int?, onCreate: () -> Unit) {
+private fun CreateEventSaveBar(
+    canCreate: Boolean,
+    isSaving: Boolean,
+    errorMsg: Int?,
+    onCreate: () -> Unit,
+) {
   Column {
     errorMsg?.let {
       FestivarFieldError(
@@ -267,7 +240,7 @@ private fun CreateEventSaveBar(isSaving: Boolean, errorMsg: Int?, onCreate: () -
     }
     Button(
         onClick = onCreate,
-        enabled = !isSaving,
+        enabled = canCreate,
         modifier =
             Modifier.fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = 12.dp)
