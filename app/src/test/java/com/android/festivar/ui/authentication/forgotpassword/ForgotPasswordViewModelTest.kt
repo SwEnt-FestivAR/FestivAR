@@ -6,6 +6,7 @@ import com.android.festivar.model.authentication.AuthRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -37,8 +38,8 @@ class ForgotPasswordViewModelTest {
     viewModel.updateEmail("new@example.com")
 
     assertEquals("new@example.com", viewModel.uiState.value.email)
-    assertNull(viewModel.uiState.value.errorMessage)
-    assertNull(viewModel.uiState.value.successMessage)
+    assertNull(viewModel.uiState.value.error)
+    assertFalse(viewModel.uiState.value.isRequestSuccessful)
   }
 
   @Test
@@ -47,7 +48,7 @@ class ForgotPasswordViewModelTest {
 
     viewModel.sendPasswordResetEmail()
 
-    assertEquals("Enter your email address", viewModel.uiState.value.errorMessage)
+    assertEquals(ForgotPasswordError.EMPTY_EMAIL, viewModel.uiState.value.error)
     assertFalse(viewModel.uiState.value.isLoading)
     coVerify(exactly = 0) { authRepository.forgotPassword(any()) }
   }
@@ -61,16 +62,13 @@ class ForgotPasswordViewModelTest {
     shadowOf(Looper.getMainLooper()).idle()
 
     assertFalse(viewModel.uiState.value.isLoading)
-    assertEquals(
-        "If an account exists for this email, you’ll receive a password reset email.",
-        viewModel.uiState.value.successMessage,
-    )
-    assertNull(viewModel.uiState.value.errorMessage)
+    assertTrue(viewModel.uiState.value.isRequestSuccessful)
+    assertNull(viewModel.uiState.value.error)
     coVerify(exactly = 1) { authRepository.forgotPassword("user@example.com") }
   }
 
   @Test
-  fun failedRequestShowsRepositoryMessage() {
+  fun failedRequestShowsGenericError() {
     coEvery { authRepository.forgotPassword("user@example.com") } returns
         Result.failure(IllegalArgumentException("Request failed"))
     viewModel.updateEmail("user@example.com")
@@ -79,8 +77,8 @@ class ForgotPasswordViewModelTest {
     shadowOf(Looper.getMainLooper()).idle()
 
     assertFalse(viewModel.uiState.value.isLoading)
-    assertEquals("Request failed", viewModel.uiState.value.errorMessage)
-    assertNull(viewModel.uiState.value.successMessage)
+    assertEquals(ForgotPasswordError.REQUEST_FAILED, viewModel.uiState.value.error)
+    assertFalse(viewModel.uiState.value.isRequestSuccessful)
   }
 
   @Test
@@ -94,9 +92,22 @@ class ForgotPasswordViewModelTest {
 
     assertFalse(viewModel.uiState.value.isLoading)
     assertEquals(
-        "Unable to send password reset email. Please try again.",
-        viewModel.uiState.value.errorMessage,
+        ForgotPasswordError.REQUEST_FAILED,
+        viewModel.uiState.value.error,
     )
+  }
+
+  @Test
+  fun requestCancellationIsNotShownAsRequestFailure() {
+    coEvery { authRepository.forgotPassword("user@example.com") } throws
+        CancellationException("Request cancelled")
+    viewModel.updateEmail("user@example.com")
+
+    viewModel.sendPasswordResetEmail()
+    shadowOf(Looper.getMainLooper()).idle()
+
+    assertNull(viewModel.uiState.value.error)
+    assertFalse(viewModel.uiState.value.isRequestSuccessful)
   }
 
   @Test
@@ -113,10 +124,22 @@ class ForgotPasswordViewModelTest {
     shadowOf(Looper.getMainLooper()).idle()
 
     assertFalse(viewModel.uiState.value.isLoading)
-    assertEquals(
-        "If an account exists for this email, you’ll receive a password reset email.",
-        viewModel.uiState.value.successMessage,
-    )
+    assertTrue(viewModel.uiState.value.isRequestSuccessful)
     coVerify(exactly = 1) { authRepository.forgotPassword("user@example.com") }
+  }
+
+  @Test
+  fun successfulRequestCannotBeRepeatedUntilEmailChanges() {
+    coEvery { authRepository.forgotPassword("user@example.com") } returns Result.success(Unit)
+    viewModel.updateEmail("user@example.com")
+
+    viewModel.sendPasswordResetEmail()
+    shadowOf(Looper.getMainLooper()).idle()
+    viewModel.sendPasswordResetEmail()
+
+    coVerify(exactly = 1) { authRepository.forgotPassword("user@example.com") }
+
+    viewModel.updateEmail("new@example.com")
+    assertFalse(viewModel.uiState.value.isRequestSuccessful)
   }
 }

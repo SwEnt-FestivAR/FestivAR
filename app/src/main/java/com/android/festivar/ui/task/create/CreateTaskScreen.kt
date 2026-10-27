@@ -77,12 +77,14 @@ class CreateTaskActions(
  * Create task screen, connected to its [viewModel].
  *
  * @param eventId The event the created task belongs to.
+ * @param ownerId The uid of the signed-in user, who becomes the owner of the created task.
  * @param onBack Called when the user leaves without creating a task.
  * @param onTaskCreated Called once the task has been saved.
  */
 @Composable
 fun CreateTaskScreen(
     eventId: String,
+    ownerId: String,
     onBack: () -> Unit,
     onTaskCreated: () -> Unit,
     modifier: Modifier = Modifier,
@@ -105,7 +107,7 @@ fun CreateTaskScreen(
               onShowPicker = viewModel::showPicker,
               onDatePicked = viewModel::pickDate,
               onTimePicked = viewModel::pickTime,
-              onCreate = { viewModel.createTask(eventId) },
+              onCreate = { viewModel.createTask(eventId, ownerId) },
           ),
       modifier = modifier,
   )

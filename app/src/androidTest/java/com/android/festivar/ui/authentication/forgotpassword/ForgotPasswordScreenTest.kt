@@ -39,7 +39,7 @@ class ForgotPasswordScreenTest {
     composeTestRule.setContent { ForgotPasswordScreen(viewModel = viewModel, onReturnToLogin = {}) }
 
     composeTestRule
-        .onNodeWithText("Enter your email address to retrieve your password")
+        .onNodeWithText("Enter your email address to reset your password")
         .assertIsDisplayed()
     composeTestRule.onNodeWithTag(ForgotPasswordScreenTestTags.EMAIL_INPUT).assertIsDisplayed()
     composeTestRule.onNodeWithTag(ForgotPasswordScreenTestTags.SEND_BUTTON).assertIsNotEnabled()
@@ -64,6 +64,7 @@ class ForgotPasswordScreenTest {
             "If an account exists for this email, you’ll receive a password reset email."
         )
         .assertIsDisplayed()
+    composeTestRule.onNodeWithTag(ForgotPasswordScreenTestTags.SEND_BUTTON).assertIsNotEnabled()
   }
 
   @Test
@@ -78,7 +79,9 @@ class ForgotPasswordScreenTest {
     composeTestRule.waitForIdle()
 
     composeTestRule.onNodeWithTag(ForgotPasswordScreenTestTags.ERROR_MESSAGE).assertIsDisplayed()
-    composeTestRule.onNodeWithText("Request failed").assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText("Unable to send password reset email. Please try again.")
+        .assertIsDisplayed()
   }
 
   @Test

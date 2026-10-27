@@ -2,7 +2,6 @@
 package com.android.festivar.ui.authentication.login
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -43,6 +42,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -57,7 +57,6 @@ import androidx.compose.ui.unit.dp
 import androidx.credentials.CredentialManager
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.R
-import com.android.festivar.resources.GoogleLogo
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.theme.AppTheme
 
@@ -324,7 +323,11 @@ private fun GoogleSignInButton(onClick: () -> Unit, enabled: Boolean) {
       modifier = Modifier.fillMaxWidth().height(44.dp).testTag(LoginScreenTestTags.GOOGLE_BUTTON),
   ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-      Image(imageVector = GoogleLogo, contentDescription = null, modifier = Modifier.size(18.dp))
+      Icon(
+          painter = painterResource(id = R.drawable.ic_google_logo),
+          contentDescription = "Google Logo",
+          tint = Color.Unspecified,
+      )
       Text(
           text = stringResource(R.string.login_continue_with_google),
           color = MaterialTheme.colorScheme.onSurface,

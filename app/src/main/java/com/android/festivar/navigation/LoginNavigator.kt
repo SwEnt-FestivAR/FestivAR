@@ -11,7 +11,6 @@ class LoginNavigator(private val navController: NavHostController) {
 
   val onReturnToLogin: () -> Unit = {
     navController.popBackStack(AppScreens.Login.name, inclusive = false)
-    Unit
   }
 
   val onSignedIn = {

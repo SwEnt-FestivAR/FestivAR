@@ -90,7 +90,7 @@ class MainActivityNavigationTest {
 
   private fun seedTask(taskId: String = "t1", eventId: String = "e1", title: String = "Test Task") {
     val localRepo = TasksRepositoryLocal()
-    val task = Task(taskId, eventId, title)
+    val task = Task(taskId, eventId, title, ownerId = "owner-1")
     runBlocking { localRepo.addTask(task) }
     TasksRepositoryProvider.repository = localRepo
   }
@@ -129,7 +129,7 @@ class MainActivityNavigationTest {
 
     composeTestRule.onNodeWithText("Forgot password?").performClick()
     composeTestRule
-        .onNodeWithText("Enter your email address to retrieve your password")
+        .onNodeWithText("Enter your email address to reset your password")
         .assertIsDisplayed()
 
     composeTestRule.onNodeWithText("Return to login").performClick()
