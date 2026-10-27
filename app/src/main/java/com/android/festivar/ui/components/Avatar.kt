@@ -52,15 +52,18 @@ internal fun initials(user: User): String? {
  * Round avatar of the design, showing the [initials] of the [user], or a person icon if none.
  *
  * @param user The [User] shown by the avatar.
+ * @param modifier The [Modifier] applied to the avatar, before its default 32.dp size, so that a
+ *   size given by the caller wins.
  * @param onClick Called when the user clicks on the avatar. Not clickable if `null`.
  */
 @Composable
-fun Avatar(user: User, onClick: (() -> Unit)? = null) {
+fun Avatar(user: User, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
   val initials = initials(user)
   Box(
       contentAlignment = Alignment.Center,
       modifier =
-          Modifier.size(32.dp)
+          modifier
+              .size(32.dp)
               .clip(CircleShape)
               .background(MaterialTheme.colorScheme.surfaceContainerHighest)
               .border(2.dp, MaterialTheme.colorScheme.surfaceContainerLowest, CircleShape)
