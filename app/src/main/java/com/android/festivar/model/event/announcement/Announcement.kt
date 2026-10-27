@@ -131,4 +131,14 @@ data class Announcement(
     }
 
 
+
+    /**
+     * Returns a new version of `this` but with the [pinned] updated to the opposite of its previous
+     * state.
+     *
+     * @return The [Announcement] but with [pinned] inversed.
+     */
+    fun togglePin(): Announcement {
+        return copy(pinned = !pinned)
+    }
 }
