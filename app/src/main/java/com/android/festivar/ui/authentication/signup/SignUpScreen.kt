@@ -422,6 +422,9 @@ private object PreviewAuthRepository : AuthRepository {
 
   override suspend fun signOut(): Result<Unit> = Result.failure(UnsupportedOperationException(STR))
 
+  override suspend fun forgotPassword(email: String): Result<Unit> =
+      Result.failure(UnsupportedOperationException(STR))
+
   override suspend fun signInWithEmailAndPassword(
       email: String,
       password: String,

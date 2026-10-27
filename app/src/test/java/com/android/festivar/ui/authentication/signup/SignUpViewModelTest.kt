@@ -129,6 +129,9 @@ class SignUpViewModelTest {
 
     override suspend fun signOut(): Result<Unit> = signOutBehavior()
 
+    override suspend fun forgotPassword(email: String): Result<Unit> =
+        Result.failure(UnsupportedOperationException("Not used in these tests"))
+
     override suspend fun signInWithEmailAndPassword(
         email: String,
         password: String,
