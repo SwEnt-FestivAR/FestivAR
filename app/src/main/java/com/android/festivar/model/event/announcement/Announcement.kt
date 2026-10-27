@@ -62,5 +62,31 @@ data class Announcement(
         return copy(title = newTitle)
     }
 
+    /**
+     * Returns a new version of `this` but with the [description] changed with the given parameter, so an
+     * edited version.
+     *
+     * @param newDescription The new [description] for the edited [Announcement].
+     * @return The [Announcement] but with [description] replaced by [newDescription].
+     */
+    fun editDescription(newDescription: String): Announcement {
+        return copy(description = newDescription)
+    }
+
+    /**
+     * Returns a new version of `this` but with the [endTime] changed with the given parameter, so an
+     * edited version.
+     *
+     * @param newEndTime The new [endTime] for the edited [Announcement].
+     * @return The [Announcement] but with [endTime] replaced by [newEndTime].
+     * @throws IllegalArgumentException If the given [newEndTime] is before or equal to [createdAt].
+     */
+    fun editEndTime(newEndTime: ZonedDateTime?): Announcement {
+        require(newEndTime == null || createdAt.isBefore(newEndTime)) {
+            "newEndTime must not be before createdAt or equal to it."
+        }
+        return copy(endTime = newEndTime)
+    }
+
 
 }
