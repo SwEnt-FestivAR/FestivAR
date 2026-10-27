@@ -130,7 +130,16 @@ data class Announcement(
         return copy(links = newLinks)
     }
 
-
+    /**
+     * States if the [Announcement] is obsolete, is still pertinent or not.
+     *
+     * @param actualTime The actual time when the user reads the [Announcement].
+     * @return True only if the [endTime] is not [null] and that the [actualTime] is equal or bigger
+     * than the [endTime].
+     */
+    fun isObsolete(actualTime: ZonedDateTime): Boolean {
+        return endTime != null && !actualTime.isBefore(endTime)
+    }
 
     /**
      * Returns a new version of `this` but with the [pinned] updated to the opposite of its previous
