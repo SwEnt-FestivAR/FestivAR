@@ -88,5 +88,47 @@ data class Announcement(
         return copy(endTime = newEndTime)
     }
 
+    /**
+     * Adds a new link to the [Announcement] by returning a version of `this` with [link] added to
+     * the [links] list.
+     *
+     * @param link The link that is going to be added to `this`, to be added to [links] list.
+     * @return The [Announcement] but with [link] added to it.
+     * @throws IllegalArgumentException if the given [link] is blank or if it is a duplicate.
+     */
+    fun addLink(link: String): Announcement {
+        require(link.isNotBlank()) { "A link cannot be empty." }
+        require(!links.contains(link)) { "The link already exists." }
+        return copy(links = links + link)
+    }
+
+    /**
+     * Removes a link from the [links] by returning a version of `this` with [link] removed
+     * from the [links] list.
+     *
+     * @param link The link that is going to be removed from `this`, from [links] list.
+     * @return The [Announcement] but with [link] removed from it.
+     * @throws IllegalArgumentException If [link] is not present in the [Announcement].
+     */
+    fun removeLink(link: String): Announcement {
+        require(links.any { it == link }){
+            "This link is not present in this Announcement."
+        }
+        return copy(links = links - link)
+    }
+
+    /**
+     * Returns a new version of `this` but with the [links] changed with the given parameter, so an
+     * edited version.
+     *
+     * @param newLinks The new [links] for the edited [Announcement].
+     * @return The [Announcement] but with [links] replaced by [newLinks].
+     */
+    fun editLinks(newLinks: List<String>): Announcement {
+        require(newLinks.none { it.isBlank() }) { "A link cannot be empty." }
+        require(newLinks.distinct().size == newLinks.size) { "A link is duplicated." }
+        return copy(links = newLinks)
+    }
+
 
 }
