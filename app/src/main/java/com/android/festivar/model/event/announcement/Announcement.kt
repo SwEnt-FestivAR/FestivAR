@@ -13,6 +13,7 @@ import java.time.ZonedDateTime
  * announcement.{function}`.
  *
  * Every new version goes through the `init` block, so the rules below always hold:
+ * - [announcementId] is not blank;
  * - [title] is not blank;
  * - [authorId] is not blank;
  * - [endTime], if not null, is strictly after [createdAt].
