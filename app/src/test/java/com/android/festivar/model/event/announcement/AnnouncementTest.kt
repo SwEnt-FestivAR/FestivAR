@@ -137,6 +137,7 @@ class AnnouncementTest {
     assertInvalid(editTimeMessage) { announcement.addLink(link3, tooEarly) }
     assertInvalid(editTimeMessage) { announcement.removeLink(link1, tooEarly) }
     assertInvalid(editTimeMessage) { announcement.editLinks(listOf(link3), tooEarly) }
+    assertInvalid(editTimeMessage) { announcement.editPriority(Priority.LOW, tooEarly) }
   }
 
   /** A modification at the same instant as updatedAt is accepted, even in another time zone. */
@@ -150,7 +151,7 @@ class AnnouncementTest {
   }
 
   // ---------------------------------------------------------------------------------------- //
-  // editTitle, editDescription and editLinks
+  // editTitle, editDescription, editPriority and editLinks
   // ---------------------------------------------------------------------------------------- //
 
   /** editTitle replaces only the title and updatedAt, and does not change the original. */
@@ -180,6 +181,20 @@ class AnnouncementTest {
         announcement.copy(description = "", updatedAt = later),
         announcement.editDescription("", later),
     )
+  }
+
+  /** editPriority replaces only the priority and updatedAt, for every priority. */
+  @Test
+  fun editPriority_replacesOnlyThePriority() {
+    val announcement = announcementWith()
+
+    for (priority in Priority.entries) {
+      assertEquals(
+          announcement.copy(priority = priority, updatedAt = later),
+          announcement.editPriority(priority, later),
+      )
+    }
+    assertEquals(Priority.HIGH, announcement.priority)
   }
 
   /** editLinks replaces only the links and updatedAt, even by an empty list. */
