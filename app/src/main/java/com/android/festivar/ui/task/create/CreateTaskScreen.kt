@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -32,17 +31,14 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
-import com.android.festivar.model.task.Priority
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.DateTimeRange
 import com.android.festivar.ui.components.FestivarDateTimePickerDialog
 import com.android.festivar.ui.components.FestivarDateTimeRow
 import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.components.FestivarFieldWithError
-import com.android.festivar.ui.components.FestivarPrioritySelector
 import com.android.festivar.ui.components.FestivarTextField
 import java.time.LocalDate
 import java.time.LocalTime
@@ -57,11 +53,6 @@ object CreateTaskScreenTestTags {
   const val START_TIME_FIELD = "createTaskStartTimeField"
   const val END_DATE_FIELD = "createTaskEndDateField"
   const val END_TIME_FIELD = "createTaskEndTimeField"
-  const val PRIORITY_SELECTOR = "createTaskPrioritySelector"
-  const val MAX_ASSIGN_FIELD = "createTaskMaxAssignField"
-  const val ESTIMATED_TIME_FIELD = "createTaskEstimatedTimeField"
-  const val MAX_ASSIGN_ERROR = "createTaskMaxAssignError"
-  const val ESTIMATED_TIME_ERROR = "createTaskEstimatedTimeError"
   const val TITLE_ERROR = "createTaskTitleError"
   const val START_DATE_ERROR = "createTaskStartDateError"
   const val END_DATE_ERROR = "createTaskEndDateError"
@@ -75,9 +66,6 @@ class CreateTaskActions(
     val onTitleChange: (String) -> Unit = {},
     val onDescriptionChange: (String) -> Unit = {},
     val onLocationChange: (String) -> Unit = {},
-    val onPriorityChange: (Priority) -> Unit = {},
-    val onMaxAssignChange: (String) -> Unit = {},
-    val onEstimatedMinutesChange: (String) -> Unit = {},
     val onShowPicker: (DateTimeField?) -> Unit = {},
     val onDatePicked: (LocalDate) -> Unit = {},
     val onTimePicked: (LocalTime) -> Unit = {},
@@ -112,9 +100,6 @@ fun CreateTaskScreen(
               onTitleChange = viewModel::updateTitle,
               onDescriptionChange = viewModel::updateDescription,
               onLocationChange = viewModel::updateLocation,
-              onPriorityChange = viewModel::updatePriority,
-              onMaxAssignChange = viewModel::updateMaxAssign,
-              onEstimatedMinutesChange = viewModel::updateEstimatedMinutes,
               onShowPicker = viewModel::showPicker,
               onDatePicked = viewModel::pickDate,
               onTimePicked = viewModel::pickTime,
@@ -241,35 +226,6 @@ fun CreateTaskContent(
           dateErrorTag = CreateTaskScreenTestTags.END_DATE_ERROR,
           timeTag = CreateTaskScreenTestTags.END_TIME_FIELD,
       )
-      FestivarPrioritySelector(
-          selected = state.priority,
-          onSelect = actions.onPriorityChange,
-          label = stringResource(R.string.create_task_field_priority),
-          modifier = Modifier.testTag(CreateTaskScreenTestTags.PRIORITY_SELECTOR),
-      )
-      FestivarFieldWithError(state.maxAssignError, CreateTaskScreenTestTags.MAX_ASSIGN_ERROR) {
-        FestivarTextField(
-            value = state.maxAssign,
-            onValueChange = actions.onMaxAssignChange,
-            label = stringResource(R.string.create_task_field_max_assign),
-            isError = state.maxAssignError != null,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.testTag(CreateTaskScreenTestTags.MAX_ASSIGN_FIELD),
-        )
-      }
-      FestivarFieldWithError(
-          state.estimatedTimeError,
-          CreateTaskScreenTestTags.ESTIMATED_TIME_ERROR,
-      ) {
-        FestivarTextField(
-            value = state.estimatedMinutes,
-            onValueChange = actions.onEstimatedMinutesChange,
-            label = stringResource(R.string.create_task_field_estimated_time),
-            isError = state.estimatedTimeError != null,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.testTag(CreateTaskScreenTestTags.ESTIMATED_TIME_FIELD),
-        )
-      }
     }
   }
 

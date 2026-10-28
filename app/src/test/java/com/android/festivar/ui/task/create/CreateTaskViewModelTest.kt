@@ -5,7 +5,6 @@ package com.android.festivar.ui.task.create
 import android.os.Looper
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
-import com.android.festivar.model.task.Priority
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
@@ -375,64 +374,6 @@ class CreateTaskViewModelTest {
     assertThrows(IllegalArgumentException::class.java) {
       CreateTaskViewModel(" ", "owner-1", repository)
     }
-  }
-
-  @Test
-  fun createTask_savesTheOptionalFields() {
-    viewModel.updateTitle("Run power to stage")
-    viewModel.updatePriority(Priority.URGENT)
-    viewModel.updateMaxAssign("3")
-    viewModel.updateEstimatedMinutes("90")
-
-    viewModel.createTask()
-
-    val saved = savedTasks().single()
-    assertEquals(Priority.URGENT, saved.priority)
-    assertEquals(3, saved.maxAssign)
-    assertEquals(Duration.ofMinutes(90), saved.estimatedTime)
-  }
-
-  @Test
-  fun createTask_withoutOptionalFields_usesTheDefaults() {
-    viewModel.updateTitle("Run power to stage")
-
-    viewModel.createTask()
-
-    val saved = savedTasks().single()
-    assertEquals(Priority.NONE, saved.priority)
-    assertEquals(1, saved.maxAssign)
-    assertNull(saved.estimatedTime)
-  }
-
-  @Test
-  fun maxAssign_mustBeAtLeastOne() {
-    viewModel.updateTitle("Run power to stage")
-    for (text in listOf("", "0")) {
-      viewModel.updateMaxAssign(text)
-      assertEquals(FieldError.INVALID_MAX_ASSIGN, viewModel.uiState.value.maxAssignError)
-      assertFalse(viewModel.uiState.value.canCreate)
-    }
-    viewModel.updateMaxAssign("2")
-    assertNull(viewModel.uiState.value.maxAssignError)
-    assertTrue(viewModel.uiState.value.canCreate)
-  }
-
-  @Test
-  fun numberFields_dropAnythingButDigits() {
-    viewModel.updateMaxAssign("1a2")
-    viewModel.updateEstimatedMinutes("-5.5")
-
-    assertEquals("12", viewModel.uiState.value.maxAssign)
-    assertEquals("55", viewModel.uiState.value.estimatedMinutes)
-  }
-
-  @Test
-  fun estimatedTime_tooBigForAnInt_isAnError() {
-    viewModel.updateTitle("Run power to stage")
-    viewModel.updateEstimatedMinutes("99999999999")
-
-    assertEquals(FieldError.INVALID_ESTIMATED_TIME, viewModel.uiState.value.estimatedTimeError)
-    assertFalse(viewModel.uiState.value.canCreate)
   }
 
   @Test
