@@ -16,6 +16,7 @@ import java.time.ZonedDateTime
  * - [announcementId] is not blank;
  * - [title] is not blank;
  * - [authorId] is not blank;
+ * - none of the [links] are blank or duplicates.
  *
  * @property announcementId Unique identifier of the [Announcement].
  * @property title Name/subject visible of the [Announcement].
