@@ -108,6 +108,20 @@ class CreateTaskViewModelTest {
   }
 
   @Test
+  fun createTask_afterABlankOwner_worksOnceTheOwnerIsGiven() {
+    var user = ""
+    val vm = CreateTaskViewModel("event-1", { user }, repository)
+    vm.updateTitle("Run power to stage")
+    vm.createTask()
+
+    user = "owner-1"
+    vm.createTask()
+
+    assertEquals("owner-1", savedTasks().single().ownerId)
+    assertNull(vm.uiState.value.errorMsg)
+  }
+
+  @Test
   fun toTask_carriesTheOwner() {
     val form = CreateTaskUiState(title = "Run power to stage")
 
