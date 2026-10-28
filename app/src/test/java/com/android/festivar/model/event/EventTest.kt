@@ -2,6 +2,7 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.event
 
+import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import java.time.ZoneId
@@ -20,12 +21,15 @@ class EventTest {
   private val duplicateTaskMessage = "A task is duplicated."
   private val duplicateMemberMessage = "A user is registered twice."
   private val dateMessage = "endDate must be strictly after startDate."
+  private val duplicateAnnouncementMessage = "An announcement is duplicated."
 
   // Messages of the functions of Event.
   private val alreadyMemberMessage = "This user is already registered in the event."
   private val notMemberMessage = "This user is not a member of the event."
   private val taskAlreadyInEventMessage = "This task is already in the event."
   private val taskNotInEventMessage = "This task is not in the event."
+  private val announcementAlreadyInEventMessage = "This announcement is already in the event."
+  private val announcementNotInEventMessage = "This announcement is not in the event."
 
   private val start = ZonedDateTime.of(2026, 7, 1, 14, 0, 0, 0, ZoneId.of("Europe/Zurich"))
 
@@ -55,8 +59,21 @@ class EventTest {
           endDate = endDate,
       )
 
+  /** Builds a valid announcement with the given identifier. */
+  private fun announcement(announcementId: String, title: String = "Gates open"): Announcement =
+      Announcement(
+          announcementId = announcementId,
+          title = title,
+          authorId = "alice",
+          updatedAt = start,
+      )
+
   /** Builds a valid event with every field set, so we can check that the functions keep them. */
-  private fun eventWith(members: List<User> = emptyList(), tasks: List<Task> = emptyList()): Event =
+  private fun eventWith(
+      members: List<User> = emptyList(),
+      tasks: List<Task> = emptyList(),
+      announcements: List<Announcement> = emptyList(),
+  ): Event =
       Event(
           eventId = "e1",
           title = "Festival",
@@ -66,6 +83,7 @@ class EventTest {
           endDate = start.plusDays(2),
           location = "EPFL",
           tasks = tasks,
+          announcements = announcements,
       )
 
   /** Checks that [block] throws an [IllegalArgumentException] with [expectedMessage]. */
@@ -92,6 +110,7 @@ class EventTest {
     assertEquals(start.plusDays(2), event.endDate)
     assertEquals("", event.location)
     assertTrue(event.tasks.isEmpty())
+    assertTrue(event.announcements.isEmpty())
     assertFalse(event.closed)
   }
 
@@ -307,6 +326,84 @@ class EventTest {
     val event = eventWith(tasks = listOf(task("t1")))
 
     assertInvalid(taskNotInEventMessage) { event.removeTask("unknown") }
+  }
+
+  // **************************************************************************************//
+  // announcements
+  // **************************************************************************************//
+
+  /** Two announcements with the same id are refused, even if their other fields differ. */
+  @Test
+  fun init_fails_whenAnAnnouncementIdIsDuplicated() {
+    assertInvalid(duplicateAnnouncementMessage) {
+      eventWith(announcements = listOf(announcement("a1"), announcement("a1", title = "Other")))
+    }
+  }
+
+  /** addAnnouncement adds it at the end, keeps every other field and leaves the original. */
+  @Test
+  fun addAnnouncement_addsItAtTheEnd() {
+    val event = eventWith(announcements = listOf(announcement("a1")))
+
+    val result = event.addAnnouncement(announcement("a2"))
+
+    assertEquals(event.copy(announcements = listOf(announcement("a1"), announcement("a2"))), result)
+    assertEquals(listOf(announcement("a1")), event.announcements)
+  }
+
+  /** addAnnouncement refuses an id that is already in the event, even if its fields differ. */
+  @Test
+  fun addAnnouncement_fails_whenItsIdIsAlreadyInEvent() {
+    val event = eventWith(announcements = listOf(announcement("a1")))
+
+    assertInvalid(announcementAlreadyInEventMessage) {
+      event.addAnnouncement(announcement("a1", title = "Other"))
+    }
+  }
+
+  /** editAnnouncement replaces the one with the same id in place and leaves the original. */
+  @Test
+  fun editAnnouncement_replacesTheOneWithTheSameId() {
+    val event =
+        eventWith(
+            announcements = listOf(announcement("a1"), announcement("a2"), announcement("a3"))
+        )
+    val edited = announcement("a2", title = "Stage B is closed").togglePin()
+
+    val result = event.editAnnouncement(edited)
+
+    assertEquals(
+        event.copy(announcements = listOf(announcement("a1"), edited, announcement("a3"))),
+        result,
+    )
+    assertEquals(announcement("a2"), event.announcements[1])
+  }
+
+  /** editAnnouncement refuses an announcement whose id is not in the event. */
+  @Test
+  fun editAnnouncement_fails_whenItsIdIsNotInEvent() {
+    val event = eventWith(announcements = listOf(announcement("a1")))
+
+    assertInvalid(announcementNotInEventMessage) { event.editAnnouncement(announcement("a2")) }
+  }
+
+  /** removeAnnouncement removes only the one with the given id and leaves the original. */
+  @Test
+  fun removeAnnouncement_removesOnlyTheGivenOne() {
+    val event = eventWith(announcements = listOf(announcement("a1"), announcement("a2")))
+
+    val result = event.removeAnnouncement("a1")
+
+    assertEquals(event.copy(announcements = listOf(announcement("a2"))), result)
+    assertEquals(listOf(announcement("a1"), announcement("a2")), event.announcements)
+  }
+
+  /** removeAnnouncement refuses an id that is not in the event. */
+  @Test
+  fun removeAnnouncement_fails_whenItIsNotInEvent() {
+    val event = eventWith(announcements = listOf(announcement("a1")))
+
+    assertInvalid(announcementNotInEventMessage) { event.removeAnnouncement("unknown") }
   }
 
   // **************************************************************************************//
