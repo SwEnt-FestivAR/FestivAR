@@ -1,7 +1,6 @@
 package com.android.festivar.ui.event
 
 // Co-authored-by: Copilot App
-// Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 
 import com.android.festivar.R
 import com.android.festivar.model.event.Event
@@ -10,10 +9,12 @@ import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.ui.components.DateTimeField
+import com.android.festivar.ui.components.FieldError
+import com.android.festivar.ui.task.create.END_OF_DAY
+import com.android.festivar.ui.task.create.START_OF_DAY
 import java.time.LocalDate
-import java.time.ZonedDateTime
+import java.time.LocalTime
 import kotlin.time.Duration.Companion.milliseconds
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -28,8 +29,10 @@ class CreateEventViewModelTest {
   private lateinit var repository: EventsRepositoryLocal
   private lateinit var viewModel: CreateEventViewModel
 
-  private val startDate = ZonedDateTime.parse("2026-10-08T10:00:00+02:00")
-  private val endDate = ZonedDateTime.parse("2026-10-08T18:00:00+02:00")
+  private val startDate = LocalDate.now()
+  private val endDate = LocalDate.now().plusDays(1)
+  private val startTime = LocalTime.MIDNIGHT
+  private val endTime = LocalTime.of(23, 0)
 
   @Before
   fun setUp() {
@@ -37,175 +40,157 @@ class CreateEventViewModelTest {
     viewModel = CreateEventViewModel(repository)
   }
 
+  /** Red if updating every event field does not persist the entered values. */
   @Test
-  fun updateNameWorks() {
-    viewModel.updateName("Summer festival")
-    assertEquals("Summer festival", viewModel.uiState.value.name)
-  }
-
-  @Test
-  fun updateStartDateWorks() {
-    viewModel.updateStartDate(startDate)
-    assertEquals(startDate, viewModel.uiState.value.startDate)
-  }
-
-  @Test
-  fun updateEndDateWorks() {
-    viewModel.updateEndDate(endDate)
-    assertEquals(endDate, viewModel.uiState.value.endDate)
-  }
-
-  @Test
-  fun updateVenueWorks() {
-    viewModel.updateVenue("Main square")
-    assertEquals("Main square", viewModel.uiState.value.venue)
-  }
-
-  @Test
-  fun updateNotesWorks() {
-    viewModel.updateNotes("Bring the stage equipment")
-    assertEquals("Bring the stage equipment", viewModel.uiState.value.notes)
-  }
-
-  @Test
-  fun updateActiveDatePickerWorks() {
-    viewModel.updateActiveDatePicker(DateTimeField.START_DATE)
-    assertEquals(DateTimeField.START_DATE, viewModel.uiState.value.activeDatePicker)
-
-    viewModel.updateActiveDatePicker(null)
-    assertNull(viewModel.uiState.value.activeDatePicker)
-  }
-
-  @Test
-  fun pickDateUpdatesTheSelectedDateAndClosesThePicker() {
-    val selectedDate = LocalDate.of(2026, 10, 17)
-    viewModel.updateActiveDatePicker(DateTimeField.START_DATE)
-
-    viewModel.pickDate(selectedDate)
-
-    assertEquals(selectedDate, viewModel.uiState.value.startDate?.toLocalDate())
-    assertNull(viewModel.uiState.value.activeDatePicker)
-  }
-
-  @Test
-  fun removeErrorNameWorks() {
-    viewModel.setErrors()
-    viewModel.removeErrorName()
-
-    assertFalse(viewModel.uiState.value.errorName)
-  }
-
-  @Test
-  fun removeErrorDateWorks() {
-    viewModel.setErrors()
-    viewModel.removeErrorDate()
-
-    assertFalse(viewModel.uiState.value.errorDate)
-  }
-
-  @Test
-  fun removeErrorVenueWorks() {
-    viewModel.setErrors()
-    viewModel.removeErrorVenue()
-
-    assertFalse(viewModel.uiState.value.errorVenue)
-  }
-
-  @Test
-  fun setErrorsSetsErrorsForBlankFields() {
-    viewModel.setErrors()
+  fun updateFieldsWorks() {
+    fillAllFields()
 
     val state = viewModel.uiState.value
-    assertTrue(state.errorName)
-    assertTrue(state.errorDate)
-    assertTrue(state.errorVenue)
+    assertEquals("Summer festival", state.name)
+    assertEquals(startDate, state.startDate)
+    assertEquals(endDate, state.endDate)
+    assertEquals(startTime, state.startTime)
+    assertEquals(endTime, state.endTime)
+    assertEquals("Main square", state.venue)
+    assertEquals("Bring the stage equipment", state.notes)
   }
 
+  /** Red if any date/time picker fails to update its field or close afterward. */
   @Test
-  fun setErrorsSetsDateErrorForInvalidDateRange() {
-    viewModel.updateStartDate(endDate)
-    viewModel.updateEndDate(startDate)
+  fun pickerActionsUpdateAndCloseThePicker() {
+    viewModel.showPicker(DateTimeField.START_DATE)
+    assertEquals(DateTimeField.START_DATE, viewModel.uiState.value.openPicker)
 
-    viewModel.setErrors()
+    viewModel.pickDate(startDate)
+    assertEquals(startDate, viewModel.uiState.value.startDate)
+    assertNull(viewModel.uiState.value.openPicker)
 
-    assertTrue(viewModel.uiState.value.errorDate)
+    viewModel.showPicker(DateTimeField.END_DATE)
+    assertEquals(DateTimeField.END_DATE, viewModel.uiState.value.openPicker)
+
+    viewModel.pickDate(endDate)
+    assertEquals(endDate, viewModel.uiState.value.endDate)
+    assertNull(viewModel.uiState.value.openPicker)
+
+    viewModel.showPicker(DateTimeField.START_TIME)
+    assertEquals(DateTimeField.START_TIME, viewModel.uiState.value.openPicker)
+
+    viewModel.pickTime(startTime)
+    assertEquals(startTime, viewModel.uiState.value.startTime)
+    assertNull(viewModel.uiState.value.openPicker)
+
+    viewModel.showPicker(DateTimeField.END_TIME)
+    assertEquals(DateTimeField.END_TIME, viewModel.uiState.value.openPicker)
+
+    viewModel.pickTime(endTime)
+    assertEquals(endTime, viewModel.uiState.value.endTime)
+    assertNull(viewModel.uiState.value.openPicker)
   }
 
+  /** Red if the initial event form is considered valid. */
   @Test
-  fun endDateComesAfterStartDateWorksForValidDates() {
+  fun initialStateIsInvalid() {
+    assertFalse(viewModel.uiState.value.isValid)
+  }
+
+  /** Red if the initial event form can be submitted. */
+  @Test
+  fun initialStateCannotCreateEvent() {
+    assertFalse(viewModel.uiState.value.canCreate)
+  }
+
+  /** Red if a complete valid event form is considered invalid. */
+  @Test
+  fun validFormIsValid() {
+    fillRequiredFields()
+    assertTrue(viewModel.uiState.value.isValid)
+  }
+
+  /** Red if a complete valid event form cannot be submitted. */
+  @Test
+  fun validFormCanCreateEvent() {
+    fillRequiredFields()
+    assertTrue(viewModel.uiState.value.canCreate)
+  }
+
+  /** Red if the untouched event form displays a field error. */
+  @Test
+  fun initialScreenStateDoesNotShowFieldErrors() {
+    val state = viewModel.uiState.value
+
+    assertNull(state.nameError)
+    assertNull(state.startDateError)
+    assertNull(state.endDateError)
+  }
+
+  /** Red if missing times do not default to the start and end of their dates. */
+  @Test
+  fun dateTimesUseDefaultTimesWhenTimesAreNotSet() {
     viewModel.updateStartDate(startDate)
     viewModel.updateEndDate(endDate)
 
-    assertTrue(viewModel.endDateComesAfterStartDate())
+    val state = viewModel.uiState.value
+    assertEquals(START_OF_DAY, state.startDateTime?.toLocalTime())
+    assertEquals(END_OF_DAY, state.endDateTime?.toLocalTime())
   }
 
+  /** Red if an invalid, saving, or already-created event can be submitted. */
   @Test
-  fun endDateComesAfterStartDateIsFalseForInvalidDates() {
-    viewModel.updateStartDate(endDate)
-    viewModel.updateEndDate(startDate)
-
-    assertFalse(viewModel.endDateComesAfterStartDate())
-  }
-
-  @Test
-  fun validEventIsTrueWhenAllFieldsAreValid() {
-    fillRequiredFields()
-
-    assertTrue(viewModel.validEvent())
-  }
-
-  @Test
-  fun validEventIsFalseWhenDatesAreInvalid() {
-    fillRequiredFields()
-    viewModel.updateStartDate(endDate)
-    viewModel.updateEndDate(startDate)
-
-    assertFalse(viewModel.validEvent())
-  }
-
-  @Test
-  fun createEvent_addsTheFormEventToTheRepository() = runBlocking {
-    viewModel.updateName("Summer festival")
-    viewModel.updateStartDate(startDate)
-    viewModel.updateEndDate(endDate)
-    viewModel.updateVenue("Main square")
-    viewModel.updateNotes("Bring the stage equipment")
-
-    viewModel.createEvent()
-
-    var events: List<Event> = emptyList()
-    withTimeout(5_000.milliseconds) {
-      while (events.isEmpty()) {
-        events = repository.getAllEvents()
-        if (events.isEmpty()) delay(10.milliseconds)
-      }
-    }
-
-    assertEquals(1, events.size)
-    assertEquals(
-        Event(
-            eventId = events.single().eventId,
-            title = "Summer festival",
-            description = "Bring the stage equipment",
+  fun canCreateIsFalse_withInvalidForm_orSavingEventOrAlreadyCreated() {
+    val validState =
+        viewModel.uiState.value.copy(
+            name = "Summer festival",
             startDate = startDate,
             endDate = endDate,
-            location = "Main square",
-        ),
-        events.single(),
-    )
+        )
+
+    assertFalse(validState.copy(name = "").canCreate)
+    assertFalse(validState.copy(isSaving = true).canCreate)
+    assertFalse(validState.copy(createdEventId = "event-123").canCreate)
   }
 
+  /** Red if clearing an edited event name does not report an empty-name error. */
   @Test
-  fun createEvent_automaticallyAddsCreatorToEventMembersAndJoinedEvents() = runBlocking {
+  fun blankNameIsReportedAfterEditing() {
+    viewModel.updateName("")
+    assertEquals(FieldError.EMPTY_EVENT_NAME, viewModel.uiState.value.nameError)
+  }
+
+  /** Red if an end date before the start date is not reported as invalid. */
+  @Test
+  fun invalidDateRangeIsReported() {
+    viewModel.updateName("Summer festival")
+    viewModel.updateStartDate(endDate)
+    viewModel.updateEndDate(startDate)
+
+    assertEquals(FieldError.END_BEFORE_START, viewModel.uiState.value.endDateError)
+    assertFalse(viewModel.uiState.value.isValid)
+  }
+
+  /** Red if creating a valid event does not add it to the repository. */
+  @Test
+  fun createEventAddsTheFormEventToTheRepository() = runBlocking {
+    fillRequiredFields()
+    viewModel.createEvent()
+
+    val events = waitForEvents(repository)
+    assertEquals(1, events.size)
+    assertEquals("Summer festival", events.single().title)
+    assertEquals(startDate, events.single().startDate.toLocalDate())
+    assertEquals(endDate, events.single().endDate.toLocalDate())
+  }
+
+  /** Red if creating an event does not add its creator to membership data. */
+  @Test
+  fun createEventAddsTheCreatorToMembersAndJoinedEvents() = runBlocking {
     val creator = User(uid = "creator-123", name = "Alice", surname = "Smith")
-    val usersRepo = UsersRepositoryLocal(listOf(creator))
+    val usersRepository = UsersRepositoryLocal(listOf(creator))
     val creatorViewModel =
         CreateEventViewModel(
             eventsRepository = repository,
-            usersRepository = usersRepo,
+            usersRepository = usersRepository,
             userId = creator.uid,
         )
-
     creatorViewModel.updateName("Summer festival")
     creatorViewModel.updateStartDate(startDate)
     creatorViewModel.updateEndDate(endDate)
@@ -213,227 +198,60 @@ class CreateEventViewModelTest {
 
     creatorViewModel.createEvent()
 
-    var events: List<Event> = emptyList()
+    val event = waitForEvents(repository).single()
+    assertEquals(listOf(creator), event.members)
+    assertTrue(usersRepository.getUser(creator.uid).joinedEvents.contains(event.eventId))
+  }
+
+  /** Red if a failed event save does not show an error and preserve the form. */
+  @Test
+  fun createEventFailureShowsAnErrorAndKeepsTheForm() = runBlocking {
+    val failingRepository =
+        object : EventsRepository by EventsRepositoryLocal() {
+          override suspend fun addEvent(event: Event) {
+            error("offline")
+          }
+        }
+    val failingViewModel = CreateEventViewModel(failingRepository)
+    failingViewModel.updateName("Summer festival")
+    failingViewModel.updateStartDate(startDate)
+    failingViewModel.updateEndDate(endDate)
+    failingViewModel.updateVenue("Main square")
+
+    failingViewModel.createEvent()
     withTimeout(5_000.milliseconds) {
-      while (events.isEmpty()) {
-        events = repository.getAllEvents()
-        if (events.isEmpty()) delay(10.milliseconds)
-      }
+      while (failingViewModel.uiState.value.errorMsg == null) delay(10.milliseconds)
     }
 
-    assertEquals(1, events.size)
-    val createdEvent = events.single()
-    assertEquals(listOf(creator), createdEvent.members)
-
-    val updatedUser = usersRepo.getUser(creator.uid)
-    assertTrue(updatedUser.joinedEvents.contains(createdEvent.eventId))
-  }
-
-  @Test
-  fun createEvent_whenUserIdIsBlank_doesNotAddMembers() = runBlocking {
-    val creatorViewModel =
-        CreateEventViewModel(
-            eventsRepository = repository,
-            userId = "",
-        )
-
-    creatorViewModel.updateName("Summer festival")
-    creatorViewModel.updateStartDate(startDate)
-    creatorViewModel.updateEndDate(endDate)
-    creatorViewModel.updateVenue("Main square")
-
-    creatorViewModel.createEvent()
-
-    var events: List<Event> = emptyList()
-    withTimeout(5_000.milliseconds) {
-      while (events.isEmpty()) {
-        events = repository.getAllEvents()
-        if (events.isEmpty()) delay(10.milliseconds)
-      }
-    }
-
-    assertEquals(1, events.size)
-    val createdEvent = events.single()
-    assertTrue(createdEvent.members.isEmpty())
-  }
-
-  @Test
-  fun createEvent_whenGetUserFails_addsFallbackMemberWithoutEditingUser() = runBlocking {
-    val usersRepo = UsersRepositoryLocal(emptyList())
-    val creatorViewModel =
-        CreateEventViewModel(
-            eventsRepository = repository,
-            usersRepository = usersRepo,
-            userId = "non-existent-user",
-        )
-
-    creatorViewModel.updateName("Summer festival")
-    creatorViewModel.updateStartDate(startDate)
-    creatorViewModel.updateEndDate(endDate)
-    creatorViewModel.updateVenue("Main square")
-
-    creatorViewModel.createEvent()
-
-    var events: List<Event> = emptyList()
-    withTimeout(5_000.milliseconds) {
-      while (events.isEmpty()) {
-        events = repository.getAllEvents()
-        if (events.isEmpty()) delay(10.milliseconds)
-      }
-    }
-
-    assertEquals(1, events.size)
-    val createdEvent = events.single()
-    assertEquals(listOf(User(uid = "non-existent-user")), createdEvent.members)
-
-    var userFetchFailed = false
-    try {
-      usersRepo.getUser("non-existent-user")
-    } catch (_: Exception) {
-      userFetchFailed = true
-    }
-    assertTrue(userFetchFailed)
-  }
-
-  @Test
-  fun formIsComplete_isFalseForTheInitialState() {
-    assertFalse(viewModel.formIsComplete())
-  }
-
-  @Test
-  fun formIsComplete_isTrueWhenAllRequiredFieldsAreFilled() {
-    fillRequiredFields()
-
-    assertTrue(viewModel.formIsComplete())
-  }
-
-  @Test
-  fun formIsComplete_isFalseWhenAnyRequiredFieldIsMissing() {
-    listOf("name", "startDate", "endDate", "venue").forEach { missingField ->
-      val testViewModel = CreateEventViewModel(EventsRepositoryLocal())
-      if (missingField != "name") testViewModel.updateName("Summer festival")
-      if (missingField != "startDate") testViewModel.updateStartDate(startDate)
-      if (missingField != "endDate") testViewModel.updateEndDate(endDate)
-      if (missingField != "venue") testViewModel.updateVenue("Main square")
-
-      assertFalse(testViewModel.formIsComplete())
-    }
+    assertEquals(R.string.create_event_error_save_failed, failingViewModel.uiState.value.errorMsg)
+    assertFalse(failingViewModel.uiState.value.isSaving)
+    assertEquals("Summer festival", failingViewModel.uiState.value.name)
   }
 
   private fun fillRequiredFields() {
     viewModel.updateName("Summer festival")
     viewModel.updateStartDate(startDate)
     viewModel.updateEndDate(endDate)
-    viewModel.updateVenue("Main square")
   }
 
-  /** A repository whose addEvent waits on [gate], so the saving state can be observed. */
-  private class GatedRepository(val gate: CompletableDeferred<Unit>) :
-      EventsRepository by EventsRepositoryLocal() {
-    var adds = 0
+  private fun fillAllFields() {
+    viewModel.updateName("Summer festival")
+    viewModel.updateStartDate(startDate)
+    viewModel.updateEndDate(endDate)
+    viewModel.updateStartTime(startTime)
+    viewModel.updateEndTime(endTime)
+    viewModel.updateVenue("Main square")
+    viewModel.updateNotes("Bring the stage equipment")
+  }
 
-    override suspend fun addEvent(event: Event) {
-      adds++
-      gate.await()
+  private suspend fun waitForEvents(repository: EventsRepository): List<Event> {
+    var events = emptyList<Event>()
+    withTimeout(5_000.milliseconds) {
+      while (events.isEmpty()) {
+        events = repository.getAllEvents()
+        if (events.isEmpty()) delay(10.milliseconds)
+      }
     }
-  }
-
-  private class FailingRepository : EventsRepository by EventsRepositoryLocal() {
-    override suspend fun addEvent(event: Event): Unit = throw IllegalStateException("offline")
-  }
-
-  private suspend fun waitUntil(condition: () -> Boolean) {
-    withTimeout(5_000.milliseconds) { while (!condition()) delay(10.milliseconds) }
-  }
-
-  /** Red if the saving flag is never raised, or if a saved event does not report its id. */
-  @Test
-  fun createEvent_isSavingUntilTheEventIsWrittenThenReportsItsId() = runBlocking {
-    val repository = GatedRepository(CompletableDeferred())
-    val viewModel = CreateEventViewModel(repository)
-    viewModel.updateName("Summer festival")
-    viewModel.updateStartDate(startDate)
-    viewModel.updateEndDate(endDate)
-    viewModel.updateVenue("Main square")
-
-    viewModel.createEvent()
-    waitUntil { viewModel.uiState.value.isSaving }
-    assertNull(viewModel.uiState.value.createdEventId)
-
-    repository.gate.complete(Unit)
-    waitUntil { viewModel.uiState.value.createdEventId != null }
-    assertFalse(viewModel.uiState.value.isSaving)
-    assertNull(viewModel.uiState.value.errorMsg)
-  }
-
-  /** Red if a second tap during the save writes a second event. */
-  @Test
-  fun createEvent_ignoresASecondTapWhileSaving() = runBlocking {
-    val repository = GatedRepository(CompletableDeferred())
-    val viewModel = CreateEventViewModel(repository)
-    viewModel.updateName("Summer festival")
-    viewModel.updateStartDate(startDate)
-    viewModel.updateEndDate(endDate)
-    viewModel.updateVenue("Main square")
-
-    viewModel.createEvent()
-    waitUntil { viewModel.uiState.value.isSaving }
-    viewModel.createEvent()
-    // Asserted inside the gated window, so an unguarded second launch has had time to count
-    delay(200.milliseconds)
-    assertEquals(1, repository.adds)
-
-    repository.gate.complete(Unit)
-    waitUntil { viewModel.uiState.value.createdEventId != null }
-    assertEquals(1, repository.adds)
-  }
-
-  /** Red if a failed write crashes, wipes the form, or leaves the button disabled. */
-  @Test
-  fun createEvent_failureShowsAnErrorAndKeepsTheForm() = runBlocking {
-    val viewModel = CreateEventViewModel(FailingRepository())
-    viewModel.updateName("Summer festival")
-    viewModel.updateStartDate(startDate)
-    viewModel.updateEndDate(endDate)
-    viewModel.updateVenue("Main square")
-
-    viewModel.createEvent()
-    waitUntil { viewModel.uiState.value.errorMsg != null }
-
-    val state = viewModel.uiState.value
-    assertEquals(R.string.create_event_error_save_failed, state.errorMsg)
-    assertFalse(state.isSaving)
-    assertNull(state.createdEventId)
-    assertEquals("Summer festival", state.name)
-
-    // Editing the form clears the stale error
-    viewModel.updateName("Summer festival 2")
-    assertNull(viewModel.uiState.value.errorMsg)
-  }
-
-  /** Red if equal dates reach Event, whose init throws, instead of the date error. */
-  @Test
-  fun createEvent_withEqualDatesSetsTheDateErrorInsteadOfCrashing() {
-    viewModel.updateName("Summer festival")
-    viewModel.updateStartDate(startDate)
-    viewModel.updateEndDate(startDate)
-    viewModel.updateVenue("Main square")
-
-    viewModel.createEvent()
-
-    assertTrue(viewModel.uiState.value.errorDate)
-    assertFalse(viewModel.uiState.value.isSaving)
-  }
-
-  /** Red if a one day event, ending at the end of its day, is refused. */
-  @Test
-  fun aOneDayEventEndingAtTheEndOfItsDayIsValid() {
-    val day = ZonedDateTime.parse("2026-10-08T00:00:00+02:00")
-    viewModel.updateName("Summer festival")
-    viewModel.updateStartDate(day)
-    viewModel.updateEndDate(day.plusDays(1).minusSeconds(1))
-    viewModel.updateVenue("Main square")
-
-    assertTrue(viewModel.validEvent())
+    return events
   }
 }

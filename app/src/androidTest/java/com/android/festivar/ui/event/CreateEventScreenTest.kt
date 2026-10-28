@@ -4,22 +4,28 @@ package com.android.festivar.ui.event
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.festivar.model.event.Event
+import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.ui.components.formatDate
+import io.mockk.mockk
 import io.mockk.spyk
 import io.mockk.verify
 import java.time.LocalDate
-import java.time.ZonedDateTime
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
-import org.junit.Before
+import kotlinx.coroutines.CompletableDeferred
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -30,20 +36,29 @@ class CreateEventScreenTest {
   @get:Rule val composeTestRule = createComposeRule()
   private lateinit var viewModel: CreateEventViewModel
 
-  @Before
-  fun setUp() {
-    viewModel = spyk(CreateEventViewModel(EventsRepositoryLocal()))
-    composeTestRule.setContent { CreateEventScreen(viewModel) }
+  private class GatedRepository(val gate: CompletableDeferred<Unit>) :
+      EventsRepository by EventsRepositoryLocal() {
+    override suspend fun addEvent(event: Event) = gate.await()
   }
 
+  private class FailingRepository : EventsRepository by EventsRepositoryLocal() {
+    override suspend fun addEvent(event: Event): Unit = throw IllegalStateException("offline")
+  }
+
+  /** Red if the screen does not display non-error tagged elements. */
   @Test
   fun nonErrorTaggedElementsAreDisplayed() {
+    viewModel = CreateEventViewModel(EventsRepositoryLocal())
+    composeTestRule.setContent { CreateEventScreen(viewModel) }
+
     listOf(
             CreateEventScreenTestTags.NAVIGATION_BUTTON,
             CreateEventScreenTestTags.TITLE,
             CreateEventScreenTestTags.NAME_FIELD,
             CreateEventScreenTestTags.START_DATE_FIELD,
+            CreateEventScreenTestTags.START_TIME_FIELD,
             CreateEventScreenTestTags.END_DATE_FIELD,
+            CreateEventScreenTestTags.END_TIME_FIELD,
             CreateEventScreenTestTags.LOCATION_FIELD,
             CreateEventScreenTestTags.DESCRIPTION_FIELD,
             CreateEventScreenTestTags.CREATE_BUTTON,
@@ -51,24 +66,12 @@ class CreateEventScreenTest {
         .forEach { tag -> composeTestRule.onNodeWithTag(tag).assertIsDisplayed() }
   }
 
-  @Test
-  fun errorComponentsAreDisplayedWhenCreateButtonIsClickedWithInvalidFields() {
-    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).performClick()
-
-    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAME_ERROR).assertIsDisplayed()
-    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.ENDS_ERROR).assertIsDisplayed()
-    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.ADDRESS_ERROR).assertIsDisplayed()
-  }
-
-  @Test
-  fun createButtonDoesNotCallCreateEventWhenFieldsAreInvalid() {
-    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).performClick()
-
-    verify(exactly = 0) { viewModel.createEvent() }
-  }
-
+  /** Red if the fields do not respond to input or if the button is not enabled after all required fields are filled. */
   @Test
   fun fieldsReceiveInput() {
+    viewModel = CreateEventViewModel(EventsRepositoryLocal())
+    composeTestRule.setContent { CreateEventScreen(viewModel) }
+
     val startDate = LocalDate.now()
     val endDate = startDate.plusDays(1)
     composeTestRule
@@ -96,18 +99,144 @@ class CreateEventScreenTest {
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsEnabled()
   }
 
+  /** Red if an edited blank name or incomplete date/time field shows no error. */
+  @Test
+  fun fieldsDisplayErrorWhenNeeded() {
+    viewModel = CreateEventViewModel(EventsRepositoryLocal())
+    composeTestRule.setContent { CreateEventScreen(viewModel) }
+
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAME_FIELD).performTextInput("Festival")
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAME_FIELD).performTextClearance()
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAME_ERROR).assertIsDisplayed()
+
+    viewModel.updateStartTime(LocalTime.of(9, 0))
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.START_DATE_ERROR).assertIsDisplayed()
+
+    viewModel.updateEndTime(LocalTime.of(10, 0))
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.END_DATE_ERROR).assertIsDisplayed()
+  }
+
+  /** Red if clicking the navigation button does not call onBack. */
+  @Test
+  fun navigateButtonCallsOnBack() {
+    val onBack = mockk<() -> Unit>(relaxed = true)
+    viewModel = spyk(CreateEventViewModel(EventsRepositoryLocal()))
+    composeTestRule.setContent { CreateEventScreen(viewModel, onBack = onBack) }
+
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAVIGATION_BUTTON).performClick()
+    verify(exactly = 1) { onBack() }
+  }
+
+  /** Red if the create button is enabled even though the form is invalid. */
+  @Test
+  fun createButtonIsDisabledWithInvalidForm() {
+    viewModel = CreateEventViewModel(EventsRepositoryLocal())
+    composeTestRule.setContent { CreateEventScreen(viewModel) }
+
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsNotEnabled()
+
+    viewModel.updateName("Summer festival")
+    viewModel.updateStartDate(LocalDate.now())
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsNotEnabled()
+  }
+
+  /** Red if the create button is enabled even though the form is empty. */
+  @Test
+  fun createButtonDoesNotCallCreateEventWhenFieldsAreInvalid() {
+    viewModel = spyk(CreateEventViewModel(EventsRepositoryLocal()))
+    composeTestRule.setContent { CreateEventScreen(viewModel) }
+
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).performClick()
+    verify(exactly = 0) { viewModel.createEvent() }
+  }
+
+  /** Red if a valid event form leaves the create button disabled. */
+  @Test
+  fun createButtonIsEnabledWithValidForm() {
+    viewModel = CreateEventViewModel(EventsRepositoryLocal())
+    composeTestRule.setContent { CreateEventScreen(viewModel) }
+
+    val startDate = LocalDate.now()
+    val endDate = startDate.plusDays(1)
+    viewModel.updateName("Summer festival")
+    viewModel.updateStartDate(startDate)
+    viewModel.updateEndDate(endDate)
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsEnabled()
+  }
+
+  /** Red if clicking create with a valid form does not call createEvent. */
   @Test
   fun createButtonCallsCreateEventWhenValid() {
+    viewModel = spyk(CreateEventViewModel(EventsRepositoryLocal()))
+    composeTestRule.setContent { CreateEventScreen(viewModel) }
+
+    val startDate = LocalDate.now()
+    val endDate = startDate.plusDays(1)
     viewModel.updateName("Summer festival")
-    viewModel.updateStartDate(ZonedDateTime.parse("2026-10-08T10:00:00+02:00"))
-    viewModel.updateEndDate(ZonedDateTime.parse("2026-10-08T18:00:00+02:00"))
-    viewModel.updateVenue("Main square")
+    viewModel.updateStartDate(startDate)
+    viewModel.updateEndDate(endDate)
     composeTestRule.waitForIdle()
 
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsEnabled()
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).performClick()
 
     verify(exactly = 1) { viewModel.createEvent() }
+  }
+
+  /**
+   * Red if the button stays enabled or shows no spinner while the write runs, or if the screen
+   * never reports the saved event.
+   */
+  @Test
+  fun savingDisablesTheButtonWithASpinnerAndASavedEventCallsOnCreated() {
+    val startDate = LocalDate.now()
+    val endDate = startDate.plusDays(1)
+    val gate = CompletableDeferred<Unit>()
+    val onCreated = mockk<() -> Unit>(relaxed = true)
+    viewModel = CreateEventViewModel(GatedRepository(gate))
+    composeTestRule.setContent { CreateEventScreen(viewModel, onCreated = onCreated) }
+
+    viewModel.updateName("Summer festival")
+    viewModel.updateStartDate(startDate)
+    viewModel.updateEndDate(endDate)
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).performClick()
+
+    waitForTag(CreateEventScreenTestTags.SAVING_INDICATOR)
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsNotEnabled()
+    verify(exactly = 0) { onCreated() }
+
+    gate.complete(Unit)
+    composeTestRule.waitForIdle()
+    verify(exactly = 1) { onCreated() }
+  }
+
+  /** Red if a failed write shows nothing, or leaves the button disabled so no retry is possible. */
+  @Test
+  fun aFailedSaveShowsTheErrorLineAndKeepsTheButtonEnabled() {
+    val onCreated = mockk<() -> Unit>(relaxed = true)
+    val startDate = LocalDate.now()
+    val endDate = startDate.plusDays(1)
+    viewModel = CreateEventViewModel(FailingRepository())
+    composeTestRule.setContent { CreateEventScreen(viewModel, onCreated = onCreated) }
+
+    viewModel.updateName("Summer festival")
+    viewModel.updateStartDate(startDate)
+    viewModel.updateEndDate(endDate)
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).performClick()
+
+    waitForTag(CreateEventScreenTestTags.SAVE_ERROR)
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.SAVE_ERROR).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsEnabled()
+    verify(exactly = 0) { onCreated() }
   }
 
   private fun selectDate(tag: String, date: LocalDate) {
@@ -123,5 +252,11 @@ class CreateEventScreenTest {
       composeTestRule.onNodeWithText(dateDescription, substring = true).performClick()
     }
     composeTestRule.onNodeWithText("OK").performClick()
+  }
+
+  private fun waitForTag(tag: String) {
+    composeTestRule.waitUntil(5_000) {
+      composeTestRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
+    }
   }
 }

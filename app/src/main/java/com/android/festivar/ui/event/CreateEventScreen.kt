@@ -65,10 +65,10 @@ object CreateEventScreenTestTags {
   const val LOCATION_FIELD = "locationField"
   const val DESCRIPTION_FIELD = "descriptionField"
   const val NAME_ERROR = "nameError"
-  const val ENDS_ERROR = "endsError"
-  const val ADDRESS_ERROR = "addressError"
+  const val START_DATE_ERROR = "startDateError"
+  const val END_DATE_ERROR = "endDateError"
   const val CREATE_BUTTON = "createButton"
-  const val SAVING = "createEventSaving"
+  const val SAVING_INDICATOR = "createEventSaving"
   const val SAVE_ERROR = "createEventSaveError"
 }
 
@@ -168,7 +168,7 @@ fun CreateEventContent(
           onDateClick = { actions.onShowPicker(DateTimeField.START_DATE) },
           onTimeClick = { actions.onShowPicker(DateTimeField.START_TIME) },
           dateTag = CreateEventScreenTestTags.START_DATE_FIELD,
-          dateErrorTag = CreateEventScreenTestTags.ENDS_ERROR,
+          dateErrorTag = CreateEventScreenTestTags.START_DATE_ERROR,
           timeTag = CreateEventScreenTestTags.START_TIME_FIELD,
       )
       Spacer(modifier = Modifier.height(14.dp))
@@ -182,7 +182,7 @@ fun CreateEventContent(
           onDateClick = { actions.onShowPicker(DateTimeField.END_DATE) },
           onTimeClick = { actions.onShowPicker(DateTimeField.END_TIME) },
           dateTag = CreateEventScreenTestTags.END_DATE_FIELD,
-          dateErrorTag = CreateEventScreenTestTags.ENDS_ERROR,
+          dateErrorTag = CreateEventScreenTestTags.END_DATE_ERROR,
           timeTag = CreateEventScreenTestTags.END_TIME_FIELD,
       )
       Spacer(modifier = Modifier.height(14.dp))
@@ -257,7 +257,7 @@ private fun CreateEventSaveBar(
     ) {
       if (isSaving) {
         CircularProgressIndicator(
-            modifier = Modifier.size(16.dp).testTag(CreateEventScreenTestTags.SAVING),
+            modifier = Modifier.size(16.dp).testTag(CreateEventScreenTestTags.SAVING_INDICATOR),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             strokeWidth = 2.dp,
         )
