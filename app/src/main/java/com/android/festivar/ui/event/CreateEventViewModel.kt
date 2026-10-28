@@ -3,6 +3,7 @@ package com.android.festivar.ui.event
 // Co-authored-by: Copilot App
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 
+import android.util.Log
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -163,15 +164,14 @@ class CreateEventViewModel(
    * [CreateEventUIState.errorMsg].
    */
   fun createEvent() {
-    val state = _uiState.value
-    if (!_uiState.value.isValid || state.isSaving || state.createdEventId != null) return
+    if (!_uiState.value.canCreate) return
     _uiState.update { it.copy(isSaving = true, errorMsg = null) }
     viewModelScope.launch {
       try {
         save()
       } catch (e: CancellationException) {
         throw e
-      } catch (e: Exception) {
+      } catch (_: Exception) {
         _uiState.update {
           it.copy(isSaving = false, errorMsg = R.string.create_event_error_save_failed)
         }
@@ -182,27 +182,16 @@ class CreateEventViewModel(
   private suspend fun save() {
     val creator =
         if (userId.isNotBlank()) {
-          try {
-            usersRepository.getUser(userId)
-          } catch (_: Exception) {
-            null
-          }
-        } else null
+          usersRepository.getUser(userId)
+        } else {
+          Log.e("CreateEventViewModel", "User not signed in")
+          throw IllegalStateException("User not signed in")
+        }
 
-    val fallbackCreator = creator ?: if (userId.isNotBlank()) User(uid = userId) else null
-    val membersList = if (fallbackCreator != null) listOf(fallbackCreator) else emptyList()
-
-    val newEvent = _uiState.value.toEvent(eventsRepository.getNewUid(), membersList)
-
+    val newEvent = _uiState.value.toEvent(eventsRepository.getNewUid(), listOf(creator))
     eventsRepository.addEvent(newEvent)
+    usersRepository.editUser(creator.uid, creator.addJoinedEvent(newEvent.eventId))
 
-    if (creator != null) {
-      try {
-        usersRepository.editUser(creator.uid, creator.addJoinedEvent(newEvent.eventId))
-      } catch (_: Exception) {
-        // If updating user joinedEvents fails, event is still created
-      }
-    }
     _uiState.update { it.copy(isSaving = false, createdEventId = newEvent.eventId) }
   }
 }

@@ -15,6 +15,8 @@ import com.android.festivar.ui.task.create.START_OF_DAY
 import java.time.LocalDate
 import java.time.LocalTime
 import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -222,6 +224,32 @@ class CreateEventViewModelTest {
     assertEquals(R.string.create_event_error_save_failed, failingViewModel.uiState.value.errorMsg)
     assertFalse(failingViewModel.uiState.value.isSaving)
     assertEquals("Summer festival", failingViewModel.uiState.value.name)
+  }
+
+  /**
+   * Red if a cancellation from the repository is converted into a save error instead of being
+   * propagated.
+   */
+  @Test
+  fun createEventPropagatesCancellationExceptionIfThrown() = runBlocking {
+    val cancellationStarted = CompletableDeferred<Unit>()
+    val cancelledRepository =
+        object : EventsRepository by EventsRepositoryLocal() {
+          override suspend fun addEvent(event: Event) {
+            cancellationStarted.complete(Unit)
+            throw CancellationException("cancelled")
+          }
+        }
+    val cancelledViewModel = CreateEventViewModel(cancelledRepository, usersRepository, creator.uid)
+    cancelledViewModel.updateName("Summer festival")
+    cancelledViewModel.updateStartDate(startDate)
+    cancelledViewModel.updateEndDate(endDate)
+
+    cancelledViewModel.createEvent()
+    withTimeout(5_000.milliseconds) { cancellationStarted.await() }
+    delay(10.milliseconds)
+
+    assertNull(cancelledViewModel.uiState.value.errorMsg)
   }
 
   private fun fillRequiredFields() {
