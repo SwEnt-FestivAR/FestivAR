@@ -6,7 +6,6 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertFalse
-import junit.framework.TestCase.assertNull
 import junit.framework.TestCase.assertTrue
 import org.junit.Assert.assertThrows
 import org.junit.Test
@@ -17,16 +16,21 @@ class AnnouncementTest {
   private val announcementIdMessage = "The announcementId cannot be empty."
   private val titleMessage = "The title cannot be empty."
   private val authorIdMessage = "The authorId cannot be empty."
-  private val endTimeMessage = "endTime must not be before or equal to createdAt."
   private val blankLinkMessage = "A link cannot be empty."
   private val duplicateLinkMessage = "A link is duplicated."
 
   // Messages of the functions of Announcement.
-  private val newEndTimeMessage = "newEndTime must not be before createdAt or equal to it."
+  private val editTimeMessage = "The modification cannot be before the previous one."
   private val linkAlreadyExistsMessage = "The link already exists."
   private val linkNotPresentMessage = "This link is not present in this Announcement."
 
-  private val createdAt = ZonedDateTime.of(2026, 7, 1, 14, 0, 0, 0, ZoneId.of("Europe/Zurich"))
+  private val updatedAt = ZonedDateTime.of(2026, 7, 1, 14, 0, 0, 0, ZoneId.of("Europe/Zurich"))
+
+  /** A valid time for a modification, after [updatedAt]. */
+  private val later = updatedAt.plusHours(1)
+
+  /** An invalid time for a modification, just before [updatedAt]. */
+  private val tooEarly = updatedAt.minusNanos(1)
 
   private val link1 = "https://example.com/1"
   private val link2 = "https://example.com/2"
@@ -37,31 +41,25 @@ class AnnouncementTest {
       announcementId: String = "a1",
       title: String = "Announcement",
       authorId: String = "author-1",
-      endTime: ZonedDateTime? = null,
       links: List<String> = emptyList(),
   ): Announcement =
       Announcement(
           announcementId = announcementId,
           title = title,
           authorId = authorId,
-          createdAt = createdAt,
-          endTime = endTime,
+          updatedAt = updatedAt,
           links = links,
       )
 
   /** Builds a valid announcement with every field set, to check that the functions keep them. */
-  private fun announcementWith(
-      endTime: ZonedDateTime? = createdAt.plusDays(1),
-      links: List<String> = listOf(link1, link2),
-  ): Announcement =
+  private fun announcementWith(links: List<String> = listOf(link1, link2)): Announcement =
       Announcement(
           announcementId = "a1",
           title = "Announcement",
           authorId = "author-1",
           description = "Description",
           priority = Priority.HIGH,
-          createdAt = createdAt,
-          endTime = endTime,
+          updatedAt = updatedAt,
           links = links,
       )
 
@@ -83,12 +81,11 @@ class AnnouncementTest {
             announcementId = "a1",
             title = "Announcement",
             authorId = "author-1",
-            createdAt = createdAt,
+            updatedAt = updatedAt,
         )
 
     assertEquals("", announcement.description)
     assertEquals(Priority.NONE, announcement.priority)
-    assertNull(announcement.endTime)
     assertTrue(announcement.links.isEmpty())
     assertFalse(announcement.pinned)
   }
@@ -114,22 +111,6 @@ class AnnouncementTest {
     assertInvalid(authorIdMessage) { announcement(authorId = " \t\n") }
   }
 
-  /** An endTime strictly after createdAt is accepted, even by a single nanosecond. */
-  @Test
-  fun init_succeeds_whenEndTimeIsAfterCreatedAt() {
-    assertEquals(createdAt.plusNanos(1), announcement(endTime = createdAt.plusNanos(1)).endTime)
-  }
-
-  /** An endTime equal to or before createdAt is refused, even in another time zone. */
-  @Test
-  fun init_fails_whenEndTimeIsNotAfterCreatedAt() {
-    val sameInstantInLondon = createdAt.withZoneSameInstant(ZoneId.of("Europe/London"))
-
-    assertInvalid(endTimeMessage) { announcement(endTime = createdAt) }
-    assertInvalid(endTimeMessage) { announcement(endTime = sameInstantInLondon) }
-    assertInvalid(endTimeMessage) { announcement(endTime = createdAt.minusNanos(1)) }
-  }
-
   /** A blank link is refused. */
   @Test
   fun init_fails_whenALinkIsBlank() {
@@ -143,59 +124,74 @@ class AnnouncementTest {
   }
 
   // ---------------------------------------------------------------------------------------- //
-  // editTitle, editDescription, editEndTime and editLinks
+  // Time of the modification, the same rule for every edit function
   // ---------------------------------------------------------------------------------------- //
 
-  /** editTitle replaces only the title and does not change the original. */
+  /** Every edit function refuses a time before updatedAt, even by a single nanosecond. */
+  @Test
+  fun editFunctions_fail_whenTimeIsBeforeUpdatedAt() {
+    val announcement = announcementWith()
+
+    assertInvalid(editTimeMessage) { announcement.editTitle("New title", tooEarly) }
+    assertInvalid(editTimeMessage) { announcement.editDescription("New", tooEarly) }
+    assertInvalid(editTimeMessage) { announcement.addLink(link3, tooEarly) }
+    assertInvalid(editTimeMessage) { announcement.removeLink(link1, tooEarly) }
+    assertInvalid(editTimeMessage) { announcement.editLinks(listOf(link3), tooEarly) }
+  }
+
+  /** A modification at the same instant as updatedAt is accepted, even in another time zone. */
+  @Test
+  fun editFunctions_succeed_whenTimeIsTheSameInstantAsUpdatedAt() {
+    val announcement = announcementWith()
+    val sameInstantInLondon = updatedAt.withZoneSameInstant(ZoneId.of("Europe/London"))
+
+    assertEquals(updatedAt, announcement.editTitle("New title", updatedAt).updatedAt)
+    assertEquals(sameInstantInLondon, announcement.editTitle("New", sameInstantInLondon).updatedAt)
+  }
+
+  // ---------------------------------------------------------------------------------------- //
+  // editTitle, editDescription and editLinks
+  // ---------------------------------------------------------------------------------------- //
+
+  /** editTitle replaces only the title and updatedAt, and does not change the original. */
   @Test
   fun editTitle_replacesOnlyTheTitle() {
     val announcement = announcementWith()
 
-    assertEquals(announcement.copy(title = "New title"), announcement.editTitle("New title"))
+    val result = announcement.editTitle("New title", later)
+
+    assertEquals(announcement.copy(title = "New title", updatedAt = later), result)
     assertEquals("Announcement", announcement.title)
+    assertEquals(updatedAt, announcement.updatedAt)
   }
 
   /** editTitle refuses a blank title. */
   @Test
   fun editTitle_fails_whenTitleIsBlank() {
-    assertInvalid(titleMessage) { announcementWith().editTitle(" ") }
+    assertInvalid(titleMessage) { announcementWith().editTitle(" ", later) }
   }
 
-  /** editDescription replaces only the description. */
+  /** editDescription replaces only the description and updatedAt, even by an empty one. */
   @Test
   fun editDescription_replacesOnlyTheDescription() {
     val announcement = announcementWith()
 
-    assertEquals(announcement.copy(description = "New"), announcement.editDescription("New"))
-  }
-
-  /** editEndTime replaces only the endTime, by a later time or by null. */
-  @Test
-  fun editEndTime_replacesOnlyTheEndTime() {
-    val announcement = announcementWith()
-
-    assertEquals(announcement.copy(endTime = null), announcement.editEndTime(null))
     assertEquals(
-        announcement.copy(endTime = createdAt.plusNanos(1)),
-        announcement.editEndTime(createdAt.plusNanos(1)),
+        announcement.copy(description = "", updatedAt = later),
+        announcement.editDescription("", later),
     )
   }
 
-  /** editEndTime refuses an endTime equal to or before createdAt. */
-  @Test
-  fun editEndTime_fails_whenEndTimeIsNotAfterCreatedAt() {
-    val announcement = announcementWith()
-
-    assertInvalid(newEndTimeMessage) { announcement.editEndTime(createdAt) }
-    assertInvalid(newEndTimeMessage) { announcement.editEndTime(createdAt.minusNanos(1)) }
-  }
-
-  /** editLinks replaces only the links. */
+  /** editLinks replaces only the links and updatedAt, even by an empty list. */
   @Test
   fun editLinks_replacesOnlyTheLinks() {
     val announcement = announcementWith()
 
-    assertEquals(announcement.copy(links = listOf(link3)), announcement.editLinks(listOf(link3)))
+    assertEquals(
+        announcement.copy(links = listOf(link3), updatedAt = later),
+        announcement.editLinks(listOf(link3), later),
+    )
+    assertTrue(announcement.editLinks(emptyList(), later).links.isEmpty())
   }
 
   /** editLinks refuses a list with a blank or a duplicated link. */
@@ -203,36 +199,42 @@ class AnnouncementTest {
   fun editLinks_fails_whenALinkIsBlankOrDuplicated() {
     val announcement = announcementWith()
 
-    assertInvalid(blankLinkMessage) { announcement.editLinks(listOf(link1, "")) }
-    assertInvalid(duplicateLinkMessage) { announcement.editLinks(listOf(link1, link1)) }
+    assertInvalid(blankLinkMessage) { announcement.editLinks(listOf(link1, ""), later) }
+    assertInvalid(duplicateLinkMessage) { announcement.editLinks(listOf(link1, link1), later) }
   }
 
   // ---------------------------------------------------------------------------------------- //
   // addLink and removeLink
   // ---------------------------------------------------------------------------------------- //
 
-  /** addLink adds the link at the end, keeps every other field and the original. */
+  /** addLink adds the link at the end, updates updatedAt and does not change the original. */
   @Test
   fun addLink_addsLinkAtTheEnd() {
     val announcement = announcementWith(links = listOf(link1, link2))
 
-    val result = announcement.addLink(link3)
+    val result = announcement.addLink(link3, later)
 
-    assertEquals(announcement.copy(links = listOf(link1, link2, link3)), result)
+    assertEquals(announcement.copy(links = listOf(link1, link2, link3), updatedAt = later), result)
     assertEquals(listOf(link1, link2), announcement.links)
+  }
+
+  /** addLink works on an announcement without any link. */
+  @Test
+  fun addLink_addsTheFirstLink() {
+    assertEquals(listOf(link1), announcementWith(links = emptyList()).addLink(link1, later).links)
   }
 
   /** addLink refuses a blank link. */
   @Test
   fun addLink_fails_whenLinkIsBlank() {
-    assertInvalid(blankLinkMessage) { announcementWith().addLink(" ") }
+    assertInvalid(blankLinkMessage) { announcementWith().addLink(" ", later) }
   }
 
   /** addLink refuses a link that is already in the announcement. */
   @Test
   fun addLink_fails_whenLinkAlreadyExists() {
     assertInvalid(linkAlreadyExistsMessage) {
-      announcementWith(links = listOf(link1)).addLink(link1)
+      announcementWith(links = listOf(link1)).addLink(link1, later)
     }
   }
 
@@ -241,41 +243,31 @@ class AnnouncementTest {
   fun removeLink_removesOnlyTheGivenLink() {
     val announcement = announcementWith(links = listOf(link1, link2, link3))
 
-    val result = announcement.removeLink(link2)
+    val result = announcement.removeLink(link2, later)
 
-    assertEquals(announcement.copy(links = listOf(link1, link3)), result)
+    assertEquals(announcement.copy(links = listOf(link1, link3), updatedAt = later), result)
     assertEquals(listOf(link1, link2, link3), announcement.links)
+  }
+
+  /** removeLink of the last link gives an announcement without any link. */
+  @Test
+  fun removeLink_removesTheLastLink() {
+    assertTrue(announcementWith(links = listOf(link1)).removeLink(link1, later).links.isEmpty())
   }
 
   /** removeLink refuses a link that is not in the announcement. */
   @Test
   fun removeLink_fails_whenLinkIsNotPresent() {
     assertInvalid(linkNotPresentMessage) {
-      announcementWith(links = listOf(link1)).removeLink(link2)
+      announcementWith(links = listOf(link1)).removeLink(link2, later)
     }
   }
 
   // ---------------------------------------------------------------------------------------- //
-  // isObsolete and togglePin
+  // togglePin
   // ---------------------------------------------------------------------------------------- //
 
-  /** An announcement without endTime is never obsolete. */
-  @Test
-  fun isObsolete_isFalse_whenThereIsNoEndTime() {
-    assertFalse(announcementWith(endTime = null).isObsolete(createdAt.plusYears(100)))
-  }
-
-  /** An announcement is obsolete from its endTime on, including exactly at its endTime. */
-  @Test
-  fun isObsolete_isTrue_onlyFromTheEndTime() {
-    val end = createdAt.plusDays(1)
-    val announcement = announcementWith(endTime = end)
-
-    assertFalse(announcement.isObsolete(end.minusNanos(1)))
-    assertTrue(announcement.isObsolete(end))
-  }
-
-  /** togglePin pins then unpins, keeps every other field and does not change the original. */
+  /** togglePin pins then unpins and keeps every other field, updatedAt included. */
   @Test
   fun togglePin_pinsThenUnpins() {
     val announcement = announcementWith()
