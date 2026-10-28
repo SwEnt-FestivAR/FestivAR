@@ -298,6 +298,6 @@ private fun CreateEventTopBar(onBack: () -> Unit) {
 @SuppressLint("ViewModelConstructorInComposable")
 @Preview
 @Composable
-fun CreateEventScreenPreview() {
+private fun CreateEventScreenPreview() {
   AppTheme { CreateEventScreen(CreateEventViewModel(EventsRepositoryLocal())) }
 }
