@@ -65,6 +65,22 @@ class DateTimePickersTest {
   /** Red if a valid end date/time range incorrectly reports an error. */
   @Test
   fun endDateError_validRangeWithDatesAndTimes_returnsNoError() {
+    val startDate = LocalDate.now()
+    val endDate = LocalDate.now().plusDays(1)
+    val range =
+        DateTimeRange(
+            startDate = startDate,
+            startTime = LocalTime.of(9, 0),
+            endDate = endDate,
+            endTime = LocalTime.of(17, 0),
+        )
+
+    assertNull(endDateError(range))
+  }
+
+  /** Red if a one-day range with its end time after its start time reports an error. */
+  @Test
+  fun endDateError_oneDayRangeWithEndAfterStart_returnsNoError() {
     val date = LocalDate.now().plusDays(1)
     val range =
         DateTimeRange(
@@ -75,6 +91,39 @@ class DateTimePickersTest {
         )
 
     assertNull(endDateError(range))
+  }
+
+  /**
+   * Red if a one-day range with its end time before its start time reports no end-before-start
+   * error.
+   */
+  @Test
+  fun endDateError_oneDayRangeWithEndBeforeStart_returnsEndBeforeStart() {
+    val date = LocalDate.now().plusDays(1)
+    val range =
+        DateTimeRange(
+            startDate = date,
+            startTime = LocalTime.of(9, 0),
+            endDate = date,
+            endTime = LocalTime.of(7, 0),
+        )
+
+    assertEquals(FieldError.END_BEFORE_START, endDateError(range))
+  }
+
+  /** Red if a range with equal start and end reports no end-before-start error. */
+  @Test
+  fun endDateError_equalStartAndEnd_returnsEndBeforeStart() {
+    val date = LocalDate.now().plusDays(1)
+    val range =
+        DateTimeRange(
+            startDate = date,
+            startTime = LocalTime.of(9, 0),
+            endDate = date,
+            endTime = LocalTime.of(9, 0),
+        )
+
+    assertEquals(FieldError.END_BEFORE_START, endDateError(range))
   }
 
   /** Red if a valid date-only range incorrectly reports an error. */

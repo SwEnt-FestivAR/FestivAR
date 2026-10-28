@@ -208,7 +208,7 @@ fun endDateError(range: DateTimeRange, zone: ZoneId = ZoneId.systemDefault()): F
 
   return if (start != null && end != null) {
     when {
-      end.isBefore(start) -> FieldError.END_BEFORE_START
+      !end.isAfter(start) -> FieldError.END_BEFORE_START
       end.isBefore(ZonedDateTime.now()) -> FieldError.OUTDATED
       else -> null
     }
