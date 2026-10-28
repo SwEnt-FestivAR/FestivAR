@@ -16,7 +16,6 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
-import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -222,7 +221,7 @@ class CreateTaskViewModel(
     if (ownerId.isBlank()) {
       // Nobody is signed in: a task without an owner could not be managed, so save nothing and
       // show the save error.
-      Log.w(TAG, "createTask called without a signed-in user")
+      Log.e(TAG, "createTask called without a signed-in user")
       _uiState.update { it.copy(errorMsg = SAVE_FAILED_MESSAGE) }
       return
     }
@@ -233,21 +232,18 @@ class CreateTaskViewModel(
     pendingTaskId = taskId
     val task = form.toTask(taskId, eventId, ownerId)
     _uiState.update { it.copy(isSaving = true, errorMsg = null) }
-    viewModelScope.launch { save(task) }
-  }
-
-  // Saves [task] and reports the result in the state. A timeout is a failed save, like any other
-  // error; only a real cancellation (the screen is gone) stops here and is passed on.
-  private suspend fun save(task: Task) {
-    try {
-      withTimeout(saveTimeoutMs.milliseconds) { tasksRepository.addTask(task) }
-      _uiState.update { it.copy(isSaving = false, isCreated = true) }
-    } catch (e: Exception) {
-      if (e.isCancellation()) {
+    viewModelScope.launch {
+      try {
+        withTimeout(saveTimeoutMs) { tasksRepository.addTask(task) }
+        _uiState.update { it.copy(isSaving = false, isCreated = true) }
+      } catch (e: TimeoutCancellationException) {
+        onSaveFailed(task, e)
+      } catch (e: CancellationException) {
         _uiState.update { it.copy(isSaving = false) }
         throw e
+      } catch (e: Exception) {
+        onSaveFailed(task, e)
       }
-      onSaveFailed(task, e)
     }
   }
 
@@ -256,27 +252,23 @@ class CreateTaskViewModel(
   // and the user can retry with the same task id.
   private suspend fun onSaveFailed(task: Task, e: Exception) {
     Log.e(TAG, "Error adding the task", e)
-    val alreadySaved = recoverSavedTask(task)
+    val alreadySaved =
+        try {
+          withTimeout(saveTimeoutMs) {
+            val stored = tasksRepository.getTask(task.taskId)
+            if (stored != task) tasksRepository.editTask(task.taskId, task)
+          }
+          true
+        } catch (_: TimeoutCancellationException) {
+          false
+        } catch (e: CancellationException) {
+          throw e
+        } catch (_: Exception) {
+          false
+        }
     _uiState.update {
       if (alreadySaved) it.copy(isSaving = false, isCreated = true)
       else it.copy(isSaving = false, errorMsg = SAVE_FAILED_MESSAGE)
     }
   }
-
-  // Whether [task] is in the repository, brought up to date with the form if it was saved before.
-  private suspend fun recoverSavedTask(task: Task): Boolean =
-      try {
-        withTimeout(saveTimeoutMs.milliseconds) {
-          val stored = tasksRepository.getTask(task.taskId)
-          if (stored != task) tasksRepository.editTask(task.taskId, task)
-        }
-        true
-      } catch (e: Exception) {
-        if (e.isCancellation()) throw e
-        false
-      }
-
-  // A timeout is a CancellationException too, but it is a failed save, not a canceled screen.
-  private fun Exception.isCancellation() =
-      this is CancellationException && this !is TimeoutCancellationException
 }
