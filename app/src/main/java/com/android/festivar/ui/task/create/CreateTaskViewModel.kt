@@ -7,11 +7,13 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
+import com.android.festivar.model.task.Priority
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryProvider
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.FieldError
+import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
@@ -40,6 +42,10 @@ data class CreateTaskUiState(
     val startTime: LocalTime? = null,
     val endDate: LocalDate? = null,
     val endTime: LocalTime? = null,
+    val priority: Priority = Priority.NONE,
+    // The numbers are kept as typed (digits only) so that an empty field stays empty.
+    val maxAssign: String = "1",
+    val estimatedMinutes: String = "",
     // The field whose picker dialog is open, or null when none is.
     val openPicker: DateTimeField? = null,
     val titleEdited: Boolean = false,
@@ -82,6 +88,18 @@ data class CreateTaskUiState(
       }
     }
 
+  /** The error shown under the max assign field, or `null`: it must be a number, at least 1. */
+  val maxAssignError: FieldError?
+    get() = if ((maxAssign.toIntOrNull() ?: 0) >= 1) null else FieldError.INVALID_MAX_ASSIGN
+
+  /**
+   * The error shown under the estimated time field, or `null`. It is optional, so empty is fine.
+   */
+  val estimatedTimeError: FieldError?
+    get() =
+        if (estimatedMinutes.isEmpty() || estimatedMinutes.toIntOrNull() != null) null
+        else FieldError.INVALID_ESTIMATED_TIME
+
   /**
    * Whether the "Create task" button can be pressed. It is false while a save is running and once
    * the task is created, so that a tap just after the save cannot create a second task.
@@ -90,14 +108,19 @@ data class CreateTaskUiState(
     get() = isValid && !isSaving && !isCreated
 
   private val isValid: Boolean
-    get() = title.isNotBlank() && startDateError == null && endDateError == null
+    get() =
+        title.isNotBlank() &&
+            startDateError == null &&
+            endDateError == null &&
+            maxAssignError == null &&
+            estimatedTimeError == null
 
   /**
    * Builds the [Task] described by this form.
    *
    * @param ownerId The uid of the user creating the task, who becomes its owner.
-   * @throws IllegalArgumentException if the form is not valid: blank title, or a date error (a time
-   *   without its date, or an end before the start), or if [ownerId] is blank.
+   * @throws IllegalArgumentException if the form is not valid: blank title, a date error (a time
+   *   without its date, or an end before the start) or a wrong number, or if [ownerId] is blank.
    */
   fun toTask(taskId: String, eventId: String, ownerId: String): Task {
     require(isValid) { "The form is not valid." }
@@ -109,6 +132,9 @@ data class CreateTaskUiState(
         location = location.trim(),
         startTime = startDateTime,
         endTime = endDateTime,
+        estimatedTime = estimatedMinutes.toIntOrNull()?.let { Duration.ofMinutes(it.toLong()) },
+        priority = priority,
+        maxAssign = maxAssign.toInt(),
         ownerId = ownerId,
     )
   }
@@ -128,6 +154,9 @@ private const val SAVE_TIMEOUT_MS = 15_000L
 /**
  * Holds the state of the Create task screen and saves the new task in [tasksRepository].
  *
+ * @param eventId The event the created task belongs to. It cannot be blank.
+ * @param ownerId The uid of the signed-in user, who becomes the owner of the task. A task always
+ *   has an owner when it is created: a blank uid saves nothing and shows the save error.
  * @param tasksRepository Where the task is saved. It is the app's repository by default; the tests
  *   give an in-memory one.
  * @param saveTimeoutMs How long a save may last before it is reported as failed, so that the form
@@ -136,15 +165,20 @@ private const val SAVE_TIMEOUT_MS = 15_000L
  * @param zone The time zone of the created task's start and end. The device's one by default.
  */
 class CreateTaskViewModel(
+    private val eventId: String,
+    private val ownerId: String,
     private val tasksRepository: TasksRepository = TasksRepositoryProvider.repository,
     private val saveTimeoutMs: Long = SAVE_TIMEOUT_MS,
     zone: ZoneId = ZoneId.systemDefault(),
 ) : ViewModel() {
-  // The id of the task being created and the event it was created for. They are kept across
-  // retries: if a save timed out or failed after reaching the server, the retry targets the same
-  // task instead of creating a second one. A different event starts a new task.
+  // The id of the task being created. It is kept across retries: if a save timed out or failed
+  // after reaching the server, the retry targets the same task instead of creating a second one.
   private var pendingTaskId: String? = null
-  private var pendingEventId: String? = null
+
+  init {
+    // A Task needs an event: a blank one is a mistake of the caller.
+    require(eventId.isNotBlank()) { "eventId must not be blank" }
+  }
 
   // Create task UI state
   private val _uiState = MutableStateFlow(CreateTaskUiState(zone = zone))
@@ -165,6 +199,17 @@ class CreateTaskViewModel(
 
   /** Sets the location. */
   fun updateLocation(location: String) = edit { it.copy(location = location) }
+
+  /** Sets the priority. */
+  fun updatePriority(priority: Priority) = edit { it.copy(priority = priority) }
+
+  /** Sets how many people can take the task. Anything but digits is dropped. */
+  fun updateMaxAssign(text: String) = edit { it.copy(maxAssign = text.filter(Char::isDigit)) }
+
+  /** Sets the estimated time, in minutes. Anything but digits is dropped. */
+  fun updateEstimatedMinutes(text: String) = edit {
+    it.copy(estimatedMinutes = text.filter(Char::isDigit))
+  }
 
   /** Sets the date the task starts. */
   fun updateStartDate(date: LocalDate) = edit { it.copy(startDate = date) }
@@ -201,25 +246,13 @@ class CreateTaskViewModel(
     showPicker(null)
   }
 
-  /**
-   * Saves the task in the event [eventId] if the form is valid. Does nothing while a save is
-   * running.
-   *
-   * @param eventId The event the created task belongs to.
-   * @param ownerId The uid of the signed-in user, who becomes the owner of the task. A task always
-   *   has an owner when it is created: a blank uid saves nothing and shows the save error.
-   */
-  fun createTask(eventId: String, ownerId: String) {
+  /** Saves the task if the form is valid. Does nothing while a save is running. */
+  fun createTask() {
     val form = _uiState.value
     if (!form.canCreate) return
-    if (eventId.isBlank()) {
-      // A Task needs an event: this is a mistake of the caller, reported instead of crashing.
-      Log.e("CreateTaskViewModel", "createTask called without an event")
-      _uiState.update { it.copy(errorMsg = SAVE_FAILED_MESSAGE) }
-      return
-    }
     if (ownerId.isBlank()) {
-      // Same for the owner: nobody could manage the task if it was saved without one.
+      // Nobody could manage the task if it was saved without an owner: this is a mistake of the
+      // caller, reported instead of crashing.
       Log.e("CreateTaskViewModel", "createTask called without an owner")
       _uiState.update { it.copy(errorMsg = SAVE_FAILED_MESSAGE) }
       return
@@ -227,10 +260,8 @@ class CreateTaskViewModel(
     // The task is built from the copy of the form taken above, so typing during the save does not
     // change what is saved. It is built outside the try: the form was just checked, so a failure
     // here is a bug and must not be shown to the user as a failed save.
-    if (pendingEventId != eventId) pendingTaskId = null
     val taskId = pendingTaskId ?: tasksRepository.getNewUid()
     pendingTaskId = taskId
-    pendingEventId = eventId
     val task = form.toTask(taskId, eventId, ownerId)
     _uiState.update { it.copy(isSaving = true, errorMsg = null) }
     viewModelScope.launch {

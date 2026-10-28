@@ -153,6 +153,12 @@ enum class FieldError {
 
   /** The end is before the start. */
   END_BEFORE_START,
+
+  /** The number of people is not a number, or lower than 1. */
+  INVALID_MAX_ASSIGN,
+
+  /** The estimated time is not a number of minutes. */
+  INVALID_ESTIMATED_TIME,
 }
 
 /** The string resource of the message shown under a field for [error]. */
@@ -162,6 +168,8 @@ fun fieldErrorMessageRes(error: FieldError): Int =
       FieldError.EMPTY_TITLE -> R.string.field_error_empty_title
       FieldError.MISSING_DATE -> R.string.field_error_missing_date
       FieldError.END_BEFORE_START -> R.string.field_error_end_before_start
+      FieldError.INVALID_MAX_ASSIGN -> R.string.field_error_invalid_max_assign
+      FieldError.INVALID_ESTIMATED_TIME -> R.string.field_error_invalid_estimated_time
     }
 
 /**
