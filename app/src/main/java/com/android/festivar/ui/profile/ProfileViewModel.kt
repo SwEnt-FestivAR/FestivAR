@@ -49,7 +49,8 @@ data class ProfileUIState(
 ) {
   /**
    * Whether the Save changes button can be pressed: the profile is loaded, no save is running, no
-   * field is blank, and at least one field differs from the saved [user].
+   * field is blank, and at least one field differs from the saved [user], the surname and name are
+   * valid.
    *
    * The use of `.trim()` allows to delete the precedent and final spaces entered.
    */
@@ -62,7 +63,29 @@ data class ProfileUIState(
           surname.isNotBlank() &&
           changed &&
           !signedOut &&
-          !isSigningOut
+          !isSigningOut &&
+          !nameInvalid &&
+          !surnameInvalid
+    }
+
+
+
+    val nameInvalid: Boolean get() = !isValidNameInput(name)
+    val surnameInvalid: Boolean get() = !isValidNameInput(surname)
+
+
+    /**
+     * Utility function that checks whether the given input is plain text and doesn't contain
+     * emojis, numbers, special characters and not wanted punctuation (at the exception of ` `,
+     * `-` and `'`).
+     * Those restrictions are the ones that determine if a name is valid or not.
+     *
+     * @param input The input [String] we want to  verify.
+     * @return True if the given [input] is plain text with some punctuation allowed, false
+     * otherwise.
+     */
+    private fun isValidNameInput(input: String): Boolean {
+        return input.all { it.isLetter() || it == ' ' || it == '-' || it == '\'' }
     }
 }
 
@@ -124,13 +147,10 @@ class ProfileViewModel(
    * nothing until the save is completed or fails.
    */
   fun saveChanges() {
-    // If the user is signing out, no further changes can be made.
-    if (_uiState.value.signedOut || _uiState.value.isSigningOut || uiState.value.isLoading) return
+    // Does nothing unless the changes can be saved and the profile is loaded.
+    if (!_uiState.value.canSave || _uiState.value.isLoading) return
 
     val state = _uiState.value
-
-    // If saving is disabled, quit the function.
-    if (!state.canSave) return
 
     val original = requireNotNull(state.user)
 

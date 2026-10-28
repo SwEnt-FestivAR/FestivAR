@@ -10,4 +10,5 @@
     <string name="profile_load_failed">Unable to load your profile.</string>
     <string name="profile_save_failed">Unable to update your profile.</string>
     <string name="profile_sign_out_failed">Unable to sign out.</string>
+    <string name="profile_invalid_name_chars">Only letters, spaces, hyphens and apostrophes are allowed</string>
 </resources>

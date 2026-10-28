@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import com.android.festivar.R
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.Avatar
+import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.components.FestivarTextField
 
 /** Tags that the UI tests use to find the elements of the profile screen. */
@@ -57,6 +58,8 @@ object ProfileScreenTestTags {
   const val SIGN_OUT_BUTTON = "profileSignOutButton"
   const val RETRY_BUTTON = "profileRetryButton"
   const val ERROR_MESSAGE = "profileErrorMessage"
+    const val SURNAME_ERROR = "profileSurnameError"
+    const val NAME_ERROR = "profileNameError"
 }
 
 /**
@@ -218,14 +221,30 @@ internal fun ProfileScreenContent(
           onValueChange = onSurnameChange,
           label = stringResource(R.string.profile_field_surname),
           modifier = Modifier.testTag(ProfileScreenTestTags.SURNAME_FIELD),
+          isError = uiState.surnameInvalid,
       )
+        if (uiState.surnameInvalid) {
+            FestivarFieldError(
+                message = stringResource(R.string.profile_invalid_name_chars),
+                modifier = Modifier.testTag(ProfileScreenTestTags.SURNAME_ERROR),
+            )
+        }
+
       Spacer(modifier = Modifier.height(12.dp))
       FestivarTextField(
           value = uiState.name,
           onValueChange = onNameChange,
           label = stringResource(R.string.profile_field_name),
           modifier = Modifier.testTag(ProfileScreenTestTags.NAME_FIELD),
+          isError = uiState.nameInvalid,
       )
+
+        if (uiState.nameInvalid) {
+            FestivarFieldError(
+                message = stringResource(R.string.profile_invalid_name_chars),
+                modifier = Modifier.testTag(ProfileScreenTestTags.NAME_ERROR),
+            )
+        }
     }
 
     Spacer(modifier = Modifier.height(16.dp))
