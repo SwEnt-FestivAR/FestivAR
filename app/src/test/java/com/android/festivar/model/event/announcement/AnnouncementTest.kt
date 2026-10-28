@@ -1,7 +1,6 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.event.announcement
 
-import com.android.festivar.model.task.Priority
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import junit.framework.TestCase.assertEquals
@@ -57,8 +56,8 @@ class AnnouncementTest {
           announcementId = "a1",
           title = "Announcement",
           authorId = "author-1",
-          description = "Description",
-          priority = Priority.HIGH,
+          content = "Content",
+          priority = AnnouncementPriority.URGENT,
           updatedAt = updatedAt,
           links = links,
       )
@@ -75,7 +74,7 @@ class AnnouncementTest {
 
   /** An announcement with only the required fields is valid and gets the default values. */
   @Test
-  fun init_succeeds_withOnlyRequiredFields() {
+  fun anAnnouncementWithOnlyTheRequiredFieldsGetsTheDefaultValues() {
     val announcement =
         Announcement(
             announcementId = "a1",
@@ -84,42 +83,42 @@ class AnnouncementTest {
             updatedAt = updatedAt,
         )
 
-    assertEquals("", announcement.description)
-    assertEquals(Priority.NONE, announcement.priority)
+    assertEquals("", announcement.content)
+    assertEquals(AnnouncementPriority.INFO, announcement.priority)
     assertTrue(announcement.links.isEmpty())
     assertFalse(announcement.pinned)
   }
 
   /** A blank announcementId is refused. */
   @Test
-  fun init_fails_whenAnnouncementIdIsBlank() {
+  fun aBlankAnnouncementIdIsRefused() {
     assertInvalid(announcementIdMessage) { announcement(announcementId = "") }
     assertInvalid(announcementIdMessage) { announcement(announcementId = " \t\n") }
   }
 
   /** A blank title is refused. */
   @Test
-  fun init_fails_whenTitleIsBlank() {
+  fun aBlankTitleIsRefused() {
     assertInvalid(titleMessage) { announcement(title = "") }
     assertInvalid(titleMessage) { announcement(title = " \t\n") }
   }
 
   /** A blank authorId is refused. */
   @Test
-  fun init_fails_whenAuthorIdIsBlank() {
+  fun aBlankAuthorIdIsRefused() {
     assertInvalid(authorIdMessage) { announcement(authorId = "") }
     assertInvalid(authorIdMessage) { announcement(authorId = " \t\n") }
   }
 
   /** A blank link is refused. */
   @Test
-  fun init_fails_whenALinkIsBlank() {
+  fun aBlankLinkIsRefused() {
     assertInvalid(blankLinkMessage) { announcement(links = listOf(link1, " ")) }
   }
 
   /** A link present twice is refused, even when the duplicates are not next to each other. */
   @Test
-  fun init_fails_whenALinkIsDuplicated() {
+  fun aLinkPresentTwiceIsRefused() {
     assertInvalid(duplicateLinkMessage) { announcement(links = listOf(link1, link2, link1)) }
   }
 
@@ -129,20 +128,22 @@ class AnnouncementTest {
 
   /** Every edit function refuses a time before updatedAt, even by a single nanosecond. */
   @Test
-  fun editFunctions_fail_whenTimeIsBeforeUpdatedAt() {
+  fun everyEditFunctionRefusesATimeBeforeUpdatedAt() {
     val announcement = announcementWith()
 
     assertInvalid(editTimeMessage) { announcement.editTitle("New title", tooEarly) }
-    assertInvalid(editTimeMessage) { announcement.editDescription("New", tooEarly) }
+    assertInvalid(editTimeMessage) { announcement.editContent("New", tooEarly) }
     assertInvalid(editTimeMessage) { announcement.addLink(link3, tooEarly) }
     assertInvalid(editTimeMessage) { announcement.removeLink(link1, tooEarly) }
     assertInvalid(editTimeMessage) { announcement.editLinks(listOf(link3), tooEarly) }
-    assertInvalid(editTimeMessage) { announcement.editPriority(Priority.LOW, tooEarly) }
+    assertInvalid(editTimeMessage) {
+      announcement.editPriority(AnnouncementPriority.INFO, tooEarly)
+    }
   }
 
   /** A modification at the same instant as updatedAt is accepted, even in another time zone. */
   @Test
-  fun editFunctions_succeed_whenTimeIsTheSameInstantAsUpdatedAt() {
+  fun aModificationAtTheSameInstantAsUpdatedAtIsAccepted() {
     val announcement = announcementWith()
     val sameInstantInLondon = updatedAt.withZoneSameInstant(ZoneId.of("Europe/London"))
 
@@ -151,12 +152,12 @@ class AnnouncementTest {
   }
 
   // ---------------------------------------------------------------------------------------- //
-  // editTitle, editDescription, editPriority and editLinks
+  // editTitle, editContent, editPriority and editLinks
   // ---------------------------------------------------------------------------------------- //
 
   /** editTitle replaces only the title and updatedAt, and does not change the original. */
   @Test
-  fun editTitle_replacesOnlyTheTitle() {
+  fun editTitleReplacesOnlyTheTitleAndUpdatedAt() {
     val announcement = announcementWith()
 
     val result = announcement.editTitle("New title", later)
@@ -168,38 +169,38 @@ class AnnouncementTest {
 
   /** editTitle refuses a blank title. */
   @Test
-  fun editTitle_fails_whenTitleIsBlank() {
+  fun editTitleRefusesABlankTitle() {
     assertInvalid(titleMessage) { announcementWith().editTitle(" ", later) }
   }
 
-  /** editDescription replaces only the description and updatedAt, even by an empty one. */
+  /** editContent replaces only the content and updatedAt, even by an empty one. */
   @Test
-  fun editDescription_replacesOnlyTheDescription() {
+  fun editContentReplacesOnlyTheContentAndUpdatedAt() {
     val announcement = announcementWith()
 
     assertEquals(
-        announcement.copy(description = "", updatedAt = later),
-        announcement.editDescription("", later),
+        announcement.copy(content = "", updatedAt = later),
+        announcement.editContent("", later),
     )
   }
 
   /** editPriority replaces only the priority and updatedAt, for every priority. */
   @Test
-  fun editPriority_replacesOnlyThePriority() {
+  fun editPriorityReplacesOnlyThePriorityAndUpdatedAt() {
     val announcement = announcementWith()
 
-    for (priority in Priority.entries) {
+    for (priority in AnnouncementPriority.entries) {
       assertEquals(
           announcement.copy(priority = priority, updatedAt = later),
           announcement.editPriority(priority, later),
       )
     }
-    assertEquals(Priority.HIGH, announcement.priority)
+    assertEquals(AnnouncementPriority.URGENT, announcement.priority)
   }
 
   /** editLinks replaces only the links and updatedAt, even by an empty list. */
   @Test
-  fun editLinks_replacesOnlyTheLinks() {
+  fun editLinksReplacesOnlyTheLinksAndUpdatedAt() {
     val announcement = announcementWith()
 
     assertEquals(
@@ -211,7 +212,7 @@ class AnnouncementTest {
 
   /** editLinks refuses a list with a blank or a duplicated link. */
   @Test
-  fun editLinks_fails_whenALinkIsBlankOrDuplicated() {
+  fun editLinksRefusesABlankOrDuplicatedLink() {
     val announcement = announcementWith()
 
     assertInvalid(blankLinkMessage) { announcement.editLinks(listOf(link1, ""), later) }
@@ -224,7 +225,7 @@ class AnnouncementTest {
 
   /** addLink adds the link at the end, updates updatedAt and does not change the original. */
   @Test
-  fun addLink_addsLinkAtTheEnd() {
+  fun addLinkAddsTheLinkAtTheEnd() {
     val announcement = announcementWith(links = listOf(link1, link2))
 
     val result = announcement.addLink(link3, later)
@@ -235,19 +236,19 @@ class AnnouncementTest {
 
   /** addLink works on an announcement without any link. */
   @Test
-  fun addLink_addsTheFirstLink() {
+  fun addLinkWorksOnAnAnnouncementWithoutAnyLink() {
     assertEquals(listOf(link1), announcementWith(links = emptyList()).addLink(link1, later).links)
   }
 
   /** addLink refuses a blank link. */
   @Test
-  fun addLink_fails_whenLinkIsBlank() {
+  fun addLinkRefusesABlankLink() {
     assertInvalid(blankLinkMessage) { announcementWith().addLink(" ", later) }
   }
 
   /** addLink refuses a link that is already in the announcement. */
   @Test
-  fun addLink_fails_whenLinkAlreadyExists() {
+  fun addLinkRefusesALinkAlreadyInTheAnnouncement() {
     assertInvalid(linkAlreadyExistsMessage) {
       announcementWith(links = listOf(link1)).addLink(link1, later)
     }
@@ -255,7 +256,7 @@ class AnnouncementTest {
 
   /** removeLink removes only the given link, keeps the order of the others and the original. */
   @Test
-  fun removeLink_removesOnlyTheGivenLink() {
+  fun removeLinkRemovesOnlyTheGivenLink() {
     val announcement = announcementWith(links = listOf(link1, link2, link3))
 
     val result = announcement.removeLink(link2, later)
@@ -266,13 +267,13 @@ class AnnouncementTest {
 
   /** removeLink of the last link gives an announcement without any link. */
   @Test
-  fun removeLink_removesTheLastLink() {
+  fun removingTheLastLinkGivesAnAnnouncementWithoutAnyLink() {
     assertTrue(announcementWith(links = listOf(link1)).removeLink(link1, later).links.isEmpty())
   }
 
   /** removeLink refuses a link that is not in the announcement. */
   @Test
-  fun removeLink_fails_whenLinkIsNotPresent() {
+  fun removeLinkRefusesALinkNotInTheAnnouncement() {
     assertInvalid(linkNotPresentMessage) {
       announcementWith(links = listOf(link1)).removeLink(link2, later)
     }
@@ -284,7 +285,7 @@ class AnnouncementTest {
 
   /** togglePin pins then unpins and keeps every other field, updatedAt included. */
   @Test
-  fun togglePin_pinsThenUnpins() {
+  fun togglePinPinsThenUnpinsAndKeepsUpdatedAt() {
     val announcement = announcementWith()
 
     val pinned = announcement.togglePin()

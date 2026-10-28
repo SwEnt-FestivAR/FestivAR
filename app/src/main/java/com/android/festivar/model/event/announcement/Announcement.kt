@@ -1,6 +1,5 @@
 package com.android.festivar.model.event.announcement
 
-import com.android.festivar.model.task.Priority
 import java.time.ZonedDateTime
 
 /**
@@ -21,7 +20,7 @@ import java.time.ZonedDateTime
  * @property announcementId Unique identifier of the [Announcement].
  * @property title Name/subject visible of the [Announcement].
  * @property authorId Unique identifier of the user author of the [Announcement].
- * @property description Free-text description, content-body of the [Announcement].
+ * @property content Free-text content, content-body of the [Announcement].
  * @property priority How urgent and important the [Announcement] is.
  * @property updatedAt Time of the creation of the [Announcement] or of the last modification.
  * @property links Useful links attached to the [Announcement].
@@ -31,8 +30,8 @@ data class Announcement(
     val announcementId: String,
     val title: String,
     val authorId: String,
-    val description: String = "",
-    val priority: Priority = Priority.NONE,
+    val content: String = "",
+    val priority: AnnouncementPriority = AnnouncementPriority.INFO,
     val updatedAt: ZonedDateTime,
     val links: List<String> = emptyList(),
     val pinned: Boolean = false,
@@ -72,18 +71,17 @@ data class Announcement(
   }
 
   /**
-   * Returns a new version of `this` but with the [description] changed with the given parameter, so
-   * an edited version.
+   * Returns a new version of `this` but with the [content] changed with the given parameter, so an
+   * edited version.
    *
-   * @param newDescription The new [description] for the edited [Announcement].
+   * @param newContent The new [content] for the edited [Announcement].
    * @param at The time at which the last modification was done.
-   * @return The [Announcement] but with [description] replaced by [newDescription] and updated
-   *   [updatedAt].
+   * @return The [Announcement] but with [content] replaced by [newContent] and updated [updatedAt].
    * @throws IllegalArgumentException if [at] strictly before [updatedAt].
    */
-  fun editDescription(newDescription: String, at: ZonedDateTime): Announcement {
+  fun editContent(newContent: String, at: ZonedDateTime): Announcement {
     requireValidEditTime(at)
-    return copy(description = newDescription, updatedAt = at)
+    return copy(content = newContent, updatedAt = at)
   }
 
   /**
@@ -129,7 +127,7 @@ data class Announcement(
    *   [updatedAt].
    * @throws IllegalArgumentException if [at] strictly before [updatedAt].
    */
-  fun editPriority(newPriority: Priority, at: ZonedDateTime): Announcement {
+  fun editPriority(newPriority: AnnouncementPriority, at: ZonedDateTime): Announcement {
     requireValidEditTime(at)
     return copy(priority = newPriority, updatedAt = at)
   }
@@ -153,11 +151,21 @@ data class Announcement(
 
   /**
    * Returns a new version of `this` but with the [pinned] updated to the opposite of its previous
-   * state.
+   * state. Pinning doesn't change [updatedAt].
    *
    * @return The [Announcement] but with [pinned] inversed.
    */
   fun togglePin(): Announcement {
     return copy(pinned = !pinned)
   }
+}
+
+/**
+ * The [AnnouncementPriority] enum class represents the priority and the urgency of an
+ * [Announcement].
+ */
+enum class AnnouncementPriority {
+  INFO,
+  WARNING,
+  URGENT,
 }
