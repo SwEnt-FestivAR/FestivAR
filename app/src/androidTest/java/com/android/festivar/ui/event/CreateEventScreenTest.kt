@@ -66,7 +66,10 @@ class CreateEventScreenTest {
         .forEach { tag -> composeTestRule.onNodeWithTag(tag).assertIsDisplayed() }
   }
 
-  /** Red if the fields do not respond to input or if the button is not enabled after all required fields are filled. */
+  /**
+   * Red if the fields do not respond to input or if the button is not enabled after all required
+   * fields are filled.
+   */
   @Test
   fun fieldsReceiveInput() {
     viewModel = CreateEventViewModel(EventsRepositoryLocal())
