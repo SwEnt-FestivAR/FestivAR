@@ -46,13 +46,14 @@ data class Announcement(
     require(links.distinct().size == links.size) { "A link is duplicated." }
   }
 
-  /** Utility function that checks that a modification at [at] is not before the last one.
+  /**
+   * Utility function that checks that a modification at [at] is not before the last one.
    *
    * @param at The time of the modification
    * @throws IllegalArgumentException if [at] strictly before [updatedAt].
    */
   private fun requireValidEditTime(at: ZonedDateTime) =
-    require(!at.isBefore(updatedAt)) { "The modification cannot be before the previous one." }
+      require(!at.isBefore(updatedAt)) { "The modification cannot be before the previous one." }
 
   /**
    * Returns a new version of `this` but with the [title] changed with the given parameter, so an
@@ -61,8 +62,8 @@ data class Announcement(
    * @param newTitle The new [title] for the edited [Announcement].
    * @param actualTime The time at which the last modification was done.
    * @return The [Announcement] but with [title] replaced by [newTitle] and updated [updatedAt].
-   * @throws IllegalArgumentException If the given [newTitle] is empty or if [actualTime] strictly before
-   * [updatedAt].
+   * @throws IllegalArgumentException If the given [newTitle] is empty or if [actualTime] strictly
+   *   before [updatedAt].
    */
   fun editTitle(newTitle: String, actualTime: ZonedDateTime): Announcement {
     require(newTitle.isNotBlank()) { "The title cannot be empty." }
@@ -76,7 +77,8 @@ data class Announcement(
    *
    * @param newDescription The new [description] for the edited [Announcement].
    * @param actualTime The time at which the last modification was done.
-   * @return The [Announcement] but with [description] replaced by [newDescription] and updated [updatedAt].
+   * @return The [Announcement] but with [description] replaced by [newDescription] and updated
+   *   [updatedAt].
    * @throws IllegalArgumentException if [actualTime] strictly before [updatedAt].
    */
   fun editDescription(newDescription: String, actualTime: ZonedDateTime): Announcement {
@@ -91,8 +93,8 @@ data class Announcement(
    * @param link The link that is going to be added to `this`, to be added to [links] list.
    * @param actualTime The time at which the last modification was done.
    * @return The [Announcement] but with [link] added to it and updated [updatedAt].
-   * @throws IllegalArgumentException if the given [link] is blank or if it is a duplicate or if [actualTime] strictly before
-   * [updatedAt].
+   * @throws IllegalArgumentException if the given [link] is blank or if it is a duplicate or if
+   *   [actualTime] strictly before [updatedAt].
    */
   fun addLink(link: String, actualTime: ZonedDateTime): Announcement {
     require(link.isNotBlank()) { "A link cannot be empty." }
@@ -108,8 +110,8 @@ data class Announcement(
    * @param link The link that is going to be removed from `this`, from [links] list.
    * @param actualTime The time at which the last modification was done.
    * @return The [Announcement] but with [link] removed from it and updated [updatedAt].
-   * @throws IllegalArgumentException If [link] is not present in the [Announcement] or if [actualTime] strictly before
-   * [updatedAt].
+   * @throws IllegalArgumentException If [link] is not present in the [Announcement] or if
+   *   [actualTime] strictly before [updatedAt].
    */
   fun removeLink(link: String, actualTime: ZonedDateTime): Announcement {
     require(links.any { it == link }) { "This link is not present in this Announcement." }
@@ -124,8 +126,8 @@ data class Announcement(
    * @param newLinks The new [links] for the edited [Announcement].
    * @param actualTime The time at which the last modification was done.
    * @return The [Announcement] but with [links] replaced by [newLinks] and updated [updatedAt].
-   * @throws IllegalArgumentException If the given links are invalid or that there is duplicates or if [actualTime] strictly before
-   * [updatedAt].
+   * @throws IllegalArgumentException If the given links are invalid or that there is duplicates or
+   *   if [actualTime] strictly before [updatedAt].
    */
   fun editLinks(newLinks: List<String>, actualTime: ZonedDateTime): Announcement {
     require(newLinks.none { it.isBlank() }) { "A link cannot be empty." }
