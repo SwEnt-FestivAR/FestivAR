@@ -293,27 +293,27 @@ class ProfileViewModelTest {
     assertFalse(viewModel.uiState.value.canSave)
   }
 
-  /**
-   * Test that letters of any language, spaces, hyphens and apostrophes are valid, and that an empty
-   * field is not flagged as invalid.
-   */
+  /** Test that letters of any language, spaces, hyphens and both apostrophes are valid. */
   @Test
   fun lettersSpacesHyphensAndApostrophesAreValid() {
-    listOf("Zoé", "Jean-Pierre", "O'Brien", "De La Cruz", "Müller", "").forEach { input ->
+    listOf("Zoé", "Jean-Pierre", "O'Brien", "O’Brien", "De La Cruz", "Müller").forEach { input ->
       val state = ProfileUIState(user = sara, name = input, surname = input)
       assertFalse(input, state.nameInvalid)
       assertFalse(input, state.surnameInvalid)
     }
   }
 
-  /** Test that digits, special characters and emojis are flagged and cannot be saved. */
+  /**
+   * Test that digits, special characters, emojis and fields without any letter are flagged and
+   * cannot be saved.
+   */
   @Test
   fun invalidCharactersAreFlaggedAndNotSaved() = runTest {
     val repository = RecordingUsersRepository(listOf(sara))
     val viewModel = createViewModel(repository)
     advanceUntilIdle()
 
-    listOf("Sara2", "Sara@", "Sara_", "Sara😀").forEach { input ->
+    listOf("Sara2", "Sara@", "Sara_", "Sara😀", "", "---").forEach { input ->
       viewModel.updateName(input)
       viewModel.updateSurname(sara.surname)
       assertTrue(input, viewModel.uiState.value.nameInvalid)

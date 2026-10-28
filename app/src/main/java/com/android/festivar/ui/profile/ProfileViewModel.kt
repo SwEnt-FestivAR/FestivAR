@@ -76,14 +76,16 @@ data class ProfileUIState(
 
   /**
    * Utility function that checks whether the given input is plain text and doesn't contain emojis,
-   * numbers, special characters and not wanted punctuation (at the exception of ` `, `-` and `'`).
-   * Those restrictions are the ones that determine if a name is valid or not.
+   * numbers, special characters and not wanted punctuation (at the exception of ` `, `-`, `’` and
+   * `'`) and at least one letter is necessary. Those restrictions are the ones that determine if a
+   * name is valid or not.
    *
    * @param input The input [String] we want to verify.
    * @return True if the given [input] is plain text with some punctuation allowed, false otherwise.
    */
   private fun isValidNameInput(input: String): Boolean {
-    return input.all { it.isLetter() || it == ' ' || it == '-' || it == '\'' }
+    return input.all { it.isLetter() || it == ' ' || it == '-' || it == '\'' || it == '’' } &&
+        input.any { it.isLetter() }
   }
 }
 
