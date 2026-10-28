@@ -58,8 +58,8 @@ object ProfileScreenTestTags {
   const val SIGN_OUT_BUTTON = "profileSignOutButton"
   const val RETRY_BUTTON = "profileRetryButton"
   const val ERROR_MESSAGE = "profileErrorMessage"
-    const val SURNAME_ERROR = "profileSurnameError"
-    const val NAME_ERROR = "profileNameError"
+  const val SURNAME_ERROR = "profileSurnameError"
+  const val NAME_ERROR = "profileNameError"
 }
 
 /**
@@ -223,12 +223,12 @@ internal fun ProfileScreenContent(
           modifier = Modifier.testTag(ProfileScreenTestTags.SURNAME_FIELD),
           isError = uiState.surnameInvalid,
       )
-        if (uiState.surnameInvalid) {
-            FestivarFieldError(
-                message = stringResource(R.string.profile_invalid_name_chars),
-                modifier = Modifier.testTag(ProfileScreenTestTags.SURNAME_ERROR),
-            )
-        }
+      if (uiState.surnameInvalid) {
+        FestivarFieldError(
+            message = stringResource(R.string.profile_invalid_name_chars),
+            modifier = Modifier.testTag(ProfileScreenTestTags.SURNAME_ERROR),
+        )
+      }
 
       Spacer(modifier = Modifier.height(12.dp))
       FestivarTextField(
@@ -239,12 +239,12 @@ internal fun ProfileScreenContent(
           isError = uiState.nameInvalid,
       )
 
-        if (uiState.nameInvalid) {
-            FestivarFieldError(
-                message = stringResource(R.string.profile_invalid_name_chars),
-                modifier = Modifier.testTag(ProfileScreenTestTags.NAME_ERROR),
-            )
-        }
+      if (uiState.nameInvalid) {
+        FestivarFieldError(
+            message = stringResource(R.string.profile_invalid_name_chars),
+            modifier = Modifier.testTag(ProfileScreenTestTags.NAME_ERROR),
+        )
+      }
     }
 
     Spacer(modifier = Modifier.height(16.dp))

@@ -3,6 +3,7 @@ package com.android.festivar.ui.profile
 
 import androidx.annotation.StringRes
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
@@ -191,6 +192,41 @@ class ProfileScreenTest {
 
     composeTestRule.onNodeWithTag(ProfileScreenTestTags.NAME_FIELD).performTextClearance()
     saveButton().assertIsNotEnabled()
+  }
+
+  /**
+   * Turns red when a field with invalid characters stops showing as an error with its message, or
+   * Save stays enabled, or the error stays once the field is fixed.
+   */
+  @Test
+  fun invalidCharactersShowAnErrorUnderTheirField() {
+    setProfile()
+    val nameField = composeTestRule.onNodeWithTag(ProfileScreenTestTags.NAME_FIELD)
+    val surnameField = composeTestRule.onNodeWithTag(ProfileScreenTestTags.SURNAME_FIELD)
+    val isError = SemanticsMatcher.keyIsDefined(SemanticsProperties.Error)
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.NAME_ERROR).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.SURNAME_ERROR).assertDoesNotExist()
+
+    nameField.performTextReplacement("Sami😀")
+    nameField.assert(isError)
+    composeTestRule
+        .onNodeWithTag(ProfileScreenTestTags.NAME_ERROR)
+        .assertIsDisplayed()
+        .assertTextContains(string(R.string.profile_invalid_name_chars))
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.SURNAME_ERROR).assertDoesNotExist()
+    saveButton().assertIsNotEnabled()
+
+    nameField.performTextReplacement("Sami")
+    surnameField.performTextReplacement("Kabbaj2")
+    surnameField.assert(isError)
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.SURNAME_ERROR).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.NAME_ERROR).assertDoesNotExist()
+    saveButton().assertIsNotEnabled()
+
+    surnameField.performTextReplacement("Kabbaj")
+    surnameField.assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Error))
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.SURNAME_ERROR).assertDoesNotExist()
+    saveButton().assertIsEnabled()
   }
 
   /** Turns red when the fields stop reaching the ViewModel or Save stops saving them. */
