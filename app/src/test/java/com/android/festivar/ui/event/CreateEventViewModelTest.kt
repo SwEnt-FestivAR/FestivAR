@@ -189,10 +189,7 @@ class CreateEventViewModelTest {
   /** Red if creating an event does not add its creator to membership data. */
   @Test
   fun createEventAddsTheCreatorToMembersAndJoinedEvents() = runBlocking {
-    viewModel.updateName("Summer festival")
-    viewModel.updateStartDate(startDate)
-    viewModel.updateEndDate(endDate)
-    viewModel.updateVenue("Main square")
+    fillAllFields()
 
     viewModel.createEvent()
 
@@ -211,10 +208,9 @@ class CreateEventViewModelTest {
           }
         }
     val failingViewModel = CreateEventViewModel(failingRepository, usersRepository, creator.uid)
-    failingViewModel.updateName("Summer festival")
-    failingViewModel.updateStartDate(startDate)
-    failingViewModel.updateEndDate(endDate)
-    failingViewModel.updateVenue("Main square")
+    viewModel = failingViewModel
+
+    fillAllFields()
 
     failingViewModel.createEvent()
     withTimeout(5_000.milliseconds) {
@@ -224,6 +220,12 @@ class CreateEventViewModelTest {
     assertEquals(R.string.create_event_error_save_failed, failingViewModel.uiState.value.errorMsg)
     assertFalse(failingViewModel.uiState.value.isSaving)
     assertEquals("Summer festival", failingViewModel.uiState.value.name)
+    assertEquals(startDate, failingViewModel.uiState.value.startDate)
+    assertEquals(endDate, failingViewModel.uiState.value.endDate)
+    assertEquals(startTime, failingViewModel.uiState.value.startTime)
+    assertEquals(endTime, failingViewModel.uiState.value.endTime)
+    assertEquals("Main square", failingViewModel.uiState.value.venue)
+    assertEquals("Bring the stage equipment", failingViewModel.uiState.value.notes)
   }
 
   /**
