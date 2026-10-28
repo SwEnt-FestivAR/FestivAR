@@ -62,8 +62,8 @@ data class Announcement(
    * @param newTitle The new [title] for the edited [Announcement].
    * @param at The time at which the last modification was done.
    * @return The [Announcement] but with [title] replaced by [newTitle] and updated [updatedAt].
-   * @throws IllegalArgumentException If the given [newTitle] is empty or if [at] strictly
-   *   before [updatedAt].
+   * @throws IllegalArgumentException If the given [newTitle] is empty or if [at] strictly before
+   *   [updatedAt].
    */
   fun editTitle(newTitle: String, at: ZonedDateTime): Announcement {
     require(newTitle.isNotBlank()) { "The title cannot be empty." }
@@ -110,8 +110,8 @@ data class Announcement(
    * @param link The link that is going to be removed from `this`, from [links] list.
    * @param at The time at which the last modification was done.
    * @return The [Announcement] but with [link] removed from it and updated [updatedAt].
-   * @throws IllegalArgumentException If [link] is not present in the [Announcement] or if
-   *   [at] strictly before [updatedAt].
+   * @throws IllegalArgumentException If [link] is not present in the [Announcement] or if [at]
+   *   strictly before [updatedAt].
    */
   fun removeLink(link: String, at: ZonedDateTime): Announcement {
     require(links.any { it == link }) { "This link is not present in this Announcement." }
@@ -120,8 +120,8 @@ data class Announcement(
   }
 
   /**
-   * Returns a new version of `this` but with the [priority] changed with the given parameter, so
-   * an edited version.
+   * Returns a new version of `this` but with the [priority] changed with the given parameter, so an
+   * edited version.
    *
    * @param newPriority The new [priority] for the edited [Announcement].
    * @param at The time at which the last modification was done.
