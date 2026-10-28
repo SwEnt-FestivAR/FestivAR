@@ -76,6 +76,7 @@ data class Announcement(
    * @param newDescription The new [description] for the edited [Announcement].
    * @param actualTime The time at which the last modification was done.
    * @return The [Announcement] but with [description] replaced by [newDescription].
+   * @throws IllegalArgumentException if [actualTime] strictly before [updatedAt].
    */
   fun editDescription(newDescription: String, actualTime: ZonedDateTime): Announcement {
     requireValidEditTime(actualTime)
