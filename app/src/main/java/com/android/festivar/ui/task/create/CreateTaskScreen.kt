@@ -2,7 +2,6 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.create
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,10 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -42,7 +38,6 @@ import com.android.festivar.R
 import com.android.festivar.model.task.Priority
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.DateTimeRange
-import com.android.festivar.ui.components.FestivarConfirmDialog
 import com.android.festivar.ui.components.FestivarDateTimePickerDialog
 import com.android.festivar.ui.components.FestivarDateTimeRow
 import com.android.festivar.ui.components.FestivarFieldError
@@ -105,11 +100,6 @@ fun CreateTaskScreen(
 ) {
   val state by viewModel.uiState.collectAsState()
 
-  // Leaving a form that was edited asks first; a created task has nothing left to lose.
-  var askToDiscard by rememberSaveable { mutableStateOf(false) }
-  val requestBack = { if (state.hasChanges && !state.isCreated) askToDiscard = true else onBack() }
-  BackHandler(onBack = requestBack)
-
   // The latest callback is called, even if the caller passed a new one during the save.
   val currentOnTaskCreated by rememberUpdatedState(onTaskCreated)
   LaunchedEffect(state.isCreated) { if (state.isCreated) currentOnTaskCreated() }
@@ -118,7 +108,7 @@ fun CreateTaskScreen(
       state = state,
       actions =
           CreateTaskActions(
-              onBack = requestBack,
+              onBack = onBack,
               onTitleChange = viewModel::updateTitle,
               onDescriptionChange = viewModel::updateDescription,
               onLocationChange = viewModel::updateLocation,
@@ -132,20 +122,6 @@ fun CreateTaskScreen(
           ),
       modifier = modifier,
   )
-
-  if (askToDiscard) {
-    FestivarConfirmDialog(
-        title = stringResource(R.string.create_task_discard_title),
-        message = stringResource(R.string.create_task_discard_message),
-        confirmText = stringResource(R.string.create_task_discard_confirm),
-        dismissText = stringResource(R.string.create_task_discard_keep),
-        onConfirm = {
-          askToDiscard = false
-          onBack()
-        },
-        onDismiss = { askToDiscard = false },
-    )
-  }
 }
 
 /**

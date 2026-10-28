@@ -14,8 +14,6 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
 import com.android.festivar.model.authentication.AuthRepository
-import com.android.festivar.model.event.Event
-import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.task.TasksRepositoryProvider
 import com.android.festivar.ui.task.create.CreateTaskScreenTestTags
@@ -23,7 +21,6 @@ import com.android.festivar.ui.theme.AppTheme
 import com.google.firebase.auth.FirebaseUser
 import io.mockk.every
 import io.mockk.mockk
-import java.time.ZonedDateTime
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -39,17 +36,6 @@ class TaskNavGraphTest {
   @get:Rule val composeTestRule = createComposeRule()
 
   private val repository = TasksRepositoryLocal()
-  private val events =
-      EventsRepositoryLocal(
-          listOf(
-              Event(
-                  eventId = "event-1",
-                  title = "Festival",
-                  startDate = ZonedDateTime.now().minusYears(1),
-                  endDate = ZonedDateTime.now().plusYears(1),
-              )
-          )
-      )
 
   @Before
   fun setUp() {
@@ -66,7 +52,7 @@ class TaskNavGraphTest {
       AppTheme {
         val navController = rememberNavController()
         NavHost(navController, startDestination = AppScreens.createTask("event-1")) {
-          taskGraph(navController, authRepository, eventsRepository = { events })
+          taskGraph(navController, authRepository)
         }
       }
     }

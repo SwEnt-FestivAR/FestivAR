@@ -23,10 +23,6 @@
     <string name="action_cancel">Cancel</string>
     <string name="create_task_field_max_assign">People needed</string>
     <string name="create_task_field_estimated_time">Estimated time (minutes)</string>
-    <string name="create_task_discard_title">Discard this task?</string>
-    <string name="create_task_discard_message">What you typed will be lost.</string>
-    <string name="create_task_discard_confirm">Discard</string>
-    <string name="create_task_discard_keep">Keep editing</string>
     <string name="create_task_field_priority">Priority</string>
     <string name="priority_none">None</string>
     <string name="priority_low">Low</string>
