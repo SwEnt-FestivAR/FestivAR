@@ -5,6 +5,7 @@ package com.android.festivar.ui.event
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
@@ -17,6 +18,7 @@ import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.ui.components.formatDate
+import com.android.festivar.ui.components.formatTime
 import io.mockk.mockk
 import io.mockk.spyk
 import io.mockk.verify
@@ -71,12 +73,12 @@ class CreateEventScreenTest {
    * fields are filled.
    */
   @Test
-  fun fieldsReceiveInput() {
+  fun fieldsReceiveAndDisplayInput() {
+    val startDate = LocalDate.now()
+    val endDate = startDate.plusDays(1)
     viewModel = CreateEventViewModel(EventsRepositoryLocal())
     composeTestRule.setContent { CreateEventScreen(viewModel) }
 
-    val startDate = LocalDate.now()
-    val endDate = startDate.plusDays(1)
     composeTestRule
         .onNodeWithTag(CreateEventScreenTestTags.NAME_FIELD)
         .performTextInput("Summer festival")
@@ -98,6 +100,18 @@ class CreateEventScreenTest {
     val expectedEndDate = formatDate(endDate)
     composeTestRule.onNodeWithText(expectedStartDate).assertIsDisplayed()
     composeTestRule.onNodeWithText(expectedEndDate).assertIsDisplayed()
+
+    val startTime = LocalTime.of(9, 0)
+    val endTime = LocalTime.of(9, 0)
+    selectTime(CreateEventScreenTestTags.START_TIME_FIELD, startTime)
+    selectTime(CreateEventScreenTestTags.END_TIME_FIELD, endTime)
+
+    composeTestRule
+        .onNodeWithTag(CreateEventScreenTestTags.START_TIME_FIELD)
+        .assertTextContains(formatTime(startTime))
+    composeTestRule
+        .onNodeWithTag(CreateEventScreenTestTags.END_TIME_FIELD)
+        .assertTextContains(formatTime(endTime))
 
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsEnabled()
   }
@@ -254,6 +268,12 @@ class CreateEventScreenTest {
               .format(date)
       composeTestRule.onNodeWithText(dateDescription, substring = true).performClick()
     }
+    composeTestRule.onNodeWithText("OK").performClick()
+  }
+
+  private fun selectTime(tag: String, time: LocalTime) {
+    require(time == LocalTime.of(9, 0)) { "Only the proposed time 09:00 is pickable." }
+    composeTestRule.onNodeWithTag(tag).performClick()
     composeTestRule.onNodeWithText("OK").performClick()
   }
 
