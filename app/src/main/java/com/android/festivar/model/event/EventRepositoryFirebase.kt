@@ -45,6 +45,10 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
     }
   }
 
+  /**
+   * Firestore stores the code on each document, so a change to [joinCodeOf] or [JOIN_CODE_LENGTH]
+   * makes every stored code stale and needs a backfill of the existing events.
+   */
   override suspend fun getEventsByJoinCode(code: String): List<Event> {
     // A malformed document yields no event instead of failing the whole lookup. Cancellation is
     // rethrown, so a lookup canceled while it reads members or tasks never returns a partial list.
