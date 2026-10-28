@@ -32,12 +32,13 @@ object AvatarTestTags {
 /**
  * Initials shown in the avatar of a [user]: the first letter of its name and of its surname, e.g.
  * "SK" for Sara Keller, or the first two letters of its name if it has no surname, e.g. "SA" for
- * Sara (same for a surname without a name). `null` if both are blank, so that the avatar shows a
- * person icon instead.
+ * Sara (same for a surname without a name). Only letters count, so "-Ana" gives "A" and spaces,
+ * digits, punctuation and emojis are skipped. `null` if neither has a letter, so that the avatar
+ * shows a person icon instead.
  */
 internal fun initials(user: User): String? {
-  val name = user.name.trim()
-  val surname = user.surname.trim()
+  val name = user.name.filter { it.isLetter() }
+  val surname = user.surname.filter { it.isLetter() }
   val letters =
       when {
         name.isNotEmpty() && surname.isNotEmpty() -> "${name.first()}${surname.first()}"
