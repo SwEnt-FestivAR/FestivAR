@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -26,19 +27,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.android.festivar.R
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.DateTimeRange
@@ -50,9 +50,6 @@ import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
 import java.time.LocalTime
-
-private val ScreenBackground = Color(0xFFFFFEF9)
-private val PrimaryButton = Color(0xFFC7F21A)
 
 object CreateEventScreenTestTags {
   const val NAVIGATION_BUTTON = "navigationButton"
@@ -129,8 +126,8 @@ fun CreateEventContent(
     modifier: Modifier = Modifier,
 ) {
   Scaffold(
-      modifier = modifier,
-      containerColor = ScreenBackground,
+      modifier = modifier.imePadding(),
+      containerColor = MaterialTheme.colorScheme.background,
       topBar = { CreateEventTopBar(onBack = actions.onBack) },
       bottomBar = {
         CreateEventSaveBar(
@@ -152,7 +149,7 @@ fun CreateEventContent(
         FestivarTextField(
             value = state.name,
             onValueChange = actions.onNameChange,
-            label = "Event name",
+            label = stringResource(R.string.create_event_field_name),
             isError = state.nameError != null,
             modifier = Modifier.testTag(CreateEventScreenTestTags.NAME_FIELD),
         )
@@ -160,8 +157,8 @@ fun CreateEventContent(
       Spacer(modifier = Modifier.height(14.dp))
 
       FestivarDateTimeRow(
-          dateLabel = "Starts",
-          timeLabel = "Start time",
+          dateLabel = stringResource(R.string.create_event_field_start_date),
+          timeLabel = stringResource(R.string.create_event_field_start_time),
           date = state.startDate,
           time = null,
           dateError = state.startDateError,
@@ -174,8 +171,8 @@ fun CreateEventContent(
       Spacer(modifier = Modifier.height(14.dp))
 
       FestivarDateTimeRow(
-          dateLabel = "Ends",
-          timeLabel = "End time",
+          dateLabel = stringResource(R.string.create_event_field_end_date),
+          timeLabel = stringResource(R.string.create_event_field_end_time),
           date = state.endDate,
           time = null,
           dateError = state.endDateError,
@@ -190,7 +187,7 @@ fun CreateEventContent(
       FestivarTextField(
           value = state.venue,
           onValueChange = actions.onVenueChange,
-          label = "Venue",
+          label = stringResource(R.string.create_event_field_venue),
           modifier = Modifier.testTag(CreateEventScreenTestTags.LOCATION_FIELD),
       )
       Spacer(modifier = Modifier.height(8.dp))
@@ -198,9 +195,9 @@ fun CreateEventContent(
       FestivarTextField(
           value = state.notes,
           onValueChange = actions.onNotesChange,
-          label = "Notes for the team, optional",
+          label = stringResource(R.string.create_event_field_notes),
           singleLine = false,
-          modifier = Modifier.height(56.dp).testTag(CreateEventScreenTestTags.DESCRIPTION_FIELD),
+          modifier = Modifier.testTag(CreateEventScreenTestTags.DESCRIPTION_FIELD),
       )
       Spacer(modifier = Modifier.height(14.dp))
     }
@@ -249,10 +246,10 @@ private fun CreateEventSaveBar(
         shape = RoundedCornerShape(8.dp),
         colors =
             ButtonDefaults.buttonColors(
-                containerColor = PrimaryButton,
-                contentColor = Color(0xFF202020),
-                disabledContainerColor = Color(0xFFE6E4DE),
-                disabledContentColor = Color(0xFF99978F),
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
             ),
     ) {
       if (isSaving) {
@@ -262,7 +259,10 @@ private fun CreateEventSaveBar(
             strokeWidth = 2.dp,
         )
       } else {
-        Text(text = "Create event", fontWeight = FontWeight.Bold)
+        Text(
+            text = stringResource(R.string.create_event_button),
+            style = MaterialTheme.typography.labelLarge,
+        )
       }
     }
   }
@@ -274,9 +274,8 @@ private fun CreateEventTopBar(onBack: () -> Unit) {
   TopAppBar(
       title = {
         Text(
-            text = "Create event",
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
+            text = stringResource(R.string.create_event_title),
+            style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.testTag(CreateEventScreenTestTags.TITLE),
         )
       },
@@ -287,10 +286,12 @@ private fun CreateEventTopBar(onBack: () -> Unit) {
         ) {
           Icon(
               imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-              contentDescription = "Navigate back",
+              contentDescription = stringResource(R.string.create_event_back),
           )
         }
       },
+      colors =
+          TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
   )
 }
 
