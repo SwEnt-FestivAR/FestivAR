@@ -126,29 +126,37 @@ class AnnouncementTest {
   // Time of the modification, the same rule for every edit function
   // ---------------------------------------------------------------------------------------- //
 
+  /** The six edit functions, called on [announcementWith] with valid values at a given time. */
+  private val edits: List<(ZonedDateTime) -> Announcement> =
+      listOf(
+          { at -> announcementWith().editTitle("New title", at) },
+          { at -> announcementWith().editContent("New", at) },
+          { at -> announcementWith().editPriority(AnnouncementPriority.INFO, at) },
+          { at -> announcementWith().addLink(link3, at) },
+          { at -> announcementWith().removeLink(link1, at) },
+          { at -> announcementWith().editLinks(listOf(link3), at) },
+      )
+
   /** Every edit function refuses a time before updatedAt, even by a single nanosecond. */
   @Test
   fun everyEditFunctionRefusesATimeBeforeUpdatedAt() {
-    val announcement = announcementWith()
-
-    assertInvalid(editTimeMessage) { announcement.editTitle("New title", tooEarly) }
-    assertInvalid(editTimeMessage) { announcement.editContent("New", tooEarly) }
-    assertInvalid(editTimeMessage) { announcement.addLink(link3, tooEarly) }
-    assertInvalid(editTimeMessage) { announcement.removeLink(link1, tooEarly) }
-    assertInvalid(editTimeMessage) { announcement.editLinks(listOf(link3), tooEarly) }
-    assertInvalid(editTimeMessage) {
-      announcement.editPriority(AnnouncementPriority.INFO, tooEarly)
+    for (edit in edits) {
+      assertInvalid(editTimeMessage) { edit(tooEarly) }
     }
   }
 
-  /** A modification at the same instant as updatedAt is accepted, even in another time zone. */
+  /**
+   * Every edit function accepts a modification at the same instant as updatedAt, even in another
+   * time zone.
+   */
   @Test
-  fun aModificationAtTheSameInstantAsUpdatedAtIsAccepted() {
-    val announcement = announcementWith()
+  fun everyEditFunctionAcceptsTheSameInstantAsUpdatedAt() {
     val sameInstantInLondon = updatedAt.withZoneSameInstant(ZoneId.of("Europe/London"))
 
-    assertEquals(updatedAt, announcement.editTitle("New title", updatedAt).updatedAt)
-    assertEquals(sameInstantInLondon, announcement.editTitle("New", sameInstantInLondon).updatedAt)
+    for (edit in edits) {
+      assertEquals(updatedAt, edit(updatedAt).updatedAt)
+      assertEquals(sameInstantInLondon, edit(sameInstantInLondon).updatedAt)
+    }
   }
 
   // ---------------------------------------------------------------------------------------- //
