@@ -26,7 +26,10 @@ import org.junit.Before
 import org.junit.Test
 
 class CreateEventViewModelTest {
-  private lateinit var repository: EventsRepositoryLocal
+  private lateinit var eventsRepository: EventsRepositoryLocal
+  private lateinit var usersRepository: UsersRepositoryLocal
+  private val creator = User(uid = "creator-123", name = "Alice", surname = "AliceInWonderland")
+
   private lateinit var viewModel: CreateEventViewModel
 
   private val startDate = LocalDate.now()
@@ -36,8 +39,9 @@ class CreateEventViewModelTest {
 
   @Before
   fun setUp() {
-    repository = EventsRepositoryLocal()
-    viewModel = CreateEventViewModel(repository)
+    eventsRepository = EventsRepositoryLocal()
+    usersRepository = UsersRepositoryLocal(listOf(creator))
+    viewModel = CreateEventViewModel(eventsRepository, usersRepository, creator.uid)
   }
 
   /** Red if updating every event field does not persist the entered values. */
@@ -173,7 +177,7 @@ class CreateEventViewModelTest {
     fillRequiredFields()
     viewModel.createEvent()
 
-    val events = waitForEvents(repository)
+    val events = waitForEvents(eventsRepository)
     assertEquals(1, events.size)
     assertEquals("Summer festival", events.single().title)
     assertEquals(startDate, events.single().startDate.toLocalDate())
@@ -183,22 +187,14 @@ class CreateEventViewModelTest {
   /** Red if creating an event does not add its creator to membership data. */
   @Test
   fun createEventAddsTheCreatorToMembersAndJoinedEvents() = runBlocking {
-    val creator = User(uid = "creator-123", name = "Alice", surname = "Smith")
-    val usersRepository = UsersRepositoryLocal(listOf(creator))
-    val creatorViewModel =
-        CreateEventViewModel(
-            eventsRepository = repository,
-            usersRepository = usersRepository,
-            userId = creator.uid,
-        )
-    creatorViewModel.updateName("Summer festival")
-    creatorViewModel.updateStartDate(startDate)
-    creatorViewModel.updateEndDate(endDate)
-    creatorViewModel.updateVenue("Main square")
+    viewModel.updateName("Summer festival")
+    viewModel.updateStartDate(startDate)
+    viewModel.updateEndDate(endDate)
+    viewModel.updateVenue("Main square")
 
-    creatorViewModel.createEvent()
+    viewModel.createEvent()
 
-    val event = waitForEvents(repository).single()
+    val event = waitForEvents(eventsRepository).single()
     assertEquals(listOf(creator), event.members)
     assertTrue(usersRepository.getUser(creator.uid).joinedEvents.contains(event.eventId))
   }
@@ -212,7 +208,7 @@ class CreateEventViewModelTest {
             error("offline")
           }
         }
-    val failingViewModel = CreateEventViewModel(failingRepository)
+    val failingViewModel = CreateEventViewModel(failingRepository, usersRepository, creator.uid)
     failingViewModel.updateName("Summer festival")
     failingViewModel.updateStartDate(startDate)
     failingViewModel.updateEndDate(endDate)

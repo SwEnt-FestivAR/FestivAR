@@ -103,13 +103,12 @@ data class CreateEventUIState(
  * first member.
  *
  * @property eventsRepository where the event is written.
- * @property usersRepository where the creator's profile is read and its joined events updated; the
- *   provider's repository when null.
+ * @property usersRepository where the creator's profile is read and its joined events updated.
  * @property userId the uid of the signed-in user, blank when nobody is.
  */
 class CreateEventViewModel(
     private val eventsRepository: EventsRepository,
-    private val usersRepository: UsersRepository? = null,
+    private val usersRepository: UsersRepository = UsersRepositoryProvider.repository,
     private val userId: String = "",
 ) : ViewModel() {
   private val _uiState = MutableStateFlow(CreateEventUIState())
@@ -183,9 +182,8 @@ class CreateEventViewModel(
   private suspend fun save() {
     val creator =
         if (userId.isNotBlank()) {
-          val repo = usersRepository ?: UsersRepositoryProvider.repository
           try {
-            repo.getUser(userId)
+            usersRepository.getUser(userId)
           } catch (_: Exception) {
             null
           }
@@ -199,9 +197,8 @@ class CreateEventViewModel(
     eventsRepository.addEvent(newEvent)
 
     if (creator != null) {
-      val repo = usersRepository ?: UsersRepositoryProvider.repository
       try {
-        repo.editUser(creator.uid, creator.addJoinedEvent(newEvent.eventId))
+        usersRepository.editUser(creator.uid, creator.addJoinedEvent(newEvent.eventId))
       } catch (_: Exception) {
         // If updating user joinedEvents fails, event is still created
       }
