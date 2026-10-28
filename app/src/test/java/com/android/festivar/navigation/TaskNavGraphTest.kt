@@ -8,7 +8,9 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -88,5 +90,47 @@ class TaskNavGraphTest {
         .assertIsDisplayed()
         .assertTextEquals(message)
     assertTrue(runBlocking { repository.getAllTasks("event-1") }.isEmpty())
+  }
+
+  // The create task screen is opened on top of a "start" screen, to see where leaving goes back to.
+  private fun openCreateTaskOnTopOfStart(authRepository: AuthRepository): NavHostController {
+    lateinit var navController: NavHostController
+    composeTestRule.setContent {
+      AppTheme {
+        navController = rememberNavController()
+        NavHost(navController, startDestination = "start") {
+          composable("start") {}
+          taskGraph(navController, authRepository)
+        }
+      }
+    }
+    composeTestRule.runOnIdle { navController.navigate(AppScreens.createTask("event-1")) }
+    composeTestRule.waitForIdle()
+    return navController
+  }
+
+  @Test
+  fun createTaskRoute_backButton_returnsToThePreviousScreen() {
+    val navController = openCreateTaskOnTopOfStart(mockk<AuthRepository>(relaxed = true))
+
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.BACK_BUTTON).performClick()
+    composeTestRule.waitForIdle()
+
+    assertEquals("start", navController.currentBackStackEntry?.destination?.route)
+  }
+
+  @Test
+  fun createTaskRoute_afterTheTaskIsCreated_returnsToThePreviousScreen() {
+    val user = mockk<FirebaseUser> { every { uid } returns "owner-1" }
+    val navController =
+        openCreateTaskOnTopOfStart(mockk<AuthRepository> { every { currentUser } returns user })
+
+    composeTestRule
+        .onNodeWithTag(CreateTaskScreenTestTags.TITLE_FIELD)
+        .performTextInput("Run power to stage")
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.CREATE_BUTTON).performClick()
+    composeTestRule.waitUntil(timeoutMillis = 5_000) {
+      navController.currentBackStackEntry?.destination?.route == "start"
+    }
   }
 }
