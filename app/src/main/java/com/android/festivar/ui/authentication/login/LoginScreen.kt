@@ -2,7 +2,6 @@
 package com.android.festivar.ui.authentication.login
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -152,10 +151,11 @@ private fun LoginScreenContent(
       verticalArrangement = Arrangement.spacedBy(12.dp),
   ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-      Image(
+      Icon(
           painter = painterResource(R.drawable.app_logo),
           contentDescription = null,
-          modifier = Modifier.size(24.dp).testTag(LoginScreenTestTags.LOGO),
+          tint = MaterialTheme.colorScheme.onSurface,
+          modifier = Modifier.size(40.dp).testTag(LoginScreenTestTags.LOGO),
       )
       Text(
           text = stringResource(R.string.app_name),
