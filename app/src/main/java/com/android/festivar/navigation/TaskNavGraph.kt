@@ -12,14 +12,23 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.model.event.EventRepositoryFirebase
+import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.task.create.CreateTaskScreen
 import com.android.festivar.ui.task.create.CreateTaskViewModel
 import com.android.festivar.ui.task.details.TaskDetailsScreen
 import com.android.festivar.ui.tasks.TaskOverviewScreen
+import com.google.firebase.Firebase
+import com.google.firebase.firestore.firestore
 
 /** The destinations of the task feature. */
-fun NavGraphBuilder.taskGraph(navController: NavHostController, authRepository: AuthRepository) {
+fun NavGraphBuilder.taskGraph(
+    navController: NavHostController,
+    authRepository: AuthRepository,
+    // Created when the Create task screen opens, so that the other screens do not need Firebase.
+    eventsRepository: () -> EventsRepository = { EventRepositoryFirebase(Firebase.firestore) },
+) {
   // Reached through AppScreens.taskOverview(eventId)
   composable(
       route = "${AppScreens.TaskOverview.name}/{eventId}",
@@ -49,7 +58,7 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, authRepository: 
     // Leaving the screen, whether the task was created or not, goes back to the task overview.
     val leave: () -> Unit = { navController.popBackStack() }
     CreateTaskScreen(
-        viewModel = viewModel { CreateTaskViewModel(eventId, ownerId) },
+        viewModel = viewModel { CreateTaskViewModel(eventId, ownerId, eventsRepository()) },
         onBack = leave,
         onTaskCreated = leave,
     )

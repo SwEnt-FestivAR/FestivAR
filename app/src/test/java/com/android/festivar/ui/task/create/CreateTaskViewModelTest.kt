@@ -5,6 +5,9 @@ package com.android.festivar.ui.task.create
 import android.os.Looper
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
+import com.android.festivar.model.event.Event
+import com.android.festivar.model.event.EventsRepository
+import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.task.Priority
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
@@ -35,7 +38,19 @@ class CreateTaskViewModelTest {
   // was called, the tests check the state and what was stored.
   private val repository = TasksRepositoryLocal()
   private val zone = ZoneId.of("Europe/Zurich")
-  private val viewModel = CreateTaskViewModel("event-1", "owner-1", repository, zone = zone)
+  // The event the tasks are created in: the whole of 2026.
+  private val events =
+      EventsRepositoryLocal(
+          listOf(
+              Event(
+                  eventId = "event-1",
+                  title = "Festival",
+                  startDate = ZonedDateTime.of(2026, 1, 1, 0, 0, 0, 0, zone),
+                  endDate = ZonedDateTime.of(2026, 12, 31, 23, 59, 0, 0, zone),
+              )
+          )
+      )
+  private val viewModel = CreateTaskViewModel("event-1", "owner-1", events, repository, zone = zone)
   private val day = LocalDate.of(2026, 10, 17)
 
   private fun savedTasks(): List<Task> = runBlocking { repository.getAllTasks("event-1") }
@@ -86,7 +101,7 @@ class CreateTaskViewModelTest {
 
   @Test
   fun createTask_withBlankOwner_savesNothingAndShowsTheSaveError() {
-    val vm = CreateTaskViewModel("event-1", "  ", repository)
+    val vm = CreateTaskViewModel("event-1", "  ", events, repository)
     vm.updateTitle("Run power to stage")
 
     vm.createTask()
@@ -113,7 +128,7 @@ class CreateTaskViewModelTest {
   @Test
   fun createTask_retryAfterAFailedSave_keepsTheOwner() {
     val repo = StoredThenFailed()
-    val vm = CreateTaskViewModel("event-1", "owner-1", repo)
+    val vm = CreateTaskViewModel("event-1", "owner-1", events, repo)
     vm.updateTitle("Run power to stage")
 
     vm.createTask()
@@ -196,7 +211,7 @@ class CreateTaskViewModelTest {
         object : TasksRepository by TasksRepositoryLocal() {
           override suspend fun addTask(task: Task) = throw IllegalStateException("offline")
         }
-    val vm = CreateTaskViewModel("event-1", "owner-1", failing)
+    val vm = CreateTaskViewModel("event-1", "owner-1", events, failing)
     vm.updateTitle("Run power to stage")
 
     vm.createTask()
@@ -225,7 +240,7 @@ class CreateTaskViewModelTest {
             local.addTask(task)
           }
         }
-    val vm = CreateTaskViewModel("event-1", "owner-1", slow)
+    val vm = CreateTaskViewModel("event-1", "owner-1", events, slow)
     vm.updateTitle("Run power to stage")
 
     vm.createTask()
@@ -254,7 +269,7 @@ class CreateTaskViewModelTest {
             local.addTask(task)
           }
         }
-    val vm = CreateTaskViewModel("event-1", "owner-1", slow)
+    val vm = CreateTaskViewModel("event-1", "owner-1", events, slow)
     vm.updateTitle("Run power to stage")
 
     vm.createTask()
@@ -280,7 +295,7 @@ class CreateTaskViewModelTest {
             local.addTask(task)
           }
         }
-    val vm = CreateTaskViewModel("event-1", "owner-1", flaky)
+    val vm = CreateTaskViewModel("event-1", "owner-1", events, flaky)
     vm.updateTitle("Run power to stage")
 
     vm.createTask()
@@ -305,7 +320,7 @@ class CreateTaskViewModelTest {
         object : TasksRepository by TasksRepositoryLocal() {
           override suspend fun addTask(task: Task) = throw CancellationException("cancelled")
         }
-    val vm = CreateTaskViewModel("event-1", "owner-1", cancelled)
+    val vm = CreateTaskViewModel("event-1", "owner-1", events, cancelled)
     vm.updateTitle("Run power to stage")
 
     vm.createTask()
@@ -343,7 +358,7 @@ class CreateTaskViewModelTest {
   @Test
   fun createTask_retryAfterAStoredButFailedSave_reusesTheTaskId() {
     val repo = StoredThenFailed()
-    val vm = CreateTaskViewModel("event-1", "owner-1", repo)
+    val vm = CreateTaskViewModel("event-1", "owner-1", events, repo)
     vm.updateTitle("Run power to stage")
 
     vm.createTask()
@@ -358,7 +373,7 @@ class CreateTaskViewModelTest {
   @Test
   fun createTask_retryAfterEditingTheForm_updatesTheStoredTask() {
     val repo = StoredThenFailed()
-    val vm = CreateTaskViewModel("event-1", "owner-1", repo)
+    val vm = CreateTaskViewModel("event-1", "owner-1", events, repo)
     vm.updateTitle("Run power to stage")
     vm.createTask()
 
@@ -371,9 +386,116 @@ class CreateTaskViewModelTest {
   }
 
   @Test
+  fun createTask_addsTheTaskToItsEvent() {
+    viewModel.updateTitle("Run power to stage")
+
+    viewModel.createTask()
+
+    val event = runBlocking { events.getEvent("event-1") }
+    assertEquals(listOf(savedTasks().single().taskId), event.tasks.map { it.taskId })
+  }
+
+  @Test
+  fun createTask_whenTheEventCannotBeUpdated_showsTheErrorAndLinksTheTaskOnRetry() {
+    // STUB over the fake: updating the event fails while eventUpdateFails is true.
+    var eventUpdateFails = true
+    val flaky =
+        object : EventsRepository by events {
+          override suspend fun editEvent(eventId: String, newValue: Event) {
+            if (eventUpdateFails) throw IllegalStateException("offline")
+            events.editEvent(eventId, newValue)
+          }
+        }
+    val vm = CreateTaskViewModel("event-1", "owner-1", flaky, repository, zone = zone)
+    vm.updateTitle("Run power to stage")
+
+    vm.createTask()
+    shadowOf(Looper.getMainLooper()).idle()
+
+    assertEquals(R.string.create_task_error_save_failed, vm.uiState.value.errorMsg)
+    assertFalse(vm.uiState.value.isCreated)
+
+    eventUpdateFails = false
+    vm.createTask()
+    shadowOf(Looper.getMainLooper()).idle()
+
+    assertTrue(vm.uiState.value.isCreated)
+    assertEquals(1, savedTasks().size)
+    assertEquals(1, runBlocking { events.getEvent("event-1") }.tasks.size)
+  }
+
+  @Test
+  fun createTask_withAnUnknownEvent_showsTheSaveError() {
+    val vm = CreateTaskViewModel("event-1", "owner-1", EventsRepositoryLocal(), repository)
+    vm.updateTitle("Run power to stage")
+
+    vm.createTask()
+    shadowOf(Looper.getMainLooper()).idle()
+
+    assertEquals(R.string.create_task_error_save_failed, vm.uiState.value.errorMsg)
+    assertFalse(vm.uiState.value.isCreated)
+  }
+
+  @Test
+  fun dates_insideTheEvent_areAccepted() {
+    viewModel.updateTitle("Run power to stage")
+    viewModel.updateStartDate(day)
+    viewModel.updateEndDate(day)
+
+    assertNull(viewModel.uiState.value.startDateError)
+    assertNull(viewModel.uiState.value.endDateError)
+    assertTrue(viewModel.uiState.value.canCreate)
+  }
+
+  @Test
+  fun startBeforeTheEvent_isAnError() {
+    viewModel.updateTitle("Run power to stage")
+    viewModel.updateStartDate(LocalDate.of(2025, 12, 31))
+
+    assertEquals(FieldError.OUTSIDE_EVENT, viewModel.uiState.value.startDateError)
+    assertFalse(viewModel.uiState.value.canCreate)
+  }
+
+  @Test
+  fun endAfterTheEvent_isAnError() {
+    viewModel.updateTitle("Run power to stage")
+    viewModel.updateStartDate(day)
+    viewModel.updateEndDate(LocalDate.of(2027, 1, 1))
+
+    assertNull(viewModel.uiState.value.startDateError)
+    assertEquals(FieldError.OUTSIDE_EVENT, viewModel.uiState.value.endDateError)
+    assertFalse(viewModel.uiState.value.canCreate)
+  }
+
+  @Test
+  fun dates_areNotCheckedWhileTheEventIsUnknown() {
+    val vm = CreateTaskViewModel("event-1", "owner-1", EventsRepositoryLocal(), repository)
+    vm.updateTitle("Run power to stage")
+    vm.updateStartDate(LocalDate.of(1999, 1, 1))
+
+    assertNull(vm.uiState.value.startDateError)
+    assertTrue(vm.uiState.value.canCreate)
+  }
+
+  @Test
+  fun hasChanges_isFalseOnlyForAnUntouchedForm() {
+    assertFalse(viewModel.uiState.value.hasChanges)
+
+    viewModel.updatePriority(Priority.LOW)
+    assertTrue(viewModel.uiState.value.hasChanges)
+  }
+
+  @Test
+  fun hasChanges_ignoresOpeningAPicker() {
+    viewModel.showPicker(DateTimeField.START_DATE)
+
+    assertFalse(viewModel.uiState.value.hasChanges)
+  }
+
+  @Test
   fun blankEventId_isRefused() {
     assertThrows(IllegalArgumentException::class.java) {
-      CreateTaskViewModel(" ", "owner-1", repository)
+      CreateTaskViewModel(" ", "owner-1", events, repository)
     }
   }
 
@@ -442,7 +564,7 @@ class CreateTaskViewModelTest {
         object : TasksRepository by TasksRepositoryLocal() {
           override suspend fun addTask(task: Task) = never.await()
         }
-    val vm = CreateTaskViewModel("event-1", "owner-1", hanging, saveTimeoutMs = 1_000)
+    val vm = CreateTaskViewModel("event-1", "owner-1", events, hanging, saveTimeoutMs = 1_000)
     vm.updateTitle("Run power to stage")
 
     vm.createTask()

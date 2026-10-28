@@ -12,6 +12,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.platform.app.InstrumentationRegistry
+import com.android.festivar.model.event.Event
+import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
@@ -21,6 +23,7 @@ import com.android.festivar.ui.components.hasDayOfMonth
 import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZonedDateTime
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
 
@@ -42,6 +45,19 @@ abstract class CreateTaskTest {
   /** While true, saving a task fails as if the device were offline. */
   var addTaskFails = false
 
+  /** The event the tasks are created in; it lasts long enough for any date the tests pick. */
+  val events =
+      EventsRepositoryLocal(
+          listOf(
+              Event(
+                  eventId = EVENT_ID,
+                  title = "Festival",
+                  startDate = ZonedDateTime.now().minusYears(1),
+                  endDate = ZonedDateTime.now().plusYears(1),
+              )
+          )
+      )
+
   @Before
   open fun setUp() {
     repository = TasksRepositoryLocal()
@@ -53,7 +69,7 @@ abstract class CreateTaskTest {
             repository.addTask(task)
           }
         }
-    viewModel = CreateTaskViewModel(EVENT_ID, "owner-1", failable)
+    viewModel = CreateTaskViewModel(EVENT_ID, "owner-1", events, failable)
     createdCount = 0
     backCount = 0
     addTaskFails = false

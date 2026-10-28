@@ -7,6 +7,7 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
+import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.task.Priority
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
@@ -44,7 +45,7 @@ data class CreateTaskUiState(
     val endTime: LocalTime? = null,
     val priority: Priority = Priority.NONE,
     // The numbers are kept as typed (digits only) so that an empty field stays empty.
-    val maxAssign: String = "1",
+    val maxAssign: String = DEFAULT_MAX_ASSIGN,
     val estimatedMinutes: String = "",
     // The field whose picker dialog is open, or null when none is.
     val openPicker: DateTimeField? = null,
@@ -55,6 +56,10 @@ data class CreateTaskUiState(
     val isCreated: Boolean = false,
     // The time zone of the picked dates and times; the device's one by default.
     val zone: ZoneId = ZoneId.systemDefault(),
+    // The dates of the event the task belongs to, once loaded. A task must fit between them; no
+    // check is made while they are unknown (for example if the event could not be read).
+    val eventStart: ZonedDateTime? = null,
+    val eventEnd: ZonedDateTime? = null,
     // String resource of the error to show (see R.string.create_task_error_save_failed), or null.
     @StringRes val errorMsg: Int? = null,
 ) {
@@ -73,7 +78,12 @@ data class CreateTaskUiState(
 
   /** The error shown under the start date, or `null`. */
   val startDateError: FieldError?
-    get() = if (startTime != null && startDate == null) FieldError.MISSING_DATE else null
+    get() =
+        when {
+          startTime != null && startDate == null -> FieldError.MISSING_DATE
+          isOutsideEvent(startDateTime) -> FieldError.OUTSIDE_EVENT
+          else -> null
+        }
 
   /** The error shown under the end date, or `null`. */
   val endDateError: FieldError?
@@ -81,12 +91,32 @@ data class CreateTaskUiState(
       if (endTime != null && endDate == null) return FieldError.MISSING_DATE
       val start = startDateTime
       val end = endDateTime
-      return if (start != null && end != null && end.isBefore(start)) {
-        FieldError.END_BEFORE_START
-      } else {
-        null
+      return when {
+        start != null && end != null && end.isBefore(start) -> FieldError.END_BEFORE_START
+        isOutsideEvent(end) -> FieldError.OUTSIDE_EVENT
+        else -> null
       }
     }
+
+  private fun isOutsideEvent(time: ZonedDateTime?): Boolean =
+      time != null &&
+          eventStart != null &&
+          eventEnd != null &&
+          (time.isBefore(eventStart) || time.isAfter(eventEnd))
+
+  /** Whether the user changed anything in the form, so that leaving it would lose something. */
+  val hasChanges: Boolean
+    get() =
+        title.isNotEmpty() ||
+            description.isNotEmpty() ||
+            location.isNotEmpty() ||
+            startDate != null ||
+            startTime != null ||
+            endDate != null ||
+            endTime != null ||
+            priority != Priority.NONE ||
+            maxAssign != DEFAULT_MAX_ASSIGN ||
+            estimatedMinutes.isNotEmpty()
 
   /** The error shown under the max assign field, or `null`: it must be a number, at least 1. */
   val maxAssignError: FieldError?
@@ -140,6 +170,8 @@ data class CreateTaskUiState(
   }
 }
 
+private const val DEFAULT_MAX_ASSIGN = "1"
+
 /** The time of a start date picked without a time. */
 val START_OF_DAY: LocalTime = LocalTime.MIDNIGHT
 
@@ -157,6 +189,8 @@ private const val SAVE_TIMEOUT_MS = 15_000L
  * @param eventId The event the created task belongs to. It cannot be blank.
  * @param ownerId The uid of the signed-in user, who becomes the owner of the task. A task always
  *   has an owner when it is created: a blank uid saves nothing and shows the save error.
+ * @param eventsRepository Where the event is read, to check the task's dates against it, and
+ *   updated so that the new task is part of its tasks.
  * @param tasksRepository Where the task is saved. It is the app's repository by default; the tests
  *   give an in-memory one.
  * @param saveTimeoutMs How long a save may last before it is reported as failed, so that the form
@@ -167,6 +201,7 @@ private const val SAVE_TIMEOUT_MS = 15_000L
 class CreateTaskViewModel(
     private val eventId: String,
     private val ownerId: String,
+    private val eventsRepository: EventsRepository,
     private val tasksRepository: TasksRepository = TasksRepositoryProvider.repository,
     private val saveTimeoutMs: Long = SAVE_TIMEOUT_MS,
     zone: ZoneId = ZoneId.systemDefault(),
@@ -175,14 +210,30 @@ class CreateTaskViewModel(
   // after reaching the server, the retry targets the same task instead of creating a second one.
   private var pendingTaskId: String? = null
 
-  init {
-    // A Task needs an event: a blank one is a mistake of the caller.
-    require(eventId.isNotBlank()) { "eventId must not be blank" }
-  }
-
   // Create task UI state
   private val _uiState = MutableStateFlow(CreateTaskUiState(zone = zone))
   val uiState: StateFlow<CreateTaskUiState> = _uiState.asStateFlow()
+
+  init {
+    // A Task needs an event: a blank one is a mistake of the caller.
+    require(eventId.isNotBlank()) { "eventId must not be blank" }
+    loadEventDates()
+  }
+
+  // The task must fit in its event. If the event cannot be read, the form is not checked against
+  // it; saving then fails anyway if the event is really unreachable (see linkToEvent).
+  private fun loadEventDates() {
+    viewModelScope.launch {
+      try {
+        val event = withTimeout(saveTimeoutMs) { eventsRepository.getEvent(eventId) }
+        _uiState.update { it.copy(eventStart = event.startDate, eventEnd = event.endDate) }
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        Log.e("CreateTaskViewModel", "Error reading the event", e)
+      }
+    }
+  }
 
   // Functions to update the UI state.
 
@@ -266,7 +317,10 @@ class CreateTaskViewModel(
     _uiState.update { it.copy(isSaving = true, errorMsg = null) }
     viewModelScope.launch {
       try {
-        withTimeout(saveTimeoutMs) { tasksRepository.addTask(task) }
+        withTimeout(saveTimeoutMs) {
+          tasksRepository.addTask(task)
+          linkToEvent(task)
+        }
         _uiState.update { it.copy(isSaving = false, isCreated = true) }
       } catch (e: TimeoutCancellationException) {
         onSaveFailed(task, e)
@@ -279,8 +333,17 @@ class CreateTaskViewModel(
     }
   }
 
+  // Adds the task to the tasks of its event, unless a previous attempt already did.
+  private suspend fun linkToEvent(task: Task) {
+    val event = eventsRepository.getEvent(eventId)
+    if (event.tasks.none { it.taskId == task.taskId }) {
+      eventsRepository.editEvent(eventId, event.addTask(task))
+    }
+  }
+
   // A failed save may still have reached the server (for example a timeout). If the task exists,
-  // it is created, and updated if the form changed since that save; otherwise the error is shown
+  // it is created (updated if the form changed since that save, and added to its event); otherwise
+  // the error is shown
   // and the user can retry with the same task id.
   private suspend fun onSaveFailed(task: Task, e: Exception) {
     Log.e("CreateTaskViewModel", "Error adding the task", e)
@@ -289,6 +352,7 @@ class CreateTaskViewModel(
           withTimeout(saveTimeoutMs) {
             val stored = tasksRepository.getTask(task.taskId)
             if (stored != task) tasksRepository.editTask(task.taskId, task)
+            linkToEvent(task)
           }
           true
         } catch (_: TimeoutCancellationException) {

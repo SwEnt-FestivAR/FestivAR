@@ -17,12 +17,17 @@
     <string name="field_error_empty_title">Give the task a title</string>
     <string name="field_error_missing_date">Pick a date for this time</string>
     <string name="field_error_end_before_start">Ends before it starts</string>
+    <string name="field_error_outside_event">Outside the dates of the event</string>
     <string name="field_error_invalid_max_assign">Enter a number of people, at least 1</string>
     <string name="field_error_invalid_estimated_time">Enter the time in minutes</string>
     <string name="action_ok">OK</string>
     <string name="action_cancel">Cancel</string>
     <string name="create_task_field_max_assign">People needed</string>
     <string name="create_task_field_estimated_time">Estimated time (minutes)</string>
+    <string name="create_task_discard_title">Discard this task?</string>
+    <string name="create_task_discard_message">What you typed will be lost.</string>
+    <string name="create_task_discard_confirm">Discard</string>
+    <string name="create_task_discard_keep">Keep editing</string>
     <string name="create_task_field_priority">Priority</string>
     <string name="priority_none">None</string>
     <string name="priority_low">Low</string>
