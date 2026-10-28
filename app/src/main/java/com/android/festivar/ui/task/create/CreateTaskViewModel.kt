@@ -220,9 +220,9 @@ class CreateTaskViewModel(
     if (!form.canCreate) return
     val ownerId = currentUserId()
     if (ownerId.isBlank()) {
-      // Nobody could manage the task if it was saved without an owner: this is a mistake of the
-      // caller, reported instead of crashing.
-      Log.e(TAG, "createTask called without an owner")
+      // Nobody is signed in: a task without an owner could not be managed, so save nothing and
+      // show the save error.
+      Log.w(TAG, "createTask called without a signed-in user")
       _uiState.update { it.copy(errorMsg = SAVE_FAILED_MESSAGE) }
       return
     }

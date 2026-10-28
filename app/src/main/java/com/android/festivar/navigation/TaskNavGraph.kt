@@ -49,6 +49,7 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, authRepository: 
     val currentUserId = { authRepository.currentUser?.uid.orEmpty() }
     // Leaving the screen, whether the task was created or not, goes back to the task overview.
     val leave: () -> Unit = { navController.popBackStack() }
+    // No key needed: the view model is scoped to this back stack entry, which has its own eventId.
     CreateTaskScreen(
         viewModel = viewModel { CreateTaskViewModel(eventId, currentUserId) },
         onBack = leave,
