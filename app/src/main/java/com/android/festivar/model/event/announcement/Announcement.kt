@@ -45,6 +45,14 @@ data class Announcement(
     require(links.distinct().size == links.size) { "A link is duplicated." }
   }
 
+  /** Utility function that checks that a modification at [at] is not before the last one.
+   *
+   * @param at The time of the modification
+   * @throws IllegalArgumentException if [at] strictly before [createdAt].
+   */
+  private fun requireValidEditTime(at: ZonedDateTime) =
+    require(!at.isBefore(createdAt)) { "The modification cannot be before the previous one." }
+
   /**
    * Returns a new version of `this` but with the [title] changed with the given parameter, so an
    * edited version.
@@ -57,7 +65,7 @@ data class Announcement(
    */
   fun editTitle(newTitle: String, actualTime: ZonedDateTime): Announcement {
     require(newTitle.isNotBlank()) { "The title cannot be empty." }
-    require(!actualTime.isBefore(createdAt)){ "The new modification can't be done before the previous one." }
+    requireValidEditTime(actualTime)
     return copy(title = newTitle, createdAt = actualTime)
   }
 
@@ -70,7 +78,7 @@ data class Announcement(
    * @return The [Announcement] but with [description] replaced by [newDescription].
    */
   fun editDescription(newDescription: String, actualTime: ZonedDateTime): Announcement {
-    require(!actualTime.isBefore(createdAt)){ "The new modification can't be done before the previous one." }
+    requireValidEditTime(actualTime)
     return copy(description = newDescription, createdAt = actualTime)
   }
 
@@ -87,7 +95,7 @@ data class Announcement(
   fun addLink(link: String, actualTime: ZonedDateTime): Announcement {
     require(link.isNotBlank()) { "A link cannot be empty." }
     require(!links.contains(link)) { "The link already exists." }
-    require(!actualTime.isBefore(createdAt)){ "The new modification can't be done before the previous one." }
+    requireValidEditTime(actualTime)
     return copy(links = links + link, createdAt = actualTime)
   }
 
@@ -103,7 +111,7 @@ data class Announcement(
    */
   fun removeLink(link: String, actualTime: ZonedDateTime): Announcement {
     require(links.any { it == link }) { "This link is not present in this Announcement." }
-    require(!actualTime.isBefore(createdAt)){ "The new modification can't be done before the previous one." }
+    requireValidEditTime(actualTime)
     return copy(links = links - link, createdAt = actualTime)
   }
 
@@ -120,7 +128,7 @@ data class Announcement(
   fun editLinks(newLinks: List<String>, actualTime: ZonedDateTime): Announcement {
     require(newLinks.none { it.isBlank() }) { "A link cannot be empty." }
     require(newLinks.distinct().size == newLinks.size) { "A link is duplicated." }
-    require(!actualTime.isBefore(createdAt)){ "The new modification can't be done before the previous one." }
+    requireValidEditTime(actualTime)
     return copy(links = newLinks, createdAt = actualTime)
   }
 
