@@ -55,9 +55,8 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
     return eventCollection.whereEqualTo("joinCode", code).get().await().documents.mapNotNull {
       try {
         documentToEvent(it)
-      } catch (e: CancellationException) {
-        throw e
       } catch (e: Exception) {
+        if (e is CancellationException) throw e
         Log.w(TAG, "Skipping event ${it.id} that could not be read", e)
         null
       }
