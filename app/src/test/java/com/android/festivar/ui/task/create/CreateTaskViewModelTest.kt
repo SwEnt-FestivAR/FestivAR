@@ -437,47 +437,6 @@ class CreateTaskViewModelTest {
   }
 
   @Test
-  fun dates_insideTheEvent_areAccepted() {
-    viewModel.updateTitle("Run power to stage")
-    viewModel.updateStartDate(day)
-    viewModel.updateEndDate(day)
-
-    assertNull(viewModel.uiState.value.startDateError)
-    assertNull(viewModel.uiState.value.endDateError)
-    assertTrue(viewModel.uiState.value.canCreate)
-  }
-
-  @Test
-  fun startBeforeTheEvent_isAnError() {
-    viewModel.updateTitle("Run power to stage")
-    viewModel.updateStartDate(LocalDate.of(2025, 12, 31))
-
-    assertEquals(FieldError.OUTSIDE_EVENT, viewModel.uiState.value.startDateError)
-    assertFalse(viewModel.uiState.value.canCreate)
-  }
-
-  @Test
-  fun endAfterTheEvent_isAnError() {
-    viewModel.updateTitle("Run power to stage")
-    viewModel.updateStartDate(day)
-    viewModel.updateEndDate(LocalDate.of(2027, 1, 1))
-
-    assertNull(viewModel.uiState.value.startDateError)
-    assertEquals(FieldError.OUTSIDE_EVENT, viewModel.uiState.value.endDateError)
-    assertFalse(viewModel.uiState.value.canCreate)
-  }
-
-  @Test
-  fun dates_areNotCheckedWhileTheEventIsUnknown() {
-    val vm = CreateTaskViewModel("event-1", "owner-1", EventsRepositoryLocal(), repository)
-    vm.updateTitle("Run power to stage")
-    vm.updateStartDate(LocalDate.of(1999, 1, 1))
-
-    assertNull(vm.uiState.value.startDateError)
-    assertTrue(vm.uiState.value.canCreate)
-  }
-
-  @Test
   fun hasChanges_isFalseOnlyForAnUntouchedForm() {
     assertFalse(viewModel.uiState.value.hasChanges)
 

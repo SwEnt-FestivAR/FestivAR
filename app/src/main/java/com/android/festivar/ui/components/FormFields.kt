@@ -154,9 +154,6 @@ enum class FieldError {
   /** The end is before the start. */
   END_BEFORE_START,
 
-  /** The task starts or ends outside the dates of its event. */
-  OUTSIDE_EVENT,
-
   /** The number of people is not a number, or lower than 1. */
   INVALID_MAX_ASSIGN,
 
@@ -171,7 +168,6 @@ fun fieldErrorMessageRes(error: FieldError): Int =
       FieldError.EMPTY_TITLE -> R.string.field_error_empty_title
       FieldError.MISSING_DATE -> R.string.field_error_missing_date
       FieldError.END_BEFORE_START -> R.string.field_error_end_before_start
-      FieldError.OUTSIDE_EVENT -> R.string.field_error_outside_event
       FieldError.INVALID_MAX_ASSIGN -> R.string.field_error_invalid_max_assign
       FieldError.INVALID_ESTIMATED_TIME -> R.string.field_error_invalid_estimated_time
     }

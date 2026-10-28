@@ -17,7 +17,6 @@
     <string name="field_error_empty_title">Give the task a title</string>
     <string name="field_error_missing_date">Pick a date for this time</string>
     <string name="field_error_end_before_start">Ends before it starts</string>
-    <string name="field_error_outside_event">Outside the dates of the event</string>
     <string name="field_error_invalid_max_assign">Enter a number of people, at least 1</string>
     <string name="field_error_invalid_estimated_time">Enter the time in minutes</string>
     <string name="action_ok">OK</string>

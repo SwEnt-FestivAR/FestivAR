@@ -56,10 +56,6 @@ data class CreateTaskUiState(
     val isCreated: Boolean = false,
     // The time zone of the picked dates and times; the device's one by default.
     val zone: ZoneId = ZoneId.systemDefault(),
-    // The dates of the event the task belongs to, once loaded. A task must fit between them; no
-    // check is made while they are unknown (for example if the event could not be read).
-    val eventStart: ZonedDateTime? = null,
-    val eventEnd: ZonedDateTime? = null,
     // String resource of the error to show (see R.string.create_task_error_save_failed), or null.
     @StringRes val errorMsg: Int? = null,
 ) {
@@ -78,12 +74,7 @@ data class CreateTaskUiState(
 
   /** The error shown under the start date, or `null`. */
   val startDateError: FieldError?
-    get() =
-        when {
-          startTime != null && startDate == null -> FieldError.MISSING_DATE
-          isOutsideEvent(startDateTime) -> FieldError.OUTSIDE_EVENT
-          else -> null
-        }
+    get() = if (startTime != null && startDate == null) FieldError.MISSING_DATE else null
 
   /** The error shown under the end date, or `null`. */
   val endDateError: FieldError?
@@ -93,16 +84,9 @@ data class CreateTaskUiState(
       val end = endDateTime
       return when {
         start != null && end != null && end.isBefore(start) -> FieldError.END_BEFORE_START
-        isOutsideEvent(end) -> FieldError.OUTSIDE_EVENT
         else -> null
       }
     }
-
-  private fun isOutsideEvent(time: ZonedDateTime?): Boolean =
-      time != null &&
-          eventStart != null &&
-          eventEnd != null &&
-          (time.isBefore(eventStart) || time.isAfter(eventEnd))
 
   /** Whether the user changed anything in the form, so that leaving it would lose something. */
   val hasChanges: Boolean
@@ -217,22 +201,6 @@ class CreateTaskViewModel(
   init {
     // A Task needs an event: a blank one is a mistake of the caller.
     require(eventId.isNotBlank()) { "eventId must not be blank" }
-    loadEventDates()
-  }
-
-  // The task must fit in its event. If the event cannot be read, the form is not checked against
-  // it; saving then fails anyway if the event is really unreachable (see linkToEvent).
-  private fun loadEventDates() {
-    viewModelScope.launch {
-      try {
-        val event = withTimeout(saveTimeoutMs) { eventsRepository.getEvent(eventId) }
-        _uiState.update { it.copy(eventStart = event.startDate, eventEnd = event.endDate) }
-      } catch (e: CancellationException) {
-        throw e
-      } catch (e: Exception) {
-        Log.e("CreateTaskViewModel", "Error reading the event", e)
-      }
-    }
   }
 
   // Functions to update the UI state.
