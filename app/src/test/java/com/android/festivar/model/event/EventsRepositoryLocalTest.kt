@@ -1,6 +1,7 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.event
 
+import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.user.User
 import java.time.ZonedDateTime
 import kotlinx.coroutines.runBlocking
@@ -28,6 +29,9 @@ class EventsRepositoryLocalTest {
       )
   private val otherEvent =
       Event(eventId = "2", title = "Soirée Jazz", startDate = start, endDate = start.plusHours(5))
+  private val announcement =
+      Announcement(announcementId = "a1", title = "Gates open", authorId = "u1", updatedAt = start)
+  private val eventWithAnnouncement = event.copy(announcements = listOf(announcement))
 
   @Before
   fun setUp() {
@@ -149,6 +153,84 @@ class EventsRepositoryLocalTest {
   fun deleteEvent_unknownIdThrows() {
     assertThrows(NoSuchElementException::class.java) {
       runBlocking { repository.deleteEvent("unknown") }
+    }
+  }
+
+  @Test
+  fun addAnnouncement_addsItToTheEventOnly() = runTest {
+    repository = EventsRepositoryLocal(listOf(event, otherEvent))
+    repository.addAnnouncement(event.eventId, announcement)
+    assertEquals(eventWithAnnouncement, repository.getEvent(event.eventId))
+    assertEquals(otherEvent, repository.getEvent(otherEvent.eventId))
+  }
+
+  @Test
+  fun addAnnouncement_withExistingIdThrowsAndKeepsTheEvent() = runTest {
+    repository = EventsRepositoryLocal(listOf(eventWithAnnouncement))
+    assertThrows(IllegalArgumentException::class.java) {
+      runBlocking {
+        repository.addAnnouncement(
+            event.eventId,
+            announcement.editTitle("Gates open later", at = start.plusMinutes(1)),
+        )
+      }
+    }
+    assertEquals(eventWithAnnouncement, repository.getEvent(event.eventId))
+  }
+
+  @Test
+  fun addAnnouncement_unknownEventThrows() {
+    assertThrows(NoSuchElementException::class.java) {
+      runBlocking { repository.addAnnouncement("unknown", announcement) }
+    }
+  }
+
+  @Test
+  fun editAnnouncement_replacesTheAnnouncement() = runTest {
+    repository = EventsRepositoryLocal(listOf(eventWithAnnouncement))
+    val edited = announcement.editTitle("Gates open later", at = start.plusMinutes(1)).togglePin()
+    repository.editAnnouncement(event.eventId, edited)
+    assertEquals(listOf(edited), repository.getEvent(event.eventId).announcements)
+  }
+
+  @Test
+  fun editAnnouncement_missingAnnouncementThrowsAndKeepsTheEvent() = runTest {
+    repository = EventsRepositoryLocal(listOf(eventWithAnnouncement))
+    assertThrows(IllegalArgumentException::class.java) {
+      runBlocking {
+        repository.editAnnouncement(event.eventId, announcement.copy(announcementId = "a2"))
+      }
+    }
+    assertEquals(eventWithAnnouncement, repository.getEvent(event.eventId))
+  }
+
+  @Test
+  fun editAnnouncement_unknownEventThrows() {
+    assertThrows(NoSuchElementException::class.java) {
+      runBlocking { repository.editAnnouncement("unknown", announcement) }
+    }
+  }
+
+  @Test
+  fun deleteAnnouncement_removesTheAnnouncement() = runTest {
+    repository = EventsRepositoryLocal(listOf(eventWithAnnouncement))
+    repository.deleteAnnouncement(event.eventId, announcement.announcementId)
+    assertEquals(event, repository.getEvent(event.eventId))
+  }
+
+  @Test
+  fun deleteAnnouncement_missingAnnouncementThrowsAndKeepsTheEvent() = runTest {
+    repository = EventsRepositoryLocal(listOf(eventWithAnnouncement))
+    assertThrows(IllegalArgumentException::class.java) {
+      runBlocking { repository.deleteAnnouncement(event.eventId, "unknown") }
+    }
+    assertEquals(eventWithAnnouncement, repository.getEvent(event.eventId))
+  }
+
+  @Test
+  fun deleteAnnouncement_unknownEventThrows() {
+    assertThrows(NoSuchElementException::class.java) {
+      runBlocking { repository.deleteAnnouncement("unknown", announcement.announcementId) }
     }
   }
 }

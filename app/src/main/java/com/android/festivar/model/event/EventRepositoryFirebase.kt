@@ -3,6 +3,7 @@
 package com.android.festivar.model.event
 
 import android.util.Log
+import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.task.TaskRepositoryFirebase
 import com.android.festivar.model.user.UserRepositoryFirebase
 import com.google.firebase.firestore.DocumentSnapshot
@@ -14,6 +15,7 @@ import kotlinx.coroutines.tasks.await
 
 private const val EVENT_COLLECTION_PATH = "events"
 private const val TAG = "EventRepositoryFirebase"
+private const val ANNOUNCEMENTS_NOT_STORED = "Announcements are not stored in Firestore yet."
 
 class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsRepository {
 
@@ -95,6 +97,20 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
           transaction.delete(document)
         }
         .await()
+  }
+
+  // Announcements are not stored in Firestore yet: going through editEvent would silently drop
+  // them, so these throw instead.
+  override suspend fun addAnnouncement(eventId: String, announcement: Announcement) {
+    throw UnsupportedOperationException(ANNOUNCEMENTS_NOT_STORED)
+  }
+
+  override suspend fun editAnnouncement(eventId: String, announcement: Announcement) {
+    throw UnsupportedOperationException(ANNOUNCEMENTS_NOT_STORED)
+  }
+
+  override suspend fun deleteAnnouncement(eventId: String, announcementId: String) {
+    throw UnsupportedOperationException(ANNOUNCEMENTS_NOT_STORED)
   }
 
   private fun toFirestoreData(event: Event): Map<String, Any?> {
