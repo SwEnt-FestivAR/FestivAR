@@ -120,6 +120,21 @@ data class Announcement(
   }
 
   /**
+   * Returns a new version of `this` but with the [priority] changed with the given parameter, so
+   * an edited version.
+   *
+   * @param newPriority The new [priority] for the edited [Announcement].
+   * @param at The time at which the last modification was done.
+   * @return The [Announcement] but with [priority] replaced by [newPriority] and updated
+   *   [updatedAt].
+   * @throws IllegalArgumentException if [at] strictly before [updatedAt].
+   */
+  fun editPriority(newPriority: Priority, at: ZonedDateTime): Announcement {
+    requireValidEditTime(at)
+    return copy(priority = newPriority, updatedAt = at)
+  }
+
+  /**
    * Returns a new version of `this` but with the [links] changed with the given parameter, so an
    * edited version.
    *
