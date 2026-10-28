@@ -2,6 +2,7 @@
 package com.android.festivar.ui.profile
 
 import androidx.credentials.Credential
+import com.android.festivar.R
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
@@ -29,20 +30,25 @@ class ProfileViewModelTest {
 
   /**
    * A [UsersRepositoryLocal] serving [users]. It throws [getError] on every fetch and [editError]
-   * on every edit while they are set, and records every [User] it is asked to save. While
-   * [editGate] is set, an edit waits until the test completes it, so the tests can act during a
-   * save.
+   * on every edit while they are set, counts every fetch and records every [User] it is asked to
+   * save. While [getGate] or [editGate] is set, a fetch or an edit waits until the test completes
+   * it, so the tests can act during a load or a save.
    */
   private class RecordingUsersRepository(
       users: List<User> = listOf(),
       var getError: Exception? = null,
       var editError: Exception? = null,
+      var getGate: CompletableDeferred<Unit>? = null,
       var editGate: CompletableDeferred<Unit>? = null,
       private val local: UsersRepository = UsersRepositoryLocal(users),
   ) : UsersRepository by local {
     val editedUsers = mutableListOf<User>()
+    var getCount = 0
+      private set
 
     override suspend fun getUser(uId: String): User {
+      getCount += 1
+      getGate?.await()
       getError?.let { throw it }
       return local.getUser(uId)
     }
@@ -150,45 +156,51 @@ class ProfileViewModelTest {
     val state = viewModel.uiState.value
     assertFalse(state.isLoading)
     assertNull(state.user)
-    assertEquals("Failed to load profile: Network down", state.errorMsg)
+    assertEquals(R.string.profile_load_failed, state.errorMsg)
     assertFalse(state.canSave)
   }
 
-  /** Test that a load failure whose exception has no message still shows an error message. */
+  /**
+   * Test that loading again after a failed load, once the repository recovers, fills the fields and
+   * removes the error message.
+   */
   @Test
-  fun loadFailureWithoutMessageShowsUnknownError() = runTest {
-    val repository = RecordingUsersRepository(listOf(sara), getError = RuntimeException())
+  fun retryAfterAFailedLoadLoadsTheUser() = runTest {
+    val repository =
+        RecordingUsersRepository(listOf(sara), getError = RuntimeException("Network down"))
+    val viewModel = createViewModel(repository)
+    advanceUntilIdle()
+    assertNull(viewModel.uiState.value.user)
+
+    repository.getError = null
+    viewModel.getUserInformation()
+    assertTrue(viewModel.uiState.value.isLoading)
+    advanceUntilIdle()
+
+    val state = viewModel.uiState.value
+    assertFalse(state.isLoading)
+    assertNull(state.errorMsg)
+    assertEquals(sara, state.user)
+    assertEquals(sara.name, state.name)
+    assertEquals(sara.surname, state.surname)
+  }
+
+  /** Test that loading again while a load is running does not fetch the user a second time. */
+  @Test
+  fun loadingAgainWhileLoadingIsIgnored() = runTest {
+    val gate = CompletableDeferred<Unit>()
+    val repository = RecordingUsersRepository(listOf(sara), getGate = gate)
     val viewModel = createViewModel(repository)
     advanceUntilIdle()
 
-    assertEquals("Failed to load profile: unknown error", viewModel.uiState.value.errorMsg)
-  }
-
-  /** Test that a save failure whose exception has no message still shows an error message. */
-  @Test
-  fun saveFailureWithoutMessageShowsUnknownError() = runTest {
-    val repository = RecordingUsersRepository(listOf(sara), editError = RuntimeException())
-    val viewModel = createViewModel(repository)
+    viewModel.getUserInformation()
     advanceUntilIdle()
+    assertEquals(1, repository.getCount)
 
-    viewModel.updateName("Sarah")
-    viewModel.saveChanges()
+    gate.complete(Unit)
     advanceUntilIdle()
-
-    assertEquals("Failed to update profile: unknown error", viewModel.uiState.value.errorMsg)
-  }
-
-  /** Test that a sign out failure whose exception has no message still shows an error message. */
-  @Test
-  fun signOutFailureWithoutMessageShowsUnknownError() = runTest {
-    authRepository.signOutResult = Result.failure(RuntimeException())
-    val viewModel = createViewModel()
-    advanceUntilIdle()
-
-    viewModel.signOut()
-    advanceUntilIdle()
-
-    assertEquals("Failed to sign out: unknown error", viewModel.uiState.value.errorMsg)
+    assertEquals(1, repository.getCount)
+    assertEquals(sara, viewModel.uiState.value.user)
   }
 
   /**
@@ -284,6 +296,46 @@ class ProfileViewModelTest {
     assertFalse(viewModel.uiState.value.canSave)
   }
 
+  /** Test that letters of any language, spaces, hyphens and both apostrophes are valid. */
+  @Test
+  fun lettersSpacesHyphensAndApostrophesAreValid() {
+    listOf("Zoé", "Jean-Pierre", "O'Brien", "O’Brien", "De La Cruz", "Müller").forEach { input ->
+      val state = ProfileUIState(user = sara, name = input, surname = input)
+      assertFalse(input, state.nameInvalid)
+      assertFalse(input, state.surnameInvalid)
+    }
+  }
+
+  /**
+   * Test that digits, special characters, emojis and fields without any letter are flagged and
+   * cannot be saved.
+   */
+  @Test
+  fun invalidCharactersAreFlaggedAndNotSaved() = runTest {
+    val repository = RecordingUsersRepository(listOf(sara))
+    val viewModel = createViewModel(repository)
+    advanceUntilIdle()
+
+    listOf("Sara2", "Sara@", "Sara_", "Sara😀", "", "---").forEach { input ->
+      viewModel.updateName(input)
+      viewModel.updateSurname(sara.surname)
+      assertTrue(input, viewModel.uiState.value.nameInvalid)
+      assertFalse(input, viewModel.uiState.value.surnameInvalid)
+      assertFalse(input, viewModel.uiState.value.canSave)
+
+      viewModel.updateName(sara.name)
+      viewModel.updateSurname(input)
+      assertFalse(input, viewModel.uiState.value.nameInvalid)
+      assertTrue(input, viewModel.uiState.value.surnameInvalid)
+      assertFalse(input, viewModel.uiState.value.canSave)
+
+      viewModel.saveChanges()
+      advanceUntilIdle()
+    }
+
+    assertTrue(repository.editedUsers.isEmpty())
+  }
+
   /** Test that nothing can be saved while saving or signing out, nor once signed out. */
   @Test
   fun cannotSaveWhileSavingOrSigningOut() {
@@ -326,6 +378,24 @@ class ProfileViewModelTest {
     val viewModel = createViewModel(repository)
     advanceUntilIdle()
 
+    viewModel.saveChanges()
+    advanceUntilIdle()
+
+    assertTrue(repository.editedUsers.isEmpty())
+    assertFalse(viewModel.uiState.value.isSaving)
+  }
+
+  /** Test that saving does nothing while the user is loaded again, even with changes typed. */
+  @Test
+  fun saveChangesDoesNothingWhileReloading() = runTest {
+    val repository = RecordingUsersRepository(listOf(sara))
+    val viewModel = createViewModel(repository)
+    advanceUntilIdle()
+    viewModel.updateName("Sarah")
+
+    repository.getGate = CompletableDeferred()
+    viewModel.getUserInformation()
+    assertTrue(viewModel.uiState.value.isLoading)
     viewModel.saveChanges()
     advanceUntilIdle()
 
@@ -398,7 +468,7 @@ class ProfileViewModelTest {
 
     val failed = viewModel.uiState.value
     assertFalse(failed.isSaving)
-    assertEquals("Failed to update profile: Network down", failed.errorMsg)
+    assertEquals(R.string.profile_save_failed, failed.errorMsg)
     assertEquals(sara, failed.user)
     assertEquals("Sarah", failed.name)
     assertTrue(failed.canSave)
@@ -451,7 +521,7 @@ class ProfileViewModelTest {
     val failed = viewModel.uiState.value
     assertFalse(failed.signedOut)
     assertFalse(failed.isSigningOut)
-    assertEquals("Failed to sign out: Network down", failed.errorMsg)
+    assertEquals(R.string.profile_sign_out_failed, failed.errorMsg)
 
     authRepository.signOutResult = Result.success(Unit)
     viewModel.signOut()

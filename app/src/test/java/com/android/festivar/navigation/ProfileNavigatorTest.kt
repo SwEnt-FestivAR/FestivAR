@@ -16,10 +16,10 @@ class ProfileNavigatorTest {
   private val navigator = ProfileNavigator(navController)
 
   @Test
-  fun backClickNavigatesToEventsOverview() {
+  fun backClickGoesBackToThePreviousScreen() {
     navigator.onBack()
 
-    verify { navController.popBackStack(AppScreens.EventsOverview.name, inclusive = false) }
+    verify { navController.popBackStack() }
   }
 
   @Test
