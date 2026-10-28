@@ -291,7 +291,6 @@ private fun CreateEventTopBar(onBack: () -> Unit) {
           )
         }
       },
-      actions = {},
   )
 }
 
