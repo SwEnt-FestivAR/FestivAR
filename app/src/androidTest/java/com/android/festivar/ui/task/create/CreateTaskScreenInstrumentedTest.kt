@@ -8,6 +8,8 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.android.festivar.R
@@ -143,11 +145,33 @@ class CreateTaskScreenInstrumentedTest : CreateTaskTest() {
   }
 
   @Test
-  fun goingBackLeavesTheScreenWithoutSaving() {
+  fun goingBackFromAnUntouchedFormLeavesWithoutAsking() {
+    composeTestRule.clickOnBack()
+    assertEquals(1, backCount)
+  }
+
+  @Test
+  fun goingBackFromAnEditedFormAsksBeforeLeaving() {
     composeTestRule.enterCreateTaskDetails(completeForm)
     composeTestRule.clickOnBack()
+    composeTestRule.onNodeWithText(string(R.string.create_task_discard_title)).assertIsDisplayed()
+    assertEquals(0, backCount)
+
+    composeTestRule.onNodeWithText(string(R.string.create_task_discard_keep)).performClick()
+    composeTestRule.onNodeWithText(string(R.string.create_task_discard_title)).assertDoesNotExist()
+    assertEquals(0, backCount)
+  }
+
+  @Test
+  fun discardingAnEditedFormLeavesTheScreenWithoutSaving() {
+    composeTestRule.enterCreateTaskDetails(completeForm)
+    composeTestRule.clickOnBack()
+    composeTestRule.onNodeWithText(string(R.string.create_task_discard_confirm)).performClick()
     assertEquals(1, backCount)
     assertEquals(0, createdCount)
     assertTrue(savedTasks().isEmpty())
   }
+
+  private fun string(id: Int): String =
+      InstrumentationRegistry.getInstrumentation().targetContext.getString(id)
 }

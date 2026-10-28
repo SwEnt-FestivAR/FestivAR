@@ -44,7 +44,7 @@ data class CreateTaskUiState(
     val endTime: LocalTime? = null,
     val priority: Priority = Priority.NONE,
     // The numbers are kept as typed (digits only) so that an empty field stays empty.
-    val maxAssign: String = "1",
+    val maxAssign: String = DEFAULT_MAX_ASSIGN,
     val estimatedMinutes: String = "",
     // The field whose picker dialog is open, or null when none is.
     val openPicker: DateTimeField? = null,
@@ -100,6 +100,20 @@ data class CreateTaskUiState(
         if (estimatedMinutes.isEmpty() || estimatedMinutes.toIntOrNull() != null) null
         else FieldError.INVALID_ESTIMATED_TIME
 
+  /** Whether the user changed anything in the form, so that leaving it would lose something. */
+  val hasChanges: Boolean
+    get() =
+        title.isNotEmpty() ||
+            description.isNotEmpty() ||
+            location.isNotEmpty() ||
+            startDate != null ||
+            startTime != null ||
+            endDate != null ||
+            endTime != null ||
+            priority != Priority.NONE ||
+            maxAssign != DEFAULT_MAX_ASSIGN ||
+            estimatedMinutes.isNotEmpty()
+
   /**
    * Whether the "Create task" button can be pressed. It is false while a save is running and once
    * the task is created, so that a tap just after the save cannot create a second task.
@@ -139,6 +153,8 @@ data class CreateTaskUiState(
     )
   }
 }
+
+private const val DEFAULT_MAX_ASSIGN = "1"
 
 /** The time of a start date picked without a time. */
 val START_OF_DAY: LocalTime = LocalTime.MIDNIGHT

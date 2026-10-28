@@ -29,6 +29,10 @@
     <string name="priority_medium">Medium</string>
     <string name="priority_high">High</string>
     <string name="priority_urgent">Urgent</string>
+    <string name="create_task_discard_title">Discard this task?</string>
+    <string name="create_task_discard_message">What you typed will be lost.</string>
+    <string name="create_task_discard_confirm">Discard</string>
+    <string name="create_task_discard_keep">Keep editing</string>
     <string name="create_task_error_save_failed">Unable to create the task.</string>
     <string name="create_event_error_save_failed">Unable to create the event.</string>
     <!-- Join event screen -->

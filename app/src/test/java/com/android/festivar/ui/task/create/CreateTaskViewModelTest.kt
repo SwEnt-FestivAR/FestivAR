@@ -59,6 +59,31 @@ class CreateTaskViewModelTest {
   }
 
   @Test
+  fun hasChanges_isFalseForAnUntouchedForm() {
+    assertFalse(viewModel.uiState.value.hasChanges)
+  }
+
+  @Test
+  fun hasChanges_isTrueOnceAFieldIsEdited() {
+    viewModel.updateLocation("Stage")
+
+    assertTrue(viewModel.uiState.value.hasChanges)
+  }
+
+  @Test
+  fun hasChanges_isTrueOnceANewFieldIsEdited() {
+    viewModel.updatePriority(Priority.LOW)
+    assertTrue(viewModel.uiState.value.hasChanges)
+  }
+
+  @Test
+  fun hasChanges_ignoresOpeningAPicker() {
+    viewModel.showPicker(DateTimeField.START_DATE)
+
+    assertFalse(viewModel.uiState.value.hasChanges)
+  }
+
+  @Test
   fun createTask_savesTaskInTheEvent() {
     viewModel.updateTitle("Run power to stage")
     viewModel.updateLocation("Stage, north corner")

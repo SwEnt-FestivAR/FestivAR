@@ -204,7 +204,7 @@ fun FestivarDateTimeRow(
  * cannot be read on the dialog background, so the dark green of the theme is used instead.
  */
 @Composable
-private fun DialogButton(
+internal fun DialogButton(
     text: String,
     onClick: () -> Unit,
     enabled: Boolean = true,
