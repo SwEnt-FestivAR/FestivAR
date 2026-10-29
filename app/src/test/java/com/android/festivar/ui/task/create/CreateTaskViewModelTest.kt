@@ -89,6 +89,18 @@ class CreateTaskViewModelTest {
   }
 
   @Test
+  fun needsDiscardConfirmation_isTrueOnlyWhileAnEditedFormIsNotCreated() {
+    assertFalse(viewModel.uiState.value.needsDiscardConfirmation)
+
+    viewModel.updateTitle("Run power to stage")
+    assertTrue(viewModel.uiState.value.needsDiscardConfirmation)
+
+    viewModel.createTask()
+    assertTrue(viewModel.uiState.value.isCreated)
+    assertFalse(viewModel.uiState.value.needsDiscardConfirmation)
+  }
+
+  @Test
   fun hasChanges_ignoresOpeningAPicker() {
     viewModel.showPicker(DateTimeField.START_DATE)
 

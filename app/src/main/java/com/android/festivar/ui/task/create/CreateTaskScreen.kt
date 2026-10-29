@@ -115,9 +115,8 @@ fun CreateTaskScreen(
 ) {
   val state by viewModel.uiState.collectAsState()
 
-  // Leaving a form that was edited asks first; a created task has nothing left to lose.
   var askToDiscard by rememberSaveable { mutableStateOf(false) }
-  val requestBack = { if (state.hasChanges && !state.isCreated) askToDiscard = true else onBack() }
+  val requestBack = { if (state.needsDiscardConfirmation) askToDiscard = true else onBack() }
   BackHandler(onBack = requestBack)
 
   // The latest callback is called, even if the caller passed a new one during the save.

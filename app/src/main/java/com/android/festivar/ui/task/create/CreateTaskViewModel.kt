@@ -112,6 +112,10 @@ data class CreateTaskUiState(
             maxAssign != MIN_MAX_ASSIGN ||
             estimatedMinutes.isNotEmpty()
 
+  /** Whether going back must ask first: a created task has nothing left to lose. */
+  val needsDiscardConfirmation: Boolean
+    get() = hasChanges && !isCreated
+
   /**
    * Whether the "Create task" button can be pressed. It is false while a save is running and once
    * the task is created, so that a tap just after the save cannot create a second task.
