@@ -19,7 +19,10 @@ import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -118,6 +121,41 @@ class JoinEventScreenTest {
         .assertIsEnabled()
         .performClick()
     assertEquals(listOf("e1"), joins)
+  }
+
+  /** The button of the card [eventId] holding the label [label] in its unmerged children. */
+  private fun buttonWithLabel(eventId: String, label: String) =
+      composeTestRule.onNode(
+          hasTestTag(JoinEventScreenTestTags.join(eventId)).and(hasAnyDescendant(hasText(label))),
+          useUnmergedTree = true,
+      )
+
+  @Test
+  fun aMembersCardSaysTheyAreAlreadyInAndItsButtonOpensTheEventInsteadOfJoining() {
+    val joins = mutableListOf<String>()
+    content(
+        JoinEventUIState(code = "VIDY26", matches = listOf(found.copy(isMember = true))),
+        onJoin = { joins.add(it) },
+    )
+
+    composeTestRule
+        .onNodeWithTag(JoinEventScreenTestTags.alreadyMember("e1"), useUnmergedTree = true)
+        .assertTextEquals(string(R.string.join_event_already_member))
+    buttonWithLabel("e1", string(R.string.join_event_open)).assertExists()
+    buttonWithLabel("e1", string(R.string.join_event_join)).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.join("e1")).performClick()
+    assertEquals(listOf("e1"), joins)
+  }
+
+  @Test
+  fun aStrangersCardShowsNeitherTheMemberLineNorTheOpenLabel() {
+    content(JoinEventUIState(code = "VIDY26", matches = listOf(found)))
+
+    composeTestRule
+        .onNodeWithTag(JoinEventScreenTestTags.alreadyMember("e1"), useUnmergedTree = true)
+        .assertDoesNotExist()
+    buttonWithLabel("e1", string(R.string.join_event_open)).assertDoesNotExist()
+    buttonWithLabel("e1", string(R.string.join_event_join)).assertExists()
   }
 
   @Test
