@@ -13,6 +13,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.android.festivar.R
@@ -241,6 +242,41 @@ class CreateTaskScreenInstrumentedTest : CreateTaskTest() {
 
     composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.KEEP_EDITING_BUTTON).performClick()
     composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.DISCARD_DIALOG).assertDoesNotExist()
+    assertEquals(0, backCount)
+  }
+
+  @Test
+  fun systemBackFromAnUntouchedFormLeavesWithoutAsking() {
+    Espresso.pressBack()
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.DISCARD_DIALOG).assertDoesNotExist()
+    assertEquals(1, backCount)
+  }
+
+  @Test
+  fun systemBackFromAnEditedFormAsksBeforeLeaving() {
+    composeTestRule.enterCreateTaskDetails(completeForm)
+
+    Espresso.pressBack()
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.DISCARD_DIALOG).assertIsDisplayed()
+    assertEquals(0, backCount)
+  }
+
+  @Test
+  fun systemBackDismissesTheOpenDiscardDialogAndStaysOnTheForm() {
+    composeTestRule.enterCreateTaskDetails(completeForm)
+    Espresso.pressBack()
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.DISCARD_DIALOG).assertIsDisplayed()
+
+    Espresso.pressBack() // Closes the dialog, like "Keep editing".
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.DISCARD_DIALOG).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.TITLE).assertIsDisplayed()
     assertEquals(0, backCount)
   }
 

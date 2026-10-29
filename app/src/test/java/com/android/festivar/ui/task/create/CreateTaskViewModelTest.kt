@@ -77,6 +77,18 @@ class CreateTaskViewModelTest {
   }
 
   @Test
+  fun hasChanges_returnsToFalseWhenThePriorityIsRevertedToNone() {
+    viewModel.updatePriority(Priority.HIGH)
+    assertTrue(viewModel.uiState.value.hasChanges)
+    assertTrue(viewModel.uiState.value.needsDiscardConfirmation)
+
+    viewModel.updatePriority(Priority.NONE)
+
+    assertFalse(viewModel.uiState.value.hasChanges)
+    assertFalse(viewModel.uiState.value.needsDiscardConfirmation)
+  }
+
+  @Test
   fun hasChanges_isTrueOnceThePeopleNeededOrTheEstimatedTimeChange() {
     viewModel.incrementMaxAssign()
     assertTrue(viewModel.uiState.value.hasChanges)
