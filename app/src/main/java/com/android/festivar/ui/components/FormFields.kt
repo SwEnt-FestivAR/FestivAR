@@ -139,7 +139,7 @@ fun FestivarFieldError(message: String, modifier: Modifier = Modifier) {
       text = message,
       style = MaterialTheme.typography.bodySmall,
       color = MaterialTheme.colorScheme.error,
-      modifier = modifier.fillMaxWidth().padding(start = 16.dp, top = 8.dp),
+      modifier = modifier.fillMaxWidth().padding(start = 16.dp, top = 4.dp),
   )
 }
 
@@ -159,6 +159,7 @@ enum class FieldError {
 
   /** The estimated time is not a number of minutes, at least 1. */
   INVALID_ESTIMATED_TIME,
+
   /** The selected DateTime range is in the past. */
   OUTDATED,
 }
