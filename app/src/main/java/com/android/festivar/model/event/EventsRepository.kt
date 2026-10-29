@@ -98,7 +98,8 @@ interface EventsRepository {
    * @param announcement The [Announcement] to add. Its [Announcement.announcementId] must not be
    *   used by another [Announcement] of the [Event] item.
    * @throws IllegalArgumentException if the [Event] item already has an [Announcement] with the
-   *   same identifier.
+   *   same identifier, or if the [Event] item already has [MAX_ANNOUNCEMENTS_PER_EVENT]
+   *   announcements.
    * @throws NoSuchElementException if the [Event] item is not found.
    */
   suspend fun addAnnouncement(eventId: String, announcement: Announcement)

@@ -6,6 +6,9 @@ import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import java.time.ZonedDateTime
 
+/** The maximum number of [Announcement] items an [Event] can have. */
+const val MAX_ANNOUNCEMENTS_PER_EVENT = 100
+
 /**
  * Represents an [Event] in the FestivAR application. An [Event] is the core element of the
  * application as it is its purpose. An [Event] can be any organized meeting necessitating people
@@ -27,6 +30,7 @@ import java.time.ZonedDateTime
  * - a [Task] is unique in the event (no duplicates);
  * - an [Announcement] is unique in the event, identified by its [Announcement.announcementId] (no
  *   duplicates);
+ * - there are at most [MAX_ANNOUNCEMENTS_PER_EVENT] [announcements];
  * - [endDate] must be after [startDate];
  *
  * @property eventId Unique identifier of the [Event].
@@ -60,6 +64,9 @@ data class Event(
     require(members.distinctBy { it.uid }.size == members.size) { "A user is registered twice." }
     require(announcements.distinctBy { it.announcementId }.size == announcements.size) {
       "An announcement is duplicated."
+    }
+    require(announcements.size <= MAX_ANNOUNCEMENTS_PER_EVENT) {
+      "An event cannot have more than $MAX_ANNOUNCEMENTS_PER_EVENT announcements."
     }
     require(endDate.isAfter(startDate)) { "endDate must be strictly after startDate." }
   }
@@ -148,11 +155,15 @@ data class Event(
    *   [announcements] list.
    * @return The [Event] but with [announcement] added to it.
    * @throws IllegalArgumentException If an [Announcement] with the same
-   *   [Announcement.announcementId] is already in the event.
+   *   [Announcement.announcementId] is already in the event, or if the event already has
+   *   [MAX_ANNOUNCEMENTS_PER_EVENT] announcements.
    */
   fun addAnnouncement(announcement: Announcement): Event {
     require(announcements.none { it.announcementId == announcement.announcementId }) {
       "This announcement is already in the event."
+    }
+    require(announcements.size < MAX_ANNOUNCEMENTS_PER_EVENT) {
+      "An event cannot have more than $MAX_ANNOUNCEMENTS_PER_EVENT announcements."
     }
     return copy(announcements = announcements + announcement)
   }
