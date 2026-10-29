@@ -53,6 +53,7 @@ import com.android.festivar.ui.components.FestivarFieldWithError
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
+import java.time.LocalTime
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
 
@@ -82,6 +83,7 @@ class CreateEventActions(
     val onVenueChange: (String) -> Unit = {},
     val onNotesChange: (String) -> Unit = {},
     val onDatePicked: (LocalDate) -> Unit = {},
+    val onTimePicked: (LocalTime) -> Unit = {},
     val onCreate: () -> Unit = {},
 )
 
@@ -111,6 +113,7 @@ fun CreateEventScreen(
               onVenueChange = viewModel::updateVenue,
               onNotesChange = viewModel::updateNotes,
               onDatePicked = viewModel::pickDate,
+              onTimePicked = viewModel::pickTime,
               onCreate = viewModel::createEvent,
           ),
       modifier = modifier,
@@ -163,7 +166,7 @@ fun CreateEventContent(
           dateLabel = stringResource(R.string.create_event_field_start_date),
           timeLabel = stringResource(R.string.create_event_field_start_time),
           date = state.startDate,
-          time = null,
+          time = state.startTime,
           dateError = state.startDateError,
           onDateClick = { actions.onShowPicker(DateTimeField.START_DATE) },
           onTimeClick = { actions.onShowPicker(DateTimeField.START_TIME) },
@@ -177,7 +180,7 @@ fun CreateEventContent(
           dateLabel = stringResource(R.string.create_event_field_end_date),
           timeLabel = stringResource(R.string.create_event_field_end_time),
           date = state.endDate,
-          time = null,
+          time = state.endTime,
           dateError = state.endDateError,
           onDateClick = { actions.onShowPicker(DateTimeField.END_DATE) },
           onTimeClick = { actions.onShowPicker(DateTimeField.END_TIME) },
@@ -212,11 +215,11 @@ fun CreateEventContent(
           DateTimeRange(
               startDate = state.startDate,
               endDate = state.endDate,
-              startTime = null,
-              endTime = null,
+              startTime = state.startTime,
+              endTime = state.endTime,
           ),
       onDatePicked = actions.onDatePicked,
-      onTimePicked = {},
+      onTimePicked = actions.onTimePicked,
       onDismiss = { actions.onShowPicker(null) },
   )
 }
