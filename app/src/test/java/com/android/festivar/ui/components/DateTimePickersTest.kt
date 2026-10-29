@@ -3,6 +3,8 @@ package com.android.festivar.ui.components
 
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -161,7 +163,8 @@ class DateTimePickersTest {
   /** Red if a range in the past does not report an outdated error. */
   @Test
   fun endDateError_pastRange_returnsOutdated() {
-    val date = LocalDate.now().minusDays(1)
+    val now = ZonedDateTime.of(2026, 10, 29, 12, 0, 0, 0, ZoneId.systemDefault())
+    val date = now.toLocalDate().minusDays(1)
     val range =
         DateTimeRange(
             startDate = date,
@@ -170,6 +173,19 @@ class DateTimePickersTest {
             endTime = LocalTime.of(17, 0),
         )
 
-    assertEquals(FieldError.OUTDATED, endDateError(range))
+    assertEquals(FieldError.OUTDATED, endDateError(range, now = now))
+  }
+
+  /** Red if a past start date is rejected when the end date is still in the future. */
+  @Test
+  fun endDateError_pastStartAndFutureEnd_returnsNoError() {
+    val now = ZonedDateTime.of(2026, 10, 29, 12, 0, 0, 0, ZoneId.systemDefault())
+    val range =
+        DateTimeRange(
+            startDate = now.toLocalDate().minusDays(1),
+            endDate = now.toLocalDate().plusDays(1),
+        )
+
+    assertNull(endDateError(range, now = now))
   }
 }
