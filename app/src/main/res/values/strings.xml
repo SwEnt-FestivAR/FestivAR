@@ -11,7 +11,7 @@
     <string name="create_task">Create task</string>
     <string name="create_task_back">Back</string>
     <string name="create_task_field_title">Title</string>
-    <string name="create_task_field_description">Description</string>
+    <string name="create_task_field_description">Description, optional</string>
     <string name="create_task_field_location">Location</string>
     <string name="create_task_field_start_date">Start date</string>
     <string name="create_task_field_start_time">Start time</string>
@@ -20,11 +20,21 @@
     <string name="field_error_empty_title">Give the task a title</string>
     <string name="field_error_missing_date">Pick a date for this time</string>
     <string name="field_error_end_before_start">Ends before it starts</string>
+    <string name="field_error_invalid_estimated_time">Enter at least 1 minute</string>
+    <string name="create_task_field_max_assign">People needed</string>
+    <string name="create_task_max_assign_decrease">Fewer people</string>
+    <string name="create_task_max_assign_increase">More people</string>
+    <string name="create_task_field_estimated_time">Estimated time (minutes)</string>
+    <string name="create_task_field_priority">Priority</string>
     <string name="priority_none">None</string>
     <string name="priority_low">Low</string>
     <string name="priority_medium">Medium</string>
     <string name="priority_high">High</string>
     <string name="priority_urgent">Urgent</string>
+    <string name="create_task_discard_title">Discard this task?</string>
+    <string name="create_task_discard_message">What you typed will be lost.</string>
+    <string name="create_task_discard_confirm">Discard</string>
+    <string name="create_task_discard_keep">Keep editing</string>
     <string name="create_task_error_save_failed">Unable to create the task.</string>
     <string name="create_event_error_save_failed">Unable to create the event.</string>
     <!-- Join event screen -->
