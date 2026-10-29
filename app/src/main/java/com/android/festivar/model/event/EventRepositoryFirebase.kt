@@ -1,15 +1,19 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.event
 
+import android.util.Log
 import com.android.festivar.model.task.TaskRepositoryFirebase
 import com.android.festivar.model.user.UserRepositoryFirebase
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import java.time.ZonedDateTime
 import java.util.UUID
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.tasks.await
 
 private const val EVENT_COLLECTION_PATH = "events"
+private const val TAG = "EventRepositoryFirebase"
 
 class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsRepository {
 
@@ -38,6 +42,24 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
   override suspend fun getEventsForUser(userId: String): List<Event> {
     return eventCollection.whereArrayContains("members", userId).get().await().documents.map {
       documentToEvent(it)
+    }
+  }
+
+  /**
+   * Firestore stores the code on each document, so a change to [joinCodeOf] or [JOIN_CODE_LENGTH]
+   * makes every stored code stale and needs a backfill of the existing events.
+   */
+  override suspend fun getEventsByJoinCode(code: String): List<Event> {
+    // A malformed document yields no event instead of failing the whole lookup. Cancellation is
+    // rethrown, so a lookup canceled while it reads members or tasks never returns a partial list.
+    return eventCollection.whereEqualTo("joinCode", code).get().await().documents.mapNotNull {
+      try {
+        documentToEvent(it)
+      } catch (e: Exception) {
+        if (e is CancellationException) throw e
+        Log.w(TAG, "Skipping event ${it.id} that could not be read", e)
+        null
+      }
     }
   }
 
@@ -86,6 +108,8 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
         "location" to event.location,
         "tasks" to event.tasks.map { it.taskId },
         "closed" to event.closed,
+        // Stored so a join can be a single query instead of a download of the whole collection
+        "joinCode" to joinCodeOf(event),
     )
   }
 

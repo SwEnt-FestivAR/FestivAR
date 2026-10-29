@@ -24,6 +24,20 @@ class LoginNavigatorTest {
   }
 
   @Test
+  fun forgotPasswordClickNavigatesToForgotPassword() {
+    navigator.onForgotPasswordClick()
+
+    verify { navController.navigate(AppScreens.ForgotPassword.name) }
+  }
+
+  @Test
+  fun returnToLoginPopsBackToLogin() {
+    navigator.onReturnToLogin()
+
+    verify { navController.popBackStack(AppScreens.Login.name, inclusive = false) }
+  }
+
+  @Test
   fun signedInNavigatesToEventsOverview() {
     val options = slot<NavOptionsBuilder.() -> Unit>()
 
