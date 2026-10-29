@@ -4,6 +4,9 @@
     <string name="app_name">FestivAR</string>
     <string name="title_activity_main">MainActivity</string>
     <string name="title_activity_second">SecondActivity</string>
+    <!-- Common actions -->
+    <string name="action_ok">OK</string>
+    <string name="action_cancel">Cancel</string>
     <!-- Create task screen -->
     <string name="create_task">Create task</string>
     <string name="create_task_back">Back</string>
