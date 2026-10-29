@@ -32,7 +32,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.R
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.DateTimeRange
@@ -74,21 +73,18 @@ class CreateTaskActions(
 )
 
 /**
- * Create task screen, connected to its [viewModel].
+ * Create task screen, connected to its [viewModel], which knows the event the task belongs to and
+ * its owner.
  *
- * @param eventId The event the created task belongs to.
- * @param ownerId The uid of the signed-in user, who becomes the owner of the created task.
  * @param onBack Called when the user leaves without creating a task.
  * @param onTaskCreated Called once the task has been saved.
  */
 @Composable
 fun CreateTaskScreen(
-    eventId: String,
-    ownerId: String,
+    viewModel: CreateTaskViewModel,
     onBack: () -> Unit,
     onTaskCreated: () -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: CreateTaskViewModel = viewModel(),
 ) {
   val state by viewModel.uiState.collectAsState()
 
@@ -107,7 +103,7 @@ fun CreateTaskScreen(
               onShowPicker = viewModel::showPicker,
               onDatePicked = viewModel::pickDate,
               onTimePicked = viewModel::pickTime,
-              onCreate = { viewModel.createTask(eventId, ownerId) },
+              onCreate = viewModel::createTask,
           ),
       modifier = modifier,
   )
