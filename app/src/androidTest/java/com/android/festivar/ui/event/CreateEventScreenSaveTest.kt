@@ -14,6 +14,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.model.user.User
+import com.android.festivar.model.user.UsersRepositoryLocal
 import java.time.LocalDate
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
@@ -35,13 +37,20 @@ class CreateEventScreenSaveTest {
     override suspend fun addEvent(event: Event): Unit = throw IllegalStateException("offline")
   }
 
-  private fun filledViewModel(repository: EventsRepository) =
-      CreateEventViewModel(repository).apply {
-        updateName("Summer festival")
-        updateStartDate(LocalDate.of(2026, 10, 8))
-        updateEndDate(LocalDate.of(2026, 10, 9))
-        updateVenue("Main square")
-      }
+  private fun filledViewModel(repository: EventsRepository): CreateEventViewModel {
+    val creator = User(uid = "creator-123")
+    return CreateEventViewModel(
+            repository,
+            UsersRepositoryLocal(listOf(creator)),
+            creator.uid,
+        )
+        .apply {
+          updateName("Summer festival")
+          updateStartDate(LocalDate.of(2026, 10, 8))
+          updateEndDate(LocalDate.of(2026, 10, 9))
+          updateVenue("Main square")
+        }
+  }
 
   private fun waitForTag(tag: String) {
     composeTestRule.waitUntil(5_000) {

@@ -3,13 +3,13 @@ package com.android.festivar.ui.event
 // Co-authored-by: Copilot App
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 
+import android.util.Log
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
-import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryProvider
 import com.android.festivar.ui.components.DateTimeField
@@ -194,6 +194,7 @@ class CreateEventViewModel(
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
+        Log.e("CreateEventViewModel", "Saving the event failed", e)
         _uiState.update {
           it.copy(isSaving = false, errorMsg = R.string.create_event_error_save_failed)
         }
@@ -205,22 +206,17 @@ class CreateEventViewModel(
     val creator =
         if (userId.isNotBlank()) {
           val repo = usersRepository ?: UsersRepositoryProvider.repository
-          try {
-            repo.getUser(userId)
-          } catch (_: Exception) {
-            null
-          }
-        } else null
-
-    val fallbackCreator = creator ?: if (userId.isNotBlank()) User(uid = userId) else null
-    val membersList = if (fallbackCreator != null) listOf(fallbackCreator) else emptyList()
+          repo.getUser(userId)
+        } else {
+          throw IllegalStateException("User not signed in")
+        }
 
     val newEvent =
         Event(
             eventId = eventsRepository.getNewUid(),
             title = _uiState.value.name,
             description = _uiState.value.notes,
-            members = membersList,
+            members = listOf(creator),
             startDate = _uiState.value.startDateTime!!,
             endDate = _uiState.value.endDateTime!!,
             location = _uiState.value.venue,
@@ -228,14 +224,8 @@ class CreateEventViewModel(
 
     eventsRepository.addEvent(newEvent)
 
-    if (creator != null) {
-      val repo = usersRepository ?: UsersRepositoryProvider.repository
-      try {
-        repo.editUser(creator.uid, creator.addJoinedEvent(newEvent.eventId))
-      } catch (_: Exception) {
-        // If updating user joinedEvents fails, event is still created
-      }
-    }
+    val repo = usersRepository ?: UsersRepositoryProvider.repository
+    repo.editUser(creator.uid, creator.addJoinedEvent(newEvent.eventId))
     _uiState.update { it.copy(isSaving = false, createdEventId = newEvent.eventId) }
   }
 }

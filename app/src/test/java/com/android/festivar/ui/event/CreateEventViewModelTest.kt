@@ -2,13 +2,19 @@ package com.android.festivar.ui.event
 
 // Co-authored-by: Copilot App
 
+import com.android.festivar.R
+import com.android.festivar.model.event.Event
+import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.model.user.User
+import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.FieldError
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
-import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -142,26 +148,98 @@ class CreateEventViewModelTest {
   }
 
   @Test
-  fun createEventWithBlankUserIdDoesNotAddMembers() = runBlocking {
-    val repository = EventsRepositoryLocal()
-    val eventViewModel =
-        CreateEventViewModel(repository, userId = "").apply {
-          updateName("Festival")
-          updateStartDate(startDate)
-          updateEndDate(endDate)
-          updateVenue("Main square")
+  fun createEventAddsTheCreatorToMembersAndJoinedEvents() = runBlocking {
+    val eventsRepository = EventsRepositoryLocal()
+    val creator = User(uid = "creator-123")
+    val usersRepository = UsersRepositoryLocal(listOf(creator))
+    val creatorViewModel =
+        CreateEventViewModel(eventsRepository, usersRepository, creator.uid).apply {
+          fillRequiredFields()
         }
 
-    eventViewModel.createEvent()
+    creatorViewModel.createEvent()
+    waitUntil { creatorViewModel.uiState.value.createdEventId != null }
 
-    var events = repository.getAllEvents()
-    withTimeout(5.seconds) {
-      while (events.isEmpty()) {
+    val event = eventsRepository.getAllEvents().single()
+    assertEquals(listOf(creator), event.members)
+    assertEquals(listOf(event.eventId), usersRepository.getUser(creator.uid).joinedEvents)
+  }
+
+  @Test
+  fun createEventWithMissingCreatorProfileFailsWithoutAddingAnEvent() = runBlocking {
+    val eventsRepository = EventsRepositoryLocal()
+    val creatorViewModel =
+        CreateEventViewModel(
+                eventsRepository,
+                UsersRepositoryLocal(),
+                userId = "missing-creator",
+            )
+            .apply { fillRequiredFields() }
+
+    creatorViewModel.createEvent()
+    waitUntil { creatorViewModel.uiState.value.errorMsg != null }
+
+    assertEquals(R.string.create_event_error_save_failed, creatorViewModel.uiState.value.errorMsg)
+    assertTrue(eventsRepository.getAllEvents().isEmpty())
+  }
+
+  @Test
+  fun createEventWithBlankUserIdShowsAnErrorAndDoesNotAddAnEvent() = runBlocking {
+    val eventsRepository = EventsRepositoryLocal()
+    val creatorViewModel =
+        CreateEventViewModel(
+                eventsRepository,
+                UsersRepositoryLocal(),
+                userId = "",
+            )
+            .apply { fillRequiredFields() }
+
+    creatorViewModel.createEvent()
+    waitUntil { creatorViewModel.uiState.value.errorMsg != null }
+
+    assertEquals(R.string.create_event_error_save_failed, creatorViewModel.uiState.value.errorMsg)
+    assertFalse(creatorViewModel.uiState.value.isSaving)
+    assertTrue(eventsRepository.getAllEvents().isEmpty())
+  }
+
+  @Test
+  fun createEventPropagatesCancellationException() = runBlocking {
+    val cancellationStarted = CompletableDeferred<Unit>()
+    val cancelledRepository =
+        object : EventsRepository by EventsRepositoryLocal() {
+          override suspend fun addEvent(event: Event) {
+            cancellationStarted.complete(Unit)
+            throw CancellationException("cancelled")
+          }
+        }
+    val creator = User(uid = "creator-123")
+    val creatorViewModel =
+        CreateEventViewModel(
+                cancelledRepository,
+                UsersRepositoryLocal(listOf(creator)),
+                creator.uid,
+            )
+            .apply { fillRequiredFields() }
+
+    creatorViewModel.createEvent()
+    withTimeout(5_000) { cancellationStarted.await() }
+    delay(50)
+
+    assertNull(creatorViewModel.uiState.value.errorMsg)
+  }
+
+  private fun CreateEventViewModel.fillRequiredFields() {
+    updateName("Summer festival")
+    updateStartDate(startDate)
+    updateEndDate(endDate)
+    updateVenue("Main square")
+  }
+
+  private suspend fun waitUntil(condition: () -> Boolean) {
+    withTimeout(5_000) {
+      while (!condition()) {
         delay(10)
-        events = repository.getAllEvents()
       }
     }
-    assertEquals(1, events.size)
-    assertTrue(events.single().members.isEmpty())
   }
 }

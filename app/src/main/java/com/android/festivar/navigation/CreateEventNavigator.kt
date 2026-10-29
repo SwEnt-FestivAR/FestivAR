@@ -13,4 +13,10 @@ class CreateEventNavigator(private val navController: NavHostController) {
 
   /** The overview reloads on entry, so the new event is listed on return. */
   val onCreated: () -> Unit = onBack
+
+  val onSignedOut: () -> Unit = {
+    navController.navigate(AppScreens.Login.name) {
+      popUpTo(navController.graph.id) { inclusive = true }
+    }
+  }
 }
