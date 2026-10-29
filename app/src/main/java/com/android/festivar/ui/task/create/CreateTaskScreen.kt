@@ -246,7 +246,7 @@ fun CreateTaskContent(
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
                 .padding(start = 20.dp, top = 12.dp, end = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
       FestivarFieldWithError(state.titleError, CreateTaskScreenTestTags.TITLE_ERROR) {
         FestivarTextField(
@@ -298,7 +298,8 @@ fun CreateTaskContent(
           selected = state.priority,
           onSelect = actions.onPriorityChange,
           label = stringResource(R.string.create_task_field_priority),
-          modifier = Modifier.testTag(CreateTaskScreenTestTags.PRIORITY_SELECTOR),
+          modifier =
+              Modifier.padding(bottom = 8.dp).testTag(CreateTaskScreenTestTags.PRIORITY_SELECTOR),
       )
       FestivarStepper(
           value = state.maxAssign,
