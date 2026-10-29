@@ -107,6 +107,18 @@ class CreateEventViewModelTest {
     assertNull(viewModel.uiState.value.openPicker)
   }
 
+  /** Red if picking a time without a time picker writes to an unintended field. */
+  @Test
+  fun pickTimeWithoutTimePickerOnlyClosesThePicker() {
+    viewModel.showPicker(DateTimeField.START_DATE)
+
+    viewModel.pickTime(startTime)
+
+    assertNull(viewModel.uiState.value.startTime)
+    assertNull(viewModel.uiState.value.endTime)
+    assertNull(viewModel.uiState.value.openPicker)
+  }
+
   /** Red if the initial event form is considered valid. */
   @Test
   fun initialStateIsInvalid() {
