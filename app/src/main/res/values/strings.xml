@@ -26,6 +26,8 @@
     <string name="create_task_max_assign_increase">More people</string>
     <string name="create_task_field_estimated_time">Estimated time (minutes)</string>
     <string name="create_task_field_priority">Priority</string>
+    <string name="field_error_empty_event_name">Give the event a name</string>
+    <string name="field_error_outdated">Ends in the past</string>
     <string name="priority_none">None</string>
     <string name="priority_low">Low</string>
     <string name="priority_medium">Medium</string>
@@ -36,7 +38,6 @@
     <string name="create_task_discard_confirm">Discard</string>
     <string name="create_task_discard_keep">Keep editing</string>
     <string name="create_task_error_save_failed">Unable to create the task.</string>
-    <string name="create_event_error_save_failed">Unable to create the event.</string>
     <!-- Join event screen -->
     <string name="join_event_back">Navigate back</string>
     <string name="join_event_title">Join by code</string>

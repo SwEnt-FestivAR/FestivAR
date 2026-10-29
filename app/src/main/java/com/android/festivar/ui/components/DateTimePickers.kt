@@ -126,6 +126,12 @@ data class DateTimeRange(
     val endTime: LocalTime? = null,
 )
 
+/** Default start time when a date is selected without an explicit time. */
+val START_OF_DAY: LocalTime = LocalTime.MIDNIGHT
+
+/** Default end time when a date is selected without an explicit time. */
+val END_OF_DAY: LocalTime = LocalTime.of(23, 59)
+
 /**
  * Shows the picker dialog of [field], or nothing when [field] is `null`. The dialogs open on the
  * values of [range], and the end ones on the start while no end is picked. The caller closes the

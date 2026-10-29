@@ -148,6 +148,9 @@ enum class FieldError {
   /** The title was edited and is now blank. */
   EMPTY_TITLE,
 
+  /** The event name was edited and is now blank. */
+  EMPTY_EVENT_NAME,
+
   /** A time was picked without its date. */
   MISSING_DATE,
 
@@ -156,6 +159,8 @@ enum class FieldError {
 
   /** The estimated time is not a number of minutes, at least 1. */
   INVALID_ESTIMATED_TIME,
+  /** The selected DateTime range is in the past. */
+  OUTDATED,
 }
 
 /** The string resource of the message shown under a field for [error]. */
@@ -163,9 +168,11 @@ enum class FieldError {
 fun fieldErrorMessageRes(error: FieldError): Int =
     when (error) {
       FieldError.EMPTY_TITLE -> R.string.field_error_empty_title
+      FieldError.EMPTY_EVENT_NAME -> R.string.field_error_empty_event_name
       FieldError.MISSING_DATE -> R.string.field_error_missing_date
       FieldError.END_BEFORE_START -> R.string.field_error_end_before_start
       FieldError.INVALID_ESTIMATED_TIME -> R.string.field_error_invalid_estimated_time
+      FieldError.OUTDATED -> R.string.field_error_outdated
     }
 
 /**
