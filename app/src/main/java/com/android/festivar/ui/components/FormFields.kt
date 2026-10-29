@@ -139,7 +139,7 @@ fun FestivarFieldError(message: String, modifier: Modifier = Modifier) {
       text = message,
       style = MaterialTheme.typography.bodySmall,
       color = MaterialTheme.colorScheme.error,
-      modifier = modifier.fillMaxWidth().padding(start = 16.dp, top = 4.dp),
+      modifier = modifier.fillMaxWidth().padding(start = 16.dp, top = 8.dp),
   )
 }
 
@@ -153,6 +153,9 @@ enum class FieldError {
 
   /** The end is before the start. */
   END_BEFORE_START,
+
+  /** The estimated time is not a number of minutes, at least 1. */
+  INVALID_ESTIMATED_TIME,
 }
 
 /** The string resource of the message shown under a field for [error]. */
@@ -162,6 +165,7 @@ fun fieldErrorMessageRes(error: FieldError): Int =
       FieldError.EMPTY_TITLE -> R.string.field_error_empty_title
       FieldError.MISSING_DATE -> R.string.field_error_missing_date
       FieldError.END_BEFORE_START -> R.string.field_error_end_before_start
+      FieldError.INVALID_ESTIMATED_TIME -> R.string.field_error_invalid_estimated_time
     }
 
 /**

@@ -2,6 +2,7 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.create
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,10 +12,12 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -27,21 +30,32 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
+import com.android.festivar.model.task.Priority
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.DateTimeRange
+import com.android.festivar.ui.components.FestivarConfirmDialog
 import com.android.festivar.ui.components.FestivarDateTimePickerDialog
 import com.android.festivar.ui.components.FestivarDateTimeRow
 import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.components.FestivarFieldWithError
+import com.android.festivar.ui.components.FestivarPrioritySelector
+import com.android.festivar.ui.components.FestivarStepper
 import com.android.festivar.ui.components.FestivarTextField
+import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneOffset
 
 object CreateTaskScreenTestTags {
   const val BACK_BUTTON = "createTaskBackButton"
@@ -53,11 +67,20 @@ object CreateTaskScreenTestTags {
   const val START_TIME_FIELD = "createTaskStartTimeField"
   const val END_DATE_FIELD = "createTaskEndDateField"
   const val END_TIME_FIELD = "createTaskEndTimeField"
+  const val PRIORITY_SELECTOR = "createTaskPrioritySelector"
+  const val MAX_ASSIGN_FIELD = "createTaskMaxAssignField"
+  const val MAX_ASSIGN_DECREASE_BUTTON = "createTaskMaxAssignDecreaseButton"
+  const val MAX_ASSIGN_INCREASE_BUTTON = "createTaskMaxAssignIncreaseButton"
+  const val ESTIMATED_TIME_FIELD = "createTaskEstimatedTimeField"
+  const val ESTIMATED_TIME_ERROR = "createTaskEstimatedTimeError"
   const val TITLE_ERROR = "createTaskTitleError"
   const val START_DATE_ERROR = "createTaskStartDateError"
   const val END_DATE_ERROR = "createTaskEndDateError"
   const val SAVE_ERROR = "createTaskSaveError"
   const val CREATE_BUTTON = "createTaskCreateButton"
+  const val DISCARD_DIALOG = "createTaskDiscardDialog"
+  const val KEEP_EDITING_BUTTON = "createTaskKeepEditingButton"
+  const val DISCARD_BUTTON = "createTaskDiscardButton"
 }
 
 /** What the user can do on the Create task screen. Lets [CreateTaskContent] stay stateless. */
@@ -66,6 +89,10 @@ class CreateTaskActions(
     val onTitleChange: (String) -> Unit = {},
     val onDescriptionChange: (String) -> Unit = {},
     val onLocationChange: (String) -> Unit = {},
+    val onPriorityChange: (Priority) -> Unit = {},
+    val onMaxAssignDecrease: () -> Unit = {},
+    val onMaxAssignIncrease: () -> Unit = {},
+    val onEstimatedMinutesChange: (String) -> Unit = {},
     val onShowPicker: (DateTimeField?) -> Unit = {},
     val onDatePicked: (LocalDate) -> Unit = {},
     val onTimePicked: (LocalTime) -> Unit = {},
@@ -88,6 +115,11 @@ fun CreateTaskScreen(
 ) {
   val state by viewModel.uiState.collectAsState()
 
+  // Leaving a form that was edited asks first; a created task has nothing left to lose.
+  var askToDiscard by rememberSaveable { mutableStateOf(false) }
+  val requestBack = { if (state.hasChanges && !state.isCreated) askToDiscard = true else onBack() }
+  BackHandler(onBack = requestBack)
+
   // The latest callback is called, even if the caller passed a new one during the save.
   val currentOnTaskCreated by rememberUpdatedState(onTaskCreated)
   LaunchedEffect(state.isCreated) { if (state.isCreated) currentOnTaskCreated() }
@@ -96,10 +128,14 @@ fun CreateTaskScreen(
       state = state,
       actions =
           CreateTaskActions(
-              onBack = onBack,
+              onBack = requestBack,
               onTitleChange = viewModel::updateTitle,
               onDescriptionChange = viewModel::updateDescription,
               onLocationChange = viewModel::updateLocation,
+              onPriorityChange = viewModel::updatePriority,
+              onMaxAssignDecrease = viewModel::decrementMaxAssign,
+              onMaxAssignIncrease = viewModel::incrementMaxAssign,
+              onEstimatedMinutesChange = viewModel::updateEstimatedMinutes,
               onShowPicker = viewModel::showPicker,
               onDatePicked = viewModel::pickDate,
               onTimePicked = viewModel::pickTime,
@@ -107,6 +143,23 @@ fun CreateTaskScreen(
           ),
       modifier = modifier,
   )
+
+  if (askToDiscard) {
+    FestivarConfirmDialog(
+        title = stringResource(R.string.create_task_discard_title),
+        message = stringResource(R.string.create_task_discard_message),
+        confirmText = stringResource(R.string.create_task_discard_confirm),
+        dismissText = stringResource(R.string.create_task_discard_keep),
+        onConfirm = {
+          askToDiscard = false
+          onBack()
+        },
+        onDismiss = { askToDiscard = false },
+        modifier = Modifier.testTag(CreateTaskScreenTestTags.DISCARD_DIALOG),
+        confirmModifier = Modifier.testTag(CreateTaskScreenTestTags.DISCARD_BUTTON),
+        dismissModifier = Modifier.testTag(CreateTaskScreenTestTags.KEEP_EDITING_BUTTON),
+    )
+  }
 }
 
 /**
@@ -161,9 +214,16 @@ fun CreateTaskContent(
               onClick = actions.onCreate,
               enabled = state.canCreate,
               shape = RoundedCornerShape(12.dp),
+              // As in Figma, the disabled button is the beige of the hairlines with dark text;
+              // Material would draw it grey with faded text.
+              colors =
+                  ButtonDefaults.buttonColors(
+                      disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                      disabledContentColor = MaterialTheme.colorScheme.onSurface,
+                  ),
               modifier =
                   Modifier.fillMaxWidth()
-                      .padding(horizontal = 16.dp, vertical = 12.dp)
+                      .padding(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 24.dp)
                       .height(52.dp)
                       .testTag(CreateTaskScreenTestTags.CREATE_BUTTON),
           ) {
@@ -177,8 +237,8 @@ fun CreateTaskContent(
             Modifier.fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(start = 16.dp, top = 8.dp, end = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+                .padding(start = 20.dp, top = 12.dp, end = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
       FestivarFieldWithError(state.titleError, CreateTaskScreenTestTags.TITLE_ERROR) {
         FestivarTextField(
@@ -226,6 +286,37 @@ fun CreateTaskContent(
           dateErrorTag = CreateTaskScreenTestTags.END_DATE_ERROR,
           timeTag = CreateTaskScreenTestTags.END_TIME_FIELD,
       )
+      FestivarPrioritySelector(
+          selected = state.priority,
+          onSelect = actions.onPriorityChange,
+          label = stringResource(R.string.create_task_field_priority),
+          modifier = Modifier.testTag(CreateTaskScreenTestTags.PRIORITY_SELECTOR),
+      )
+      FestivarStepper(
+          value = state.maxAssign,
+          label = stringResource(R.string.create_task_field_max_assign),
+          onDecrease = actions.onMaxAssignDecrease,
+          onIncrease = actions.onMaxAssignIncrease,
+          decreaseDescription = stringResource(R.string.create_task_max_assign_decrease),
+          increaseDescription = stringResource(R.string.create_task_max_assign_increase),
+          minValue = MIN_MAX_ASSIGN,
+          modifier = Modifier.testTag(CreateTaskScreenTestTags.MAX_ASSIGN_FIELD),
+          decreaseModifier = Modifier.testTag(CreateTaskScreenTestTags.MAX_ASSIGN_DECREASE_BUTTON),
+          increaseModifier = Modifier.testTag(CreateTaskScreenTestTags.MAX_ASSIGN_INCREASE_BUTTON),
+      )
+      FestivarFieldWithError(
+          state.estimatedTimeError,
+          CreateTaskScreenTestTags.ESTIMATED_TIME_ERROR,
+      ) {
+        FestivarTextField(
+            value = state.estimatedMinutes,
+            onValueChange = actions.onEstimatedMinutesChange,
+            label = stringResource(R.string.create_task_field_estimated_time),
+            isError = state.estimatedTimeError != null,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.testTag(CreateTaskScreenTestTags.ESTIMATED_TIME_FIELD),
+        )
+      }
     }
   }
 
@@ -236,4 +327,59 @@ fun CreateTaskContent(
       onTimePicked = actions.onTimePicked,
       onDismiss = { actions.onShowPicker(null) },
   )
+}
+
+// A fixed zone and dates keep the previews the same on every machine.
+private val previewForm =
+    CreateTaskUiState(
+        title = "Run power to stage",
+        description = "Extension reel is in the blue crate by the van.",
+        location = "Stage, north corner",
+        startDate = LocalDate.of(2026, 10, 17),
+        startTime = LocalTime.of(9, 0),
+        endDate = LocalDate.of(2026, 10, 17),
+        endTime = LocalTime.of(11, 0),
+        zone = ZoneOffset.UTC,
+    )
+
+@Preview(showBackground = true, heightDp = 1000)
+@Composable
+internal fun CreateTaskEmptyPreview() {
+  AppTheme { CreateTaskContent(state = CreateTaskUiState(), actions = CreateTaskActions()) }
+}
+
+/** The priority, people needed and estimated time set. */
+@Preview(showBackground = true, heightDp = 1000)
+@Composable
+internal fun CreateTaskFilledPreview() {
+  val state = previewForm.copy(priority = Priority.URGENT, maxAssign = 3, estimatedMinutes = "90")
+  AppTheme { CreateTaskContent(state = state, actions = CreateTaskActions()) }
+}
+
+/** A blank title and an estimated time of zero: two errors. */
+@Preview(showBackground = true, heightDp = 1000)
+@Composable
+internal fun CreateTaskErrorsPreview() {
+  val state = CreateTaskUiState(titleEdited = true, estimatedMinutes = "0")
+  AppTheme { CreateTaskContent(state = state, actions = CreateTaskActions()) }
+}
+
+/** The dialog shown when going back from an edited form. */
+@Preview(showBackground = true, heightDp = 1000)
+@Composable
+internal fun CreateTaskDiscardDialogPreview() {
+  AppTheme {
+    CreateTaskContent(state = previewForm, actions = CreateTaskActions())
+    FestivarConfirmDialog(
+        title = stringResource(R.string.create_task_discard_title),
+        message = stringResource(R.string.create_task_discard_message),
+        confirmText = stringResource(R.string.create_task_discard_confirm),
+        dismissText = stringResource(R.string.create_task_discard_keep),
+        onConfirm = {},
+        onDismiss = {},
+        modifier = Modifier.testTag(CreateTaskScreenTestTags.DISCARD_DIALOG),
+        confirmModifier = Modifier.testTag(CreateTaskScreenTestTags.DISCARD_BUTTON),
+        dismissModifier = Modifier.testTag(CreateTaskScreenTestTags.KEEP_EDITING_BUTTON),
+    )
+  }
 }
