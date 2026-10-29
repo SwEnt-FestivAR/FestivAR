@@ -2,17 +2,22 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.create
 
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.platform.app.InstrumentationRegistry
@@ -117,13 +122,21 @@ abstract class CreateTaskTest {
   fun ComposeTestRule.enterCreateTaskEstimatedTime(text: String) =
       replaceText(CreateTaskScreenTestTags.ESTIMATED_TIME_FIELD, text)
 
-  /** Taps the chip that names [priority], scrolling to it first: the row of chips scrolls. */
+  /**
+   * Taps the chip that names [priority] inside the selector. The row of chips scrolls sideways, so
+   * the chip may be clipped: the click action is used and not a tap at its position.
+   */
   fun ComposeTestRule.pickCreateTaskPriority(priority: Priority) {
     val label =
         InstrumentationRegistry.getInstrumentation()
             .targetContext
             .getString(priorityLabelRes(priority))
-    onNodeWithText(label).performScrollTo().performClick()
+    onNodeWithTag(CreateTaskScreenTestTags.PRIORITY_SELECTOR).performScrollTo()
+    onNode(
+            hasText(label) and
+                hasAnyAncestor(hasTestTag(CreateTaskScreenTestTags.PRIORITY_SELECTOR))
+        )
+        .performSemanticsAction(SemanticsActions.OnClick)
   }
 
   /**

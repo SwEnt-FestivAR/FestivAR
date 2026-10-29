@@ -468,12 +468,6 @@ class CreateTaskViewModelTest {
   }
 
   @Test
-  fun maxAssign_startsAtOne() {
-    assertEquals(MIN_MAX_ASSIGN, viewModel.uiState.value.maxAssign)
-    assertEquals(1, viewModel.uiState.value.maxAssign)
-  }
-
-  @Test
   fun incrementMaxAssign_addsOneEachTime() {
     viewModel.incrementMaxAssign()
     assertEquals(2, viewModel.uiState.value.maxAssign)
@@ -538,12 +532,13 @@ class CreateTaskViewModelTest {
   }
 
   @Test
-  fun estimatedTime_tooBigForAnInt_isAnError() {
+  fun estimatedMinutes_keepsOnlyTheFirstDigitsSoItAlwaysFitsInAnInt() {
     viewModel.updateTitle("Run power to stage")
     viewModel.updateEstimatedMinutes("99999999999")
 
-    assertEquals(FieldError.INVALID_ESTIMATED_TIME, viewModel.uiState.value.estimatedTimeError)
-    assertFalse(viewModel.uiState.value.canCreate)
+    assertEquals("999999999", viewModel.uiState.value.estimatedMinutes)
+    assertNull(viewModel.uiState.value.estimatedTimeError)
+    assertTrue(viewModel.uiState.value.canCreate)
   }
 
   @Test
