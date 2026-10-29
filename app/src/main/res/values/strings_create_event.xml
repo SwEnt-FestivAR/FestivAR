@@ -1,0 +1,16 @@
+<!-- Co-authored-by: Copilot App -->
+<resources>
+    <string name="create_event_title">Create event</string>
+    <string name="create_event_back">Navigate back</string>
+    <string name="create_event_field_name">Event name</string>
+    <string name="create_event_field_start_date">Starts</string>
+    <string name="create_event_field_end_date">Ends</string>
+    <string name="create_event_field_venue">Venue</string>
+    <string name="create_event_field_notes">Notes for the team, optional</string>
+    <string name="create_event_button">Create event</string>
+    <string name="create_event_error_name">Give the event a name</string>
+    <string name="create_event_error_date_missing">Say when it happens</string>
+    <string name="create_event_error_date_order">Ends before it starts</string>
+    <string name="create_event_error_venue">Say where it happens</string>
+    <string name="create_event_error_save_failed">Unable to create the event.</string>
+</resources>
