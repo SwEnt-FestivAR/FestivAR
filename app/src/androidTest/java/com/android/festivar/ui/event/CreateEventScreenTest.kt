@@ -108,8 +108,8 @@ class CreateEventScreenTest {
 
     val startTime = LocalTime.of(9, 0)
     val endTime = LocalTime.of(9, 0)
-    selectTime(CreateEventScreenTestTags.START_TIME_FIELD, startTime)
-    selectTime(CreateEventScreenTestTags.END_TIME_FIELD, endTime)
+    selectDefaultTime(CreateEventScreenTestTags.START_TIME_FIELD)
+    selectDefaultTime(CreateEventScreenTestTags.END_TIME_FIELD)
 
     composeTestRule
         .onNodeWithTag(CreateEventScreenTestTags.START_TIME_FIELD)
@@ -353,8 +353,7 @@ class CreateEventScreenTest {
     composeTestRule.onNodeWithText("OK").performClick()
   }
 
-  private fun selectTime(tag: String, time: LocalTime) {
-    require(time == LocalTime.of(9, 0)) { "Only the proposed time 09:00 is pickable." }
+  private fun selectDefaultTime(tag: String) {
     composeTestRule.onNodeWithTag(tag).performClick()
     composeTestRule.onNodeWithText("OK").performClick()
   }
