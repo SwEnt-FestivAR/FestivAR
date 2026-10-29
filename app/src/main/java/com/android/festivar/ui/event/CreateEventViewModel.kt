@@ -67,7 +67,7 @@ data class CreateEventUIState(
     get() = startDateError(startDate, startTime)
 
   val endDateError: FieldError?
-    get() = endDateError(DateTimeRange(startDate, startTime, endDate, endTime))
+    get() = endDateError(DateTimeRange(startDate, startTime, endDate, endTime), zone)
 
   val isValid: Boolean
     get() =
