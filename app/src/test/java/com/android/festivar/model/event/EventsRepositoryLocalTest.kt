@@ -101,6 +101,19 @@ class EventsRepositoryLocalTest {
     assertTrue(repository.getEventsForUser("unknown").isEmpty())
   }
 
+  /** Red if the lookup compares the raw id or matches on a prefix: "fete2026" has code FETE20. */
+  @Test
+  fun getEventsByJoinCode_returnsEveryEventWithThatCodeAndNothingElse() = runTest {
+    val fete = event.copy(eventId = "fete2026")
+    val feteBis = otherEvent.copy(eventId = "fete-2026-bis")
+    val noel = otherEvent.copy(eventId = "noel-12")
+    repository = EventsRepositoryLocal(listOf(fete, feteBis, noel))
+
+    assertEquals(listOf(fete, feteBis), repository.getEventsByJoinCode("FETE20"))
+    assertTrue(repository.getEventsByJoinCode("NOEL1").isEmpty())
+    assertTrue(repository.getEventsByJoinCode("ZZZZZZ").isEmpty())
+  }
+
   @Test
   fun editEvent_replacesTheEvent() = runTest {
     repository.addEvent(event)
