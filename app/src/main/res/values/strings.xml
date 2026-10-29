@@ -20,6 +20,8 @@
     <string name="field_error_empty_title">Give the task a title</string>
     <string name="field_error_missing_date">Pick a date for this time</string>
     <string name="field_error_end_before_start">Ends before it starts</string>
+    <string name="field_error_empty_event_name">Give the event a name</string>
+    <string name="field_error_outdated">Ends in the past</string>
     <string name="create_task_error_save_failed">Unable to create the task.</string>
     <!-- Join event screen -->
     <string name="join_event_back">Navigate back</string>
@@ -33,8 +35,6 @@
     <string name="join_event_code_empty">Code is empty</string>
     <string name="join_event_code_so_far">Code so far: %1$s</string>
     <string name="join_event_found_line">%1$s, %2$s</string>
-    <string name="field_error_empty_event_name">Give the event a name</string>
-    <string name="field_error_outdated">Ends in the past</string>
     <plurals name="join_event_members">
         <item quantity="one">%d member</item>
         <item quantity="other">%d members</item>
