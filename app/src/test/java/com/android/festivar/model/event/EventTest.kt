@@ -2,6 +2,7 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.event
 
+import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import java.time.ZoneId
@@ -20,12 +21,19 @@ class EventTest {
   private val duplicateTaskMessage = "A task is duplicated."
   private val duplicateMemberMessage = "A user is registered twice."
   private val dateMessage = "endDate must be strictly after startDate."
+  private val duplicateAnnouncementMessage = "An announcement is duplicated."
+  // Also the message of addAnnouncement on a full event.
+  private val tooManyAnnouncementsMessage =
+      "An event cannot have more than $MAX_ANNOUNCEMENTS_PER_EVENT announcements."
 
   // Messages of the functions of Event.
   private val alreadyMemberMessage = "This user is already registered in the event."
   private val notMemberMessage = "This user is not a member of the event."
   private val taskAlreadyInEventMessage = "This task is already in the event."
+  private val taskOfAnotherEventMessage = "This task is linked to a different event."
   private val taskNotInEventMessage = "This task is not in the event."
+  private val announcementAlreadyInEventMessage = "This announcement is already in the event."
+  private val announcementNotInEventMessage = "This announcement is not in the event."
 
   private val start = ZonedDateTime.of(2026, 7, 1, 14, 0, 0, 0, ZoneId.of("Europe/Zurich"))
 
@@ -55,8 +63,25 @@ class EventTest {
           endDate = endDate,
       )
 
+  /** Builds a valid announcement with the given identifier. */
+  private fun announcement(announcementId: String, title: String = "Gates open"): Announcement =
+      Announcement(
+          announcementId = announcementId,
+          title = title,
+          authorId = "alice",
+          updatedAt = start,
+      )
+
+  /** Builds [count] valid announcements, with the identifiers "a1" to "a[count]". */
+  private fun announcements(count: Int): List<Announcement> =
+      (1..count).map { i -> announcement("a$i") }
+
   /** Builds a valid event with every field set, so we can check that the functions keep them. */
-  private fun eventWith(members: List<User> = emptyList(), tasks: List<Task> = emptyList()): Event =
+  private fun eventWith(
+      members: List<User> = emptyList(),
+      tasks: List<Task> = emptyList(),
+      announcements: List<Announcement> = emptyList(),
+  ): Event =
       Event(
           eventId = "e1",
           title = "Festival",
@@ -66,6 +91,7 @@ class EventTest {
           endDate = start.plusDays(2),
           location = "EPFL",
           tasks = tasks,
+          announcements = announcements,
       )
 
   /** Checks that [block] throws an [IllegalArgumentException] with [expectedMessage]. */
@@ -92,6 +118,7 @@ class EventTest {
     assertEquals(start.plusDays(2), event.endDate)
     assertEquals("", event.location)
     assertTrue(event.tasks.isEmpty())
+    assertTrue(event.announcements.isEmpty())
     assertFalse(event.closed)
   }
 
@@ -290,6 +317,14 @@ class EventTest {
     assertInvalid(taskAlreadyInEventMessage) { event.addTask(task("t1").copy(title = "Other")) }
   }
 
+  /** addTask refuses a task whose eventId is not the event's own. */
+  @Test
+  fun addTask_fails_whenTaskBelongsToAnotherEvent() {
+    val event = eventWith(tasks = listOf(task("t1")))
+
+    assertInvalid(taskOfAnotherEventMessage) { event.addTask(task("t2").copy(eventId = "e2")) }
+  }
+
   /** removeTask removes only the task with the given taskId and does not change the original. */
   @Test
   fun removeTask_removesOnlyTheGivenTask() {
@@ -307,6 +342,117 @@ class EventTest {
     val event = eventWith(tasks = listOf(task("t1")))
 
     assertInvalid(taskNotInEventMessage) { event.removeTask("unknown") }
+  }
+
+  // **************************************************************************************//
+  // announcements
+  // **************************************************************************************//
+
+  /** Two announcements with the same id are refused, even if their other fields differ. */
+  @Test
+  fun init_fails_whenAnAnnouncementIdIsDuplicated() {
+    assertInvalid(duplicateAnnouncementMessage) {
+      eventWith(announcements = listOf(announcement("a1"), announcement("a1", title = "Other")))
+    }
+  }
+
+  /** An event can hold exactly the maximum number of announcements. */
+  @Test
+  fun init_succeeds_withTheMaximumNumberOfAnnouncements() {
+    val event = eventWith(announcements = announcements(MAX_ANNOUNCEMENTS_PER_EVENT))
+
+    assertEquals(announcements(MAX_ANNOUNCEMENTS_PER_EVENT), event.announcements)
+  }
+
+  /** An event with one announcement more than the maximum is refused. */
+  @Test
+  fun init_fails_whenThereAreTooManyAnnouncements() {
+    assertInvalid(tooManyAnnouncementsMessage) {
+      eventWith(announcements = announcements(MAX_ANNOUNCEMENTS_PER_EVENT + 1))
+    }
+  }
+
+  /** addAnnouncement can fill the last free place of an event. */
+  @Test
+  fun addAnnouncement_succeeds_upToTheMaximum() {
+    val event = eventWith(announcements = announcements(MAX_ANNOUNCEMENTS_PER_EVENT - 1))
+
+    val result = event.addAnnouncement(announcement("a$MAX_ANNOUNCEMENTS_PER_EVENT"))
+
+    assertEquals(announcements(MAX_ANNOUNCEMENTS_PER_EVENT), result.announcements)
+  }
+
+  /** addAnnouncement refuses a new announcement once the event holds the maximum. */
+  @Test
+  fun addAnnouncement_fails_whenEventIsFull() {
+    val event = eventWith(announcements = announcements(MAX_ANNOUNCEMENTS_PER_EVENT))
+
+    assertInvalid(tooManyAnnouncementsMessage) {
+      event.addAnnouncement(announcement("a${MAX_ANNOUNCEMENTS_PER_EVENT + 1}"))
+    }
+  }
+
+  /** addAnnouncement adds it at the end and keeps every other field. */
+  @Test
+  fun addAnnouncement_addsItAtTheEnd() {
+    val event = eventWith(announcements = listOf(announcement("a1")))
+
+    val result = event.addAnnouncement(announcement("a2"))
+
+    assertEquals(event.copy(announcements = listOf(announcement("a1"), announcement("a2"))), result)
+  }
+
+  /** addAnnouncement refuses an id that is already in the event, even if its fields differ. */
+  @Test
+  fun addAnnouncement_fails_whenItsIdIsAlreadyInEvent() {
+    val event = eventWith(announcements = listOf(announcement("a1")))
+
+    assertInvalid(announcementAlreadyInEventMessage) {
+      event.addAnnouncement(announcement("a1", title = "Other"))
+    }
+  }
+
+  /** editAnnouncement replaces the one with the same id in place. */
+  @Test
+  fun editAnnouncement_replacesTheOneWithTheSameId() {
+    val event =
+        eventWith(
+            announcements = listOf(announcement("a1"), announcement("a2"), announcement("a3"))
+        )
+    val edited = announcement("a2", title = "Stage B is closed").togglePin()
+
+    val result = event.editAnnouncement(edited)
+
+    assertEquals(
+        event.copy(announcements = listOf(announcement("a1"), edited, announcement("a3"))),
+        result,
+    )
+  }
+
+  /** editAnnouncement refuses an announcement whose id is not in the event. */
+  @Test
+  fun editAnnouncement_fails_whenItsIdIsNotInEvent() {
+    val event = eventWith(announcements = listOf(announcement("a1")))
+
+    assertInvalid(announcementNotInEventMessage) { event.editAnnouncement(announcement("a2")) }
+  }
+
+  /** removeAnnouncement removes only the one with the given id. */
+  @Test
+  fun removeAnnouncement_removesOnlyTheGivenOne() {
+    val event = eventWith(announcements = listOf(announcement("a1"), announcement("a2")))
+
+    val result = event.removeAnnouncement("a1")
+
+    assertEquals(event.copy(announcements = listOf(announcement("a2"))), result)
+  }
+
+  /** removeAnnouncement refuses an id that is not in the event. */
+  @Test
+  fun removeAnnouncement_fails_whenItIsNotInEvent() {
+    val event = eventWith(announcements = listOf(announcement("a1")))
+
+    assertInvalid(announcementNotInEventMessage) { event.removeAnnouncement("unknown") }
   }
 
   // **************************************************************************************//

@@ -1,5 +1,6 @@
 // Written with the help of an AI coding assistant and reviewed line by line by the author.
-package com.android.festivar.ui.tasks
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+package com.android.festivar.ui.task.overview
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -71,8 +72,10 @@ data class OverviewSectionUi(
  *
  * @property counts how many tasks each chip holds, before the search applies.
  * @property sections the visible rows, day by day and then by part of the day, in start order.
- * @property isLoading true while a load runs, the first one and every
- *   [TaskOverviewViewModel.refresh].
+ * @property isLoading true until the first load lands, and again while every
+ *   [TaskOverviewViewModel.refresh] runs.
+ * @property noResultsFor the trimmed query when it is not blank and no task matches it, so the
+ *   screen names the search instead of the empty line; null otherwise.
  */
 data class TaskOverviewUiState(
     val filter: OverviewFilter = OverviewFilter.OPEN,
@@ -82,6 +85,7 @@ data class TaskOverviewUiState(
     val sections: List<OverviewSectionUi> = emptyList(),
     val isLoading: Boolean = true,
     val errorMsg: String? = null,
+    val noResultsFor: String? = null,
 )
 
 /**
@@ -93,12 +97,17 @@ data class TaskOverviewUiState(
  * NOW group follows the clock on its own while something collects [uiState], and only at the
  * instants a task changes group, never on a fixed timer.
  *
- * @param userId the current user, or null when nobody is signed in (MINE is then empty).
+ * Nothing loads until [refresh] is called: the screen calls it on every resume, the first one
+ * included, so a load at construction would fetch the tasks twice on open.
+ *
+ * @param userId the signed-in user, whose tasks MINE holds; the nav graph sends a signed-out user
+ *   to the login before building this ViewModel.
+ * @param repository where the event's tasks are read: the app's one unless a test passes its own.
  * @param clock decides what "now" is, so the NOW group can be tested.
  */
 class TaskOverviewViewModel(
     private val eventId: String,
-    private val userId: String? = null,
+    private val userId: String,
     private val repository: TasksRepository = TasksRepositoryProvider.repository,
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
@@ -112,7 +121,6 @@ class TaskOverviewViewModel(
   private val tasksChanged = Channel<Unit>(Channel.CONFLATED)
 
   init {
-    refresh()
     viewModelScope.launch {
       _uiState.subscriptionCount
           .map { it > 0 }
@@ -194,9 +202,8 @@ class TaskOverviewViewModel(
         .minBy { it.toInstant() }
   }
 
-  /** Whether the signed-in user holds [task]; always false with nobody signed in. */
-  private fun isMine(task: Task): Boolean =
-      userId != null && task.assignees.any { it.uid == userId }
+  /** Whether the signed-in user holds [task]. */
+  private fun isMine(task: Task): Boolean = task.assignees.any { it.uid == userId }
 
   /** The one place that says when a task has no place left; OPEN and the full badge both use it. */
   private fun isFull(task: Task): Boolean = task.assignees.size >= task.maxAssign
@@ -233,7 +240,8 @@ class TaskOverviewViewModel(
             .map { (section, rows) ->
               OverviewSectionUi(section.second, rows.map { row(it) }, section.first)
             }
-    return state.copy(sections = sections, counts = counts())
+    val noResultsFor = query.takeIf { it.isNotEmpty() && sections.isEmpty() }
+    return state.copy(sections = sections, counts = counts(), noResultsFor = noResultsFor)
   }
 
   /** Every chip's count in one pass over the tasks. */

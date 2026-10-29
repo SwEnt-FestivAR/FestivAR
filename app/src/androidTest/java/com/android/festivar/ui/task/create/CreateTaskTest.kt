@@ -53,7 +53,7 @@ abstract class CreateTaskTest {
             repository.addTask(task)
           }
         }
-    viewModel = CreateTaskViewModel(failable)
+    viewModel = CreateTaskViewModel(EVENT_ID, { "owner-1" }, failable)
     createdCount = 0
     backCount = 0
     addTaskFails = false
@@ -65,8 +65,6 @@ abstract class CreateTaskTest {
     setContent {
       AppTheme {
         CreateTaskScreen(
-            eventId = EVENT_ID,
-            ownerId = "owner-1",
             viewModel = viewModel,
             onBack = { backCount++ },
             onTaskCreated = { createdCount++ },
