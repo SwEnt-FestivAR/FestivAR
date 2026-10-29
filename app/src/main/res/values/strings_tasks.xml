@@ -1,4 +1,5 @@
 <!-- Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com> -->
+<!-- Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com> -->
 <resources>
     <string name="tasks_back">Back</string>
     <string name="tasks_search">Search</string>
@@ -23,6 +24,7 @@
     <string name="overview_hours_minutes">%1$d h %2$d min</string>
     <string name="overview_people">%1$d of %2$d</string>
     <string name="overview_empty">Nothing here. Try another filter.</string>
+    <string name="overview_no_results">No task here matches “%1$s”.</string>
     <string name="overview_retry">Retry</string>
     <string name="overview_add_task">Add task</string>
 
