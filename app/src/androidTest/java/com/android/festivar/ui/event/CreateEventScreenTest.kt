@@ -54,7 +54,7 @@ class CreateEventScreenTest {
   @Test
   fun nonErrorTaggedElementsAreDisplayed() {
     viewModel = CreateEventViewModel(EventsRepositoryLocal())
-    composeTestRule.setContent { CreateEventScreen(viewModel) }
+    composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
 
     listOf(
             CreateEventScreenTestTags.NAVIGATION_BUTTON,
@@ -80,7 +80,7 @@ class CreateEventScreenTest {
     val startDate = LocalDate.now()
     val endDate = startDate.plusDays(1)
     viewModel = CreateEventViewModel(EventsRepositoryLocal())
-    composeTestRule.setContent { CreateEventScreen(viewModel) }
+    composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
 
     composeTestRule
         .onNodeWithTag(CreateEventScreenTestTags.NAME_FIELD)
@@ -123,7 +123,7 @@ class CreateEventScreenTest {
   @Test
   fun fieldsDisplayErrorWhenNeeded() {
     viewModel = CreateEventViewModel(EventsRepositoryLocal())
-    composeTestRule.setContent { CreateEventScreen(viewModel) }
+    composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
 
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAME_FIELD).performTextInput("Festival")
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAME_FIELD).performTextClearance()
@@ -143,7 +143,7 @@ class CreateEventScreenTest {
   fun navigateButtonCallsOnBack() {
     val onBack = mockk<() -> Unit>(relaxed = true)
     viewModel = spyk(CreateEventViewModel(EventsRepositoryLocal()))
-    composeTestRule.setContent { CreateEventScreen(viewModel, onBack = onBack) }
+    composeTestRule.setContent { CreateEventScreen(viewModel = viewModel, onBack = onBack) }
 
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAVIGATION_BUTTON).performClick()
     verify(exactly = 1) { onBack() }
@@ -153,7 +153,7 @@ class CreateEventScreenTest {
   @Test
   fun createButtonIsDisabledWithInvalidForm() {
     viewModel = CreateEventViewModel(EventsRepositoryLocal())
-    composeTestRule.setContent { CreateEventScreen(viewModel) }
+    composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
 
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsNotEnabled()
 
@@ -167,7 +167,7 @@ class CreateEventScreenTest {
   @Test
   fun createButtonDoesNotCallCreateEventWhenFieldsAreInvalid() {
     viewModel = spyk(CreateEventViewModel(EventsRepositoryLocal()))
-    composeTestRule.setContent { CreateEventScreen(viewModel) }
+    composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
 
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).performClick()
     verify(exactly = 0) { viewModel.createEvent() }
@@ -177,7 +177,7 @@ class CreateEventScreenTest {
   @Test
   fun createButtonIsEnabledWithValidForm() {
     viewModel = CreateEventViewModel(EventsRepositoryLocal())
-    composeTestRule.setContent { CreateEventScreen(viewModel) }
+    composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
 
     val startDate = LocalDate.now()
     val endDate = startDate.plusDays(1)
@@ -193,7 +193,7 @@ class CreateEventScreenTest {
   @Test
   fun createButtonCallsCreateEventWhenValid() {
     viewModel = spyk(CreateEventViewModel(EventsRepositoryLocal()))
-    composeTestRule.setContent { CreateEventScreen(viewModel) }
+    composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
 
     val startDate = LocalDate.now()
     val endDate = startDate.plusDays(1)
@@ -225,7 +225,7 @@ class CreateEventScreenTest {
             UsersRepositoryLocal(listOf(creator)),
             creator.uid,
         )
-    composeTestRule.setContent { CreateEventScreen(viewModel, onCreated = onCreated) }
+    composeTestRule.setContent { CreateEventScreen(viewModel = viewModel, onCreated = onCreated) }
 
     viewModel.updateName("Summer festival")
     viewModel.updateStartDate(startDate)
@@ -250,7 +250,7 @@ class CreateEventScreenTest {
     val startDate = LocalDate.now()
     val endDate = startDate.plusDays(1)
     viewModel = CreateEventViewModel(FailingRepository())
-    composeTestRule.setContent { CreateEventScreen(viewModel, onCreated = onCreated) }
+    composeTestRule.setContent { CreateEventScreen(viewModel = viewModel, onCreated = onCreated) }
 
     viewModel.updateName("Summer festival")
     viewModel.updateStartDate(startDate)

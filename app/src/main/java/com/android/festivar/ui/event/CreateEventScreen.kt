@@ -89,10 +89,10 @@ class CreateEventActions(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateEventScreen(
+    modifier: Modifier = Modifier,
     viewModel: CreateEventViewModel = viewModel(),
     onBack: () -> Unit = {},
     onCreated: () -> Unit = {},
-    modifier: Modifier = Modifier,
 ) {
   val uiState by viewModel.uiState.collectAsState()
   LaunchedEffect(uiState.createdEventId) { if (uiState.createdEventId != null) onCreated() }
@@ -299,5 +299,5 @@ private fun CreateEventTopBar(onBack: () -> Unit) {
 @Preview
 @Composable
 private fun CreateEventScreenPreview() {
-  AppTheme { CreateEventScreen(CreateEventViewModel(EventsRepositoryLocal())) }
+  AppTheme { CreateEventScreen(viewModel = CreateEventViewModel(EventsRepositoryLocal())) }
 }
