@@ -1,7 +1,7 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Written with the help of an AI coding assistant and reviewed line by line by the author.
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
-package com.android.festivar.ui.tasks
+package com.android.festivar.ui.task.overview
 
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
@@ -114,9 +114,12 @@ class TaskOverviewViewModelTest {
     Dispatchers.resetMain()
   }
 
-  /** A ViewModel on [EVENT] with the settable clock, signed in as [me] unless told otherwise. */
-  private fun overview(userId: String? = me.uid, repo: TasksRepository = repository) =
-      TaskOverviewViewModel(EVENT, userId, repo, clock)
+  /**
+   * A ViewModel on [EVENT] with the settable clock, signed in as [me] unless told otherwise, with
+   * one [TaskOverviewViewModel.refresh] called the way the screen's first resume does.
+   */
+  private fun overview(userId: String = me.uid, repo: TasksRepository = repository) =
+      TaskOverviewViewModel(EVENT, userId, repo, clock).also { it.refresh() }
 
   /** The ids of every visible row, in section then row order. */
   private fun TaskOverviewUiState.visibleIds() = sections.flatMap { section ->
@@ -138,6 +141,33 @@ class TaskOverviewViewModelTest {
     clock.advance(by)
     dispatcher.scheduler.advanceTimeBy(by.toMillis())
     dispatcher.scheduler.runCurrent()
+  }
+
+  /**
+   * Turns red when the ViewModel loads on its own at construction, which on top of the screen's
+   * resume load fetches the tasks twice on open.
+   */
+  @Test
+  fun aNewViewModelReadsNothingAndStaysLoadingUntilTheFirstRefresh() {
+    val counting = CountingRepository(repository)
+
+    val state = TaskOverviewViewModel(EVENT, me.uid, counting, clock).uiState.value
+
+    assertEquals(0, counting.loads)
+    assertTrue(state.isLoading)
+    assertTrue(state.sections.isEmpty())
+  }
+
+  /** Turns red when one refresh reads the repository more than once, or not at all. */
+  @Test
+  fun oneRefreshIsExactlyOneLoad() {
+    val counting = CountingRepository(repository)
+    val viewModel = TaskOverviewViewModel(EVENT, me.uid, counting, clock)
+
+    viewModel.refresh()
+
+    assertEquals(1, counting.loads)
+    assertFalse(viewModel.uiState.value.isLoading)
   }
 
   /** Turns red when the ViewModel stops asking the repository for [EVENT]'s tasks only. */
@@ -184,16 +214,16 @@ class TaskOverviewViewModelTest {
     assertEquals(7, viewModel.uiState.value.visibleIds().size)
   }
 
-  /** Turns red when MINE matches tasks without a signed-in user's uid. */
+  /** Turns red when MINE matches a task held by someone else, or any assigned task. */
   @Test
-  fun mineNeedsTheUsersUid() {
-    val viewModel = overview(userId = null)
+  fun mineHoldsOnlyTheTasksOfTheSignedInUser() {
+    val viewModel = overview(userId = ana.uid)
     viewModel.selectFilter(OverviewFilter.MINE)
 
     val state = viewModel.uiState.value
 
-    assertEquals(0, state.counts[OverviewFilter.MINE])
-    assertTrue(state.sections.isEmpty())
+    assertEquals(1, state.counts[OverviewFilter.MINE])
+    assertEquals(listOf("sound"), state.visibleIds())
   }
 
   /** Turns red when search stops matching title or location case-insensitively, or blank. */
@@ -211,6 +241,42 @@ class TaskOverviewViewModelTest {
 
     viewModel.setQuery("   ")
     assertEquals(5, viewModel.uiState.value.visibleIds().size)
+  }
+
+  /**
+   * Turns red when a search that finds nothing stops carrying its trimmed query, or when a matching
+   * or blank query still claims there are no results.
+   */
+  @Test
+  fun aSearchThatFindsNothingCarriesItsTrimmedQueryAndOnlyThen() {
+    val viewModel = overview()
+    viewModel.toggleSearch()
+
+    viewModel.setQuery("  zzz ")
+    assertEquals("zzz", viewModel.uiState.value.noResultsFor)
+
+    viewModel.setQuery("power")
+    assertNull(viewModel.uiState.value.noResultsFor)
+
+    viewModel.setQuery("   ")
+    assertNull(viewModel.uiState.value.noResultsFor)
+  }
+
+  /**
+   * Turns red when the no-results check runs over every task instead of the chip's rows: the done
+   * bar task matches nothing under OPEN, and is found under DONE.
+   */
+  @Test
+  fun noResultsIsDecidedWithinTheSelectedChip() {
+    val viewModel = overview()
+    viewModel.toggleSearch()
+    viewModel.selectFilter(OverviewFilter.OPEN)
+
+    viewModel.setQuery("Clean the bar")
+    assertEquals("Clean the bar", viewModel.uiState.value.noResultsFor)
+
+    viewModel.selectFilter(OverviewFilter.DONE)
+    assertNull(viewModel.uiState.value.noResultsFor)
   }
 
   /** Turns red when closing the search keeps the old query filtering the rows. */
@@ -470,6 +536,7 @@ class TaskOverviewViewModelTest {
     }
     val newYork = clock.withZone(ZoneId.of("America/New_York"))
     val viewModel = TaskOverviewViewModel(EVENT, me.uid, repository, newYork)
+    viewModel.refresh()
 
     val section =
         viewModel.uiState.value.sections.single { s -> s.rows.any { it.task.taskId == "night" } }
@@ -616,6 +683,17 @@ class TaskOverviewViewModelTest {
 
     override suspend fun getAllTasks(eventId: String): List<Task> =
         if (failing) throw IllegalStateException("Network down") else inner.getAllTasks(eventId)
+  }
+
+  /** Reads through [inner] and counts every load in [loads]. */
+  private class CountingRepository(private val inner: TasksRepositoryLocal) :
+      TasksRepository by inner {
+    var loads = 0
+
+    override suspend fun getAllTasks(eventId: String): List<Task> {
+      loads++
+      return inner.getAllTasks(eventId)
+    }
   }
 
   /** Answers each load only when the test completes that call's entry in [calls]. */

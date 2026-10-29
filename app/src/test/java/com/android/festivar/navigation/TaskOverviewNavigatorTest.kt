@@ -5,21 +5,25 @@
 package com.android.festivar.navigation
 
 import androidx.navigation.NavHostController
+import androidx.navigation.NavOptionsBuilder
+import androidx.navigation.navOptions
 import io.mockk.mockk
+import io.mockk.slot
 import io.mockk.verify
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TaskOverviewNavigatorTest {
   private val navController = mockk<NavHostController>(relaxed = true)
   private val navigator = TaskOverviewNavigator(navController)
 
+  /** Turns red when back pops to a fixed route, which strands a user who came another way. */
   @Test
-  fun backClickNavigatesToEventDetails() {
+  fun backClickPopsBackStack() {
     navigator.onBack()
 
-    verify {
-      navController.popBackStack("${AppScreens.EventDetails.name}/{eventId}", inclusive = false)
-    }
+    verify { navController.popBackStack() }
   }
 
   @Test
@@ -34,5 +38,18 @@ class TaskOverviewNavigatorTest {
     navigator.onAddTask("e1")
 
     verify { navController.navigate(AppScreens.createTask("e1")) }
+  }
+
+  /** Turns red when signing out stops opening the login or leaves the overview under it. */
+  @Test
+  fun signedOutNavigatesToLoginAndClearsBackStack() {
+    val options = slot<NavOptionsBuilder.() -> Unit>()
+
+    navigator.onSignedOut()
+
+    verify { navController.navigate(AppScreens.Login.name, capture(options)) }
+    val navOptions = navOptions(options.captured)
+    assertEquals(navController.graph.id, navOptions.popUpToId)
+    assertTrue(navOptions.isPopUpToInclusive())
   }
 }

@@ -1,6 +1,7 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Written with the help of an AI coding assistant and reviewed line by line by the author.
-package com.android.festivar.ui.tasks
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+package com.android.festivar.ui.task.overview
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
@@ -11,6 +12,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import com.android.festivar.R
 import com.android.festivar.model.task.Task
 import java.time.LocalDate
 import java.time.LocalTime
@@ -206,6 +209,38 @@ class TaskOverviewContentTest {
         .onNodeWithTag(TaskOverviewScreenTestTags.SEARCH_FIELD)
         .assertIsDisplayed()
         .assertTextContains("bunt")
+  }
+
+  /** Turns red when a search that finds nothing shows the filter hint instead of its own query. */
+  @Test
+  fun aSearchThatFindsNothingNamesItsQueryInsteadOfTheEmptyLine() {
+    setContent(
+        TaskOverviewUiState(
+            isLoading = false,
+            searchOpen = true,
+            query = "  zzz ",
+            noResultsFor = "zzz",
+        )
+    )
+    val expected =
+        InstrumentationRegistry.getInstrumentation()
+            .targetContext
+            .getString(R.string.overview_no_results, "zzz")
+
+    composeTestRule
+        .onNodeWithTag(TaskOverviewScreenTestTags.NO_RESULTS)
+        .assertIsDisplayed()
+        .assertTextContains(expected)
+    composeTestRule.onNodeWithTag(TaskOverviewScreenTestTags.EMPTY).assertDoesNotExist()
+  }
+
+  /** Turns red when the screen shows the no-results line without the ViewModel asking for it. */
+  @Test
+  fun anEmptyListWithoutNoResultsShowsTheEmptyLine() {
+    setContent(TaskOverviewUiState(isLoading = false, searchOpen = true, query = "   "))
+
+    composeTestRule.onNodeWithTag(TaskOverviewScreenTestTags.EMPTY).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(TaskOverviewScreenTestTags.NO_RESULTS).assertDoesNotExist()
   }
 
   private companion object {

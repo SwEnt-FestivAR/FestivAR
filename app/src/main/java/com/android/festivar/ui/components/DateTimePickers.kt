@@ -22,6 +22,7 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -128,6 +129,12 @@ data class DateTimeRange(
     val endDate: LocalDate? = null,
     val endTime: LocalTime? = null,
 )
+
+/** Default start time when a date is selected without an explicit time. */
+val START_OF_DAY: LocalTime = LocalTime.MIDNIGHT
+
+/** Default end time when a date is selected without an explicit time. */
+val END_OF_DAY: LocalTime = LocalTime.of(23, 59)
 
 /**
  * Shows the picker dialog of [field], or nothing when [field] is `null`. The dialogs open on the
@@ -246,18 +253,18 @@ fun endDateError(
  * cannot be read on the dialog background, so the dark green of the theme is used instead.
  */
 @Composable
-private fun DialogButton(
+internal fun DialogButton(
     text: String,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    contentColor: Color = MaterialTheme.colorScheme.onPrimaryContainer,
 ) {
   TextButton(
       onClick = onClick,
+      modifier = modifier,
       enabled = enabled,
-      colors =
-          ButtonDefaults.textButtonColors(
-              contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-          ),
+      colors = ButtonDefaults.textButtonColors(contentColor = contentColor),
   ) {
     Text(text)
   }

@@ -12,7 +12,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.event.EventsRepositoryProvider
-import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepositoryProvider
 import com.android.festivar.ui.event.CreateEventScreen
 import com.android.festivar.ui.event.CreateEventViewModel
@@ -93,7 +92,7 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, authRepository:
         viewModel =
             viewModel {
               JoinEventViewModel(
-                  User(uid = firebaseUser.uid),
+                  firebaseUser.uid,
                   EventsRepositoryProvider.repository,
                   UsersRepositoryProvider.repository,
               )

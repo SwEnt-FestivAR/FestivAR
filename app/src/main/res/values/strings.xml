@@ -22,19 +22,26 @@
     <string name="field_error_end_before_start">Ends before it starts</string>
     <string name="field_error_empty_event_name">Give the event a name</string>
     <string name="field_error_outdated">Ends in the past</string>
+    <string name="priority_none">None</string>
+    <string name="priority_low">Low</string>
+    <string name="priority_medium">Medium</string>
+    <string name="priority_high">High</string>
+    <string name="priority_urgent">Urgent</string>
     <string name="create_task_error_save_failed">Unable to create the task.</string>
     <!-- Join event screen -->
     <string name="join_event_back">Navigate back</string>
     <string name="join_event_title">Join by code</string>
     <string name="join_event_subtitle">Enter the six character code the organizer shared with you.</string>
     <string name="join_event_not_found">No event matches this code.</string>
+    <string name="join_event_lookup_failed">Could not look the code up. Try again.</string>
+    <string name="join_event_join_failed">Could not join the event. Try again.</string>
     <string name="join_event_several">Several events share this code. Pick yours.</string>
     <string name="join_event_join">Join as a volunteer</string>
     <string name="join_event_code_field">Join code</string>
     <string name="join_event_code_cell">Code character %1$d</string>
     <string name="join_event_code_empty">Code is empty</string>
     <string name="join_event_code_so_far">Code so far: %1$s</string>
-    <string name="join_event_found_line">%1$s, %2$s</string>
+    <string name="join_event_found_line">%1$s, %2$s, %3$s</string>
     <plurals name="join_event_members">
         <item quantity="one">%d member</item>
         <item quantity="other">%d members</item>

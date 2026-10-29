@@ -30,6 +30,7 @@ class EventTest {
   private val alreadyMemberMessage = "This user is already registered in the event."
   private val notMemberMessage = "This user is not a member of the event."
   private val taskAlreadyInEventMessage = "This task is already in the event."
+  private val taskOfAnotherEventMessage = "This task is linked to a different event."
   private val taskNotInEventMessage = "This task is not in the event."
   private val announcementAlreadyInEventMessage = "This announcement is already in the event."
   private val announcementNotInEventMessage = "This announcement is not in the event."
@@ -314,6 +315,14 @@ class EventTest {
     val event = eventWith(tasks = listOf(task("t1")))
 
     assertInvalid(taskAlreadyInEventMessage) { event.addTask(task("t1").copy(title = "Other")) }
+  }
+
+  /** addTask refuses a task whose eventId is not the event's own. */
+  @Test
+  fun addTask_fails_whenTaskBelongsToAnotherEvent() {
+    val event = eventWith(tasks = listOf(task("t1")))
+
+    assertInvalid(taskOfAnotherEventMessage) { event.addTask(task("t2").copy(eventId = "e2")) }
   }
 
   /** removeTask removes only the task with the given taskId and does not change the original. */

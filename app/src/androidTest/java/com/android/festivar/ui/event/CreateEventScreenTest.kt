@@ -32,6 +32,7 @@ import java.time.format.FormatStyle
 import java.util.Locale
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -154,7 +155,7 @@ class CreateEventScreenTest {
 
   /** Red if cancelling either time picker changes the form or leaves a dialog open. */
   @Test
-  fun cancellingTimePickersKeepsTheTimesUnchanged() {
+  fun cancellingTimePickersClosesTheDialog() {
     viewModel = CreateEventViewModel(EventsRepositoryLocal())
     composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
 
@@ -208,7 +209,7 @@ class CreateEventScreenTest {
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsNotEnabled()
   }
 
-  /** Red if the create button is enabled even though the form is empty. */
+  /** Red if clicking the create button with an invalid form invokes createEvent(). */
   @Test
   fun createButtonDoesNotCallCreateEventWhenFieldsAreInvalid() {
     viewModel = spyk(CreateEventViewModel(EventsRepositoryLocal()))
@@ -329,6 +330,12 @@ class CreateEventScreenTest {
     composeTestRule.waitForIdle()
 
     assertNull(viewModel.uiState.value.errorMsg)
+    assertTrue(
+        composeTestRule
+            .onAllNodesWithTag(CreateEventScreenTestTags.SAVE_ERROR)
+            .fetchSemanticsNodes()
+            .isEmpty()
+    )
   }
 
   private fun selectDate(tag: String, date: LocalDate) {
