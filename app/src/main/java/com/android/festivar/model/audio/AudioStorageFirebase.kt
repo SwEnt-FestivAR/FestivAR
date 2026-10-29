@@ -5,6 +5,7 @@ import com.google.firebase.storage.StorageException
 import com.google.firebase.storage.StorageMetadata
 import com.google.firebase.storage.StorageReference
 import java.io.IOException
+import java.net.URLDecoder
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.tasks.await
@@ -37,7 +38,14 @@ class AudioStorageFirebase(private val storageRef: StorageReference) : AudioRepo
   override suspend fun delete(audioUrl: String) {
     if (audioUrl.isBlank()) return
     try {
-      val ref = storageRef.storage.getReferenceFromUrl(audioUrl)
+      val ref =
+          try {
+            storageRef.storage.getReferenceFromUrl(audioUrl)
+          } catch (e: IllegalArgumentException) {
+            val pathPart = audioUrl.substringAfter("/o/").substringBefore("?")
+            val decodedPath = URLDecoder.decode(pathPart, "UTF-8")
+            storageRef.storage.reference.child(decodedPath)
+          }
       ref.delete().await()
     } catch (e: Exception) {
       if (e is CancellationException) throw e

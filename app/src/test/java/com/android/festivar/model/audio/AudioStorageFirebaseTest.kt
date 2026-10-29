@@ -152,6 +152,23 @@ class AudioStorageFirebaseTest {
   }
 
   @Test
+  fun delete_emulatorUrl_success() = runTest {
+    val emulatorUrl =
+        "http://10.0.2.2:9199/v0/b/bucket/o/audio%2Fvoice-note%2Ftask1%2F12345.m4a?alt=media"
+    every { firebaseStorage.getReferenceFromUrl(emulatorUrl) } throws
+        IllegalArgumentException("Invalid URL")
+    every { firebaseStorage.reference } returns storageRef
+    every { storageRef.child("audio/voice-note/task1/12345.m4a") } returns fileRef
+    every { fileRef.delete() } returns Tasks.forResult(null)
+
+    repository.delete(emulatorUrl)
+
+    verify { firebaseStorage.getReferenceFromUrl(emulatorUrl) }
+    verify { storageRef.child("audio/voice-note/task1/12345.m4a") }
+    verify { fileRef.delete() }
+  }
+
+  @Test
   fun delete_blankUrl_doesNothing() = runTest {
     repository.delete("")
     repository.delete("   ")
