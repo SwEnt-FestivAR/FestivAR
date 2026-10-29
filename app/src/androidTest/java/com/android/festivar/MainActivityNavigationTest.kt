@@ -17,6 +17,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.credentials.Credential
 import androidx.credentials.CredentialManager
@@ -109,11 +110,14 @@ class MainActivityNavigationTest {
 
     composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
 
-    composeTestRule.onNodeWithTag(LoginScreenTestTags.CREATE_ACC_BUTTON).performClick()
+    composeTestRule
+        .onNodeWithTag(LoginScreenTestTags.CREATE_ACC_BUTTON)
+        .performScrollTo()
+        .performClick()
     composeTestRule.onNodeWithTag(SignUpScreenTestTags.CREATE_ACC_TITLE).assertIsDisplayed()
 
     composeTestRule.onNodeWithTag(SignUpScreenTestTags.LOGIN_NOW_BUTTON).performClick()
-    composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).performScrollTo().assertIsDisplayed()
   }
 
   @Test

@@ -196,7 +196,10 @@ class EndToEndTest {
   /** Creates the account [email] from the login screen and lands on the events overview. */
   private fun signUp(email: String) {
     waitUntilTagExists(LoginScreenTestTags.TITLE)
-    composeTestRule.onNodeWithTag(LoginScreenTestTags.CREATE_ACC_BUTTON).performClick()
+    composeTestRule
+        .onNodeWithTag(LoginScreenTestTags.CREATE_ACC_BUTTON)
+        .performScrollTo()
+        .performClick()
 
     waitUntilTagExists(SignUpScreenTestTags.EMAIL_FIELD)
     composeTestRule.onNodeWithTag(SignUpScreenTestTags.EMAIL_FIELD).performTextInput(email)
@@ -231,7 +234,7 @@ class EndToEndTest {
   private fun signOutFromTheProfile(email: String) {
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.USER_AVATAR).performClick()
     waitUntilTagExists(ProfileScreenTestTags.TITLE)
-    // The sign out button only shows once the profile load ends
+    // The sign out button only shows once the profile is loaded
     waitUntilTagExists(ProfileScreenTestTags.SIGN_OUT_BUTTON)
     composeTestRule.onNodeWithTag(ProfileScreenTestTags.EMAIL).assertTextEquals(email)
     composeTestRule.onNodeWithTag(ProfileScreenTestTags.SIGN_OUT_BUTTON).performClick()
@@ -320,6 +323,38 @@ class EndToEndTest {
       // Another test class may have left a fake users repository or a signed in user behind
       UsersRepositoryProvider.reset()
       Firebase.auth.signOut()
+
+      // Clean up any potential leftover test accounts or events from previous runs
+      asAnonymousUser {
+        val events = EventRepositoryFirebase(Firebase.firestore)
+        val tasks = TaskRepositoryFirebase(Firebase.firestore)
+        logged("delete leftover seeded event's tasks") {
+          runCatching { tasks.getAllTasks(event.eventId).forEach { tasks.deleteTask(it.taskId) } }
+        }
+        logged("delete leftover seeded event") { runCatching { events.deleteEvent(event.eventId) } }
+        logged("delete leftover created events") {
+          runCatching {
+            events
+                .getAllEvents()
+                .filter { it.title == CREATED_EVENT_TITLE }
+                .forEach { events.deleteEvent(it.eventId) }
+          }
+        }
+      }
+      for (email in listOf(MEMBER_EMAIL, ORGANIZER_EMAIL)) {
+        runCatching {
+          asTheUser(email) { uid ->
+            logged("delete leftover profile of $email") {
+              UserRepositoryFirebase(Firebase.firestore).deleteUser(uid)
+            }
+            logged("delete leftover account of $email") {
+              Firebase.auth.currentUser?.delete()?.await()
+            }
+          }
+        }
+      }
+      Firebase.auth.signOut()
+
       asAnonymousUser { EventRepositoryFirebase(Firebase.firestore).addEvent(event) }
       // Signed out, so the app starts on the login screen
     }
