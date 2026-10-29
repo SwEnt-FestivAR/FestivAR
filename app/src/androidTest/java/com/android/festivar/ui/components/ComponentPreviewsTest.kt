@@ -44,4 +44,22 @@ class ComponentPreviewsTest {
     composeTestRule.onNodeWithText("OK").assertIsDisplayed()
     composeTestRule.onNodeWithText("Cancel").assertIsDisplayed()
   }
+
+  // The priority selector preview renders without crashing and shows its label and a priority.
+  @Test
+  fun prioritySelectorPreview_showsTheSelector() {
+    composeTestRule.setContent { FestivarPrioritySelectorPreview() }
+
+    composeTestRule.onNodeWithText("Priority").assertIsDisplayed()
+    composeTestRule.onNodeWithText("High").assertIsDisplayed()
+  }
+
+  // The confirm dialog preview renders without crashing and shows its two buttons.
+  @Test
+  fun confirmDialogPreview_showsTheDialog() {
+    composeTestRule.setContent { FestivarConfirmDialogPreview() }
+
+    composeTestRule.onNodeWithText("Discard").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Keep editing").assertIsDisplayed()
+  }
 }
