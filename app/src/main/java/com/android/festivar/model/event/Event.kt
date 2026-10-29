@@ -1,9 +1,13 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.event
 
+import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import java.time.ZonedDateTime
+
+/** The maximum number of [Announcement] items an [Event] can have. */
+const val MAX_ANNOUNCEMENTS_PER_EVENT = 100
 
 /**
  * Represents an [Event] in the FestivAR application. An [Event] is the core element of the
@@ -12,17 +16,21 @@ import java.time.ZonedDateTime
  * etc.
  *
  * An [Event] is immutable: its fields can never be changed. Every "modification" ([copy],
- * [addMember], [removeMember], [close],...) returns a new [Event] instead, so the result must be
- * kept as: `event = event.close()`. And for any other change of one of the [Event] variables, it
- * has to be done through a copy of this [Event]. This implementation is the consequence of working
- * with Compose that needs, to refresh the View automatically, to have an object that is reassigned.
- * Only changing a field of an object would not automatically refresh the View.
+ * [addMember], [removeMember], [addAnnouncement], [close],...) returns a new [Event] instead, so
+ * the result must be kept as: `event = event.close()`. And for any other change of one of the
+ * [Event] variables, it has to be done through a copy of this [Event]. This implementation is the
+ * consequence of working with Compose that needs, to refresh the View automatically, to have an
+ * object that is reassigned. Only changing a field of an object would not automatically refresh the
+ * View.
  *
  * Every new version goes through the `init` block, so the rules below always hold:
  * - [title] is not blank;
  * - [eventId] is not blank;
  * - a [User] is a joined member at most once, identified by its [User.uid] (no duplicates);
  * - a [Task] is unique in the event (no duplicates);
+ * - an [Announcement] is unique in the event, identified by its [Announcement.announcementId] (no
+ *   duplicates);
+ * - there are at most [MAX_ANNOUNCEMENTS_PER_EVENT] [announcements];
  * - [endDate] must be after [startDate];
  *
  * @property eventId Unique identifier of the [Event].
@@ -34,6 +42,7 @@ import java.time.ZonedDateTime
  * @property location Where the [Event] takes place.
  * @property tasks Tasks that are related, that belong to the [Event].
  * @property closed Whether the [Event] is still ongoing or not.
+ * @property announcements Announcements shared with the members of the [Event].
  */
 data class Event(
     val eventId: String,
@@ -45,6 +54,7 @@ data class Event(
     val location: String = "",
     val tasks: List<Task> = emptyList(),
     val closed: Boolean = false,
+    val announcements: List<Announcement> = emptyList(),
 ) {
 
   init {
@@ -52,6 +62,12 @@ data class Event(
     require(title.isNotBlank()) { "The title cannot be empty." }
     require(tasks.map { it.taskId }.distinct().size == tasks.size) { "A task is duplicated." }
     require(members.distinctBy { it.uid }.size == members.size) { "A user is registered twice." }
+    require(announcements.distinctBy { it.announcementId }.size == announcements.size) {
+      "An announcement is duplicated."
+    }
+    require(announcements.size <= MAX_ANNOUNCEMENTS_PER_EVENT) {
+      "An event cannot have more than $MAX_ANNOUNCEMENTS_PER_EVENT announcements."
+    }
     require(endDate.isAfter(startDate)) { "endDate must be strictly after startDate." }
   }
 
@@ -129,5 +145,65 @@ data class Event(
   fun removeTask(taskId: String): Event {
     require(tasks.any { it.taskId == taskId }) { "This task is not in the event." }
     return copy(tasks = tasks.filterNot { it.taskId == taskId })
+  }
+
+  /**
+   * Adds a new [Announcement] to the [Event] by returning a version of `this` with [announcement]
+   * added to the [announcements] list.
+   *
+   * @param announcement The [Announcement] that is going to be added to `this`, to be added to
+   *   [announcements] list.
+   * @return The [Event] but with [announcement] added to it.
+   * @throws IllegalArgumentException If an [Announcement] with the same
+   *   [Announcement.announcementId] is already in the event, or if the event already has
+   *   [MAX_ANNOUNCEMENTS_PER_EVENT] announcements.
+   */
+  fun addAnnouncement(announcement: Announcement): Event {
+    require(announcements.none { it.announcementId == announcement.announcementId }) {
+      "This announcement is already in the event."
+    }
+    require(announcements.size < MAX_ANNOUNCEMENTS_PER_EVENT) {
+      "An event cannot have more than $MAX_ANNOUNCEMENTS_PER_EVENT announcements."
+    }
+    return copy(announcements = announcements + announcement)
+  }
+
+  /**
+   * Edits an [Announcement] of the [Event] by returning a version of `this` where the
+   * [Announcement] with the same [Announcement.announcementId] as [announcement] is replaced by it,
+   * at the same position in the [announcements] list.
+   *
+   * @param announcement The new version of the [Announcement], identified by its
+   *   [Announcement.announcementId].
+   * @return The [Event] but with [announcement] replacing its previous version.
+   * @throws IllegalArgumentException If no [Announcement] of the event has the same
+   *   [Announcement.announcementId] as [announcement].
+   */
+  fun editAnnouncement(announcement: Announcement): Event {
+    require(announcements.any { it.announcementId == announcement.announcementId }) {
+      "This announcement is not in the event."
+    }
+    return copy(
+        announcements =
+            announcements.map {
+              if (it.announcementId == announcement.announcementId) announcement else it
+            }
+    )
+  }
+
+  /**
+   * Removes an [Announcement] from the [Event] by returning a version of `this` with the
+   * [Announcement] of [announcementId] removed from the [announcements] list.
+   *
+   * @param announcementId The identifier of the [Announcement] that is going to be removed from
+   *   `this`, from [announcements] list.
+   * @return The [Event] but with [announcementId]'s [Announcement] removed from it.
+   * @throws IllegalArgumentException If [announcementId]'s [Announcement] is not in the event.
+   */
+  fun removeAnnouncement(announcementId: String): Event {
+    require(announcements.any { it.announcementId == announcementId }) {
+      "This announcement is not in the event."
+    }
+    return copy(announcements = announcements.filterNot { it.announcementId == announcementId })
   }
 }
