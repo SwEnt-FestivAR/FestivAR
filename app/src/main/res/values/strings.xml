@@ -20,6 +20,11 @@
     <string name="field_error_empty_title">Give the task a title</string>
     <string name="field_error_missing_date">Pick a date for this time</string>
     <string name="field_error_end_before_start">Ends before it starts</string>
+    <string name="priority_none">None</string>
+    <string name="priority_low">Low</string>
+    <string name="priority_medium">Medium</string>
+    <string name="priority_high">High</string>
+    <string name="priority_urgent">Urgent</string>
     <string name="create_task_error_save_failed">Unable to create the task.</string>
     <string name="create_event_error_save_failed">Unable to create the event.</string>
     <!-- Join event screen -->
