@@ -262,7 +262,10 @@ fun EventsOverviewContent(
             // Only on the first load: a later refresh keeps the current list instead of a spinner
             uiState.isLoading && uiState.hasNoEvents ->
                 item {
-                  Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
+                  Box(
+                      contentAlignment = Alignment.Center,
+                      modifier = Modifier.fillParentMaxSize(),
+                  ) {
                     CircularProgressIndicator(
                         color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.testTag(EventsOverviewScreenTestTags.LOADING_INDICATOR),
