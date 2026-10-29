@@ -1,11 +1,14 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.components
 
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import com.android.festivar.ui.theme.AppTheme
 
 /**
@@ -19,6 +22,8 @@ import com.android.festivar.ui.theme.AppTheme
  * @param onDismiss Called when the user cancels or taps outside the dialog.
  * @param confirmModifier Modifier of the confirm button, e.g. to give it a test tag.
  * @param dismissModifier Modifier of the dismiss button, e.g. to give it a test tag.
+ * @param destructive Whether the confirm button does something that cannot be undone. It is then
+ *   drawn in the error color, as in the Figma dialogs; the dismiss button keeps the text color.
  */
 @Composable
 fun FestivarConfirmDialog(
@@ -31,16 +36,29 @@ fun FestivarConfirmDialog(
     modifier: Modifier = Modifier,
     confirmModifier: Modifier = Modifier,
     dismissModifier: Modifier = Modifier,
+    destructive: Boolean = true,
 ) {
+  val colors = MaterialTheme.colorScheme
   AlertDialog(
       onDismissRequest = onDismiss,
+      shape = RoundedCornerShape(20.dp),
       title = { Text(title) },
       text = { Text(message) },
       confirmButton = {
-        DialogButton(text = confirmText, onClick = onConfirm, modifier = confirmModifier)
+        DialogButton(
+            text = confirmText,
+            onClick = onConfirm,
+            modifier = confirmModifier,
+            contentColor = if (destructive) colors.error else colors.onPrimaryContainer,
+        )
       },
       dismissButton = {
-        DialogButton(text = dismissText, onClick = onDismiss, modifier = dismissModifier)
+        DialogButton(
+            text = dismissText,
+            onClick = onDismiss,
+            modifier = dismissModifier,
+            contentColor = colors.onSurface,
+        )
       },
       modifier = modifier,
   )

@@ -52,7 +52,7 @@ class ComponentPreviewsTest {
   fun prioritySelectorPreview_showsTheSelector() {
     composeTestRule.setContent { FestivarPrioritySelectorPreview() }
 
-    composeTestRule.onNodeWithText("Priority").assertIsDisplayed()
+    composeTestRule.onNodeWithText("PRIORITY").assertIsDisplayed()
     composeTestRule.onNodeWithText("High").assertIsDisplayed()
   }
 

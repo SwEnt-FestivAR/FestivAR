@@ -19,7 +19,7 @@ class ConfirmDialogTest {
   private var confirmed = 0
   private var dismissed = 0
 
-  private fun setDialog() {
+  private fun setDialog(destructive: Boolean = true) {
     composeTestRule.setContent {
       AppTheme {
         FestivarConfirmDialog(
@@ -29,6 +29,7 @@ class ConfirmDialogTest {
             dismissText = "Keep editing",
             onConfirm = { confirmed++ },
             onDismiss = { dismissed++ },
+            destructive = destructive,
         )
       }
     }
@@ -52,6 +53,17 @@ class ConfirmDialogTest {
 
     assertEquals(1, confirmed)
     assertEquals(0, dismissed)
+  }
+
+  @Test
+  fun aNonDestructiveDialogConfirmsAndDismissesTheSame() {
+    setDialog(destructive = false)
+
+    composeTestRule.onNodeWithText("Discard").performClick()
+    composeTestRule.onNodeWithText("Keep editing").performClick()
+
+    assertEquals(1, confirmed)
+    assertEquals(1, dismissed)
   }
 
   @Test

@@ -8,10 +8,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -33,10 +29,10 @@ fun priorityLabelRes(priority: Priority): Int =
     }
 
 /**
- * Titled row of chips to pick a [Priority]; [selected] is the current one. Pass a test tag through
- * [modifier].
+ * Titled row of chips to pick a [Priority]; [selected] is the current one. The title is the
+ * design's [SectionLabel] and the chips are the design's [FilterChip] without a count. Pass a test
+ * tag through [modifier].
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FestivarPrioritySelector(
     selected: Priority,
@@ -44,21 +40,17 @@ fun FestivarPrioritySelector(
     label: String,
     modifier: Modifier = Modifier,
 ) {
-  Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = modifier) {
-    Text(
-        text = label,
-        style = MaterialTheme.typography.labelLarge,
-        modifier = Modifier.padding(start = 4.dp),
-    )
+  Column(modifier = modifier) {
+    SectionLabel(label)
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.horizontalScroll(rememberScrollState()),
     ) {
       Priority.entries.forEach { priority ->
         FilterChip(
+            label = stringResource(priorityLabelRes(priority)),
             selected = priority == selected,
             onClick = { onSelect(priority) },
-            label = { Text(stringResource(priorityLabelRes(priority))) },
         )
       }
     }

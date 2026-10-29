@@ -38,7 +38,7 @@ class PrioritySelectorTest {
   fun showsTheLabelAndEveryPriority() {
     setSelector(Priority.NONE)
 
-    composeTestRule.onNodeWithText("Priority").assertIsDisplayed()
+    composeTestRule.onNodeWithText("PRIORITY").assertIsDisplayed()
     // The chips are in a horizontally scrolling row: the last ones can be off screen on a narrow
     // device, so each one is scrolled into view first.
     Priority.entries.forEach {
