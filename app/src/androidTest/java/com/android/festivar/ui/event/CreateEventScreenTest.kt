@@ -1,6 +1,7 @@
 package com.android.festivar.ui.event
 
 // Co-authored-by: Copilot App
+// Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
@@ -17,6 +18,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.model.user.User
+import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.ui.components.formatDate
 import com.android.festivar.ui.components.formatTime
 import io.mockk.mockk
@@ -215,7 +218,13 @@ class CreateEventScreenTest {
     val endDate = startDate.plusDays(1)
     val gate = CompletableDeferred<Unit>()
     val onCreated = mockk<() -> Unit>(relaxed = true)
-    viewModel = CreateEventViewModel(GatedRepository(gate))
+    val creator = User("creator-123", "Alice", "AliceInWonderland")
+    viewModel =
+        CreateEventViewModel(
+            GatedRepository(gate),
+            UsersRepositoryLocal(listOf(creator)),
+            creator.uid,
+        )
     composeTestRule.setContent { CreateEventScreen(viewModel, onCreated = onCreated) }
 
     viewModel.updateName("Summer festival")
