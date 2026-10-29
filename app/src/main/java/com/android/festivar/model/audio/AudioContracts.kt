@@ -33,6 +33,9 @@ import kotlinx.coroutines.flow.StateFlow
 /**
  * Represents an audio recording or file in the FestivAR application.
  *
+ * The [file] is temporary. Whoever received this [Audio] from [VoiceRecorder.stop] owns it and must
+ * delete it once the upload has succeeded or been given up.
+ *
  * @property file The local file handle of the audio recording.
  * @property duration Length of the recording.
  */
@@ -93,6 +96,7 @@ interface VoiceRecorder {
   fun cancel()
 }
 
+/** Storage repository for managing audio recordings in remote storage. */
 interface AudioRepository {
 
   /** Generates and returns a new unique identifier for an audio item. */
