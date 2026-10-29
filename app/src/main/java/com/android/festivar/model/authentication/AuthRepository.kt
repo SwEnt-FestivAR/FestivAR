@@ -19,4 +19,7 @@ interface AuthRepository {
 
   /** Sign up with password and email */
   suspend fun signUpWithEmailAndPassword(email: String, password: String): Result<FirebaseUser>
+
+  /** Send a password reset email */
+  suspend fun forgotPassword(email: String): Result<Unit>
 }

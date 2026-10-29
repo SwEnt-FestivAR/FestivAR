@@ -231,7 +231,7 @@ class EndToEndTest {
   private fun signOutFromTheProfile(email: String) {
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.USER_AVATAR).performClick()
     waitUntilTagExists(ProfileScreenTestTags.TITLE)
-    // The sign out button only shows once the profile is loaded
+    // The sign out button only shows once the profile load ends
     waitUntilTagExists(ProfileScreenTestTags.SIGN_OUT_BUTTON)
     composeTestRule.onNodeWithTag(ProfileScreenTestTags.EMAIL).assertTextEquals(email)
     composeTestRule.onNodeWithTag(ProfileScreenTestTags.SIGN_OUT_BUTTON).performClick()

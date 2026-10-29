@@ -2,6 +2,7 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.event
 
+import android.util.Log
 import com.android.festivar.model.task.TaskRepositoryFirebase
 import com.android.festivar.model.user.UserRepositoryFirebase
 import com.google.firebase.firestore.DocumentSnapshot
@@ -12,6 +13,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.tasks.await
 
 private const val EVENT_COLLECTION_PATH = "events"
+private const val TAG = "EventRepositoryFirebase"
 
 class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsRepository {
 
@@ -43,13 +45,21 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
     }
   }
 
+  /**
+   * Firestore stores the code on each document, so a change to [joinCodeOf] or [JOIN_CODE_LENGTH]
+   * makes every stored code stale and needs a backfill of the existing events.
+   */
   override suspend fun getEventsByJoinCode(code: String): List<Event> {
     // A malformed document yields no event instead of failing the whole lookup. Cancellation is
-    // rethrown, so a lookup cancelled while it reads members or tasks never returns a partial list.
+    // rethrown, so a lookup canceled while it reads members or tasks never returns a partial list.
     return eventCollection.whereEqualTo("joinCode", code).get().await().documents.mapNotNull {
-      runCatching { documentToEvent(it) }
-          .onFailure { error -> if (error is CancellationException) throw error }
-          .getOrNull()
+      try {
+        documentToEvent(it)
+      } catch (e: Exception) {
+        if (e is CancellationException) throw e
+        Log.w(TAG, "Skipping event ${it.id} that could not be read", e)
+        null
+      }
     }
   }
 
