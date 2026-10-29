@@ -46,7 +46,7 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, authRepository: 
         }
     // Asked at each tap on "Create task". Blank when nobody is signed in: the view model then
     // refuses to save (redirect left to #261).
-    val currentUserId = { authRepository.currentUser?.uid.orEmpty() }
+    val currentUserId: () -> String = { authRepository.currentUser?.uid.orEmpty() }
     // Leaving the screen, whether the task was created or not, goes back to the task overview.
     val leave: () -> Unit = { navController.popBackStack() }
     // No key needed: the view model is scoped to this back stack entry, which has its own eventId.

@@ -132,5 +132,7 @@ class TaskNavGraphTest {
     composeTestRule.waitUntil(timeoutMillis = 5_000) {
       navController.currentBackStackEntry?.destination?.route == "start"
     }
+    val saved = runBlocking { repository.getAllTasks("event-1") }.single()
+    assertEquals("owner-1", saved.ownerId)
   }
 }
