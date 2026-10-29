@@ -101,14 +101,18 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
 
   // Announcements are not stored in Firestore yet: going through editEvent would silently drop
   // them, so these throw instead.
+
+  /** @throws UnsupportedOperationException always, until announcements are stored in Firestore. */
   override suspend fun addAnnouncement(eventId: String, announcement: Announcement) {
     throw UnsupportedOperationException(ANNOUNCEMENTS_NOT_STORED)
   }
 
+  /** @throws UnsupportedOperationException always, until announcements are stored in Firestore. */
   override suspend fun editAnnouncement(eventId: String, announcement: Announcement) {
     throw UnsupportedOperationException(ANNOUNCEMENTS_NOT_STORED)
   }
 
+  /** @throws UnsupportedOperationException always, until announcements are stored in Firestore. */
   override suspend fun deleteAnnouncement(eventId: String, announcementId: String) {
     throw UnsupportedOperationException(ANNOUNCEMENTS_NOT_STORED)
   }
