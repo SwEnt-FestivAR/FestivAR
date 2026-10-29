@@ -56,6 +56,8 @@ class AudioStorageFirebaseTest {
     every { taskRef.child(any()) } returns fileRef
     every { fileRef.child(any()) } returns fileRef
     every { firebaseStorage.getReferenceFromUrl(any()) } returns fileRef
+    every { fileRef.putFile(any()) } returns mockk(relaxed = true)
+    every { fileRef.putFile(any(), any()) } returns mockk(relaxed = true)
 
     repository = AudioStorageFirebase(storageRef)
   }
@@ -82,14 +84,14 @@ class AudioStorageFirebaseTest {
     every { uploadTask.result } returns mockk()
     every { uploadTask.exception } returns null
 
-    every { fileRef.putFile(audio.uri) } returns uploadTask
+    every { fileRef.putFile(audio.uri, any()) } returns uploadTask
     every { fileRef.downloadUrl } returns Tasks.forResult(Uri.parse(expectedUrl))
 
     val url = repository.upload(audio, "task1")
 
     assertEquals(expectedUrl, url)
     verify { voiceNoteRef.child("task1") }
-    verify { fileRef.putFile(audio.uri) }
+    verify { fileRef.putFile(audio.uri, any()) }
   }
 
   @Test
@@ -100,7 +102,7 @@ class AudioStorageFirebaseTest {
     every { uploadTask.isSuccessful } returns false
     every { uploadTask.exception } returns RuntimeException("Network error")
 
-    every { fileRef.putFile(any()) } returns uploadTask
+    every { fileRef.putFile(any(), any()) } returns uploadTask
 
     assertThrows(IOException::class.java) { runBlocking { repository.upload(audio, "task1") } }
   }
@@ -114,7 +116,7 @@ class AudioStorageFirebaseTest {
     every { uploadTask.result } returns mockk()
     every { uploadTask.exception } returns null
 
-    every { fileRef.putFile(any()) } returns uploadTask
+    every { fileRef.putFile(any(), any()) } returns uploadTask
     every { fileRef.downloadUrl } returns Tasks.forResult(Uri.parse(""))
 
     val exception =
@@ -130,7 +132,7 @@ class AudioStorageFirebaseTest {
     every { uploadTask.isSuccessful } returns false
     every { uploadTask.exception } returns CancellationException("Upload cancelled")
 
-    every { fileRef.putFile(any()) } returns uploadTask
+    every { fileRef.putFile(any(), any()) } returns uploadTask
 
     assertThrows(CancellationException::class.java) {
       runBlocking { repository.upload(audio, "task1") }

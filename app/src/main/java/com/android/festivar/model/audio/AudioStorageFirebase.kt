@@ -2,6 +2,7 @@
 package com.android.festivar.model.audio
 
 import com.google.firebase.storage.StorageException
+import com.google.firebase.storage.StorageMetadata
 import com.google.firebase.storage.StorageReference
 import java.io.IOException
 import java.util.UUID
@@ -20,7 +21,8 @@ class AudioStorageFirebase(private val storageRef: StorageReference) : AudioRepo
       val extension = audio.file.extension.let { if (it.isNotBlank()) ".$it" else ".m4a" }
       val fileName = "${getNewUid()}$extension"
       val ref = audioRef.child(taskId).child(fileName)
-      ref.putFile(audio.uri).await()
+      val metadata = StorageMetadata.Builder().setContentType("audio/m4a").build()
+      ref.putFile(audio.uri, metadata).await()
       val downloadUrl = ref.downloadUrl.await().toString()
       return downloadUrl.ifBlank {
         throw IOException("Audio upload did not return a valid download URL.")
