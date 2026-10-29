@@ -4,9 +4,7 @@ package com.android.festivar.ui.event
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 
 import android.annotation.SuppressLint
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -46,30 +44,32 @@ import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepositoryLocal
-import com.android.festivar.ui.components.FestivarDatePickerDialog
+import com.android.festivar.ui.components.DateTimeField
+import com.android.festivar.ui.components.DateTimeRange
+import com.android.festivar.ui.components.FestivarDateTimePickerDialog
+import com.android.festivar.ui.components.FestivarDateTimeRow
 import com.android.festivar.ui.components.FestivarFieldError
-import com.android.festivar.ui.components.FestivarPickerField
+import com.android.festivar.ui.components.FestivarFieldWithError
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
-import java.time.ZoneId
-import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
-import java.util.Locale
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
+import java.time.LocalTime
 
 object CreateEventScreenTestTags {
   const val NAVIGATION_BUTTON = "navigationButton"
   const val TITLE = "title"
   const val NAME_FIELD = "nameField"
   const val START_DATE_FIELD = "startDateField"
+  const val START_TIME_FIELD = "startTimeField"
   const val END_DATE_FIELD = "endDateField"
+  const val END_TIME_FIELD = "endTimeField"
   const val LOCATION_FIELD = "locationField"
   const val DESCRIPTION_FIELD = "descriptionField"
   const val NAME_ERROR = "nameError"
-  const val ENDS_ERROR = "endsError"
+  const val START_DATE_ERROR = "startDateError"
+  const val END_DATE_ERROR = "endDateError"
   const val ADDRESS_ERROR = "addressError"
   const val CREATE_BUTTON = "createButton"
   const val SAVING = "createEventSaving"
@@ -80,12 +80,11 @@ object CreateEventScreenTestTags {
 class CreateEventActions(
     val onBack: () -> Unit = {},
     val onNameChange: (String) -> Unit = {},
-    val onStartDateClick: () -> Unit = {},
-    val onEndDateClick: () -> Unit = {},
+    val onShowPicker: (DateTimeField?) -> Unit = {},
     val onVenueChange: (String) -> Unit = {},
     val onNotesChange: (String) -> Unit = {},
-    val onDatePicked: (DateField, LocalDate) -> Unit = { _, _ -> },
-    val onDismissDatePicker: () -> Unit = {},
+    val onDatePicked: (LocalDate) -> Unit = {},
+    val onTimePicked: (LocalTime) -> Unit = {},
     val onCreate: () -> Unit = {},
 )
 
@@ -110,45 +109,12 @@ fun CreateEventScreen(
       actions =
           CreateEventActions(
               onBack = onBack,
-              onNameChange = {
-                if (uiState.errorName) {
-                  viewModel.removeErrorName()
-                }
-                viewModel.updateName(it)
-              },
-              onStartDateClick = {
-                if (uiState.errorDate) {
-                  viewModel.removeErrorDate()
-                }
-                viewModel.updateActiveDatePicker(DateField.START)
-              },
-              onEndDateClick = {
-                if (uiState.errorDate) {
-                  viewModel.removeErrorDate()
-                }
-                viewModel.updateActiveDatePicker(DateField.END)
-              },
-              onVenueChange = {
-                if (uiState.errorVenue) {
-                  viewModel.removeErrorVenue()
-                }
-                viewModel.updateVenue(it)
-              },
+              onNameChange = viewModel::updateName,
+              onShowPicker = viewModel::showPicker,
+              onVenueChange = viewModel::updateVenue,
               onNotesChange = viewModel::updateNotes,
-              onDatePicked = { dateField, selectedDate ->
-                val zone = ZoneId.systemDefault()
-                if (dateField == DateField.START) {
-                  val start = selectedDate.atStartOfDay(zone)
-                  viewModel.updateStartDateMillis(start.toInstant().toEpochMilli())
-                  viewModel.updateStartDate(start)
-                } else {
-                  val end = selectedDate.plusDays(1).atStartOfDay(zone).minusSeconds(1)
-                  viewModel.updateEndDateMillis(end.toInstant().toEpochMilli())
-                  viewModel.updateEndDate(end)
-                }
-                viewModel.updateActiveDatePicker(null)
-              },
-              onDismissDatePicker = { viewModel.updateActiveDatePicker(null) },
+              onDatePicked = viewModel::pickDate,
+              onTimePicked = viewModel::pickTime,
               onCreate = {
                 if (viewModel.validEvent()) viewModel.createEvent() else viewModel.setErrors()
               },
@@ -187,60 +153,52 @@ fun CreateEventContent(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 12.dp),
     ) {
-      FestivarTextField(
-          value = state.name,
-          onValueChange = actions.onNameChange,
-          label = stringResource(R.string.create_event_field_name),
-          isError = state.errorName,
-          modifier = Modifier.testTag(CreateEventScreenTestTags.NAME_FIELD),
-      )
-      if (state.errorName) {
-        FestivarFieldError(
-            message = stringResource(R.string.create_event_error_name),
-            modifier = Modifier.testTag(CreateEventScreenTestTags.NAME_ERROR),
+      FestivarFieldWithError(state.nameError, CreateEventScreenTestTags.NAME_ERROR) {
+        FestivarTextField(
+            value = state.name,
+            onValueChange = actions.onNameChange,
+            label = stringResource(R.string.create_event_field_name),
+            isError = state.nameError != null,
+            modifier = Modifier.testTag(CreateEventScreenTestTags.NAME_FIELD),
         )
       }
       Spacer(modifier = Modifier.height(14.dp))
 
-      Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        FestivarPickerField(
-            value = state.startDate.toDisplayDate(),
-            onClick = actions.onStartDateClick,
-            label = stringResource(R.string.create_event_field_start_date),
-            isError = state.errorDate && state.startDate == null,
-            modifier = Modifier.weight(1f).testTag(CreateEventScreenTestTags.START_DATE_FIELD),
-        )
-        FestivarPickerField(
-            value = state.endDate.toDisplayDate(),
-            onClick = actions.onEndDateClick,
-            label = stringResource(R.string.create_event_field_end_date),
-            isError = state.errorDate,
-            modifier = Modifier.weight(1f).testTag(CreateEventScreenTestTags.END_DATE_FIELD),
-        )
-      }
-      if (state.errorDate) {
-        FestivarFieldError(
-            message =
-                stringResource(
-                    if (state.startDate == null || state.endDate == null) {
-                      R.string.create_event_error_date_missing
-                    } else {
-                      R.string.create_event_error_date_order
-                    }
-                ),
-            modifier = Modifier.testTag(CreateEventScreenTestTags.ENDS_ERROR),
-        )
-      }
+      FestivarDateTimeRow(
+          dateLabel = stringResource(R.string.create_event_field_start_date),
+          timeLabel = stringResource(R.string.create_event_field_start_time),
+          date = state.startDate,
+          time = state.startTime,
+          dateError = state.startDateError,
+          onDateClick = { actions.onShowPicker(DateTimeField.START_DATE) },
+          onTimeClick = { actions.onShowPicker(DateTimeField.START_TIME) },
+          dateTag = CreateEventScreenTestTags.START_DATE_FIELD,
+          dateErrorTag = CreateEventScreenTestTags.START_DATE_ERROR,
+          timeTag = CreateEventScreenTestTags.START_TIME_FIELD,
+      )
+      Spacer(modifier = Modifier.height(14.dp))
+
+      FestivarDateTimeRow(
+          dateLabel = stringResource(R.string.create_event_field_end_date),
+          timeLabel = stringResource(R.string.create_event_field_end_time),
+          date = state.endDate,
+          time = state.endTime,
+          dateError = state.endDateError,
+          onDateClick = { actions.onShowPicker(DateTimeField.END_DATE) },
+          onTimeClick = { actions.onShowPicker(DateTimeField.END_TIME) },
+          dateTag = CreateEventScreenTestTags.END_DATE_FIELD,
+          dateErrorTag = CreateEventScreenTestTags.END_DATE_ERROR,
+          timeTag = CreateEventScreenTestTags.END_TIME_FIELD,
+      )
       Spacer(modifier = Modifier.height(14.dp))
 
       FestivarTextField(
           value = state.venue,
           onValueChange = actions.onVenueChange,
           label = stringResource(R.string.create_event_field_venue),
-          isError = state.errorVenue,
           modifier = Modifier.testTag(CreateEventScreenTestTags.LOCATION_FIELD),
       )
-      if (state.errorVenue) {
+      if (state.venueError) {
         FestivarFieldError(
             message = stringResource(R.string.create_event_error_venue),
             modifier = Modifier.testTag(CreateEventScreenTestTags.ADDRESS_ERROR),
@@ -259,14 +217,13 @@ fun CreateEventContent(
     }
   }
 
-  state.activeDatePicker?.let { dateField ->
-    CreateEventDatePicker(
-        dateField = dateField,
-        state = state,
-        onDatePicked = actions.onDatePicked,
-        onDismiss = actions.onDismissDatePicker,
-    )
-  }
+  FestivarDateTimePickerDialog(
+      field = state.openPicker,
+      range = DateTimeRange(state.startDate, state.startTime, state.endDate, state.endTime),
+      onDatePicked = actions.onDatePicked,
+      onTimePicked = actions.onTimePicked,
+      onDismiss = { actions.onShowPicker(null) },
+  )
 }
 
 /**
@@ -313,33 +270,6 @@ private fun CreateEventSaveBar(isSaving: Boolean, errorMsg: Int?, onCreate: () -
     }
   }
 }
-
-/**
- * The date dialog of [dateField]. The form takes days: an event starts when its first day starts
- * and ends when its last day ends, so a one day event is valid and stays ongoing until its
- * midnight.
- */
-@Composable
-private fun CreateEventDatePicker(
-    dateField: DateField,
-    state: CreateEventUIState,
-    onDatePicked: (DateField, LocalDate) -> Unit,
-    onDismiss: () -> Unit,
-) {
-  val current = if (dateField == DateField.START) state.startDate else state.endDate
-  FestivarDatePickerDialog(
-      initial = current?.toLocalDate(),
-      onConfirm = { selectedDate -> onDatePicked(dateField, selectedDate) },
-      onDismiss = onDismiss,
-  )
-}
-
-private fun ZonedDateTime?.toDisplayDate(
-    locale: Locale = Locale.getDefault(),
-): String =
-    this?.let {
-      DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale).format(it)
-    } ?: ""
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

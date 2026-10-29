@@ -1,6 +1,7 @@
 package com.android.festivar.ui.event
 
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
+// Co-authored-by: Copilot App
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
@@ -13,7 +14,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
-import java.time.ZonedDateTime
+import java.time.LocalDate
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -37,8 +38,8 @@ class CreateEventScreenSaveTest {
   private fun filledViewModel(repository: EventsRepository) =
       CreateEventViewModel(repository).apply {
         updateName("Summer festival")
-        updateStartDate(ZonedDateTime.parse("2026-10-08T00:00:00+02:00"))
-        updateEndDate(ZonedDateTime.parse("2026-10-08T23:59:59+02:00"))
+        updateStartDate(LocalDate.of(2026, 10, 8))
+        updateEndDate(LocalDate.of(2026, 10, 9))
         updateVenue("Main square")
       }
 

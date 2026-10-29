@@ -153,6 +153,12 @@ enum class FieldError {
 
   /** The end is before the start. */
   END_BEFORE_START,
+
+  /** The event name was edited and is now blank. */
+  EMPTY_EVENT_NAME,
+
+  /** The selected date-time range is in the past. */
+  OUTDATED,
 }
 
 /** The string resource of the message shown under a field for [error]. */
@@ -162,6 +168,8 @@ fun fieldErrorMessageRes(error: FieldError): Int =
       FieldError.EMPTY_TITLE -> R.string.field_error_empty_title
       FieldError.MISSING_DATE -> R.string.field_error_missing_date
       FieldError.END_BEFORE_START -> R.string.field_error_end_before_start
+      FieldError.EMPTY_EVENT_NAME -> R.string.field_error_empty_event_name
+      FieldError.OUTDATED -> R.string.field_error_outdated
     }
 
 /**

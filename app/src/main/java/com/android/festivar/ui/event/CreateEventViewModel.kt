@@ -12,6 +12,14 @@ import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryProvider
+import com.android.festivar.ui.components.DateTimeField
+import com.android.festivar.ui.components.DateTimeRange
+import com.android.festivar.ui.components.FieldError
+import com.android.festivar.ui.components.endDateError
+import com.android.festivar.ui.components.startDateError
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,24 +38,61 @@ import kotlinx.coroutines.launch
  */
 data class CreateEventUIState(
     val name: String = "",
-    val startDate: ZonedDateTime? = null,
-    val endDate: ZonedDateTime? = null,
-    val startDateMillis: Long? = null,
-    val endDateMillis: Long? = null,
+    val nameEdited: Boolean = false,
+    val startDate: LocalDate? = null,
+    val endDate: LocalDate? = null,
+    val startTime: LocalTime? = null,
+    val endTime: LocalTime? = null,
     val venue: String = "",
     val notes: String = "",
-    val activeDatePicker: DateField? = null,
-    val errorName: Boolean = false,
-    val errorDate: Boolean = false,
-    val errorVenue: Boolean = false,
+    val openPicker: DateTimeField? = null,
+    val validationRequested: Boolean = false,
     val isSaving: Boolean = false,
     val createdEventId: String? = null,
+    val zone: ZoneId = ZoneId.systemDefault(),
     @StringRes val errorMsg: Int? = null,
-)
+) {
+  val startDateTime: ZonedDateTime?
+    get() = startDate?.atTime(startTime ?: LocalTime.MIDNIGHT)?.atZone(zone)
 
-enum class DateField {
-  START,
-  END,
+  val endDateTime: ZonedDateTime?
+    get() = endDate?.atTime(endTime ?: LocalTime.of(23, 59))?.atZone(zone)
+
+  val nameError: FieldError?
+    get() =
+        if ((nameEdited || validationRequested) && name.isBlank()) {
+          FieldError.EMPTY_EVENT_NAME
+        } else {
+          null
+        }
+
+  val startDateError: FieldError?
+    get() =
+        if (validationRequested) {
+          startDateError(startDate, startTime)
+        } else {
+          null
+        }
+
+  val endDateError: FieldError?
+    get() =
+        if (validationRequested) {
+          endDateError(DateTimeRange(startDate, startTime, endDate, endTime), zone)
+        } else {
+          null
+        }
+
+  val venueError: Boolean
+    get() = validationRequested && venue.isBlank()
+
+  val isValid: Boolean
+    get() =
+        name.isNotBlank() &&
+            startDateTime != null &&
+            endDateTime != null &&
+            startDateError(startDate, startTime) == null &&
+            endDateError(DateTimeRange(startDate, startTime, endDate, endTime), zone) == null &&
+            venue.isNotBlank()
 }
 
 /**
@@ -73,23 +118,23 @@ class CreateEventViewModel(
   }
 
   fun updateName(newName: String) {
-    edit { it.copy(name = newName) }
+    edit { it.copy(name = newName, nameEdited = true) }
   }
 
-  fun updateStartDate(newDate: ZonedDateTime) {
+  fun updateStartDate(newDate: LocalDate) {
     edit { it.copy(startDate = newDate) }
   }
 
-  fun updateEndDate(newDate: ZonedDateTime) {
+  fun updateEndDate(newDate: LocalDate) {
     edit { it.copy(endDate = newDate) }
   }
 
-  fun updateStartDateMillis(newDateMillis: Long) {
-    _uiState.update { it.copy(startDateMillis = newDateMillis) }
+  fun updateStartTime(newTime: LocalTime) {
+    edit { it.copy(startTime = newTime) }
   }
 
-  fun updateEndDateMillis(newDateMillis: Long) {
-    _uiState.update { it.copy(endDateMillis = newDateMillis) }
+  fun updateEndTime(newTime: LocalTime) {
+    edit { it.copy(endTime = newTime) }
   }
 
   fun updateVenue(newVenue: String) {
@@ -100,49 +145,34 @@ class CreateEventViewModel(
     edit { it.copy(notes = newNotes) }
   }
 
-  fun updateActiveDatePicker(newActiveDatePicker: DateField?) {
-    _uiState.update { it.copy(activeDatePicker = newActiveDatePicker) }
+  fun showPicker(newOpenPicker: DateTimeField?) {
+    _uiState.update { it.copy(openPicker = newOpenPicker) }
   }
 
-  fun removeErrorName() {
-    _uiState.update { it.copy(errorName = false) }
+  fun pickDate(date: LocalDate) {
+    when (_uiState.value.openPicker) {
+      DateTimeField.START_DATE -> updateStartDate(date)
+      DateTimeField.END_DATE -> updateEndDate(date)
+      else -> Unit
+    }
+    showPicker(null)
   }
 
-  fun removeErrorDate() {
-    _uiState.update { it.copy(errorDate = false) }
-  }
-
-  fun removeErrorVenue() {
-    _uiState.update { it.copy(errorVenue = false) }
+  fun pickTime(time: LocalTime) {
+    when (_uiState.value.openPicker) {
+      DateTimeField.START_TIME -> updateStartTime(time)
+      DateTimeField.END_TIME -> updateEndTime(time)
+      else -> Unit
+    }
+    showPicker(null)
   }
 
   fun setErrors() {
-    _uiState.update {
-      it.copy(
-          errorName = _uiState.value.name.isBlank(),
-          errorDate = !endDateComesAfterStartDate(),
-          errorVenue = _uiState.value.venue.isBlank(),
-      )
-    }
-  }
-
-  fun endDateComesAfterStartDate(): Boolean {
-    val state = _uiState.value
-    // Event itself requires a strictly later end, so equal dates are refused here, not thrown
-    return state.startDate != null &&
-        state.endDate != null &&
-        state.endDate.isAfter(state.startDate)
-  }
-
-  fun formIsComplete(): Boolean {
-    return _uiState.value.name.isNotBlank() &&
-        _uiState.value.startDate != null &&
-        _uiState.value.endDate != null &&
-        _uiState.value.venue.isNotBlank()
+    _uiState.update { it.copy(validationRequested = true) }
   }
 
   fun validEvent(): Boolean {
-    return formIsComplete() && endDateComesAfterStartDate()
+    return _uiState.value.isValid
   }
 
   /**
@@ -191,8 +221,8 @@ class CreateEventViewModel(
             title = _uiState.value.name,
             description = _uiState.value.notes,
             members = membersList,
-            startDate = _uiState.value.startDate!!,
-            endDate = _uiState.value.endDate!!,
+            startDate = _uiState.value.startDateTime!!,
+            endDate = _uiState.value.endDateTime!!,
             location = _uiState.value.venue,
         )
 

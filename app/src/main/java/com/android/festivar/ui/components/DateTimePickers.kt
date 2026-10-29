@@ -29,7 +29,9 @@ import com.android.festivar.ui.theme.AppTheme
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
 import java.time.ZoneOffset
+import java.time.ZonedDateTime
 
 /** The date picker works in UTC milliseconds; this is the value that shows [this] date. */
 internal fun LocalDate.toPickerMillis(): Long =
@@ -118,6 +120,26 @@ data class DateTimeRange(
     val endDate: LocalDate? = null,
     val endTime: LocalTime? = null,
 )
+
+fun startDateError(startDate: LocalDate?, startTime: LocalTime?): FieldError? =
+    if (startTime != null && startDate == null) FieldError.MISSING_DATE else null
+
+fun endDateError(range: DateTimeRange, zone: ZoneId = ZoneId.systemDefault()): FieldError? {
+  if (range.endTime != null && range.endDate == null) return FieldError.MISSING_DATE
+
+  val start = range.startDate?.atTime(range.startTime ?: LocalTime.MIDNIGHT)?.atZone(zone)
+  val end = range.endDate?.atTime(range.endTime ?: LocalTime.of(23, 59))?.atZone(zone)
+
+  return if (start != null && end != null) {
+    when {
+      !end.isAfter(start) -> FieldError.END_BEFORE_START
+      end.isBefore(ZonedDateTime.now(zone)) -> FieldError.OUTDATED
+      else -> null
+    }
+  } else {
+    null
+  }
+}
 
 /**
  * Shows the picker dialog of [field], or nothing when [field] is `null`. The dialogs open on the
