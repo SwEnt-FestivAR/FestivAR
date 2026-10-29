@@ -3,6 +3,8 @@ package com.android.festivar.model.audio
 
 import android.net.Uri
 import com.google.android.gms.tasks.Tasks
+import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.StorageException
 import com.google.firebase.storage.StorageReference
 import com.google.firebase.storage.UploadTask
 import io.mockk.every
@@ -26,6 +28,7 @@ import org.robolectric.RobolectricTestRunner
 class AudioRepositoryFirebaseTest {
 
   private lateinit var storageRef: StorageReference
+  private lateinit var firebaseStorage: FirebaseStorage
   private lateinit var audioRef: StorageReference
   private lateinit var voiceNoteRef: StorageReference
   private lateinit var fileRef: StorageReference
@@ -36,14 +39,17 @@ class AudioRepositoryFirebaseTest {
   @Before
   fun setUp() {
     storageRef = mockk()
+    firebaseStorage = mockk()
     audioRef = mockk()
     voiceNoteRef = mockk()
     fileRef = mockk()
 
+    every { storageRef.storage } returns firebaseStorage
     every { storageRef.child("audio") } returns audioRef
     every { audioRef.child("voice-note") } returns voiceNoteRef
     every { voiceNoteRef.child(any()) } returns fileRef
     every { fileRef.child(any()) } returns fileRef
+    every { firebaseStorage.getReferenceFromUrl(any()) } returns fileRef
 
     repository = AudioStorageFirebase(storageRef)
   }
@@ -61,7 +67,7 @@ class AudioRepositoryFirebaseTest {
   @Test
   fun upload_success() = runTest {
     val expectedUrl =
-        "https://firebasestorage.googleapis.com/v0/b/bucket/o/audio%2Fvoice-note%2F12345.m4a?alt=media"
+        "https://firebasestorage.googleapis.com/v0/b/bucket/o/audio%2Fvoice-note%2Ftask1%2F12345.m4a?alt=media"
     val uploadTask: UploadTask = mockk()
     every { uploadTask.isComplete } returns true
     every { uploadTask.isCanceled } returns false
@@ -110,79 +116,13 @@ class AudioRepositoryFirebaseTest {
   @Test
   fun delete_success() = runTest {
     val audioUrl =
-        "https://firebasestorage.googleapis.com/v0/b/bucket/o/audio%2Fvoice-note%2Ftask1_12345.m4a?alt=media"
-    every { voiceNoteRef.child("task1_12345.m4a") } returns fileRef
+        "https://firebasestorage.googleapis.com/v0/b/bucket/o/audio%2Fvoice-note%2Ftask1%2F12345.m4a?alt=media"
     every { fileRef.delete() } returns Tasks.forResult(null)
 
     repository.delete(audioUrl)
 
+    verify { firebaseStorage.getReferenceFromUrl(audioUrl) }
     verify { fileRef.delete() }
-  }
-
-  @Test
-  fun delete_actualFirebaseUrl_deletesCorrectFileName() = runTest {
-    val audioUrl =
-        "https://firebasestorage.googleapis.com/v0/b/festivar-9a339.firebasestorage.app/o/audio%2Fvoice-note%2Ftask1_12345.m4a?alt=media&token=7d4d9a9g9j2k4k"
-    every { voiceNoteRef.child("task1_12345.m4a") } returns fileRef
-    every { fileRef.delete() } returns Tasks.forResult(null)
-
-    repository.delete(audioUrl)
-
-    verify { fileRef.delete() }
-  }
-
-  @Test
-  fun delete_actualFirebaseUrlWithoutAudioPrefix_deletesCorrectFileName() = runTest {
-    val audioUrl =
-        "https://firebasestorage.googleapis.com/v0/b/festivar-9a339.firebasestorage.app/o/task1_12345.m4a?alt=media&token=7d4d9a9g9j2k4k"
-    every { voiceNoteRef.child("task1_12345.m4a") } returns fileRef
-    every { fileRef.delete() } returns Tasks.forResult(null)
-
-    repository.delete(audioUrl)
-
-    verify { fileRef.delete() }
-  }
-
-  @Test
-  fun delete_urlWithoutOParam_deletesCorrectFileName() = runTest {
-    val audioUrl = "https://example.com/audio/task1_12345.m4a?alt=media"
-    every { voiceNoteRef.child("task1_12345.m4a") } returns fileRef
-    every { fileRef.delete() } returns Tasks.forResult(null)
-
-    repository.delete(audioUrl)
-
-    verify { fileRef.delete() }
-  }
-
-  @Test
-  fun delete_plainFileName_deletesCorrectFileName() = runTest {
-    val audioUrl = "task1_12345.m4a"
-    every { voiceNoteRef.child("task1_12345.m4a") } returns fileRef
-    every { fileRef.delete() } returns Tasks.forResult(null)
-
-    repository.delete(audioUrl)
-
-    verify { fileRef.delete() }
-  }
-
-  @Test
-  fun delete_malformedUrlWithInvalidEncoding_fallsBackToLastSegment() = runTest {
-    val audioUrl = "https://example.com/o/audio%2"
-    every { voiceNoteRef.child("audio%2") } returns fileRef
-    every { fileRef.delete() } returns Tasks.forResult(null)
-
-    repository.delete(audioUrl)
-
-    verify { fileRef.delete() }
-  }
-
-  @Test
-  fun delete_urlExtractingToBlankFileName_doesNotCallDelete() = runTest {
-    val audioUrl = "https://example.com/o/audio%2F?alt=media"
-
-    repository.delete(audioUrl)
-
-    verify(exactly = 0) { voiceNoteRef.child(any()) }
   }
 
   @Test
@@ -190,16 +130,16 @@ class AudioRepositoryFirebaseTest {
     repository.delete("")
     repository.delete("   ")
 
-    verify(exactly = 0) { voiceNoteRef.child(any()) }
+    verify(exactly = 0) { firebaseStorage.getReferenceFromUrl(any()) }
   }
 
   @Test
   fun delete_notFound_doesNotThrow() = runTest {
     val audioUrl =
-        "https://firebasestorage.googleapis.com/v0/b/bucket/o/audio%2Fvoice-note%2Ftask1_12345.m4a?alt=media"
-    every { voiceNoteRef.child("task1_12345.m4a") } returns fileRef
-    every { fileRef.delete() } returns
-        Tasks.forException(NoSuchElementException("Object does not exist"))
+        "https://firebasestorage.googleapis.com/v0/b/bucket/o/audio%2Fvoice-note%2Ftask1%2F12345.m4a?alt=media"
+    val notFoundException = mockk<StorageException>()
+    every { notFoundException.errorCode } returns StorageException.ERROR_OBJECT_NOT_FOUND
+    every { fileRef.delete() } returns Tasks.forException(notFoundException)
 
     repository.delete(audioUrl)
 
@@ -209,8 +149,7 @@ class AudioRepositoryFirebaseTest {
   @Test
   fun delete_failure_throwsIOException() {
     val audioUrl =
-        "https://firebasestorage.googleapis.com/v0/b/bucket/o/audio%2Fvoice-note%2Ftask1_12345.m4a?alt=media"
-    every { voiceNoteRef.child("task1_12345.m4a") } returns fileRef
+        "https://firebasestorage.googleapis.com/v0/b/bucket/o/audio%2Fvoice-note%2Ftask1%2F12345.m4a?alt=media"
     every { fileRef.delete() } returns Tasks.forException(RuntimeException("Error"))
 
     assertThrows(IOException::class.java) { runBlocking { repository.delete(audioUrl) } }

@@ -4,13 +4,11 @@ package com.android.festivar.model.audio
 import com.google.firebase.storage.StorageException
 import com.google.firebase.storage.StorageReference
 import java.io.IOException
-import java.net.URLDecoder
-import java.nio.charset.StandardCharsets
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.tasks.await
 
-class AudioStorageFirebase(storageRef: StorageReference) : AudioRepository {
+class AudioStorageFirebase(private val storageRef: StorageReference) : AudioRepository {
   private val audioRef = storageRef.child("audio").child("voice-note")
 
   override fun getNewUid(): String {
@@ -37,42 +35,15 @@ class AudioStorageFirebase(storageRef: StorageReference) : AudioRepository {
   override suspend fun delete(audioUrl: String) {
     if (audioUrl.isBlank()) return
     try {
-      val fileName = extractFileName(audioUrl)
-      if (fileName.isNotBlank()) {
-        val ref = audioRef.child(fileName)
-        ref.delete().await()
-      }
+      val ref = storageRef.storage.getReferenceFromUrl(audioUrl)
+      ref.delete().await()
     } catch (e: Exception) {
-      if (
-          e is StorageException && e.errorCode == StorageException.ERROR_OBJECT_NOT_FOUND ||
-              e.message?.contains("Object does not exist") == true ||
-              e is NoSuchElementException
-      ) {
+      if (e is CancellationException) throw e
+      if (e is StorageException && e.errorCode == StorageException.ERROR_OBJECT_NOT_FOUND) {
         // Deleting a non-existent file is non-fatal per contract.
         return
       }
       throw IOException("Failed to delete audio file.", e)
-    }
-  }
-
-  private fun extractFileName(url: String): String {
-    return try {
-      val withoutQuery = url.substringBefore('?')
-      val oIndex = withoutQuery.indexOf("/o/")
-      val path =
-          if (oIndex != -1) {
-            withoutQuery.substring(oIndex + 3)
-          } else {
-            withoutQuery.substringAfterLast('/')
-          }
-      val decoded = URLDecoder.decode(path, StandardCharsets.UTF_8.name())
-      if (decoded.startsWith("audio/")) {
-        decoded.removePrefix("audio/")
-      } else {
-        decoded
-      }
-    } catch (_: Exception) {
-      url.substringAfterLast('/')
     }
   }
 }
