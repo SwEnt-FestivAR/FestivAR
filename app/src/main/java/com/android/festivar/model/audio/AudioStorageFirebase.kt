@@ -10,7 +10,7 @@ import java.util.UUID
 import kotlinx.coroutines.tasks.await
 
 class AudioStorageFirebase(storageRef: StorageReference) : AudioRepository {
-  val audioRef = storageRef.child("audio").child("voice-note")
+  private val audioRef = storageRef.child("audio").child("voice-note")
 
   override fun getNewUid(): String {
     return UUID.randomUUID().toString()
