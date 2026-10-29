@@ -6,10 +6,13 @@ package com.android.festivar.navigation
 
 import androidx.navigation.NavHostController
 
+/**
+ * Where the task overview can go: back to whatever opened it, to a task, to the task creation of
+ * the event, or to the login when signed out.
+ */
 class TaskOverviewNavigator(private val navController: NavHostController) {
-  val onBack: () -> Unit = {
-    navController.popBackStack("${AppScreens.EventDetails.name}/{eventId}", inclusive = false)
-  }
+  /** Pops the overview, so back works however the overview was reached. */
+  val onBack: () -> Unit = { navController.popBackStack() }
 
   val onOpenTask: (taskId: String) -> Unit = { taskId ->
     navController.navigate(AppScreens.taskDetails(taskId))
@@ -17,5 +20,12 @@ class TaskOverviewNavigator(private val navController: NavHostController) {
 
   val onAddTask: (eventId: String) -> Unit = { eventId ->
     navController.navigate(AppScreens.createTask(eventId))
+  }
+
+  /** Opens the login and clears the back stack, so back cannot return to the overview. */
+  val onSignedOut: () -> Unit = {
+    navController.navigate(AppScreens.Login.name) {
+      popUpTo(navController.graph.id) { inclusive = true }
+    }
   }
 }

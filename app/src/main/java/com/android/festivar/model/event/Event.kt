@@ -126,10 +126,12 @@ data class Event(
    *
    * @param task The [Task] that is going to be added to `this`, to be added to [tasks] list.
    * @return The [Event] but with [task] added to it.
-   * @throws IllegalArgumentException If [task] is already in the event.
+   * @throws IllegalArgumentException If [task] is already in the event or if the task is not linked
+   *   to that event through its [Task.eventId].
    */
   fun addTask(task: Task): Event {
     require(tasks.none { it.taskId == task.taskId }) { "This task is already in the event." }
+    require(task.eventId == eventId) { "This task is linked to a different event." }
     return copy(tasks = tasks + task)
   }
 
