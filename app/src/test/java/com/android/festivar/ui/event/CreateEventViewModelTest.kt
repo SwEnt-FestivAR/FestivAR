@@ -254,6 +254,25 @@ class CreateEventViewModelTest {
     assertEquals("Bring the stage equipment", failingViewModel.uiState.value.notes)
   }
 
+  /** Red if a missing user ID does not fail before writing an event. */
+  @Test
+  fun createEventWithBlankUserIdShowsAnErrorAndDoesNotAddAnEvent() = runBlocking {
+    viewModel = CreateEventViewModel(eventsRepository, usersRepository, userId = "")
+    fillRequiredFields()
+
+    viewModel.createEvent()
+    withTimeout(5_000.milliseconds) {
+      while (viewModel.uiState.value.errorMsg == null) delay(10.milliseconds)
+    }
+
+    assertEquals(
+        R.string.create_event_error_save_failed,
+        viewModel.uiState.value.errorMsg,
+    )
+    assertFalse(viewModel.uiState.value.isSaving)
+    assertTrue(eventsRepository.getAllEvents().isEmpty())
+  }
+
   /**
    * Red if a cancellation from the repository is converted into a save error instead of being
    * propagated.
