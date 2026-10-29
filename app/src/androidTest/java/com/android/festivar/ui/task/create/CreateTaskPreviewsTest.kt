@@ -12,7 +12,6 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
 import com.android.festivar.R
 import org.junit.Rule
 import org.junit.Test
@@ -26,9 +25,6 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class CreateTaskPreviewsTest {
   @get:Rule val composeTestRule = createComposeRule()
-
-  private fun string(id: Int): String =
-      InstrumentationRegistry.getInstrumentation().targetContext.getString(id)
 
   private fun checkPeopleNeededIs(value: Int) {
     composeTestRule

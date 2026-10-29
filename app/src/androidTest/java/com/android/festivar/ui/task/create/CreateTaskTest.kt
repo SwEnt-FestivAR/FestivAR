@@ -2,6 +2,7 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.create
 
+import androidx.annotation.StringRes
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -40,6 +41,10 @@ import org.junit.Before
  * and the actions and checks the tests share, so that a test reads as what the user does. The
  * subclass owns the compose rule and calls [showCreateTaskScreen] from its own `@Before`.
  */
+/** The text of the string resource [id] in the app under test. */
+internal fun string(@StringRes id: Int): String =
+    InstrumentationRegistry.getInstrumentation().targetContext.getString(id)
+
 abstract class CreateTaskTest {
   // FAKE: a real, working repository that keeps the tasks in memory instead of Firebase. The tests
   // read the saved tasks back from it. There is no mock: nothing checks that a method was called.

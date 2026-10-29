@@ -264,7 +264,4 @@ class CreateTaskScreenInstrumentedTest : CreateTaskTest() {
     assertEquals(0, createdCount)
     assertTrue(savedTasks().isEmpty())
   }
-
-  private fun string(id: Int): String =
-      InstrumentationRegistry.getInstrumentation().targetContext.getString(id)
 }
