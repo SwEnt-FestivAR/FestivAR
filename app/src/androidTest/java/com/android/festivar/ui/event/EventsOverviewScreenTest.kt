@@ -7,6 +7,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
@@ -451,6 +452,20 @@ class EventsOverviewScreenTest {
     onEventItem(event, hasText("Sat 31 Oct to Sun 1 Nov · Satellite", substring = false))
   }
 
+  /** Test that an event ending in another year shows the year of both its days. */
+  @Test
+  fun eventEndingInAnotherYearShowsBothYears() {
+    val event =
+        upcomingEvent.copy(
+            startDate = getDate(2026, 12, 31, hour = 20),
+            endDate = getDate(2027, 1, 2, hour = 4),
+        )
+    setContent(withRepository = EventsRepositoryImpl(listOf(event)))
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.UPCOMING_CHIP).performClick()
+
+    onEventItem(event, hasText("Thu 31 Dec 2026 to Sat 2 Jan 2027 · Satellite", substring = false))
+  }
+
   /**
    * Test that the list of events is lazy loaded. We create 100 events and check that the last one
    * is not displayed without scrolling.
@@ -500,16 +515,28 @@ class EventsOverviewScreenTest {
   }
 
   /**
-   * Test that a loading indicator is shown, and not the empty state, until the events are fetched.
+   * Test that a loading indicator is shown, vertically centered in the list area and not the empty
+   * state, until the events are fetched.
    */
   @Test
   fun loadingIndicatorIsShownUntilEventsAreFetched() {
     val gate = CompletableDeferred<Unit>()
     setContent(withRepository = EventsRepositoryImpl(listOf(ongoingEvent), gate = gate))
 
-    composeTestRule
-        .onNodeWithTag(EventsOverviewScreenTestTags.LOADING_INDICATOR)
-        .assertIsDisplayed()
+    val indicator =
+        composeTestRule
+            .onNodeWithTag(EventsOverviewScreenTestTags.LOADING_INDICATOR)
+            .assertIsDisplayed()
+            .getUnclippedBoundsInRoot()
+    val listArea =
+        composeTestRule
+            .onNodeWithTag(EventsOverviewScreenTestTags.PULL_TO_REFRESH)
+            .getUnclippedBoundsInRoot()
+    assertEquals(
+        ((listArea.top + listArea.bottom) / 2).value,
+        ((indicator.top + indicator.bottom) / 2).value,
+        1f,
+    )
     // The empty state must not flash while the first events are still being fetched
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.EMPTY_TITLE).assertDoesNotExist()
     assertJoinAndCreateButtonsDoNotExist()
