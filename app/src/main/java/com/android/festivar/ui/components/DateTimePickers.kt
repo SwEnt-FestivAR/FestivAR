@@ -23,10 +23,12 @@ import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.ui.task.create.END_OF_DAY
 import com.android.festivar.ui.task.create.START_OF_DAY
+import com.android.festivar.R
 import com.android.festivar.ui.theme.AppTheme
 import java.time.Instant
 import java.time.LocalDate
@@ -62,12 +64,14 @@ fun FestivarDatePickerDialog(
       onDismissRequest = onDismiss,
       confirmButton = {
         DialogButton(
-            text = "OK",
+            text = stringResource(R.string.action_ok),
             onClick = { state.selectedDateMillis?.let { onConfirm(it.toPickerDate()) } },
             enabled = state.selectedDateMillis != null,
         )
       },
-      dismissButton = { DialogButton(text = "Cancel", onClick = onDismiss) },
+      dismissButton = {
+        DialogButton(text = stringResource(R.string.action_cancel), onClick = onDismiss)
+      },
   ) {
     DatePicker(state = state, colors = readableDatePickerColors())
   }
@@ -98,11 +102,13 @@ fun FestivarTimePickerDialog(
       onDismissRequest = onDismiss,
       confirmButton = {
         DialogButton(
-            text = "OK",
+            text = stringResource(R.string.action_ok),
             onClick = { onConfirm(LocalTime.of(state.hour, state.minute)) },
         )
       },
-      dismissButton = { DialogButton(text = "Cancel", onClick = onDismiss) },
+      dismissButton = {
+        DialogButton(text = stringResource(R.string.action_cancel), onClick = onDismiss)
+      },
       text = { TimePicker(state = state, colors = readableTimePickerColors()) },
   )
 }

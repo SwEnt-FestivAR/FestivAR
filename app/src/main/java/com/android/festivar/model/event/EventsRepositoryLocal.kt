@@ -1,6 +1,7 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.event
 
+import com.android.festivar.model.event.announcement.Announcement
 import java.util.UUID
 
 /**
@@ -68,5 +69,17 @@ class EventsRepositoryLocal(initialEvents: List<Event> = emptyList()) : EventsRe
     } else {
       throw NoSuchElementException("EventsRepositoryLocal: Event $eventId not found")
     }
+  }
+
+  override suspend fun addAnnouncement(eventId: String, announcement: Announcement) {
+    editEvent(eventId, getEvent(eventId).addAnnouncement(announcement))
+  }
+
+  override suspend fun editAnnouncement(eventId: String, announcement: Announcement) {
+    editEvent(eventId, getEvent(eventId).editAnnouncement(announcement))
+  }
+
+  override suspend fun deleteAnnouncement(eventId: String, announcementId: String) {
+    editEvent(eventId, getEvent(eventId).removeAnnouncement(announcementId))
   }
 }
