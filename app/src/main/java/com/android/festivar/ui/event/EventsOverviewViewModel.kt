@@ -1,6 +1,7 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.event
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.model.event.Event
@@ -140,6 +141,7 @@ class EventsOverviewViewModel(
         throw e
       } catch (e: Exception) {
         // The events can still be shown: the avatar only misses the name and surname
+        Log.w("EventsOverviewViewModel", "Failed to fetch the user", e)
       }
     }
   }
