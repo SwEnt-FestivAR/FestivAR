@@ -70,10 +70,8 @@ import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.Avatar
 import com.android.festivar.ui.components.FilterChip
 import com.android.festivar.ui.components.floatingShadow
-import com.android.festivar.ui.components.formatDate
-import com.android.festivar.ui.components.formatDay
+import com.android.festivar.ui.components.formatEventDate
 import com.android.festivar.ui.theme.AppTheme
-import java.time.YearMonth
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
@@ -101,21 +99,11 @@ object EventsOverviewScreenTestTags {
 
 /**
  * Formats the days and the location of an [event], e.g. "Fri 16 to Sun 18 Oct · Parc de Vidy". The
- * end day is only shown if the [event] ends on another day, and its month is only repeated if it
- * ends in another month.
+ * days come from [formatEventDate].
  */
 @Composable
 private fun formatEventDates(event: Event): String {
-  val start = event.startDate.toLocalDate()
-  val end = event.endDate.toLocalDate()
-  val dates =
-      when {
-        end == start -> formatDate(start)
-        YearMonth.from(end) == YearMonth.from(start) ->
-            stringResource(R.string.events_overview_dates_range, formatDay(start), formatDate(end))
-        else ->
-            stringResource(R.string.events_overview_dates_range, formatDate(start), formatDate(end))
-      }
+  val dates = formatEventDate(event)
   return if (event.location.isBlank()) dates
   else stringResource(R.string.events_overview_dates_location, dates, event.location)
 }

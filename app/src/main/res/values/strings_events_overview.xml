@@ -13,8 +13,6 @@
     <string name="events_overview_create">Create</string>
     <string name="events_overview_close">Close</string>
     <string name="events_overview_actions">Join or create an event</string>
-    <!-- The start and end days of an event, e.g. "Fri 16 to Sun 18 Oct" -->
-    <string name="events_overview_dates_range">%1$s to %2$s</string>
     <!-- The days of an event, then its location, e.g. "Fri 16 Oct · Parc de Vidy" -->
     <string name="events_overview_dates_location">%1$s · %2$s</string>
     <string name="events_overview_error">Failed to load events: %1$s</string>
