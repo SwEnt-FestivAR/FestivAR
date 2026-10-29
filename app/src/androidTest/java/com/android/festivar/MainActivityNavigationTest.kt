@@ -17,6 +17,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.credentials.Credential
 import androidx.credentials.CredentialManager
@@ -24,6 +25,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventRepositoryFirebase
+import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.model.event.EventsRepositoryProvider
 import com.android.festivar.model.event.joinCodeOf
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepositoryLocal
@@ -89,7 +92,7 @@ class MainActivityNavigationTest {
 
   private fun seedTask(taskId: String = "t1", eventId: String = "e1", title: String = "Test Task") {
     val localRepo = TasksRepositoryLocal()
-    val task = Task(taskId, eventId, title)
+    val task = Task(taskId, eventId, title, ownerId = "owner-1")
     runBlocking { localRepo.addTask(task) }
     TasksRepositoryProvider.repository = localRepo
   }
@@ -107,10 +110,32 @@ class MainActivityNavigationTest {
 
     composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
 
-    composeTestRule.onNodeWithTag(LoginScreenTestTags.CREATE_ACC_BUTTON).performClick()
+    composeTestRule
+        .onNodeWithTag(LoginScreenTestTags.CREATE_ACC_BUTTON)
+        .performScrollTo()
+        .performClick()
     composeTestRule.onNodeWithTag(SignUpScreenTestTags.CREATE_ACC_TITLE).assertIsDisplayed()
 
     composeTestRule.onNodeWithTag(SignUpScreenTestTags.LOGIN_NOW_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).performScrollTo().assertIsDisplayed()
+  }
+
+  @Test
+  fun loginNavigatesToForgotPasswordAndBackToLogin() {
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          authRepository = FakeAuthRepository(currentUser = null),
+      )
+    }
+
+    composeTestRule.onNodeWithText("Forgot password?").performClick()
+    composeTestRule
+        .onNodeWithText("Enter your email address to reset your password")
+        .assertIsDisplayed()
+
+    composeTestRule.onNodeWithText("Return to login").performClick()
+
     composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
   }
 
@@ -142,6 +167,7 @@ class MainActivityNavigationTest {
 
   @Test
   fun eventOverviewJoinNavigatesToJoinEvent() {
+    seedNoEvents()
     setSignedInContent()
 
     // The new user has no events, so the "Join" button of the empty state shows once loaded
@@ -153,6 +179,7 @@ class MainActivityNavigationTest {
 
   @Test
   fun joinEventBackReturnsToEventsOverview() {
+    seedNoEvents()
     setSignedInContent()
 
     waitUntilTagExists(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON)
@@ -249,6 +276,7 @@ class MainActivityNavigationTest {
 
   @Test
   fun eventOverviewCreateNavigatesToCreateEventAndBack() {
+    seedNoEvents()
     setSignedInContent()
 
     // The new user has no events, so the "Create" button of the empty state shows once loaded
@@ -488,7 +516,7 @@ class MainActivityNavigationTest {
       )
     }
 
-    // The sign out button only shows once the profile is loaded
+    // The sign out button only shows once the profile load ends
     composeTestRule.waitUntil(5_000) {
       composeTestRule
           .onAllNodes(hasTestTag(ProfileScreenTestTags.SIGN_OUT_BUTTON))
@@ -514,10 +542,20 @@ class MainActivityNavigationTest {
     composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
   }
 
+  /**
+   * Gives the signed-in user no events, kept in memory: the Firestore emulator only answers a user
+   * signed in to Firebase, which [signedInUser] is not, so the overview would show its error state
+   * instead of its empty state.
+   */
+  private fun seedNoEvents() {
+    EventsRepositoryProvider.repository = EventsRepositoryLocal()
+  }
+
   @After
   fun tearDown() {
     TasksRepositoryProvider.reset()
     UsersRepositoryProvider.reset()
+    EventsRepositoryProvider.reset()
   }
 
   /** Shows the app as [signedInUser], so it starts on the events overview. */
@@ -542,6 +580,9 @@ class FakeAuthRepository(override val currentUser: FirebaseUser?) : AuthReposito
       Result.failure(UnsupportedOperationException())
 
   override suspend fun signOut(): Result<Unit> = Result.success(Unit)
+
+  override suspend fun forgotPassword(email: String): Result<Unit> =
+      Result.failure(UnsupportedOperationException())
 
   override suspend fun signInWithEmailAndPassword(
       email: String,
