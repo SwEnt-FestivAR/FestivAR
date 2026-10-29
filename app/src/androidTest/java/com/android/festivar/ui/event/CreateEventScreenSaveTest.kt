@@ -57,7 +57,9 @@ class CreateEventScreenSaveTest {
     val gate = CompletableDeferred<Unit>()
     val viewModel = filledViewModel(GatedRepository(gate))
     var created = 0
-    composeTestRule.setContent { CreateEventScreen(viewModel, onCreated = { created++ }) }
+    composeTestRule.setContent {
+      CreateEventScreen(viewModel = viewModel, onCreated = { created++ })
+    }
 
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).performClick()
 
@@ -75,7 +77,9 @@ class CreateEventScreenSaveTest {
   fun aFailedSaveShowsTheErrorLineAndKeepsTheButtonEnabled() {
     val viewModel = filledViewModel(FailingRepository())
     var created = 0
-    composeTestRule.setContent { CreateEventScreen(viewModel, onCreated = { created++ }) }
+    composeTestRule.setContent {
+      CreateEventScreen(viewModel = viewModel, onCreated = { created++ })
+    }
 
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).performClick()
 

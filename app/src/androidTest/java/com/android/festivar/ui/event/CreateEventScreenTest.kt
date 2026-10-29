@@ -32,7 +32,7 @@ class CreateEventScreenTest {
   @Before
   fun setUp() {
     viewModel = spyk(CreateEventViewModel(EventsRepositoryLocal()))
-    composeTestRule.setContent { CreateEventScreen(viewModel) }
+    composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
   }
 
   @Test

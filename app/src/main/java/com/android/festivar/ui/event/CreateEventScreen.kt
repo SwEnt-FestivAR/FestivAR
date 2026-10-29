@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -40,7 +41,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.R
+import com.android.festivar.model.event.Event
+import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.model.user.User
+import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.ui.components.FestivarDatePickerDialog
 import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.components.FestivarPickerField
@@ -52,6 +57,8 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
+import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.delay
 
 object CreateEventScreenTestTags {
   const val NAVIGATION_BUTTON = "navigationButton"
@@ -90,10 +97,10 @@ class CreateEventActions(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateEventScreen(
+    modifier: Modifier = Modifier,
     viewModel: CreateEventViewModel = viewModel(),
     onBack: () -> Unit = {},
     onCreated: () -> Unit = {},
-    modifier: Modifier = Modifier,
 ) {
   val uiState by viewModel.uiState.collectAsState()
   LaunchedEffect(uiState.createdEventId) { if (uiState.createdEventId != null) onCreated() }
@@ -162,7 +169,7 @@ fun CreateEventContent(
     modifier: Modifier = Modifier,
 ) {
   Scaffold(
-      modifier = modifier,
+      modifier = modifier.imePadding(),
       containerColor = MaterialTheme.colorScheme.background,
       topBar = { CreateEventTopBar(onBack = actions.onBack) },
       bottomBar = {
@@ -246,7 +253,7 @@ fun CreateEventContent(
           onValueChange = actions.onNotesChange,
           label = stringResource(R.string.create_event_field_notes),
           singleLine = false,
-          modifier = Modifier.height(56.dp).testTag(CreateEventScreenTestTags.DESCRIPTION_FIELD),
+          modifier = Modifier.testTag(CreateEventScreenTestTags.DESCRIPTION_FIELD),
       )
       Spacer(modifier = Modifier.height(14.dp))
     }
@@ -364,6 +371,21 @@ private fun CreateEventTopBar(onBack: () -> Unit) {
 @SuppressLint("ViewModelConstructorInComposable")
 @Preview
 @Composable
-fun CreateEventScreenPreview() {
-  AppTheme { CreateEventScreen(CreateEventViewModel(EventsRepositoryLocal())) }
+private fun CreateEventScreenPreview() {
+  val addDurationMillis = 3000
+  class SlowEventsRepository : EventsRepository by EventsRepositoryLocal() {
+    override suspend fun addEvent(event: Event): Unit = delay(addDurationMillis.milliseconds)
+  }
+
+  val creator = User("creator-123", "Alice", "AliceInWonderland")
+  AppTheme {
+    CreateEventScreen(
+        viewModel =
+            CreateEventViewModel(
+                SlowEventsRepository(),
+                UsersRepositoryLocal(listOf(creator)),
+                creator.uid,
+            )
+    )
+  }
 }
