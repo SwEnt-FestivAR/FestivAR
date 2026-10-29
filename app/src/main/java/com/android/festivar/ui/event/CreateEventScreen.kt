@@ -53,9 +53,9 @@ import com.android.festivar.ui.components.FestivarFieldWithError
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
+import java.time.LocalTime
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
-import java.time.LocalTime
 
 object CreateEventScreenTestTags {
   const val NAVIGATION_BUTTON = "navigationButton"

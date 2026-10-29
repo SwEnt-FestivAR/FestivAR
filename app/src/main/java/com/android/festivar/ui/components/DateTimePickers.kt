@@ -121,19 +121,35 @@ data class DateTimeRange(
     val endTime: LocalTime? = null,
 )
 
+/**
+ * Validates the start date/time fields.
+ *
+ * A start time requires a start date; all other combinations are valid for this field.
+ */
 fun startDateError(startDate: LocalDate?, startTime: LocalTime?): FieldError? =
     if (startTime != null && startDate == null) FieldError.MISSING_DATE else null
 
-fun endDateError(range: DateTimeRange, zone: ZoneId = ZoneId.systemDefault()): FieldError? {
+/**
+ * Validates the end date/time fields against the start and the current time.
+ *
+ * Missing times default to the beginning of the start day and the end of the end day. The end must
+ * be strictly after the start and must not be in the past. A past start is allowed while the end
+ * remains in the future.
+ */
+fun endDateError(
+    range: DateTimeRange,
+    zone: ZoneId = ZoneId.systemDefault(),
+    now: ZonedDateTime = ZonedDateTime.now(zone),
+): FieldError? {
   if (range.endTime != null && range.endDate == null) return FieldError.MISSING_DATE
 
   val start = range.startDate?.atTime(range.startTime ?: LocalTime.MIDNIGHT)?.atZone(zone)
   val end = range.endDate?.atTime(range.endTime ?: LocalTime.of(23, 59))?.atZone(zone)
 
-  return if (start != null && end != null) {
+  return if (end != null) {
     when {
-      !end.isAfter(start) -> FieldError.END_BEFORE_START
-      end.isBefore(ZonedDateTime.now(zone)) -> FieldError.OUTDATED
+      start != null && !end.isAfter(start) -> FieldError.END_BEFORE_START
+      end.isBefore(now) -> FieldError.OUTDATED
       else -> null
     }
   } else {

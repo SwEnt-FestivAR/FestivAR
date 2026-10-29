@@ -8,6 +8,10 @@ import com.android.festivar.ui.components.FieldError
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
+import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -135,5 +139,29 @@ class CreateEventViewModelTest {
 
     assertEquals(LocalTime.MIDNIGHT, state.startDateTime?.toLocalTime())
     assertEquals(LocalTime.of(23, 59), state.endDateTime?.toLocalTime())
+  }
+
+  @Test
+  fun createEventWithBlankUserIdDoesNotAddMembers() = runBlocking {
+    val repository = EventsRepositoryLocal()
+    val eventViewModel =
+        CreateEventViewModel(repository, userId = "").apply {
+          updateName("Festival")
+          updateStartDate(startDate)
+          updateEndDate(endDate)
+          updateVenue("Main square")
+        }
+
+    eventViewModel.createEvent()
+
+    var events = repository.getAllEvents()
+    withTimeout(5.seconds) {
+      while (events.isEmpty()) {
+        delay(10)
+        events = repository.getAllEvents()
+      }
+    }
+    assertEquals(1, events.size)
+    assertTrue(events.single().members.isEmpty())
   }
 }
