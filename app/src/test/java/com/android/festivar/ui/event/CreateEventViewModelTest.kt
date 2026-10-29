@@ -14,6 +14,7 @@ import com.android.festivar.ui.components.FieldError
 import com.android.festivar.ui.task.create.END_OF_DAY
 import com.android.festivar.ui.task.create.START_OF_DAY
 import java.time.LocalDate
+import java.time.LocalTime
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -37,6 +38,8 @@ class CreateEventViewModelTest {
 
   private val startDate = LocalDate.now()
   private val endDate = LocalDate.now().plusDays(1)
+  private val startTime = LocalTime.MIDNIGHT
+  private val endTime = LocalTime.of(23, 0)
 
   @Before
   fun setUp() {
@@ -54,6 +57,8 @@ class CreateEventViewModelTest {
     assertEquals("Summer festival", state.name)
     assertEquals(startDate, state.startDate)
     assertEquals(endDate, state.endDate)
+    assertEquals(startTime, state.startTime)
+    assertEquals(endTime, state.endTime)
     assertEquals("Main square", state.venue)
     assertEquals("Bring the stage equipment", state.notes)
   }
@@ -73,6 +78,20 @@ class CreateEventViewModelTest {
 
     viewModel.pickDate(endDate)
     assertEquals(endDate, viewModel.uiState.value.endDate)
+    assertNull(viewModel.uiState.value.openPicker)
+
+    viewModel.showPicker(DateTimeField.START_TIME)
+    assertEquals(DateTimeField.START_TIME, viewModel.uiState.value.openPicker)
+
+    viewModel.pickTime(startTime)
+    assertEquals(startTime, viewModel.uiState.value.startTime)
+    assertNull(viewModel.uiState.value.openPicker)
+
+    viewModel.showPicker(DateTimeField.END_TIME)
+    assertEquals(DateTimeField.END_TIME, viewModel.uiState.value.openPicker)
+
+    viewModel.pickTime(endTime)
+    assertEquals(endTime, viewModel.uiState.value.endTime)
     assertNull(viewModel.uiState.value.openPicker)
   }
 
@@ -317,6 +336,8 @@ class CreateEventViewModelTest {
     assertEquals("Summer festival", failingViewModel.uiState.value.name)
     assertEquals(startDate, failingViewModel.uiState.value.startDate)
     assertEquals(endDate, failingViewModel.uiState.value.endDate)
+    assertEquals(startTime, failingViewModel.uiState.value.startTime)
+    assertEquals(endTime, failingViewModel.uiState.value.endTime)
     assertEquals("Main square", failingViewModel.uiState.value.venue)
     assertEquals("Bring the stage equipment", failingViewModel.uiState.value.notes)
   }
@@ -421,6 +442,8 @@ class CreateEventViewModelTest {
     viewModel.updateName("Summer festival")
     viewModel.updateStartDate(startDate)
     viewModel.updateEndDate(endDate)
+    viewModel.updateStartTime(startTime)
+    viewModel.updateEndTime(endTime)
     viewModel.updateVenue("Main square")
     viewModel.updateNotes("Bring the stage equipment")
   }
