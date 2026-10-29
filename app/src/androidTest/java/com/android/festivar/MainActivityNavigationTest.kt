@@ -24,6 +24,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventRepositoryFirebase
+import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.model.event.EventsRepositoryProvider
 import com.android.festivar.model.event.joinCodeOf
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepositoryLocal
@@ -161,6 +163,7 @@ class MainActivityNavigationTest {
 
   @Test
   fun eventOverviewJoinNavigatesToJoinEvent() {
+    seedNoEvents()
     setSignedInContent()
 
     // The new user has no events, so the "Join" button of the empty state shows once loaded
@@ -172,6 +175,7 @@ class MainActivityNavigationTest {
 
   @Test
   fun joinEventBackReturnsToEventsOverview() {
+    seedNoEvents()
     setSignedInContent()
 
     waitUntilTagExists(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON)
@@ -268,6 +272,7 @@ class MainActivityNavigationTest {
 
   @Test
   fun eventOverviewCreateNavigatesToCreateEventAndBack() {
+    seedNoEvents()
     setSignedInContent()
 
     // The new user has no events, so the "Create" button of the empty state shows once loaded
@@ -533,10 +538,20 @@ class MainActivityNavigationTest {
     composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
   }
 
+  /**
+   * Gives the signed-in user no events, kept in memory: the Firestore emulator only answers a user
+   * signed in to Firebase, which [signedInUser] is not, so the overview would show its error state
+   * instead of its empty state.
+   */
+  private fun seedNoEvents() {
+    EventsRepositoryProvider.repository = EventsRepositoryLocal()
+  }
+
   @After
   fun tearDown() {
     TasksRepositoryProvider.reset()
     UsersRepositoryProvider.reset()
+    EventsRepositoryProvider.reset()
   }
 
   /** Shows the app as [signedInUser], so it starts on the events overview. */
