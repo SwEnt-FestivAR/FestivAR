@@ -85,7 +85,7 @@ fun FestivarStepper(
   ) {
     Surface(
         shape = StepperShape,
-        color = colors.surfaceContainerLowest,
+        color = colors.background,
         border = BorderStroke(1.dp, colors.outline),
         modifier = Modifier.fillMaxWidth().height(56.dp),
     ) {
@@ -116,14 +116,14 @@ fun FestivarStepper(
         )
       }
     }
-    // The label sits on the border, on the surface color so that it cuts the line.
+    // The label sits on the border, on the screen background so that it cuts the line.
     Text(
         text = label,
         style = MaterialTheme.typography.labelMedium.copy(fontSize = LabelFontSize),
         color = colors.onSurfaceVariant,
         modifier =
             Modifier.offset(x = LabelOffsetX, y = LabelOffsetY)
-                .background(colors.surfaceContainerLowest)
+                .background(colors.background)
                 .padding(horizontal = 4.dp),
     )
   }
