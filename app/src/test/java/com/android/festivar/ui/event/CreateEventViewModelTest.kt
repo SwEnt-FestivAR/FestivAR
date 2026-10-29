@@ -23,6 +23,7 @@ import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -117,6 +118,31 @@ class CreateEventViewModelTest {
   fun validFormCanCreateEvent() {
     fillRequiredFields()
     assertTrue(viewModel.uiState.value.canCreate)
+  }
+
+  /** Red if converting an invalid event form does not throw an IllegalArgumentException. */
+  @Test
+  fun toEventThrowsWhenFormIsInvalid() {
+    assertThrows(IllegalArgumentException::class.java) {
+      viewModel.uiState.value.toEvent("event-123", emptyList())
+    }
+  }
+
+  /** Red if converting valid form fields does not create the expected event. */
+  @Test
+  fun toEventCreatesEventFromFields() {
+    fillAllFields()
+    val members = listOf(creator)
+
+    val event = viewModel.uiState.value.toEvent("event-123", members)
+
+    assertEquals("event-123", event.eventId)
+    assertEquals("Summer festival", event.title)
+    assertEquals("Bring the stage equipment", event.description)
+    assertEquals(members, event.members)
+    assertEquals(viewModel.uiState.value.startDateTime, event.startDate)
+    assertEquals(viewModel.uiState.value.endDateTime, event.endDate)
+    assertEquals("Main square", event.location)
   }
 
   /** Red if the untouched event form displays a field error. */
