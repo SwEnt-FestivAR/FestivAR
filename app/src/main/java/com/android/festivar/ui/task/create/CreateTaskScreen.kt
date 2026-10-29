@@ -231,7 +231,7 @@ fun CreateTaskContent(
                   ),
               modifier =
                   Modifier.fillMaxWidth()
-                      .padding(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 24.dp)
+                      .padding(horizontal = 16.dp, vertical = 12.dp)
                       .height(52.dp)
                       .testTag(CreateTaskScreenTestTags.CREATE_BUTTON),
           ) {
@@ -245,8 +245,8 @@ fun CreateTaskContent(
             Modifier.fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(start = 20.dp, top = 12.dp, end = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+                .padding(start = 16.dp, top = 8.dp, end = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
       FestivarFieldWithError(state.titleError, CreateTaskScreenTestTags.TITLE_ERROR) {
         FestivarTextField(
