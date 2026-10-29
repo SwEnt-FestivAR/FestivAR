@@ -187,10 +187,12 @@ class EventsRepositoryLocalTest {
 
   @Test
   fun editAnnouncement_replacesTheAnnouncement() = runTest {
-    repository = EventsRepositoryLocal(listOf(eventWithAnnouncement))
+    val other = announcement.copy(announcementId = "a2", title = "Bar opens")
+    repository =
+        EventsRepositoryLocal(listOf(event.copy(announcements = listOf(announcement, other))))
     val edited = announcement.editTitle("Gates open later", at = start.plusMinutes(1)).togglePin()
     repository.editAnnouncement(event.eventId, edited)
-    assertEquals(listOf(edited), repository.getEvent(event.eventId).announcements)
+    assertEquals(listOf(edited, other), repository.getEvent(event.eventId).announcements)
   }
 
   @Test

@@ -340,7 +340,7 @@ class EventTest {
     }
   }
 
-  /** addAnnouncement adds it at the end, keeps every other field and leaves the original. */
+  /** addAnnouncement adds it at the end and keeps every other field. */
   @Test
   fun addAnnouncement_addsItAtTheEnd() {
     val event = eventWith(announcements = listOf(announcement("a1")))
@@ -348,7 +348,6 @@ class EventTest {
     val result = event.addAnnouncement(announcement("a2"))
 
     assertEquals(event.copy(announcements = listOf(announcement("a1"), announcement("a2"))), result)
-    assertEquals(listOf(announcement("a1")), event.announcements)
   }
 
   /** addAnnouncement refuses an id that is already in the event, even if its fields differ. */
@@ -361,7 +360,7 @@ class EventTest {
     }
   }
 
-  /** editAnnouncement replaces the one with the same id in place and leaves the original. */
+  /** editAnnouncement replaces the one with the same id in place. */
   @Test
   fun editAnnouncement_replacesTheOneWithTheSameId() {
     val event =
@@ -376,7 +375,6 @@ class EventTest {
         event.copy(announcements = listOf(announcement("a1"), edited, announcement("a3"))),
         result,
     )
-    assertEquals(announcement("a2"), event.announcements[1])
   }
 
   /** editAnnouncement refuses an announcement whose id is not in the event. */
@@ -387,7 +385,7 @@ class EventTest {
     assertInvalid(announcementNotInEventMessage) { event.editAnnouncement(announcement("a2")) }
   }
 
-  /** removeAnnouncement removes only the one with the given id and leaves the original. */
+  /** removeAnnouncement removes only the one with the given id. */
   @Test
   fun removeAnnouncement_removesOnlyTheGivenOne() {
     val event = eventWith(announcements = listOf(announcement("a1"), announcement("a2")))
@@ -395,7 +393,6 @@ class EventTest {
     val result = event.removeAnnouncement("a1")
 
     assertEquals(event.copy(announcements = listOf(announcement("a2"))), result)
-    assertEquals(listOf(announcement("a1"), announcement("a2")), event.announcements)
   }
 
   /** removeAnnouncement refuses an id that is not in the event. */

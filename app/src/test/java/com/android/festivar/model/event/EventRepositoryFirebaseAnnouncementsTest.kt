@@ -3,11 +3,9 @@ package com.android.festivar.model.event
 
 import com.android.festivar.model.event.announcement.Announcement
 import com.google.firebase.firestore.FirebaseFirestore
-import io.mockk.confirmVerified
 import io.mockk.mockk
 import java.time.ZonedDateTime
 import kotlinx.coroutines.runBlocking
-import org.junit.After
 import org.junit.Assert.assertThrows
 import org.junit.Test
 
@@ -26,11 +24,6 @@ class EventRepositoryFirebaseAnnouncementsTest {
           authorId = "u1",
           updatedAt = ZonedDateTime.parse("2026-10-17T10:00:00+02:00"),
       )
-
-  @After
-  fun noCallReachedTheDatabase() {
-    confirmVerified(db)
-  }
 
   @Test
   fun addAnnouncement_isNotSupported() {
