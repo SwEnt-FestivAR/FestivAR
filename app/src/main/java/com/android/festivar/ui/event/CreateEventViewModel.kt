@@ -126,10 +126,8 @@ class CreateEventViewModel(
 
   fun updateEndDate(newDate: LocalDate) = edit { it.copy(endDate = newDate) }
 
-  /** Sets the time the task starts. */
   fun updateStartTime(time: LocalTime) = edit { it.copy(startTime = time) }
 
-  /** Sets the time the task ends. */
   fun updateEndTime(time: LocalTime) = edit { it.copy(endTime = time) }
 
   fun updateVenue(newVenue: String) = edit { it.copy(venue = newVenue) }
