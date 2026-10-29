@@ -38,6 +38,13 @@ import com.android.festivar.ui.theme.AppTheme
 
 private val StepperShape = RoundedCornerShape(12.dp)
 
+// Where the label sits on the top border, to look like the floating label of FestivarTextField
+// (Material draws that one itself, so there is no shared value to reuse). The vertical offset is
+// about half the label's line height, so the label is centred on the border line.
+private val LabelOffsetX = 11.dp
+private val LabelOffsetY = (-9).dp
+private val LabelFontSize = 12.sp
+
 /**
  * Number stepper in the FestivAR style, as in the Figma "Stepper": the same outlined surface and
  * floating label as [FestivarTextField], with the number between a minus and a plus button. The
@@ -112,10 +119,10 @@ fun FestivarStepper(
     // The label sits on the border, on the surface color so that it cuts the line.
     Text(
         text = label,
-        style = MaterialTheme.typography.labelMedium.copy(fontSize = 12.sp),
+        style = MaterialTheme.typography.labelMedium.copy(fontSize = LabelFontSize),
         color = colors.onSurfaceVariant,
         modifier =
-            Modifier.offset(x = 11.dp, y = (-9).dp)
+            Modifier.offset(x = LabelOffsetX, y = LabelOffsetY)
                 .background(colors.surfaceContainerLowest)
                 .padding(horizontal = 4.dp),
     )
