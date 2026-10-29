@@ -191,6 +191,21 @@ class CreateEventViewModelTest {
     assertEquals(END_OF_DAY, state.endDateTime?.toLocalTime())
   }
 
+  /** Red if explicitly selected start and end times are ignored by the computed date-times. */
+  @Test
+  fun dateTimesUseSelectedTimesWhenTimesAreSet() {
+    val selectedStartTime = LocalTime.of(14, 30)
+    val selectedEndTime = LocalTime.of(18, 0)
+    viewModel.updateStartDate(startDate)
+    viewModel.updateEndDate(endDate)
+    viewModel.updateStartTime(selectedStartTime)
+    viewModel.updateEndTime(selectedEndTime)
+
+    val state = viewModel.uiState.value
+    assertEquals(selectedStartTime, state.startDateTime?.toLocalTime())
+    assertEquals(selectedEndTime, state.endDateTime?.toLocalTime())
+  }
+
   /** Red if an invalid, saving, or already-created event can be submitted. */
   @Test
   fun canCreateIsFalse_withInvalidForm_orSavingEventOrAlreadyCreated() {
