@@ -169,6 +169,15 @@ class AudioStorageFirebaseTest {
   }
 
   @Test
+  fun delete_invalidUrl_throwsIOException() = runTest {
+    val invalidUrl = "https://example.com/song.m4a"
+    every { firebaseStorage.getReferenceFromUrl(invalidUrl) } throws
+        IllegalArgumentException("Invalid URL")
+
+    assertThrows(IOException::class.java) { runBlocking { repository.delete(invalidUrl) } }
+  }
+
+  @Test
   fun delete_blankUrl_doesNothing() = runTest {
     repository.delete("")
     repository.delete("   ")

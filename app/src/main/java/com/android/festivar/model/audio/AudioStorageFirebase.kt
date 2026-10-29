@@ -8,7 +8,9 @@ import java.io.IOException
 import java.net.URLDecoder
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 
 class AudioStorageFirebase(private val storageRef: StorageReference) : AudioRepository {
   private val audioRef = storageRef.child("audio").child("voice-note")
@@ -42,8 +44,12 @@ class AudioStorageFirebase(private val storageRef: StorageReference) : AudioRepo
           try {
             storageRef.storage.getReferenceFromUrl(audioUrl)
           } catch (e: IllegalArgumentException) {
+            // getReferenceFromUrl rejects emulator URLs, so we read the object path ourselves.
             val pathPart = audioUrl.substringAfter("/o/").substringBefore("?")
-            val decodedPath = URLDecoder.decode(pathPart, "UTF-8")
+            val decodedPath = withContext(IO) { URLDecoder.decode(pathPart, "UTF-8") }
+            require(decodedPath.startsWith("audio/voice-note/")) {
+              "Not a voice note URL: $audioUrl"
+            }
             storageRef.storage.reference.child(decodedPath)
           }
       ref.delete().await()
