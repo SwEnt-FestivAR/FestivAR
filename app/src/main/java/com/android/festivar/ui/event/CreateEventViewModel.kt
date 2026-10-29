@@ -169,7 +169,8 @@ class CreateEventViewModel(
         save()
       } catch (e: CancellationException) {
         throw e
-      } catch (_: Exception) {
+      } catch (e: Exception) {
+        Log.e("CreateEventViewModel", "Saving the event failed", e)
         _uiState.update {
           it.copy(isSaving = false, errorMsg = R.string.create_event_error_save_failed)
         }
