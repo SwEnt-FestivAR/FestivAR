@@ -42,6 +42,7 @@ class CreateEventScreenTest {
 
   @get:Rule val composeTestRule = createComposeRule()
   private lateinit var viewModel: CreateEventViewModel
+  private val DEFAULT_PICKED_TIME = LocalTime.of(9, 0)
 
   private class GatedRepository(val gate: CompletableDeferred<Unit>) :
       EventsRepository by EventsRepositoryLocal() {
@@ -106,17 +107,15 @@ class CreateEventScreenTest {
     composeTestRule.onNodeWithText(expectedStartDate).assertIsDisplayed()
     composeTestRule.onNodeWithText(expectedEndDate).assertIsDisplayed()
 
-    val startTime = LocalTime.of(9, 0)
-    val endTime = LocalTime.of(9, 0)
     selectDefaultTime(CreateEventScreenTestTags.START_TIME_FIELD)
     selectDefaultTime(CreateEventScreenTestTags.END_TIME_FIELD)
 
     composeTestRule
         .onNodeWithTag(CreateEventScreenTestTags.START_TIME_FIELD)
-        .assertTextContains(formatTime(startTime))
+        .assertTextContains(formatTime(DEFAULT_PICKED_TIME))
     composeTestRule
         .onNodeWithTag(CreateEventScreenTestTags.END_TIME_FIELD)
-        .assertTextContains(formatTime(endTime))
+        .assertTextContains(formatTime(DEFAULT_PICKED_TIME))
 
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsEnabled()
   }
