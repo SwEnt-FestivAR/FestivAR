@@ -5,13 +5,17 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.FirebaseEmulatorSetup
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
+import com.google.firebase.storage.StorageException
 import com.google.firebase.storage.storage
 import java.io.File
+import java.net.URLDecoder
 import java.time.Duration
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -57,9 +61,23 @@ class AudioStorageFirebaseTest {
     val taskId = "testTask_${System.currentTimeMillis()}"
     val downloadUrl = repository.upload(audio, taskId)
 
+    // URL is only valid if upload exists
     assertTrue(downloadUrl.isNotBlank())
 
     repository.delete(downloadUrl)
+
+    // Check that the file is deleted after the first delete
+    val ref =
+        try {
+          Firebase.storage.getReferenceFromUrl(downloadUrl)
+        } catch (e: IllegalArgumentException) {
+          val pathPart = downloadUrl.substringAfter("/o/").substringBefore("?")
+          val decodedPath = URLDecoder.decode(pathPart, "UTF-8")
+          Firebase.storage.reference.child(decodedPath)
+        }
+    val exception =
+        assertThrows(StorageException::class.java) { runBlocking { ref.metadata.await() } }
+    assertEquals(StorageException.ERROR_OBJECT_NOT_FOUND, exception.errorCode)
 
     // Deleting again (already deleted object) is non-fatal
     repository.delete(downloadUrl)
