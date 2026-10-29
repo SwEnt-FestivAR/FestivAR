@@ -28,10 +28,10 @@ import com.android.festivar.ui.theme.AppTheme
 @Composable
 fun FilterChip(
     label: String,
-    count: Int? = null,
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    count: Int? = null,
 ) {
   Surface(
       onClick = onClick,
