@@ -145,21 +145,30 @@ fun CreateTaskScreen(
   )
 
   if (askToDiscard) {
-    FestivarConfirmDialog(
-        title = stringResource(R.string.create_task_discard_title),
-        message = stringResource(R.string.create_task_discard_message),
-        confirmText = stringResource(R.string.create_task_discard_confirm),
-        dismissText = stringResource(R.string.create_task_discard_keep),
+    DiscardTaskDialog(
         onConfirm = {
           askToDiscard = false
           onBack()
         },
         onDismiss = { askToDiscard = false },
-        modifier = Modifier.testTag(CreateTaskScreenTestTags.DISCARD_DIALOG),
-        confirmModifier = Modifier.testTag(CreateTaskScreenTestTags.DISCARD_BUTTON),
-        dismissModifier = Modifier.testTag(CreateTaskScreenTestTags.KEEP_EDITING_BUTTON),
     )
   }
+}
+
+/** The "Discard this task?" dialog, shown when going back from an edited form. */
+@Composable
+private fun DiscardTaskDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+  FestivarConfirmDialog(
+      title = stringResource(R.string.create_task_discard_title),
+      message = stringResource(R.string.create_task_discard_message),
+      confirmText = stringResource(R.string.create_task_discard_confirm),
+      dismissText = stringResource(R.string.create_task_discard_keep),
+      onConfirm = onConfirm,
+      onDismiss = onDismiss,
+      modifier = Modifier.testTag(CreateTaskScreenTestTags.DISCARD_DIALOG),
+      confirmModifier = Modifier.testTag(CreateTaskScreenTestTags.DISCARD_BUTTON),
+      dismissModifier = Modifier.testTag(CreateTaskScreenTestTags.KEEP_EDITING_BUTTON),
+  )
 }
 
 /**
@@ -370,16 +379,6 @@ internal fun CreateTaskErrorsPreview() {
 internal fun CreateTaskDiscardDialogPreview() {
   AppTheme {
     CreateTaskContent(state = previewForm, actions = CreateTaskActions())
-    FestivarConfirmDialog(
-        title = stringResource(R.string.create_task_discard_title),
-        message = stringResource(R.string.create_task_discard_message),
-        confirmText = stringResource(R.string.create_task_discard_confirm),
-        dismissText = stringResource(R.string.create_task_discard_keep),
-        onConfirm = {},
-        onDismiss = {},
-        modifier = Modifier.testTag(CreateTaskScreenTestTags.DISCARD_DIALOG),
-        confirmModifier = Modifier.testTag(CreateTaskScreenTestTags.DISCARD_BUTTON),
-        dismissModifier = Modifier.testTag(CreateTaskScreenTestTags.KEEP_EDITING_BUTTON),
-    )
+    DiscardTaskDialog(onConfirm = {}, onDismiss = {})
   }
 }

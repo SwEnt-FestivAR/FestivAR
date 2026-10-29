@@ -152,6 +152,9 @@ data class CreateTaskUiState(
   }
 }
 
+/** The most digits of the estimated time: 9 digits is always below `Int.MAX_VALUE`. */
+const val MAX_ESTIMATED_DIGITS = 9
+
 /** The fewest people a task can need, and the number of people a new task starts with. */
 const val MIN_MAX_ASSIGN = 1
 
@@ -230,9 +233,12 @@ class CreateTaskViewModel(
     it.copy(maxAssign = (it.maxAssign - 1).coerceAtLeast(MIN_MAX_ASSIGN))
   }
 
-  /** Sets the estimated time, in minutes. Anything but digits is dropped. */
+  /**
+   * Sets the estimated time, in minutes. Anything but digits is dropped, and at most
+   * [MAX_ESTIMATED_DIGITS] digits are kept, so that the number always fits in an `Int`.
+   */
   fun updateEstimatedMinutes(text: String) = edit {
-    it.copy(estimatedMinutes = text.filter(Char::isDigit))
+    it.copy(estimatedMinutes = text.filter(Char::isDigit).take(MAX_ESTIMATED_DIGITS))
   }
 
   /** Sets the date the task starts. */
