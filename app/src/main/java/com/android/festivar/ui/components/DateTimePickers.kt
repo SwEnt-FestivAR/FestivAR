@@ -26,9 +26,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.android.festivar.R
 import com.android.festivar.ui.task.create.END_OF_DAY
 import com.android.festivar.ui.task.create.START_OF_DAY
-import com.android.festivar.R
 import com.android.festivar.ui.theme.AppTheme
 import java.time.Instant
 import java.time.LocalDate
