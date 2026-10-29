@@ -120,6 +120,8 @@ val START_OF_DAY: LocalTime = LocalTime.MIDNIGHT
 /** The time of an end date picked without a time: the last minute the forms can show. */
 val END_OF_DAY: LocalTime = LocalTime.of(23, 59)
 
+private const val TAG = "CreateTaskViewModel"
+
 private const val SAVE_TIMEOUT_MS = 15_000L
 
 /** The message shown when the task could not be saved, whatever the cause (a string resource). */
@@ -252,19 +254,23 @@ class CreateTaskViewModel(
   // it is created, and updated if the form changed since that save; otherwise the error is shown
   // and the user can retry with the same task id.
   private suspend fun onSaveFailed(task: Task, e: Exception) {
-    Log.e("CreateTaskViewModel", "Error adding the task", e)
+    // Not an error yet: the task may have been stored anyway, which is checked below.
+    Log.w(TAG, "Adding the task failed, checking whether it was stored", e)
     val alreadySaved =
         try {
           withTimeout(saveTimeoutMs) {
             val stored = tasksRepository.getTask(task.taskId)
             if (stored != task) tasksRepository.editTask(task.taskId, task)
           }
+          Log.i(TAG, "The task was stored despite the failure")
           true
         } catch (_: TimeoutCancellationException) {
+          Log.e(TAG, "The task could not be checked in time, so it may not be stored")
           false
         } catch (e: CancellationException) {
           throw e
-        } catch (_: Exception) {
+        } catch (checkError: Exception) {
+          Log.e(TAG, "The task could not be checked, so it may not be stored", checkError)
           false
         }
     _uiState.update {
