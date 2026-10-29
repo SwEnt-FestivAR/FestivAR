@@ -253,7 +253,7 @@ private fun AddTaskButton(onClick: () -> Unit) {
       icon = { Icon(Icons.Filled.Add, contentDescription = null) },
       text = { Text(stringResource(R.string.overview_add_task)) },
       modifier =
-          Modifier.floatingShadow(CircleShape, MaterialTheme.colorScheme.onSurface)
+          Modifier.floatingShadow(MaterialTheme.colorScheme.onSurface)
               .testTag(TaskOverviewScreenTestTags.ADD_TASK),
   )
 }
