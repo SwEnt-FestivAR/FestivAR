@@ -179,6 +179,27 @@ class EventsRepositoryLocalTest {
   }
 
   @Test
+  fun addAnnouncement_toFullEventThrowsAndKeepsTheEvent() = runTest {
+    val fullEvent =
+        event.copy(
+            announcements =
+                (1..MAX_ANNOUNCEMENTS_PER_EVENT).map { i ->
+                  announcement.copy(announcementId = "a$i")
+                }
+        )
+    repository = EventsRepositoryLocal(listOf(fullEvent))
+    assertThrows(IllegalArgumentException::class.java) {
+      runBlocking {
+        repository.addAnnouncement(
+            event.eventId,
+            announcement.copy(announcementId = "a${MAX_ANNOUNCEMENTS_PER_EVENT + 1}"),
+        )
+      }
+    }
+    assertEquals(fullEvent, repository.getEvent(event.eventId))
+  }
+
+  @Test
   fun addAnnouncement_unknownEventThrows() {
     assertThrows(NoSuchElementException::class.java) {
       runBlocking { repository.addAnnouncement("unknown", announcement) }

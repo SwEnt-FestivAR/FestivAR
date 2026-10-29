@@ -22,6 +22,9 @@ class EventTest {
   private val duplicateMemberMessage = "A user is registered twice."
   private val dateMessage = "endDate must be strictly after startDate."
   private val duplicateAnnouncementMessage = "An announcement is duplicated."
+  // Also the message of addAnnouncement on a full event.
+  private val tooManyAnnouncementsMessage =
+      "An event cannot have more than $MAX_ANNOUNCEMENTS_PER_EVENT announcements."
 
   // Messages of the functions of Event.
   private val alreadyMemberMessage = "This user is already registered in the event."
@@ -67,6 +70,10 @@ class EventTest {
           authorId = "alice",
           updatedAt = start,
       )
+
+  /** Builds [count] valid announcements, with the identifiers "a1" to "a[count]". */
+  private fun announcements(count: Int): List<Announcement> =
+      (1..count).map { i -> announcement("a$i") }
 
   /** Builds a valid event with every field set, so we can check that the functions keep them. */
   private fun eventWith(
@@ -337,6 +344,42 @@ class EventTest {
   fun init_fails_whenAnAnnouncementIdIsDuplicated() {
     assertInvalid(duplicateAnnouncementMessage) {
       eventWith(announcements = listOf(announcement("a1"), announcement("a1", title = "Other")))
+    }
+  }
+
+  /** An event can hold exactly the maximum number of announcements. */
+  @Test
+  fun init_succeeds_withTheMaximumNumberOfAnnouncements() {
+    val event = eventWith(announcements = announcements(MAX_ANNOUNCEMENTS_PER_EVENT))
+
+    assertEquals(announcements(MAX_ANNOUNCEMENTS_PER_EVENT), event.announcements)
+  }
+
+  /** An event with one announcement more than the maximum is refused. */
+  @Test
+  fun init_fails_whenThereAreTooManyAnnouncements() {
+    assertInvalid(tooManyAnnouncementsMessage) {
+      eventWith(announcements = announcements(MAX_ANNOUNCEMENTS_PER_EVENT + 1))
+    }
+  }
+
+  /** addAnnouncement can fill the last free place of an event. */
+  @Test
+  fun addAnnouncement_succeeds_upToTheMaximum() {
+    val event = eventWith(announcements = announcements(MAX_ANNOUNCEMENTS_PER_EVENT - 1))
+
+    val result = event.addAnnouncement(announcement("a$MAX_ANNOUNCEMENTS_PER_EVENT"))
+
+    assertEquals(announcements(MAX_ANNOUNCEMENTS_PER_EVENT), result.announcements)
+  }
+
+  /** addAnnouncement refuses a new announcement once the event holds the maximum. */
+  @Test
+  fun addAnnouncement_fails_whenEventIsFull() {
+    val event = eventWith(announcements = announcements(MAX_ANNOUNCEMENTS_PER_EVENT))
+
+    assertInvalid(tooManyAnnouncementsMessage) {
+      event.addAnnouncement(announcement("a${MAX_ANNOUNCEMENTS_PER_EVENT + 1}"))
     }
   }
 
