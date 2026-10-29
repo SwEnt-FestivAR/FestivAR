@@ -13,9 +13,11 @@ import io.mockk.verify
 import java.io.File
 import java.io.IOException
 import java.time.Duration
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
@@ -25,12 +27,13 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
 @RunWith(RobolectricTestRunner::class)
-class AudioRepositoryFirebaseTest {
+class AudioStorageFirebaseTest {
 
   private lateinit var storageRef: StorageReference
   private lateinit var firebaseStorage: FirebaseStorage
   private lateinit var audioRef: StorageReference
   private lateinit var voiceNoteRef: StorageReference
+  private lateinit var taskRef: StorageReference
   private lateinit var fileRef: StorageReference
   private lateinit var repository: AudioStorageFirebase
   private val tempFile = File.createTempFile("test_audio", ".m4a")
@@ -42,12 +45,15 @@ class AudioRepositoryFirebaseTest {
     firebaseStorage = mockk()
     audioRef = mockk()
     voiceNoteRef = mockk()
+    taskRef = mockk()
     fileRef = mockk()
 
     every { storageRef.storage } returns firebaseStorage
     every { storageRef.child("audio") } returns audioRef
     every { audioRef.child("voice-note") } returns voiceNoteRef
-    every { voiceNoteRef.child(any()) } returns fileRef
+    every { voiceNoteRef.child("task1") } returns taskRef
+    every { voiceNoteRef.child(any()) } returns taskRef
+    every { taskRef.child(any()) } returns fileRef
     every { fileRef.child(any()) } returns fileRef
     every { firebaseStorage.getReferenceFromUrl(any()) } returns fileRef
 
@@ -62,6 +68,7 @@ class AudioRepositoryFirebaseTest {
     assertNotNull(uid2)
     assertTrue(uid1.isNotEmpty())
     assertTrue(uid2.isNotEmpty())
+    assertNotEquals(uid1, uid2)
   }
 
   @Test
@@ -75,12 +82,14 @@ class AudioRepositoryFirebaseTest {
     every { uploadTask.result } returns mockk()
     every { uploadTask.exception } returns null
 
-    every { fileRef.putFile(any()) } returns uploadTask
+    every { fileRef.putFile(audio.uri) } returns uploadTask
     every { fileRef.downloadUrl } returns Tasks.forResult(Uri.parse(expectedUrl))
 
     val url = repository.upload(audio, "task1")
 
     assertEquals(expectedUrl, url)
+    verify { voiceNoteRef.child("task1") }
+    verify { fileRef.putFile(audio.uri) }
   }
 
   @Test
@@ -111,6 +120,21 @@ class AudioRepositoryFirebaseTest {
     val exception =
         assertThrows(IOException::class.java) { runBlocking { repository.upload(audio, "task1") } }
     assertEquals("Audio upload did not return a valid download URL.", exception.message)
+  }
+
+  @Test
+  fun upload_cancellation_propagatesCancellationException() {
+    val uploadTask: UploadTask = mockk()
+    every { uploadTask.isComplete } returns true
+    every { uploadTask.isCanceled } returns true
+    every { uploadTask.isSuccessful } returns false
+    every { uploadTask.exception } returns CancellationException("Upload cancelled")
+
+    every { fileRef.putFile(any()) } returns uploadTask
+
+    assertThrows(CancellationException::class.java) {
+      runBlocking { repository.upload(audio, "task1") }
+    }
   }
 
   @Test
@@ -153,5 +177,14 @@ class AudioRepositoryFirebaseTest {
     every { fileRef.delete() } returns Tasks.forException(RuntimeException("Error"))
 
     assertThrows(IOException::class.java) { runBlocking { repository.delete(audioUrl) } }
+  }
+
+  @Test
+  fun delete_cancellation_propagatesCancellationException() {
+    val audioUrl =
+        "https://firebasestorage.googleapis.com/v0/b/bucket/o/audio%2Fvoice-note%2Ftask1%2F12345.m4a?alt=media"
+    every { fileRef.delete() } returns Tasks.forException(CancellationException("Cancelled"))
+
+    assertThrows(CancellationException::class.java) { runBlocking { repository.delete(audioUrl) } }
   }
 }
