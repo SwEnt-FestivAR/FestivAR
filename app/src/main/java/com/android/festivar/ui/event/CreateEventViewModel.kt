@@ -14,9 +14,9 @@ import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryProvider
 import com.android.festivar.ui.components.DateTimeField
+import com.android.festivar.ui.components.END_OF_DAY
 import com.android.festivar.ui.components.FieldError
-import com.android.festivar.ui.task.create.END_OF_DAY
-import com.android.festivar.ui.task.create.START_OF_DAY
+import com.android.festivar.ui.components.START_OF_DAY
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
