@@ -371,7 +371,7 @@ class MainActivityNavigationTest {
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          authRepository = FakeAuthRepository(currentUser = mockk()),
+          authRepository = FakeAuthRepository(currentUser = firebaseUser),
           startDestinationOverride = AppScreens.CreateEvent.name,
       )
     }
