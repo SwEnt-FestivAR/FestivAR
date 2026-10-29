@@ -122,7 +122,10 @@ fun FestivarStepper(
   }
 }
 
-/** Tonal round button of the stepper: 32dp, with a 20dp icon, dimmed when disabled. */
+/**
+ * Tonal round button of the stepper: 32dp, with a 20dp icon. When disabled it takes Material's own
+ * disabled colors.
+ */
 @Composable
 private fun StepperButton(
     icon: ImageVector,
@@ -140,8 +143,6 @@ private fun StepperButton(
           IconButtonDefaults.filledTonalIconButtonColors(
               containerColor = colors.surfaceContainerHigh,
               contentColor = colors.onSurface,
-              disabledContainerColor = colors.surfaceContainerHigh.copy(alpha = 0.38f),
-              disabledContentColor = colors.onSurface.copy(alpha = 0.38f),
           ),
       modifier = modifier.size(32.dp),
   ) {
