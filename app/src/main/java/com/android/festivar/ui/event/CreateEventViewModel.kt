@@ -3,6 +3,7 @@ package com.android.festivar.ui.event
 // Co-authored-by: Copilot App
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 
+import android.util.Log
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -12,6 +13,12 @@ import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryProvider
+import com.android.festivar.ui.components.DateTimeField
+import com.android.festivar.ui.components.FieldError
+import com.android.festivar.ui.task.create.END_OF_DAY
+import com.android.festivar.ui.task.create.START_OF_DAY
+import java.time.LocalDate
+import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,24 +37,71 @@ import kotlinx.coroutines.launch
  */
 data class CreateEventUIState(
     val name: String = "",
-    val startDate: ZonedDateTime? = null,
-    val endDate: ZonedDateTime? = null,
-    val startDateMillis: Long? = null,
-    val endDateMillis: Long? = null,
+    val nameEdited: Boolean = false,
+    val startDate: LocalDate? = null,
+    val endDate: LocalDate? = null,
     val venue: String = "",
     val notes: String = "",
-    val activeDatePicker: DateField? = null,
-    val errorName: Boolean = false,
-    val errorDate: Boolean = false,
-    val errorVenue: Boolean = false,
+    val openPicker: DateTimeField? = null,
     val isSaving: Boolean = false,
     val createdEventId: String? = null,
+    val zone: ZoneId = ZoneId.systemDefault(),
+    val now: ZonedDateTime = ZonedDateTime.now(zone),
     @StringRes val errorMsg: Int? = null,
-)
+) {
+  val startDateTime: ZonedDateTime?
+    get() = startDate?.atTime(START_OF_DAY)?.atZone(zone)
 
-enum class DateField {
-  START,
-  END,
+  val endDateTime: ZonedDateTime?
+    get() = endDate?.atTime(END_OF_DAY)?.atZone(zone)
+
+  val nameError: FieldError?
+    get() = if (nameEdited && name.isBlank()) FieldError.EMPTY_EVENT_NAME else null
+
+  // Will be implemented when time field logic is added.
+  val startDateError: FieldError?
+    get() = null
+
+  val endDateError: FieldError?
+    get() =
+        if (endDateTime == null) {
+          null
+        } else
+            when {
+              startDateTime != null && !endDateTime!!.isAfter(startDateTime) ->
+                  FieldError.END_BEFORE_START
+              endDateTime!!.isBefore(now) -> FieldError.OUTDATED
+              else -> null
+            }
+
+  val isValid: Boolean
+    get() =
+        name.isNotBlank() &&
+            startDateTime != null &&
+            endDateTime != null &&
+            nameError == null &&
+            startDateError == null &&
+            endDateError == null
+
+  /**
+   * Whether the "Create event" button can be pressed. It is false while a save is running and once
+   * the event is created, so that a tap just after the save cannot create a second event.
+   */
+  val canCreate: Boolean
+    get() = isValid && !isSaving && createdEventId == null
+
+  fun toEvent(eventId: String, membersList: List<User>): Event {
+    require(isValid) { "The form is not valid." }
+    return Event(
+        eventId = eventId,
+        title = name,
+        description = notes,
+        members = membersList,
+        startDate = startDateTime!!,
+        endDate = endDateTime!!,
+        location = venue,
+    )
+  }
 }
 
 /**
@@ -55,94 +109,42 @@ enum class DateField {
  * first member.
  *
  * @property eventsRepository where the event is written.
- * @property usersRepository where the creator's profile is read and its joined events updated; the
- *   provider's repository when null.
+ * @property usersRepository where the creator's profile is read and its joined events updated.
  * @property userId the uid of the signed-in user, blank when nobody is.
  */
 class CreateEventViewModel(
     private val eventsRepository: EventsRepository,
-    private val usersRepository: UsersRepository? = null,
+    private val usersRepository: UsersRepository = UsersRepositoryProvider.repository,
     private val userId: String = "",
 ) : ViewModel() {
   private val _uiState = MutableStateFlow(CreateEventUIState())
   val uiState: StateFlow<CreateEventUIState> = _uiState.asStateFlow()
 
   /** Applies an edit of the form; the save error is stale once the form changes, so it goes. */
-  private fun edit(change: (CreateEventUIState) -> CreateEventUIState) {
-    _uiState.update { change(it).copy(errorMsg = null) }
+  private fun edit(change: (CreateEventUIState) -> CreateEventUIState) = _uiState.update {
+    change(it).copy(errorMsg = null)
   }
 
-  fun updateName(newName: String) {
-    edit { it.copy(name = newName) }
-  }
+  fun updateName(newName: String) = edit { it.copy(name = newName, nameEdited = true) }
 
-  fun updateStartDate(newDate: ZonedDateTime) {
-    edit { it.copy(startDate = newDate) }
-  }
+  fun updateStartDate(newDate: LocalDate) = edit { it.copy(startDate = newDate) }
 
-  fun updateEndDate(newDate: ZonedDateTime) {
-    edit { it.copy(endDate = newDate) }
-  }
+  fun updateEndDate(newDate: LocalDate) = edit { it.copy(endDate = newDate) }
 
-  fun updateStartDateMillis(newDateMillis: Long) {
-    _uiState.update { it.copy(startDateMillis = newDateMillis) }
-  }
+  fun updateVenue(newVenue: String) = edit { it.copy(venue = newVenue) }
 
-  fun updateEndDateMillis(newDateMillis: Long) {
-    _uiState.update { it.copy(endDateMillis = newDateMillis) }
-  }
+  fun updateNotes(newNotes: String) = edit { it.copy(notes = newNotes) }
 
-  fun updateVenue(newVenue: String) {
-    edit { it.copy(venue = newVenue) }
-  }
+  fun showPicker(newOpenPicker: DateTimeField?) = edit { it.copy(openPicker = newOpenPicker) }
 
-  fun updateNotes(newNotes: String) {
-    edit { it.copy(notes = newNotes) }
-  }
-
-  fun updateActiveDatePicker(newActiveDatePicker: DateField?) {
-    _uiState.update { it.copy(activeDatePicker = newActiveDatePicker) }
-  }
-
-  fun removeErrorName() {
-    _uiState.update { it.copy(errorName = false) }
-  }
-
-  fun removeErrorDate() {
-    _uiState.update { it.copy(errorDate = false) }
-  }
-
-  fun removeErrorVenue() {
-    _uiState.update { it.copy(errorVenue = false) }
-  }
-
-  fun setErrors() {
-    _uiState.update {
-      it.copy(
-          errorName = _uiState.value.name.isBlank(),
-          errorDate = !endDateComesAfterStartDate(),
-          errorVenue = _uiState.value.venue.isBlank(),
-      )
+  /** Sets [date] in the field whose picker is open, then closes the picker. */
+  fun pickDate(date: LocalDate) {
+    when (_uiState.value.openPicker) {
+      DateTimeField.START_DATE -> updateStartDate(date)
+      DateTimeField.END_DATE -> updateEndDate(date)
+      else -> Unit
     }
-  }
-
-  fun endDateComesAfterStartDate(): Boolean {
-    val state = _uiState.value
-    // Event itself requires a strictly later end, so equal dates are refused here, not thrown
-    return state.startDate != null &&
-        state.endDate != null &&
-        state.endDate.isAfter(state.startDate)
-  }
-
-  fun formIsComplete(): Boolean {
-    return _uiState.value.name.isNotBlank() &&
-        _uiState.value.startDate != null &&
-        _uiState.value.endDate != null &&
-        _uiState.value.venue.isNotBlank()
-  }
-
-  fun validEvent(): Boolean {
-    return formIsComplete() && endDateComesAfterStartDate()
+    showPicker(null)
   }
 
   /**
@@ -151,12 +153,7 @@ class CreateEventViewModel(
    * [CreateEventUIState.errorMsg].
    */
   fun createEvent() {
-    val state = _uiState.value
-    if (state.isSaving || state.createdEventId != null) return
-    if (!validEvent()) {
-      setErrors()
-      return
-    }
+    if (!_uiState.value.canCreate) return
     _uiState.update { it.copy(isSaving = true, errorMsg = null) }
     viewModelScope.launch {
       try {
@@ -164,6 +161,7 @@ class CreateEventViewModel(
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
+        Log.e("CreateEventViewModel", "Saving the event failed", e)
         _uiState.update {
           it.copy(isSaving = false, errorMsg = R.string.create_event_error_save_failed)
         }
@@ -174,9 +172,8 @@ class CreateEventViewModel(
   private suspend fun save() {
     val creator =
         if (userId.isNotBlank()) {
-          val repo = usersRepository ?: UsersRepositoryProvider.repository
           try {
-            repo.getUser(userId)
+            usersRepository.getUser(userId)
           } catch (_: Exception) {
             null
           }
@@ -185,21 +182,11 @@ class CreateEventViewModel(
     val fallbackCreator = creator ?: if (userId.isNotBlank()) User(uid = userId) else null
     val membersList = if (fallbackCreator != null) listOf(fallbackCreator) else emptyList()
 
-    val newEvent =
-        Event(
-            eventId = eventsRepository.getNewUid(),
-            title = _uiState.value.name,
-            description = _uiState.value.notes,
-            members = membersList,
-            startDate = _uiState.value.startDate!!,
-            endDate = _uiState.value.endDate!!,
-            location = _uiState.value.venue,
-        )
-
+    val newEvent = _uiState.value.toEvent(eventsRepository.getNewUid(), membersList)
     eventsRepository.addEvent(newEvent)
 
     if (creator != null) {
-      val repo = usersRepository ?: UsersRepositoryProvider.repository
+      val repo = usersRepository
       try {
         repo.editUser(creator.uid, creator.addJoinedEvent(newEvent.eventId))
       } catch (_: Exception) {
