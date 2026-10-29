@@ -1,3 +1,4 @@
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Written with the help of an AI coding assistant and reviewed line by line by the author.
 package com.android.festivar.ui.tasks
 
@@ -32,7 +33,7 @@ class TaskOverviewContentTest {
       isFull: Boolean = false,
   ) =
       OverviewRowUi(
-          task = Task(id, EVENT, "Task $id", completed = completed),
+          task = Task(id, EVENT, "Task $id", completed = completed, ownerId = "owner-1"),
           location = "",
           peopleNeeded = 1,
           estimatedMinutes = minutes,

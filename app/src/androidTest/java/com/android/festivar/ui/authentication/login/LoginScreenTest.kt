@@ -116,6 +116,23 @@ class LoginScreenTest {
   }
 
   @Test
+  fun forgotPasswordButtonInvokesCallback() {
+    var forgotPasswordClicked = false
+    val loginViewModel = LoginViewModel(UnusedAuthRepository)
+    composeTestRule.setContent {
+      LoginScreen(
+          viewModel = loginViewModel,
+          onSignUpClick = {},
+          onForgotPasswordClick = { forgotPasswordClicked = true },
+      )
+    }
+
+    composeTestRule.onNodeWithText("Forgot password?").performClick()
+
+    composeTestRule.runOnIdle { assertTrue(forgotPasswordClicked) }
+  }
+
+  @Test
   fun googleSignInButtonIsDisabledWhileAnotherSignInIsLoading() {
     val authRepository = DeferredAuthRepository()
     val loadingViewModel = LoginViewModel(authRepository)
@@ -148,6 +165,9 @@ private class DeferredAuthRepository : AuthRepository {
   override suspend fun signOut(): Result<Unit> =
       Result.failure(UnsupportedOperationException("Not used in this UI test"))
 
+  override suspend fun forgotPassword(email: String): Result<Unit> =
+      Result.failure(UnsupportedOperationException("Not used in this UI test"))
+
   override suspend fun signInWithEmailAndPassword(
       email: String,
       password: String,
@@ -165,6 +185,9 @@ private object UnusedAuthRepository : AuthRepository {
       Result.failure(UnsupportedOperationException("Not used in this UI test"))
 
   override suspend fun signOut(): Result<Unit> =
+      Result.failure(UnsupportedOperationException("Not used in this UI test"))
+
+  override suspend fun forgotPassword(email: String): Result<Unit> =
       Result.failure(UnsupportedOperationException("Not used in this UI test"))
 
   override suspend fun signInWithEmailAndPassword(

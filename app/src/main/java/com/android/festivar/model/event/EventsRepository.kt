@@ -42,8 +42,8 @@ interface EventsRepository {
    * letters and digits, and none when no event carries the code. A stored event that cannot be read
    * is left out instead of failing the lookup.
    *
-   * Firestore stores the code on each document, so a change to [joinCodeOf] or [JOIN_CODE_LENGTH]
-   * makes every stored code stale and needs a backfill of the existing events.
+   * Nothing is thrown for a stored event that cannot be read. Implementations backed by a remote
+   * storage may throw exceptions when the storage cannot be reached.
    *
    * @param code The join code an organizer shared.
    * @return The list of [Event] items with this join code, possibly empty.

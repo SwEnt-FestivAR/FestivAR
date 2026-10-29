@@ -95,10 +95,11 @@ data class CreateTaskUiState(
   /**
    * Builds the [Task] described by this form.
    *
+   * @param ownerId The uid of the user creating the task, who becomes its owner.
    * @throws IllegalArgumentException if the form is not valid: blank title, or a date error (a time
-   *   without its date, or an end before the start).
+   *   without its date, or an end before the start), or if [ownerId] is blank.
    */
-  fun toTask(taskId: String, eventId: String): Task {
+  fun toTask(taskId: String, eventId: String, ownerId: String): Task {
     require(isValid) { "The form is not valid." }
     return Task(
         taskId = taskId,
@@ -108,6 +109,7 @@ data class CreateTaskUiState(
         location = location.trim(),
         startTime = startDateTime,
         endTime = endDateTime,
+        ownerId = ownerId,
     )
   }
 }
@@ -117,6 +119,8 @@ val START_OF_DAY: LocalTime = LocalTime.MIDNIGHT
 
 /** The time of an end date picked without a time: the last minute the forms can show. */
 val END_OF_DAY: LocalTime = LocalTime.of(23, 59)
+
+private const val TAG = "CreateTaskViewModel"
 
 private const val SAVE_TIMEOUT_MS = 15_000L
 
@@ -204,13 +208,21 @@ class CreateTaskViewModel(
    * running.
    *
    * @param eventId The event the created task belongs to.
+   * @param ownerId The uid of the signed-in user, who becomes the owner of the task. A task always
+   *   has an owner when it is created: a blank uid saves nothing and shows the save error.
    */
-  fun createTask(eventId: String) {
+  fun createTask(eventId: String, ownerId: String) {
     val form = _uiState.value
     if (!form.canCreate) return
     if (eventId.isBlank()) {
       // A Task needs an event: this is a mistake of the caller, reported instead of crashing.
       Log.e("CreateTaskViewModel", "createTask called without an event")
+      _uiState.update { it.copy(errorMsg = SAVE_FAILED_MESSAGE) }
+      return
+    }
+    if (ownerId.isBlank()) {
+      // Same for the owner: nobody could manage the task if it was saved without one.
+      Log.e("CreateTaskViewModel", "createTask called without an owner")
       _uiState.update { it.copy(errorMsg = SAVE_FAILED_MESSAGE) }
       return
     }
@@ -221,7 +233,7 @@ class CreateTaskViewModel(
     val taskId = pendingTaskId ?: tasksRepository.getNewUid()
     pendingTaskId = taskId
     pendingEventId = eventId
-    val task = form.toTask(taskId, eventId)
+    val task = form.toTask(taskId, eventId, ownerId)
     _uiState.update { it.copy(isSaving = true, errorMsg = null) }
     viewModelScope.launch {
       try {
@@ -242,19 +254,23 @@ class CreateTaskViewModel(
   // it is created, and updated if the form changed since that save; otherwise the error is shown
   // and the user can retry with the same task id.
   private suspend fun onSaveFailed(task: Task, e: Exception) {
-    Log.e("CreateTaskViewModel", "Error adding the task", e)
+    // Not an error yet: the task may have been stored anyway, which is checked below.
+    Log.w(TAG, "Adding the task failed, checking whether it was stored", e)
     val alreadySaved =
         try {
           withTimeout(saveTimeoutMs) {
             val stored = tasksRepository.getTask(task.taskId)
             if (stored != task) tasksRepository.editTask(task.taskId, task)
           }
+          Log.i(TAG, "The task was stored despite the failure")
           true
         } catch (_: TimeoutCancellationException) {
+          Log.e(TAG, "The task could not be checked in time, so it may not be stored")
           false
         } catch (e: CancellationException) {
           throw e
-        } catch (_: Exception) {
+        } catch (checkError: Exception) {
+          Log.e(TAG, "The task could not be checked, so it may not be stored", checkError)
           false
         }
     _uiState.update {

@@ -1,3 +1,4 @@
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.model.task
 
@@ -92,6 +93,7 @@ class TaskRepositoryFirebase(
         "maxAssign" to task.maxAssign,
         "assignees" to task.assignees.map { user -> user.uid },
         "completed" to task.completed,
+        "ownerId" to task.ownerId,
     )
   }
 
@@ -118,6 +120,9 @@ class TaskRepositoryFirebase(
         maxAssign = document.getLong("maxAssign")?.toInt() ?: 1,
         assignees = ass,
         completed = document.getBoolean("completed") ?: false,
+        // Tasks saved before owners existed have no ownerId. They are deleted from Firestore, so a
+        // missing one is an error, not a case to handle.
+        ownerId = document.getString("ownerId").required("ownerId", document.id),
     )
   }
 

@@ -17,7 +17,7 @@ class TaskDetailsScreenHelpersTest {
   private val start = ZonedDateTime.of(2026, 10, 17, 9, 30, 0, 0, ZoneId.of("Europe/Zurich"))
 
   private fun task(startTime: ZonedDateTime? = null, endTime: ZonedDateTime? = null) =
-      Task("t", "e", "Title", startTime = startTime, endTime = endTime)
+      Task("t", "e", "Title", startTime = startTime, endTime = endTime, ownerId = "owner-1")
 
   @Test
   fun whenLine_showsDateAndTimes() {
