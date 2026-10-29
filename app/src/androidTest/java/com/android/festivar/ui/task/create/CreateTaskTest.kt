@@ -36,15 +36,15 @@ import java.time.LocalTime
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
 
+/** The text of the string resource [id] in the app under test. */
+internal fun string(@StringRes id: Int): String =
+    InstrumentationRegistry.getInstrumentation().targetContext.getString(id)
+
 /**
  * Superclass of the Create task screen tests: a fresh repository and ViewModel before each test,
  * and the actions and checks the tests share, so that a test reads as what the user does. The
  * subclass owns the compose rule and calls [showCreateTaskScreen] from its own `@Before`.
  */
-/** The text of the string resource [id] in the app under test. */
-internal fun string(@StringRes id: Int): String =
-    InstrumentationRegistry.getInstrumentation().targetContext.getString(id)
-
 abstract class CreateTaskTest {
   // FAKE: a real, working repository that keeps the tasks in memory instead of Firebase. The tests
   // read the saved tasks back from it. There is no mock: nothing checks that a method was called.

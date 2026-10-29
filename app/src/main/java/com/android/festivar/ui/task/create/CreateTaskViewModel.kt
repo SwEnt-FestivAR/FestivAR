@@ -98,7 +98,10 @@ data class CreateTaskUiState(
         if (estimatedMinutes.isEmpty() || (estimatedMinutes.toIntOrNull() ?: 0) >= 1) null
         else FieldError.INVALID_ESTIMATED_TIME
 
-  /** Whether the user changed anything in the form, so that leaving it would lose something. */
+  /**
+   * Whether the user changed anything in the form, so that leaving it would lose something. Keep it
+   * in sync with the form fields: a field missing here is lost without asking.
+   */
   val hasChanges: Boolean
     get() =
         title.isNotEmpty() ||
