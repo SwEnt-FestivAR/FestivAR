@@ -7,6 +7,7 @@ import java.io.IOException
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import java.util.UUID
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.tasks.await
 
 class AudioStorageFirebase(storageRef: StorageReference) : AudioRepository {
@@ -27,6 +28,7 @@ class AudioStorageFirebase(storageRef: StorageReference) : AudioRepository {
         throw IOException("Audio upload did not return a valid download URL.")
       }
     } catch (e: Exception) {
+      if (e is CancellationException) throw e
       if (e is IOException) throw e
       throw IOException("Failed to upload audio file.", e)
     }
