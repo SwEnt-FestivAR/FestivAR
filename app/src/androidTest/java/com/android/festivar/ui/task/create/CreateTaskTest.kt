@@ -2,6 +2,9 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.create
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
@@ -11,13 +14,16 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.test.platform.app.InstrumentationRegistry
+import com.android.festivar.model.task.Priority
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.ui.components.FieldError
 import com.android.festivar.ui.components.fieldErrorMessageRes
 import com.android.festivar.ui.components.hasDayOfMonth
+import com.android.festivar.ui.components.priorityLabelRes
 import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
 import java.time.LocalTime
@@ -78,6 +84,47 @@ abstract class CreateTaskTest {
 
   fun ComposeTestRule.enterCreateTaskTitle(title: String) =
       enterText(CreateTaskScreenTestTags.TITLE_FIELD, title)
+
+  /** Replaces the content of the field [tag]: the number fields start with a value. */
+  private fun ComposeTestRule.replaceText(tag: String, text: String) =
+      onNodeWithTag(tag).performScrollTo().performTextReplacement(text)
+
+  /** Taps the plus of the people needed stepper [times] times. */
+  fun ComposeTestRule.increaseCreateTaskMaxAssign(times: Int = 1) {
+    repeat(times) {
+      onNodeWithTag(CreateTaskScreenTestTags.MAX_ASSIGN_INCREASE_BUTTON)
+          .performScrollTo()
+          .performClick()
+    }
+  }
+
+  /** Taps the minus of the people needed stepper once. */
+  fun ComposeTestRule.decreaseCreateTaskMaxAssign() {
+    onNodeWithTag(CreateTaskScreenTestTags.MAX_ASSIGN_DECREASE_BUTTON)
+        .performScrollTo()
+        .performClick()
+  }
+
+  /** Checks the number the people needed stepper shows. */
+  fun ComposeTestRule.checkCreateTaskMaxAssignIs(value: Int) {
+    onNodeWithTag(CreateTaskScreenTestTags.MAX_ASSIGN_FIELD)
+        .performScrollTo()
+        .assert(
+            SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, value.toString())
+        )
+  }
+
+  fun ComposeTestRule.enterCreateTaskEstimatedTime(text: String) =
+      replaceText(CreateTaskScreenTestTags.ESTIMATED_TIME_FIELD, text)
+
+  /** Taps the chip that names [priority], scrolling to it first: the row of chips scrolls. */
+  fun ComposeTestRule.pickCreateTaskPriority(priority: Priority) {
+    val label =
+        InstrumentationRegistry.getInstrumentation()
+            .targetContext
+            .getString(priorityLabelRes(priority))
+    onNodeWithText(label).performScrollTo().performClick()
+  }
 
   /**
    * Picks [date] in the date picker opened by the field [fieldTag]. The picker opens on the current
@@ -143,10 +190,17 @@ abstract class CreateTaskTest {
   fun ComposeTestRule.checkEndDateErrorIsDisplayed(error: FieldError) =
       checkErrorIsDisplayed(CreateTaskScreenTestTags.END_DATE_ERROR, error)
 
+  fun ComposeTestRule.checkEstimatedTimeErrorIsDisplayed() =
+      checkErrorIsDisplayed(
+          CreateTaskScreenTestTags.ESTIMATED_TIME_ERROR,
+          FieldError.INVALID_ESTIMATED_TIME,
+      )
+
   fun ComposeTestRule.checkNoFieldErrorIsDisplayed() {
     onNodeWithTag(CreateTaskScreenTestTags.TITLE_ERROR).assertDoesNotExist()
     onNodeWithTag(CreateTaskScreenTestTags.START_DATE_ERROR).assertDoesNotExist()
     onNodeWithTag(CreateTaskScreenTestTags.END_DATE_ERROR).assertDoesNotExist()
+    onNodeWithTag(CreateTaskScreenTestTags.ESTIMATED_TIME_ERROR).assertDoesNotExist()
   }
 
   companion object {

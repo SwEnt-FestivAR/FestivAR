@@ -2,16 +2,23 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.create
 
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.android.festivar.R
+import com.android.festivar.model.task.Priority
 import com.android.festivar.ui.components.FieldError
+import java.time.Duration
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -38,6 +45,9 @@ class CreateTaskScreenInstrumentedTest : CreateTaskTest() {
           CreateTaskScreenTestTags.START_TIME_FIELD,
           CreateTaskScreenTestTags.END_DATE_FIELD,
           CreateTaskScreenTestTags.END_TIME_FIELD,
+          CreateTaskScreenTestTags.PRIORITY_SELECTOR,
+          CreateTaskScreenTestTags.MAX_ASSIGN_FIELD,
+          CreateTaskScreenTestTags.ESTIMATED_TIME_FIELD,
       )
 
   @Before
@@ -57,7 +67,7 @@ class CreateTaskScreenInstrumentedTest : CreateTaskTest() {
         .onNodeWithTag(CreateTaskScreenTestTags.CREATE_BUTTON)
         .assertIsDisplayed()
         .assertIsNotEnabled() // The form is empty.
-    fieldTags.forEach { composeTestRule.onNodeWithTag(it).assertIsDisplayed() }
+    fieldTags.forEach { composeTestRule.onNodeWithTag(it).performScrollTo().assertIsDisplayed() }
     composeTestRule.checkNoFieldErrorIsDisplayed()
   }
 
@@ -98,6 +108,79 @@ class CreateTaskScreenInstrumentedTest : CreateTaskTest() {
 
     composeTestRule.checkNoFieldErrorIsDisplayed()
     composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.CREATE_BUTTON).assertIsEnabled()
+  }
+
+  @Test
+  fun thePeopleNeededStepperStartsAtOneWithTheMinusDisabled() {
+    composeTestRule.checkCreateTaskMaxAssignIs(1)
+    composeTestRule
+        .onNodeWithTag(CreateTaskScreenTestTags.MAX_ASSIGN_DECREASE_BUTTON)
+        .assertIsNotEnabled()
+    composeTestRule
+        .onNodeWithTag(CreateTaskScreenTestTags.MAX_ASSIGN_INCREASE_BUTTON)
+        .assertIsEnabled()
+  }
+
+  @Test
+  fun thePlusAndMinusChangeThePeopleNeededByOneDownToOne() {
+    composeTestRule.enterCreateTaskTitle("Run power to stage")
+
+    composeTestRule.increaseCreateTaskMaxAssign(times = 2)
+    composeTestRule.checkCreateTaskMaxAssignIs(3)
+    composeTestRule
+        .onNodeWithTag(CreateTaskScreenTestTags.MAX_ASSIGN_DECREASE_BUTTON)
+        .assertIsEnabled()
+
+    composeTestRule.decreaseCreateTaskMaxAssign()
+    composeTestRule.checkCreateTaskMaxAssignIs(2)
+    composeTestRule.decreaseCreateTaskMaxAssign()
+    composeTestRule.checkCreateTaskMaxAssignIs(1)
+
+    composeTestRule
+        .onNodeWithTag(CreateTaskScreenTestTags.MAX_ASSIGN_DECREASE_BUTTON)
+        .assertIsNotEnabled()
+    composeTestRule.checkNoFieldErrorIsDisplayed() // The stepper can never be invalid.
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.CREATE_BUTTON).assertIsEnabled()
+  }
+
+  @Test
+  fun anEstimatedTimeOfZeroShowsAnErrorUntilItIsFixedOrCleared() {
+    composeTestRule.enterCreateTaskTitle("Run power to stage")
+    composeTestRule.enterCreateTaskEstimatedTime("0")
+    composeTestRule.checkEstimatedTimeErrorIsDisplayed()
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.CREATE_BUTTON).assertIsNotEnabled()
+
+    composeTestRule.enterCreateTaskEstimatedTime("") // Optional: empty is fine.
+
+    composeTestRule.checkNoFieldErrorIsDisplayed()
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.CREATE_BUTTON).assertIsEnabled()
+  }
+
+  @Test
+  fun aMinusSignTypedInTheEstimatedTimeIsNotKept() {
+    composeTestRule.enterCreateTaskEstimatedTime("-")
+    composeTestRule
+        .onNodeWithTag(CreateTaskScreenTestTags.ESTIMATED_TIME_FIELD)
+        .assert(!hasText("-", substring = true))
+
+    composeTestRule.enterCreateTaskEstimatedTime("-30")
+    composeTestRule
+        .onNodeWithTag(CreateTaskScreenTestTags.ESTIMATED_TIME_FIELD)
+        .assert(hasText("30", substring = true) and !hasText("-", substring = true))
+  }
+
+  @Test
+  fun savingThePriorityThePeopleAndTheEstimatedTimeAddsThemToTheTask() {
+    composeTestRule.enterCreateTaskTitle("Run power to stage")
+    composeTestRule.pickCreateTaskPriority(Priority.URGENT)
+    composeTestRule.increaseCreateTaskMaxAssign(times = 2)
+    composeTestRule.enterCreateTaskEstimatedTime("90")
+    composeTestRule.clickOnCreate(waitForRedirection = true)
+
+    val saved = savedTasks().single()
+    assertEquals(Priority.URGENT, saved.priority)
+    assertEquals(3, saved.maxAssign)
+    assertEquals(Duration.ofMinutes(90), saved.estimatedTime)
   }
 
   @Test
@@ -143,11 +226,45 @@ class CreateTaskScreenInstrumentedTest : CreateTaskTest() {
   }
 
   @Test
-  fun goingBackLeavesTheScreenWithoutSaving() {
+  fun goingBackFromAnUntouchedFormLeavesWithoutAsking() {
+    composeTestRule.clickOnBack()
+    assertEquals(1, backCount)
+  }
+
+  @Test
+  fun goingBackFromAnEditedFormAsksBeforeLeaving() {
     composeTestRule.enterCreateTaskDetails(completeForm)
     composeTestRule.clickOnBack()
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.DISCARD_DIALOG).assertIsDisplayed()
+    composeTestRule.onNodeWithText(string(R.string.create_task_discard_title)).assertIsDisplayed()
+    assertEquals(0, backCount)
+
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.KEEP_EDITING_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.DISCARD_DIALOG).assertDoesNotExist()
+    assertEquals(0, backCount)
+  }
+
+  @Test
+  fun goingBackOnceTheTaskIsCreatedLeavesWithoutAsking() {
+    composeTestRule.enterCreateTaskDetails(completeForm)
+    composeTestRule.clickOnCreate(waitForRedirection = true)
+
+    composeTestRule.clickOnBack()
+
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.DISCARD_DIALOG).assertDoesNotExist()
+    assertEquals(1, backCount)
+  }
+
+  @Test
+  fun discardingAnEditedFormLeavesTheScreenWithoutSaving() {
+    composeTestRule.enterCreateTaskDetails(completeForm)
+    composeTestRule.clickOnBack()
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.DISCARD_BUTTON).performClick()
     assertEquals(1, backCount)
     assertEquals(0, createdCount)
     assertTrue(savedTasks().isEmpty())
   }
+
+  private fun string(id: Int): String =
+      InstrumentationRegistry.getInstrumentation().targetContext.getString(id)
 }
