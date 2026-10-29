@@ -35,6 +35,18 @@ class ConfirmDialogTest {
     }
   }
 
+  private fun setDiscardDialog() {
+    composeTestRule.setContent {
+      AppTheme {
+        FestivarDiscardDialog(
+            title = "Discard this task?",
+            onConfirm = { confirmed++ },
+            onDismiss = { dismissed++ },
+        )
+      }
+    }
+  }
+
   @Test
   fun showsTheTitleTheMessageAndBothButtons() {
     setDialog()
@@ -69,6 +81,36 @@ class ConfirmDialogTest {
   @Test
   fun dismissButtonCallsOnDismissOnly() {
     setDialog()
+
+    composeTestRule.onNodeWithText("Keep editing").performClick()
+
+    assertEquals(0, confirmed)
+    assertEquals(1, dismissed)
+  }
+
+  @Test
+  fun discardDialog_showsTheTitleAndTheSharedTexts() {
+    setDiscardDialog()
+
+    composeTestRule.onNodeWithText("Discard this task?").assertIsDisplayed()
+    composeTestRule.onNodeWithText("What you typed will be lost.").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Discard").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Keep editing").assertIsDisplayed()
+  }
+
+  @Test
+  fun discardDialog_discardCallsOnConfirmOnly() {
+    setDiscardDialog()
+
+    composeTestRule.onNodeWithText("Discard").performClick()
+
+    assertEquals(1, confirmed)
+    assertEquals(0, dismissed)
+  }
+
+  @Test
+  fun discardDialog_keepEditingCallsOnDismissOnly() {
+    setDiscardDialog()
 
     composeTestRule.onNodeWithText("Keep editing").performClick()
 

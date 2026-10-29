@@ -44,9 +44,9 @@ import com.android.festivar.R
 import com.android.festivar.model.task.Priority
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.DateTimeRange
-import com.android.festivar.ui.components.FestivarConfirmDialog
 import com.android.festivar.ui.components.FestivarDateTimePickerDialog
 import com.android.festivar.ui.components.FestivarDateTimeRow
+import com.android.festivar.ui.components.FestivarDiscardDialog
 import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.components.FestivarFieldWithError
 import com.android.festivar.ui.components.FestivarPrioritySelector
@@ -157,11 +157,8 @@ fun CreateTaskScreen(
 /** The "Discard this task?" dialog, shown when going back from an edited form. */
 @Composable
 private fun DiscardTaskDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
-  FestivarConfirmDialog(
+  FestivarDiscardDialog(
       title = stringResource(R.string.create_task_discard_title),
-      message = stringResource(R.string.create_task_discard_message),
-      confirmText = stringResource(R.string.create_task_discard_confirm),
-      dismissText = stringResource(R.string.create_task_discard_keep),
       onConfirm = onConfirm,
       onDismiss = onDismiss,
       modifier = Modifier.testTag(CreateTaskScreenTestTags.DISCARD_DIALOG),

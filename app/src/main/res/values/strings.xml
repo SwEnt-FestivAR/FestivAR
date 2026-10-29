@@ -7,6 +7,9 @@
     <!-- Common actions -->
     <string name="action_ok">OK</string>
     <string name="action_cancel">Cancel</string>
+    <string name="discard_message">What you typed will be lost.</string>
+    <string name="discard_confirm">Discard</string>
+    <string name="discard_keep">Keep editing</string>
     <!-- Create task screen -->
     <string name="create_task">Create task</string>
     <string name="create_task_back">Back</string>
@@ -34,9 +37,6 @@
     <string name="priority_high">High</string>
     <string name="priority_urgent">Urgent</string>
     <string name="create_task_discard_title">Discard this task?</string>
-    <string name="create_task_discard_message">What you typed will be lost.</string>
-    <string name="create_task_discard_confirm">Discard</string>
-    <string name="create_task_discard_keep">Keep editing</string>
     <string name="create_task_error_save_failed">Unable to create the task.</string>
     <!-- Join event screen -->
     <string name="join_event_back">Navigate back</string>
