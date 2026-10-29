@@ -15,24 +15,24 @@ class AudioTest {
   private val tempFile = File.createTempFile("sample", ".m4a")
 
   @Test
-  fun init_withValidFile_succeeds() {
+  fun init_withValidFileAndPositiveDuration_succeeds() {
     val audio =
         Audio(
             file = tempFile,
             duration = Duration.ofSeconds(5),
-            url = "https://example.com/sample.m4a",
         )
     assertEquals(tempFile, audio.file)
     assertEquals(tempFile.name, audio.fileName)
     assertEquals(Duration.ofSeconds(5), audio.duration)
-    assertEquals("https://example.com/sample.m4a", audio.url)
   }
 
   @Test
-  fun init_defaultDurationAndUrl_areDefaulted() {
-    val audio = Audio(file = tempFile)
-    assertEquals(Duration.ZERO, audio.duration)
-    assertEquals("", audio.url)
+  fun init_withZeroDuration_throwsIllegalArgumentException() {
+    val exception =
+        assertThrows(IllegalArgumentException::class.java) {
+          Audio(file = tempFile, duration = Duration.ZERO)
+        }
+    assertEquals("The duration must be positive.", exception.message)
   }
 
   @Test
@@ -41,6 +41,6 @@ class AudioTest {
         assertThrows(IllegalArgumentException::class.java) {
           Audio(file = tempFile, duration = Duration.ofMillis(-1))
         }
-    assertEquals("The duration must be non-negative.", exception.message)
+    assertEquals("The duration must be positive.", exception.message)
   }
 }

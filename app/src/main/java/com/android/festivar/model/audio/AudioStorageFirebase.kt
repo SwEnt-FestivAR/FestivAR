@@ -23,7 +23,6 @@ class AudioStorageFirebase(storageRef: StorageReference) : AudioRepository {
       val ref = audioRef.child(taskId).child(fileName)
       ref.putFile(audio.uri).await()
       val downloadUrl = ref.downloadUrl.await().toString()
-      audio.url = downloadUrl
       return downloadUrl.ifBlank {
         throw IOException("Audio upload did not return a valid download URL.")
       }

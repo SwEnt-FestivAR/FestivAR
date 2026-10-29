@@ -35,12 +35,10 @@ import kotlinx.coroutines.flow.StateFlow
  *
  * @property file The local file handle of the audio recording.
  * @property duration Length of the recording.
- * @property url The remote download URL of the audio file once uploaded.
  */
 data class Audio(
     val file: File,
-    val duration: Duration = Duration.ZERO,
-    var url: String = "",
+    val duration: Duration,
 ) {
   val fileName: String
     get() = file.name
@@ -49,7 +47,7 @@ data class Audio(
     get() = file.toUri()
 
   init {
-    require(duration.isZero || duration.isPositive) { "The duration must be non-negative." }
+    require(duration.isPositive) { "The duration must be positive." }
   }
 }
 

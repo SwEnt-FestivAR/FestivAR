@@ -75,7 +75,6 @@ class AudioRepositoryFirebaseTest {
     val url = repository.upload(audio, "task1")
 
     assertEquals(expectedUrl, url)
-    assertEquals(expectedUrl, audio.url)
   }
 
   @Test
