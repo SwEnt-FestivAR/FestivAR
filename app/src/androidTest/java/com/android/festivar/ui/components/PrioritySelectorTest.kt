@@ -9,7 +9,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
 import com.android.festivar.model.task.Priority
 import com.android.festivar.ui.theme.AppTheme
 import org.junit.Assert.assertEquals
@@ -21,10 +20,18 @@ import org.junit.runner.RunWith
 class PrioritySelectorTest {
   @get:Rule val composeTestRule = createComposeRule()
 
-  private fun label(priority: Priority): String =
-      InstrumentationRegistry.getInstrumentation()
-          .targetContext
-          .getString(priorityLabelRes(priority))
+  // The labels the user must see, written out here and not taken from the production mapping
+  // (`priorityLabelRes`), so that a wrong mapping fails these tests.
+  private val labels =
+      mapOf(
+          Priority.NONE to "None",
+          Priority.LOW to "Low",
+          Priority.MEDIUM to "Medium",
+          Priority.HIGH to "High",
+          Priority.URGENT to "Urgent",
+      )
+
+  private fun label(priority: Priority): String = labels.getValue(priority)
 
   private fun setSelector(selected: Priority, onSelect: (Priority) -> Unit = {}) {
     composeTestRule.setContent {
@@ -38,6 +45,8 @@ class PrioritySelectorTest {
   fun showsTheLabelAndEveryPriority() {
     setSelector(Priority.NONE)
 
+    // A new priority must get its label here too.
+    assertEquals(Priority.entries.toSet(), labels.keys)
     composeTestRule.onNodeWithText("PRIORITY").assertIsDisplayed()
     // The chips are in a horizontally scrolling row: the last ones can be off screen on a narrow
     // device, so each one is scrolled into view first.
