@@ -30,6 +30,12 @@ class VoiceNoteUiStateTest {
   }
 
   @Test
+  fun recordIsDisabledWithoutTheMicrophonePermission() {
+    assertTrue(VoiceNoteUiState(canManage = true).recordEnabled)
+    assertFalse(VoiceNoteUiState(canManage = true, micDenied = true).recordEnabled)
+  }
+
+  @Test
   fun sectionIsHiddenForAVolunteerWithoutNote() {
     assertFalse(VoiceNoteUiState().isVisible)
     assertTrue(VoiceNoteUiState(note = note).isVisible)
