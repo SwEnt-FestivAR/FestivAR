@@ -1,10 +1,12 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Gemini <noreply@google.com>
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.navigation
 
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -13,8 +15,10 @@ import androidx.navigation.navArgument
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.task.create.CreateTaskScreen
+import com.android.festivar.ui.task.create.CreateTaskViewModel
 import com.android.festivar.ui.task.details.TaskDetailsScreen
-import com.android.festivar.ui.tasks.TaskOverviewScreen
+import com.android.festivar.ui.task.overview.TaskOverviewScreen
+import com.android.festivar.ui.task.overview.TaskOverviewViewModel
 
 /** The destinations of the task feature. */
 fun NavGraphBuilder.taskGraph(navController: NavHostController, authRepository: AuthRepository) {
@@ -24,10 +28,22 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, authRepository: 
       arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
   ) { backStackEntry ->
     val navigator = TaskOverviewNavigator(navController)
-    val eventId = backStackEntry.arguments?.getString("eventId") ?: ""
+    val firebaseUser = authRepository.currentUser
+    if (firebaseUser == null) {
+      // Nobody is signed in, so there is nobody whose tasks to mark as mine
+      LaunchedEffect(Unit) { navigator.onSignedOut() }
+      return@composable
+    }
+    val eventId =
+        requireNotNull(backStackEntry.arguments?.getString("eventId")) {
+          "eventId argument is required"
+        }
+    require(eventId.isNotBlank()) { "eventId must not be blank" }
     TaskOverviewScreen(
-        eventId = eventId,
-        userId = authRepository.currentUser?.uid ?: "",
+        viewModel =
+            viewModel(key = "$eventId:${firebaseUser.uid}") {
+              TaskOverviewViewModel(eventId, firebaseUser.uid)
+            },
         onBack = navigator.onBack,
         onOpenTask = navigator.onOpenTask,
         onAddTask = { navigator.onAddTask(eventId) },
@@ -42,12 +58,16 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, authRepository: 
         requireNotNull(backStackEntry.arguments?.getString("eventId")) {
           "eventId argument is required"
         }
-    require(eventId.isNotBlank()) { "eventId must not be blank" }
-    val navigator = CreateTaskNavigator(navController)
+    // Asked at each tap on "Create task". Blank when nobody is signed in: the view model then
+    // refuses to save (redirect left to #261).
+    val currentUserId: () -> String = { authRepository.currentUser?.uid.orEmpty() }
+    // Leaving the screen, whether the task was created or not, goes back to the task overview.
+    val leave: () -> Unit = { navController.popBackStack() }
+    // No key needed: the view model is scoped to this back stack entry, which has its own eventId.
     CreateTaskScreen(
-        eventId = eventId,
-        onBack = navigator.onBack,
-        onTaskCreated = navigator.onTaskCreated,
+        viewModel = viewModel { CreateTaskViewModel(eventId, currentUserId) },
+        onBack = leave,
+        onTaskCreated = leave,
     )
   }
   composable(

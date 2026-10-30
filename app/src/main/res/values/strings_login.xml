@@ -1,5 +1,7 @@
 <!-- Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com> -->
 <resources>
+    <string name="login_catchphrase">Every table in the right place.</string>
+    <string name="login_description">Create events and tasks, and keep everything in one place.</string>
     <string name="login_forgot_password">Forgot password?</string>
     <string name="login_or">or</string>
     <string name="login_continue_with_google">Continue with Google</string>

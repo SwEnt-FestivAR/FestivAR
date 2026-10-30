@@ -244,6 +244,9 @@ class SignUpScreenTest {
     override suspend fun signOut(): Result<Unit> =
         Result.failure(UnsupportedOperationException("Not configured"))
 
+    override suspend fun forgotPassword(email: String): Result<Unit> =
+        Result.failure(UnsupportedOperationException("Not configured"))
+
     override suspend fun signInWithEmailAndPassword(
         email: String,
         password: String,
