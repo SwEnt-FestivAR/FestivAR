@@ -6,6 +6,7 @@ package com.android.festivar.ui.event
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
@@ -20,10 +21,12 @@ import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.ui.components.formatDate
+import com.android.festivar.ui.components.formatTime
 import io.mockk.mockk
 import io.mockk.spyk
 import io.mockk.verify
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
@@ -39,6 +42,7 @@ class CreateEventScreenTest {
 
   @get:Rule val composeTestRule = createComposeRule()
   private lateinit var viewModel: CreateEventViewModel
+  private val DEFAULT_PICKED_TIME = LocalTime.of(9, 0)
 
   private class GatedRepository(val gate: CompletableDeferred<Unit>) :
       EventsRepository by EventsRepositoryLocal() {
@@ -103,6 +107,16 @@ class CreateEventScreenTest {
     composeTestRule.onNodeWithText(expectedStartDate).assertIsDisplayed()
     composeTestRule.onNodeWithText(expectedEndDate).assertIsDisplayed()
 
+    selectDefaultTime(CreateEventScreenTestTags.START_TIME_FIELD)
+    selectDefaultTime(CreateEventScreenTestTags.END_TIME_FIELD)
+
+    composeTestRule
+        .onNodeWithTag(CreateEventScreenTestTags.START_TIME_FIELD)
+        .assertTextContains(formatTime(DEFAULT_PICKED_TIME))
+    composeTestRule
+        .onNodeWithTag(CreateEventScreenTestTags.END_TIME_FIELD)
+        .assertTextContains(formatTime(DEFAULT_PICKED_TIME))
+
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsEnabled()
   }
 
@@ -115,6 +129,14 @@ class CreateEventScreenTest {
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAME_FIELD).performTextInput("Festival")
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAME_FIELD).performTextClearance()
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAME_ERROR).assertIsDisplayed()
+
+    viewModel.updateStartTime(LocalTime.of(9, 0))
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.START_DATE_ERROR).assertIsDisplayed()
+
+    viewModel.updateEndTime(LocalTime.of(10, 0))
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.END_DATE_ERROR).assertIsDisplayed()
   }
 
   /** Red if cancelling a date picker changes the associated field. */
@@ -327,6 +349,11 @@ class CreateEventScreenTest {
               .format(date)
       composeTestRule.onNodeWithText(dateDescription, substring = true).performClick()
     }
+    composeTestRule.onNodeWithText("OK").performClick()
+  }
+
+  private fun selectDefaultTime(tag: String) {
+    composeTestRule.onNodeWithTag(tag).performClick()
     composeTestRule.onNodeWithText("OK").performClick()
   }
 

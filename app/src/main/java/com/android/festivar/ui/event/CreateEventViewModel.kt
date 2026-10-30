@@ -14,10 +14,14 @@ import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryProvider
 import com.android.festivar.ui.components.DateTimeField
+import com.android.festivar.ui.components.DateTimeRange
 import com.android.festivar.ui.components.END_OF_DAY
 import com.android.festivar.ui.components.FieldError
 import com.android.festivar.ui.components.START_OF_DAY
+import com.android.festivar.ui.components.endDateError
+import com.android.festivar.ui.components.startDateError
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlinx.coroutines.CancellationException
@@ -40,39 +44,30 @@ data class CreateEventUIState(
     val nameEdited: Boolean = false,
     val startDate: LocalDate? = null,
     val endDate: LocalDate? = null,
+    val startTime: LocalTime? = null,
+    val endTime: LocalTime? = null,
     val venue: String = "",
     val notes: String = "",
     val openPicker: DateTimeField? = null,
     val isSaving: Boolean = false,
     val createdEventId: String? = null,
     val zone: ZoneId = ZoneId.systemDefault(),
-    val now: ZonedDateTime = ZonedDateTime.now(zone),
     @StringRes val errorMsg: Int? = null,
 ) {
   val startDateTime: ZonedDateTime?
-    get() = startDate?.atTime(START_OF_DAY)?.atZone(zone)
+    get() = startDate?.atTime(startTime ?: START_OF_DAY)?.atZone(zone)
 
   val endDateTime: ZonedDateTime?
-    get() = endDate?.atTime(END_OF_DAY)?.atZone(zone)
+    get() = endDate?.atTime(endTime ?: END_OF_DAY)?.atZone(zone)
 
   val nameError: FieldError?
     get() = if (nameEdited && name.isBlank()) FieldError.EMPTY_EVENT_NAME else null
 
-  // Will be implemented when time field logic is added.
   val startDateError: FieldError?
-    get() = null
+    get() = startDateError(startDate, startTime)
 
   val endDateError: FieldError?
-    get() =
-        if (endDateTime == null) {
-          null
-        } else
-            when {
-              startDateTime != null && !endDateTime!!.isAfter(startDateTime) ->
-                  FieldError.END_BEFORE_START
-              endDateTime!!.isBefore(now) -> FieldError.OUTDATED
-              else -> null
-            }
+    get() = endDateError(DateTimeRange(startDate, startTime, endDate, endTime), zone)
 
   val isValid: Boolean
     get() =
@@ -131,6 +126,10 @@ class CreateEventViewModel(
 
   fun updateEndDate(newDate: LocalDate) = edit { it.copy(endDate = newDate) }
 
+  fun updateStartTime(time: LocalTime) = edit { it.copy(startTime = time) }
+
+  fun updateEndTime(time: LocalTime) = edit { it.copy(endTime = time) }
+
   fun updateVenue(newVenue: String) = edit { it.copy(venue = newVenue) }
 
   fun updateNotes(newNotes: String) = edit { it.copy(notes = newNotes) }
@@ -142,6 +141,16 @@ class CreateEventViewModel(
     when (_uiState.value.openPicker) {
       DateTimeField.START_DATE -> updateStartDate(date)
       DateTimeField.END_DATE -> updateEndDate(date)
+      else -> Unit
+    }
+    showPicker(null)
+  }
+
+  /** Sets [time] in the field whose picker is open, then closes the picker. */
+  fun pickTime(time: LocalTime) {
+    when (_uiState.value.openPicker) {
+      DateTimeField.START_TIME -> updateStartTime(time)
+      DateTimeField.END_TIME -> updateEndTime(time)
       else -> Unit
     }
     showPicker(null)

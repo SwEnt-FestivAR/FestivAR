@@ -14,6 +14,7 @@ import com.android.festivar.ui.components.END_OF_DAY
 import com.android.festivar.ui.components.FieldError
 import com.android.festivar.ui.components.START_OF_DAY
 import java.time.LocalDate
+import java.time.LocalTime
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -37,6 +38,8 @@ class CreateEventViewModelTest {
 
   private val startDate = LocalDate.now()
   private val endDate = LocalDate.now().plusDays(1)
+  private val startTime = LocalTime.MIDNIGHT
+  private val endTime = LocalTime.of(23, 0)
 
   @Before
   fun setUp() {
@@ -54,6 +57,8 @@ class CreateEventViewModelTest {
     assertEquals("Summer festival", state.name)
     assertEquals(startDate, state.startDate)
     assertEquals(endDate, state.endDate)
+    assertEquals(startTime, state.startTime)
+    assertEquals(endTime, state.endTime)
     assertEquals("Main square", state.venue)
     assertEquals("Bring the stage equipment", state.notes)
   }
@@ -74,6 +79,20 @@ class CreateEventViewModelTest {
     viewModel.pickDate(endDate)
     assertEquals(endDate, viewModel.uiState.value.endDate)
     assertNull(viewModel.uiState.value.openPicker)
+
+    viewModel.showPicker(DateTimeField.START_TIME)
+    assertEquals(DateTimeField.START_TIME, viewModel.uiState.value.openPicker)
+
+    viewModel.pickTime(startTime)
+    assertEquals(startTime, viewModel.uiState.value.startTime)
+    assertNull(viewModel.uiState.value.openPicker)
+
+    viewModel.showPicker(DateTimeField.END_TIME)
+    assertEquals(DateTimeField.END_TIME, viewModel.uiState.value.openPicker)
+
+    viewModel.pickTime(endTime)
+    assertEquals(endTime, viewModel.uiState.value.endTime)
+    assertNull(viewModel.uiState.value.openPicker)
   }
 
   /** Red if picking a date without a date picker leaves an unintended date behind. */
@@ -85,6 +104,18 @@ class CreateEventViewModelTest {
 
     assertNull(viewModel.uiState.value.startDate)
     assertNull(viewModel.uiState.value.endDate)
+    assertNull(viewModel.uiState.value.openPicker)
+  }
+
+  /** Red if picking a time without a time picker writes to an unintended field. */
+  @Test
+  fun pickTimeWithoutTimePickerOnlyClosesThePicker() {
+    viewModel.showPicker(DateTimeField.START_DATE)
+
+    viewModel.pickTime(startTime)
+
+    assertNull(viewModel.uiState.value.startTime)
+    assertNull(viewModel.uiState.value.endTime)
     assertNull(viewModel.uiState.value.openPicker)
   }
 
@@ -170,6 +201,21 @@ class CreateEventViewModelTest {
     val state = viewModel.uiState.value
     assertEquals(START_OF_DAY, state.startDateTime?.toLocalTime())
     assertEquals(END_OF_DAY, state.endDateTime?.toLocalTime())
+  }
+
+  /** Red if explicitly selected start and end times are ignored by the computed date-times. */
+  @Test
+  fun dateTimesUseSelectedTimesWhenTimesAreSet() {
+    val selectedStartTime = LocalTime.of(14, 30)
+    val selectedEndTime = LocalTime.of(18, 0)
+    viewModel.updateStartDate(startDate)
+    viewModel.updateEndDate(endDate)
+    viewModel.updateStartTime(selectedStartTime)
+    viewModel.updateEndTime(selectedEndTime)
+
+    val state = viewModel.uiState.value
+    assertEquals(selectedStartTime, state.startDateTime?.toLocalTime())
+    assertEquals(selectedEndTime, state.endDateTime?.toLocalTime())
   }
 
   /** Red if an invalid, saving, or already-created event can be submitted. */
@@ -317,6 +363,8 @@ class CreateEventViewModelTest {
     assertEquals("Summer festival", failingViewModel.uiState.value.name)
     assertEquals(startDate, failingViewModel.uiState.value.startDate)
     assertEquals(endDate, failingViewModel.uiState.value.endDate)
+    assertEquals(startTime, failingViewModel.uiState.value.startTime)
+    assertEquals(endTime, failingViewModel.uiState.value.endTime)
     assertEquals("Main square", failingViewModel.uiState.value.venue)
     assertEquals("Bring the stage equipment", failingViewModel.uiState.value.notes)
   }
@@ -421,6 +469,8 @@ class CreateEventViewModelTest {
     viewModel.updateName("Summer festival")
     viewModel.updateStartDate(startDate)
     viewModel.updateEndDate(endDate)
+    viewModel.updateStartTime(startTime)
+    viewModel.updateEndTime(endTime)
     viewModel.updateVenue("Main square")
     viewModel.updateNotes("Bring the stage equipment")
   }
