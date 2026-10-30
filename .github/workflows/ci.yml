@@ -1,5 +1,4 @@
 # Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
-# Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 name: CI - Test Runner
 
 # Run the workflow when commits are pushed on main or when a PR is modified
@@ -106,7 +105,7 @@ jobs:
 
       - name: Start Firebase Emulator
         run: |
-          firebase emulators:start --only auth,firestore &
+          firebase emulators:start --only auth,firestore,storage &
           sleep 10  # Give emulator time to start
 
       - name: run tests

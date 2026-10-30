@@ -1,5 +1,6 @@
 // Written with the help of an AI coding assistant and reviewed line by line by the author.
-package com.android.festivar.ui.tasks
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+package com.android.festivar.ui.task.overview
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -9,8 +10,8 @@ import com.android.festivar.model.task.TasksRepositoryProvider
 import java.time.Clock
 import java.time.Duration
 import java.time.LocalDate
-import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.ZonedDateTime
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -71,8 +72,10 @@ data class OverviewSectionUi(
  *
  * @property counts how many tasks each chip holds, before the search applies.
  * @property sections the visible rows, day by day and then by part of the day, in start order.
- * @property isLoading true while a load runs, the first one and every
- *   [TaskOverviewViewModel.refresh].
+ * @property isLoading true until the first load lands, and again while every
+ *   [TaskOverviewViewModel.refresh] runs.
+ * @property noResultsFor the trimmed query when it is not blank and no task matches it, so the
+ *   screen names the search instead of the empty line; null otherwise.
  */
 data class TaskOverviewUiState(
     val filter: OverviewFilter = OverviewFilter.OPEN,
@@ -82,6 +85,7 @@ data class TaskOverviewUiState(
     val sections: List<OverviewSectionUi> = emptyList(),
     val isLoading: Boolean = true,
     val errorMsg: String? = null,
+    val noResultsFor: String? = null,
 )
 
 /**
@@ -93,12 +97,17 @@ data class TaskOverviewUiState(
  * NOW group follows the clock on its own while something collects [uiState], and only at the
  * instants a task changes group, never on a fixed timer.
  *
- * @param userId the current user, or null when nobody is signed in (MINE is then empty).
+ * Nothing loads until [refresh] is called: the screen calls it on every resume, the first one
+ * included, so a load at construction would fetch the tasks twice on open.
+ *
+ * @param userId the signed-in user, whose tasks MINE holds; the nav graph sends a signed-out user
+ *   to the login before building this ViewModel.
+ * @param repository where the event's tasks are read: the app's one unless a test passes its own.
  * @param clock decides what "now" is, so the NOW group can be tested.
  */
 class TaskOverviewViewModel(
     private val eventId: String,
-    private val userId: String? = null,
+    private val userId: String,
     private val repository: TasksRepository = TasksRepositoryProvider.repository,
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
@@ -112,7 +121,6 @@ class TaskOverviewViewModel(
   private val tasksChanged = Channel<Unit>(Channel.CONFLATED)
 
   init {
-    refresh()
     viewModelScope.launch {
       _uiState.subscriptionCount
           .map { it > 0 }
@@ -167,7 +175,7 @@ class TaskOverviewViewModel(
   private suspend fun followTheClock() {
     _uiState.update { derive(it) }
     while (true) {
-      val now = LocalDateTime.now(clock)
+      val now = ZonedDateTime.now(clock)
       val boundary = nextBoundary(now)
       if (boundary == null) {
         tasksChanged.receive()
@@ -183,20 +191,19 @@ class TaskOverviewViewModel(
    * The next instant after [now] at which some task changes group: it comes within the hour, it
    * ends, or the day turns. Null when no unfinished task has a start, so nothing ever moves.
    */
-  private fun nextBoundary(now: LocalDateTime): LocalDateTime? {
+  private fun nextBoundary(now: ZonedDateTime): ZonedDateTime? {
     val timed = tasks.filter { !it.completed && it.startTime != null }
     if (timed.isEmpty()) return null
-    val midnight = now.toLocalDate().plusDays(1).atStartOfDay()
+    val midnight = now.toLocalDate().plusDays(1).atStartOfDay(now.zone)
     return timed
         .flatMap { listOf(it.startTime!!.minusHours(1), endOf(it)) }
         .filter { it.isAfter(now) }
         .plus(midnight)
-        .min()
+        .minBy { it.toInstant() }
   }
 
-  /** Whether the signed-in user holds [task]; always false with nobody signed in. */
-  private fun isMine(task: Task): Boolean =
-      userId != null && task.assignees.any { it.uid == userId }
+  /** Whether the signed-in user holds [task]. */
+  private fun isMine(task: Task): Boolean = task.assignees.any { it.uid == userId }
 
   /** The one place that says when a task has no place left; OPEN and the full badge both use it. */
   private fun isFull(task: Task): Boolean = task.assignees.size >= task.maxAssign
@@ -217,7 +224,7 @@ class TaskOverviewViewModel(
    */
   private fun derive(state: TaskOverviewUiState): TaskOverviewUiState {
     val query = state.query.trim()
-    val now = LocalDateTime.now(clock)
+    val now = ZonedDateTime.now(clock)
     val sections =
         tasks
             .filter {
@@ -233,7 +240,8 @@ class TaskOverviewViewModel(
             .map { (section, rows) ->
               OverviewSectionUi(section.second, rows.map { row(it) }, section.first)
             }
-    return state.copy(sections = sections, counts = counts())
+    val noResultsFor = query.takeIf { it.isNotEmpty() && sections.isEmpty() }
+    return state.copy(sections = sections, counts = counts(), noResultsFor = noResultsFor)
   }
 
   /** Every chip's count in one pass over the tasks. */
@@ -254,12 +262,15 @@ class TaskOverviewViewModel(
   }
 
   /** When a started task stops being under way: its end, or midnight of its start day. */
-  private fun endOf(task: Task): LocalDateTime =
-      task.endTime ?: task.startTime!!.toLocalDate().plusDays(1).atStartOfDay()
+  private fun endOf(task: Task): ZonedDateTime {
+    val start = task.startTime!!.withZoneSameInstant(clock.zone)
+    return task.endTime ?: start.toLocalDate().plusDays(1).atStartOfDay(start.zone)
+  }
 
   /** Which day a task's section sits under, then which part of that day. */
-  private fun sectionOf(task: Task, now: LocalDateTime): Section {
-    val start = task.startTime ?: return null to OverviewGroup.ANYTIME
+  private fun sectionOf(task: Task, now: ZonedDateTime): Section {
+    val start =
+        task.startTime?.withZoneSameInstant(now.zone) ?: return null to OverviewGroup.ANYTIME
     val startsWithinTheHour = !start.isBefore(now) && !start.isAfter(now.plusHours(1))
     val underWay = !start.isAfter(now) && now.isBefore(endOf(task))
     return when {
@@ -277,7 +288,7 @@ class TaskOverviewViewModel(
           location = task.location,
           peopleNeeded = task.maxAssign,
           estimatedMinutes = task.estimatedTime?.toMinutes()?.toInt(),
-          startTime = task.startTime?.toLocalTime(),
+          startTime = task.startTime?.withZoneSameInstant(clock.zone)?.toLocalTime(),
           assigned = task.assignees.size,
           isMine = isMine(task),
           isFull = isFull(task),

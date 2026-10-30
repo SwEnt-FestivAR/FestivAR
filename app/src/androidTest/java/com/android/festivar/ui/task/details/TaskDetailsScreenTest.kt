@@ -35,7 +35,7 @@ class TaskDetailsScreenTest {
   @get:Rule val composeTestRule = createComposeRule()
 
   private val sami = User("u1", "Sami", "Kabbaj")
-  private val task = Task("t1", "e1", "Run power to stage", maxAssign = 1)
+  private val task = Task("t1", "e1", "Run power to stage", maxAssign = 1, ownerId = "owner-1")
 
   private lateinit var original: TasksRepository
   private lateinit var repository: TasksRepositoryLocal
