@@ -160,6 +160,7 @@ dependencies {
   implementation(libs.credentials)
   implementation(libs.credentials.play.services.auth)
   implementation(libs.firebase.firestore)
+  implementation(libs.firebase.storage)
   implementation(libs.googleid)
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.core.splashscreen)

@@ -22,14 +22,19 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.android.festivar.R
 import com.android.festivar.ui.theme.AppTheme
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
 import java.time.ZoneOffset
+import java.time.ZonedDateTime
 
 /** The date picker works in UTC milliseconds; this is the value that shows [this] date. */
 internal fun LocalDate.toPickerMillis(): Long =
@@ -58,12 +63,14 @@ fun FestivarDatePickerDialog(
       onDismissRequest = onDismiss,
       confirmButton = {
         DialogButton(
-            text = "OK",
+            text = stringResource(R.string.action_ok),
             onClick = { state.selectedDateMillis?.let { onConfirm(it.toPickerDate()) } },
             enabled = state.selectedDateMillis != null,
         )
       },
-      dismissButton = { DialogButton(text = "Cancel", onClick = onDismiss) },
+      dismissButton = {
+        DialogButton(text = stringResource(R.string.action_cancel), onClick = onDismiss)
+      },
   ) {
     DatePicker(state = state, colors = readableDatePickerColors())
   }
@@ -94,11 +101,13 @@ fun FestivarTimePickerDialog(
       onDismissRequest = onDismiss,
       confirmButton = {
         DialogButton(
-            text = "OK",
+            text = stringResource(R.string.action_ok),
             onClick = { onConfirm(LocalTime.of(state.hour, state.minute)) },
         )
       },
-      dismissButton = { DialogButton(text = "Cancel", onClick = onDismiss) },
+      dismissButton = {
+        DialogButton(text = stringResource(R.string.action_cancel), onClick = onDismiss)
+      },
       text = { TimePicker(state = state, colors = readableTimePickerColors()) },
   )
 }
@@ -118,6 +127,12 @@ data class DateTimeRange(
     val endDate: LocalDate? = null,
     val endTime: LocalTime? = null,
 )
+
+/** Default start time when a date is selected without an explicit time. */
+val START_OF_DAY: LocalTime = LocalTime.MIDNIGHT
+
+/** Default end time when a date is selected without an explicit time. */
+val END_OF_DAY: LocalTime = LocalTime.of(23, 59)
 
 /**
  * Shows the picker dialog of [field], or nothing when [field] is `null`. The dialogs open on the
@@ -194,22 +209,60 @@ fun FestivarDateTimeRow(
 }
 
 /**
+ * Validates the start date/time fields.
+ *
+ * A start time may only be selected after a start date; selecting a time without a date reports
+ * [FieldError.MISSING_DATE]. All other combinations are valid for this field.
+ */
+fun startDateError(startDate: LocalDate?, startTime: LocalTime?): FieldError? =
+    if (startTime != null && startDate == null) FieldError.MISSING_DATE else null
+
+/**
+ * Validates the end date/time fields against the start and the current time.
+ *
+ * A selected end time requires an end date. When both dates are present, missing start and end
+ * times default to [START_OF_DAY] and [END_OF_DAY]. The end must be strictly after the start, and
+ * it must not be in the past. A start in the past is allowed as long as the end is still in the
+ * future.
+ */
+fun endDateError(
+    range: DateTimeRange,
+    zone: ZoneId = ZoneId.systemDefault(),
+    now: ZonedDateTime = ZonedDateTime.now(),
+): FieldError? {
+  if (range.endTime != null && range.endDate == null) return FieldError.MISSING_DATE
+
+  val start = range.startDate?.atTime(range.startTime ?: START_OF_DAY)?.atZone(zone)
+  val end = range.endDate?.atTime(range.endTime ?: END_OF_DAY)?.atZone(zone)
+
+  return if (end != null) {
+    when {
+      start != null && !end.isAfter(start) -> FieldError.END_BEFORE_START
+      end.isBefore(now) -> FieldError.OUTDATED
+      else -> null
+    }
+  } else {
+    null
+  }
+}
+
+/**
  * Text button of the dialogs. Material draws these in `primary`, which is the lime of the app and
  * cannot be read on the dialog background, so the dark green of the theme is used instead.
  */
 @Composable
-private fun DialogButton(
+internal fun DialogButton(
     text: String,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    contentColor: Color = MaterialTheme.colorScheme.onPrimaryContainer,
 ) {
   TextButton(
       onClick = onClick,
+      modifier = modifier,
       enabled = enabled,
-      colors =
-          ButtonDefaults.textButtonColors(
-              contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-          ),
+      colors = ButtonDefaults.textButtonColors(contentColor = contentColor),
   ) {
     Text(text)
   }

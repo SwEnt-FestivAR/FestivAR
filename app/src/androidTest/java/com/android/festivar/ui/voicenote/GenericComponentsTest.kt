@@ -43,16 +43,6 @@ class GenericComponentsTest {
   }
 
   @Test
-  fun noticeSnackbar_showsTheMessageAndItsActionCallsTheCallback() {
-    show { NoticeSnackbar("Voice note not sent.", "Retry", onAction = { events += "action" }) }
-
-    text("Voice note not sent.").assertIsDisplayed()
-    text("Retry").performClick()
-
-    assertEquals(listOf("action"), events)
-  }
-
-  @Test
   fun infoNote_showsTheMessageWithoutAction() {
     show { InfoNote("Microphone is off.") }
 
@@ -109,17 +99,15 @@ class GenericComponentsTest {
   // tests and not only in Android Studio.
 
   @Test
-  fun previews_showTheBarTheNoticeAndTheNote() {
+  fun previews_showTheBarAndTheNote() {
     composeTestRule.setContent {
       Column {
         FixedBottomBarPreview()
-        NoticeSnackbarPreview()
         InfoNotePreview()
       }
     }
 
     text("Hold to record").assertIsDisplayed()
-    text("Voice note not sent. Check your connection.").assertIsDisplayed()
     text("Open settings").assertIsDisplayed()
   }
 

@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.event
 
 import androidx.compose.foundation.background
@@ -45,7 +46,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
@@ -53,7 +53,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.festivar.R
 import com.android.festivar.model.event.JOIN_CODE_LENGTH
+import com.android.festivar.ui.components.formatDate
+import com.android.festivar.ui.components.formatTime
 import com.android.festivar.ui.theme.AppTheme
+import java.time.ZoneId
+import java.time.ZonedDateTime
 
 /** Test tags of the join event screen. */
 object JoinEventScreenTestTags {
@@ -71,6 +75,9 @@ object JoinEventScreenTestTags {
   fun resultName(eventId: String) = "joinEventResultName$eventId"
 
   fun resultLine(eventId: String) = "joinEventResultLine$eventId"
+
+  /** The line telling the person they already belong to the event [eventId]. */
+  fun alreadyMember(eventId: String) = "joinEventAlreadyMember$eventId"
 
   fun join(eventId: String) = "joinEventJoin$eventId"
 }
@@ -112,7 +119,7 @@ fun JoinEventScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun JoinEventContent(
-    state: JoinEventUiState,
+    state: JoinEventUIState,
     onBack: () -> Unit,
     onCode: (String) -> Unit,
     onJoin: (eventId: String) -> Unit,
@@ -123,8 +130,8 @@ fun JoinEventContent(
   val keyboard = LocalSoftwareKeyboardController.current
   // A failed join leaves the field disabled then enabled again, which drops its focus and closes
   // the keyboard; give both back so the person can retry without tapping a cell.
-  LaunchedEffect(state.isJoining, state.errorMsg) {
-    if (!state.isJoining && state.errorMsg != null) {
+  LaunchedEffect(state.isJoining, state.errorRes) {
+    if (!state.isJoining && state.errorRes != null) {
       focus.requestFocus()
       keyboard?.show()
     }
@@ -161,7 +168,6 @@ fun JoinEventContent(
       Text(
           text = stringResource(R.string.join_event_title),
           style = MaterialTheme.typography.headlineLarge,
-          fontWeight = FontWeight.Bold,
           modifier = Modifier.testTag(JoinEventScreenTestTags.TITLE),
       )
       Spacer(Modifier.height(8.dp))
@@ -247,10 +253,10 @@ fun JoinEventContent(
             modifier = Modifier.testTag(JoinEventScreenTestTags.NOT_FOUND),
         )
       }
-      state.errorMsg?.let {
+      state.errorRes?.let {
         Spacer(Modifier.height(8.dp))
         Text(
-            it,
+            stringResource(it),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error,
             modifier = Modifier.testTag(JoinEventScreenTestTags.ERROR_MESSAGE),
@@ -260,7 +266,10 @@ fun JoinEventContent(
   }
 }
 
-/** One matched event: its name, start and member count, and the button that joins it. */
+/**
+ * One matched event: its name, start and member count, and the button that joins it. When the
+ * person already belongs to it, a line says so and the button opens the event instead.
+ */
 @Composable
 private fun FoundCard(found: FoundEventUi, enabled: Boolean, onJoin: () -> Unit) {
   Column(
@@ -277,13 +286,22 @@ private fun FoundCard(found: FoundEventUi, enabled: Boolean, onJoin: () -> Unit)
     Text(
         stringResource(
             R.string.join_event_found_line,
-            found.dateLine,
+            formatDate(found.start.toLocalDate()),
+            formatTime(found.start.toLocalTime()),
             pluralStringResource(R.plurals.join_event_members, found.members, found.members),
         ),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.testTag(JoinEventScreenTestTags.resultLine(found.id)),
     )
+    if (found.isMember) {
+      Text(
+          stringResource(R.string.join_event_already_member),
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          modifier = Modifier.testTag(JoinEventScreenTestTags.alreadyMember(found.id)),
+      )
+    }
     Spacer(Modifier.height(12.dp))
     Button(
         onClick = onJoin,
@@ -292,7 +310,8 @@ private fun FoundCard(found: FoundEventUi, enabled: Boolean, onJoin: () -> Unit)
             Modifier.fillMaxWidth().height(48.dp).testTag(JoinEventScreenTestTags.join(found.id)),
         shape = RoundedCornerShape(8.dp),
     ) {
-      Text(text = stringResource(R.string.join_event_join), fontWeight = FontWeight.Bold)
+      val label = if (found.isMember) R.string.join_event_open else R.string.join_event_join
+      Text(text = stringResource(label))
     }
   }
 }
@@ -300,15 +319,16 @@ private fun FoundCard(found: FoundEventUi, enabled: Boolean, onJoin: () -> Unit)
 @Preview
 @Composable
 private fun JoinEventContentPreview() {
+  val previewStart = ZonedDateTime.of(2026, 10, 17, 10, 0, 0, 0, ZoneId.of("Europe/Zurich"))
   AppTheme {
     JoinEventContent(
         state =
-            JoinEventUiState(
+            JoinEventUIState(
                 code = "VIDY26",
                 matches =
                     listOf(
-                        FoundEventUi("e1", "Vidy Festival", "Sat 17 Oct", 12),
-                        FoundEventUi("e2", "Vidy Afterparty", "Sat 17 Oct", 3),
+                        FoundEventUi("e1", "Vidy Festival", previewStart, 12),
+                        FoundEventUi("e2", "Vidy Afterparty", previewStart, 3, isMember = true),
                     ),
             ),
         onBack = {},
