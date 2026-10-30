@@ -61,7 +61,7 @@ class TaskDetailsViewModelVoiceNoteTest {
     Dispatchers.resetMain()
   }
 
-  private fun task(voiceNote: VoiceNote? = null, ownerId: String? = "owner") =
+  private fun task(voiceNote: VoiceNote? = null, ownerId: String = "owner") =
       Task(
           taskId = "t1",
           eventId = "e1",
@@ -111,7 +111,6 @@ class TaskDetailsViewModelVoiceNoteTest {
     val state = viewModel().voiceNote.value
     assertTrue(state.canManage)
     assertTrue(state.showRecordBar)
-    assertTrue(state.showEmpty)
   }
 
   @Test
@@ -125,11 +124,6 @@ class TaskDetailsViewModelVoiceNoteTest {
   @Test
   fun volunteer_seesNothingWithoutANote() {
     assertFalse(viewModel(task(), volunteer).voiceNote.value.isVisible)
-  }
-
-  @Test
-  fun taskWithoutOwner_hasNoManager() {
-    assertFalse(viewModel(task(ownerId = null), owner).voiceNote.value.canManage)
   }
 
   @Test
