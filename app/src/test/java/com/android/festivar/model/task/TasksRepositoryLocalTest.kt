@@ -1,8 +1,10 @@
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.task
 
 import java.time.Duration
-import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertTrue
 import junit.framework.TestCase.fail
@@ -17,12 +19,13 @@ class TasksRepositoryLocalTest {
 
   private val task =
       Task(
+          ownerId = "owner-1",
           taskId = "1",
           eventId = "event1",
           title = "Task",
           description = "Do something",
-          startTime = LocalDateTime.of(2026, 7, 1, 14, 0),
-          endTime = LocalDateTime.of(2026, 7, 1, 16, 0),
+          startTime = ZonedDateTime.of(2026, 7, 1, 14, 0, 0, 0, ZoneId.of("Europe/Zurich")),
+          endTime = ZonedDateTime.of(2026, 7, 1, 16, 0, 0, 0, ZoneId.of("Europe/Zurich")),
           estimatedTime = Duration.ofHours(1),
           location = "EPFL",
           priority = Priority.MEDIUM,

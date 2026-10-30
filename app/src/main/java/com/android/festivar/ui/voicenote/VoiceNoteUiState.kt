@@ -46,10 +46,6 @@ data class VoiceNoteUiState(
   val elapsed: Duration
     get() = (recorder as? RecorderState.Recording)?.elapsed ?: Duration.ZERO
 
-  /** Whether the record button works: it does not without the microphone permission. */
-  val recordEnabled: Boolean
-    get() = !micDenied
-
   /** Whether the note of the task is playing. */
   val isPlaying: Boolean
     get() = note != null && (player as? PlayerState.Playing)?.audioUrl == note.audioUrl
@@ -57,10 +53,6 @@ data class VoiceNoteUiState(
   /** Whether the note of the task could not be played. */
   val playbackFailed: Boolean
     get() = note != null && (player as? PlayerState.Failed)?.audioUrl == note.audioUrl
-
-  /** Whether the section shows the owner the empty state. */
-  val showEmpty: Boolean
-    get() = canManage && note == null
 
   /** Whether a notice (error or information) has to be shown above the record bar. */
   val hasNotices: Boolean
