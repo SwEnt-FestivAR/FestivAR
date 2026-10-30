@@ -1,13 +1,11 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
-package com.android.festivar.ui.voicenote
+package com.android.festivar.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -23,30 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.ui.theme.AppTheme
-
-/*
- * Generic building blocks with no voice note logic inside: only texts and callbacks. They are
- * meant to be promoted to ui/components when another screen needs them.
- */
-
-private val ButtonHeight = 52.dp
-
-/**
- * A bar fixed to the bottom of a screen, above the system navigation bar, holding [content]. It
- * keeps the colour of the page, as the "composer (fixed)" frames of the S3 design do: a stack of
- * the record bar and the notices above it.
- */
-@Composable
-fun FixedBottomBar(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-  Surface(modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.background) {
-    Column(
-        Modifier.navigationBarsPadding()
-            .padding(start = 20.dp, top = 8.dp, end = 20.dp, bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        content = content,
-    )
-  }
-}
 
 /**
  * An information note: [message] on a muted card with an info icon, and an optional [action] under
@@ -89,17 +63,6 @@ fun InfoNote(
 
 @Preview(showBackground = true)
 @Composable
-internal fun FixedBottomBarPreview() {
-  AppTheme {
-    FixedBottomBar {
-      Text("Hold to record")
-      Text("Give it back")
-    }
-  }
-}
-
-@Preview(showBackground = true)
-@Composable
 internal fun InfoNotePreview() {
   AppTheme {
     InfoNote(
@@ -107,7 +70,7 @@ internal fun InfoNotePreview() {
         action = {
           OutlinedButton(
               onClick = {},
-              modifier = Modifier.fillMaxWidth().height(ButtonHeight),
+              modifier = Modifier.fillMaxWidth().height(52.dp),
               shape = MaterialTheme.shapes.medium,
           ) {
             Text("Open settings")
