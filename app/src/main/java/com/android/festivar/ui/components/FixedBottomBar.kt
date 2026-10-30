@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,13 +34,19 @@ fun FixedBottomBar(modifier: Modifier = Modifier, content: @Composable ColumnSco
   }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, showSystemUi = true)
 @Composable
 internal fun FixedBottomBarPreview() {
   AppTheme {
-    FixedBottomBar {
-      Text("Hold to record")
-      Text("Give it back")
+    Scaffold(
+        bottomBar = {
+          FixedBottomBar {
+            Text("Hold to record")
+            Text("Give it back")
+          }
+        }
+    ) { padding ->
+      Text("Task details", Modifier.padding(padding).padding(20.dp))
     }
   }
 }
