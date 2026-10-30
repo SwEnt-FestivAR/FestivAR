@@ -30,6 +30,8 @@
     <string name="field_error_end_before_start">Ends before it starts</string>
     <string name="field_error_invalid_estimated_time">Enter at least 1 minute</string>
     <string name="field_error_empty_event_name">Give the event a name</string>
+    <string name="field_error_empty_announcement_title">Give the announcement a title</string>
+    <string name="field_error_empty_announcement_content">Write the announcement</string>
     <string name="field_error_outdated">Ends in the past</string>
     <string name="priority_none">None</string>
     <string name="priority_low">Low</string>
