@@ -1,0 +1,4 @@
+<!-- Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com> -->
+<resources>
+    <string name="create_announcement_error_save_failed">Unable to publish the announcement.</string>
+</resources>
