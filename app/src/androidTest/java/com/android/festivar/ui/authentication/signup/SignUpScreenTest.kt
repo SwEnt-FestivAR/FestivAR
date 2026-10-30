@@ -15,6 +15,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.credentials.Credential
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.ui.components.ErrorSnackbarTestTags
 import com.google.firebase.auth.FirebaseUser
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
@@ -94,7 +95,7 @@ class SignUpScreenTest {
     composeTestRule.onNodeWithTag(SignUpScreenTestTags.SIGNUP_BUTTON).performClick()
 
     composeTestRule.waitForIdle()
-    composeTestRule.onNodeWithTag(SignUpScreenTestTags.ERROR_MESSAGE).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(ErrorSnackbarTestTags.ERROR_MESSAGE).assertIsDisplayed()
     composeTestRule.onNodeWithText(errorMessage).assertIsDisplayed()
     composeTestRule.onNodeWithText("OK").performClick()
     composeTestRule.waitForIdle()

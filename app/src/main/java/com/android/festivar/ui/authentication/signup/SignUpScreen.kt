@@ -57,7 +57,6 @@ import com.android.festivar.ui.theme.AppTheme
 import com.google.firebase.auth.FirebaseUser
 
 object SignUpScreenTestTags {
-  const val ERROR_MESSAGE: String = "errorMessage"
   const val CREATE_ACC_TITLE = "createAccTitle"
   const val EMAIL_FIELD = "emailField"
   const val PASS_FIELD = "passField"
