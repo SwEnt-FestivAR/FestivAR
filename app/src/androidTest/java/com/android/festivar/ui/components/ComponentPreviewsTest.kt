@@ -74,4 +74,22 @@ class ComponentPreviewsTest {
     composeTestRule.onNodeWithText("Discard").assertIsDisplayed()
     composeTestRule.onNodeWithText("Keep editing").assertIsDisplayed()
   }
+
+  // The info note preview renders without crashing and shows the note and its action.
+  @Test
+  fun infoNotePreview_showsTheNoteAndItsAction() {
+    composeTestRule.setContent { InfoNotePreview() }
+
+    composeTestRule.onNodeWithText("Open settings").assertIsDisplayed()
+  }
+
+  // The notice snackbar preview renders without crashing and shows the message.
+  @Test
+  fun noticeSnackbarPreview_showsTheNotice() {
+    composeTestRule.setContent { NoticeSnackbarPreview() }
+
+    composeTestRule
+        .onNodeWithText("Voice note not sent. Check your connection.")
+        .assertIsDisplayed()
+  }
 }
