@@ -8,6 +8,7 @@ package com.android.festivar.navigation
 // Screens without their real implementation yet show a placeholder in the navigation graph
 enum class AppScreens {
   Login,
+  ForgotPassword,
   SignUp,
   TaskOverview,
   EventsOverview,

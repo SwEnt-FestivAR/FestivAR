@@ -1,6 +1,7 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.voicenote
 
+import com.android.festivar.model.audio.Audio
 import java.time.Duration
 import java.time.ZonedDateTime
 
@@ -13,7 +14,7 @@ import java.time.ZonedDateTime
  * always hold:
  * - [id] is not blank;
  * - [audioUrl] is not blank;
- * - [duration] is positive (a recording of zero length is refused, like by [RecordedAudio]).
+ * - [duration] is positive (a recording of zero length is refused, like by [Audio]).
  *
  * @property id Unique identifier of the [VoiceNote].
  * @property audioUrl Where the audio file can be played from.

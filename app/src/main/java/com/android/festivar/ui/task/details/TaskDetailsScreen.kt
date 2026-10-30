@@ -63,7 +63,8 @@ import com.android.festivar.ui.voicenote.VoiceNoteNotices
 import com.android.festivar.ui.voicenote.VoiceNoteRecordBar
 import com.android.festivar.ui.voicenote.VoiceNoteSection
 import com.android.festivar.ui.voicenote.VoiceNoteUiState
-import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
 
 /** Test tags named after the tags of the "Task details" frames in Figma. */
 object TaskDetailsScreenTestTags {
@@ -386,10 +387,11 @@ private val previewTask =
         description =
             "Extension reel is in the blue crate by the van. Run it along the fence, not across " +
                 "the path. Ask Marie for the gaffer tape.",
-        startTime = LocalDateTime.of(2026, 10, 17, 9, 30),
-        endTime = LocalDateTime.of(2026, 10, 17, 9, 50),
+        startTime = ZonedDateTime.of(2026, 10, 17, 9, 30, 0, 0, ZoneId.of("Europe/Zurich")),
+        endTime = ZonedDateTime.of(2026, 10, 17, 9, 50, 0, 0, ZoneId.of("Europe/Zurich")),
         location = "Stage, north corner",
         maxAssign = 1,
+        ownerId = previewUser.uid,
     )
 
 private val previewOtherUser = User("u2", "Yasser", "Ameur")
