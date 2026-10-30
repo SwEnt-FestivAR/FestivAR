@@ -7,8 +7,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.android.festivar.R
 import com.android.festivar.ui.theme.AppTheme
 
 /**
@@ -61,6 +63,41 @@ fun FestivarConfirmDialog(
         )
       },
       modifier = modifier,
+  )
+}
+
+/**
+ * Dialog that asks whether to throw away what the user typed, for any screen with a form.
+ *
+ * It is a [FestivarConfirmDialog] with the shared "Discard" and "Keep editing" buttons.
+ *
+ * @param title What is asked, e.g. "Discard this task?".
+ * @param onConfirm Called when the user discards.
+ * @param onDismiss Called when the user keeps editing or taps outside the dialog.
+ * @param message What happens if the user discards.
+ * @param confirmModifier Modifier of the "Discard" button, e.g. to give it a test tag.
+ * @param dismissModifier Modifier of the "Keep editing" button, e.g. to give it a test tag.
+ */
+@Composable
+fun FestivarDiscardDialog(
+    title: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    message: String = stringResource(R.string.discard_message),
+    confirmModifier: Modifier = Modifier,
+    dismissModifier: Modifier = Modifier,
+) {
+  FestivarConfirmDialog(
+      title = title,
+      message = message,
+      confirmText = stringResource(R.string.discard_confirm),
+      dismissText = stringResource(R.string.discard_keep),
+      onConfirm = onConfirm,
+      onDismiss = onDismiss,
+      modifier = modifier,
+      confirmModifier = confirmModifier,
+      dismissModifier = dismissModifier,
   )
 }
 

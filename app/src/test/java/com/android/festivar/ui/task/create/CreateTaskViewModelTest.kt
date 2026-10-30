@@ -5,6 +5,7 @@ package com.android.festivar.ui.task.create
 import android.os.Looper
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
+import com.android.festivar.model.task.Priority
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
@@ -55,6 +56,67 @@ class CreateTaskViewModelTest {
     assertEquals("Stage", state.location)
     assertEquals(ZonedDateTime.of(2026, 10, 17, 9, 30, 0, 0, zone), state.startDateTime)
     assertEquals(ZonedDateTime.of(2026, 10, 17, 9, 50, 0, 0, zone), state.endDateTime)
+  }
+
+  @Test
+  fun hasChanges_isFalseForAnUntouchedForm() {
+    assertFalse(viewModel.uiState.value.hasChanges)
+  }
+
+  @Test
+  fun hasChanges_isTrueOnceAFieldIsEdited() {
+    viewModel.updateLocation("Stage")
+
+    assertTrue(viewModel.uiState.value.hasChanges)
+  }
+
+  @Test
+  fun hasChanges_isTrueOnceANewFieldIsEdited() {
+    viewModel.updatePriority(Priority.LOW)
+    assertTrue(viewModel.uiState.value.hasChanges)
+  }
+
+  @Test
+  fun hasChanges_returnsToFalseWhenThePriorityIsRevertedToNone() {
+    viewModel.updatePriority(Priority.HIGH)
+    assertTrue(viewModel.uiState.value.hasChanges)
+    assertTrue(viewModel.uiState.value.needsDiscardConfirmation)
+
+    viewModel.updatePriority(Priority.NONE)
+
+    assertFalse(viewModel.uiState.value.hasChanges)
+    assertFalse(viewModel.uiState.value.needsDiscardConfirmation)
+  }
+
+  @Test
+  fun hasChanges_isTrueOnceThePeopleNeededOrTheEstimatedTimeChange() {
+    viewModel.incrementMaxAssign()
+    assertTrue(viewModel.uiState.value.hasChanges)
+
+    viewModel.decrementMaxAssign() // Back to the default.
+    assertFalse(viewModel.uiState.value.hasChanges)
+
+    viewModel.updateEstimatedMinutes("30")
+    assertTrue(viewModel.uiState.value.hasChanges)
+  }
+
+  @Test
+  fun needsDiscardConfirmation_isTrueOnlyWhileAnEditedFormIsNotCreated() {
+    assertFalse(viewModel.uiState.value.needsDiscardConfirmation)
+
+    viewModel.updateTitle("Run power to stage")
+    assertTrue(viewModel.uiState.value.needsDiscardConfirmation)
+
+    viewModel.createTask()
+    assertTrue(viewModel.uiState.value.isCreated)
+    assertFalse(viewModel.uiState.value.needsDiscardConfirmation)
+  }
+
+  @Test
+  fun hasChanges_ignoresOpeningAPicker() {
+    viewModel.showPicker(DateTimeField.START_DATE)
+
+    assertFalse(viewModel.uiState.value.hasChanges)
   }
 
   @Test
@@ -400,6 +462,107 @@ class CreateTaskViewModelTest {
     assertThrows(IllegalArgumentException::class.java) {
       CreateTaskViewModel(" ", { "owner-1" }, repository)
     }
+  }
+
+  @Test
+  fun createTask_savesTheOptionalFields() {
+    viewModel.updateTitle("Run power to stage")
+    viewModel.updatePriority(Priority.URGENT)
+    repeat(2) { viewModel.incrementMaxAssign() }
+    viewModel.updateEstimatedMinutes("90")
+
+    viewModel.createTask()
+
+    val saved = savedTasks().single()
+    assertEquals(Priority.URGENT, saved.priority)
+    assertEquals(3, saved.maxAssign)
+    assertEquals(Duration.ofMinutes(90), saved.estimatedTime)
+  }
+
+  @Test
+  fun createTask_withoutOptionalFields_usesTheDefaults() {
+    viewModel.updateTitle("Run power to stage")
+
+    viewModel.createTask()
+
+    val saved = savedTasks().single()
+    assertEquals(Priority.NONE, saved.priority)
+    assertEquals(1, saved.maxAssign)
+    assertNull(saved.estimatedTime)
+  }
+
+  @Test
+  fun incrementMaxAssign_addsOneEachTime() {
+    viewModel.incrementMaxAssign()
+    assertEquals(2, viewModel.uiState.value.maxAssign)
+
+    viewModel.incrementMaxAssign()
+    assertEquals(3, viewModel.uiState.value.maxAssign)
+  }
+
+  @Test
+  fun decrementMaxAssign_removesOneEachTime() {
+    repeat(3) { viewModel.incrementMaxAssign() }
+
+    viewModel.decrementMaxAssign()
+    assertEquals(3, viewModel.uiState.value.maxAssign)
+
+    viewModel.decrementMaxAssign()
+    assertEquals(2, viewModel.uiState.value.maxAssign)
+  }
+
+  @Test
+  fun decrementMaxAssign_stopsAtTheMinimum() {
+    viewModel.updateTitle("Run power to stage")
+
+    repeat(3) { viewModel.decrementMaxAssign() }
+
+    assertEquals(MIN_MAX_ASSIGN, viewModel.uiState.value.maxAssign)
+    assertTrue(viewModel.uiState.value.canCreate) // Never invalid: nothing to fix.
+  }
+
+  @Test
+  fun maxAssign_isIgnoredOnceTheTaskIsCreated() {
+    viewModel.updateTitle("Run power to stage")
+    viewModel.incrementMaxAssign()
+    viewModel.createTask()
+    assertTrue(viewModel.uiState.value.isCreated)
+
+    viewModel.incrementMaxAssign()
+    viewModel.decrementMaxAssign()
+
+    assertEquals(2, viewModel.uiState.value.maxAssign)
+  }
+
+  @Test
+  fun estimatedMinutes_dropsAnythingButDigits() {
+    viewModel.updateEstimatedMinutes("-5.5")
+
+    assertEquals("55", viewModel.uiState.value.estimatedMinutes)
+  }
+
+  @Test
+  fun estimatedTime_ofZeroMinutes_isAnError() {
+    viewModel.updateTitle("Run power to stage")
+    viewModel.updateEstimatedMinutes("0")
+
+    assertEquals(FieldError.INVALID_ESTIMATED_TIME, viewModel.uiState.value.estimatedTimeError)
+    assertFalse(viewModel.uiState.value.canCreate)
+
+    viewModel.updateEstimatedMinutes("")
+
+    assertNull(viewModel.uiState.value.estimatedTimeError)
+    assertTrue(viewModel.uiState.value.canCreate)
+  }
+
+  @Test
+  fun estimatedMinutes_keepsOnlyTheFirstDigitsSoItAlwaysFitsInAnInt() {
+    viewModel.updateTitle("Run power to stage")
+    viewModel.updateEstimatedMinutes("99999999999")
+
+    assertEquals("999999999", viewModel.uiState.value.estimatedMinutes)
+    assertNull(viewModel.uiState.value.estimatedTimeError)
+    assertTrue(viewModel.uiState.value.canCreate)
   }
 
   @Test
