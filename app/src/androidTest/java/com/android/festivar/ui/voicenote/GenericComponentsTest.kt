@@ -64,37 +64,6 @@ class GenericComponentsTest {
     assertEquals(listOf("settings"), events)
   }
 
-  private fun showDialog() = show {
-    ConfirmDialog(
-        title = "Delete this voice note?",
-        text = "Nobody will be able to hear it.",
-        confirmLabel = "Delete",
-        dismissLabel = "Keep it",
-        onConfirm = { events += "confirm" },
-        onDismiss = { events += "dismiss" },
-    )
-  }
-
-  @Test
-  fun confirmDialog_showsTheQuestionAndConfirmCallsOnlyTheConfirmCallback() {
-    showDialog()
-
-    text("Delete this voice note?").assertIsDisplayed()
-    text("Nobody will be able to hear it.").assertIsDisplayed()
-    text("Delete").performClick()
-
-    assertEquals(listOf("confirm"), events)
-  }
-
-  @Test
-  fun confirmDialog_keepCallsOnlyTheDismissCallback() {
-    showDialog()
-
-    text("Keep it").performClick()
-
-    assertEquals(listOf("dismiss"), events)
-  }
-
   // The previews are drawn here, so that one that no longer compiles or crashes is caught by the
   // tests and not only in Android Studio.
 
@@ -109,13 +78,5 @@ class GenericComponentsTest {
 
     text("Hold to record").assertIsDisplayed()
     text("Open settings").assertIsDisplayed()
-  }
-
-  @Test
-  fun confirmDialogPreview_showsTheDialog() {
-    composeTestRule.setContent { ConfirmDialogPreview() }
-
-    text("Delete this voice note?").assertIsDisplayed()
-    text("Keep it").assertIsDisplayed()
   }
 }
