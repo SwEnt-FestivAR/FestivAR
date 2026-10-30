@@ -2,27 +2,43 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.create
 
+import androidx.annotation.StringRes
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.test.platform.app.InstrumentationRegistry
+import com.android.festivar.model.task.Priority
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.ui.components.FieldError
 import com.android.festivar.ui.components.fieldErrorMessageRes
 import com.android.festivar.ui.components.hasDayOfMonth
+import com.android.festivar.ui.components.priorityLabelRes
 import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
 import java.time.LocalTime
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
+
+/** The text of the string resource [id] in the app under test. */
+internal fun string(@StringRes id: Int): String =
+    InstrumentationRegistry.getInstrumentation().targetContext.getString(id)
 
 /**
  * Superclass of the Create task screen tests: a fresh repository and ViewModel before each test,
@@ -78,6 +94,55 @@ abstract class CreateTaskTest {
 
   fun ComposeTestRule.enterCreateTaskTitle(title: String) =
       enterText(CreateTaskScreenTestTags.TITLE_FIELD, title)
+
+  /** Replaces the content of the field [tag]: the number fields start with a value. */
+  private fun ComposeTestRule.replaceText(tag: String, text: String) =
+      onNodeWithTag(tag).performScrollTo().performTextReplacement(text)
+
+  /** Taps the plus of the people needed stepper [times] times. */
+  fun ComposeTestRule.increaseCreateTaskMaxAssign(times: Int = 1) {
+    repeat(times) {
+      onNodeWithTag(CreateTaskScreenTestTags.MAX_ASSIGN_INCREASE_BUTTON)
+          .performScrollTo()
+          .performClick()
+    }
+  }
+
+  /** Taps the minus of the people needed stepper once. */
+  fun ComposeTestRule.decreaseCreateTaskMaxAssign() {
+    onNodeWithTag(CreateTaskScreenTestTags.MAX_ASSIGN_DECREASE_BUTTON)
+        .performScrollTo()
+        .performClick()
+  }
+
+  /** Checks the number the people needed stepper shows. */
+  fun ComposeTestRule.checkCreateTaskMaxAssignIs(value: Int) {
+    onNodeWithTag(CreateTaskScreenTestTags.MAX_ASSIGN_FIELD)
+        .performScrollTo()
+        .assert(
+            SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, value.toString())
+        )
+  }
+
+  fun ComposeTestRule.enterCreateTaskEstimatedTime(text: String) =
+      replaceText(CreateTaskScreenTestTags.ESTIMATED_TIME_FIELD, text)
+
+  /**
+   * Taps the chip that names [priority] inside the selector. The row of chips scrolls sideways, so
+   * the chip may be clipped: the click action is used and not a tap at its position.
+   */
+  fun ComposeTestRule.pickCreateTaskPriority(priority: Priority) {
+    val label =
+        InstrumentationRegistry.getInstrumentation()
+            .targetContext
+            .getString(priorityLabelRes(priority))
+    onNodeWithTag(CreateTaskScreenTestTags.PRIORITY_SELECTOR).performScrollTo()
+    onNode(
+            hasText(label) and
+                hasAnyAncestor(hasTestTag(CreateTaskScreenTestTags.PRIORITY_SELECTOR))
+        )
+        .performSemanticsAction(SemanticsActions.OnClick)
+  }
 
   /**
    * Picks [date] in the date picker opened by the field [fieldTag]. The picker opens on the current
@@ -143,10 +208,17 @@ abstract class CreateTaskTest {
   fun ComposeTestRule.checkEndDateErrorIsDisplayed(error: FieldError) =
       checkErrorIsDisplayed(CreateTaskScreenTestTags.END_DATE_ERROR, error)
 
+  fun ComposeTestRule.checkEstimatedTimeErrorIsDisplayed() =
+      checkErrorIsDisplayed(
+          CreateTaskScreenTestTags.ESTIMATED_TIME_ERROR,
+          FieldError.INVALID_ESTIMATED_TIME,
+      )
+
   fun ComposeTestRule.checkNoFieldErrorIsDisplayed() {
     onNodeWithTag(CreateTaskScreenTestTags.TITLE_ERROR).assertDoesNotExist()
     onNodeWithTag(CreateTaskScreenTestTags.START_DATE_ERROR).assertDoesNotExist()
     onNodeWithTag(CreateTaskScreenTestTags.END_DATE_ERROR).assertDoesNotExist()
+    onNodeWithTag(CreateTaskScreenTestTags.ESTIMATED_TIME_ERROR).assertDoesNotExist()
   }
 
   companion object {

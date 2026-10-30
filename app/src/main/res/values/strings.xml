@@ -7,19 +7,28 @@
     <!-- Common actions -->
     <string name="action_ok">OK</string>
     <string name="action_cancel">Cancel</string>
+    <string name="discard_message">What you typed will be lost.</string>
+    <string name="discard_confirm">Discard</string>
+    <string name="discard_keep">Keep editing</string>
     <!-- Create task screen -->
     <string name="create_task">Create task</string>
     <string name="create_task_back">Back</string>
     <string name="create_task_field_title">Title</string>
-    <string name="create_task_field_description">Description</string>
+    <string name="create_task_field_description">Description, optional</string>
     <string name="create_task_field_location">Location</string>
     <string name="create_task_field_start_date">Start date</string>
     <string name="create_task_field_start_time">Start time</string>
     <string name="create_task_field_end_date">End date</string>
     <string name="create_task_field_end_time">End time</string>
+    <string name="create_task_field_max_assign">People needed</string>
+    <string name="create_task_max_assign_decrease">Fewer people</string>
+    <string name="create_task_max_assign_increase">More people</string>
+    <string name="create_task_field_estimated_time">Estimated time (minutes)</string>
+    <string name="create_task_field_priority">Priority</string>
     <string name="field_error_empty_title">Give the task a title</string>
     <string name="field_error_missing_date">Pick a date for this time</string>
     <string name="field_error_end_before_start">Ends before it starts</string>
+    <string name="field_error_invalid_estimated_time">Enter at least 1 minute</string>
     <string name="field_error_empty_event_name">Give the event a name</string>
     <string name="field_error_outdated">Ends in the past</string>
     <string name="priority_none">None</string>
@@ -27,6 +36,7 @@
     <string name="priority_medium">Medium</string>
     <string name="priority_high">High</string>
     <string name="priority_urgent">Urgent</string>
+    <string name="create_task_discard_title">Discard this task?</string>
     <string name="create_task_error_save_failed">Unable to create the task.</string>
     <!-- Join event screen -->
     <string name="join_event_back">Navigate back</string>
@@ -35,8 +45,11 @@
     <string name="join_event_not_found">No event matches this code.</string>
     <string name="join_event_lookup_failed">Could not look the code up. Try again.</string>
     <string name="join_event_join_failed">Could not join the event. Try again.</string>
+    <string name="join_event_open_failed">Could not open the event. Try again.</string>
     <string name="join_event_several">Several events share this code. Pick yours.</string>
     <string name="join_event_join">Join as a volunteer</string>
+    <string name="join_event_open">Open event</string>
+    <string name="join_event_already_member">You are already in this event.</string>
     <string name="join_event_code_field">Join code</string>
     <string name="join_event_code_cell">Code character %1$d</string>
     <string name="join_event_code_empty">Code is empty</string>

@@ -30,12 +30,16 @@ private const val LOG_TAG = "JoinEventViewModel"
  * @property name the event title shown in the result card.
  * @property start when it starts; the screen formats it, e.g. `Sat 17 Oct, 10:00`.
  * @property members how many people already belong to it.
+ * @property isMember true when the signed-in person already belongs to it; the card then says so
+ *   and its button opens the event, still through [JoinEventViewModel.join], which repairs a
+ *   membership written on one side only.
  */
 data class FoundEventUi(
     val id: String,
     val name: String,
     val start: ZonedDateTime,
     val members: Int,
+    val isMember: Boolean = false,
 )
 
 /**
@@ -116,15 +120,20 @@ class JoinEventViewModel(
           name = event.title,
           start = event.startDate,
           members = event.members.size,
+          isMember = event.members.any { it.uid == userId },
       )
 
   /**
    * Makes the signed-in person a member of the matched event [eventId], writing only what is still
-   * missing. Ignored unless [eventId] is among [JoinEventUIState.matches] and no join is running.
+   * missing. Ignored unless [eventId] is among [JoinEventUIState.matches] and no join is running. A
+   * failure on a card the person already belongs to reads as a failed open, not a failed join.
    */
   fun join(eventId: String) {
     val state = _uiState.value
-    if (state.isJoining || state.matches.none { it.id == eventId }) return
+    val match = state.matches.firstOrNull { it.id == eventId }
+    if (state.isJoining || match == null) return
+    val failure =
+        if (match.isMember) R.string.join_event_open_failed else R.string.join_event_join_failed
     _uiState.update { it.copy(isJoining = true, errorRes = null) }
     viewModelScope.launch {
       try {
@@ -143,7 +152,7 @@ class JoinEventViewModel(
         throw e
       } catch (e: Exception) {
         Log.e(LOG_TAG, "Error joining event $eventId", e)
-        _uiState.update { it.copy(isJoining = false, errorRes = R.string.join_event_join_failed) }
+        _uiState.update { it.copy(isJoining = false, errorRes = failure) }
       }
     }
   }

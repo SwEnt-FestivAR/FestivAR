@@ -7,11 +7,13 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
+import com.android.festivar.model.task.Priority
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryProvider
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.FieldError
+import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
@@ -40,6 +42,11 @@ data class CreateTaskUiState(
     val startTime: LocalTime? = null,
     val endDate: LocalDate? = null,
     val endTime: LocalTime? = null,
+    val priority: Priority = Priority.NONE,
+    // How many people the task needs. A stepper changes it, so it is never below MIN_MAX_ASSIGN.
+    val maxAssign: Int = MIN_MAX_ASSIGN,
+    // The estimated time is kept as typed (digits only) so that an empty field stays empty.
+    val estimatedMinutes: String = "",
     // The field whose picker dialog is open, or null when none is.
     val openPicker: DateTimeField? = null,
     val titleEdited: Boolean = false,
@@ -83,6 +90,36 @@ data class CreateTaskUiState(
     }
 
   /**
+   * The error shown under the estimated time field, or `null`. It is optional, so empty is fine,
+   * but a duration of zero minutes is not.
+   */
+  val estimatedTimeError: FieldError?
+    get() =
+        if (estimatedMinutes.isEmpty() || (estimatedMinutes.toIntOrNull() ?: 0) >= 1) null
+        else FieldError.INVALID_ESTIMATED_TIME
+
+  /**
+   * Whether the user changed anything in the form, so that leaving it would lose something. Keep it
+   * in sync with the form fields: a field missing here is lost without asking.
+   */
+  val hasChanges: Boolean
+    get() =
+        title.isNotEmpty() ||
+            description.isNotEmpty() ||
+            location.isNotEmpty() ||
+            startDate != null ||
+            startTime != null ||
+            endDate != null ||
+            endTime != null ||
+            priority != Priority.NONE ||
+            maxAssign != MIN_MAX_ASSIGN ||
+            estimatedMinutes.isNotEmpty()
+
+  /** Whether going back must ask first: a created task has nothing left to lose. */
+  val needsDiscardConfirmation: Boolean
+    get() = hasChanges && !isCreated
+
+  /**
    * Whether the "Create task" button can be pressed. It is false while a save is running and once
    * the task is created, so that a tap just after the save cannot create a second task.
    */
@@ -90,14 +127,19 @@ data class CreateTaskUiState(
     get() = isValid && !isSaving && !isCreated
 
   private val isValid: Boolean
-    get() = title.isNotBlank() && startDateError == null && endDateError == null
+    get() =
+        title.isNotBlank() &&
+            startDateError == null &&
+            endDateError == null &&
+            estimatedTimeError == null
 
   /**
    * Builds the [Task] described by this form.
    *
    * @param ownerId The uid of the user creating the task, who becomes its owner.
-   * @throws IllegalArgumentException if the form is not valid: blank title, or a date error (a time
-   *   without its date, or an end before the start), or if [ownerId] is blank.
+   * @throws IllegalArgumentException if the form is not valid: blank title, a date error (a time
+   *   without its date, or an end before the start) or a wrong estimated time, or if [ownerId] is
+   *   blank.
    */
   fun toTask(taskId: String, eventId: String, ownerId: String): Task {
     require(isValid) { "The form is not valid." }
@@ -109,10 +151,19 @@ data class CreateTaskUiState(
         location = location.trim(),
         startTime = startDateTime,
         endTime = endDateTime,
+        estimatedTime = estimatedMinutes.toIntOrNull()?.let { Duration.ofMinutes(it.toLong()) },
+        priority = priority,
+        maxAssign = maxAssign,
         ownerId = ownerId,
     )
   }
 }
+
+/** The most digits of the estimated time: 9 digits is always below `Int.MAX_VALUE`. */
+private const val MAX_ESTIMATED_DIGITS = 9
+
+/** The fewest people a task can need, and the number of people a new task starts with. */
+const val MIN_MAX_ASSIGN = 1
 
 /** The time of a start date picked without a time. */
 val START_OF_DAY: LocalTime = LocalTime.MIDNIGHT
@@ -177,6 +228,25 @@ class CreateTaskViewModel(
 
   /** Sets the location. */
   fun updateLocation(location: String) = edit { it.copy(location = location) }
+
+  /** Sets the priority. */
+  fun updatePriority(priority: Priority) = edit { it.copy(priority = priority) }
+
+  /** Adds one to the number of people the task needs. */
+  fun incrementMaxAssign() = edit { it.copy(maxAssign = it.maxAssign + 1) }
+
+  /** Removes one from the number of people the task needs, down to [MIN_MAX_ASSIGN]. */
+  fun decrementMaxAssign() = edit {
+    it.copy(maxAssign = (it.maxAssign - 1).coerceAtLeast(MIN_MAX_ASSIGN))
+  }
+
+  /**
+   * Sets the estimated time, in minutes. Anything but digits is dropped, and at most
+   * [MAX_ESTIMATED_DIGITS] digits are kept, so that the number always fits in an `Int`.
+   */
+  fun updateEstimatedMinutes(text: String) = edit {
+    it.copy(estimatedMinutes = text.filter(Char::isDigit).take(MAX_ESTIMATED_DIGITS))
+  }
 
   /** Sets the date the task starts. */
   fun updateStartDate(date: LocalDate) = edit { it.copy(startDate = date) }
