@@ -31,6 +31,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
 import com.android.festivar.model.voicenote.VoiceNote
+import com.android.festivar.ui.components.FestivarConfirmDialog
 import com.android.festivar.ui.components.SectionLabel
 import com.android.festivar.ui.components.formatTime
 
@@ -85,11 +86,11 @@ fun VoiceNoteSection(
     }
   }
   if (state.showDeleteConfirm) {
-    ConfirmDialog(
+    FestivarConfirmDialog(
         title = stringResource(R.string.voice_note_delete_title),
-        text = stringResource(R.string.voice_note_delete_body),
-        confirmLabel = stringResource(R.string.voice_note_delete_confirm),
-        dismissLabel = stringResource(R.string.voice_note_keep),
+        message = stringResource(R.string.voice_note_delete_body),
+        confirmText = stringResource(R.string.voice_note_delete_confirm),
+        dismissText = stringResource(R.string.voice_note_keep),
         onConfirm = callbacks.onConfirmDelete,
         onDismiss = callbacks.onDismissDelete,
         modifier = Modifier.testTag(VoiceNoteTestTags.CONFIRM_DELETE),

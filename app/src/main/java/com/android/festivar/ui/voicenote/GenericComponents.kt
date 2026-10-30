@@ -12,13 +12,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -89,38 +87,6 @@ fun InfoNote(
   }
 }
 
-/** A dialog asking to confirm an action: [dismissLabel] backs out, [confirmLabel] goes on. */
-@Composable
-fun ConfirmDialog(
-    title: String,
-    text: String,
-    confirmLabel: String,
-    dismissLabel: String,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-    modifier: Modifier = Modifier,
-    confirmModifier: Modifier = Modifier,
-    dismissModifier: Modifier = Modifier,
-) {
-  AlertDialog(
-      onDismissRequest = onDismiss,
-      modifier = modifier,
-      shape = MaterialTheme.shapes.extraLarge,
-      title = { Text(title) },
-      text = { Text(text, style = MaterialTheme.typography.bodyMedium) },
-      confirmButton = {
-        TextButton(onClick = onConfirm, modifier = confirmModifier.height(ButtonHeight)) {
-          Text(confirmLabel, color = MaterialTheme.colorScheme.error)
-        }
-      },
-      dismissButton = {
-        TextButton(onClick = onDismiss, modifier = dismissModifier.height(ButtonHeight)) {
-          Text(dismissLabel, color = MaterialTheme.colorScheme.onSurface)
-        }
-      },
-  )
-}
-
 @Preview(showBackground = true)
 @Composable
 internal fun FixedBottomBarPreview() {
@@ -147,21 +113,6 @@ internal fun InfoNotePreview() {
             Text("Open settings")
           }
         },
-    )
-  }
-}
-
-@Preview(showBackground = true)
-@Composable
-internal fun ConfirmDialogPreview() {
-  AppTheme {
-    ConfirmDialog(
-        title = "Delete this voice note?",
-        text = "The volunteers on this task will no longer be able to hear it.",
-        confirmLabel = "Delete",
-        dismissLabel = "Keep it",
-        onConfirm = {},
-        onDismiss = {},
     )
   }
 }
