@@ -38,6 +38,10 @@ data class VoiceNoteUiState(
   val showRecordBar: Boolean
     get() = canManage && note == null
 
+  /** Whether the record button works: it does not without the microphone permission. */
+  val recordEnabled: Boolean
+    get() = !micDenied
+
   /** Whether the user is recording right now. */
   val isRecording: Boolean
     get() = recorder is RecorderState.Recording

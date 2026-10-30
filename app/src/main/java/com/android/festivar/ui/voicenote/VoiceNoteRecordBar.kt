@@ -34,6 +34,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
+import com.android.festivar.ui.components.NoticeSnackbar
 
 /** How far to the left (in dp) the finger has to slide before releasing to cancel. */
 private const val CANCEL_DISTANCE_DP = 80
