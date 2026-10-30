@@ -1,5 +1,6 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar
 
 import android.util.Log
@@ -9,6 +10,7 @@ import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -250,6 +252,17 @@ class EndToEndTest {
         DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL)
             .withLocale(Locale.getDefault())
             .format(date)
+    // The dialog shows one month, so a date near a month end can sit in the next one
+    if (
+        composeTestRule
+            .onAllNodesWithText(dateDescription, substring = true)
+            .fetchSemanticsNodes()
+            .isEmpty()
+    ) {
+      composeTestRule
+          .onNodeWithContentDescription("next month", substring = true, ignoreCase = true)
+          .performClick()
+    }
     composeTestRule.onNodeWithText(dateDescription, substring = true).performClick()
     composeTestRule.onNodeWithText("OK").performClick()
   }
