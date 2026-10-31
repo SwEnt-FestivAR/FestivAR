@@ -32,12 +32,13 @@ object AvatarTestTags {
 /**
  * Initials shown in the avatar of a [user]: the first letter of its name and of its surname, e.g.
  * "SK" for Sara Keller, or the first two letters of its name if it has no surname, e.g. "SA" for
- * Sara (same for a surname without a name). `null` if both are blank, so that the avatar shows a
- * person icon instead.
+ * Sara (same for a surname without a name). Only letters count, so "-Ana" gives "A" and spaces,
+ * digits, punctuation and emojis are skipped. `null` if neither has a letter, so that the avatar
+ * shows a person icon instead.
  */
 internal fun initials(user: User): String? {
-  val name = user.name.trim()
-  val surname = user.surname.trim()
+  val name = user.name.filter { it.isLetter() }
+  val surname = user.surname.filter { it.isLetter() }
   val letters =
       when {
         name.isNotEmpty() && surname.isNotEmpty() -> "${name.first()}${surname.first()}"
@@ -52,15 +53,18 @@ internal fun initials(user: User): String? {
  * Round avatar of the design, showing the [initials] of the [user], or a person icon if none.
  *
  * @param user The [User] shown by the avatar.
+ * @param modifier The [Modifier] applied to the avatar, before its default 32.dp size, so that a
+ *   size given by the caller wins.
  * @param onClick Called when the user clicks on the avatar. Not clickable if `null`.
  */
 @Composable
-fun Avatar(user: User, onClick: (() -> Unit)? = null) {
+fun Avatar(user: User, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
   val initials = initials(user)
   Box(
       contentAlignment = Alignment.Center,
       modifier =
-          Modifier.size(32.dp)
+          modifier
+              .size(32.dp)
               .clip(CircleShape)
               .background(MaterialTheme.colorScheme.surfaceContainerHighest)
               .border(2.dp, MaterialTheme.colorScheme.surfaceContainerLowest, CircleShape)

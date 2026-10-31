@@ -12,6 +12,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.credentials.Credential
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -40,6 +41,12 @@ class LoginScreenTest {
     }
 
     composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.LOGO).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.CATCHPHRASE).assertIsDisplayed()
+    composeTestRule.onNodeWithText("Every table in the right place.").assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText("Create events and tasks, and keep everything in one place.")
+        .assertIsDisplayed()
     composeTestRule.onNodeWithTag(LoginScreenTestTags.EMAIL_INPUT).assertIsDisplayed()
     composeTestRule
         .onNodeWithTag(LoginScreenTestTags.PASSWORD_INPUT)
@@ -110,9 +117,27 @@ class LoginScreenTest {
     composeTestRule
         .onNodeWithTag(LoginScreenTestTags.CREATE_ACC_BUTTON)
         .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+        .performScrollTo()
         .performClick()
 
     composeTestRule.runOnIdle { assertTrue(signUpClicked) }
+  }
+
+  @Test
+  fun forgotPasswordButtonInvokesCallback() {
+    var forgotPasswordClicked = false
+    val loginViewModel = LoginViewModel(UnusedAuthRepository)
+    composeTestRule.setContent {
+      LoginScreen(
+          viewModel = loginViewModel,
+          onSignUpClick = {},
+          onForgotPasswordClick = { forgotPasswordClicked = true },
+      )
+    }
+
+    composeTestRule.onNodeWithText("Forgot password?").performClick()
+
+    composeTestRule.runOnIdle { assertTrue(forgotPasswordClicked) }
   }
 
   @Test
@@ -148,6 +173,9 @@ private class DeferredAuthRepository : AuthRepository {
   override suspend fun signOut(): Result<Unit> =
       Result.failure(UnsupportedOperationException("Not used in this UI test"))
 
+  override suspend fun forgotPassword(email: String): Result<Unit> =
+      Result.failure(UnsupportedOperationException("Not used in this UI test"))
+
   override suspend fun signInWithEmailAndPassword(
       email: String,
       password: String,
@@ -165,6 +193,9 @@ private object UnusedAuthRepository : AuthRepository {
       Result.failure(UnsupportedOperationException("Not used in this UI test"))
 
   override suspend fun signOut(): Result<Unit> =
+      Result.failure(UnsupportedOperationException("Not used in this UI test"))
+
+  override suspend fun forgotPassword(email: String): Result<Unit> =
       Result.failure(UnsupportedOperationException("Not used in this UI test"))
 
   override suspend fun signInWithEmailAndPassword(

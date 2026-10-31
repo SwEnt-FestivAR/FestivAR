@@ -1,5 +1,6 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar
 
 import android.util.Log
@@ -9,6 +10,7 @@ import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -31,7 +33,7 @@ import com.android.festivar.ui.event.JoinEventScreenTestTags
 import com.android.festivar.ui.profile.ProfileScreenTestTags
 import com.android.festivar.ui.task.create.CreateTaskScreenTestTags
 import com.android.festivar.ui.task.details.TaskDetailsScreenTestTags
-import com.android.festivar.ui.tasks.TaskOverviewScreenTestTags
+import com.android.festivar.ui.task.overview.TaskOverviewScreenTestTags
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.firestore
@@ -196,7 +198,10 @@ class EndToEndTest {
   /** Creates the account [email] from the login screen and lands on the events overview. */
   private fun signUp(email: String) {
     waitUntilTagExists(LoginScreenTestTags.TITLE)
-    composeTestRule.onNodeWithTag(LoginScreenTestTags.CREATE_ACC_BUTTON).performClick()
+    composeTestRule
+        .onNodeWithTag(LoginScreenTestTags.CREATE_ACC_BUTTON)
+        .performScrollTo()
+        .performClick()
 
     waitUntilTagExists(SignUpScreenTestTags.EMAIL_FIELD)
     composeTestRule.onNodeWithTag(SignUpScreenTestTags.EMAIL_FIELD).performTextInput(email)
@@ -247,6 +252,17 @@ class EndToEndTest {
         DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL)
             .withLocale(Locale.getDefault())
             .format(date)
+    // The dialog shows one month, so a date near a month end can sit in the next one
+    if (
+        composeTestRule
+            .onAllNodesWithText(dateDescription, substring = true)
+            .fetchSemanticsNodes()
+            .isEmpty()
+    ) {
+      composeTestRule
+          .onNodeWithContentDescription("next month", substring = true, ignoreCase = true)
+          .performClick()
+    }
     composeTestRule.onNodeWithText(dateDescription, substring = true).performClick()
     composeTestRule.onNodeWithText("OK").performClick()
   }
@@ -320,6 +336,38 @@ class EndToEndTest {
       // Another test class may have left a fake users repository or a signed in user behind
       UsersRepositoryProvider.reset()
       Firebase.auth.signOut()
+
+      // Clean up any potential leftover test accounts or events from previous runs
+      asAnonymousUser {
+        val events = EventRepositoryFirebase(Firebase.firestore)
+        val tasks = TaskRepositoryFirebase(Firebase.firestore)
+        logged("delete leftover seeded event's tasks") {
+          runCatching { tasks.getAllTasks(event.eventId).forEach { tasks.deleteTask(it.taskId) } }
+        }
+        logged("delete leftover seeded event") { runCatching { events.deleteEvent(event.eventId) } }
+        logged("delete leftover created events") {
+          runCatching {
+            events
+                .getAllEvents()
+                .filter { it.title == CREATED_EVENT_TITLE }
+                .forEach { events.deleteEvent(it.eventId) }
+          }
+        }
+      }
+      for (email in listOf(MEMBER_EMAIL, ORGANIZER_EMAIL)) {
+        runCatching {
+          asTheUser(email) { uid ->
+            logged("delete leftover profile of $email") {
+              UserRepositoryFirebase(Firebase.firestore).deleteUser(uid)
+            }
+            logged("delete leftover account of $email") {
+              Firebase.auth.currentUser?.delete()?.await()
+            }
+          }
+        }
+      }
+      Firebase.auth.signOut()
+
       asAnonymousUser { EventRepositoryFirebase(Firebase.firestore).addEvent(event) }
       // Signed out, so the app starts on the login screen
     }

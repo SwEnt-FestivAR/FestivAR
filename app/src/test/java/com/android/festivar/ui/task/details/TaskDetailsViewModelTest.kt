@@ -93,6 +93,7 @@ class TaskDetailsViewModelTest {
       completed: Boolean = false,
   ) =
       Task(
+          ownerId = "owner-1",
           taskId = "t1",
           eventId = "e1",
           title = "Run power to stage",

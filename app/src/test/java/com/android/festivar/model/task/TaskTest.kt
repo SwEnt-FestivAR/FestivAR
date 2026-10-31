@@ -5,8 +5,8 @@ package com.android.festivar.model.task
 import com.android.festivar.model.user.User
 import com.android.festivar.model.voicenote.VoiceNote
 import java.time.Duration
-import java.time.LocalDateTime
-import java.time.ZoneOffset
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertFalse
 import junit.framework.TestCase.assertNull
@@ -26,7 +26,7 @@ class TaskTest {
   private val timeMessage = "endTime must not be before startTime."
   private val estimatedTimeMessage = "estimatedTime cannot be negative."
 
-  private val start = LocalDateTime.of(2026, 7, 1, 14, 0)
+  private val start = ZonedDateTime.of(2026, 7, 1, 14, 0, 0, 0, ZoneId.of("Europe/Zurich"))
 
   /** Strings that are blank, so refused for taskId, eventId and title. */
   private val blankStrings = listOf("", " ", "   ", "\t", "\n", " \t\n ")
@@ -47,7 +47,7 @@ class TaskTest {
   /** A task with only the required fields is valid and gets the default values. */
   @Test
   fun init_succeeds_withOnlyRequiredFields() {
-    val task = Task(taskId = "t1", eventId = "e1", title = "Task")
+    val task = Task(ownerId = "owner-1", taskId = "t1", eventId = "e1", title = "Task")
 
     assertEquals("t1", task.taskId)
     assertEquals("e1", task.eventId)
@@ -69,6 +69,7 @@ class TaskTest {
     for (priority in Priority.entries) {
       val task =
           Task(
+              ownerId = "owner-1",
               taskId = "t1",
               eventId = "e1",
               title = "Task",
@@ -94,7 +95,9 @@ class TaskTest {
   @Test
   fun init_fails_whenTaskIdIsBlank() {
     for (blank in blankStrings) {
-      assertInvalid(taskIdMessage) { Task(taskId = blank, eventId = "e1", title = "Task") }
+      assertInvalid(taskIdMessage) {
+        Task(ownerId = "owner-1", taskId = blank, eventId = "e1", title = "Task")
+      }
     }
   }
 
@@ -102,7 +105,9 @@ class TaskTest {
   @Test
   fun init_fails_whenEventIdIsBlank() {
     for (blank in blankStrings) {
-      assertInvalid(eventIdMessage) { Task(taskId = "t1", eventId = blank, title = "Task") }
+      assertInvalid(eventIdMessage) {
+        Task(ownerId = "owner-1", taskId = "t1", eventId = blank, title = "Task")
+      }
     }
   }
 
@@ -110,7 +115,9 @@ class TaskTest {
   @Test
   fun init_fails_whenTitleIsBlank() {
     for (blank in blankStrings) {
-      assertInvalid(titleMessage) { Task(taskId = "t1", eventId = "e1", title = blank) }
+      assertInvalid(titleMessage) {
+        Task(ownerId = "owner-1", taskId = "t1", eventId = "e1", title = blank)
+      }
     }
   }
 
@@ -123,7 +130,13 @@ class TaskTest {
   fun init_fails_whenMaxAssignIsLowerThanOne() {
     for (maxAssign in (-100..0) + Int.MIN_VALUE) {
       assertInvalid(maxAssignMessage) {
-        Task(taskId = "t1", eventId = "e1", title = "Task", maxAssign = maxAssign)
+        Task(
+            ownerId = "owner-1",
+            taskId = "t1",
+            eventId = "e1",
+            title = "Task",
+            maxAssign = maxAssign,
+        )
       }
     }
   }
@@ -132,7 +145,14 @@ class TaskTest {
   @Test
   fun init_succeeds_whenMaxAssignIsAtLeastOne() {
     for (maxAssign in (1..100) + Int.MAX_VALUE) {
-      val task = Task(taskId = "t1", eventId = "e1", title = "Task", maxAssign = maxAssign)
+      val task =
+          Task(
+              ownerId = "owner-1",
+              taskId = "t1",
+              eventId = "e1",
+              title = "Task",
+              maxAssign = maxAssign,
+          )
       assertEquals(maxAssign, task.maxAssign)
     }
   }
@@ -144,6 +164,7 @@ class TaskTest {
       for (size in maxAssign + 1..maxAssign + 5) {
         assertInvalid(tooManyAssigneesMessage) {
           Task(
+              ownerId = "owner-1",
               taskId = "t1",
               eventId = "e1",
               title = "Task",
@@ -165,6 +186,7 @@ class TaskTest {
           val assignees = distinctUsers.toMutableList().apply { add(position, duplicated) }
           assertInvalid(duplicateMessage) {
             Task(
+                ownerId = "owner-1",
                 taskId = "t1",
                 eventId = "e1",
                 title = "Task",
@@ -190,6 +212,7 @@ class TaskTest {
         if (startTime != null && endTime != null) continue
         val task =
             Task(
+                ownerId = "owner-1",
                 taskId = "t1",
                 eventId = "e1",
                 title = "Task",
@@ -208,6 +231,7 @@ class TaskTest {
     for (minutes in 0L..600L) {
       val task =
           Task(
+              ownerId = "owner-1",
               taskId = "t1",
               eventId = "e1",
               title = "Task",
@@ -224,6 +248,7 @@ class TaskTest {
     for (minutes in 1L..600L) {
       assertInvalid(timeMessage) {
         Task(
+            ownerId = "owner-1",
             taskId = "t1",
             eventId = "e1",
             title = "Task",
@@ -235,11 +260,46 @@ class TaskTest {
 
     assertInvalid(timeMessage) {
       Task(
+          ownerId = "owner-1",
           taskId = "t1",
           eventId = "e1",
           title = "Task",
           startTime = start,
           endTime = start.minusNanos(1),
+      )
+    }
+  }
+
+  /**
+   * The instants are compared, not the clock readings: 13:30 in London is after 14:00 in Zurich.
+   */
+  @Test
+  fun init_succeeds_whenEndTimeIsALaterInstantInAnotherZone() {
+    val end = ZonedDateTime.of(2026, 7, 1, 13, 30, 0, 0, ZoneId.of("Europe/London"))
+    val task =
+        Task(
+            taskId = "t1",
+            eventId = "e1",
+            title = "Task",
+            startTime = start,
+            endTime = end,
+            ownerId = "owner-1",
+        )
+    assertEquals(end, task.endTime)
+  }
+
+  /** 14:30 in Tokyo reads later than 14:00 in Zurich, but is hours before it, so it is refused. */
+  @Test
+  fun init_fails_whenEndTimeIsAnEarlierInstantInAnotherZone() {
+    val end = ZonedDateTime.of(2026, 7, 1, 14, 30, 0, 0, ZoneId.of("Asia/Tokyo"))
+    assertInvalid(timeMessage) {
+      Task(
+          taskId = "t1",
+          eventId = "e1",
+          title = "Task",
+          startTime = start,
+          endTime = end,
+          ownerId = "owner-1",
       )
     }
   }
@@ -254,7 +314,14 @@ class TaskTest {
     val durations =
         listOf(null, Duration.ZERO, Duration.ofNanos(1)) + (1L..600L).map { Duration.ofMinutes(it) }
     for (duration in durations) {
-      val task = Task(taskId = "t1", eventId = "e1", title = "Task", estimatedTime = duration)
+      val task =
+          Task(
+              ownerId = "owner-1",
+              taskId = "t1",
+              eventId = "e1",
+              title = "Task",
+              estimatedTime = duration,
+          )
       assertEquals(duration, task.estimatedTime)
     }
   }
@@ -265,7 +332,13 @@ class TaskTest {
     val durations = listOf(Duration.ofNanos(-1)) + (1L..600L).map { Duration.ofMinutes(-it) }
     for (duration in durations) {
       assertInvalid(estimatedTimeMessage) {
-        Task(taskId = "t1", eventId = "e1", title = "Task", estimatedTime = duration)
+        Task(
+            ownerId = "owner-1",
+            taskId = "t1",
+            eventId = "e1",
+            title = "Task",
+            estimatedTime = duration,
+        )
       }
     }
   }
@@ -279,29 +352,25 @@ class TaskTest {
           id,
           "https://example.com/$id.m4a",
           Duration.ofSeconds(5),
-          start.atZone(ZoneOffset.UTC),
+          start,
       )
 
-  private val bareTask = Task(taskId = "t1", eventId = "e1", title = "Task")
-  private val ownedTask = bareTask.copy(ownerId = "owner")
+  private val ownedTask = Task(ownerId = "owner", taskId = "t1", eventId = "e1", title = "Task")
 
-  /** A blank ownerId is refused; null (no owner) is allowed. */
+  /** A blank ownerId is refused: a task always has an owner. */
   @Test
   fun init_fails_whenOwnerIdIsBlank() {
     for (blank in blankStrings) {
-      assertInvalid("The ownerId cannot be empty.") { bareTask.copy(ownerId = blank) }
+      assertInvalid("The ownerId cannot be empty.") { ownedTask.copy(ownerId = blank) }
     }
   }
 
-  /** Only the owner can manage the voice note; a task without owner has no manager. */
+  /** Only the owner can manage the voice note. */
   @Test
   fun canManageVoiceNote_isTrueOnlyForTheOwner() {
-    val task = bareTask.copy(ownerId = "owner")
-
-    assertTrue(task.canManageVoiceNote("owner"))
-    assertFalse(task.canManageVoiceNote("someone"))
-    assertFalse(task.canManageVoiceNote(""))
-    assertFalse(bareTask.canManageVoiceNote("owner"))
+    assertTrue(ownedTask.canManageVoiceNote("owner"))
+    assertFalse(ownedTask.canManageVoiceNote("someone"))
+    assertFalse(ownedTask.canManageVoiceNote(""))
   }
 
   /** Attaching a note returns a new task and leaves the original untouched. */
@@ -325,16 +394,14 @@ class TaskTest {
     assertEquals("The task already has a voice note.", exception.message)
   }
 
-  /** Only the owner can attach a note; a task without owner accepts nobody. */
+  /** Only the owner can attach a note. */
   @Test
   fun attachVoiceNote_fails_whenTheUserIsNotTheOwner() {
-    for (task in listOf(ownedTask, bareTask)) {
-      val exception =
-          assertThrows(SecurityException::class.java) {
-            task.attachVoiceNote(voiceNote("a"), "someone")
-          }
-      assertEquals("Only the owner can attach a voice note.", exception.message)
-    }
+    val exception =
+        assertThrows(SecurityException::class.java) {
+          ownedTask.attachVoiceNote(voiceNote("a"), "someone")
+        }
+    assertEquals("Only the owner can attach a voice note.", exception.message)
   }
 
   /** The note can be replaced by removing the first one. */
@@ -376,7 +443,7 @@ class TaskTest {
   /** The other changes of a task keep its voice note and owner. */
   @Test
   fun otherChanges_keepVoiceNoteAndOwner() {
-    val task = bareTask.copy(voiceNote = voiceNote("a"), ownerId = "owner")
+    val task = ownedTask.copy(voiceNote = voiceNote("a"))
 
     for (changed in listOf(task.complete(), task.addAssignee(User("u1")))) {
       assertEquals(voiceNote("a"), changed.voiceNote)
@@ -393,6 +460,7 @@ class TaskTest {
   fun copy_fails_whenTheCopyBreaksARule() {
     val task =
         Task(
+            ownerId = "owner-1",
             taskId = "t1",
             eventId = "e1",
             title = "Task",
@@ -432,6 +500,7 @@ class TaskTest {
       assignees: List<User> = emptyList(),
   ): Task =
       Task(
+          ownerId = "owner-1",
           taskId = "t1",
           eventId = "e1",
           title = "Task",
@@ -607,6 +676,7 @@ class TaskTest {
   fun init_fails_whenAUidIsAssignedTwice_withOtherNames() {
     assertInvalid(duplicateMessage) {
       Task(
+          ownerId = "owner-1",
           taskId = "t1",
           eventId = "e1",
           title = "Task",

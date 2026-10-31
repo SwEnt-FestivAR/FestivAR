@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.details
 
 import androidx.compose.ui.test.assertIsDisplayed
@@ -12,7 +13,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
-import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -33,11 +35,12 @@ class TaskDetailsContentTest {
           "e1",
           "Run power to stage",
           description = "Use the blue crate.",
-          startTime = LocalDateTime.of(2026, 10, 17, 9, 30),
-          endTime = LocalDateTime.of(2026, 10, 17, 9, 50),
+          startTime = ZonedDateTime.of(2026, 10, 17, 9, 30, 0, 0, ZoneId.of("Europe/Zurich")),
+          endTime = ZonedDateTime.of(2026, 10, 17, 9, 50, 0, 0, ZoneId.of("Europe/Zurich")),
           location = "Stage, north corner",
           maxAssign = 2,
           assignees = listOf(sami),
+          ownerId = "owner-1",
       )
 
   /** The state seen by [sami]; the status is derived from [task] as the ViewModel does. */
@@ -116,7 +119,9 @@ class TaskDetailsContentTest {
 
   @Test
   fun takenTaskHasNoActions() =
-      assertNoActions(Task("t2", "e1", "Full", maxAssign = 1, assignees = listOf(yasser)))
+      assertNoActions(
+          Task("t2", "e1", "Full", maxAssign = 1, assignees = listOf(yasser), ownerId = "owner-1")
+      )
 
   @Test fun doneTaskHasNoActions() = assertNoActions(task.complete())
 

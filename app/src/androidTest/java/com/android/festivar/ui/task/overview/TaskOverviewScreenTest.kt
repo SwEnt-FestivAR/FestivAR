@@ -1,6 +1,8 @@
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Written with the help of an AI coding assistant and reviewed line by line by the author.
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
-package com.android.festivar.ui.tasks
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+package com.android.festivar.ui.task.overview
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
@@ -14,11 +16,10 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
-import com.android.festivar.model.task.TasksRepositoryProvider
 import com.android.festivar.model.user.User
 import java.time.Duration
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.runBlocking
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -41,35 +42,36 @@ class TaskOverviewScreenTest {
           estimatedTime = Duration.ofMinutes(80),
           location = "Stage",
           maxAssign = 2,
+          ownerId = "owner-1",
       )
-  private val bunting = Task("bunting", EVENT, "Hang bunting", location = "Marquee A")
-  private val sound = Task("sound", EVENT, "Sound check", assignees = listOf(User(ME)))
-  private val elsewhere = Task("elsewhere", "other-event", "Other event's task")
+  private val bunting =
+      Task("bunting", EVENT, "Hang bunting", location = "Marquee A", ownerId = "owner-1")
+  private val sound =
+      Task("sound", EVENT, "Sound check", assignees = listOf(User(ME)), ownerId = "owner-1")
+  private val elsewhere =
+      Task("elsewhere", "other-event", "Other event's task", ownerId = "owner-1")
 
-  private lateinit var original: TasksRepository
+  private val repository = TasksRepositoryLocal()
 
+  /** The screen's view of [repository], counting how often it loads. */
+  private val counting = CountingRepository(repository)
+
+  /** Seeds this event's three tasks and one of another event. */
   @Before
   fun setUp() {
-    original = TasksRepositoryProvider.repository
-    val repository = TasksRepositoryLocal()
     runBlocking { listOf(power, bunting, sound, elsewhere).forEach { repository.addTask(it) } }
-    TasksRepositoryProvider.repository = repository
   }
 
-  @After
-  fun tearDown() {
-    TasksRepositoryProvider.repository = original
-  }
-
+  /** Shows the overview of [EVENT] for [ME] over the seeded repository, once its rows are in. */
   private fun setOverview(
       onBack: () -> Unit = {},
       onOpenTask: (String) -> Unit = {},
       onAddTask: () -> Unit = {},
   ) {
+    val viewModel = TaskOverviewViewModel(EVENT, ME, counting)
     composeTestRule.setContent {
       TaskOverviewScreen(
-          EVENT,
-          userId = ME,
+          viewModel,
           onBack = onBack,
           onOpenTask = onOpenTask,
           onAddTask = onAddTask,
@@ -189,6 +191,26 @@ class TaskOverviewScreenTest {
     composeTestRule.onNodeWithTag(TaskOverviewScreenTestTags.BACK).performClick()
 
     assertTrue(back)
+  }
+
+  /** Turns red when a second load effect beside the resume load fetches the tasks again on open. */
+  @Test
+  fun openingTheScreenLoadsTheTasksExactlyOnce() {
+    setOverview()
+    composeTestRule.waitForIdle()
+
+    assertEquals(1, counting.loads.get())
+  }
+
+  /** Reads through [inner] and counts every load in [loads]. */
+  private class CountingRepository(private val inner: TasksRepositoryLocal) :
+      TasksRepository by inner {
+    val loads = AtomicInteger()
+
+    override suspend fun getAllTasks(eventId: String): List<Task> {
+      loads.incrementAndGet()
+      return inner.getAllTasks(eventId)
+    }
   }
 
   private companion object {

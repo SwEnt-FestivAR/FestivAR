@@ -2,7 +2,11 @@
 package com.android.festivar.ui.components
 
 import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class DateTimePickersTest {
@@ -25,5 +29,163 @@ class DateTimePickersTest {
   fun pickerDate_ignoresTimeOfDayWithinTheUtcDay() {
     val lateOnTheDay = LocalDate.of(2026, 10, 17).toPickerMillis() + 86_399_999L
     assertEquals(LocalDate.of(2026, 10, 17), lateOnTheDay.toPickerDate())
+  }
+
+  /** Red if the initially empty start date/time fields report an error. */
+  @Test
+  fun startDateError_initialState_returnsNoError() {
+    assertNull(startDateError(startDate = null, startTime = null))
+  }
+
+  /** Red if a start date without a start time incorrectly reports an error. */
+  @Test
+  fun startDateError_dateWithoutTime_returnsNoError() {
+    assertNull(startDateError(startDate = LocalDate.now(), startTime = null))
+  }
+
+  /** Red if a start time without a start date does not report a missing-date error. */
+  @Test
+  fun startDateError_timeWithoutDate_returnsMissingDate() {
+    assertEquals(
+        FieldError.MISSING_DATE,
+        startDateError(startDate = null, startTime = LocalTime.NOON),
+    )
+  }
+
+  /** Red if the initially empty end date/time fields report an error. */
+  @Test
+  fun endDateError_initialState_returnsNoError() {
+    assertNull(endDateError(DateTimeRange(endDate = null, endTime = null)))
+  }
+
+  /** Red if an end date without an end time incorrectly reports an error. */
+  @Test
+  fun endDateError_dateWithoutTime_returnsNoError() {
+    assertNull(endDateError(DateTimeRange(endDate = LocalDate.now().plusDays(1))))
+  }
+
+  /** Red if a valid end date/time range incorrectly reports an error. */
+  @Test
+  fun endDateError_validRangeWithDatesAndTimes_returnsNoError() {
+    val startDate = LocalDate.now()
+    val endDate = LocalDate.now().plusDays(1)
+    val range =
+        DateTimeRange(
+            startDate = startDate,
+            startTime = LocalTime.of(9, 0),
+            endDate = endDate,
+            endTime = LocalTime.of(17, 0),
+        )
+
+    assertNull(endDateError(range))
+  }
+
+  /** Red if a one-day range with its end time after its start time reports an error. */
+  @Test
+  fun endDateError_oneDayRangeWithEndAfterStart_returnsNoError() {
+    val date = LocalDate.now().plusDays(1)
+    val range =
+        DateTimeRange(
+            startDate = date,
+            startTime = LocalTime.of(9, 0),
+            endDate = date,
+            endTime = LocalTime.of(17, 0),
+        )
+
+    assertNull(endDateError(range))
+  }
+
+  /**
+   * Red if a one-day range with its end time before its start time reports no end-before-start
+   * error.
+   */
+  @Test
+  fun endDateError_oneDayRangeWithEndBeforeStart_returnsEndBeforeStart() {
+    val date = LocalDate.now().plusDays(1)
+    val range =
+        DateTimeRange(
+            startDate = date,
+            startTime = LocalTime.of(9, 0),
+            endDate = date,
+            endTime = LocalTime.of(7, 0),
+        )
+
+    assertEquals(FieldError.END_BEFORE_START, endDateError(range))
+  }
+
+  /** Red if a range with equal start and end reports no end-before-start error. */
+  @Test
+  fun endDateError_equalStartAndEnd_returnsEndBeforeStart() {
+    val date = LocalDate.now().plusDays(1)
+    val range =
+        DateTimeRange(
+            startDate = date,
+            startTime = LocalTime.of(9, 0),
+            endDate = date,
+            endTime = LocalTime.of(9, 0),
+        )
+
+    assertEquals(FieldError.END_BEFORE_START, endDateError(range))
+  }
+
+  /** Red if a valid date-only range incorrectly reports an error. */
+  @Test
+  fun endDateError_validRangeWithDatesOnly_returnsNoError() {
+    val date = LocalDate.now().plusDays(1)
+
+    assertNull(endDateError(DateTimeRange(startDate = date, endDate = date)))
+  }
+
+  /** Red if an end time without an end date does not report a missing-date error. */
+  @Test
+  fun endDateError_timeWithoutDate_returnsMissingDate() {
+    assertEquals(
+        FieldError.MISSING_DATE,
+        endDateError(DateTimeRange(endTime = LocalTime.NOON)),
+    )
+  }
+
+  /** Red if an end before start does not report an end-before-start error. */
+  @Test
+  fun endDateError_endBeforeStart_returnsEndBeforeStart() {
+    val date = LocalDate.now().plusDays(1)
+    val range =
+        DateTimeRange(
+            startDate = date,
+            startTime = LocalTime.of(17, 0),
+            endDate = date,
+            endTime = LocalTime.of(9, 0),
+        )
+
+    assertEquals(FieldError.END_BEFORE_START, endDateError(range))
+  }
+
+  /** Red if a range in the past does not report an outdated error. */
+  @Test
+  fun endDateError_pastRange_returnsOutdated() {
+    val now = ZonedDateTime.of(2026, 10, 29, 12, 0, 0, 0, ZoneId.systemDefault())
+    val date = now.toLocalDate().minusDays(1)
+    val range =
+        DateTimeRange(
+            startDate = date,
+            startTime = LocalTime.of(9, 0),
+            endDate = date,
+            endTime = LocalTime.of(17, 0),
+        )
+
+    assertEquals(FieldError.OUTDATED, endDateError(range, now = now))
+  }
+
+  /** Red if a past start date is rejected when the end date is still in the future. */
+  @Test
+  fun endDateError_pastStartAndFutureEnd_returnsNoError() {
+    val now = ZonedDateTime.of(2026, 10, 29, 12, 0, 0, 0, ZoneId.systemDefault())
+    val range =
+        DateTimeRange(
+            startDate = now.toLocalDate().minusDays(1),
+            endDate = now.toLocalDate().plusDays(1),
+        )
+
+    assertNull(endDateError(range, now = now))
   }
 }

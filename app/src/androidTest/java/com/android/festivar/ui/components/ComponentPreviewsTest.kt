@@ -1,10 +1,14 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.components
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import com.android.festivar.R
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -44,4 +48,57 @@ class ComponentPreviewsTest {
     composeTestRule.onNodeWithText("OK").assertIsDisplayed()
     composeTestRule.onNodeWithText("Cancel").assertIsDisplayed()
   }
+
+  // The priority selector preview renders without crashing and shows its label and a priority.
+  @Test
+  fun prioritySelectorPreview_showsTheSelector() {
+    composeTestRule.setContent { FestivarPrioritySelectorPreview() }
+
+    composeTestRule.onNodeWithText("PRIORITY").assertIsDisplayed()
+    composeTestRule.onNodeWithText("High").assertIsDisplayed()
+  }
+
+  // The stepper preview renders without crashing and shows two steppers, at 3 and at the minimum.
+  @Test
+  fun stepperPreview_showsTwoSteppers() {
+    composeTestRule.setContent { FestivarStepperPreview() }
+
+    composeTestRule.onAllNodesWithText("People needed").assertCountEquals(2)
+    composeTestRule.onNodeWithText("3").assertIsDisplayed()
+    composeTestRule.onNodeWithText("1").assertIsDisplayed()
+  }
+
+  // The confirm dialog preview renders without crashing and shows its two buttons.
+  @Test
+  fun confirmDialogPreview_showsTheDialog() {
+    composeTestRule.setContent { FestivarConfirmDialogPreview() }
+
+    composeTestRule.onNodeWithText("Discard").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Keep editing").assertIsDisplayed()
+  }
+
+  // The info note preview renders without crashing and shows the note and its action.
+  @Test
+  fun infoNotePreview_showsTheNoteAndItsAction() {
+    composeTestRule.setContent { InfoNotePreview() }
+
+    composeTestRule.onNodeWithText(string(R.string.info_note_sample_message)).assertIsDisplayed()
+    composeTestRule.onNodeWithText(string(R.string.action_open_settings)).assertIsDisplayed()
+  }
+
+  // The notice snackbar preview renders without crashing and shows the message.
+  @Test
+  fun noticeSnackbarPreview_showsTheNotice() {
+    composeTestRule.setContent { NoticeSnackbarPreview() }
+
+    composeTestRule
+        .onNodeWithText(string(R.string.notice_snackbar_sample_message))
+        .assertIsDisplayed()
+    composeTestRule.onNodeWithText(string(R.string.action_retry)).assertIsDisplayed()
+  }
+
+  // The texts come from the shared strings file, so changing the wording there changes the test
+  // too.
+  private fun string(id: Int): String =
+      InstrumentationRegistry.getInstrumentation().targetContext.getString(id)
 }

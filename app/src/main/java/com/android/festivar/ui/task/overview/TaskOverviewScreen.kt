@@ -1,6 +1,7 @@
 // Written with the help of an AI coding assistant and reviewed line by line by the author.
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
-package com.android.festivar.ui.tasks
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+package com.android.festivar.ui.task.overview
 
 import android.text.format.DateFormat
 import androidx.compose.foundation.horizontalScroll
@@ -36,26 +37,23 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.dropShadow
-import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.R
 import com.android.festivar.ui.components.FilterChip
 import com.android.festivar.ui.components.Hairline
 import com.android.festivar.ui.components.PinKind
 import com.android.festivar.ui.components.SectionLabel
 import com.android.festivar.ui.components.TaskRow
+import com.android.festivar.ui.components.floatingShadow
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -70,6 +68,7 @@ object TaskOverviewScreenTestTags {
   const val CHIP_ALL = "overviewChipAll"
   const val LOADING = "overviewLoading"
   const val EMPTY = "overviewEmpty"
+  const val NO_RESULTS = "overviewNoResults"
   const val ERROR_MESSAGE = "overviewError"
   const val RETRY = "overviewRetry"
   const val ADD_TASK = "overviewAddTask"
@@ -82,19 +81,17 @@ object TaskOverviewScreenTestTags {
 }
 
 /**
- * The task overview of [eventId], where a volunteer picks an open task or adds one. The list
+ * The task overview of one event, where a volunteer picks an open task or adds one. The list
  * reloads every time the screen comes back to the front, so a task created on the next screen shows
  * up on return.
  *
+ * @param viewModel holds the event's tasks; the nav graph builds it with the event and the user.
  * @param onAddTask Called when the Add task button is tapped. Shown to every member for now, since
  *   main's [com.android.festivar.model.event.Event] carries no owner or role yet.
  */
 @Composable
 fun TaskOverviewScreen(
-    eventId: String,
-    userId: String? = null,
-    viewModel: TaskOverviewViewModel =
-        viewModel(key = "$eventId:$userId") { TaskOverviewViewModel(eventId, userId) },
+    viewModel: TaskOverviewViewModel,
     onBack: () -> Unit = {},
     onOpenTask: (taskId: String) -> Unit = {},
     onAddTask: () -> Unit = {},
@@ -198,13 +195,20 @@ fun TaskOverviewContent(
         )
       }
       if (!state.isLoading && state.errorMsg == null && state.sections.isEmpty()) {
+        // A search that finds nothing under this chip names the query instead of the filter hint
+        val (message, tag) =
+            if (state.noResultsFor != null) {
+              stringResource(R.string.overview_no_results, state.noResultsFor) to
+                  TaskOverviewScreenTestTags.NO_RESULTS
+            } else {
+              stringResource(R.string.overview_empty) to TaskOverviewScreenTestTags.EMPTY
+            }
         Text(
-            stringResource(R.string.overview_empty),
+            message,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
-            modifier =
-                Modifier.fillMaxWidth().padding(20.dp).testTag(TaskOverviewScreenTestTags.EMPTY),
+            modifier = Modifier.fillMaxWidth().padding(20.dp).testTag(tag),
         )
       }
       val timeFormat = rememberTimeFormat()
@@ -249,16 +253,7 @@ private fun AddTaskButton(onClick: () -> Unit) {
       icon = { Icon(Icons.Filled.Add, contentDescription = null) },
       text = { Text(stringResource(R.string.overview_add_task)) },
       modifier =
-          Modifier.dropShadow(
-                  shape = CircleShape,
-                  shadow =
-                      Shadow(
-                          radius = 24.dp,
-                          color = MaterialTheme.colorScheme.onSurface,
-                          offset = DpOffset(0.dp, 8.dp),
-                          alpha = 0.14f,
-                      ),
-              )
+          Modifier.floatingShadow(MaterialTheme.colorScheme.onSurface)
               .testTag(TaskOverviewScreenTestTags.ADD_TASK),
   )
 }

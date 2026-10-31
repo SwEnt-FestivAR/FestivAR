@@ -7,6 +7,8 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.ui.authentication.forgotpassword.ForgotPasswordScreen
+import com.android.festivar.ui.authentication.forgotpassword.ForgotPasswordViewModel
 import com.android.festivar.ui.authentication.login.LoginScreen
 import com.android.festivar.ui.authentication.login.LoginViewModel
 import com.android.festivar.ui.authentication.signup.SignUpScreen
@@ -33,7 +35,15 @@ fun NavGraphBuilder.authGraph(
         credentialManager = credentialManager,
         viewModel = viewModel { LoginViewModel(authRepository) },
         onSignUpClick = navigator.onSignUpClick,
+        onForgotPasswordClick = navigator.onForgotPasswordClick,
         onSignedIn = navigator.onSignedIn,
+    )
+  }
+  composable(route = AppScreens.ForgotPassword.name) {
+    val navigator = LoginNavigator(navController)
+    ForgotPasswordScreen(
+        viewModel = viewModel { ForgotPasswordViewModel(authRepository) },
+        onReturnToLogin = navigator.onReturnToLogin,
     )
   }
 }

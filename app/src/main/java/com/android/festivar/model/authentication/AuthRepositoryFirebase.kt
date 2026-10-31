@@ -7,6 +7,7 @@ import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryProvider
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.auth
 import kotlinx.coroutines.tasks.await
@@ -30,6 +31,16 @@ class AuthRepositoryFirebase(
       }
 
   override suspend fun signOut(): Result<Unit> = runCatching { firebaseAuth.signOut() }
+
+  override suspend fun forgotPassword(email: String): Result<Unit> =
+      try {
+        firebaseAuth.sendPasswordResetEmail(email).await()
+        Result.success(Unit)
+      } catch (_: FirebaseAuthInvalidUserException) {
+        Result.success(Unit)
+      } catch (exception: Exception) {
+        Result.failure(exception)
+      }
 
   override suspend fun signInWithEmailAndPassword(
       email: String,

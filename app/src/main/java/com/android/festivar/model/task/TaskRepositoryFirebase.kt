@@ -1,3 +1,4 @@
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.model.task
 
@@ -5,7 +6,7 @@ import com.android.festivar.model.user.UserRepositoryFirebase
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import java.time.Duration
-import java.time.LocalDateTime
+import java.time.ZonedDateTime
 import java.util.UUID
 import kotlin.collections.map
 import kotlinx.coroutines.tasks.await
@@ -92,6 +93,7 @@ class TaskRepositoryFirebase(
         "maxAssign" to task.maxAssign,
         "assignees" to task.assignees.map { user -> user.uid },
         "completed" to task.completed,
+        "ownerId" to task.ownerId,
     )
   }
 
@@ -110,14 +112,17 @@ class TaskRepositoryFirebase(
         eventId = document.getString("eventId").required("eventId", document.id),
         title = document.getString("title").required("title", document.id),
         description = document.getString("description") ?: "",
-        startTime = document.getString("startTime")?.let(LocalDateTime::parse),
-        endTime = document.getString("endTime")?.let(LocalDateTime::parse),
+        startTime = document.getString("startTime")?.let(ZonedDateTime::parse),
+        endTime = document.getString("endTime")?.let(ZonedDateTime::parse),
         estimatedTime = document.getLong("estimatedTime")?.let(Duration::ofNanos),
         location = document.getString("location") ?: "",
         priority = document.getString("priority")?.let(Priority::valueOf) ?: Priority.NONE,
         maxAssign = document.getLong("maxAssign")?.toInt() ?: 1,
         assignees = ass,
         completed = document.getBoolean("completed") ?: false,
+        // Tasks saved before owners existed have no ownerId. They are deleted from Firestore, so a
+        // missing one is an error, not a case to handle.
+        ownerId = document.getString("ownerId").required("ownerId", document.id),
     )
   }
 

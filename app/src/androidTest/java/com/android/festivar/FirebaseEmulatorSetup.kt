@@ -4,6 +4,7 @@ package com.android.festivar
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.firestore
+import com.google.firebase.storage.storage
 
 object FirebaseEmulatorSetup {
   private var configured = false
@@ -14,6 +15,7 @@ object FirebaseEmulatorSetup {
 
     Firebase.auth.useEmulator("10.0.2.2", 9099)
     Firebase.firestore.useEmulator("10.0.2.2", 8080)
+    Firebase.storage.useEmulator("10.0.2.2", 9199)
     configured = true
   }
 }

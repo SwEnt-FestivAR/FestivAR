@@ -348,6 +348,7 @@ val eventSameMonth =
                       taskId = index.toString(),
                       eventId = "0",
                       title = "Task $index",
+                      ownerId = "user",
                       completed = index % 2 == 0,
                   )
                 },
