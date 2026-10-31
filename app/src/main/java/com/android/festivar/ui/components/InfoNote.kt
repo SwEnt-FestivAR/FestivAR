@@ -18,8 +18,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.android.festivar.R
 import com.android.festivar.ui.theme.AppTheme
 
 /**
@@ -66,14 +68,14 @@ fun InfoNote(
 internal fun InfoNotePreview() {
   AppTheme {
     InfoNote(
-        "Microphone is off for FestivAR. Turn it on in Settings to record a note.",
+        stringResource(R.string.info_note_sample_message),
         action = {
           OutlinedButton(
               onClick = {},
               modifier = Modifier.fillMaxWidth().height(52.dp),
               shape = MaterialTheme.shapes.medium,
           ) {
-            Text("Open settings")
+            Text(stringResource(R.string.action_open_settings))
           }
         },
     )

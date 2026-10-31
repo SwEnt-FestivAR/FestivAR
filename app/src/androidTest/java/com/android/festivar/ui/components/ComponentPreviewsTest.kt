@@ -7,6 +7,8 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import com.android.festivar.R
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -80,7 +82,8 @@ class ComponentPreviewsTest {
   fun infoNotePreview_showsTheNoteAndItsAction() {
     composeTestRule.setContent { InfoNotePreview() }
 
-    composeTestRule.onNodeWithText("Open settings").assertIsDisplayed()
+    composeTestRule.onNodeWithText(string(R.string.info_note_sample_message)).assertIsDisplayed()
+    composeTestRule.onNodeWithText(string(R.string.action_open_settings)).assertIsDisplayed()
   }
 
   // The notice snackbar preview renders without crashing and shows the message.
@@ -88,6 +91,14 @@ class ComponentPreviewsTest {
   fun noticeSnackbarPreview_showsTheNotice() {
     composeTestRule.setContent { NoticeSnackbarPreview() }
 
-    composeTestRule.onNodeWithText("Error in the launched process.").assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(string(R.string.notice_snackbar_sample_message))
+        .assertIsDisplayed()
+    composeTestRule.onNodeWithText(string(R.string.action_retry)).assertIsDisplayed()
   }
+
+  // The texts come from the shared strings file, so changing the wording there changes the test
+  // too.
+  private fun string(id: Int): String =
+      InstrumentationRegistry.getInstrumentation().targetContext.getString(id)
 }

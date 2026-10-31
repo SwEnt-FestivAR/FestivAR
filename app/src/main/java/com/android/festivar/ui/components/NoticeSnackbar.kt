@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -66,5 +67,11 @@ fun NoticeSnackbar(
 @Preview(showBackground = true)
 @Composable
 internal fun NoticeSnackbarPreview() {
-  AppTheme { NoticeSnackbar("Error in the launched process.", "Retry", onAction = {}) }
+  AppTheme {
+    NoticeSnackbar(
+        stringResource(R.string.notice_snackbar_sample_message),
+        stringResource(R.string.action_retry),
+        onAction = {},
+    )
+  }
 }
