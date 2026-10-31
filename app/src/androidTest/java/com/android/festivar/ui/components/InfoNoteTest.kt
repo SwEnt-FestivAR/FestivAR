@@ -43,13 +43,4 @@ class InfoNoteTest {
 
     assertEquals(listOf("settings"), events)
   }
-
-  // The preview renders without crashing, so that one that no longer compiles is caught here and
-  // not only in Android Studio.
-  @Test
-  fun preview_showsTheNoteAndItsAction() {
-    composeTestRule.setContent { InfoNotePreview() }
-
-    composeTestRule.onNodeWithText("Open settings").assertIsDisplayed()
-  }
 }

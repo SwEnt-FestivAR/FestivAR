@@ -1,8 +1,17 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.components
 
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -32,11 +41,32 @@ class NoticeSnackbarTest {
   }
 
   @Test
-  fun previewShowsTheNotice() {
-    composeTestRule.setContent { NoticeSnackbarPreview() }
+  fun isAPoliteLiveRegion() {
+    composeTestRule.setContent {
+      AppTheme { NoticeSnackbar("Voice note not sent.", "Retry", onAction = {}) }
+    }
 
     composeTestRule
-        .onNodeWithText("Voice note not sent. Check your connection.")
-        .assertIsDisplayed()
+        .onNode(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
+        .assert(hasAnyDescendant(hasText("Voice note not sent.")))
+  }
+
+  @Test
+  fun actionModifierIsAppliedToTheActionButton() {
+    val events = mutableListOf<String>()
+    composeTestRule.setContent {
+      AppTheme {
+        NoticeSnackbar(
+            "Voice note not sent.",
+            "Retry",
+            onAction = { events += "action" },
+            actionModifier = Modifier.testTag("retry"),
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag("retry").performClick()
+
+    assertEquals(listOf("action"), events)
   }
 }

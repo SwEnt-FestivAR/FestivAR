@@ -30,6 +30,16 @@ class VoiceNoteUiStateTest {
   }
 
   @Test
+  fun deleteDialogOnlyForTheOwnerOfANote() {
+    assertTrue(
+        VoiceNoteUiState(note = note, canManage = true, showDeleteConfirm = true).showDeleteDialog
+    )
+    assertFalse(VoiceNoteUiState(note = note, canManage = true).showDeleteDialog)
+    assertFalse(VoiceNoteUiState(note = note, showDeleteConfirm = true).showDeleteDialog)
+    assertFalse(VoiceNoteUiState(canManage = true, showDeleteConfirm = true).showDeleteDialog)
+  }
+
+  @Test
   fun recordIsDisabledWithoutTheMicrophonePermission() {
     assertTrue(VoiceNoteUiState(canManage = true).recordEnabled)
     assertFalse(VoiceNoteUiState(canManage = true, micDenied = true).recordEnabled)
@@ -65,6 +75,65 @@ class VoiceNoteUiStateTest {
     val state = VoiceNoteUiState(recorder = RecorderState.Recording(Duration.ofSeconds(3)))
     assertTrue(state.isRecording)
     assertEquals(Duration.ofSeconds(3), state.elapsed)
+  }
+
+  @Test
+  fun everyCallbackIsGivenByTheCaller() {
+    val calls = mutableListOf<String>()
+    val callbacks =
+        VoiceNoteCallbacks(
+            onTogglePlay = { calls += "play" },
+            onDelete = { calls += "delete" },
+            onConfirmDelete = { calls += "confirm" },
+            onDismissDelete = { calls += "dismiss" },
+            onRecordStart = { calls += "start" },
+            onRecordRelease = { calls += "release" },
+            onRecordCancel = { calls += "cancel" },
+            onRetry = { calls += "retry" },
+            onOpenSettings = { calls += "settings" },
+        )
+
+    with(callbacks) {
+      onTogglePlay()
+      onDelete()
+      onConfirmDelete()
+      onDismissDelete()
+      onRecordStart()
+      onRecordRelease()
+      onRecordCancel()
+      onRetry()
+      onOpenSettings()
+    }
+
+    assertEquals(
+        listOf(
+            "play",
+            "delete",
+            "confirm",
+            "dismiss",
+            "start",
+            "release",
+            "cancel",
+            "retry",
+            "settings",
+        ),
+        calls,
+    )
+  }
+
+  @Test
+  fun noOpCallbacksDoNothing() {
+    with(VoiceNoteCallbacks.NoOp) {
+      onTogglePlay()
+      onDelete()
+      onConfirmDelete()
+      onDismissDelete()
+      onRecordStart()
+      onRecordRelease()
+      onRecordCancel()
+      onRetry()
+      onOpenSettings()
+    }
   }
 
   @Test
