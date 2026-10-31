@@ -24,7 +24,7 @@ private val previewNote =
         createdAt = ZonedDateTime.of(2026, 10, 17, 9, 12, 0, 0, ZoneOffset.UTC),
     )
 
-private val callbacks = VoiceNoteCallbacks()
+private val callbacks = VoiceNoteCallbacks.NoOp
 
 /** The section on top, the notices and the record bar fixed under it, as on the screen. */
 @Composable
