@@ -2,6 +2,7 @@ package com.android.festivar.ui.event
 
 // Co-authored-by: Copilot App
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
@@ -9,6 +10,8 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -347,6 +350,17 @@ class CreateEventScreenTest {
           DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL)
               .withLocale(Locale.getDefault())
               .format(date)
+      // The dialog shows one month, so a date near a month end can sit in the next one
+      if (
+          composeTestRule
+              .onAllNodesWithText(dateDescription, substring = true)
+              .fetchSemanticsNodes()
+              .isEmpty()
+      ) {
+        composeTestRule
+            .onNodeWithContentDescription("next month", substring = true, ignoreCase = true)
+            .performClick()
+      }
       composeTestRule.onNodeWithText(dateDescription, substring = true).performClick()
     }
     composeTestRule.onNodeWithText("OK").performClick()
