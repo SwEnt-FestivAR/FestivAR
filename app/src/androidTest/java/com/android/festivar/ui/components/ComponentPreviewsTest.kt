@@ -88,8 +88,6 @@ class ComponentPreviewsTest {
   fun noticeSnackbarPreview_showsTheNotice() {
     composeTestRule.setContent { NoticeSnackbarPreview() }
 
-    composeTestRule
-        .onNodeWithText("Voice note not sent. Check your connection.")
-        .assertIsDisplayed()
+    composeTestRule.onNodeWithText("Error in the launched process.").assertIsDisplayed()
   }
 }
