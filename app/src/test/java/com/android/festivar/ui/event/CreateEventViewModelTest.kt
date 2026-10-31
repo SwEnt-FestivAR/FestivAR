@@ -427,6 +427,9 @@ class CreateEventViewModelTest {
 
     updateFailingViewModel.createEvent()
     val event = waitForEvents(eventsRepository).single()
+    withTimeout(5_000.milliseconds) {
+      while (updateFailingViewModel.uiState.value.createdEventId == null) delay(10.milliseconds)
+    }
 
     assertEquals(event.eventId, updateFailingViewModel.uiState.value.createdEventId)
     assertFalse(updateFailingViewModel.uiState.value.isSaving)
