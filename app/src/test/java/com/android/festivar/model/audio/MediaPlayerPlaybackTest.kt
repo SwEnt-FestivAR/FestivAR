@@ -1,12 +1,11 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
-package com.android.festivar.ui.voicenote
+package com.android.festivar.model.audio
 
 import android.content.Context
 import android.net.Uri
 import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.android.festivar.model.voicenote.PlayerState
 import java.time.Duration
 import org.junit.After
 import org.junit.Assert.assertEquals

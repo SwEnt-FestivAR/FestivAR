@@ -113,8 +113,8 @@ data class Task(
 
   /**
    * Removes the voice note by returning a version of `this` without one. Only the reference is
-   * removed, not the audio file: the caller must also call `VoiceNoteStorage.delete` with the
-   * note's `audioUrl`.
+   * removed, not the audio file: the caller must also call `AudioRepository.delete` with the note's
+   * `audioUrl`.
    *
    * @param userId The [User.uid] of the user removing the note.
    * @throws SecurityException If [userId] is not the owner.

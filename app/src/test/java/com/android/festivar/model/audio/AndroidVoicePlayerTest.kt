@@ -1,7 +1,6 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
-package com.android.festivar.ui.voicenote
+package com.android.festivar.model.audio
 
-import com.android.festivar.model.voicenote.PlayerState
 import java.io.IOException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

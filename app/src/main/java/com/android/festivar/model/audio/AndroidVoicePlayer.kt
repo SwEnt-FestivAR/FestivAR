@@ -1,12 +1,10 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
-package com.android.festivar.ui.voicenote
+package com.android.festivar.model.audio
 
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.net.Uri
-import com.android.festivar.model.voicenote.PlayerState
-import com.android.festivar.model.voicenote.VoicePlayer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
