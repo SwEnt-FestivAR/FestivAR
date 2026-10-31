@@ -7,18 +7,18 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
+import com.android.festivar.model.audio.Audio
+import com.android.festivar.model.audio.AudioRepository
+import com.android.festivar.model.audio.PlayerState
+import com.android.festivar.model.audio.RecorderState
+import com.android.festivar.model.audio.VoicePlayer
+import com.android.festivar.model.audio.VoiceRecorder
+import com.android.festivar.model.audio.VoiceRecorderException
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryProvider
 import com.android.festivar.model.user.User
-import com.android.festivar.model.voicenote.PlayerState
-import com.android.festivar.model.voicenote.RecordedAudio
-import com.android.festivar.model.voicenote.RecorderState
 import com.android.festivar.model.voicenote.VoiceNote
-import com.android.festivar.model.voicenote.VoiceNoteStorage
-import com.android.festivar.model.voicenote.VoicePlayer
-import com.android.festivar.model.voicenote.VoiceRecorder
-import com.android.festivar.model.voicenote.VoiceRecorderException
 import com.android.festivar.ui.voicenote.VoiceNoteUiState
 import java.time.ZonedDateTime
 import java.util.UUID
@@ -120,7 +120,7 @@ class TaskDetailsViewModel(
     private val currentUser: User,
     private val repository: TasksRepository = TasksRepositoryProvider.repository,
     private val recorder: VoiceRecorder? = null,
-    private val storage: VoiceNoteStorage? = null,
+    private val storage: AudioRepository? = null,
     private val player: VoicePlayer? = null,
     private val newId: () -> String = { UUID.randomUUID().toString() },
     private val now: () -> ZonedDateTime = { ZonedDateTime.now() },
@@ -138,7 +138,7 @@ class TaskDetailsViewModel(
   private val voiceFlags = MutableStateFlow(VoiceNoteFlags())
 
   // The recording that could not be uploaded, kept to try again.
-  private var pendingAudio: RecordedAudio? = null
+  private var pendingAudio: Audio? = null
 
   /** What the voice note section shows, derived from the task, the recorder and the player. */
   val voiceNote: StateFlow<VoiceNoteUiState> =
@@ -266,7 +266,7 @@ class TaskDetailsViewModel(
     recorder?.cancel()
   }
 
-  private fun upload(audio: RecordedAudio) {
+  private fun upload(audio: Audio) {
     val storage = storage ?: return
     // Checking and setting isUpdating in one step, like the other actions.
     val before = _uiState.getAndUpdate {
@@ -277,7 +277,7 @@ class TaskDetailsViewModel(
     viewModelScope.launch {
       var url: String? = null
       try {
-        url = storage.upload(task.taskId, audio)
+        url = storage.upload(audio, task.taskId)
         val updated =
             task.attachVoiceNote(VoiceNote(newId(), url, audio.duration, now()), currentUser.uid)
         repository.editTask(taskId, updated)
@@ -298,7 +298,7 @@ class TaskDetailsViewModel(
     }
   }
 
-  private suspend fun deleteFileQuietly(storage: VoiceNoteStorage, url: String) {
+  private suspend fun deleteFileQuietly(storage: AudioRepository, url: String) {
     try {
       storage.delete(url)
     } catch (e: CancellationException) {

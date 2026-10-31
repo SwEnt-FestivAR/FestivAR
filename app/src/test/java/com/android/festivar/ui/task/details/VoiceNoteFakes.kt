@@ -1,15 +1,15 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.details
 
+import com.android.festivar.model.audio.Audio
+import com.android.festivar.model.audio.AudioRepository
+import com.android.festivar.model.audio.PlayerState
+import com.android.festivar.model.audio.RecorderState
+import com.android.festivar.model.audio.VoicePlayer
+import com.android.festivar.model.audio.VoiceRecorder
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
-import com.android.festivar.model.voicenote.PlayerState
-import com.android.festivar.model.voicenote.RecordedAudio
-import com.android.festivar.model.voicenote.RecorderState
-import com.android.festivar.model.voicenote.VoiceNoteStorage
-import com.android.festivar.model.voicenote.VoicePlayer
-import com.android.festivar.model.voicenote.VoiceRecorder
 import java.io.File
 import java.nio.file.Files
 import java.time.Duration
@@ -36,7 +36,7 @@ class FakeVoiceRecorder : VoiceRecorder {
   var cancels = 0
 
   /** The last audio handed out by [stop]. */
-  var lastAudio: RecordedAudio? = null
+  var lastAudio: Audio? = null
 
   override fun start() {
     startFailure?.let { throw it }
@@ -45,13 +45,11 @@ class FakeVoiceRecorder : VoiceRecorder {
     _state.value = RecorderState.Recording(Duration.ZERO)
   }
 
-  override fun stop(): RecordedAudio {
+  override fun stop(): Audio {
     check(_state.value is RecorderState.Recording) { "Not recording." }
     _state.value = RecorderState.Idle
     stopFailure?.let { throw it }
-    return RecordedAudio(File.createTempFile("note", ".m4a", directory), duration).also {
-      lastAudio = it
-    }
+    return Audio(File.createTempFile("note", ".m4a", directory), duration).also { lastAudio = it }
   }
 
   override fun cancel() {
@@ -60,8 +58,8 @@ class FakeVoiceRecorder : VoiceRecorder {
   }
 }
 
-/** A [VoiceNoteStorage] in memory: remembers the calls, can fail and can be made to wait. */
-class FakeVoiceNoteStorage : VoiceNoteStorage {
+/** A [AudioRepository] in memory: remembers the calls, can fail and can be made to wait. */
+class FakeAudioRepository : AudioRepository {
   /** Thrown by [upload] when not null. */
   var uploadFailure: Exception? = null
 
@@ -77,7 +75,9 @@ class FakeVoiceNoteStorage : VoiceNoteStorage {
   /** The URLs of the deletions asked, in order. */
   val deletions = mutableListOf<String>()
 
-  override suspend fun upload(taskId: String, audio: RecordedAudio): String {
+  override fun getNewUid(): String = "uid"
+
+  override suspend fun upload(audio: Audio, taskId: String): String {
     uploadGate?.await()
     uploadFailure?.let { throw it }
     uploads += taskId

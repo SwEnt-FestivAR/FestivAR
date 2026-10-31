@@ -3,12 +3,12 @@ package com.android.festivar.ui.task.details
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
+import com.android.festivar.model.audio.PlayerState
+import com.android.festivar.model.audio.RecorderState
+import com.android.festivar.model.audio.VoiceRecorderException
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
-import com.android.festivar.model.voicenote.PlayerState
-import com.android.festivar.model.voicenote.RecorderState
 import com.android.festivar.model.voicenote.VoiceNote
-import com.android.festivar.model.voicenote.VoiceRecorderException
 import java.io.IOException
 import java.time.Duration
 import java.time.ZoneOffset
@@ -36,7 +36,7 @@ import org.junit.runner.RunWith
 class TaskDetailsViewModelVoiceNoteTest {
   private val repository = EditFailingRepository()
   private val recorder = FakeVoiceRecorder()
-  private val storage = FakeVoiceNoteStorage()
+  private val storage = FakeAudioRepository()
   private val player = FakeVoicePlayer()
   private val owner = User(uid = "owner")
   private val volunteer = User(uid = "volunteer")
