@@ -1,8 +1,8 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.voicenote
 
-import com.android.festivar.model.voicenote.PlayerState
-import com.android.festivar.model.voicenote.RecorderState
+import com.android.festivar.model.audio.PlayerState
+import com.android.festivar.model.audio.RecorderState
 import com.android.festivar.model.voicenote.VoiceNote
 import java.time.Duration
 
