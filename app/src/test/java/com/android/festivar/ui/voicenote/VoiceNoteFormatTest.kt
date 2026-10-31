@@ -20,8 +20,11 @@ class VoiceNoteFormatTest {
   }
 
   @Test
-  fun keepsCountingMinutesPastAnHour() {
-    assertEquals("61:01", formatVoiceDuration(Duration.ofSeconds(61 * 60 + 1)))
+  fun addsHoursFromOneHourOn() {
+    assertEquals("59:59", formatVoiceDuration(Duration.ofSeconds(3599)))
+    assertEquals("1:00:00", formatVoiceDuration(Duration.ofHours(1)))
+    assertEquals("1:01:01", formatVoiceDuration(Duration.ofSeconds(61 * 60 + 1)))
+    assertEquals("12:05:09", formatVoiceDuration(Duration.ofSeconds(12 * 3600 + 5 * 60 + 9)))
   }
 
   @Test
