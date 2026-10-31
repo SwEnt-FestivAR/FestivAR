@@ -1,6 +1,14 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.details
 
+import android.Manifest
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -30,13 +38,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.R
+import com.android.festivar.model.audio.AndroidVoicePlayer
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.PillStyle
@@ -45,6 +58,11 @@ import com.android.festivar.ui.components.StatusPill
 import com.android.festivar.ui.components.formatDate
 import com.android.festivar.ui.components.formatTime
 import com.android.festivar.ui.theme.AppTheme
+import com.android.festivar.ui.voicenote.VoiceNoteCallbacks
+import com.android.festivar.ui.voicenote.VoiceNoteNotices
+import com.android.festivar.ui.voicenote.VoiceNoteRecordBar
+import com.android.festivar.ui.voicenote.VoiceNoteSection
+import com.android.festivar.ui.voicenote.VoiceNoteUiState
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
@@ -64,16 +82,44 @@ object TaskDetailsScreenTestTags {
   const val ERROR_ACTION = "detailsErrorAction"
 }
 
-/** The details of the task [taskId], where [currentUser] can take it, give it back or finish it. */
+/**
+ * The details of the task [taskId], where [currentUser] can take it, give it back or finish it, and
+ * everybody can listen to its voice note. The recording and the storage of the voice note are not
+ * connected yet: until they are, only an existing note can be played.
+ */
 @Composable
 fun TaskDetailsScreen(
     taskId: String,
     currentUser: User,
-    viewModel: TaskDetailsViewModel =
-        viewModel(key = "$taskId:${currentUser.uid}") { TaskDetailsViewModel(taskId, currentUser) },
+    viewModel: TaskDetailsViewModel = rememberTaskDetailsViewModel(taskId, currentUser),
     onBack: () -> Unit = {},
 ) {
   val state by viewModel.uiState.collectAsStateWithLifecycle()
+  val voiceNote by viewModel.voiceNote.collectAsStateWithLifecycle()
+  val context = LocalContext.current
+  val micLauncher =
+      rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        viewModel.onMicPermissionResult(granted)
+      }
+  // Coming back from the settings, the permission may have been given.
+  LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+    if (voiceNote.micDenied) viewModel.onMicPermissionResult(hasMicPermission(context))
+  }
+  val voiceCallbacks =
+      VoiceNoteCallbacks(
+          onTogglePlay = viewModel::togglePlay,
+          onDelete = viewModel::requestDeleteVoiceNote,
+          onConfirmDelete = viewModel::confirmDeleteVoiceNote,
+          onDismissDelete = viewModel::dismissDeleteVoiceNote,
+          onRecordStart = {
+            if (hasMicPermission(context)) viewModel.startRecording()
+            else micLauncher.launch(Manifest.permission.RECORD_AUDIO)
+          },
+          onRecordRelease = viewModel::finishRecording,
+          onRecordCancel = viewModel::cancelRecording,
+          onRetry = viewModel::retryVoiceNote,
+          onOpenSettings = { openAppSettings(context) },
+      )
   TaskDetailsContent(
       state = state,
       onBack = onBack,
@@ -82,10 +128,38 @@ fun TaskDetailsScreen(
       onMarkDone = viewModel::markDone,
       onRetry = viewModel::load,
       onDismissError = viewModel::clearError,
+      voiceNote = voiceNote,
+      voiceNoteCallbacks = voiceCallbacks,
   )
 }
 
-/** The stateless details screen: everything it shows comes from [state]. */
+/** The view model of the screen, with the real player of the voice note. */
+@Composable
+private fun rememberTaskDetailsViewModel(taskId: String, currentUser: User): TaskDetailsViewModel {
+  val appContext = LocalContext.current.applicationContext
+  return viewModel(key = "$taskId:${currentUser.uid}") {
+    TaskDetailsViewModel(taskId, currentUser, player = AndroidVoicePlayer(appContext))
+  }
+}
+
+private fun hasMicPermission(context: Context): Boolean =
+    ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
+        PackageManager.PERMISSION_GRANTED
+
+private fun openAppSettings(context: Context) {
+  context.startActivity(
+      Intent(
+              Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+              Uri.fromParts("package", context.packageName, null),
+          )
+          .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+  )
+}
+
+/**
+ * The stateless details screen: everything it shows comes from [state] and [voiceNote]. The voice
+ * note section is below the description; its notices and record bar are fixed above the actions.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaskDetailsContent(
@@ -96,6 +170,8 @@ fun TaskDetailsContent(
     onMarkDone: () -> Unit = {},
     onRetry: () -> Unit = {},
     onDismissError: () -> Unit = {},
+    voiceNote: VoiceNoteUiState = VoiceNoteUiState(),
+    voiceNoteCallbacks: VoiceNoteCallbacks = VoiceNoteCallbacks.NoOp,
 ) {
   Scaffold(
       topBar = {
@@ -111,7 +187,13 @@ fun TaskDetailsContent(
             },
         )
       },
-      bottomBar = { if (state.hasActions) Actions(state, onTake, onGiveBack, onMarkDone) },
+      bottomBar = {
+        Column {
+          VoiceNoteNotices(voiceNote, voiceNoteCallbacks)
+          VoiceNoteRecordBar(voiceNote, voiceNoteCallbacks)
+          if (state.hasActions) Actions(state, onTake, onGiveBack, onMarkDone)
+        }
+      },
   ) { padding ->
     Column(
         Modifier.fillMaxSize()
@@ -138,13 +220,18 @@ fun TaskDetailsContent(
       }
       val task = state.task
       val status = state.status
-      if (task != null && status != null) Body(task, status)
+      if (task != null && status != null) Body(task, status, voiceNote, voiceNoteCallbacks)
     }
   }
 }
 
 @Composable
-private fun Body(task: Task, status: TaskStatus) {
+private fun Body(
+    task: Task,
+    status: TaskStatus,
+    voiceNote: VoiceNoteUiState,
+    voiceNoteCallbacks: VoiceNoteCallbacks,
+) {
   StatusPill(
       label = stringResource(status.label()),
       style = status.pillStyle(),
@@ -171,6 +258,7 @@ private fun Body(task: Task, status: TaskStatus) {
         modifier = Modifier.testTag(TaskDetailsScreenTestTags.DESCRIPTION),
     )
   }
+  VoiceNoteSection(voiceNote, voiceNoteCallbacks)
 }
 
 /** A muted line under the title: the time or the place. */
