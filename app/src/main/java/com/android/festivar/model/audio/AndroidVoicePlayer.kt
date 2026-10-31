@@ -5,6 +5,8 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.net.Uri
+import android.util.Log
+import java.io.IOException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -93,6 +95,7 @@ class AndroidVoicePlayer internal constructor(private val factory: AudioPlayback
         try {
           factory.create()
         } catch (e: RuntimeException) {
+          Log.e(LOG_TAG, "Error creating the player", e)
           _state.value = PlayerState.Failed(audioUrl)
           return
         }
@@ -102,13 +105,25 @@ class AndroidVoicePlayer internal constructor(private val factory: AudioPlayback
     try {
       playback.prepareAsync(
           audioUrl,
-          onPrepared = ifCurrent { playback.start() },
+          onPrepared = ifCurrent { startPlayback(playback, audioUrl) },
           onCompleted = ifCurrent { finish(PlayerState.Idle) },
           onError = ifCurrent { finish(PlayerState.Failed(audioUrl)) },
       )
-    } catch (e: java.io.IOException) {
+    } catch (e: IOException) {
+      Log.e(LOG_TAG, "Error loading the voice note", e)
       finish(PlayerState.Failed(audioUrl))
     } catch (e: RuntimeException) {
+      Log.e(LOG_TAG, "Error loading the voice note", e)
+      finish(PlayerState.Failed(audioUrl))
+    }
+  }
+
+  /** Starts a prepared [playback]. It runs in a listener, so a failure must not escape. */
+  private fun startPlayback(playback: AudioPlayback, audioUrl: String) {
+    try {
+      playback.start()
+    } catch (e: IllegalStateException) {
+      Log.e(LOG_TAG, "Error starting the voice note", e)
       finish(PlayerState.Failed(audioUrl))
     }
   }
@@ -137,6 +152,11 @@ class AndroidVoicePlayer internal constructor(private val factory: AudioPlayback
       playback.release()
     } catch (e: RuntimeException) {
       // Nothing more to free: the playback is already unusable.
+      Log.w(LOG_TAG, "Error releasing the player", e)
     }
+  }
+
+  private companion object {
+    const val LOG_TAG = "AndroidVoicePlayer"
   }
 }

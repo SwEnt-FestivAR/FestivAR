@@ -14,6 +14,7 @@ class AndroidVoicePlayerTest {
       private val failToPrepare: Boolean = false,
       private val crashOnPrepare: Boolean = false,
       private val failToRelease: Boolean = false,
+      private val failToStart: Boolean = false,
   ) : AudioPlayback {
     var url: String? = null
     var started = false
@@ -37,6 +38,7 @@ class AndroidVoicePlayerTest {
     }
 
     override fun start() {
+      if (failToStart) throw IllegalStateException("not prepared")
       started = true
     }
 
@@ -57,6 +59,7 @@ class AndroidVoicePlayerTest {
   private var crashNext = false
   private var releaseFails = false
   private var createFails = false
+  private var startFails = false
   private lateinit var player: AndroidVoicePlayer
 
   @Before
@@ -65,7 +68,7 @@ class AndroidVoicePlayerTest {
         AndroidVoicePlayer(
             AudioPlaybackFactory {
               if (createFails) throw IllegalStateException("no player")
-              FakePlayback(failNext, crashNext, releaseFails).also { playbacks += it }
+              FakePlayback(failNext, crashNext, releaseFails, startFails).also { playbacks += it }
             }
         )
   }
@@ -115,6 +118,17 @@ class AndroidVoicePlayerTest {
     crashNext = true
     player.play("u1")
     assertEquals(PlayerState.Failed("u1"), player.state.value)
+    assertTrue(playbacks.single().released)
+  }
+
+  @Test
+  fun aStartThatCrashesFailsAndReleases() {
+    startFails = true
+    player.play("u")
+
+    playbacks.single().prepared()
+
+    assertEquals(PlayerState.Failed("u"), player.state.value)
     assertTrue(playbacks.single().released)
   }
 
