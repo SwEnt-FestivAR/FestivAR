@@ -15,6 +15,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
@@ -23,7 +27,14 @@ import com.android.festivar.ui.theme.AppTheme
 /**
  * A dark snackbar-like notice showing [message] with one action [actionLabel]. It is placed by the
  * caller instead of going through a snackbar host, so it stays visible until the state changes, and
- * can sit in a stack of other content. It looks like the error snackbar of the sign up screen.
+ * can sit in a stack of other content. It looks like the error snackbar of the sign up screen. It
+ * is a polite live region, so a screen reader announces it when it appears.
+ *
+ * @param message The text of the notice.
+ * @param actionLabel The text of the action button.
+ * @param onAction Called when the user taps the action button.
+ * @param modifier Applied to the notice itself.
+ * @param actionModifier Applied to the action button only, so a screen or a test can tag it.
  */
 @Composable
 fun NoticeSnackbar(
@@ -34,7 +45,7 @@ fun NoticeSnackbar(
     actionModifier: Modifier = Modifier,
 ) {
   Surface(
-      modifier.fillMaxWidth(),
+      modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
       shape = MaterialTheme.shapes.medium,
       color = MaterialTheme.colorScheme.inverseSurface,
       contentColor = MaterialTheme.colorScheme.inverseOnSurface,
@@ -56,5 +67,11 @@ fun NoticeSnackbar(
 @Preview(showBackground = true)
 @Composable
 internal fun NoticeSnackbarPreview() {
-  AppTheme { NoticeSnackbar("Voice note not sent. Check your connection.", "Retry", onAction = {}) }
+  AppTheme {
+    NoticeSnackbar(
+        stringResource(R.string.notice_snackbar_sample_message),
+        stringResource(R.string.action_retry),
+        onAction = {},
+    )
+  }
 }
