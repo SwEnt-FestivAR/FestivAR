@@ -49,6 +49,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.R
+import com.android.festivar.model.audio.AndroidVoicePlayer
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.PillStyle
@@ -57,7 +58,6 @@ import com.android.festivar.ui.components.StatusPill
 import com.android.festivar.ui.components.formatDate
 import com.android.festivar.ui.components.formatTime
 import com.android.festivar.ui.theme.AppTheme
-import com.android.festivar.ui.voicenote.AndroidVoicePlayer
 import com.android.festivar.ui.voicenote.VoiceNoteCallbacks
 import com.android.festivar.ui.voicenote.VoiceNoteNotices
 import com.android.festivar.ui.voicenote.VoiceNoteRecordBar
