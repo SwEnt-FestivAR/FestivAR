@@ -48,10 +48,19 @@ class TaskDetailsVoiceNoteContentTest {
   private fun show(voiceNote: VoiceNoteUiState) {
     val state = TaskDetailsUiState(currentUserId = "someone", task = task, isLoading = false)
     val callbacks =
-        VoiceNoteCallbacks(
-            onTogglePlay = { events += "toggle" },
-            onRetry = { events += "retry" },
-        )
+        VoiceNoteCallbacks.NoOp.let {
+          VoiceNoteCallbacks(
+              onTogglePlay = { events += "toggle" },
+              onDelete = it.onDelete,
+              onConfirmDelete = it.onConfirmDelete,
+              onDismissDelete = it.onDismissDelete,
+              onRecordStart = it.onRecordStart,
+              onRecordRelease = it.onRecordRelease,
+              onRecordCancel = it.onRecordCancel,
+              onRetry = { events += "retry" },
+              onOpenSettings = it.onOpenSettings,
+          )
+        }
     composeTestRule.setContent {
       AppTheme {
         TaskDetailsContent(state = state, voiceNote = voiceNote, voiceNoteCallbacks = callbacks)

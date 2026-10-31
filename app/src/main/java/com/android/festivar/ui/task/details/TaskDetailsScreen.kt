@@ -171,7 +171,7 @@ fun TaskDetailsContent(
     onRetry: () -> Unit = {},
     onDismissError: () -> Unit = {},
     voiceNote: VoiceNoteUiState = VoiceNoteUiState(),
-    voiceNoteCallbacks: VoiceNoteCallbacks = VoiceNoteCallbacks(),
+    voiceNoteCallbacks: VoiceNoteCallbacks = VoiceNoteCallbacks.NoOp,
 ) {
   Scaffold(
       topBar = {
