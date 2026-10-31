@@ -7,7 +7,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -17,6 +17,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.credentials.Credential
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.ui.components.ErrorSnackbarTestTags
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
@@ -76,7 +77,7 @@ class LoginScreenTest {
 
     composeTestRule.onNodeWithTag(LoginScreenTestTags.LOGIN_BUTTON).performClick()
 
-    composeTestRule.onNodeWithTag(LoginScreenTestTags.ERROR_MESSAGE).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(ErrorSnackbarTestTags.ERROR_MESSAGE).assertIsDisplayed()
     composeTestRule
         .onNodeWithText("Unable to sign in. Check your details and try again.")
         .assertIsDisplayed()

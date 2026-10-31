@@ -30,7 +30,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -57,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import androidx.credentials.CredentialManager
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.R
+import com.android.festivar.ui.components.ErrorSnackbar
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.theme.AppTheme
 
@@ -68,8 +68,6 @@ internal object LoginScreenTestTags {
   const val PASSWORD_INPUT = "loginPasswordInput"
   const val LOGIN_BUTTON = "loginButton"
   const val GOOGLE_BUTTON = "googleSignInButton"
-  const val ERROR_MESSAGE = "loginError"
-
   const val CREATE_ACC_BUTTON = "createAccountButton"
 }
 
@@ -98,19 +96,7 @@ fun LoginScreen(
       modifier = modifier,
       snackbarHost = {
         SnackbarHost(snackbarHostState) { data ->
-          Snackbar(
-              modifier = Modifier.testTag(LoginScreenTestTags.ERROR_MESSAGE),
-              action = {
-                TextButton(onClick = { data.dismiss() }) {
-                  Text(
-                      text = stringResource(R.string.signup_snackbar_ok),
-                      color = MaterialTheme.colorScheme.primary,
-                  )
-                }
-              },
-          ) {
-            Text(data.visuals.message)
-          }
+          ErrorSnackbar({ data.dismiss() }, data.visuals.message)
         }
       },
   ) { padding ->

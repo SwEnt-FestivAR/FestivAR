@@ -5,7 +5,6 @@ package com.android.festivar.ui.authentication.signup
 import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -28,7 +27,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -43,7 +41,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -52,15 +49,14 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.credentials.Credential
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.R
 import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.ui.components.ErrorSnackbar
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.theme.AppTheme
 import com.google.firebase.auth.FirebaseUser
 
 object SignUpScreenTestTags {
-  const val ERROR_MESSAGE: String = "errorMessage"
   const val CREATE_ACC_TITLE = "createAccTitle"
   const val EMAIL_FIELD = "emailField"
   const val PASS_FIELD = "passField"
@@ -98,7 +94,7 @@ fun SignUpScreen(
         SnackbarHost(
             hostState = snackBarHostState,
         ) { data ->
-          SignUpErrorSnackbar(data.visuals.message) { data.dismiss() }
+          ErrorSnackbar({ data.dismiss() }, data.visuals.message)
         }
       },
   ) { paddingValues ->
@@ -134,42 +130,6 @@ fun SignUpScreen(
       Spacer(modifier = Modifier.height(24.dp))
       SignUpTerms()
       Spacer(modifier = Modifier.height(32.dp))
-    }
-  }
-}
-
-@Composable
-private fun SignUpErrorSnackbar(
-    message: String,
-    onDismiss: () -> Unit,
-) {
-  Snackbar(
-      modifier = Modifier.testTag(SignUpScreenTestTags.ERROR_MESSAGE),
-      action = {
-        Box(contentAlignment = Alignment.Center) {
-          TextButton(onClick = onDismiss) {
-            Text(
-                text = stringResource(R.string.signup_snackbar_ok),
-                color = MaterialTheme.colorScheme.inversePrimary,
-            )
-          }
-        }
-      },
-  ) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-      Icon(
-          painter = painterResource(R.drawable.ic_pennant),
-          contentDescription = null,
-          tint = MaterialTheme.colorScheme.inverseOnSurface,
-      )
-      Text(
-          text = message,
-          style = MaterialTheme.typography.bodyMedium,
-      )
     }
   }
 }
@@ -399,17 +359,6 @@ fun SignUpScreenPreview() {
         onBackClick = {},
         viewModel = SignUpViewModel(PreviewAuthRepository),
         onSignUpSuccess = {},
-    )
-  }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun SignUpErrorSnackbarPreview() {
-  AppTheme {
-    SignUpErrorSnackbar(
-        message = stringResource(R.string.signup_preview_error),
-        onDismiss = {},
     )
   }
 }
