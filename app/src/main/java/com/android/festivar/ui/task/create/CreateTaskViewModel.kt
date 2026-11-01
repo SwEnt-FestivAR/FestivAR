@@ -178,6 +178,29 @@ private const val SAVE_TIMEOUT_MS = 15_000L
 /** The message shown when the task could not be saved, whatever the cause (a string resource). */
 @StringRes private val SAVE_FAILED_MESSAGE = R.string.create_task_error_save_failed
 
+/** The setters a task form screen needs, shared by the create and edit ViewModels. */
+interface TaskFormEditor {
+  fun updateTitle(title: String)
+
+  fun updateDescription(description: String)
+
+  fun updateLocation(location: String)
+
+  fun updatePriority(priority: Priority)
+
+  fun incrementMaxAssign()
+
+  fun decrementMaxAssign()
+
+  fun updateEstimatedMinutes(text: String)
+
+  fun showPicker(field: DateTimeField?)
+
+  fun pickDate(date: LocalDate)
+
+  fun pickTime(time: LocalTime)
+}
+
 /**
  * Holds the state of the Create task screen and saves the new task in [tasksRepository].
  *
@@ -199,7 +222,7 @@ class CreateTaskViewModel(
     private val tasksRepository: TasksRepository = TasksRepositoryProvider.repository,
     private val saveTimeoutMs: Long = SAVE_TIMEOUT_MS,
     zone: ZoneId = ZoneId.systemDefault(),
-) : ViewModel() {
+) : ViewModel(), TaskFormEditor {
   // The id of the task being created. It is kept across retries: if a save timed out or failed
   // after reaching the server, the retry targets the same task instead of creating a second one.
   private var pendingTaskId: String? = null
@@ -221,22 +244,22 @@ class CreateTaskViewModel(
   }
 
   /** Sets the title and marks it as edited, so that an empty title is reported. */
-  fun updateTitle(title: String) = edit { it.copy(title = title, titleEdited = true) }
+  override fun updateTitle(title: String) = edit { it.copy(title = title, titleEdited = true) }
 
   /** Sets the description. */
-  fun updateDescription(description: String) = edit { it.copy(description = description) }
+  override fun updateDescription(description: String) = edit { it.copy(description = description) }
 
   /** Sets the location. */
-  fun updateLocation(location: String) = edit { it.copy(location = location) }
+  override fun updateLocation(location: String) = edit { it.copy(location = location) }
 
   /** Sets the priority. */
-  fun updatePriority(priority: Priority) = edit { it.copy(priority = priority) }
+  override fun updatePriority(priority: Priority) = edit { it.copy(priority = priority) }
 
   /** Adds one to the number of people the task needs. */
-  fun incrementMaxAssign() = edit { it.copy(maxAssign = it.maxAssign + 1) }
+  override fun incrementMaxAssign() = edit { it.copy(maxAssign = it.maxAssign + 1) }
 
   /** Removes one from the number of people the task needs, down to [MIN_MAX_ASSIGN]. */
-  fun decrementMaxAssign() = edit {
+  override fun decrementMaxAssign() = edit {
     it.copy(maxAssign = (it.maxAssign - 1).coerceAtLeast(MIN_MAX_ASSIGN))
   }
 
@@ -244,7 +267,7 @@ class CreateTaskViewModel(
    * Sets the estimated time, in minutes. Anything but digits is dropped, and at most
    * [MAX_ESTIMATED_DIGITS] digits are kept, so that the number always fits in an `Int`.
    */
-  fun updateEstimatedMinutes(text: String) = edit {
+  override fun updateEstimatedMinutes(text: String) = edit {
     it.copy(estimatedMinutes = text.filter(Char::isDigit).take(MAX_ESTIMATED_DIGITS))
   }
 
@@ -261,10 +284,10 @@ class CreateTaskViewModel(
   fun updateEndTime(time: LocalTime) = edit { it.copy(endTime = time) }
 
   /** Opens the picker dialog of [field], or closes the open one when [field] is `null`. */
-  fun showPicker(field: DateTimeField?) = _uiState.update { it.copy(openPicker = field) }
+  override fun showPicker(field: DateTimeField?) = _uiState.update { it.copy(openPicker = field) }
 
   /** Sets [date] in the field whose picker is open, then closes the picker. */
-  fun pickDate(date: LocalDate) {
+  override fun pickDate(date: LocalDate) {
     when (_uiState.value.openPicker) {
       DateTimeField.START_DATE -> updateStartDate(date)
       DateTimeField.END_DATE -> updateEndDate(date)
@@ -274,7 +297,7 @@ class CreateTaskViewModel(
   }
 
   /** Sets [time] in the field whose picker is open, then closes the picker. */
-  fun pickTime(time: LocalTime) {
+  override fun pickTime(time: LocalTime) {
     when (_uiState.value.openPicker) {
       DateTimeField.START_TIME -> updateStartTime(time)
       DateTimeField.END_TIME -> updateEndTime(time)

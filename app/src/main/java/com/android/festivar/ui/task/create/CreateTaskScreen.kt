@@ -3,6 +3,7 @@
 package com.android.festivar.ui.task.create
 
 import androidx.activity.compose.BackHandler
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -52,6 +53,7 @@ import com.android.festivar.ui.components.FestivarFieldWithError
 import com.android.festivar.ui.components.FestivarPrioritySelector
 import com.android.festivar.ui.components.FestivarStepper
 import com.android.festivar.ui.components.FestivarTextField
+import com.android.festivar.ui.components.FieldError
 import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
 import java.time.LocalTime
@@ -71,6 +73,7 @@ object CreateTaskScreenTestTags {
   const val MAX_ASSIGN_FIELD = "createTaskMaxAssignField"
   const val MAX_ASSIGN_DECREASE_BUTTON = "createTaskMaxAssignDecreaseButton"
   const val MAX_ASSIGN_INCREASE_BUTTON = "createTaskMaxAssignIncreaseButton"
+  const val MAX_ASSIGN_ERROR = "createTaskMaxAssignError"
   const val ESTIMATED_TIME_FIELD = "createTaskEstimatedTimeField"
   const val ESTIMATED_TIME_ERROR = "createTaskEstimatedTimeError"
   const val TITLE_ERROR = "createTaskTitleError"
@@ -115,33 +118,64 @@ fun CreateTaskScreen(
 ) {
   val state by viewModel.uiState.collectAsState()
 
-  var askToDiscard by rememberSaveable { mutableStateOf(false) }
-  val requestBack = { if (state.needsDiscardConfirmation) askToDiscard = true else onBack() }
-  BackHandler(onBack = requestBack)
-
   // The latest callback is called, even if the caller passed a new one during the save.
   val currentOnTaskCreated by rememberUpdatedState(onTaskCreated)
   LaunchedEffect(state.isCreated) { if (state.isCreated) currentOnTaskCreated() }
 
-  CreateTaskContent(
-      state = state,
-      actions =
-          CreateTaskActions(
-              onBack = requestBack,
-              onTitleChange = viewModel::updateTitle,
-              onDescriptionChange = viewModel::updateDescription,
-              onLocationChange = viewModel::updateLocation,
-              onPriorityChange = viewModel::updatePriority,
-              onMaxAssignDecrease = viewModel::decrementMaxAssign,
-              onMaxAssignIncrease = viewModel::incrementMaxAssign,
-              onEstimatedMinutesChange = viewModel::updateEstimatedMinutes,
-              onShowPicker = viewModel::showPicker,
-              onDatePicked = viewModel::pickDate,
-              onTimePicked = viewModel::pickTime,
-              onCreate = viewModel::createTask,
-          ),
-      modifier = modifier,
-  )
+  TaskFormBackHandling(
+      needsConfirmation = state.needsDiscardConfirmation,
+      onBack = onBack,
+      dialogTitle = R.string.create_task_discard_title,
+  ) { requestBack ->
+    CreateTaskContent(
+        state = state,
+        actions =
+            taskFormActions(viewModel, onBack = requestBack, onSubmit = viewModel::createTask),
+        modifier = modifier,
+    )
+  }
+}
+
+/** The actions of a task form whose fields are set through [editor]. */
+fun taskFormActions(
+    editor: TaskFormEditor,
+    onBack: () -> Unit,
+    onSubmit: () -> Unit,
+): CreateTaskActions =
+    CreateTaskActions(
+        onBack = onBack,
+        onTitleChange = editor::updateTitle,
+        onDescriptionChange = editor::updateDescription,
+        onLocationChange = editor::updateLocation,
+        onPriorityChange = editor::updatePriority,
+        onMaxAssignDecrease = editor::decrementMaxAssign,
+        onMaxAssignIncrease = editor::incrementMaxAssign,
+        onEstimatedMinutesChange = editor::updateEstimatedMinutes,
+        onShowPicker = editor::showPicker,
+        onDatePicked = editor::pickDate,
+        onTimePicked = editor::pickTime,
+        onCreate = onSubmit,
+    )
+
+/**
+ * Back handling of the task forms: going back, by the system or by the top bar button passed to
+ * [content] as `requestBack`, asks first in the discard dialog when [needsConfirmation].
+ *
+ * @param onBack Called when the user leaves, at once or after confirming the discard.
+ * @param dialogTitle The question the discard dialog asks.
+ */
+@Composable
+internal fun TaskFormBackHandling(
+    needsConfirmation: Boolean,
+    onBack: () -> Unit,
+    @StringRes dialogTitle: Int,
+    content: @Composable (requestBack: () -> Unit) -> Unit,
+) {
+  var askToDiscard by rememberSaveable { mutableStateOf(false) }
+  val requestBack = { if (needsConfirmation) askToDiscard = true else onBack() }
+  BackHandler(onBack = requestBack)
+
+  content(requestBack)
 
   if (askToDiscard) {
     DiscardTaskDialog(
@@ -150,15 +184,24 @@ fun CreateTaskScreen(
           onBack()
         },
         onDismiss = { askToDiscard = false },
+        title = dialogTitle,
     )
   }
 }
 
-/** The "Discard this task?" dialog, shown when going back from an edited form. */
+/**
+ * The discard dialog of the task forms, shown when going back from an edited form.
+ *
+ * @param title The question asked, "Discard this task?" by default.
+ */
 @Composable
-private fun DiscardTaskDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+internal fun DiscardTaskDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    @StringRes title: Int = R.string.create_task_discard_title,
+) {
   FestivarDiscardDialog(
-      title = stringResource(R.string.create_task_discard_title),
+      title = stringResource(title),
       onConfirm = onConfirm,
       onDismiss = onDismiss,
       modifier = Modifier.testTag(CreateTaskScreenTestTags.DISCARD_DIALOG),
@@ -167,9 +210,51 @@ private fun DiscardTaskDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
   )
 }
 
+/** The top bar of the task forms: the back button and the [title]. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun TaskFormTopBar(@StringRes title: Int, onBack: () -> Unit) {
+  TopAppBar(
+      title = {
+        Text(
+            text = stringResource(title),
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.testTag(CreateTaskScreenTestTags.TITLE),
+        )
+      },
+      navigationIcon = {
+        IconButton(
+            onClick = onBack,
+            modifier = Modifier.testTag(CreateTaskScreenTestTags.BACK_BUTTON),
+        ) {
+          Icon(
+              Icons.AutoMirrored.Rounded.ArrowBack,
+              contentDescription = stringResource(R.string.create_task_back),
+          )
+        }
+      },
+      colors =
+          TopAppBarDefaults.topAppBarColors(
+              containerColor = MaterialTheme.colorScheme.background,
+          ),
+  )
+}
+
+/**
+ * The texts that differ between the forms built on [CreateTaskContent].
+ *
+ * @property title The title in the top bar.
+ * @property submit The text of the button at the bottom.
+ */
+data class TaskFormLabels(@StringRes val title: Int, @StringRes val submit: Int)
+
 /**
  * Stateless Create task screen: draws [state] and reports user input through [actions]. The open
- * picker dialog is part of [state] too.
+ * picker dialog is part of [state] too. The Edit task screen draws its form with it as well.
+ *
+ * @param labels The top bar title and the button text.
+ * @param canSubmit Whether the button at the bottom can be pressed.
+ * @param maxAssignError The error shown under the people needed, or null for none.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -177,36 +262,14 @@ fun CreateTaskContent(
     state: CreateTaskUiState,
     actions: CreateTaskActions,
     modifier: Modifier = Modifier,
+    labels: TaskFormLabels = TaskFormLabels(R.string.create_task, R.string.create_task),
+    canSubmit: Boolean = state.canCreate,
+    maxAssignError: FieldError? = null,
 ) {
   Scaffold(
       modifier = modifier.imePadding(),
       containerColor = MaterialTheme.colorScheme.background,
-      topBar = {
-        TopAppBar(
-            title = {
-              Text(
-                  text = stringResource(R.string.create_task),
-                  style = MaterialTheme.typography.titleLarge,
-                  modifier = Modifier.testTag(CreateTaskScreenTestTags.TITLE),
-              )
-            },
-            navigationIcon = {
-              IconButton(
-                  onClick = actions.onBack,
-                  modifier = Modifier.testTag(CreateTaskScreenTestTags.BACK_BUTTON),
-              ) {
-                Icon(
-                    Icons.AutoMirrored.Rounded.ArrowBack,
-                    contentDescription = stringResource(R.string.create_task_back),
-                )
-              }
-            },
-            colors =
-                TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                ),
-        )
-      },
+      topBar = { TaskFormTopBar(labels.title, actions.onBack) },
       bottomBar = {
         Column {
           state.errorMsg?.let {
@@ -217,7 +280,7 @@ fun CreateTaskContent(
           }
           Button(
               onClick = actions.onCreate,
-              enabled = state.canCreate,
+              enabled = canSubmit,
               shape = RoundedCornerShape(12.dp),
               // As in Figma, the disabled button is the beige of the hairlines with dark text;
               // Material would draw it grey with faded text.
@@ -232,7 +295,7 @@ fun CreateTaskContent(
                       .height(52.dp)
                       .testTag(CreateTaskScreenTestTags.CREATE_BUTTON),
           ) {
-            Text(stringResource(R.string.create_task), style = MaterialTheme.typography.labelLarge)
+            Text(stringResource(labels.submit), style = MaterialTheme.typography.labelLarge)
           }
         }
       },
@@ -298,18 +361,22 @@ fun CreateTaskContent(
           modifier =
               Modifier.padding(bottom = 8.dp).testTag(CreateTaskScreenTestTags.PRIORITY_SELECTOR),
       )
-      FestivarStepper(
-          value = state.maxAssign,
-          label = stringResource(R.string.create_task_field_max_assign),
-          onDecrease = actions.onMaxAssignDecrease,
-          onIncrease = actions.onMaxAssignIncrease,
-          decreaseDescription = stringResource(R.string.create_task_max_assign_decrease),
-          increaseDescription = stringResource(R.string.create_task_max_assign_increase),
-          minValue = MIN_MAX_ASSIGN,
-          modifier = Modifier.testTag(CreateTaskScreenTestTags.MAX_ASSIGN_FIELD),
-          decreaseModifier = Modifier.testTag(CreateTaskScreenTestTags.MAX_ASSIGN_DECREASE_BUTTON),
-          increaseModifier = Modifier.testTag(CreateTaskScreenTestTags.MAX_ASSIGN_INCREASE_BUTTON),
-      )
+      FestivarFieldWithError(maxAssignError, CreateTaskScreenTestTags.MAX_ASSIGN_ERROR) {
+        FestivarStepper(
+            value = state.maxAssign,
+            label = stringResource(R.string.create_task_field_max_assign),
+            onDecrease = actions.onMaxAssignDecrease,
+            onIncrease = actions.onMaxAssignIncrease,
+            decreaseDescription = stringResource(R.string.create_task_max_assign_decrease),
+            increaseDescription = stringResource(R.string.create_task_max_assign_increase),
+            minValue = MIN_MAX_ASSIGN,
+            modifier = Modifier.testTag(CreateTaskScreenTestTags.MAX_ASSIGN_FIELD),
+            decreaseModifier =
+                Modifier.testTag(CreateTaskScreenTestTags.MAX_ASSIGN_DECREASE_BUTTON),
+            increaseModifier =
+                Modifier.testTag(CreateTaskScreenTestTags.MAX_ASSIGN_INCREASE_BUTTON),
+        )
+      }
       FestivarFieldWithError(
           state.estimatedTimeError,
           CreateTaskScreenTestTags.ESTIMATED_TIME_ERROR,
