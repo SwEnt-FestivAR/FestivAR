@@ -87,6 +87,29 @@ interface DataRepository {
         }
     }
 
+    suspend fun createEvent(event: Event){
+        require(event.tasks.isEmpty())
+        val userIds =  event.members.map { it.uid }
+        val users = usersRepository.getListUsers(userIds)
+        val newUsers = users.map { it.addJoinedEvent(event.eventId) }
+
+
+        val undoProcess = ArrayDeque<suspend () -> Unit>()
+        try {
+            eventsRepository.addEvent(event)
+            undoProcess.addFirst { eventsRepository.deleteEvent(event.eventId) }
+
+            for ((old, new) in users.zip(newUsers)) {
+                usersRepository.editUser(new.uid, new)
+                undoProcess.addFirst { usersRepository.editUser(old.uid, old) }
+            }
+
+        } catch (e: Exception) {
+            rollback(undoProcess, e)
+            throw e
+        }
+    }
+
 
 
 
