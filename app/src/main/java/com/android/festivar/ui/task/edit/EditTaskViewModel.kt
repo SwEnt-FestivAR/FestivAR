@@ -15,6 +15,7 @@ import com.android.festivar.ui.components.FieldError
 import com.android.festivar.ui.task.create.CreateTaskUiState
 import com.android.festivar.ui.task.create.MAX_ESTIMATED_DIGITS
 import com.android.festivar.ui.task.create.MIN_MAX_ASSIGN
+import com.android.festivar.ui.task.create.TaskFormEditor
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
@@ -145,7 +146,7 @@ class EditTaskViewModel(
     private val repository: TasksRepository = TasksRepositoryProvider.repository,
     private val saveTimeoutMs: Long = SAVE_TIMEOUT_MS,
     private val zone: ZoneId = ZoneId.systemDefault(),
-) : ViewModel() {
+) : ViewModel(), TaskFormEditor {
 
   init {
     require(taskId.isNotBlank()) { "taskId must not be blank" }
@@ -194,30 +195,30 @@ class EditTaskViewModel(
   }
 
   /** Sets the title and marks it as edited, so that an empty title is reported. */
-  fun updateTitle(title: String) = edit { it.copy(title = title, titleEdited = true) }
+  override fun updateTitle(title: String) = edit { it.copy(title = title, titleEdited = true) }
 
   /** Sets the description. */
-  fun updateDescription(description: String) = edit { it.copy(description = description) }
+  override fun updateDescription(description: String) = edit { it.copy(description = description) }
 
   /** Sets the location. */
-  fun updateLocation(location: String) = edit { it.copy(location = location) }
+  override fun updateLocation(location: String) = edit { it.copy(location = location) }
 
   /** Sets the priority. */
-  fun updatePriority(priority: Priority) = edit { it.copy(priority = priority) }
+  override fun updatePriority(priority: Priority) = edit { it.copy(priority = priority) }
 
   /** Adds one to the number of people the task needs. */
-  fun incrementMaxAssign() = edit { it.copy(maxAssign = it.maxAssign + 1) }
+  override fun incrementMaxAssign() = edit { it.copy(maxAssign = it.maxAssign + 1) }
 
   /**
    * Removes one from the number of people the task needs, down to [MIN_MAX_ASSIGN]. Going below the
    * assignees is allowed and shown by [EditTaskUiState.maxAssignError].
    */
-  fun decrementMaxAssign() = edit {
+  override fun decrementMaxAssign() = edit {
     it.copy(maxAssign = (it.maxAssign - 1).coerceAtLeast(MIN_MAX_ASSIGN))
   }
 
   /** Sets the estimated time in minutes, keeping digits only, at most [MAX_ESTIMATED_DIGITS]. */
-  fun updateEstimatedMinutes(text: String) = edit {
+  override fun updateEstimatedMinutes(text: String) = edit {
     it.copy(estimatedMinutes = text.filter(Char::isDigit).take(MAX_ESTIMATED_DIGITS))
   }
 
@@ -234,10 +235,10 @@ class EditTaskViewModel(
   fun updateEndTime(time: LocalTime) = edit { it.copy(endTime = time) }
 
   /** Opens the picker dialog of [field], or closes the open one when [field] is `null`. */
-  fun showPicker(field: DateTimeField?) = edit { it.copy(openPicker = field) }
+  override fun showPicker(field: DateTimeField?) = edit { it.copy(openPicker = field) }
 
   /** Sets [date] in the field whose picker is open, then closes the picker. */
-  fun pickDate(date: LocalDate) {
+  override fun pickDate(date: LocalDate) {
     when (_uiState.value.form.openPicker) {
       DateTimeField.START_DATE -> updateStartDate(date)
       DateTimeField.END_DATE -> updateEndDate(date)
@@ -247,7 +248,7 @@ class EditTaskViewModel(
   }
 
   /** Sets [time] in the field whose picker is open, then closes the picker. */
-  fun pickTime(time: LocalTime) {
+  override fun pickTime(time: LocalTime) {
     when (_uiState.value.form.openPicker) {
       DateTimeField.START_TIME -> updateStartTime(time)
       DateTimeField.END_TIME -> updateEndTime(time)
