@@ -31,6 +31,36 @@ interface DataRepository {
         }
 
 
+    suspend fun addTask(task: Task) {
+        val event = eventsRepository.getEvent(task.eventId)
+        val userIds = (listOf(task.ownerId) + task.assignees.map { it.uid }).distinct()
+        val users = usersRepository.getListUsers(userIds)
+
+        val newEvent = event.addTask(task)
+        val newUsers = users.map { it.addAssignedTask(task.taskId) }
+
+        val undoProcess = ArrayDeque<suspend () -> Unit>()
+
+        try {
+            tasksRepository.addTask(task)
+            undoProcess.addFirst { tasksRepository.deleteTask(task.taskId) }
+
+            eventsRepository.editEvent(event.eventId, newEvent)
+            undoProcess.addFirst { eventsRepository.editEvent(event.eventId, event) }
+
+            for ((old, new) in users.zip(newUsers)) {
+                usersRepository.editUser(new.uid, new)
+                undoProcess.addFirst { usersRepository.editUser(old.uid, old) }
+            }
+
+        } catch (e: Exception) {
+            rollback(undoProcess, e)
+            throw e
+        }
+    }
+
+
+
 
 
 
