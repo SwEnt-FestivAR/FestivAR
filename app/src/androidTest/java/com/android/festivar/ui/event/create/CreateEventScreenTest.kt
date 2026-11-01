@@ -27,22 +27,21 @@ import com.android.festivar.ui.components.formatTime
 import io.mockk.mockk
 import io.mockk.spyk
 import io.mockk.verify
-import kotlinx.coroutines.CompletableDeferred
-import org.junit.Assert
-import org.junit.Rule
-import org.junit.Test
-import org.junit.runner.RunWith
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
+import kotlinx.coroutines.CompletableDeferred
+import org.junit.Assert
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class CreateEventScreenTest {
 
-  @get:Rule
-  val composeTestRule = createComposeRule()
+  @get:Rule val composeTestRule = createComposeRule()
   private lateinit var viewModel: CreateEventViewModel
   private val DEFAULT_PICKED_TIME = LocalTime.of(9, 0)
 
@@ -150,8 +149,8 @@ class CreateEventScreenTest {
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.START_DATE_FIELD).performClick()
     composeTestRule.onNodeWithText("Cancel").performClick()
 
-      Assert.assertNull(viewModel.uiState.value.startDate)
-      Assert.assertNull(viewModel.uiState.value.openPicker)
+    Assert.assertNull(viewModel.uiState.value.startDate)
+    Assert.assertNull(viewModel.uiState.value.openPicker)
   }
 
   /** Red if cancelling either time picker changes the form or leaves a dialog open. */
@@ -165,7 +164,7 @@ class CreateEventScreenTest {
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.END_TIME_FIELD).performClick()
     composeTestRule.onNodeWithText("Cancel").performClick()
 
-      Assert.assertNull(viewModel.uiState.value.openPicker)
+    Assert.assertNull(viewModel.uiState.value.openPicker)
   }
 
   /** Red if an end date before the start date does not display an end-date error. */
@@ -193,7 +192,7 @@ class CreateEventScreenTest {
     composeTestRule.setContent { CreateEventScreen(viewModel = viewModel, onBack = onBack) }
 
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAVIGATION_BUTTON).performClick()
-      verify(exactly = 1) { onBack() }
+    verify(exactly = 1) { onBack() }
   }
 
   /** Red if the create button is enabled even though the form is invalid. */
@@ -217,7 +216,7 @@ class CreateEventScreenTest {
     composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
 
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).performClick()
-      verify(exactly = 0) { viewModel.createEvent() }
+    verify(exactly = 0) { viewModel.createEvent() }
   }
 
   /** Red if a valid event form leaves the create button disabled. */
@@ -252,7 +251,7 @@ class CreateEventScreenTest {
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsEnabled()
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).performClick()
 
-      verify(exactly = 1) { viewModel.createEvent() }
+    verify(exactly = 1) { viewModel.createEvent() }
   }
 
   /**
@@ -283,11 +282,11 @@ class CreateEventScreenTest {
 
     waitForTag(CreateEventScreenTestTags.SAVING_INDICATOR)
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsNotEnabled()
-      verify(exactly = 0) { onCreated() }
+    verify(exactly = 0) { onCreated() }
 
     gate.complete(Unit)
     composeTestRule.waitForIdle()
-      verify(exactly = 1) { onCreated() }
+    verify(exactly = 1) { onCreated() }
   }
 
   /** Red if a failed write shows nothing, or leaves the button disabled so no retry is possible. */
@@ -309,7 +308,7 @@ class CreateEventScreenTest {
     waitForTag(CreateEventScreenTestTags.SAVE_ERROR)
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.SAVE_ERROR).assertIsDisplayed()
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsEnabled()
-      verify(exactly = 0) { onCreated() }
+    verify(exactly = 0) { onCreated() }
   }
 
   /** Red if changing the form does not dismiss a stale save error. */
@@ -330,13 +329,13 @@ class CreateEventScreenTest {
     viewModel.updateName("Updated festival")
     composeTestRule.waitForIdle()
 
-      Assert.assertNull(viewModel.uiState.value.errorMsg)
-      Assert.assertTrue(
-          composeTestRule
-              .onAllNodesWithTag(CreateEventScreenTestTags.SAVE_ERROR)
-              .fetchSemanticsNodes()
-              .isEmpty()
-      )
+    Assert.assertNull(viewModel.uiState.value.errorMsg)
+    Assert.assertTrue(
+        composeTestRule
+            .onAllNodesWithTag(CreateEventScreenTestTags.SAVE_ERROR)
+            .fetchSemanticsNodes()
+            .isEmpty()
+    )
   }
 
   private fun selectDate(tag: String, date: LocalDate) {

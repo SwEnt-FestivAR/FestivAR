@@ -2,8 +2,10 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.event.join
 
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
@@ -33,19 +35,16 @@ import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.joinCodeOf
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepositoryLocal
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import org.junit.Assert
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.time.ZoneId
-import java.time.ZonedDateTime
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 
 @RunWith(AndroidJUnit4::class)
 class JoinEventScreenTest {
-  @get:Rule
-  val composeTestRule = createComposeRule()
+  @get:Rule val composeTestRule = createComposeRule()
 
   private val cardStart = ZonedDateTime.of(2026, 10, 17, 10, 0, 0, 0, ZoneId.of("Europe/Zurich"))
   private val found = FoundEventUi("e1", "Vidy Festival", cardStart, 12)
@@ -72,7 +71,7 @@ class JoinEventScreenTest {
   /** Matches every node whose test tag starts with [prefix], whatever event id follows it. */
   private fun hasTagPrefix(prefix: String) =
       SemanticsMatcher("tag starts with $prefix") {
-          it.config.getOrNull(SemanticsProperties.TestTag)?.startsWith(prefix) == true
+        it.config.getOrNull(SemanticsProperties.TestTag)?.startsWith(prefix) == true
       }
 
   private fun content(
@@ -93,7 +92,7 @@ class JoinEventScreenTest {
             UsersRepositoryLocal(listOf(user)),
         )
     composeTestRule.setContent {
-        JoinEventScreen(viewModel = viewModel, onOpenEvent = { opened.add(it) })
+      JoinEventScreen(viewModel = viewModel, onOpenEvent = { opened.add(it) })
     }
   }
 
@@ -104,7 +103,7 @@ class JoinEventScreenTest {
 
     composeTestRule.onNodeWithTag(JoinEventScreenTestTags.CODE_INPUT).performTextInput("ab12")
 
-      Assert.assertEquals("ab12", typed)
+    Assert.assertEquals("ab12", typed)
   }
 
   @Test
@@ -121,7 +120,7 @@ class JoinEventScreenTest {
         .onNodeWithTag(JoinEventScreenTestTags.join("e1"))
         .assertIsEnabled()
         .performClick()
-      Assert.assertEquals(listOf("e1"), joins)
+    Assert.assertEquals(listOf("e1"), joins)
   }
 
   /** The button of the card [eventId] holding the label [label] in its unmerged children. */
@@ -145,7 +144,7 @@ class JoinEventScreenTest {
     buttonWithLabel("e1", string(R.string.join_event_open)).assertExists()
     buttonWithLabel("e1", string(R.string.join_event_join)).assertDoesNotExist()
     composeTestRule.onNodeWithTag(JoinEventScreenTestTags.join("e1")).performClick()
-      Assert.assertEquals(listOf("e1"), joins)
+    Assert.assertEquals(listOf("e1"), joins)
   }
 
   @Test
@@ -175,7 +174,7 @@ class JoinEventScreenTest {
         .assertTextEquals("Vidy Afterparty")
     composeTestRule.onNodeWithTag(JoinEventScreenTestTags.join("e2")).performClick()
 
-      Assert.assertEquals(listOf("e2"), joins)
+    Assert.assertEquals(listOf("e2"), joins)
   }
 
   @Test
@@ -226,7 +225,7 @@ class JoinEventScreenTest {
 
     composeTestRule.onNodeWithTag(JoinEventScreenTestTags.BACK).performClick()
 
-      Assert.assertEquals(1, backs)
+    Assert.assertEquals(1, backs)
   }
 
   @Test
@@ -302,7 +301,7 @@ class JoinEventScreenTest {
     composeTestRule.onNodeWithTag(JoinEventScreenTestTags.join(event.eventId)).performClick()
 
     composeTestRule.waitUntil(5_000) { opened.isNotEmpty() }
-      Assert.assertEquals(event.eventId, opened.first())
+    Assert.assertEquals(event.eventId, opened.first())
   }
 
   @Test
@@ -317,7 +316,7 @@ class JoinEventScreenTest {
     composeTestRule.waitUntil(5_000) { opened.isNotEmpty() }
     composeTestRule.waitForIdle()
 
-      Assert.assertEquals(listOf(event.eventId), opened)
+    Assert.assertEquals(listOf(event.eventId), opened)
   }
 
   @Test
@@ -346,7 +345,7 @@ class JoinEventScreenTest {
     shown = true
     composeTestRule.waitForIdle()
 
-      Assert.assertEquals(listOf(event.eventId), opened)
+    Assert.assertEquals(listOf(event.eventId), opened)
   }
 
   @Test
@@ -365,7 +364,7 @@ class JoinEventScreenTest {
   fun theCodeRowAndTheHiddenFieldAreDescribedForAScreenReader() {
     composeTestRule.setContent {
       var code by remember { mutableStateOf("") }
-        JoinEventContent(JoinEventUIState(code = code), {}, { code = it }, {})
+      JoinEventContent(JoinEventUIState(code = code), {}, { code = it }, {})
     }
 
     composeTestRule

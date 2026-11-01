@@ -19,7 +19,7 @@ class JoinEventNavigatorTest {
   fun backClickPopsBackStack() {
     navigator.onBack()
 
-      verify { navController.popBackStack() }
+    verify { navController.popBackStack() }
   }
 
   @Test
@@ -28,10 +28,10 @@ class JoinEventNavigatorTest {
 
     navigator.onOpenEvent("e1")
 
-      verify { navController.navigate(AppScreens.eventDetails("e1"), capture(options)) }
+    verify { navController.navigate(AppScreens.eventDetails("e1"), capture(options)) }
     val navOptions = navOptions(options.captured)
-      Assert.assertEquals(AppScreens.JoinEvent.name, navOptions.popUpToRoute)
-      Assert.assertTrue(navOptions.isPopUpToInclusive())
+    Assert.assertEquals(AppScreens.JoinEvent.name, navOptions.popUpToRoute)
+    Assert.assertTrue(navOptions.isPopUpToInclusive())
   }
 
   @Test
@@ -40,9 +40,9 @@ class JoinEventNavigatorTest {
 
     navigator.onSignedOut()
 
-      verify { navController.navigate(AppScreens.Login.name, capture(options)) }
+    verify { navController.navigate(AppScreens.Login.name, capture(options)) }
     val navOptions = navOptions(options.captured)
-      Assert.assertEquals(navController.graph.id, navOptions.popUpToId)
-      Assert.assertTrue(navOptions.isPopUpToInclusive())
+    Assert.assertEquals(navController.graph.id, navOptions.popUpToId)
+    Assert.assertTrue(navOptions.isPopUpToInclusive())
   }
 }

@@ -21,8 +21,7 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class EventDetailsScreenTest {
 
-  @get:Rule
-  val composeTestRule = createComposeRule()
+  @get:Rule val composeTestRule = createComposeRule()
 
   @Test
   fun displaysEventDataAndTaggedElements() {
@@ -79,36 +78,36 @@ class EventDetailsScreenTest {
   @Test
   fun displaysErrorWhenEventCannotBeFetched() {
     composeTestRule.setContent {
-        EventDetailsScreen(
-            eventId = "missing",
-            viewModel =
-                EventDetailsViewModel(
-                    object : EventsRepository by EventsRepositoryLocal() {
-                        override suspend fun getEvent(eventId: String): Event {
-                            throw IllegalStateException("fetch failed")
-                        }
+      EventDetailsScreen(
+          eventId = "missing",
+          viewModel =
+              EventDetailsViewModel(
+                  object : EventsRepository by EventsRepositoryLocal() {
+                    override suspend fun getEvent(eventId: String): Event {
+                      throw IllegalStateException("fetch failed")
                     }
-                ),
-            onTasksButtonClicked = {},
-            onBack = {},
-        )
+                  }
+              ),
+          onTasksButtonClicked = {},
+          onBack = {},
+      )
     }
     composeTestRule.waitForIdle()
 
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.FETCH_ERROR).assertIsDisplayed()
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.BACK_BUTTON).assertIsDisplayed()
-      Assert.assertTrue(
-          composeTestRule
-              .onAllNodesWithTag(EventDetailsScreenTestTags.EVENT_NAME)
-              .fetchSemanticsNodes()
-              .isEmpty()
-      )
-      Assert.assertTrue(
-          composeTestRule
-              .onAllNodesWithTag(EventDetailsScreenTestTags.SEE_TASKS_BUTTON)
-              .fetchSemanticsNodes()
-              .isEmpty()
-      )
+    Assert.assertTrue(
+        composeTestRule
+            .onAllNodesWithTag(EventDetailsScreenTestTags.EVENT_NAME)
+            .fetchSemanticsNodes()
+            .isEmpty()
+    )
+    Assert.assertTrue(
+        composeTestRule
+            .onAllNodesWithTag(EventDetailsScreenTestTags.SEE_TASKS_BUTTON)
+            .fetchSemanticsNodes()
+            .isEmpty()
+    )
   }
 
   @Test
@@ -120,7 +119,7 @@ class EventDetailsScreenTest {
 
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.SEE_TASKS_BUTTON).performClick()
 
-      Assert.assertTrue(tasksButtonClicked)
+    Assert.assertTrue(tasksButtonClicked)
   }
 
   @Test
@@ -132,7 +131,7 @@ class EventDetailsScreenTest {
 
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.BACK_BUTTON).performClick()
 
-      Assert.assertTrue(backClicked)
+    Assert.assertTrue(backClicked)
   }
 
   @SuppressLint("ViewModelConstructorInComposable")
@@ -142,12 +141,12 @@ class EventDetailsScreenTest {
       onBack: () -> Unit = {},
   ) {
     composeTestRule.setContent {
-        EventDetailsScreen(
-            eventId = event.eventId,
-            viewModel = EventDetailsViewModel(EventsRepositoryLocal(listOf(event))),
-            onTasksButtonClicked = onTasksButtonClicked,
-            onBack = onBack,
-        )
+      EventDetailsScreen(
+          eventId = event.eventId,
+          viewModel = EventDetailsViewModel(EventsRepositoryLocal(listOf(event))),
+          onTasksButtonClicked = onTasksButtonClicked,
+          onBack = onBack,
+      )
     }
     composeTestRule.waitForIdle()
   }

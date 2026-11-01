@@ -19,7 +19,7 @@ class ProfileNavigatorTest {
   fun backClickGoesBackToThePreviousScreen() {
     navigator.onBack()
 
-      verify { navController.popBackStack() }
+    verify { navController.popBackStack() }
   }
 
   @Test
@@ -28,9 +28,9 @@ class ProfileNavigatorTest {
 
     navigator.onSignedOut()
 
-      verify { navController.navigate(AppScreens.Login.name, capture(options)) }
+    verify { navController.navigate(AppScreens.Login.name, capture(options)) }
     val navOptions = navOptions(options.captured)
-      Assert.assertEquals(navController.graph.id, navOptions.popUpToId)
-      Assert.assertTrue(navOptions.isPopUpToInclusive())
+    Assert.assertEquals(navController.graph.id, navOptions.popUpToId)
+    Assert.assertTrue(navOptions.isPopUpToInclusive())
   }
 }

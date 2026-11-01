@@ -32,25 +32,24 @@ import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.ui.theme.AppTheme
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.time.ZoneId
-import java.time.ZonedDateTime
-import java.util.concurrent.atomic.AtomicInteger
 
 @RunWith(AndroidJUnit4::class)
 class EventsOverviewScreenTest {
-  @get:Rule
-  val composeTestRule = createComposeRule()
+  @get:Rule val composeTestRule = createComposeRule()
 
   /**
-   * An [com.android.festivar.model.event.EventsRepositoryLocal] serving [events]. It throws [error] on every fetch of the events of
-   * a user while it is set, waits for [gate] to be completed before answering when it is set, and
-   * counts the [fetches].
+   * An [com.android.festivar.model.event.EventsRepositoryLocal] serving [events]. It throws [error]
+   * on every fetch of the events of a user while it is set, waits for [gate] to be completed before
+   * answering when it is set, and counts the [fetches].
    */
   private class EventsRepositoryImpl(
       events: List<Event> = listOf(),
@@ -68,7 +67,10 @@ class EventsOverviewScreenTest {
     }
   }
 
-  /** A [androidx.lifecycle.LifecycleOwner] whose state the test moves itself, e.g. to send the screen to the back. */
+  /**
+   * A [androidx.lifecycle.LifecycleOwner] whose state the test moves itself, e.g. to send the
+   * screen to the back.
+   */
   private class TestLifecycleOwner : LifecycleOwner {
     val registry = LifecycleRegistry.createUnsafe(this)
     override val lifecycle: Lifecycle
@@ -157,19 +159,19 @@ class EventsOverviewScreenTest {
   ): EventsOverviewViewModel {
     composeTestRule.setContent {
       // Without a lifecycleOwner, the screen follows the activity of the test, already resumed
-        CompositionLocalProvider(
-            LocalLifecycleOwner provides (lifecycleOwner ?: LocalLifecycleOwner.current)
-        ) {
-            AppTheme {
-                EventsOverviewScreen(
-                    eventsOverviewViewModel = viewModel,
-                    onSelectEvent = onSelectEvent,
-                    onJoinEvent = onJoinEvent,
-                    onAddEvent = onAddEvent,
-                    onSelectAvatar = onSelectAvatar,
-                )
-            }
+      CompositionLocalProvider(
+          LocalLifecycleOwner provides (lifecycleOwner ?: LocalLifecycleOwner.current)
+      ) {
+        AppTheme {
+          EventsOverviewScreen(
+              eventsOverviewViewModel = viewModel,
+              onSelectEvent = onSelectEvent,
+              onJoinEvent = onJoinEvent,
+              onAddEvent = onAddEvent,
+              onSelectAvatar = onSelectAvatar,
+          )
         }
+      }
     }
     return viewModel
   }
@@ -532,11 +534,11 @@ class EventsOverviewScreenTest {
         composeTestRule
             .onNodeWithTag(EventsOverviewScreenTestTags.PULL_TO_REFRESH)
             .getUnclippedBoundsInRoot()
-      Assert.assertEquals(
-          ((listArea.top + listArea.bottom) / 2).value,
-          ((indicator.top + indicator.bottom) / 2).value,
-          1f,
-      )
+    Assert.assertEquals(
+        ((listArea.top + listArea.bottom) / 2).value,
+        ((indicator.top + indicator.bottom) / 2).value,
+        1f,
+    )
     // The empty state must not flash while the first events are still being fetched
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.EMPTY_TITLE).assertDoesNotExist()
     assertJoinAndCreateButtonsDoNotExist()
@@ -566,7 +568,7 @@ class EventsOverviewScreenTest {
     repository.gate = gate
     setContent(withRepository = repository, viewModel = viewModel)
     composeTestRule.waitForIdle()
-      Assert.assertTrue(viewModel.uiState.value.isLoading)
+    Assert.assertTrue(viewModel.uiState.value.isLoading)
 
     composeTestRule
         .onNodeWithTag(EventsOverviewScreenTestTags.LOADING_INDICATOR)
@@ -658,7 +660,7 @@ class EventsOverviewScreenTest {
     setContent(withRepository = repository)
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.EMPTY_TITLE).assertIsDisplayed()
 
-      runBlocking { repository.addEvent(ongoingEvent) }
+    runBlocking { repository.addEvent(ongoingEvent) }
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.PULL_TO_REFRESH).performTouchInput {
       swipeDown()
     }
@@ -689,20 +691,20 @@ class EventsOverviewScreenTest {
     composeTestRule.runOnUiThread { lifecycleOwner.registry.currentState = Lifecycle.State.RESUMED }
     setContent(withRepository = repository, lifecycleOwner = lifecycleOwner)
     onEventItem(ongoingEvent, hasText(ongoingEvent.title))
-      Assert.assertEquals(1, repository.fetches.get())
+    Assert.assertEquals(1, repository.fetches.get())
 
     // Another screen comes to the front, where the user joins an event
     composeTestRule.runOnUiThread { lifecycleOwner.registry.currentState = Lifecycle.State.CREATED }
-      runBlocking { repository.addEvent(upcomingEvent) }
+    runBlocking { repository.addEvent(upcomingEvent) }
     composeTestRule.waitForIdle()
-      Assert.assertEquals(1, repository.fetches.get())
+    Assert.assertEquals(1, repository.fetches.get())
 
     composeTestRule.runOnUiThread { lifecycleOwner.registry.currentState = Lifecycle.State.RESUMED }
 
     composeTestRule
         .onNode(hasTestTag(EventsOverviewScreenTestTags.UPCOMING_CHIP).and(hasText("1")))
         .assertIsDisplayed()
-      Assert.assertEquals(2, repository.fetches.get())
+    Assert.assertEquals(2, repository.fetches.get())
   }
 
   /** Test that clicking on an event card gives the clicked event. */
@@ -718,7 +720,7 @@ class EventsOverviewScreenTest {
         .onNodeWithTag(EventsOverviewScreenTestTags.getTestTagForEventItem(ongoingEvent))
         .performClick()
 
-      Assert.assertEquals(ongoingEvent, selected)
+    Assert.assertEquals(ongoingEvent, selected)
   }
 
   /**
@@ -783,8 +785,8 @@ class EventsOverviewScreenTest {
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.EVENT_ACTIONS_BUTTON).performClick()
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON).performClick()
 
-      Assert.assertEquals(1, joins)
-      Assert.assertEquals(0, adds)
+    Assert.assertEquals(1, joins)
+    Assert.assertEquals(0, adds)
     assertJoinAndCreateButtonsDoNotExist()
   }
 
@@ -802,8 +804,8 @@ class EventsOverviewScreenTest {
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.EVENT_ACTIONS_BUTTON).performClick()
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.CREATE_EVENT_BUTTON).performClick()
 
-      Assert.assertEquals(0, joins)
-      Assert.assertEquals(1, adds)
+    Assert.assertEquals(0, joins)
+    Assert.assertEquals(1, adds)
     assertJoinAndCreateButtonsDoNotExist()
   }
 
@@ -820,8 +822,8 @@ class EventsOverviewScreenTest {
 
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON).performClick()
 
-      Assert.assertEquals(1, joins)
-      Assert.assertEquals(0, adds)
+    Assert.assertEquals(1, joins)
+    Assert.assertEquals(0, adds)
   }
 
   /** Test that the "Create" button of the empty state calls onAddEvent only. */
@@ -837,8 +839,8 @@ class EventsOverviewScreenTest {
 
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.CREATE_EVENT_BUTTON).performClick()
 
-      Assert.assertEquals(0, joins)
-      Assert.assertEquals(1, adds)
+    Assert.assertEquals(0, joins)
+    Assert.assertEquals(1, adds)
   }
 
   /** Test that clicking on the avatar of the top bar calls onSelectAvatar. */
@@ -849,6 +851,6 @@ class EventsOverviewScreenTest {
 
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.USER_AVATAR).performClick()
 
-      Assert.assertEquals(1, clicks)
+    Assert.assertEquals(1, clicks)
   }
 }

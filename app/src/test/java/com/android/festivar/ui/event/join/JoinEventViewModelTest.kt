@@ -9,6 +9,8 @@ import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryLocal
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -21,8 +23,6 @@ import org.junit.After
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
-import java.time.ZoneId
-import java.time.ZonedDateTime
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class JoinEventViewModelTest {
@@ -88,7 +88,7 @@ class JoinEventViewModelTest {
   ) = JoinEventViewModel(userId, eventsRepository, usersRepository)
 
   private fun memberIds(eventId: String) = runBlocking {
-      events.getEvent(eventId)
+    events.getEvent(eventId)
   }
       .members
       .map { it.uid }
@@ -108,7 +108,7 @@ class JoinEventViewModelTest {
 
     viewModel.setCode("fe-te 2")
 
-      Assert.assertEquals("FETE2", viewModel.uiState.value.code)
+    Assert.assertEquals("FETE2", viewModel.uiState.value.code)
   }
 
   @Test
@@ -117,7 +117,7 @@ class JoinEventViewModelTest {
 
     viewModel.setCode("FETE2026")
 
-      Assert.assertEquals("FETE20", viewModel.uiState.value.code)
+    Assert.assertEquals("FETE20", viewModel.uiState.value.code)
   }
 
   @Test
@@ -126,8 +126,8 @@ class JoinEventViewModelTest {
 
     viewModel.setCode("FETE2")
 
-      Assert.assertEquals(emptyList<FoundEventUi>(), viewModel.uiState.value.matches)
-      Assert.assertFalse(viewModel.uiState.value.notFound)
+    Assert.assertEquals(emptyList<FoundEventUi>(), viewModel.uiState.value.matches)
+    Assert.assertFalse(viewModel.uiState.value.notFound)
   }
 
   @Test
@@ -150,9 +150,9 @@ class JoinEventViewModelTest {
 
     viewModel.setCode("FETE20")
 
-      Assert.assertEquals(1, byCode)
-      Assert.assertEquals(0, all)
-      Assert.assertEquals("fete2026", viewModel.uiState.value.matches.single().id)
+    Assert.assertEquals(1, byCode)
+    Assert.assertEquals(0, all)
+    Assert.assertEquals("fete2026", viewModel.uiState.value.matches.single().id)
   }
 
   @Test
@@ -161,16 +161,16 @@ class JoinEventViewModelTest {
 
     viewModel.setCode("fete20")
 
-      Assert.assertEquals(
-          FoundEventUi(
-              id = "fete2026",
-              name = "Fete de l'Asso 2026",
-              start = start,
-              members = 1,
-          ),
-          viewModel.uiState.value.matches.single(),
-      )
-      Assert.assertFalse(viewModel.uiState.value.notFound)
+    Assert.assertEquals(
+        FoundEventUi(
+            id = "fete2026",
+            name = "Fete de l'Asso 2026",
+            start = start,
+            members = 1,
+        ),
+        viewModel.uiState.value.matches.single(),
+    )
+    Assert.assertFalse(viewModel.uiState.value.notFound)
   }
 
   @Test
@@ -181,8 +181,8 @@ class JoinEventViewModelTest {
     member.setCode("FETE20")
     stranger.setCode("FETE20")
 
-      Assert.assertTrue(member.uiState.value.matches.single().isMember)
-      Assert.assertFalse(stranger.uiState.value.matches.single().isMember)
+    Assert.assertTrue(member.uiState.value.matches.single().isMember)
+    Assert.assertFalse(stranger.uiState.value.matches.single().isMember)
   }
 
   @Test
@@ -192,10 +192,10 @@ class JoinEventViewModelTest {
     viewModel.setCode("ZZZZZZ")
     viewModel.join("fete2026")
 
-      Assert.assertTrue(viewModel.uiState.value.notFound)
-      Assert.assertEquals(emptyList<FoundEventUi>(), viewModel.uiState.value.matches)
-      Assert.assertNull(viewModel.uiState.value.joinedEventId)
-      Assert.assertEquals(emptyList<String>(), joinedEvents(ada.uid))
+    Assert.assertTrue(viewModel.uiState.value.notFound)
+    Assert.assertEquals(emptyList<FoundEventUi>(), viewModel.uiState.value.matches)
+    Assert.assertNull(viewModel.uiState.value.joinedEventId)
+    Assert.assertEquals(emptyList<String>(), joinedEvents(ada.uid))
   }
 
   @Test
@@ -205,8 +205,8 @@ class JoinEventViewModelTest {
 
     viewModel.setCode("FETE2")
 
-      Assert.assertEquals(emptyList<FoundEventUi>(), viewModel.uiState.value.matches)
-      Assert.assertFalse(viewModel.uiState.value.notFound)
+    Assert.assertEquals(emptyList<FoundEventUi>(), viewModel.uiState.value.matches)
+    Assert.assertFalse(viewModel.uiState.value.notFound)
   }
 
   @Test
@@ -216,10 +216,10 @@ class JoinEventViewModelTest {
 
     viewModel.join("fete2026")
 
-      Assert.assertEquals("fete2026", viewModel.uiState.value.joinedEventId)
-      Assert.assertFalse(viewModel.uiState.value.isJoining)
-      Assert.assertEquals(listOf("fete2026"), joinedEvents(ada.uid))
-      Assert.assertEquals(listOf(sami.uid, ada.uid), memberIds("fete2026"))
+    Assert.assertEquals("fete2026", viewModel.uiState.value.joinedEventId)
+    Assert.assertFalse(viewModel.uiState.value.isJoining)
+    Assert.assertEquals(listOf("fete2026"), joinedEvents(ada.uid))
+    Assert.assertEquals(listOf(sami.uid, ada.uid), memberIds("fete2026"))
   }
 
   @Test
@@ -229,12 +229,12 @@ class JoinEventViewModelTest {
 
     viewModel.join("fete2026")
 
-      Assert.assertEquals("fete2026", viewModel.uiState.value.joinedEventId)
-      Assert.assertNull(viewModel.uiState.value.errorRes)
-      Assert.assertEquals(listOf(sami.uid), memberIds("fete2026"))
-      Assert.assertEquals(listOf("fete2026"), joinedEvents(sami.uid))
-      Assert.assertEquals(0, events.writes)
-      Assert.assertEquals(0, users.writes)
+    Assert.assertEquals("fete2026", viewModel.uiState.value.joinedEventId)
+    Assert.assertNull(viewModel.uiState.value.errorRes)
+    Assert.assertEquals(listOf(sami.uid), memberIds("fete2026"))
+    Assert.assertEquals(listOf("fete2026"), joinedEvents(sami.uid))
+    Assert.assertEquals(0, events.writes)
+    Assert.assertEquals(0, users.writes)
   }
 
   @Test
@@ -243,11 +243,11 @@ class JoinEventViewModelTest {
 
     viewModel.join("fete2026")
 
-      Assert.assertNull(viewModel.uiState.value.joinedEventId)
-      Assert.assertFalse(viewModel.uiState.value.isJoining)
-      Assert.assertNull(viewModel.uiState.value.errorRes)
-      Assert.assertEquals(0, events.writes)
-      Assert.assertEquals(0, users.writes)
+    Assert.assertNull(viewModel.uiState.value.joinedEventId)
+    Assert.assertFalse(viewModel.uiState.value.isJoining)
+    Assert.assertNull(viewModel.uiState.value.errorRes)
+    Assert.assertEquals(0, events.writes)
+    Assert.assertEquals(0, users.writes)
   }
 
   @Test
@@ -256,9 +256,9 @@ class JoinEventViewModelTest {
 
     viewModel.setCode("FETE20")
 
-      Assert.assertEquals(R.string.join_event_lookup_failed, viewModel.uiState.value.errorRes)
-      Assert.assertEquals(emptyList<FoundEventUi>(), viewModel.uiState.value.matches)
-      Assert.assertFalse(viewModel.uiState.value.notFound)
+    Assert.assertEquals(R.string.join_event_lookup_failed, viewModel.uiState.value.errorRes)
+    Assert.assertEquals(emptyList<FoundEventUi>(), viewModel.uiState.value.matches)
+    Assert.assertFalse(viewModel.uiState.value.notFound)
   }
 
   @Test
@@ -273,10 +273,10 @@ class JoinEventViewModelTest {
 
     viewModel.join("fete2026")
 
-      Assert.assertEquals(R.string.join_event_join_failed, viewModel.uiState.value.errorRes)
-      Assert.assertFalse(viewModel.uiState.value.isJoining)
-      Assert.assertNull(viewModel.uiState.value.joinedEventId)
-      Assert.assertEquals(listOf(sami.uid, ada.uid), memberIds("fete2026"))
+    Assert.assertEquals(R.string.join_event_join_failed, viewModel.uiState.value.errorRes)
+    Assert.assertFalse(viewModel.uiState.value.isJoining)
+    Assert.assertNull(viewModel.uiState.value.joinedEventId)
+    Assert.assertEquals(listOf(sami.uid, ada.uid), memberIds("fete2026"))
   }
 
   @Test
@@ -291,9 +291,9 @@ class JoinEventViewModelTest {
 
     viewModel.join("fete2026")
 
-      Assert.assertEquals(R.string.join_event_join_failed, viewModel.uiState.value.errorRes)
-      Assert.assertFalse(viewModel.uiState.value.isJoining)
-      Assert.assertEquals(emptyList<String>(), joinedEvents(ada.uid))
+    Assert.assertEquals(R.string.join_event_join_failed, viewModel.uiState.value.errorRes)
+    Assert.assertFalse(viewModel.uiState.value.isJoining)
+    Assert.assertEquals(emptyList<String>(), joinedEvents(ada.uid))
   }
 
   @Test
@@ -307,9 +307,9 @@ class JoinEventViewModelTest {
 
     viewModel.join("fete2026")
 
-      Assert.assertEquals(R.string.join_event_open_failed, viewModel.uiState.value.errorRes)
-      Assert.assertFalse(viewModel.uiState.value.isJoining)
-      Assert.assertNull(viewModel.uiState.value.joinedEventId)
+    Assert.assertEquals(R.string.join_event_open_failed, viewModel.uiState.value.errorRes)
+    Assert.assertFalse(viewModel.uiState.value.isJoining)
+    Assert.assertNull(viewModel.uiState.value.joinedEventId)
   }
 
   @Test
@@ -321,13 +321,13 @@ class JoinEventViewModelTest {
 
     viewModel.join("fete2026")
 
-      Assert.assertEquals("fete2026", viewModel.uiState.value.joinedEventId)
-      Assert.assertNull(viewModel.uiState.value.errorRes)
-      Assert.assertEquals(listOf(sami.uid, ada.uid), memberIds("fete2026"))
-      Assert.assertEquals(
-          listOf("fete2026"),
-          runBlocking { halfUsers.getUser(ada.uid) }.joinedEvents
-      )
+    Assert.assertEquals("fete2026", viewModel.uiState.value.joinedEventId)
+    Assert.assertNull(viewModel.uiState.value.errorRes)
+    Assert.assertEquals(listOf(sami.uid, ada.uid), memberIds("fete2026"))
+    Assert.assertEquals(
+        listOf("fete2026"),
+        runBlocking { halfUsers.getUser(ada.uid) }.joinedEvents,
+    )
   }
 
   @Test
@@ -345,15 +345,15 @@ class JoinEventViewModelTest {
 
     viewModel.join("fete2026")
 
-      Assert.assertEquals(R.string.join_event_join_failed, viewModel.uiState.value.errorRes)
-      Assert.assertFalse(viewModel.uiState.value.isJoining)
-      Assert.assertEquals(emptyList<String>(), joinedEvents(ada.uid))
+    Assert.assertEquals(R.string.join_event_join_failed, viewModel.uiState.value.errorRes)
+    Assert.assertFalse(viewModel.uiState.value.isJoining)
+    Assert.assertEquals(emptyList<String>(), joinedEvents(ada.uid))
 
     viewModel.join("fete2026")
 
-      Assert.assertEquals("fete2026", viewModel.uiState.value.joinedEventId)
-      Assert.assertEquals(listOf(sami.uid, ada.uid), memberIds("fete2026"))
-      Assert.assertEquals(listOf("fete2026"), joinedEvents(ada.uid))
+    Assert.assertEquals("fete2026", viewModel.uiState.value.joinedEventId)
+    Assert.assertEquals(listOf(sami.uid, ada.uid), memberIds("fete2026"))
+    Assert.assertEquals(listOf("fete2026"), joinedEvents(ada.uid))
   }
 
   @Test
@@ -366,8 +366,8 @@ class JoinEventViewModelTest {
     viewModel.join("fete2026")
 
     val after = runBlocking { storedUsers.getUser(ada.uid) }
-      Assert.assertEquals(listOf("noel-12", "fete2026"), after.joinedEvents)
-      Assert.assertEquals(listOf("task-1"), after.tasksAssigned)
+    Assert.assertEquals(listOf("noel-12", "fete2026"), after.joinedEvents)
+    Assert.assertEquals(listOf("task-1"), after.tasksAssigned)
   }
 
   @Test
@@ -387,8 +387,8 @@ class JoinEventViewModelTest {
     viewModel.setCode("FETE2")
     gate.complete(Unit)
 
-      Assert.assertEquals("fete2026", viewModel.uiState.value.joinedEventId)
-      Assert.assertEquals("FETE20", viewModel.uiState.value.code)
+    Assert.assertEquals("fete2026", viewModel.uiState.value.joinedEventId)
+    Assert.assertEquals("FETE20", viewModel.uiState.value.code)
   }
 
   @Test
@@ -409,8 +409,8 @@ class JoinEventViewModelTest {
 
     gate.complete(Unit)
 
-      Assert.assertNull(viewModel.uiState.value.errorRes)
-      Assert.assertEquals("noel-12", viewModel.uiState.value.matches.single().id)
+    Assert.assertNull(viewModel.uiState.value.errorRes)
+    Assert.assertEquals("noel-12", viewModel.uiState.value.matches.single().id)
   }
 
   @Test
@@ -428,8 +428,8 @@ class JoinEventViewModelTest {
     viewModel.setCode("FETE20")
     viewModel.setCode("FETE20-")
 
-      Assert.assertEquals(1, lookups)
-      Assert.assertEquals("fete2026", viewModel.uiState.value.matches.single().id)
+    Assert.assertEquals(1, lookups)
+    Assert.assertEquals("fete2026", viewModel.uiState.value.matches.single().id)
   }
 
   @Test
@@ -450,11 +450,11 @@ class JoinEventViewModelTest {
     viewModel.join("fete2026")
     viewModel.join("fete2026")
 
-      Assert.assertTrue(viewModel.uiState.value.isJoining)
-      Assert.assertEquals(1, writes)
+    Assert.assertTrue(viewModel.uiState.value.isJoining)
+    Assert.assertEquals(1, writes)
     gate.complete(Unit)
-      Assert.assertEquals("fete2026", viewModel.uiState.value.joinedEventId)
-      Assert.assertEquals(listOf(sami.uid, ada.uid), memberIds("fete2026"))
+    Assert.assertEquals("fete2026", viewModel.uiState.value.joinedEventId)
+    Assert.assertEquals(listOf(sami.uid, ada.uid), memberIds("fete2026"))
   }
 
   @Test
@@ -473,9 +473,9 @@ class JoinEventViewModelTest {
     viewModel.setCode("FETE2")
     gate.complete(Unit)
 
-      Assert.assertEquals("FETE2", viewModel.uiState.value.code)
-      Assert.assertEquals(emptyList<FoundEventUi>(), viewModel.uiState.value.matches)
-      Assert.assertFalse(viewModel.uiState.value.notFound)
+    Assert.assertEquals("FETE2", viewModel.uiState.value.code)
+    Assert.assertEquals(emptyList<FoundEventUi>(), viewModel.uiState.value.matches)
+    Assert.assertFalse(viewModel.uiState.value.notFound)
   }
 
   @Test
@@ -503,9 +503,9 @@ class JoinEventViewModelTest {
     viewModel.setCode("NOEL12")
     gate.complete(Unit)
 
-      Assert.assertNotNull(cancelled)
-      Assert.assertEquals("NOEL12", viewModel.uiState.value.code)
-      Assert.assertEquals(listOf("noel-12"), viewModel.uiState.value.matches.map { it.id })
+    Assert.assertNotNull(cancelled)
+    Assert.assertEquals("NOEL12", viewModel.uiState.value.code)
+    Assert.assertEquals(listOf("noel-12"), viewModel.uiState.value.matches.map { it.id })
   }
 
   @Test
@@ -516,9 +516,9 @@ class JoinEventViewModelTest {
 
     viewModel.onEventOpened()
 
-      Assert.assertNull(viewModel.uiState.value.joinedEventId)
+    Assert.assertNull(viewModel.uiState.value.joinedEventId)
     viewModel.setCode("NOEL12")
-      Assert.assertEquals("noel-12", viewModel.uiState.value.matches.single().id)
+    Assert.assertEquals("noel-12", viewModel.uiState.value.matches.single().id)
   }
 
   @Test
@@ -533,13 +533,13 @@ class JoinEventViewModelTest {
         }
     val viewModel = viewModel(eventsRepository = flaky)
     viewModel.setCode("FETE20")
-      Assert.assertEquals(R.string.join_event_lookup_failed, viewModel.uiState.value.errorRes)
+    Assert.assertEquals(R.string.join_event_lookup_failed, viewModel.uiState.value.errorRes)
 
     viewModel.setCode("FETE20")
 
-      Assert.assertEquals(2, lookups)
-      Assert.assertNull(viewModel.uiState.value.errorRes)
-      Assert.assertEquals("fete2026", viewModel.uiState.value.matches.single().id)
+    Assert.assertEquals(2, lookups)
+    Assert.assertNull(viewModel.uiState.value.errorRes)
+    Assert.assertEquals("fete2026", viewModel.uiState.value.matches.single().id)
   }
 
   @Test
@@ -554,8 +554,8 @@ class JoinEventViewModelTest {
     withText.setCode("FETE20")
     withoutText.setCode("FETE20")
 
-      Assert.assertEquals(R.string.join_event_lookup_failed, withText.uiState.value.errorRes)
-      Assert.assertEquals(R.string.join_event_lookup_failed, withoutText.uiState.value.errorRes)
+    Assert.assertEquals(R.string.join_event_lookup_failed, withText.uiState.value.errorRes)
+    Assert.assertEquals(R.string.join_event_lookup_failed, withoutText.uiState.value.errorRes)
   }
 
   @Test
@@ -563,14 +563,14 @@ class JoinEventViewModelTest {
     val viewModel = viewModel()
     viewModel.setCode("FETE20")
     viewModel.join("fete2026")
-      Assert.assertEquals("fete2026", viewModel.uiState.value.joinedEventId)
+    Assert.assertEquals("fete2026", viewModel.uiState.value.joinedEventId)
 
     viewModel.setCode("X")
 
-      Assert.assertEquals("FETE20", viewModel.uiState.value.code)
+    Assert.assertEquals("FETE20", viewModel.uiState.value.code)
     viewModel.onEventOpened()
     viewModel.setCode("X")
-      Assert.assertEquals("X", viewModel.uiState.value.code)
+    Assert.assertEquals("X", viewModel.uiState.value.code)
   }
 
   @Test
@@ -582,23 +582,24 @@ class JoinEventViewModelTest {
 
     viewModel.setCode("FETE20")
 
-      Assert.assertEquals(
-          listOf("fete2026", "fete2026-bis"),
-          viewModel.uiState.value.matches.map { it.id })
-      Assert.assertFalse(viewModel.uiState.value.notFound)
+    Assert.assertEquals(
+        listOf("fete2026", "fete2026-bis"),
+        viewModel.uiState.value.matches.map { it.id },
+    )
+    Assert.assertFalse(viewModel.uiState.value.notFound)
 
     viewModel.join("fete2026-bis")
 
-      Assert.assertEquals("fete2026-bis", viewModel.uiState.value.joinedEventId)
-      Assert.assertEquals(
-          listOf(ada.uid),
-          runBlocking { colliding.getEvent("fete2026-bis") }.members.map { it.uid },
-      )
-      Assert.assertEquals(
-          listOf(sami.uid),
-          runBlocking { colliding.getEvent("fete2026") }.members.map { it.uid },
-      )
-      Assert.assertEquals(listOf("fete2026-bis"), joinedEvents(ada.uid))
+    Assert.assertEquals("fete2026-bis", viewModel.uiState.value.joinedEventId)
+    Assert.assertEquals(
+        listOf(ada.uid),
+        runBlocking { colliding.getEvent("fete2026-bis") }.members.map { it.uid },
+    )
+    Assert.assertEquals(
+        listOf(sami.uid),
+        runBlocking { colliding.getEvent("fete2026") }.members.map { it.uid },
+    )
+    Assert.assertEquals(listOf("fete2026-bis"), joinedEvents(ada.uid))
   }
 
   @Test
@@ -608,9 +609,9 @@ class JoinEventViewModelTest {
 
     viewModel.join("noel-12")
 
-      Assert.assertFalse(viewModel.uiState.value.isJoining)
-      Assert.assertNull(viewModel.uiState.value.joinedEventId)
-      Assert.assertEquals(0, events.writes)
-      Assert.assertEquals(0, users.writes)
+    Assert.assertFalse(viewModel.uiState.value.isJoining)
+    Assert.assertNull(viewModel.uiState.value.joinedEventId)
+    Assert.assertEquals(0, events.writes)
+    Assert.assertEquals(0, users.writes)
   }
 }
