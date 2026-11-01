@@ -1,3 +1,4 @@
+//Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.datarepository
 
 import com.android.festivar.model.authentication.AuthRepository
@@ -17,7 +18,23 @@ interface DataRepository {
     val eventsRepository: EventsRepository
     val usersRepository: UsersRepository
 
-    
+
+
+    /** Runs every undo, even if some fail; throws [DataInconsistencyException] if any did. */
+    private suspend fun rollback(undoProcess: List<suspend () -> Unit>, cause: Exception) =
+        withContext(NonCancellable) {
+            val failures = undoProcess.mapNotNull { undo -> runCatching { undo() }.exceptionOrNull() }
+            if (failures.isNotEmpty()) {
+                throw DataInconsistencyException("Operation failed and could not be fully undone", cause)
+                    .apply { failures.forEach(::addSuppressed) }
+            }
+        }
+
+
+
+
+
+
 
 
 }
