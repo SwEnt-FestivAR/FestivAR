@@ -25,7 +25,7 @@ data class AnnouncementFeedSection(
 data class AnnouncementFeedUiState(
     val pinnedAnnouncements: List<Announcement> = emptyList(),
     val sections: List<AnnouncementFeedSection> = emptyList(),
-    val isLoading: Boolean = true,
+    val isLoading: Boolean = false,
     val errorMsg: String? = null,
 )
 

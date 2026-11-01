@@ -10,6 +10,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -20,6 +21,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -89,6 +91,30 @@ class AnnouncementFeedViewModelTest {
     assertEquals(listOf(announcement), viewModel.uiState.value.sections.single().announcements)
     assertEquals("fetch failed", viewModel.uiState.value.errorMsg)
     assertFalse(viewModel.uiState.value.isLoading)
+  }
+
+  @Test
+  fun refreshClearsPreviousErrorWhileLoading() = runTest {
+    val pendingEvent = CompletableDeferred<Event>()
+    var shouldWait = false
+    val repository =
+        object : EventsRepository by EventsRepositoryLocal() {
+          override suspend fun getEvent(eventId: String): Event {
+            if (shouldWait) return pendingEvent.await()
+            throw IllegalStateException("fetch failed")
+          }
+        }
+    val viewModel = AnnouncementFeedViewModel(EVENT_ID, repository, clock)
+
+    viewModel.refresh()
+    assertEquals("fetch failed", viewModel.uiState.value.errorMsg)
+
+    shouldWait = true
+    viewModel.refresh()
+
+    assertTrue(viewModel.uiState.value.isLoading)
+    assertNull(viewModel.uiState.value.errorMsg)
+    pendingEvent.complete(event())
   }
 
   @Test
