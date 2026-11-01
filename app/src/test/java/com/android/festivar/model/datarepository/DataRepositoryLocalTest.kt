@@ -5,6 +5,7 @@ import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.task.Task
+import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
@@ -122,8 +123,18 @@ class DataRepositoryLocalTest {
           usersRepository.getAllUsers().toSet(),
       )
 
-  private fun repositoryWith(users: UsersRepository) =
-      DataRepositoryLocal(mockk<AuthRepository>(), tasksRepository, eventsRepository, users)
+  private fun repositoryWith(
+      users: UsersRepository = usersRepository,
+      tasks: TasksRepository = tasksRepository,
+  ) = DataRepositoryLocal(mockk<AuthRepository>(), tasks, eventsRepository, users)
+
+  /** A [TasksRepository] that behaves like [delegate], except that every edit fails. */
+  private class BrokenTasksRepository(private val delegate: TasksRepository) :
+      TasksRepository by delegate {
+    override suspend fun editTask(taskId: String, newValue: Task) {
+      throw IOException("Connection lost while editing $taskId")
+    }
+  }
 
   /**
    * A [UsersRepository] that behaves like [delegate], except that editing [failingUid] fails like a
@@ -145,26 +156,42 @@ class DataRepositoryLocalTest {
     }
   }
 
-  /** Checks that [block] throws [expected] and leaves every repository unchanged. */
+  /**
+   * Checks that [block] throws exactly [expected] (not a subclass, such as a
+   * [DataInconsistencyException] for an [IllegalStateException]) and leaves every repository
+   * unchanged.
+   */
   private suspend fun <T : Throwable> assertFailsWithoutChanges(
       expected: Class<T>,
       block: suspend () -> Unit,
   ): T {
     val before = snapshot()
     val exception = assertThrows(expected) { runBlocking { block() } }
+    assertEquals(expected, exception.javaClass)
     assertEquals(before, snapshot())
     return exception
   }
 
   /**
-   * Runs [operation] while the edit of [failingUid], always its last write, fails, and checks that
-   * the original exception is rethrown and that every write already done is undone.
+   * Runs [operation] while the edit of [failingUid] fails, and checks that the original exception
+   * is rethrown and that every write already done is undone.
    */
   private suspend fun assertRollsBack(
       failingUid: String,
       operation: suspend DataRepository.() -> Unit,
   ) {
     dataRepository = repositoryWith(BrokenUsersRepository(usersRepository, failingUid, false))
+    assertFailsWithoutChanges(IOException::class.java) { dataRepository.operation() }
+  }
+
+  /**
+   * Runs [operation] while every task edit fails, a write done after the event's edit, and checks
+   * that the original exception is rethrown and that the event's edit is undone.
+   */
+  private suspend fun assertRollsBackWhenTaskEditFails(
+      operation: suspend DataRepository.() -> Unit
+  ) {
+    dataRepository = repositoryWith(tasks = BrokenTasksRepository(tasksRepository))
     assertFailsWithoutChanges(IOException::class.java) { dataRepository.operation() }
   }
 
@@ -187,6 +214,17 @@ class DataRepositoryLocalTest {
 
   private suspend fun taskIds(eventId: String) =
       eventsRepository.getEvent(eventId).tasks.map { it.taskId }
+
+  // ********************************* Constructor ********************************* //
+
+  @Test
+  fun defaultRepositories_startEmpty() = runTest {
+    val repository = DataRepositoryLocal(mockk<AuthRepository>())
+
+    assertTrue(repository.eventsRepository.getAllEvents().isEmpty())
+    assertTrue(repository.tasksRepository.getAllTasks("e1").isEmpty())
+    assertTrue(repository.usersRepository.getAllUsers().isEmpty())
+  }
 
   // ********************************* addTask ********************************* //
 
@@ -212,9 +250,18 @@ class DataRepositoryLocalTest {
   }
 
   @Test
-  fun addTask_alreadyInTheEvent_throwsAndChangesNothing() = runTest {
+  fun addTask_alreadyInTheEventListedOrStored_throwsAndChangesNothing() = runTest {
     assertFailsWithoutChanges(IllegalArgumentException::class.java) {
       dataRepository.addTask(t1.copy(title = "Duplicate"))
+    }
+    // bob, the owner, already lists t2.
+    assertFailsWithoutChanges(IllegalArgumentException::class.java) {
+      dataRepository.addTask(t2.copy(eventId = "e1"))
+    }
+    // Nobody lists t2 and e1 does not contain it, but the tasks repository does: the first write
+    // fails, with nothing to undo.
+    assertFailsWithoutChanges(IllegalArgumentException::class.java) {
+      dataRepository.addTask(t2.copy(eventId = "e1", ownerId = "alice", assignees = listOf(alice)))
     }
   }
 
@@ -231,7 +278,12 @@ class DataRepositoryLocalTest {
     }
   }
 
-  @Test fun addTask_failingWrite_isUndone() = runTest { assertRollsBack("alice") { addTask(t3) } }
+  @Test
+  fun addTask_failingWrite_isUndone() = runTest {
+    // bob, the owner, is edited before alice: the last write fails, then the first user's one.
+    assertRollsBack("alice") { addTask(t3) }
+    assertRollsBack("bob") { addTask(t3) }
+  }
 
   // ********************************* deleteTask ********************************* //
 
@@ -311,6 +363,18 @@ class DataRepositoryLocalTest {
   }
 
   @Test
+  fun deleteEvent_withAnAssigneeNotMember_deletesEveryTaskButTheAssigneeKeepsIt() = runTest {
+    dataRepository.addTask(t3.copy(assignees = listOf(carla)))
+
+    dataRepository.deleteEvent("e1")
+
+    assertTrue(tasksRepository.getAllTasks("e1").isEmpty())
+    assertUser("alice", emptyList(), emptyList())
+    assertUser("bob", listOf("e2"), listOf("t2"))
+    assertUser("carla", emptyList(), listOf("t3"))
+  }
+
+  @Test
   fun deleteEvent_unknownEvent_throwsAndChangesNothing() = runTest {
     assertFailsWithoutChanges(NoSuchElementException::class.java) {
       dataRepository.deleteEvent("unknown")
@@ -366,6 +430,18 @@ class DataRepositoryLocalTest {
   }
 
   @Test
+  fun quitEvent_notAssignedToItsTasks_leavesTheTasksUnchanged() = runTest {
+    dataRepository.joinEvent("e1", "carla")
+
+    dataRepository.quitEvent("e1", "carla")
+
+    assertEquals(listOf("alice", "bob"), memberIds("e1"))
+    assertEquals(t1, tasksRepository.getTask("t1"))
+    assertAssignees("t1", listOf("bob"))
+    assertUser("carla", emptyList(), emptyList())
+  }
+
+  @Test
   fun quitEvent_notMember_throwsAndChangesNothing() = runTest {
     assertFailsWithoutChanges(IllegalArgumentException::class.java) {
       dataRepository.quitEvent("e1", "carla")
@@ -385,6 +461,7 @@ class DataRepositoryLocalTest {
   @Test
   fun quitEvent_failingWrite_isUndone() = runTest {
     assertRollsBack("bob") { quitEvent("e1", "bob") }
+    assertRollsBackWhenTaskEditFails { quitEvent("e1", "bob") }
   }
 
   // ********************************* joinTask ********************************* //
@@ -432,6 +509,7 @@ class DataRepositoryLocalTest {
   @Test
   fun joinTask_failingWrite_isUndone() = runTest {
     assertRollsBack("carla") { joinTask("t1", "carla") }
+    assertRollsBackWhenTaskEditFails { joinTask("t1", "carla") }
   }
 
   // ********************************* quitTask ********************************* //
@@ -464,6 +542,7 @@ class DataRepositoryLocalTest {
   @Test
   fun quitTask_failingWrite_isUndone() = runTest {
     assertRollsBack("bob") { quitTask("t1", "bob") }
+    assertRollsBackWhenTaskEditFails { quitTask("t1", "bob") }
   }
 
   // ********************************* Rollback ********************************* //
