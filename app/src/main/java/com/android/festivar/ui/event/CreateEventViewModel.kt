@@ -181,27 +181,16 @@ class CreateEventViewModel(
   private suspend fun save() {
     val creator =
         if (userId.isNotBlank()) {
-          try {
-            usersRepository.getUser(userId)
-          } catch (_: Exception) {
-            null
-          }
-        } else null
+          usersRepository.getUser(userId)
+        } else {
+          Log.e("CreateEventViewModel", "User not signed in")
+          throw IllegalStateException("User not signed in")
+        }
 
-    val fallbackCreator = creator ?: if (userId.isNotBlank()) User(uid = userId) else null
-    val membersList = if (fallbackCreator != null) listOf(fallbackCreator) else emptyList()
-
-    val newEvent = _uiState.value.toEvent(eventsRepository.getNewUid(), membersList)
+    val newEvent = _uiState.value.toEvent(eventsRepository.getNewUid(), listOf(creator))
     eventsRepository.addEvent(newEvent)
+    usersRepository.editUser(creator.uid, creator.addJoinedEvent(newEvent.eventId))
 
-    if (creator != null) {
-      val repo = usersRepository
-      try {
-        repo.editUser(creator.uid, creator.addJoinedEvent(newEvent.eventId))
-      } catch (_: Exception) {
-        // If updating user joinedEvents fails, event is still created
-      }
-    }
     _uiState.update { it.copy(isSaving = false, createdEventId = newEvent.eventId) }
   }
 }
