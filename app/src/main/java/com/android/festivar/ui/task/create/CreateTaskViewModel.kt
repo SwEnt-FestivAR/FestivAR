@@ -126,7 +126,7 @@ data class CreateTaskUiState(
   val canCreate: Boolean
     get() = isValid && !isSaving && !isCreated
 
-  private val isValid: Boolean
+  internal val isValid: Boolean
     get() =
         title.isNotBlank() &&
             startDateError == null &&
@@ -160,7 +160,7 @@ data class CreateTaskUiState(
 }
 
 /** The most digits of the estimated time: 9 digits is always below `Int.MAX_VALUE`. */
-private const val MAX_ESTIMATED_DIGITS = 9
+internal const val MAX_ESTIMATED_DIGITS = 9
 
 /** The fewest people a task can need, and the number of people a new task starts with. */
 const val MIN_MAX_ASSIGN = 1
