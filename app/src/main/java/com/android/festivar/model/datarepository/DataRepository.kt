@@ -110,6 +110,44 @@ interface DataRepository {
         }
     }
 
+    suspend fun deleteEvent(eventId: String){
+        val event = eventsRepository.getEvent(eventId)
+        val tasks = tasksRepository.getAllTasks(eventId)
+        val userIds = event.members.map{ it.uid }
+        val users = usersRepository.getListUsers(userIds)
+
+        val newUsers = users.map {
+            var newIt = it
+            for(task in tasks){
+                if(newIt.tasksAssigned.contains(task.taskId)){
+                    newIt = newIt.removeAssignedTask(task.taskId)
+                }
+            }
+            newIt = newIt.removeJoinedEvent(eventId)
+            newIt
+        }
+
+        val undoProcess = ArrayDeque<suspend () -> Unit>()
+        try {
+            eventsRepository.deleteEvent(eventId)
+            undoProcess.addFirst { eventsRepository.addEvent(event) }
+
+            for (task in tasks){
+                tasksRepository.deleteTask(task.taskId)
+                undoProcess.addFirst { tasksRepository.addTask(task) }
+            }
+
+            for ((old, new) in users.zip(newUsers)) {
+                usersRepository.editUser(new.uid, new)
+                undoProcess.addFirst { usersRepository.editUser(old.uid, old) }
+            }
+
+        } catch (e: Exception) {
+            rollback(undoProcess, e)
+            throw e
+        }
+    }
+
 
 
 
