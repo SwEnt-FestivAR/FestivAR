@@ -52,7 +52,7 @@ class AnnouncementFeedViewModel(
   /** Fetches the latest announcements. A failed refresh keeps the last successful feed. */
   fun refresh() {
     refreshJob?.cancel()
-    _uiState.update { it.copy(isLoading = true) }
+    _uiState.update { it.copy(isLoading = true, errorMsg = null) }
     refreshJob = viewModelScope.launch {
       try {
         val announcements = repository.getEvent(eventId).announcements
