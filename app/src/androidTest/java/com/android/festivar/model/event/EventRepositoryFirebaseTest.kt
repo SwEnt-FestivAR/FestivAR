@@ -5,7 +5,7 @@ package com.android.festivar.model.event
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.FirebaseEmulatorSetup
 import com.android.festivar.model.user.User
-import com.android.festivar.model.user.UserRepositoryFirebase
+import com.android.festivar.model.user.UsersRepositoryFirebase
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.firestore
@@ -19,7 +19,6 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
-import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.BeforeClass
@@ -38,7 +37,7 @@ class EventRepositoryFirebaseTest {
     FirebaseEmulatorSetup.configure()
     runBlocking {
       Firebase.auth.signInAnonymously().await()
-      val userRepo = UserRepositoryFirebase(Firebase.firestore)
+      val userRepo = UsersRepositoryFirebase(Firebase.firestore)
       userRepo.addUser(User("user-1"))
       userRepo.addUser(User("user-2", "Alex", "Lee"))
     }
@@ -62,7 +61,7 @@ class EventRepositoryFirebaseTest {
       if (::event.isInitialized) {
         Firebase.firestore.collection("events").document(event.eventId).delete().await()
       }
-      val userRepo = UserRepositoryFirebase(Firebase.firestore)
+      val userRepo = UsersRepositoryFirebase(Firebase.firestore)
       runCatching { userRepo.deleteUser("user-1") }
       runCatching { userRepo.deleteUser("user-2") }
       Firebase.auth.signOut()

@@ -5,7 +5,7 @@ package com.android.festivar.model.event
 import android.util.Log
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.task.TaskRepositoryFirebase
-import com.android.festivar.model.user.UserRepositoryFirebase
+import com.android.festivar.model.user.UsersRepositoryFirebase
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import java.time.ZonedDateTime
@@ -23,7 +23,7 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
     get() = db.collection(EVENT_COLLECTION_PATH)
 
   private val taskRepository by lazy { TaskRepositoryFirebase(db) }
-  private val userRepo by lazy { UserRepositoryFirebase(db) }
+  private val userRepo by lazy { UsersRepositoryFirebase(db) }
 
   override fun getNewUid(): String {
     return UUID.randomUUID().toString()

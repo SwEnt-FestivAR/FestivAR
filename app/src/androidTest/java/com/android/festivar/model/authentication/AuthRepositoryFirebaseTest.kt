@@ -7,8 +7,8 @@ import androidx.credentials.CustomCredential
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.FirebaseEmulatorSetup
 import com.android.festivar.model.user.User
-import com.android.festivar.model.user.UserRepositoryFirebase
 import com.android.festivar.model.user.UsersRepository
+import com.android.festivar.model.user.UsersRepositoryFirebase
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
@@ -35,7 +35,7 @@ class AuthRepositoryFirebaseTest {
   fun setUp() {
     FirebaseEmulatorSetup.configure()
     Firebase.auth.signOut()
-    usersRepository = UserRepositoryFirebase(Firebase.firestore)
+    usersRepository = UsersRepositoryFirebase(Firebase.firestore)
     repository = AuthRepositoryFirebase(usersRepository = usersRepository)
   }
 
