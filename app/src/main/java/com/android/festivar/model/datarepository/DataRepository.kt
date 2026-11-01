@@ -148,6 +148,26 @@ interface DataRepository {
         }
     }
 
+    suspend fun joinEvent(eventId: String, userId: String){
+        val event = eventsRepository.getEvent(eventId)
+        val user = usersRepository.getUser(userId)
+
+        val newUser = user.addJoinedEvent(eventId)
+        val newEvent = event.addMember(newUser)
+
+        val undoProcess = ArrayDeque<suspend () -> Unit>()
+        try {
+            eventsRepository.editEvent(eventId, newEvent)
+            undoProcess.addFirst { eventsRepository.editEvent(eventId, event) }
+
+            usersRepository.editUser(userId, newUser)
+            undoProcess.addFirst { usersRepository.editUser(userId, user) }
+        } catch (e: Exception) {
+            rollback(undoProcess, e)
+            throw e
+        }
+    }
+
 
 
 
