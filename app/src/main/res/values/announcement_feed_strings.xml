@@ -1,0 +1,11 @@
+<!-- Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com> -->
+<resources>
+    <string name="announcement_feed_title">Announcements</string>
+    <string name="announcement_feed_back">Navigate back</string>
+    <string name="announcement_feed_add">Add announcement</string>
+    <string name="announcement_feed_today">Today</string>
+    <string name="announcement_feed_yesterday">Yesterday</string>
+    <string name="announcement_feed_empty">No announcements yet.</string>
+    <string name="announcement_feed_error">Could not load announcements: %1$s</string>
+    <string name="announcement_feed_error_unknown">Could not load announcements. Try again.</string>
+</resources>
