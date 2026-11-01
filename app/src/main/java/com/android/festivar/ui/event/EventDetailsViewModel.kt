@@ -15,7 +15,7 @@ import kotlinx.coroutines.launch
 
 data class EventDetailsUIState(
     val event: Event? = null,
-    val errorFetch: Boolean = false,
+    val fetchError: Boolean = false,
 )
 
 class EventDetailsViewModel(
@@ -34,7 +34,7 @@ class EventDetailsViewModel(
       } catch (e: CancellationException) {
         throw e
       } catch (_: Exception) {
-        _uiState.update { it.copy(errorFetch = true) }
+        _uiState.update { it.copy(fetchError = true) }
       }
     }
   }

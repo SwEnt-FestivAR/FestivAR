@@ -61,7 +61,7 @@ class EventDetailsViewModelTest {
     advanceUntilIdle()
 
     assertNull(viewModel.uiState.value.event)
-    assertEquals(true, viewModel.uiState.value.errorFetch)
+    assertEquals(true, viewModel.uiState.value.fetchError)
   }
 
   @Test
@@ -84,7 +84,7 @@ class EventDetailsViewModelTest {
     advanceUntilIdle()
 
     assertNull(viewModel.uiState.value.event)
-    assertEquals(true, viewModel.uiState.value.errorFetch)
+    assertEquals(true, viewModel.uiState.value.fetchError)
   }
 
   @Test
@@ -107,7 +107,7 @@ class EventDetailsViewModelTest {
     advanceUntilIdle()
 
     assertEquals(event, viewModel.uiState.value.event)
-    assertEquals(false, viewModel.uiState.value.errorFetch)
+    assertEquals(false, viewModel.uiState.value.fetchError)
   }
 
   @Test
@@ -125,7 +125,7 @@ class EventDetailsViewModelTest {
     advanceUntilIdle()
 
     assertNull(viewModel.uiState.value.event)
-    assertEquals(false, viewModel.uiState.value.errorFetch)
+    assertEquals(false, viewModel.uiState.value.fetchError)
   }
 
   private fun testEvent(eventId: String): Event {

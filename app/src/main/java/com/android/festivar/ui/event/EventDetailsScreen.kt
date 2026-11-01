@@ -64,6 +64,11 @@ object EventDetailsScreenTestTags {
   const val SEE_TASKS_BUTTON = "seeTasksButton"
 }
 
+class EventDetailsActions(
+    val onBack: () -> Unit = {},
+    val onTasksButtonClicked: () -> Unit = {},
+)
+
 /**
  * A screen for viewing event details.
  *
@@ -77,27 +82,41 @@ fun EventDetailsScreen(
     viewModel: EventDetailsViewModel,
     onBack: () -> Unit,
     onTasksButtonClicked: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
   LaunchedEffect(Unit) { viewModel.fetchEvent(eventId) }
   val uiState by viewModel.uiState.collectAsState()
-  val event = uiState.event
 
+  EventDetailsContent(
+      state = uiState,
+      actions = EventDetailsActions(onBack = onBack, onTasksButtonClicked = onTasksButtonClicked),
+      modifier = modifier,
+  )
+}
+
+@Composable
+private fun EventDetailsContent(
+    state: EventDetailsUIState,
+    actions: EventDetailsActions,
+    modifier: Modifier = Modifier,
+) {
+  val event = state.event
   Scaffold(
       containerColor = MaterialTheme.colorScheme.background,
-      topBar = { EventDetailsTopBar(onBack = onBack) },
+      topBar = { EventDetailsTopBar(onBack = actions.onBack) },
       bottomBar = {
         if (event != null) {
-          EventDetailsBottomBar(onTasksButtonClicked = onTasksButtonClicked)
+          EventDetailsBottomBar(onTasksButtonClicked = actions.onTasksButtonClicked)
         }
       },
   ) { paddingValues ->
     when {
       event != null ->
-          EventDetailsContent(
+          EventInfo(
               event = event,
-              modifier = Modifier.padding(paddingValues),
+              modifier = modifier.padding(paddingValues),
           )
-      uiState.errorFetch ->
+      state.fetchError ->
           Box(
               modifier = Modifier.fillMaxSize().padding(10.dp),
               contentAlignment = Alignment.Center,
@@ -115,7 +134,7 @@ fun EventDetailsScreen(
 }
 
 @Composable
-private fun EventDetailsContent(
+private fun EventInfo(
     event: Event,
     modifier: Modifier = Modifier,
 ) {
