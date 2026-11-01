@@ -77,6 +77,10 @@ data class TaskDetailsUiState(
   val canMarkDone: Boolean
     get() = status == TaskStatus.YOURS && !isUpdating && !isLoading
 
+  /** Whether the edit button is shown: only the owner of [task] can edit it. */
+  val canEdit: Boolean
+    get() = task != null && task.ownerId == currentUserId
+
   /** Whether the actions bar is shown at all: only open and own tasks have one. */
   val hasActions: Boolean
     get() = status == TaskStatus.OPEN || status == TaskStatus.YOURS

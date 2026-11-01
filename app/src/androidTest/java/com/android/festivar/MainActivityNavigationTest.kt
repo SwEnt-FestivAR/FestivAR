@@ -5,6 +5,8 @@
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 package com.android.festivar
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
@@ -19,6 +21,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.credentials.Credential
 import androidx.credentials.CredentialManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -46,6 +49,7 @@ import com.android.festivar.ui.event.JoinEventScreenTestTags
 import com.android.festivar.ui.profile.ProfileScreenTestTags
 import com.android.festivar.ui.task.create.CreateTaskScreenTestTags
 import com.android.festivar.ui.task.details.TaskDetailsScreenTestTags
+import com.android.festivar.ui.task.edit.EditTaskScreenTestTags
 import com.android.festivar.ui.task.overview.TaskOverviewScreenTestTags
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseUser
@@ -90,9 +94,14 @@ class MainActivityNavigationTest {
     firebaseUser = mockk(relaxed = true) { every { uid } returns testUserId }
   }
 
-  private fun seedTask(taskId: String = "t1", eventId: String = "e1", title: String = "Test Task") {
+  private fun seedTask(
+      taskId: String = "t1",
+      eventId: String = "e1",
+      title: String = "Test Task",
+      ownerId: String = "owner-1",
+  ) {
     val localRepo = TasksRepositoryLocal()
-    val task = Task(taskId, eventId, title, ownerId = "owner-1")
+    val task = Task(taskId, eventId, title, ownerId = ownerId)
     runBlocking { localRepo.addTask(task) }
     TasksRepositoryProvider.repository = localRepo
   }
@@ -559,6 +568,70 @@ class MainActivityNavigationTest {
     }
 
     composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  // Breaks if the edit route opens for nobody signed in instead of sending them to the login.
+  @Test
+  fun editTaskRouteRedirectsToLoginWhenUserIsNull() {
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          authRepository = FakeAuthRepository(currentUser = null),
+          startDestinationOverride = AppScreens.editTask("t1"),
+      )
+    }
+
+    waitUntilTagExists(LoginScreenTestTags.TITLE)
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  // Breaks if the details edit button is not wired to the edit route, or back from it does not
+  // return to the details.
+  @Test
+  fun taskDetailsEditOpensTheEditScreenAndBackReturns() {
+    openTheEditOfAnOwnedTaskFromItsDetails()
+
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.BACK_BUTTON).performClick()
+    waitUntilTagExists(TaskDetailsScreenTestTags.TITLE)
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  // Breaks if the details do not reload on resume, so a saved edit is not shown on return.
+  @Test
+  fun editingTheTitleThenGoingBackShowsItOnTheDetails() {
+    openTheEditOfAnOwnedTaskFromItsDetails()
+
+    composeTestRule
+        .onNodeWithTag(CreateTaskScreenTestTags.TITLE_FIELD)
+        .performTextReplacement("Hang the banner")
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.CREATE_BUTTON).performClick()
+
+    composeTestRule.waitUntil(timeoutMillis = 10_000) {
+      composeTestRule.onAllNodesWithTag(TaskDetailsScreenTestTags.TITLE).fetchSemanticsNodes().any {
+        it.config.getOrNull(SemanticsProperties.Text)?.joinToString("") == "Hang the banner"
+      }
+    }
+    composeTestRule
+        .onNodeWithTag(TaskDetailsScreenTestTags.TITLE)
+        .assertIsDisplayed()
+        .assertTextEquals("Hang the banner")
+  }
+
+  /** Opens the details of a task the signed-in [firebaseUser] owns, then its edit screen. */
+  private fun openTheEditOfAnOwnedTaskFromItsDetails() {
+    seedTask(ownerId = testUserId)
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          authRepository = FakeAuthRepository(currentUser = firebaseUser),
+          startDestinationOverride = AppScreens.taskDetails("t1"),
+      )
+    }
+
+    waitUntilTagExists(TaskDetailsScreenTestTags.EDIT_BUTTON)
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.EDIT_BUTTON).performClick()
+    waitUntilTagExists(CreateTaskScreenTestTags.TITLE_FIELD)
+    composeTestRule.onNodeWithTag(EditTaskScreenTestTags.SCREEN).assertIsDisplayed()
   }
 
   /** Puts a user with the uid of [firebaseUser] in the users repository, for the profile screen. */

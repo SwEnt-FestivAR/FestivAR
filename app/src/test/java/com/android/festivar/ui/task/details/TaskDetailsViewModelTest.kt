@@ -106,6 +106,15 @@ class TaskDetailsViewModelTest {
 
   // State of the screen
 
+  // Breaks if canEdit compares the owner with the wrong id, or lets anyone edit.
+  @Test
+  fun canEditIsTrueOnlyForTheOwner() {
+    assertTrue(viewModel(task(), User(uid = "owner-1")).uiState.value.canEdit)
+    // An assignee who is not the owner, and the owner before any task is loaded.
+    assertFalse(TaskDetailsUiState(me.uid, task(assignees = listOf(me))).canEdit)
+    assertFalse(TaskDetailsUiState(currentUserId = "owner-1").canEdit)
+  }
+
   @Test
   fun freeTask_isOpenWithTakeAction() {
     val state = viewModel(task()).uiState.value

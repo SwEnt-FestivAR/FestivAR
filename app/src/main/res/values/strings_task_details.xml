@@ -1,4 +1,5 @@
 <!-- Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com> -->
+<!-- Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com> -->
 <resources>
     <string name="details_status_open">Open</string>
     <string name="details_status_taken">Taken</string>
@@ -11,5 +12,6 @@
     <string name="details_dismiss">Dismiss</string>
     <string name="details_retry">Retry</string>
     <string name="details_location">Location: %s</string>
+    <string name="task_details_edit">Edit task</string>
     <string name="details_time_range">%1$s to %2$s</string>
 </resources>
