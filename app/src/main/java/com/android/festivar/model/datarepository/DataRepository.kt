@@ -210,6 +210,33 @@ interface DataRepository {
         }
     }
 
+    suspend fun joinTask(taskId: String, userId: String){
+        val task = tasksRepository.getTask(taskId)
+        val user = usersRepository.getUser(userId)
+        val event = eventsRepository.getEvent(task.eventId)
+
+        val newTask = task.addAssignee(user)
+        val newUser = if(newTask.ownerId != user.uid){ user.addAssignedTask(taskId) } else { user }
+        val newEvent = event.removeTask(taskId).addTask(newTask)
+
+        val undoProcess = ArrayDeque<suspend () -> Unit>()
+        try {
+
+            eventsRepository.editEvent(event.eventId, newEvent)
+            undoProcess.addFirst { eventsRepository.editEvent(event.eventId, event) }
+
+            tasksRepository.editTask(taskId, newTask)
+            undoProcess.addFirst { tasksRepository.editTask(taskId, task) }
+            usersRepository.editUser(userId, newUser)
+            undoProcess.addFirst { usersRepository.editUser(userId, user) }
+
+        } catch (e: Exception) {
+            rollback(undoProcess, e)
+            throw e
+        }
+
+    }
+
 
 
 
