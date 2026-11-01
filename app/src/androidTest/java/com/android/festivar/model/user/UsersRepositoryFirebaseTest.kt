@@ -20,7 +20,7 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class UsersRepositoryFirebaseTest {
-  private lateinit var repository: UserRepositoryFirebase
+  private lateinit var repository: UsersRepositoryFirebase
   private lateinit var user: User
   private val createdUids = mutableSetOf<String>()
 
@@ -39,7 +39,7 @@ class UsersRepositoryFirebaseTest {
         )
     createdUids.clear()
     createdUids.add(user.uid)
-    repository = UserRepositoryFirebase(Firebase.firestore)
+    repository = UsersRepositoryFirebase(Firebase.firestore)
   }
 
   @After
@@ -227,14 +227,14 @@ class UsersRepositoryFirebaseTest {
   @Suppress("UNCHECKED_CAST")
   private fun invokeToFirestoreData(user: User): Map<String, Any?> {
     val method =
-        UserRepositoryFirebase::class.java.getDeclaredMethod("toFirestoreData", User::class.java)
+        UsersRepositoryFirebase::class.java.getDeclaredMethod("toFirestoreData", User::class.java)
     method.isAccessible = true
     return method.invoke(repository, user) as Map<String, Any?>
   }
 
   private fun invokeDocumentToUser(document: DocumentSnapshot): User {
     val method =
-        UserRepositoryFirebase::class
+        UsersRepositoryFirebase::class
             .java
             .getDeclaredMethod(
                 "documentToUser",
