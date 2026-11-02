@@ -2,6 +2,7 @@ package com.android.festivar.ui.event
 
 // Co-authored-by: Copilot App
 
+import com.android.festivar.R
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
@@ -60,7 +61,7 @@ class EventDetailsViewModelTest {
     advanceUntilIdle()
 
     assertNull(viewModel.uiState.value.event)
-    assertEquals(true, viewModel.uiState.value.fetchError)
+    assertEquals(R.string.event_details_fetch_error, viewModel.uiState.value.errorMsg)
   }
 
   @Test
@@ -83,7 +84,7 @@ class EventDetailsViewModelTest {
     advanceUntilIdle()
 
     assertNull(viewModel.uiState.value.event)
-    assertEquals(true, viewModel.uiState.value.fetchError)
+    assertEquals(R.string.event_details_fetch_error, viewModel.uiState.value.errorMsg)
   }
 
   @Test
@@ -100,14 +101,14 @@ class EventDetailsViewModelTest {
     val viewModel = EventDetailsViewModel(repository, event.eventId)
 
     advanceUntilIdle()
-    assertEquals(true, viewModel.uiState.value.fetchError)
+    assertEquals(R.string.event_details_fetch_error, viewModel.uiState.value.errorMsg)
 
     shouldFail = false
     viewModel.fetchEvent(event.eventId)
     advanceUntilIdle()
 
     assertEquals(event, viewModel.uiState.value.event)
-    assertEquals(false, viewModel.uiState.value.fetchError)
+    assertNull(viewModel.uiState.value.errorMsg)
   }
 
   @Test
@@ -124,7 +125,7 @@ class EventDetailsViewModelTest {
     advanceUntilIdle()
 
     assertNull(viewModel.uiState.value.event)
-    assertEquals(false, viewModel.uiState.value.fetchError)
+    assertNull(viewModel.uiState.value.errorMsg)
   }
 
   private fun testEvent(eventId: String): Event {

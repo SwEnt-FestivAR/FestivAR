@@ -114,13 +114,13 @@ private fun EventDetailsContent(
               event = event,
               modifier = modifier.padding(paddingValues),
           )
-      state.fetchError ->
+      state.errorMsg != null ->
           Box(
               modifier = Modifier.fillMaxSize().padding(10.dp),
               contentAlignment = Alignment.Center,
           ) {
             Text(
-                text = stringResource(R.string.event_details_fetch_error),
+                text = stringResource(state.errorMsg),
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,

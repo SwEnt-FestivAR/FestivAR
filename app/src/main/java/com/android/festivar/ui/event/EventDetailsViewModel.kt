@@ -2,8 +2,10 @@ package com.android.festivar.ui.event
 
 // Co-authored-by: Copilot App
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.android.festivar.R
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import kotlin.coroutines.cancellation.CancellationException
@@ -15,7 +17,7 @@ import kotlinx.coroutines.launch
 
 data class EventDetailsUIState(
     val event: Event? = null,
-    val fetchError: Boolean = false,
+    @StringRes val errorMsg: Int? = null,
 )
 
 class EventDetailsViewModel(
@@ -39,7 +41,7 @@ class EventDetailsViewModel(
       } catch (e: CancellationException) {
         throw e
       } catch (_: Exception) {
-        _uiState.update { it.copy(fetchError = true) }
+        _uiState.update { it.copy(errorMsg = R.string.event_details_fetch_error) }
       }
     }
   }
