@@ -15,11 +15,26 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/**
+ * UI state of the Event Details screen.
+ *
+ * @property event the loaded event, or null until loading succeeds.
+ * @property errorMsg the string resource of the latest loading failure, or null.
+ */
 data class EventDetailsUIState(
     val event: Event? = null,
     @StringRes val errorMsg: Int? = null,
 )
 
+/**
+ * Loads and exposes the event shown by the Event Details screen.
+ *
+ * Loading starts when the ViewModel is created. A failed reload clears the currently displayed
+ * event and exposes [EventDetailsUIState.errorMsg] so the screen can show an error.
+ *
+ * @param eventsRepository repository used to retrieve the event.
+ * @param eventId identifier of the event to load.
+ */
 class EventDetailsViewModel(
     private val eventsRepository: EventsRepository,
     private val eventId: String,
@@ -32,6 +47,7 @@ class EventDetailsViewModel(
     fetchEvent(eventId)
   }
 
+  /** Loads [eventId] and updates the UI state with either the event or a loading error. */
   fun fetchEvent(eventId: String) {
     viewModelScope.launch {
       _uiState.update { EventDetailsUIState() }

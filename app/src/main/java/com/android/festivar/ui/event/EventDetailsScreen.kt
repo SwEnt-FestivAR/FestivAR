@@ -54,6 +54,7 @@ import com.android.festivar.ui.theme.NumeralLarge
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
+/** Test tags named after the tags of the "Event details" frames in Figma. */
 object EventDetailsScreenTestTags {
   const val BACK_BUTTON = "backButton"
   const val EVENT_NAME = "eventName"
@@ -65,17 +66,22 @@ object EventDetailsScreenTestTags {
   const val SEE_TASKS_BUTTON = "seeTasksButton"
 }
 
+/** Callbacks handled by the Event Details screen. */
 class EventDetailsActions(
     val onBack: () -> Unit = {},
     val onTasksButtonClicked: () -> Unit = {},
 )
 
 /**
- * A screen for viewing event details.
+ * Displays the details of an event loaded by [viewModel].
  *
- * @param eventId The ID of the event whose details will be shown
- * @param onBack A callback to be invoked when the back button is clicked
- * @param onTasksButtonClicked A callback to be invoked when the "See tasks" button is clicked
+ * The screen is stateless with respect to data loading: it observes the ViewModel's state and
+ * forwards user actions through [EventDetailsActions].
+ *
+ * @param viewModel the ViewModel providing the event and loading error state.
+ * @param onBack called when the back button is clicked.
+ * @param onTasksButtonClicked called when the "See tasks" button is clicked.
+ * @param modifier modifier applied to the event content.
  */
 @Composable
 fun EventDetailsScreen(
@@ -93,6 +99,7 @@ fun EventDetailsScreen(
   )
 }
 
+/** The stateless details screen: everything it shows comes from [state]. */
 @Composable
 private fun EventDetailsContent(
     state: EventDetailsUIState,
@@ -132,6 +139,7 @@ private fun EventDetailsContent(
   }
 }
 
+/** Displays the loaded event, including its task summary and identifying information. */
 @Composable
 private fun EventInfo(
     event: Event,
@@ -216,6 +224,7 @@ private fun EventInfo(
   }
 }
 
+/** Top app bar containing the navigation button for leaving the details screen. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EventDetailsTopBar(onBack: () -> Unit) {
@@ -244,6 +253,7 @@ private fun EventDetailsTopBar(onBack: () -> Unit) {
   )
 }
 
+/** The 'See tasks' button that opens the event's task list. */
 @Composable
 private fun EventDetailsBottomBar(onTasksButtonClicked: () -> Unit) {
   Button(
@@ -273,6 +283,12 @@ private fun EventDetailsBottomBar(onTasksButtonClicked: () -> Unit) {
   }
 }
 
+/**
+ * Displays one label/value pair from the event information card.
+ *
+ * The value is limited to two lines so long locations remain inside the card and are truncated with
+ * an ellipsis when necessary.
+ */
 @Composable
 private fun EventDetailsRow(
     label: String,
