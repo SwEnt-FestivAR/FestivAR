@@ -209,7 +209,7 @@ private fun EventInfo(
       HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
       EventDetailsRow(
           label = stringResource(R.string.event_details_address),
-          value = event.location,
+          value = event.location.ifBlank { stringResource(R.string.event_details_no_location) },
           tag = EventDetailsScreenTestTags.ADDRESS_ROW,
       )
     }

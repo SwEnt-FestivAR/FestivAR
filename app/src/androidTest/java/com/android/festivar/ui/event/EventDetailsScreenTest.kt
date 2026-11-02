@@ -114,6 +114,14 @@ class EventDetailsScreenTest {
     composeTestRule.onNodeWithText("of 0").assertIsDisplayed()
   }
 
+  @Test
+  fun displaysFallbackWhenEventHasNoLocation() {
+    setContent(eventSameMonth.copy(location = ""))
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.ADDRESS_ROW).assertIsDisplayed()
+    composeTestRule.onNodeWithText("No location specified").assertIsDisplayed()
+  }
+
   @SuppressLint("ViewModelConstructorInComposable")
   @Test
   fun displaysErrorWhenEventCannotBeFetched() {
