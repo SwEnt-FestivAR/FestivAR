@@ -66,7 +66,8 @@ class AuthRepositoryFirebaseNullUserTest {
 
     val result = repository.signInAnonymous()
 
-    assertNoUserFailure(result)
+    assertTrue(result.isFailure)
+    assertEquals("Anonymous sign-in returned no user", result.exceptionOrNull()?.message)
   }
 
   @Test
