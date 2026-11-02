@@ -79,14 +79,14 @@ class EventDetailsScreenTest {
   fun displaysErrorWhenEventCannotBeFetched() {
     composeTestRule.setContent {
       EventDetailsScreen(
-          eventId = "missing",
           viewModel =
               EventDetailsViewModel(
                   object : EventsRepository by EventsRepositoryLocal() {
                     override suspend fun getEvent(eventId: String): Event {
                       throw IllegalStateException("fetch failed")
                     }
-                  }
+                  },
+                  eventId = "missing",
               ),
           onTasksButtonClicked = {},
           onBack = {},
@@ -142,8 +142,7 @@ class EventDetailsScreenTest {
   ) {
     composeTestRule.setContent {
       EventDetailsScreen(
-          eventId = event.eventId,
-          viewModel = EventDetailsViewModel(EventsRepositoryLocal(listOf(event))),
+          viewModel = EventDetailsViewModel(EventsRepositoryLocal(listOf(event)), event.eventId),
           onTasksButtonClicked = onTasksButtonClicked,
           onBack = onBack,
       )

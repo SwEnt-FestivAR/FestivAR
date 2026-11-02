@@ -38,9 +38,8 @@ class EventDetailsViewModelTest {
   @Test
   fun fetchEventLoadsEventWithRequestedId() = runTest {
     val event = testEvent("event-1")
-    val viewModel = EventDetailsViewModel(EventsRepositoryLocal(listOf(event)))
+    val viewModel = EventDetailsViewModel(EventsRepositoryLocal(listOf(event)), event.eventId)
 
-    viewModel.fetchEvent(event.eventId)
     advanceUntilIdle()
 
     assertEquals(event, viewModel.uiState.value.event)
@@ -54,10 +53,10 @@ class EventDetailsViewModelTest {
               override suspend fun getEvent(eventId: String): Event {
                 throw IllegalStateException("fetch failed")
               }
-            }
+            },
+            eventId = "missing",
         )
 
-    viewModel.fetchEvent("missing")
     advanceUntilIdle()
 
     assertNull(viewModel.uiState.value.event)
@@ -75,7 +74,7 @@ class EventDetailsViewModelTest {
             return event
           }
         }
-    val viewModel = EventDetailsViewModel(repository)
+    val viewModel = EventDetailsViewModel(repository, event.eventId)
 
     viewModel.fetchEvent(event.eventId)
     advanceUntilIdle()
@@ -98,10 +97,11 @@ class EventDetailsViewModelTest {
             return event
           }
         }
-    val viewModel = EventDetailsViewModel(repository)
+    val viewModel = EventDetailsViewModel(repository, event.eventId)
 
-    viewModel.fetchEvent(event.eventId)
     advanceUntilIdle()
+    assertEquals(true, viewModel.uiState.value.fetchError)
+
     shouldFail = false
     viewModel.fetchEvent(event.eventId)
     advanceUntilIdle()
@@ -118,10 +118,9 @@ class EventDetailsViewModelTest {
               override suspend fun getEvent(eventId: String): Event {
                 throw CancellationException("fetch cancelled")
               }
-            }
+            },
+            eventId = "event-1",
         )
-
-    viewModel.fetchEvent("event-1")
     advanceUntilIdle()
 
     assertNull(viewModel.uiState.value.event)

@@ -32,7 +32,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -78,13 +77,11 @@ class EventDetailsActions(
  */
 @Composable
 fun EventDetailsScreen(
-    eventId: String,
     viewModel: EventDetailsViewModel,
     onBack: () -> Unit,
     onTasksButtonClicked: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-  LaunchedEffect(Unit) { viewModel.fetchEvent(eventId) }
   val uiState by viewModel.uiState.collectAsState()
 
   EventDetailsContent(
@@ -303,8 +300,7 @@ private fun EventDetailsRow(
 private fun EventDetailsScreenPreview(event: Event) {
   AppTheme {
     EventDetailsScreen(
-        eventId = event.eventId,
-        viewModel = EventDetailsViewModel(EventsRepositoryLocal(listOf(event))),
+        viewModel = EventDetailsViewModel(EventsRepositoryLocal(listOf(event)), event.eventId),
         onTasksButtonClicked = {},
         onBack = {},
     )
@@ -317,8 +313,8 @@ private fun EventDetailsScreenPreview(event: Event) {
 private fun FetchErrorPreview() {
   AppTheme {
     EventDetailsScreen(
-        eventId = eventSameMonth.eventId,
-        viewModel = EventDetailsViewModel(EventsRepositoryLocal(emptyList())),
+        viewModel =
+            EventDetailsViewModel(EventsRepositoryLocal(emptyList()), eventSameMonth.eventId),
         onTasksButtonClicked = {},
         onBack = {},
     )

@@ -20,10 +20,15 @@ data class EventDetailsUIState(
 
 class EventDetailsViewModel(
     private val eventsRepository: EventsRepository,
+    private val eventId: String,
 ) : ViewModel() {
 
   private val _uiState = MutableStateFlow(EventDetailsUIState())
   val uiState: StateFlow<EventDetailsUIState> = _uiState.asStateFlow()
+
+  init {
+    fetchEvent(eventId)
+  }
 
   fun fetchEvent(eventId: String) {
     viewModelScope.launch {
