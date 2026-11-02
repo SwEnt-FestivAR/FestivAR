@@ -319,7 +319,7 @@ private fun EventDetailsRow(
 @SuppressLint("ViewModelConstructorInComposable")
 @Preview
 @Composable
-private fun EventDetailsScreenPreview() {
+internal fun EventDetailsScreenPreview() {
   val eventStartDate: ZonedDateTime =
       ZonedDateTime.of(2026, 10, 16, 10, 0, 0, 0, ZoneId.of("Europe/Zurich"))
   val eventEndDate: ZonedDateTime =
@@ -360,7 +360,7 @@ private fun EventDetailsScreenPreview() {
 @SuppressLint("ViewModelConstructorInComposable")
 @Preview
 @Composable
-private fun FetchErrorPreview() {
+internal fun FetchErrorPreview() {
   AppTheme {
     EventDetailsScreen(
         viewModel = EventDetailsViewModel(EventsRepositoryLocal(emptyList()), "missing"),
