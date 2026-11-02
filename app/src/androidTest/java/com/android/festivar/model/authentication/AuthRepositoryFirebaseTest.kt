@@ -157,6 +157,22 @@ class AuthRepositoryFirebaseTest {
     assertTrue(result.isFailure)
   }
 
+  @Test
+  fun signInAnonymous_returnsUserAndCreatesProfile() = runBlocking {
+    val user = repository.signInAnonymous().getOrThrow()
+
+    assertNotNull(user)
+    assertTrue(user.isAnonymous)
+    assertEquals(
+        user.uid,
+        repository.currentUser?.uid,
+    )
+    assertEquals(
+        User(uid = user.uid, email = ""),
+        usersRepository.getUser(user.uid),
+    )
+  }
+
   @After
   fun tearDown() {
     Firebase.auth.signOut()

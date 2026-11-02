@@ -389,4 +389,7 @@ private object PreviewAuthRepository : AuthRepository {
       email: String,
       password: String,
   ): Result<FirebaseUser> = Result.failure(UnsupportedOperationException(STR))
+
+  override suspend fun signInAnonymous(): Result<FirebaseUser> =
+      Result.failure(UnsupportedOperationException(STR))
 }

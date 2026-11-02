@@ -59,6 +59,17 @@ class AuthRepositoryFirebaseNullUserTest {
   }
 
   @Test
+  fun signInAnonymous_returnsFailureWhenFirebaseReturnsNoUser() = runBlocking {
+    val auth = mockk<FirebaseAuth>()
+    every { auth.signInAnonymously() } returns Tasks.forResult(noUserResult())
+    val repository = newRepository(auth)
+
+    val result = repository.signInAnonymous()
+
+    assertNoUserFailure(result)
+  }
+
+  @Test
   fun signUpWithEmailAndPassword_returnsFailureWhenFirebaseReturnsNoUser() = runBlocking {
     val auth = mockk<FirebaseAuth>()
     every { auth.createUserWithEmailAndPassword(EMAIL, PASSWORD) } returns
