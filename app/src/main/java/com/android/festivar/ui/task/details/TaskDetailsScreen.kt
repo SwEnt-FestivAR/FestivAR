@@ -71,7 +71,8 @@ object TaskDetailsScreenTestTags {
 
 /**
  * The details of the task [taskId], where [currentUser] can take it, give it back or finish it. The
- * task is loaded again each time the screen comes back, so an edit shows on return.
+ * task is loaded each time the screen comes to the front, the first time included, so an edit shows
+ * on return.
  *
  * @param onEdit Called with the task id when its owner taps the edit button.
  */
@@ -124,15 +125,16 @@ fun TaskDetailsContent(
               }
             },
             actions = {
-              val task = state.task
-              if (state.canEdit && task != null) {
-                IconButton(
-                    onClick = { onEdit(task.taskId) },
-                    Modifier.testTag(TaskDetailsScreenTestTags.EDIT_BUTTON),
-                ) {
-                  Icon(Icons.Rounded.Edit, stringResource(R.string.task_details_edit))
-                }
-              }
+              state.task
+                  ?.takeIf { state.canEdit }
+                  ?.let { task ->
+                    IconButton(
+                        onClick = { onEdit(task.taskId) },
+                        Modifier.testTag(TaskDetailsScreenTestTags.EDIT_BUTTON),
+                    ) {
+                      Icon(Icons.Rounded.Edit, stringResource(R.string.task_details_edit))
+                    }
+                  }
             },
         )
       },

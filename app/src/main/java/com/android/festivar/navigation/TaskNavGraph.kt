@@ -4,6 +4,7 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.navigation
 
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -81,11 +82,7 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, authRepository: 
     val navigator = TaskDetailsNavigator(navController)
 
     if (firebaseUser == null) {
-      LaunchedEffect(Unit) {
-        navController.navigate(AppScreens.Login.name) {
-          popUpTo(navController.graph.id) { inclusive = true }
-        }
-      }
+      RedirectToLogin(navController)
       return@composable
     }
 
@@ -111,11 +108,7 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, authRepository: 
       arguments = listOf(navArgument("taskId") { type = NavType.StringType }),
   ) { backStackEntry ->
     if (authRepository.currentUser == null) {
-      LaunchedEffect(Unit) {
-        navController.navigate(AppScreens.Login.name) {
-          popUpTo(navController.graph.id) { inclusive = true }
-        }
-      }
+      RedirectToLogin(navController)
       return@composable
     }
     val taskId =
@@ -133,5 +126,18 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, authRepository: 
         onBack = leave,
         onSaved = leave,
     )
+  }
+}
+
+/**
+ * Opens the login and clears the back stack, so back cannot return to a task screen that needs a
+ * signed-in user. The caller returns right after, drawing nothing else.
+ */
+@Composable
+private fun RedirectToLogin(navController: NavHostController) {
+  LaunchedEffect(Unit) {
+    navController.navigate(AppScreens.Login.name) {
+      popUpTo(navController.graph.id) { inclusive = true }
+    }
   }
 }

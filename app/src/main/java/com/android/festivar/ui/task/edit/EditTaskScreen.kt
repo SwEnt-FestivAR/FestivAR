@@ -1,6 +1,7 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.edit
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,7 +30,6 @@ import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.task.create.CreateTaskActions
 import com.android.festivar.ui.task.create.CreateTaskContent
-import com.android.festivar.ui.task.create.CreateTaskScreenTestTags
 import com.android.festivar.ui.task.create.CreateTaskUiState
 import com.android.festivar.ui.task.create.DiscardTaskDialog
 import com.android.festivar.ui.task.create.TaskFormBackHandling
@@ -44,8 +44,8 @@ import java.time.ZonedDateTime
 
 /**
  * Test tags of the Edit task screen. The new ones are the screen, the spinner and the load error
- * with its retry; everything else keeps its tag from [CreateTaskScreenTestTags], as the Figma
- * legend says.
+ * with its retry; everything else keeps its tag from
+ * [com.android.festivar.ui.task.create.CreateTaskScreenTestTags], as the Figma legend says.
  */
 object EditTaskScreenTestTags {
   const val SCREEN = "editTaskScreen"
@@ -109,7 +109,10 @@ fun EditTaskContent(
           NoForm(actions.onBack) {
             CircularProgressIndicator(Modifier.testTag(EditTaskScreenTestTags.LOADING))
           }
-      state.task == null -> NoForm(actions.onBack) { LoadError(onRetry) }
+      state.task == null ->
+          NoForm(actions.onBack) {
+            LoadError(state.errorMsg ?: R.string.edit_task_error_load_failed, onRetry)
+          }
       else ->
           CreateTaskContent(
               state = state.form.copy(errorMsg = state.errorMsg),
@@ -133,16 +136,16 @@ private fun NoForm(onBack: () -> Unit, content: @Composable () -> Unit) {
   }
 }
 
-/** The load failure in the theme's error colour, with its retry button. */
+/** The load failure [message] in the theme's error colour, with its retry button. */
 @Composable
-private fun LoadError(onRetry: () -> Unit) {
+private fun LoadError(@StringRes message: Int, onRetry: () -> Unit) {
   Column(
       modifier = Modifier.padding(horizontal = 32.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
       verticalArrangement = Arrangement.spacedBy(8.dp),
   ) {
     Text(
-        text = stringResource(R.string.edit_task_error_load_failed),
+        text = stringResource(message),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.error,
         textAlign = TextAlign.Center,
@@ -156,7 +159,7 @@ private fun LoadError(onRetry: () -> Unit) {
             ),
         modifier = Modifier.testTag(EditTaskScreenTestTags.LOAD_RETRY),
     ) {
-      Text(stringResource(R.string.edit_task_retry))
+      Text(stringResource(R.string.action_retry))
     }
   }
 }

@@ -91,6 +91,9 @@ data class TaskDetailsUiState(
  * back and mark it done. Each action saves the new version of the task in [repository] and shows it
  * only once saved.
  *
+ * Nothing loads until [load] is called: the screen calls it on every resume, the first one
+ * included, so a load at construction would read the task twice on open.
+ *
  * @param taskId the task to show.
  * @param currentUser the signed-in user. The caller must pass it: this class does not check that
  *   someone is signed in.
@@ -105,10 +108,6 @@ class TaskDetailsViewModel(
 
   // isLoading starts true, so it cannot tell a running load from the initial state.
   private var loadJob: Job? = null
-
-  init {
-    load()
-  }
 
   /**
    * Loads the task; on failure the error is set and the version already shown, if any, stays shown.

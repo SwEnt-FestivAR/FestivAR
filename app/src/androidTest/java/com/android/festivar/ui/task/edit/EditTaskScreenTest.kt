@@ -21,6 +21,7 @@ import com.android.festivar.ui.theme.AppTheme
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -109,7 +110,7 @@ class EditTaskScreenTest {
     loadGate?.complete(Unit)
     composeTestRule.waitUntil(5_000) { exists(CreateTaskScreenTestTags.TITLE_FIELD) }
     composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.TITLE_FIELD).assert(hasText(task.title))
-    assertEquals(false, exists(EditTaskScreenTestTags.LOADING))
+    assertFalse(exists(EditTaskScreenTestTags.LOADING))
   }
 
   // Breaks if a failed load shows no error, or the retry does not load the task again.
@@ -170,7 +171,7 @@ class EditTaskScreenTest {
 
     composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.KEEP_EDITING_BUTTON).performClick()
     composeTestRule.waitForIdle()
-    assertEquals(false, exists(CreateTaskScreenTestTags.DISCARD_DIALOG))
+    assertFalse(exists(CreateTaskScreenTestTags.DISCARD_DIALOG))
     composeTestRule.onNodeWithTag(EditTaskScreenTestTags.SCREEN).assertIsDisplayed()
     assertEquals(0, backCount)
   }

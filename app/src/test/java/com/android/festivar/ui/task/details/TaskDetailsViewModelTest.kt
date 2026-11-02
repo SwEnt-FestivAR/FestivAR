@@ -84,7 +84,7 @@ class TaskDetailsViewModelTest {
 
   private fun viewModel(task: Task, user: User = me): TaskDetailsViewModel {
     runBlocking { repository.local.addTask(task) }
-    return TaskDetailsViewModel(task.taskId, user, repository)
+    return TaskDetailsViewModel(task.taskId, user, repository).also { it.load() }
   }
 
   private fun task(
@@ -183,7 +183,7 @@ class TaskDetailsViewModelTest {
 
   @Test
   fun missingTask_setsErrorAndClearErrorResetsIt() {
-    val vm = TaskDetailsViewModel("missing", me, repository)
+    val vm = TaskDetailsViewModel("missing", me, repository).also { it.load() }
     assertNull(vm.uiState.value.task)
     assertEquals(R.string.task_details_load_failed, vm.uiState.value.errorMsg)
     assertFalse(vm.uiState.value.isLoading)
