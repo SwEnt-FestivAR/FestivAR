@@ -6,17 +6,13 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
-import com.android.festivar.model.task.Priority
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryProvider
-import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.FieldError
 import com.android.festivar.ui.task.create.CreateTaskUiState
-import com.android.festivar.ui.task.create.MAX_ESTIMATED_DIGITS
-import com.android.festivar.ui.task.create.MIN_MAX_ASSIGN
-import java.time.LocalDate
-import java.time.LocalTime
+import com.android.festivar.ui.task.create.TaskFormEditing
+import com.android.festivar.ui.task.create.TaskFormEditor
 import java.time.ZoneId
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -139,13 +135,23 @@ private const val SAVE_TIMEOUT_MS = 15_000L
  *   followed by a read under the same timeout.
  * @param zone The time zone the form shows the times in. The device's one by default.
  */
-class EditTaskViewModel(
+class EditTaskViewModel
+private constructor(
     private val taskId: String,
     private val currentUserId: () -> String,
-    private val repository: TasksRepository = TasksRepositoryProvider.repository,
-    private val saveTimeoutMs: Long = SAVE_TIMEOUT_MS,
-    private val zone: ZoneId = ZoneId.systemDefault(),
-) : ViewModel() {
+    private val repository: TasksRepository,
+    private val saveTimeoutMs: Long,
+    private val zone: ZoneId,
+    private val formEditing: TaskFormEditing,
+) : ViewModel(), TaskFormEditor by formEditing {
+
+  constructor(
+      taskId: String,
+      currentUserId: () -> String,
+      repository: TasksRepository = TasksRepositoryProvider.repository,
+      saveTimeoutMs: Long = SAVE_TIMEOUT_MS,
+      zone: ZoneId = ZoneId.systemDefault(),
+  ) : this(taskId, currentUserId, repository, saveTimeoutMs, zone, TaskFormEditing())
 
   init {
     require(taskId.isNotBlank()) { "taskId must not be blank" }
@@ -193,67 +199,11 @@ class EditTaskViewModel(
     if (it.task == null || it.isSaved) it else it.copy(form = change(it.form))
   }
 
-  /** Sets the title and marks it as edited, so that an empty title is reported. */
-  fun updateTitle(title: String) = edit { it.copy(title = title, titleEdited = true) }
-
-  /** Sets the description. */
-  fun updateDescription(description: String) = edit { it.copy(description = description) }
-
-  /** Sets the location. */
-  fun updateLocation(location: String) = edit { it.copy(location = location) }
-
-  /** Sets the priority. */
-  fun updatePriority(priority: Priority) = edit { it.copy(priority = priority) }
-
-  /** Adds one to the number of people the task needs. */
-  fun incrementMaxAssign() = edit { it.copy(maxAssign = it.maxAssign + 1) }
-
-  /**
-   * Removes one from the number of people the task needs, down to [MIN_MAX_ASSIGN]. Going below the
-   * assignees is allowed and shown by [EditTaskUiState.maxAssignError].
-   */
-  fun decrementMaxAssign() = edit {
-    it.copy(maxAssign = (it.maxAssign - 1).coerceAtLeast(MIN_MAX_ASSIGN))
-  }
-
-  /** Sets the estimated time in minutes, keeping digits only, at most [MAX_ESTIMATED_DIGITS]. */
-  fun updateEstimatedMinutes(text: String) = edit {
-    it.copy(estimatedMinutes = text.filter(Char::isDigit).take(MAX_ESTIMATED_DIGITS))
-  }
-
-  /** Sets the date the task starts. */
-  fun updateStartDate(date: LocalDate) = edit { it.copy(startDate = date) }
-
-  /** Sets the time the task starts. */
-  fun updateStartTime(time: LocalTime) = edit { it.copy(startTime = time) }
-
-  /** Sets the date the task ends. */
-  fun updateEndDate(date: LocalDate) = edit { it.copy(endDate = date) }
-
-  /** Sets the time the task ends. */
-  fun updateEndTime(time: LocalTime) = edit { it.copy(endTime = time) }
-
-  /** Opens the picker dialog of [field], or closes the open one when [field] is `null`. */
-  fun showPicker(field: DateTimeField?) = edit { it.copy(openPicker = field) }
-
-  /** Sets [date] in the field whose picker is open, then closes the picker. */
-  fun pickDate(date: LocalDate) {
-    when (_uiState.value.form.openPicker) {
-      DateTimeField.START_DATE -> updateStartDate(date)
-      DateTimeField.END_DATE -> updateEndDate(date)
-      else -> Unit
-    }
-    showPicker(null)
-  }
-
-  /** Sets [time] in the field whose picker is open, then closes the picker. */
-  fun pickTime(time: LocalTime) {
-    when (_uiState.value.form.openPicker) {
-      DateTimeField.START_TIME -> updateStartTime(time)
-      DateTimeField.END_TIME -> updateEndTime(time)
-      else -> Unit
-    }
-    showPicker(null)
+  init {
+    // The form setters come from TaskFormEditing. Pickers follow the same guard as the fields.
+    formEditing.applyEdit = ::edit
+    formEditing.applyPicker = ::edit
+    formEditing.current = { _uiState.value.form }
   }
 
   /** Clears the error message. */
