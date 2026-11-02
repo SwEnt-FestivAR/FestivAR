@@ -1,16 +1,21 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.model.authentication
 
+import android.util.Log
 import androidx.credentials.Credential
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryProvider
+import com.android.festivar.ui.authentication.maskEmail
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.auth
 import kotlinx.coroutines.tasks.await
+
+// Logs tag
+private const val TAG = "AuthRepositoryFirebase"
 
 class AuthRepositoryFirebase(
     private val googleSignInHelper: GoogleSignInHelper = GoogleSignInHelper(),
@@ -27,20 +32,40 @@ class AuthRepositoryFirebase(
             firebaseAuth.signInWithCredential(firebaseCredential).await().user
                 ?: throw IllegalStateException("Firebase sign-in returned no user")
         ensureUserExistsOrSignOut(user)
+        Log.d(TAG, "Successfully signed in user with Google: ${user.uid}")
         user
       }
+      .onFailure { e -> Log.e(TAG, "Failed to sign in with Google", e) }
 
   override suspend fun signOut(): Result<Unit> = runCatching { firebaseAuth.signOut() }
 
   override suspend fun forgotPassword(email: String): Result<Unit> =
       try {
         firebaseAuth.sendPasswordResetEmail(email).await()
+        Log.d(TAG, "Password reset email sent to ${maskEmail(email)}.")
         Result.success(Unit)
       } catch (_: FirebaseAuthInvalidUserException) {
+        Log.w(
+            TAG,
+            "Password reset attempted for non-existent or invalid user email: ${maskEmail(email)}",
+        )
         Result.success(Unit)
       } catch (exception: Exception) {
+        Log.e(TAG, "Failed to send password reset email", exception)
         Result.failure(exception)
       }
+
+  override suspend fun signInAnonymous(): Result<FirebaseUser> {
+    return runCatching {
+      val user =
+          firebaseAuth.signInAnonymously().await().user
+              ?: throw IllegalStateException("Anonymous sign-in returned no user")
+      ensureUserExistsOrSignOut(user)
+      Log.d(TAG, "Successfully signed in anonymously: ${user.uid}")
+      user
+    }
+        .onFailure { e -> Log.e(TAG, "Failed to sign in anonymously", e) }
+  }
 
   override suspend fun signInWithEmailAndPassword(
       email: String,
@@ -51,8 +76,10 @@ class AuthRepositoryFirebase(
           firebaseAuth.signInWithEmailAndPassword(email, password).await().user
               ?: throw IllegalStateException("Firebase sign-in returned no user")
       ensureUserExistsOrSignOut(user)
+      Log.d(TAG, "Successfully signed in user with mail and pass: ${user.uid}")
       user
     }
+        .onFailure { e -> Log.e(TAG, "Failed to sign in with mail and pass", e) }
   }
 
   override suspend fun signUpWithEmailAndPassword(
@@ -63,16 +90,32 @@ class AuthRepositoryFirebase(
       val user =
           firebaseAuth.createUserWithEmailAndPassword(email, password).await().user
               ?: throw IllegalStateException("Firebase sign-in returned no user")
+      ensureUserExistsOrSignOut(user)
 
       try {
-        usersRepository.addUser(User(uid = user.uid, email = user.email.orEmpty()))
+        usersRepository.addUser(
+            User(
+                uid = user.uid,
+                email = user.email.orEmpty(),
+            )
+        )
+        Log.d(
+            TAG,
+            "Successfully created user and Firestore document",
+        )
       } catch (e: Exception) {
+        Log.e(
+            TAG,
+            "Failed to create Firestore document for new user, rolling back Firebase auth user",
+            e,
+        )
         user.delete().await()
         throw e
       }
 
       user
     }
+        .onFailure { e -> Log.d(TAG, "Sign up failed", e) }
   }
 
   /**
