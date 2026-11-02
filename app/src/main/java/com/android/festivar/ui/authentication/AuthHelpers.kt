@@ -46,15 +46,13 @@ fun isPasswordValid(password: String): Boolean {
   return checkPassword(password) == null
 }
 
-/** masks an email
- * ex: skibidi@toilet.com -> sk*****@toilet.com
+/**
+ * masks an email ex: skibidi@toilet.com -> sk*****@toilet.com
  *
  * @param email The email to mask
  * @return The masked email
  */
 fun maskEmail(email: String): String {
   val p = """^([^@]{2})([^@]+)""".toRegex()
-  return email.replace(p) {
-    it.groupValues[1] + "*".repeat(it.groupValues[2].length)
-  }
+  return email.replace(p) { it.groupValues[1] + "*".repeat(it.groupValues[2].length) }
 }
