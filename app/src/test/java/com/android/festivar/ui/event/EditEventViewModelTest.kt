@@ -1,0 +1,178 @@
+package com.android.festivar.ui.event
+
+// Co-authored-by: Copilot App
+
+import com.android.festivar.R
+import com.android.festivar.model.event.Event
+import com.android.festivar.model.event.EventsRepository
+import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.ui.components.DateTimeField
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class EditEventViewModelTest {
+  private val dispatcher = StandardTestDispatcher()
+  private val initialEvent = testEvent()
+  private lateinit var eventsRepository: EventsRepositoryLocal
+  private lateinit var viewModel: EditEventViewModel
+
+  @Before
+  fun setUp() {
+    Dispatchers.setMain(dispatcher)
+    eventsRepository = EventsRepositoryLocal(listOf(initialEvent))
+    viewModel = EditEventViewModel(eventsRepository)
+  }
+
+  @After
+  fun tearDown() {
+    Dispatchers.resetMain()
+  }
+
+  @Test
+  fun fetchEventPrefillsFieldsAndStartsUnchanged() = runTest {
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+
+    val state = viewModel.uiState.value
+    assertEquals(initialEvent.title, state.name)
+    assertEquals(initialEvent.startDate.toLocalDate(), state.startDate)
+    assertEquals(initialEvent.endDate.toLocalDate(), state.endDate)
+    assertEquals(initialEvent.startDate.toLocalTime(), state.startTime)
+    assertEquals(initialEvent.endDate.toLocalTime(), state.endTime)
+    assertEquals(initialEvent.location, state.venue)
+    assertEquals(initialEvent.description, state.notes)
+    assertFalse(state.hasChanges)
+    assertFalse(state.canSave)
+  }
+
+  @Test
+  fun pickerUpdatesSelectedFieldAndCloses() = runTest {
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+
+    val date = initialEvent.startDate.toLocalDate().plusDays(1)
+    viewModel.showPicker(DateTimeField.START_DATE)
+    viewModel.pickDate(date)
+
+    assertEquals(date, viewModel.uiState.value.startDate)
+    assertNull(viewModel.uiState.value.openPicker)
+  }
+
+  @Test
+  fun saveChangesUpdatesEventAndPreservesUneditedEventData() = runTest {
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+    viewModel.updateName("Updated festival")
+    viewModel.updateVenue("New venue")
+
+    assertTrue(viewModel.uiState.value.canSave)
+    viewModel.saveChanges()
+    advanceUntilIdle()
+
+    val saved = eventsRepository.getEvent(initialEvent.eventId)
+    assertEquals("Updated festival", saved.title)
+    assertEquals("New venue", saved.location)
+    assertEquals(initialEvent.members, saved.members)
+    assertEquals(initialEvent.tasks, saved.tasks)
+    assertEquals(initialEvent.announcements, saved.announcements)
+    assertEquals(initialEvent.eventId, viewModel.uiState.value.savedEventId)
+    assertFalse(viewModel.uiState.value.isSaving)
+    assertFalse(viewModel.uiState.value.hasChanges)
+  }
+
+  @Test
+  fun invalidFormCannotSave() = runTest {
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+    viewModel.updateName("")
+
+    viewModel.saveChanges()
+    advanceUntilIdle()
+
+    assertFalse(viewModel.uiState.value.canSave)
+    assertEquals(initialEvent, eventsRepository.getEvent(initialEvent.eventId))
+  }
+
+  @Test
+  fun saveFailureShowsErrorAndKeepsEdits() = runTest {
+    val failingRepository =
+        object : EventsRepository by eventsRepository {
+          override suspend fun editEvent(eventId: String, newValue: Event) {
+            error("offline")
+          }
+        }
+    viewModel = EditEventViewModel(failingRepository)
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+    viewModel.updateName("Updated festival")
+
+    viewModel.saveChanges()
+    advanceUntilIdle()
+
+    assertEquals(R.string.edit_event_error_save_failed, viewModel.uiState.value.errorMsg)
+    assertEquals("Updated festival", viewModel.uiState.value.name)
+    assertFalse(viewModel.uiState.value.isSaving)
+  }
+
+  @Test
+  fun discardConfirmationCanBeCancelledOrConfirmed() = runTest {
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+    viewModel.updateName("Updated festival")
+
+    viewModel.requestDiscard()
+    assertTrue(viewModel.uiState.value.showDiscardConfirmation)
+    viewModel.cancelDiscard()
+    assertEquals("Updated festival", viewModel.uiState.value.name)
+
+    viewModel.requestDiscard()
+    viewModel.confirmDiscard()
+    assertEquals(initialEvent.title, viewModel.uiState.value.name)
+    assertTrue(viewModel.uiState.value.isDiscarded)
+    assertFalse(viewModel.uiState.value.showDiscardConfirmation)
+  }
+
+  @Test
+  fun fetchFailureSetsErrorAndClearsLoading() = runTest {
+    val failingRepository =
+        object : EventsRepository by EventsRepositoryLocal() {
+          override suspend fun getEvent(eventId: String): Event {
+            error("offline")
+          }
+        }
+    viewModel = EditEventViewModel(failingRepository)
+
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+
+    assertTrue(viewModel.uiState.value.errorFetch)
+    assertFalse(viewModel.uiState.value.isLoading)
+  }
+
+  private fun testEvent(): Event {
+    val start = ZonedDateTime.of(2026, 11, 10, 10, 0, 0, 0, ZoneId.of("Europe/Zurich"))
+    return Event(
+        eventId = "event-1",
+        title = "Festival",
+        description = "Bring supplies",
+        startDate = start,
+        endDate = start.plusHours(3),
+        location = "Main square",
+    )
+  }
+}
