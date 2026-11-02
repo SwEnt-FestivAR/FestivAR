@@ -53,6 +53,15 @@ fun isPasswordValid(password: String): Boolean {
  * @return The masked email
  */
 fun maskEmail(email: String): String {
-  val p = """^([^@]{2})([^@]+)""".toRegex()
-  return email.replace(p) { it.groupValues[1] + "*".repeat(it.groupValues[2].length) }
+  val parts = email.split("@")
+  if (parts.size != 2) return email
+  val local = parts[0]
+  val domain = parts[1]
+  val maskedLocal =
+      if (local.length <= 2) {
+        local
+      } else {
+        local.take(2) + "*".repeat(local.length - 2)
+      }
+  return "$maskedLocal@$domain"
 }
