@@ -191,7 +191,8 @@ private val previewForm =
         zone = ZoneOffset.UTC,
     )
 
-private val previewLoaded = EditTaskUiState(task = previewTask, form = previewForm, isOwner = true)
+private val previewLoaded =
+    EditTaskUiState(task = previewTask, form = previewForm, isOwner = true, isLoading = false)
 
 @Composable
 private fun EditTaskPreview(state: EditTaskUiState) {
