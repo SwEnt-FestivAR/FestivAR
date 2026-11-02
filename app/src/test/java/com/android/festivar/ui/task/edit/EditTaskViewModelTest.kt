@@ -587,6 +587,21 @@ class EditTaskViewModelTest {
       EditTaskViewModel(" ", { "owner-1" }, repository)
     }
   }
+
+  // Breaks if the edit ViewModel routes the picker around its guard.
+  @Test
+  fun showPickerDoesNothingBeforeLoadOrAfterSave() {
+    viewModel.showPicker(DateTimeField.START_DATE)
+    assertNull(viewModel.uiState.value.form.openPicker)
+
+    viewModel.load()
+    viewModel.updateTitle("Run power to the main stage")
+    viewModel.save()
+    assertTrue(viewModel.uiState.value.isSaved)
+
+    viewModel.showPicker(DateTimeField.START_DATE)
+    assertNull(viewModel.uiState.value.form.openPicker)
+  }
 }
 
 /** Tests of the rules of [EditTaskUiState], without a ViewModel. */
