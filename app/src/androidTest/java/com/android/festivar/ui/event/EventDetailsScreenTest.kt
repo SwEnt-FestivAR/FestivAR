@@ -15,6 +15,8 @@ import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
+import io.mockk.mockk
+import io.mockk.verify
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import org.junit.Assert.assertTrue
@@ -160,26 +162,26 @@ class EventDetailsScreenTest {
 
   @Test
   fun clickingSeeTasksButtonCallsOnTasksButtonClicked() {
-    var tasksButtonClicked = false
+    val onTasksButtonClicked = mockk<() -> Unit>(relaxed = true)
     val event = eventSameMonth
 
-    setContent(event, onTasksButtonClicked = { tasksButtonClicked = true })
+    setContent(event, onTasksButtonClicked = onTasksButtonClicked)
 
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.SEE_TASKS_BUTTON).performClick()
 
-    assertTrue(tasksButtonClicked)
+    verify(exactly = 1) { onTasksButtonClicked() }
   }
 
   @Test
   fun clickingBackButtonCallsOnBack() {
-    var backClicked = false
+    val onBack = mockk<() -> Unit>(relaxed = true)
     val event = eventSameMonth
 
-    setContent(event, onBack = { backClicked = true })
+    setContent(event, onBack = onBack)
 
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.BACK_BUTTON).performClick()
 
-    assertTrue(backClicked)
+    verify(exactly = 1) { onBack() }
   }
 
   @SuppressLint("ViewModelConstructorInComposable")
