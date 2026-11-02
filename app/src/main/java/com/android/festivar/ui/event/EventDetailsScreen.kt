@@ -297,8 +297,37 @@ private fun EventDetailsRow(
 }
 
 @SuppressLint("ViewModelConstructorInComposable")
+@Preview
 @Composable
-private fun EventDetailsScreenPreview(event: Event) {
+private fun EventDetailsScreenPreview() {
+  val eventStartDate: ZonedDateTime =
+      ZonedDateTime.of(2026, 10, 16, 10, 0, 0, 0, ZoneId.of("Europe/Zurich"))
+  val eventEndDate: ZonedDateTime =
+      ZonedDateTime.of(2026, 10, 18, 18, 0, 0, 0, ZoneId.of("Europe/Zurich"))
+
+  val event =
+      Event(
+          eventId = "0",
+          title = "Fête de l'Asso 2026",
+          members = listOf(User(uid = "user", name = "Sami K.")),
+          startDate = eventStartDate,
+          endDate = eventEndDate,
+          location = "Parc de Vidy, Lausanne",
+          tasks =
+              List(
+                  size = 10,
+                  init = { index ->
+                    Task(
+                        taskId = index.toString(),
+                        eventId = "0",
+                        title = "Task $index",
+                        ownerId = "user",
+                        completed = index % 2 == 0,
+                    )
+                  },
+              ),
+      )
+
   AppTheme {
     EventDetailsScreen(
         viewModel = EventDetailsViewModel(EventsRepositoryLocal(listOf(event)), event.eventId),
@@ -314,65 +343,9 @@ private fun EventDetailsScreenPreview(event: Event) {
 private fun FetchErrorPreview() {
   AppTheme {
     EventDetailsScreen(
-        viewModel =
-            EventDetailsViewModel(EventsRepositoryLocal(emptyList()), eventSameMonth.eventId),
+        viewModel = EventDetailsViewModel(EventsRepositoryLocal(emptyList()), "missing"),
         onTasksButtonClicked = {},
         onBack = {},
     )
   }
 }
-
-@Preview
-@Composable
-private fun EventDetailsScreenPreviewSameMonth() = EventDetailsScreenPreview(eventSameMonth)
-
-@Preview
-@Composable
-private fun EventDetailsScreenPreviewSameDay() = EventDetailsScreenPreview(eventSameDay)
-
-@Preview
-@Composable
-private fun EventDetailsScreenPreviewDifferentMonth() =
-    EventDetailsScreenPreview(eventDifferentMonth)
-
-@Preview
-@Composable
-private fun EventDetailsScreenPreviewNoTasks() = EventDetailsScreenPreview(eventNoTasks)
-
-@Preview
-@Composable
-private fun EventDetailsScreenPreviewDifferentYear() = EventDetailsScreenPreview(eventDifferentYear)
-
-val eventStartDate: ZonedDateTime =
-    ZonedDateTime.of(2026, 10, 16, 10, 0, 0, 0, ZoneId.of("Europe/Zurich"))
-val eventEndDate: ZonedDateTime =
-    ZonedDateTime.of(2026, 10, 18, 18, 0, 0, 0, ZoneId.of("Europe/Zurich"))
-const val tasksListSize = 10
-val eventSameMonth =
-    Event(
-        eventId = "0",
-        title = "Fête de l'Asso 2026",
-        members = listOf(User(uid = "user", name = "Sami K.")),
-        startDate = eventStartDate,
-        endDate = eventEndDate,
-        location = "Parc de Vidy, Lausanne",
-        tasks =
-            List(
-                size = tasksListSize,
-                init = { index ->
-                  Task(
-                      taskId = index.toString(),
-                      eventId = "0",
-                      title = "Task $index",
-                      ownerId = "user",
-                      completed = index % 2 == 0,
-                  )
-                },
-            ),
-    )
-
-val eventSameDay =
-    eventSameMonth.copy(endDate = eventEndDate.withDayOfMonth(eventStartDate.dayOfMonth))
-val eventDifferentMonth = eventSameMonth.copy(endDate = eventStartDate.plusMonths(1))
-val eventDifferentYear = eventSameMonth.copy(endDate = eventStartDate.plusYears(1))
-val eventNoTasks = eventSameMonth.copy(tasks = emptyList())

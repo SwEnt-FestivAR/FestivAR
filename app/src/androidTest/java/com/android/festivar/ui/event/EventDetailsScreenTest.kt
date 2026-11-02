@@ -13,6 +13,10 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.model.task.Task
+import com.android.festivar.model.user.User
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -22,6 +26,42 @@ import org.junit.runner.RunWith
 class EventDetailsScreenTest {
 
   @get:Rule val composeTestRule = createComposeRule()
+
+  private val eventStartDate: ZonedDateTime =
+      ZonedDateTime.of(2026, 10, 16, 10, 0, 0, 0, ZoneId.of("Europe/Zurich"))
+  private val eventEndDate: ZonedDateTime =
+      ZonedDateTime.of(2026, 10, 18, 18, 0, 0, 0, ZoneId.of("Europe/Zurich"))
+
+  private val TASKS_LIST_SIZE = 10
+
+  private val eventSameMonth =
+      Event(
+          eventId = "0",
+          title = "Fête de l'Asso 2026",
+          members = listOf(User(uid = "user", name = "Sami K.")),
+          startDate = eventStartDate,
+          endDate = eventEndDate,
+          location = "Parc de Vidy, Lausanne",
+          tasks =
+              List(
+                  size = TASKS_LIST_SIZE,
+                  init = { index ->
+                    Task(
+                        taskId = index.toString(),
+                        eventId = "0",
+                        title = "Task $index",
+                        ownerId = "user",
+                        completed = index % 2 == 0,
+                    )
+                  },
+              ),
+      )
+
+  private val eventSameDay =
+      eventSameMonth.copy(endDate = eventEndDate.withDayOfMonth(eventStartDate.dayOfMonth))
+  private val eventDifferentMonth = eventSameMonth.copy(endDate = eventStartDate.plusMonths(1))
+  private val eventDifferentYear = eventSameMonth.copy(endDate = eventStartDate.plusYears(1))
+  private val eventNoTasks = eventSameMonth.copy(tasks = emptyList())
 
   @Test
   fun displaysEventDataAndTaggedElements() {
@@ -43,8 +83,8 @@ class EventDetailsScreenTest {
     composeTestRule.onNodeWithText(event.title).assertIsDisplayed()
     composeTestRule.onNodeWithText("Sami K.").assertIsDisplayed()
     composeTestRule.onNodeWithText(event.location).assertIsDisplayed()
-    composeTestRule.onNodeWithText("${tasksListSize / 2}").assertIsDisplayed()
-    composeTestRule.onNodeWithText("of $tasksListSize").assertIsDisplayed()
+    composeTestRule.onNodeWithText("${TASKS_LIST_SIZE / 2}").assertIsDisplayed()
+    composeTestRule.onNodeWithText("of $TASKS_LIST_SIZE").assertIsDisplayed()
     composeTestRule.onNodeWithText("tasks still open").assertIsDisplayed()
     composeTestRule.onNodeWithText("Fri 16 to Sun 18 Oct").assertIsDisplayed()
   }
