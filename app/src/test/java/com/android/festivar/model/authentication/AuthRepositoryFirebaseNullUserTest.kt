@@ -15,6 +15,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import io.mockk.Runs
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
@@ -124,6 +125,122 @@ class AuthRepositoryFirebaseNullUserTest {
 
     assertSame(failure, result.exceptionOrNull())
     verify(exactly = 1) { auth.signOut() }
+  }
+
+  @Test
+  fun signInWithGoogle_signsOutWhenProfileCheckFails() = runBlocking {
+    val firebaseUser = mockk<FirebaseUser> { every { uid } returns UID }
+    val authResult = mockk<AuthResult> { every { user } returns firebaseUser }
+    val auth = mockk<FirebaseAuth>()
+    every { auth.signInWithCredential(any()) } returns Tasks.forResult(authResult)
+    every { auth.signOut() } just Runs
+    val failure = IllegalStateException("Firestore unavailable")
+    val usersRepository = mockk<UsersRepository> { coEvery { getUser(UID) } throws failure }
+    val googleSignInHelper =
+        mockk<GoogleSignInHelper> { every { getFirebaseCredential(any()) } returns mockk() }
+    val repository =
+        AuthRepositoryFirebase(
+            googleSignInHelper = googleSignInHelper,
+            firebaseAuth = auth,
+            usersRepository = usersRepository,
+        )
+    val credential =
+        CustomCredential(GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL, Bundle())
+
+    val result = repository.signInWithGoogle(credential)
+
+    assertSame(failure, result.exceptionOrNull())
+    verify(exactly = 1) { auth.signOut() }
+  }
+
+  @Test
+  fun signInAnonymous_signsOutWhenProfileCheckFails() = runBlocking {
+    val firebaseUser = mockk<FirebaseUser> { every { uid } returns UID }
+    val authResult = mockk<AuthResult> { every { user } returns firebaseUser }
+    val auth = mockk<FirebaseAuth>()
+    every { auth.signInAnonymously() } returns Tasks.forResult(authResult)
+    every { auth.signOut() } just Runs
+    val failure = IllegalStateException("Firestore unavailable")
+    val usersRepository = mockk<UsersRepository> { coEvery { getUser(UID) } throws failure }
+    val repository = newRepository(auth, usersRepository)
+
+    val result = repository.signInAnonymous()
+
+    assertSame(failure, result.exceptionOrNull())
+    verify(exactly = 1) { auth.signOut() }
+  }
+
+  @Test
+  fun forgotPassword_returnsFailureWhenGenericExceptionThrown() = runBlocking {
+    val auth = mockk<FirebaseAuth>()
+    val exception = RuntimeException("Network error")
+    every { auth.sendPasswordResetEmail(EMAIL) } returns Tasks.forException(exception)
+    val repository = newRepository(auth)
+
+    val result = repository.forgotPassword(EMAIL)
+
+    assertTrue(result.isFailure)
+    assertSame(exception, result.exceptionOrNull())
+  }
+
+  @Test
+  fun signUpWithEmailAndPassword_anonymousUpgradeEditsExistingProfileWhenUserExists() =
+      runBlocking {
+        val anonUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+        val linkedUser =
+            mockk<FirebaseUser> {
+              every { uid } returns UID
+              every { email } returns EMAIL
+            }
+        val authResult = mockk<AuthResult> { every { user } returns linkedUser }
+        val auth =
+            mockk<FirebaseAuth> {
+              every { currentUser } returns anonUser
+              every { anonUser.linkWithCredential(any()) } returns Tasks.forResult(authResult)
+            }
+
+        val usersRepository =
+            mockk<UsersRepository> {
+              coEvery { getUser(UID) } returns User(uid = UID, email = "")
+              coEvery { editUser(UID, any()) } just Runs
+            }
+        val repository =
+            AuthRepositoryFirebase(firebaseAuth = auth, usersRepository = usersRepository)
+
+        val result = repository.signUpWithEmailAndPassword(EMAIL, PASSWORD)
+
+        assertTrue(result.isSuccess)
+        assertEquals(linkedUser, result.getOrNull())
+        coVerify { usersRepository.editUser(UID, User(uid = UID, email = EMAIL)) }
+      }
+
+  @Test
+  fun signUpWithEmailAndPassword_anonymousUpgradeAddsProfileWhenUserDoesNotExist() = runBlocking {
+    val anonUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+    val linkedUser =
+        mockk<FirebaseUser> {
+          every { uid } returns UID
+          every { email } returns EMAIL
+        }
+    val authResult = mockk<AuthResult> { every { user } returns linkedUser }
+    val auth =
+        mockk<FirebaseAuth> {
+          every { currentUser } returns anonUser
+          every { anonUser.linkWithCredential(any()) } returns Tasks.forResult(authResult)
+        }
+
+    val usersRepository =
+        mockk<UsersRepository> {
+          coEvery { getUser(UID) } throws NoSuchElementException("Not found")
+          coEvery { addUser(any()) } just Runs
+        }
+    val repository = AuthRepositoryFirebase(firebaseAuth = auth, usersRepository = usersRepository)
+
+    val result = repository.signUpWithEmailAndPassword(EMAIL, PASSWORD)
+
+    assertTrue(result.isSuccess)
+    assertEquals(linkedUser, result.getOrNull())
+    coVerify { usersRepository.addUser(User(uid = UID, email = EMAIL)) }
   }
 
   // A local users repository keeps the default Firestore one, unavailable here, from being built.
