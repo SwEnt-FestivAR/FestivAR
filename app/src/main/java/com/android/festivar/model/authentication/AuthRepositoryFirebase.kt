@@ -29,6 +29,7 @@ class AuthRepositoryFirebase(
       runCatching {
         val firebaseCredential = googleSignInHelper.getFirebaseCredential(credential)
         val currentUser = runCatching { firebaseAuth.currentUser }.getOrNull()
+        // Upgrade anonymous account with Google if current user is anonymous
         val user =
             if (currentUser != null && currentUser.isAnonymous) {
               currentUser.linkWithCredential(firebaseCredential).await().user
@@ -100,10 +101,12 @@ class AuthRepositoryFirebase(
   ): Result<FirebaseUser> {
     return runCatching {
       val currentUser = runCatching { firebaseAuth.currentUser }.getOrNull()
+      // Check if current user is anonymous for account upgrade/linking
       val isAnonymousLink = currentUser != null && currentUser.isAnonymous
       val user =
           if (isAnonymousLink) {
             val emailCredential = EmailAuthProvider.getCredential(email, password)
+            // Link email credential to upgrade anonymous account, preserving UID
             currentUser.linkWithCredential(emailCredential).await().user
                 ?: throw IllegalStateException("Email account linking returned no user")
           } else {
@@ -113,6 +116,7 @@ class AuthRepositoryFirebase(
 
       try {
         if (isAnonymousLink) {
+          // Ensure profile exists and update email in Firestore for upgraded user
           ensureUserExistsOrSignOut(user)
           try {
             val existing = usersRepository.getUser(user.uid)
