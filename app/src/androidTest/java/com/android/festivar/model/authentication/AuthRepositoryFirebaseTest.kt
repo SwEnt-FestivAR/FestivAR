@@ -31,11 +31,13 @@ import org.junit.runner.RunWith
 class AuthRepositoryFirebaseTest {
   private lateinit var usersRepository: UsersRepository
   private lateinit var repository: AuthRepositoryFirebase
+  private val createdUids = mutableSetOf<String>()
 
   @Before
   fun setUp() {
     FirebaseEmulatorSetup.configure()
     Firebase.auth.signOut()
+    createdUids.clear()
     usersRepository = UsersRepositoryFirebase(Firebase.firestore)
     repository = AuthRepositoryFirebase(usersRepository = usersRepository)
   }
@@ -44,7 +46,7 @@ class AuthRepositoryFirebaseTest {
   fun signUpWithEmailAndPassword_returnsCreatedUserAndCreatesProfile() = runBlocking {
     val email = newEmail()
 
-    val user = repository.signUpWithEmailAndPassword(email, PASSWORD).getOrThrow()
+    val user = signUp(email, PASSWORD)
 
     assertEquals(email, user.email)
     assertNotNull(repository.currentUser)
@@ -55,7 +57,7 @@ class AuthRepositoryFirebaseTest {
   @Test
   fun signUpWithEmailAndPassword_returnsFailureForExistingEmail() = runBlocking {
     val email = newEmail()
-    repository.signUpWithEmailAndPassword(email, PASSWORD).getOrThrow()
+    signUp(email, PASSWORD)
 
     val result = repository.signUpWithEmailAndPassword(email, PASSWORD)
 
@@ -66,10 +68,10 @@ class AuthRepositoryFirebaseTest {
   fun signInWithEmailAndPassword_returnsUserAndCreatesMissingProfile() = runBlocking {
     val email = newEmail()
     // An account created without its profile, like the ones made before profiles existed.
-    Firebase.auth.createUserWithEmailAndPassword(email, PASSWORD).await()
+    createUser(email, PASSWORD)
     Firebase.auth.signOut()
 
-    val user = repository.signInWithEmailAndPassword(email, PASSWORD).getOrThrow()
+    val user = signIn(email, PASSWORD)
 
     assertEquals(email, user.email)
     assertEquals(user.uid, repository.currentUser?.uid)
@@ -78,12 +80,12 @@ class AuthRepositoryFirebaseTest {
 
   @Test
   fun signInWithEmailAndPassword_keepsExistingProfile() = runBlocking {
-    val user = repository.signUpWithEmailAndPassword(newEmail(), PASSWORD).getOrThrow()
+    val user = signUp(newEmail(), PASSWORD)
     val profile = usersRepository.getUser(user.uid).copy(name = "Ada", surname = "Lovelace")
     usersRepository.editUser(user.uid, profile)
     repository.signOut()
 
-    repository.signInWithEmailAndPassword(user.email!!, PASSWORD).getOrThrow()
+    signIn(user.email!!, PASSWORD)
 
     assertEquals(profile, usersRepository.getUser(user.uid))
   }
@@ -91,7 +93,7 @@ class AuthRepositoryFirebaseTest {
   @Test
   fun signInWithEmailAndPassword_returnsFailureForWrongPassword() = runBlocking {
     val email = newEmail()
-    Firebase.auth.createUserWithEmailAndPassword(email, PASSWORD).await()
+    createUser(email, PASSWORD)
     Firebase.auth.signOut()
 
     val result = repository.signInWithEmailAndPassword(email, "incorrect-password")
@@ -103,7 +105,7 @@ class AuthRepositoryFirebaseTest {
   @Test
   fun forgotPassword_returnsSuccessForExistingEmail() = runBlocking {
     val email = newEmail()
-    Firebase.auth.createUserWithEmailAndPassword(email, PASSWORD).await()
+    createUser(email, PASSWORD)
 
     val result = repository.forgotPassword(email)
 
@@ -126,7 +128,7 @@ class AuthRepositoryFirebaseTest {
 
   @Test
   fun signOut_clearsCurrentUser() = runBlocking {
-    repository.signUpWithEmailAndPassword(newEmail(), PASSWORD).getOrThrow()
+    signUp(newEmail(), PASSWORD)
     assertNotNull(repository.currentUser)
 
     val result = repository.signOut()
@@ -142,7 +144,7 @@ class AuthRepositoryFirebaseTest {
     val data = Bundle().apply { putString("id_token", idToken) }
     val credential = CustomCredential(GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL, data)
 
-    val user = repository.signInWithGoogle(credential).getOrThrow()
+    val user = signInGoogle(credential)
 
     assertEquals(email, user.email)
     assertEquals(user.uid, repository.currentUser?.uid)
@@ -160,7 +162,7 @@ class AuthRepositoryFirebaseTest {
 
   @Test
   fun signInAnonymous_returnsUserAndCreatesProfile() = runBlocking {
-    val user = repository.signInAnonymous().getOrThrow()
+    val user = signInAnon()
 
     assertNotNull(user)
     assertTrue(user.isAnonymous)
@@ -176,12 +178,12 @@ class AuthRepositoryFirebaseTest {
 
   @Test
   fun upgradeAnonymousAccountWithEmailAndPassword_preservesUidAndUpdatesEmail() = runBlocking {
-    val anonUser = repository.signInAnonymous().getOrThrow()
+    val anonUser = signInAnon()
     val anonUid = anonUser.uid
     assertTrue(anonUser.isAnonymous)
 
     val email = newEmail()
-    val upgradedUser = repository.signUpWithEmailAndPassword(email, PASSWORD).getOrThrow()
+    val upgradedUser = signUp(email, PASSWORD)
 
     assertEquals(anonUid, upgradedUser.uid)
     assertEquals(email, upgradedUser.email)
@@ -191,7 +193,7 @@ class AuthRepositoryFirebaseTest {
 
   @Test
   fun upgradeAnonymousAccountWithGoogle_preservesUidAndUpdatesEmail() = runBlocking {
-    val anonUser = repository.signInAnonymous().getOrThrow()
+    val anonUser = signInAnon()
     val anonUid = anonUser.uid
     assertTrue(anonUser.isAnonymous)
 
@@ -200,7 +202,7 @@ class AuthRepositoryFirebaseTest {
     val data = Bundle().apply { putString("id_token", idToken) }
     val credential = CustomCredential(GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL, data)
 
-    val upgradedUser = repository.signInWithGoogle(credential).getOrThrow()
+    val upgradedUser = signInGoogle(credential)
 
     assertEquals(anonUid, upgradedUser.uid)
     assertEquals(email, upgradedUser.email)
@@ -210,18 +212,46 @@ class AuthRepositoryFirebaseTest {
 
   @After
   fun tearDown() {
-    val uid = Firebase.auth.currentUser?.uid
-    if (uid != null) {
-      runBlocking {
+    runBlocking {
+      if (Firebase.auth.currentUser == null) {
+        runCatching { Firebase.auth.signInAnonymously().await() }
+      }
+      val uid = Firebase.auth.currentUser?.uid
+      if (uid != null) {
+        createdUids.add(uid)
+      }
+      for (u in createdUids) {
         try {
-          usersRepository.deleteUser(uid)
+          usersRepository.deleteUser(u)
         } catch (_: Exception) {}
       }
+      createdUids.clear()
     }
     Firebase.auth.signOut()
   }
 
   private fun newEmail() = "auth-repository-${UUID.randomUUID()}@example.com"
+
+  private suspend fun signUp(email: String, password: String) =
+      repository.signUpWithEmailAndPassword(email, password).getOrThrow().also {
+        createdUids.add(it.uid)
+      }
+
+  private suspend fun signIn(email: String, password: String) =
+      repository.signInWithEmailAndPassword(email, password).getOrThrow().also {
+        createdUids.add(it.uid)
+      }
+
+  private suspend fun signInGoogle(credential: CustomCredential) =
+      repository.signInWithGoogle(credential).getOrThrow().also { createdUids.add(it.uid) }
+
+  private suspend fun signInAnon() =
+      repository.signInAnonymous().getOrThrow().also { createdUids.add(it.uid) }
+
+  private suspend fun createUser(email: String, password: String) =
+      Firebase.auth.createUserWithEmailAndPassword(email, password).await().user!!.also {
+        createdUids.add(it.uid)
+      }
 
   private companion object {
     @JvmStatic
