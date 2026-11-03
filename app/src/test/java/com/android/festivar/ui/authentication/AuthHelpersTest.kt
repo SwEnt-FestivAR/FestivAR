@@ -1,10 +1,11 @@
 // Co-authored-by: Gemini
 package com.android.festivar.ui.authentication
 
+import com.android.festivar.model.authentication.maskEmail
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-class AuthHelpersTest {
+class EmailHelpersTest {
 
   @Test
   fun maskEmailWorksCorrectly() {
