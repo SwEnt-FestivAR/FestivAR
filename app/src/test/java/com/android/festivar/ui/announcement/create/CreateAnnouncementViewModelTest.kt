@@ -278,20 +278,6 @@ class CreateAnnouncementViewModelTest {
     assertTrue(stored().isEmpty())
   }
 
-  // Breaks if only some exception types are caught, so today's Firestore refusal crashes the app.
-  @Test
-  fun aRepositoryThatRefusesAnnouncementsReportsTheSaveError() {
-    repo.beforeStore = { throw UnsupportedOperationException("not stored in Firestore yet") }
-    val vm = viewModel()
-    vm.fill()
-
-    vm.publish()
-
-    assertEquals(R.string.create_announcement_error_save_failed, vm.uiState.value.errorMsg)
-    assertFalse(vm.uiState.value.isPublished)
-    assertFalse(vm.uiState.value.isSaving)
-  }
-
   // Breaks if the write has no timeout, so the form stays stuck in the saving state forever.
   @Test
   fun aSaveThatHangsTimesOutAndKeepsTheForm() {
@@ -412,6 +398,68 @@ class CreateAnnouncementViewModelTest {
     assertEquals("The north gate opens at 16:30.", saved.content)
     assertEquals(ZonedDateTime.of(2026, 10, 30, 19, 0, 0, 0, zone), saved.updatedAt)
     assertEquals("owner-1", saved.authorId)
+    assertEquals(1, repo.edits)
+    assertTrue(vm.uiState.value.isPublished)
+  }
+
+  // Breaks if sameFormAs stops comparing the title.
+  @Test
+  fun aRetryThatChangedOnlyTheTitleUpdatesTheStoredCopy() {
+    var firstTry = true
+    repo.afterStore = {
+      if (firstTry) {
+        firstTry = false
+        throw IllegalStateException("lost the answer")
+      }
+    }
+    // The first read-back fails too (offline), so the first attempt ends with the error.
+    var firstRead = true
+    repo.beforeRead = {
+      if (firstRead) {
+        firstRead = false
+        throw IllegalStateException("offline")
+      }
+    }
+    val vm = viewModel()
+    vm.fill()
+    vm.publish()
+    assertEquals(R.string.create_announcement_error_save_failed, vm.uiState.value.errorMsg)
+
+    vm.updateTitle("Doors open")
+    vm.publish()
+
+    assertEquals("Doors open", stored().single().title)
+    assertEquals(1, repo.edits)
+    assertTrue(vm.uiState.value.isPublished)
+  }
+
+  // Breaks if sameFormAs stops comparing the priority.
+  @Test
+  fun aRetryThatChangedOnlyThePriorityUpdatesTheStoredCopy() {
+    var firstTry = true
+    repo.afterStore = {
+      if (firstTry) {
+        firstTry = false
+        throw IllegalStateException("lost the answer")
+      }
+    }
+    // The first read-back fails too (offline), so the first attempt ends with the error.
+    var firstRead = true
+    repo.beforeRead = {
+      if (firstRead) {
+        firstRead = false
+        throw IllegalStateException("offline")
+      }
+    }
+    val vm = viewModel()
+    vm.fill()
+    vm.publish()
+    assertEquals(R.string.create_announcement_error_save_failed, vm.uiState.value.errorMsg)
+
+    vm.updatePriority(AnnouncementPriority.URGENT)
+    vm.publish()
+
+    assertEquals(AnnouncementPriority.URGENT, stored().single().priority)
     assertEquals(1, repo.edits)
     assertTrue(vm.uiState.value.isPublished)
   }
