@@ -210,6 +210,14 @@ class AuthRepositoryFirebaseTest {
 
   @After
   fun tearDown() {
+    val uid = Firebase.auth.currentUser?.uid
+    if (uid != null) {
+      runBlocking {
+        try {
+          usersRepository.deleteUser(uid)
+        } catch (_: Exception) {}
+      }
+    }
     Firebase.auth.signOut()
   }
 
