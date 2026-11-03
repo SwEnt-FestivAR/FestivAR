@@ -1,0 +1,4 @@
+<!-- Co-authored-by: Copilot App -->
+<resources>
+    <string name="edit_event_error_save_failed">Unable to save the event changes.</string>
+</resources>
