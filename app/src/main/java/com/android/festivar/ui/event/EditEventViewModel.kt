@@ -26,38 +26,63 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class EditEventUIState(
+    // The event currently being edited, or null before a record has been loaded.
     val event: Event? = null,
+    // The user-entered event title shown in the form.
     val name: String = "",
+    // Tracks whether the title field has been touched so empty-name validation can trigger
+    // correctly.
     val nameEdited: Boolean = false,
+    // Selected start date for the event, used to build the full start timestamp.
     val startDate: LocalDate? = null,
+    // Selected end date for the event, used to build the full end timestamp.
     val endDate: LocalDate? = null,
+    // Selected start time for the event, used together with the start date.
     val startTime: LocalTime? = null,
+    // Selected end time for the event, used together with the end date.
     val endTime: LocalTime? = null,
+    // Venue text entered by the user for the event location.
     val venue: String = "",
+    // Notes or description entered by the user for the event.
     val notes: String = "",
+    // Which date/time picker is currently open, or null when no picker is active.
     val openPicker: DateTimeField? = null,
+    // True while the existing event is being fetched from the repository.
     val isLoading: Boolean = false,
+    // True while the updated event is being saved.
     val isSaving: Boolean = false,
+    // Event id returned after a successful save, used to prevent duplicate saves.
     val savedEventId: String? = null,
+    // True when the discard confirmation dialog should be shown.
     val showDiscardConfirmation: Boolean = false,
+    // True when the user has confirmed the form should be discarded.
     val isDiscarded: Boolean = false,
+    // True when loading the event failed and the UI should show a fetch error.
     val errorFetch: Boolean = false,
+    // Time zone used for the start date/time when building the event timestamp.
     val zone: ZoneId = ZoneId.systemDefault(),
+    // Time zone used for the end date/time when building the event timestamp.
     val endZone: ZoneId = ZoneId.systemDefault(),
+    // Resource id for the latest form error message displayed to the user.
     @param:StringRes val errorMsg: Int? = null,
 ) {
+  // Full start timestamp assembled from the selected start date, time, and zone.
   val startDateTime: ZonedDateTime?
     get() = startDate?.atTime(startTime ?: START_OF_DAY)?.atZone(zone)
 
+  // Full end timestamp assembled from the selected end date, time, and zone.
   val endDateTime: ZonedDateTime?
     get() = endDate?.atTime(endTime ?: END_OF_DAY)?.atZone(endZone)
 
+  // Validation error for the title field when it has been edited and left blank.
   val nameError: FieldError?
     get() = if (nameEdited && name.isBlank()) FieldError.EMPTY_EVENT_NAME else null
 
+  // Validation error for the start date/time combination before saving.
   val startDateError: FieldError?
     get() = startDateError(startDate, startTime)
 
+  // Validation error for the end date/time combination before saving.
   val endDateError: FieldError?
     get() {
       if (endTime != null && endDate == null) return FieldError.MISSING_DATE
@@ -69,6 +94,7 @@ data class EditEventUIState(
       }
     }
 
+  // True when the loaded event data is complete and satisfies the form validation rules.
   val isValid: Boolean
     get() =
         event != null &&
@@ -79,6 +105,7 @@ data class EditEventUIState(
             startDateError == null &&
             endDateError == null
 
+  // True when the current draft differs from the original event and therefore needs saving.
   val hasChanges: Boolean
     get() =
         event != null &&
@@ -90,6 +117,7 @@ data class EditEventUIState(
                 venue != event.location ||
                 notes != event.description)
 
+  // True when the form is valid, changed, not busy, and not already saved.
   val canSave: Boolean
     get() = isValid && hasChanges && !isLoading && !isSaving && savedEventId == null
 
