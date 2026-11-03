@@ -111,29 +111,20 @@ class AuthRepositoryFirebase(
             firebaseAuth.createUserWithEmailAndPassword(email, password).await().user
                 ?: throw IllegalStateException("Firebase sign-in returned no user")
           }
-      ensureUserExistsOrSignOut(user)
 
       try {
         if (isAnonymousLink) {
+          ensureUserExistsOrSignOut(user)
           try {
+            val existing = usersRepository.getUser(user.uid)
+            usersRepository.editUser(user.uid, existing.copy(email = user.email.orEmpty()))
+          } catch (_: Exception) {
             usersRepository.addUser(
                 User(
                     uid = user.uid,
                     email = user.email.orEmpty(),
                 )
             )
-          } catch (_: Exception) {
-            val existing =
-                try {
-                  usersRepository.getUser(user.uid)
-                } catch (_: Exception) {
-                  null
-                }
-            if (existing != null) {
-              usersRepository.editUser(user.uid, existing.copy(email = user.email.orEmpty()))
-            } else {
-              usersRepository.editUser(user.uid, User(uid = user.uid, email = user.email.orEmpty()))
-            }
           }
         } else {
           usersRepository.addUser(
