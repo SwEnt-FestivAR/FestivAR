@@ -8,6 +8,7 @@ import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryProvider
 import com.android.festivar.ui.authentication.maskEmail
 import com.google.firebase.Firebase
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseUser
@@ -28,11 +29,23 @@ class AuthRepositoryFirebase(
   override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> =
       runCatching {
         val firebaseCredential = googleSignInHelper.getFirebaseCredential(credential)
+        val currentUser = runCatching { firebaseAuth.currentUser }.getOrNull()
         val user =
-            firebaseAuth.signInWithCredential(firebaseCredential).await().user
-                ?: throw IllegalStateException("Firebase sign-in returned no user")
+            if (currentUser != null && currentUser.isAnonymous) {
+              currentUser.linkWithCredential(firebaseCredential).await().user
+                  ?: throw IllegalStateException("Google account linking returned no user")
+            } else {
+              firebaseAuth.signInWithCredential(firebaseCredential).await().user
+                  ?: throw IllegalStateException("Firebase sign-in returned no user")
+            }
         ensureUserExistsOrSignOut(user)
-        Log.d(TAG, "Successfully signed in user with Google: ${user.uid}")
+        try {
+          val existing = usersRepository.getUser(user.uid)
+          usersRepository.editUser(user.uid, existing.copy(email = user.email.orEmpty()))
+        } catch (_: Exception) {
+          ensureUserExists(user)
+        }
+        Log.d(TAG, "Successfully signed in/linked user with Google: ${user.uid}")
         user
       }
       .onFailure { e -> Log.e(TAG, "Failed to sign in with Google", e) }
@@ -87,35 +100,54 @@ class AuthRepositoryFirebase(
       password: String,
   ): Result<FirebaseUser> {
     return runCatching {
+      val currentUser = runCatching { firebaseAuth.currentUser }.getOrNull()
+      val isAnonymousLink = currentUser != null && currentUser.isAnonymous
       val user =
-          firebaseAuth.createUserWithEmailAndPassword(email, password).await().user
-              ?: throw IllegalStateException("Firebase sign-in returned no user")
+          if (isAnonymousLink) {
+            val emailCredential = EmailAuthProvider.getCredential(email, password)
+            currentUser.linkWithCredential(emailCredential).await().user
+                ?: throw IllegalStateException("Email account linking returned no user")
+          } else {
+            firebaseAuth.createUserWithEmailAndPassword(email, password).await().user
+                ?: throw IllegalStateException("Firebase sign-in returned no user")
+          }
       ensureUserExistsOrSignOut(user)
 
       try {
-        usersRepository.addUser(
-            User(
-                uid = user.uid,
-                email = user.email.orEmpty(),
-            )
-        )
+        try {
+          usersRepository.addUser(
+              User(
+                  uid = user.uid,
+                  email = user.email.orEmpty(),
+              )
+          )
+        } catch (_: Exception) {
+          val existing = try { usersRepository.getUser(user.uid) } catch (_: Exception) { null }
+          if (existing != null) {
+            usersRepository.editUser(user.uid, existing.copy(email = user.email.orEmpty()))
+          } else {
+            usersRepository.editUser(user.uid, User(uid = user.uid, email = user.email.orEmpty()))
+          }
+        }
         Log.d(
             TAG,
-            "Successfully created user and Firestore document",
+            "Successfully created/linked user and Firestore document",
         )
       } catch (e: Exception) {
         Log.e(
             TAG,
-            "Failed to create Firestore document for new user, rolling back Firebase auth user",
+            "Failed to create/update Firestore document for user",
             e,
         )
-        user.delete().await()
+        if (!isAnonymousLink) {
+          user.delete().await()
+        }
         throw e
       }
 
       user
     }
-        .onFailure { e -> Log.d(TAG, "Sign up failed", e) }
+        .onFailure { e -> Log.d(TAG, "Sign up/linking failed", e) }
   }
 
   /**

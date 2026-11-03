@@ -18,6 +18,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -171,6 +172,40 @@ class AuthRepositoryFirebaseTest {
         User(uid = user.uid, email = ""),
         usersRepository.getUser(user.uid),
     )
+  }
+
+  @Test
+  fun upgradeAnonymousAccountWithEmailAndPassword_preservesUidAndUpdatesEmail() = runBlocking {
+    val anonUser = repository.signInAnonymous().getOrThrow()
+    val anonUid = anonUser.uid
+    assertTrue(anonUser.isAnonymous)
+
+    val email = newEmail()
+    val upgradedUser = repository.signUpWithEmailAndPassword(email, PASSWORD).getOrThrow()
+
+    assertEquals(anonUid, upgradedUser.uid)
+    assertEquals(email, upgradedUser.email)
+    assertFalse(upgradedUser.isAnonymous)
+    assertEquals(User(uid = anonUid, email = email), usersRepository.getUser(anonUid))
+  }
+
+  @Test
+  fun upgradeAnonymousAccountWithGoogle_preservesUidAndUpdatesEmail() = runBlocking {
+    val anonUser = repository.signInAnonymous().getOrThrow()
+    val anonUid = anonUser.uid
+    assertTrue(anonUser.isAnonymous)
+
+    val email = newEmail()
+    val idToken = """{"sub":"${UUID.randomUUID()}","email":"$email","email_verified":true}"""
+    val data = Bundle().apply { putString("id_token", idToken) }
+    val credential = CustomCredential(GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL, data)
+
+    val upgradedUser = repository.signInWithGoogle(credential).getOrThrow()
+
+    assertEquals(anonUid, upgradedUser.uid)
+    assertEquals(email, upgradedUser.email)
+    assertFalse(upgradedUser.isAnonymous)
+    assertEquals(User(uid = anonUid, email = email), usersRepository.getUser(anonUid))
   }
 
   @After
