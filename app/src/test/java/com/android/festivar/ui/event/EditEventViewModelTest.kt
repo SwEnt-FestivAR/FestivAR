@@ -7,6 +7,9 @@ import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.ui.components.DateTimeField
+import com.android.festivar.ui.components.FieldError
+import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlinx.coroutines.Dispatchers
@@ -74,6 +77,50 @@ class EditEventViewModelTest {
   }
 
   @Test
+  fun endDateErrorRequiresDateWhenEndTimeIsSet() = runTest {
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+
+    val state = viewModel.uiState.value.copy(endDate = null)
+
+    assertEquals(FieldError.MISSING_DATE, state.endDateError)
+  }
+
+  @Test
+  fun endDateErrorRejectsPastEndTime() = runTest {
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+
+    val yesterday = LocalDate.now().minusDays(1)
+    val state =
+        viewModel.uiState.value.copy(
+            startDate = yesterday.minusDays(1),
+            startTime = LocalTime.NOON,
+            endDate = yesterday,
+            endTime = LocalTime.NOON,
+        )
+
+    assertEquals(FieldError.OUTDATED, state.endDateError)
+  }
+
+  @Test
+  fun endDateErrorRejectsEndBeforeStart() = runTest {
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+
+    val tomorrow = LocalDate.now().plusDays(1)
+    val state =
+        viewModel.uiState.value.copy(
+            startDate = tomorrow,
+            startTime = LocalTime.of(15, 0),
+            endDate = tomorrow,
+            endTime = LocalTime.of(14, 0),
+        )
+
+    assertEquals(FieldError.END_BEFORE_START, state.endDateError)
+  }
+
+  @Test
   fun saveChangesUpdatesEventAndPreservesUneditedEventData() = runTest {
     viewModel.fetchEvent(initialEvent.eventId)
     advanceUntilIdle()
@@ -93,6 +140,26 @@ class EditEventViewModelTest {
     assertEquals(initialEvent.eventId, viewModel.uiState.value.savedEventId)
     assertFalse(viewModel.uiState.value.isSaving)
     assertFalse(viewModel.uiState.value.hasChanges)
+  }
+
+  @Test
+  fun savingAnotherFieldPreservesEndInstantAndZoneWhenZonesDiffer() = runTest {
+    val differentZoneEnd =
+        ZonedDateTime.of(2026, 11, 10, 16, 0, 0, 0, ZoneId.of("America/Los_Angeles"))
+    val eventWithDifferentZones = initialEvent.copy(endDate = differentZoneEnd)
+    eventsRepository = EventsRepositoryLocal(listOf(eventWithDifferentZones))
+    viewModel = EditEventViewModel(eventsRepository)
+    viewModel.fetchEvent(eventWithDifferentZones.eventId)
+    advanceUntilIdle()
+    viewModel.updateName("Updated festival")
+
+    assertTrue(viewModel.uiState.value.canSave)
+    viewModel.saveChanges()
+    advanceUntilIdle()
+
+    val saved = eventsRepository.getEvent(eventWithDifferentZones.eventId)
+    assertEquals(eventWithDifferentZones.endDate.toInstant(), saved.endDate.toInstant())
+    assertEquals(eventWithDifferentZones.endDate.zone, saved.endDate.zone)
   }
 
   @Test
