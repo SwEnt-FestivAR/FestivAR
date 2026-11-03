@@ -122,7 +122,12 @@ class AuthRepositoryFirebase(
               )
           )
         } catch (_: Exception) {
-          val existing = try { usersRepository.getUser(user.uid) } catch (_: Exception) { null }
+          val existing =
+              try {
+                usersRepository.getUser(user.uid)
+              } catch (_: Exception) {
+                null
+              }
           if (existing != null) {
             usersRepository.editUser(user.uid, existing.copy(email = user.email.orEmpty()))
           } else {
