@@ -38,14 +38,16 @@ import org.junit.Test
 class EditEventViewModelTest {
   private val dispatcher = StandardTestDispatcher()
   private val initialEvent = testEvent()
+  private var signedInUserId = "organizer"
   private lateinit var eventsRepository: EventsRepositoryLocal
   private lateinit var viewModel: EditEventViewModel
 
   @Before
   fun setUp() {
     Dispatchers.setMain(dispatcher)
+    signedInUserId = "organizer"
     eventsRepository = EventsRepositoryLocal(listOf(initialEvent))
-    viewModel = EditEventViewModel(eventsRepository)
+    viewModel = createViewModel(eventsRepository)
   }
 
   @After
@@ -81,7 +83,7 @@ class EditEventViewModelTest {
             return pendingEvent.await()
           }
         }
-    viewModel = EditEventViewModel(repository)
+    viewModel = createViewModel(repository)
 
     viewModel.fetchEvent(initialEvent.eventId)
     viewModel.fetchEvent(initialEvent.eventId)
@@ -116,7 +118,7 @@ class EditEventViewModelTest {
             return eventsRepository.getEvent(eventId)
           }
         }
-    viewModel = EditEventViewModel(repository)
+    viewModel = createViewModel(repository)
 
     viewModel.fetchEvent(" ")
     advanceUntilIdle()
@@ -311,7 +313,7 @@ class EditEventViewModelTest {
         initialEvent.endDate.withZoneSameInstant(ZoneId.of("America/Los_Angeles"))
     val eventWithDifferentZones = initialEvent.copy(endDate = differentZoneEnd)
     eventsRepository = EventsRepositoryLocal(listOf(eventWithDifferentZones))
-    viewModel = EditEventViewModel(eventsRepository)
+    viewModel = createViewModel(eventsRepository)
     viewModel.fetchEvent(eventWithDifferentZones.eventId)
     advanceUntilIdle()
     viewModel.updateName("Updated festival")
@@ -346,7 +348,7 @@ class EditEventViewModelTest {
             error("offline")
           }
         }
-    viewModel = EditEventViewModel(failingRepository)
+    viewModel = createViewModel(failingRepository)
     viewModel.fetchEvent(initialEvent.eventId)
     advanceUntilIdle()
     viewModel.updateName("Updated festival")
@@ -354,6 +356,32 @@ class EditEventViewModelTest {
     viewModel.saveChanges()
     advanceUntilIdle()
 
+    assertEquals(R.string.edit_event_error_save_failed, viewModel.uiState.value.errorMsg)
+    assertEquals("Updated festival", viewModel.uiState.value.name)
+    assertFalse(viewModel.uiState.value.isSaving)
+  }
+
+  @Test
+  fun saveAfterSignOutIsRejected() = runTest {
+    var editCount = 0
+    val repository =
+        object : EventsRepository by eventsRepository {
+          override suspend fun editEvent(eventId: String, newValue: Event) {
+            editCount++
+            eventsRepository.editEvent(eventId, newValue)
+          }
+        }
+    viewModel = createViewModel(repository)
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+    viewModel.updateName("Updated festival")
+    signedInUserId = ""
+
+    viewModel.saveChanges()
+    advanceUntilIdle()
+
+    assertEquals(0, editCount)
+    assertEquals(initialEvent, eventsRepository.getEvent(initialEvent.eventId))
     assertEquals(R.string.edit_event_error_save_failed, viewModel.uiState.value.errorMsg)
     assertEquals("Updated festival", viewModel.uiState.value.name)
     assertFalse(viewModel.uiState.value.isSaving)
@@ -368,7 +396,7 @@ class EditEventViewModelTest {
             delay(100)
           }
         }
-    viewModel = EditEventViewModel(repository, saveTimeoutMs = 10)
+    viewModel = EditEventViewModel(repository, { signedInUserId }, saveTimeoutMs = 10)
     viewModel.fetchEvent(initialEvent.eventId)
     advanceUntilIdle()
     viewModel.updateName("Updated festival")
@@ -394,7 +422,7 @@ class EditEventViewModelTest {
             eventsRepository.editEvent(eventId, newValue)
           }
         }
-    viewModel = EditEventViewModel(repository)
+    viewModel = createViewModel(repository)
     viewModel.fetchEvent(initialEvent.eventId)
     advanceUntilIdle()
     viewModel.updateName("Draft name")
@@ -435,7 +463,7 @@ class EditEventViewModelTest {
     assertTrue(viewModel.uiState.value.isDiscarded)
     assertFalse(viewModel.uiState.value.showDiscardConfirmation)
 
-    val freshViewModel = EditEventViewModel(eventsRepository)
+    val freshViewModel = createViewModel(eventsRepository)
     freshViewModel.confirmDiscard()
     assertTrue(freshViewModel.uiState.value.isDiscarded)
     assertFalse(freshViewModel.uiState.value.showDiscardConfirmation)
@@ -451,7 +479,7 @@ class EditEventViewModelTest {
             return initialEvent
           }
         }
-    viewModel = EditEventViewModel(repository)
+    viewModel = createViewModel(repository)
 
     viewModel.fetchEvent(initialEvent.eventId)
     advanceUntilIdle()
@@ -496,4 +524,7 @@ class EditEventViewModelTest {
             ),
     )
   }
+
+  private fun createViewModel(repository: EventsRepository) =
+      EditEventViewModel(repository, { signedInUserId })
 }

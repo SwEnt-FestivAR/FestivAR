@@ -159,6 +159,7 @@ data class EditEventUIState(
 
 class EditEventViewModel(
     private val eventsRepository: EventsRepository,
+    private val currentUserId: () -> String,
     private val saveTimeoutMs: Long = SAVE_TIMEOUT_MS,
 ) : EventFormViewModel<EditEventUIState>(EditEventUIState()) {
   val uiState: StateFlow<EditEventUIState> = formState
@@ -247,6 +248,11 @@ class EditEventViewModel(
   fun saveChanges() {
     val state = currentState
     if (!state.canSave) return
+    if (currentUserId().isBlank()) {
+      Log.e("EditEventViewModel", "Cannot save event without a signed-in user")
+      updateState { it.copy(errorMsg = R.string.edit_event_error_save_failed) }
+      return
+    }
     val updatedEvent = state.toEvent()
     updateState { it.copy(isSaving = true, errorMsg = null) }
     viewModelScope.launch {
