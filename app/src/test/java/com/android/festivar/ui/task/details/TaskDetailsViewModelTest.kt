@@ -205,6 +205,21 @@ class TaskDetailsViewModelTest {
     assertEquals(TaskStatus.OPEN, vm.uiState.value.status)
   }
 
+  // Breaks if the view model reads the task at construction again, so the screen's first resume
+  // reads it twice on open.
+  @Test
+  fun nothingIsReadBeforeLoad() {
+    runBlocking { repository.local.addTask(task()) }
+    val vm = TaskDetailsViewModel("t1", me, repository)
+
+    assertEquals(0, repository.getCalls)
+    assertNull(vm.uiState.value.task)
+
+    vm.load()
+
+    assertEquals(1, repository.getCalls)
+  }
+
   // Breaks if a reload on resume clears a save error the user has not dismissed yet.
   @Test
   fun reloadAfterAFailedSave_keepsTheSaveError() {
