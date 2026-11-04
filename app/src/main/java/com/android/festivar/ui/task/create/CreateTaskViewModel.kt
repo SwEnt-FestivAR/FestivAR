@@ -218,11 +218,6 @@ private constructor(
   // after reaching the server, the retry targets the same task instead of creating a second one.
   private var pendingTaskId: String? = null
 
-  init {
-    // A Task needs an event: a blank one is a mistake of the caller.
-    require(eventId.isNotBlank()) { "eventId must not be blank" }
-  }
-
   // Create task UI state
   private val _uiState = MutableStateFlow(CreateTaskUiState(zone = zone))
   val uiState: StateFlow<CreateTaskUiState> = _uiState.asStateFlow()
@@ -233,6 +228,8 @@ private constructor(
   }
 
   init {
+    // A Task needs an event: a blank one is a mistake of the caller.
+    require(eventId.isNotBlank()) { "eventId must not be blank" }
     // The form setters come from TaskFormEditing. Pickers follow the same guard as the fields.
     formEditing.applyEdit = ::edit
     formEditing.current = { _uiState.value }

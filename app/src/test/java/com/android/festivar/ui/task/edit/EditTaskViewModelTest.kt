@@ -15,8 +15,10 @@ import com.android.festivar.ui.components.FieldError
 import com.android.festivar.ui.task.create.CreateTaskUiState
 import java.time.Duration
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -284,6 +286,44 @@ class EditTaskViewModelTest {
     assertEquals(LocalTime.MIDNIGHT, form.startTime)
     assertEquals(LocalTime.of(23, 59), form.endTime)
     assertFalse(vm.uiState.value.hasChanges)
+  }
+
+  // Breaks if toForm stops normalising a time in the repeated hour of the daylight saving change to
+  // the earlier offset as documented, or if that lossy mapping alone counts as a change.
+  @Test
+  fun aTimeInTheSecondRepeatedHourMapsToTheEarlierOffset() {
+    // Zurich leaves summer time on 25 October 2026: 02:00 to 03:00 happens twice.
+    val repeated = LocalDateTime.of(2026, 10, 25, 2, 30)
+    val secondOccurrence = ZonedDateTime.ofLocal(repeated, zone, ZoneOffset.ofHours(1))
+    val firstOccurrence = ZonedDateTime.ofLocal(repeated, zone, ZoneOffset.ofHours(2))
+    assertEquals(ZoneOffset.ofHours(1), secondOccurrence.offset)
+    runBlocking {
+      local.addTask(
+          seeded.copy(
+              taskId = "task-4",
+              startTime = secondOccurrence,
+              endTime = secondOccurrence.plusHours(1),
+          )
+      )
+    }
+    val vm = EditTaskViewModel("task-4", { "owner-1" }, repository, zone = zone)
+
+    vm.load()
+
+    val form = vm.uiState.value.form
+    assertEquals(repeated.toLocalDate(), form.startDate)
+    assertEquals(repeated.toLocalTime(), form.startTime)
+    assertEquals(firstOccurrence, form.startDateTime)
+    assertEquals(secondOccurrence.minusHours(1).toInstant(), form.startDateTime?.toInstant())
+    assertFalse(vm.uiState.value.hasChanges)
+
+    vm.updateTitle("Run power to the main stage")
+    vm.save()
+
+    assertEquals(
+        firstOccurrence.toInstant(),
+        runBlocking { local.getTask("task-4") }.startTime?.toInstant(),
+    )
   }
 
   // Breaks if hasChanges does not trim the texts, so a trailing space counts as a change.
