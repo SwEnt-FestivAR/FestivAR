@@ -166,4 +166,17 @@ data class Task(
     require(assignees.any { it.uid == userId }) { "This user is not assigned to the task." }
     return copy(assignees = assignees.filterNot { it.uid == userId })
   }
+
+  /**
+   * Returns a new version of `this` but with the [startTime] and [endTime] updated to the new
+   * values.
+   *
+   * @return The [Task] but with the [startTime] and [endTime] updated.
+   * @throws IllegalArgumentException If newEndTime is before newStartTime. Equal values are
+   *   accepted.
+   */
+  fun editTimes(newStartTime: ZonedDateTime, newEndTime: ZonedDateTime): Task {
+    require(!newEndTime.isBefore(newStartTime)) { "newEndTime must not be before newStartTime." }
+    return copy(startTime = newStartTime, endTime = newEndTime)
+  }
 }
