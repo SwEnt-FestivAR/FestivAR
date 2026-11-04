@@ -13,7 +13,9 @@ import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryProvider
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.DateTimeRange
+import com.android.festivar.ui.components.END_OF_DAY
 import com.android.festivar.ui.components.FieldError
+import com.android.festivar.ui.components.START_OF_DAY
 import com.android.festivar.ui.components.endDateError
 import com.android.festivar.ui.components.startDateError
 import java.time.Duration
@@ -158,12 +160,6 @@ private const val MAX_ESTIMATED_DIGITS = 9
 
 /** The fewest people a task can need, and the number of people a new task starts with. */
 const val MIN_MAX_ASSIGN = 1
-
-/** The time of a start date picked without a time. */
-val START_OF_DAY: LocalTime = LocalTime.MIDNIGHT
-
-/** The time of an end date picked without a time: the last minute the forms can show. */
-val END_OF_DAY: LocalTime = LocalTime.of(23, 59)
 
 private const val TAG = "CreateTaskViewModel"
 
