@@ -26,66 +26,69 @@ import kotlinx.coroutines.withTimeout
 private const val SAVE_TIMEOUT_MS = 15_000L
 
 data class EditEventUIState(
-    // The event currently being edited, or null before a record has been loaded.
+    /** The event currently being edited, or null before a record has been loaded. */
     val event: Event? = null,
-    // The user-entered event title shown in the form.
+    /** The user-entered event title shown in the form. */
     val name: String = "",
-    // Tracks whether the title field has been touched so empty-name validation can trigger
-    // correctly.
+    /**
+     * Tracks whether the title field has been touched so empty-name validation can trigger
+     * correctly.
+     */
     val nameEdited: Boolean = false,
-    // Selected start date for the event, used to build the full start timestamp.
+    /** Selected start date for the event, used to build the full start timestamp. */
     val startDate: LocalDate? = null,
-    // Selected end date for the event, used to build the full end timestamp.
+    /** Selected end date for the event, used to build the full end timestamp. */
     val endDate: LocalDate? = null,
-    // Selected start time for the event, used together with the start date.
+    /** Selected start time for the event, used together with the start date. */
     val startTime: LocalTime? = null,
-    // Selected end time for the event, used together with the end date.
+    /** Selected end time for the event, used together with the end date. */
     val endTime: LocalTime? = null,
-    // Venue text entered by the user for the event location.
+    /** Venue text entered by the user for the event location. */
     val venue: String = "",
-    // Notes or description entered by the user for the event.
+    /** Notes or description entered by the user for the event. */
     val notes: String = "",
-    // Which date/time picker is currently open, or null when no picker is active.
+    /** Which date/time picker is currently open, or null when no picker is active. */
     val openPicker: DateTimeField? = null,
-    // True while the existing event is being fetched from the repository.
+    /** True while the existing event is being fetched from the repository. */
     val isLoading: Boolean = false,
-    // True while the updated event is being saved.
+    /** True while the updated event is being saved. */
     val isSaving: Boolean = false,
-    // Event id returned after a successful save, used to prevent duplicate saves.
+    /** Event id returned after a successful save, used to prevent duplicate saves. */
     val savedEventId: String? = null,
-    // True when the discard confirmation dialog should be shown.
+    /** True when the discard confirmation dialog should be shown. */
     val showDiscardConfirmation: Boolean = false,
-    // True when the user has confirmed the form should be discarded.
+    /** True when the user has confirmed the form should be discarded. */
     val isDiscarded: Boolean = false,
-    // True when loading the event failed and the UI should show a fetch error.
+    /** True when loading the event failed and the UI should show a fetch error. */
     val errorFetch: Boolean = false,
-    // Time zone used for the start date/time when building the event timestamp.
+    /** Time zone used for the start date/time when building the event timestamp. */
     val zone: ZoneId = ZoneId.systemDefault(),
-    // Time zone used for the end date/time when building the event timestamp.
+    /** Time zone used for the end date/time when building the event timestamp. */
     val endZone: ZoneId = ZoneId.systemDefault(),
-    // Resource id for the latest form error message displayed to the user.
+    /** Resource id for the latest form error message displayed to the user. */
     @param:StringRes val errorMsg: Int? = null,
 ) {
-  // Full start timestamp assembled from the selected start date, time, and zone.
+  /** Full start timestamp assembled from the selected start date, time, and zone. */
   val startDateTime: ZonedDateTime?
     get() = computeStartDateTime(startDate, startTime, zone)
 
-  // Full end timestamp assembled from the selected end date, time, and zone.
+  /** Full end timestamp assembled from the selected end date, time, and zone. */
   val endDateTime: ZonedDateTime?
     get() = computeEndDateTime(endDate, endTime, endZone)
 
-  // Validation error for the title field when it has been edited and left blank.
+  /** Validation error for the title field when it has been edited and left blank. */
   val nameError: FieldError?
     get() = validateEventName(name, nameEdited)
 
-  // Validation error for the start date/time combination before saving.
+  /** Validation error for the start date/time combination before saving. */
   val startDateError: FieldError?
     get() = validateStartDate(startDate, startTime)
 
-  // Validation error for the end date/time combination before saving.
+  /** Validation error for the end date/time combination before saving. */
   val endDateError: FieldError?
     get() = endDateErrorAt(ZonedDateTime.now())
 
+  /** Validates the end date/time against [now], including the distinct start and end zones. */
   internal fun endDateErrorAt(now: ZonedDateTime): FieldError? =
       validateEndDateError(
           DateTimeRange(startDate, startTime, endDate, endTime),
@@ -94,7 +97,7 @@ data class EditEventUIState(
           endZone,
       )
 
-  // True when the loaded event data is complete and satisfies the form validation rules.
+  /** True when the loaded event data is complete and satisfies the form validation rules. */
   val isValid: Boolean
     get() =
         isEventFormValid(
@@ -107,7 +110,7 @@ data class EditEventUIState(
             endDateError,
         )
 
-  // True when the current draft differs from the original event and therefore needs saving.
+  /** True when the current draft differs from the original event and therefore needs saving. */
   val hasChanges: Boolean
     get() =
         event != null &&
@@ -119,10 +122,11 @@ data class EditEventUIState(
                 venue != event.location ||
                 notes != event.description)
 
-  // True when the form is valid, changed, not busy, and not already saved.
+  /** True when the form is valid, changed, not busy, and not already saved. */
   val canSave: Boolean
     get() = isValid && hasChanges && !isLoading && !isSaving && savedEventId == null
 
+  /** Builds the edited event while preserving fields not owned by this form. */
   fun toEvent(): Event {
     val original = checkNotNull(event) { "No event is loaded." }
     require(isValid) { "The form is not valid." }
@@ -135,6 +139,7 @@ data class EditEventUIState(
     )
   }
 
+  /** Loads [event] into the form and resets transient edit state. */
   internal fun load(event: Event): EditEventUIState =
       copy(
           event = event,
@@ -199,7 +204,10 @@ class EditEventViewModel(
 
   override fun currentPicker(state: EditEventUIState) = state.openPicker
 
-  // Loads an event by id and populates the form so the user can edit the existing event details.
+  /**
+   * Loads [eventId] and populates the form. Does nothing for a blank id, an active load, an active
+   * save, or an already-loaded event.
+   */
   fun fetchEvent(eventId: String) {
     if (eventId.isBlank()) {
       Log.e("EditEventViewModel", "Cannot load an event with a blank id")
@@ -222,19 +230,19 @@ class EditEventViewModel(
     }
   }
 
-  // Starts the discard flow when the user tries to leave the screen with unsaved edits.
+  /** Starts discard confirmation when the form has changes; otherwise discards immediately. */
   fun requestDiscard() {
     updateState {
       if (it.hasChanges) it.copy(showDiscardConfirmation = true) else it.copy(isDiscarded = true)
     }
   }
 
-  // Closes the discard confirmation dialog without discarding the current draft.
+  /** Closes discard confirmation without changing the current draft. */
   fun cancelDiscard() {
     updateState { it.copy(showDiscardConfirmation = false) }
   }
 
-  // Confirms discarding the draft and either resets to the original event or clears the form.
+  /** Discards the draft and restores the loaded event, or marks an unloaded form as discarded. */
   fun confirmDiscard() {
     updateState {
       val original = it.event
@@ -246,7 +254,10 @@ class EditEventViewModel(
     }
   }
 
-  // Saves the edited event to the repository after validating that the form is ready to persist.
+  /**
+   * Saves the changed form when a user is signed in. A failed or timed-out write is read back to
+   * determine whether it succeeded.
+   */
   fun saveChanges() {
     val state = currentState
     if (!state.canSave) return

@@ -67,6 +67,11 @@ abstract class EventFormViewModel<S>(initialState: S) : ViewModel() {
 
   fun showPicker(newOpenPicker: DateTimeField?) = edit { updatePickerState(it, newOpenPicker) }
 
+  /**
+   * Sets [date] in the selected date field, if any, then closes the picker.
+   *
+   * @param date The selected date.
+   */
   fun pickDate(date: LocalDate) {
     when (currentPicker(currentState)) {
       DateTimeField.START_DATE -> updateStartDate(date)
@@ -76,6 +81,11 @@ abstract class EventFormViewModel<S>(initialState: S) : ViewModel() {
     showPicker(null)
   }
 
+  /**
+   * Sets [time] in the selected time field, if any, then closes the picker.
+   *
+   * @param time The selected time.
+   */
   fun pickTime(time: LocalTime) {
     when (currentPicker(currentState)) {
       DateTimeField.START_TIME -> updateStartTime(time)
