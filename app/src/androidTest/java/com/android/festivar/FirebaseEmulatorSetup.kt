@@ -11,12 +11,11 @@ object FirebaseEmulatorSetup {
 
   @Synchronized
   fun configure() {
-    if (!configured) {
+    if (configured) return
+
       Firebase.auth.useEmulator("10.0.2.2", 9099)
       Firebase.firestore.useEmulator("10.0.2.2", 8080)
       Firebase.storage.useEmulator("10.0.2.2", 9199)
       configured = true
-    }
-    Firebase.auth.signOut()
   }
 }
