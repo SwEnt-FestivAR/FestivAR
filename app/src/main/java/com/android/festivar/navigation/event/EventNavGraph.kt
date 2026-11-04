@@ -18,10 +18,10 @@ import com.android.festivar.ui.event.create.CreateEventScreen
 import com.android.festivar.ui.event.create.CreateEventViewModel
 import com.android.festivar.ui.event.details.EventDetailsScreen
 import com.android.festivar.ui.event.details.EventDetailsViewModel
-import com.android.festivar.ui.event.overview.EventsOverviewScreen
-import com.android.festivar.ui.event.overview.EventsOverviewViewModel
 import com.android.festivar.ui.event.join.JoinEventScreen
 import com.android.festivar.ui.event.join.JoinEventViewModel
+import com.android.festivar.ui.event.overview.EventsOverviewScreen
+import com.android.festivar.ui.event.overview.EventsOverviewViewModel
 
 /** The destinations of the event feature. */
 fun NavGraphBuilder.eventGraph(navController: NavHostController, authRepository: AuthRepository) {

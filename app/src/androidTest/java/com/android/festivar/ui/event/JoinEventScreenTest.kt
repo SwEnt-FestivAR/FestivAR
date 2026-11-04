@@ -98,7 +98,7 @@ class JoinEventScreenTest {
             UsersRepositoryLocal(listOf(user)),
         )
     composeTestRule.setContent {
-        JoinEventScreen(viewModel = viewModel, onOpenEvent = { opened.add(it) })
+      JoinEventScreen(viewModel = viewModel, onOpenEvent = { opened.add(it) })
     }
   }
 
@@ -370,7 +370,7 @@ class JoinEventScreenTest {
   fun theCodeRowAndTheHiddenFieldAreDescribedForAScreenReader() {
     composeTestRule.setContent {
       var code by remember { mutableStateOf("") }
-        JoinEventContent(JoinEventUIState(code = code), {}, { code = it }, {})
+      JoinEventContent(JoinEventUIState(code = code), {}, { code = it }, {})
     }
 
     composeTestRule

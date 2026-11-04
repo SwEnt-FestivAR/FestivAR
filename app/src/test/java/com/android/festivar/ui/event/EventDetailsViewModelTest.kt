@@ -52,9 +52,9 @@ class EventDetailsViewModelTest {
     val viewModel =
         EventDetailsViewModel(
             object : EventsRepository by EventsRepositoryLocal() {
-                override suspend fun getEvent(eventId: String): Event {
-                    throw IllegalStateException("fetch failed")
-                }
+              override suspend fun getEvent(eventId: String): Event {
+                throw IllegalStateException("fetch failed")
+              }
             }
         )
 
@@ -116,9 +116,9 @@ class EventDetailsViewModelTest {
     val viewModel =
         EventDetailsViewModel(
             object : EventsRepository by EventsRepositoryLocal() {
-                override suspend fun getEvent(eventId: String): Event {
-                    throw CancellationException("fetch cancelled")
-                }
+              override suspend fun getEvent(eventId: String): Event {
+                throw CancellationException("fetch cancelled")
+              }
             }
         )
 

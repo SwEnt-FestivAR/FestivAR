@@ -166,20 +166,23 @@ class EventsOverviewScreenTest {
           LocalLifecycleOwner provides (lifecycleOwner ?: LocalLifecycleOwner.current)
       ) {
         AppTheme {
-            EventsOverviewScreen(
-                eventsOverviewViewModel = viewModel,
-                onSelectEvent = onSelectEvent,
-                onJoinEvent = onJoinEvent,
-                onAddEvent = onAddEvent,
-                onSelectAvatar = onSelectAvatar,
-            )
+          EventsOverviewScreen(
+              eventsOverviewViewModel = viewModel,
+              onSelectEvent = onSelectEvent,
+              onJoinEvent = onJoinEvent,
+              onAddEvent = onAddEvent,
+              onSelectAvatar = onSelectAvatar,
+          )
         }
       }
     }
     return viewModel
   }
 
-  /** Shows [com.android.festivar.ui.event.overview.EventsOverviewContent] alone, with the given [uiState]. */
+  /**
+   * Shows [com.android.festivar.ui.event.overview.EventsOverviewContent] alone, with the given
+   * [uiState].
+   */
   private fun setContent(uiState: EventsOverviewUIState) {
     composeTestRule.setContent { AppTheme { EventsOverviewContent(uiState = uiState) } }
   }
