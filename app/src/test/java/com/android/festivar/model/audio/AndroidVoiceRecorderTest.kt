@@ -5,6 +5,7 @@ import java.io.File
 import java.io.IOException
 import java.time.Duration
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
@@ -86,6 +87,7 @@ class AndroidVoiceRecorderTest {
       )
 
   private val minMillis = AndroidVoiceRecorder.MIN_DURATION.toMillis()
+  private val maxMillis = AndroidVoiceRecorder.MAX_DURATION.toMillis()
   private val tickMillis = AndroidVoiceRecorder.TICK_INTERVAL_MILLIS
 
   private fun advance(millis: Long) {
@@ -323,18 +325,26 @@ class AndroidVoiceRecorderTest {
   }
 
   @Test
-  fun cancelOrAnErrorWhilePausedDropsTheRecording() {
-    recorder.start()
-    recorder.pause()
-    recorder.cancel()
-    assertTrue(captures.last().stopped)
-    assertDropped()
+  fun cancelOrAnErrorWhilePausedOrAtTheLimitDropsTheRecording() {
+    val pauseIt =
+        listOf(
+            {
+              recorder.start()
+              recorder.pause()
+            },
+            { record(maxMillis) },
+        )
+    pauseIt.forEach { pause ->
+      pause()
+      recorder.cancel()
+      assertTrue(captures.last().stopped)
+      assertDropped()
 
-    recorder.start()
-    recorder.pause()
-    captures.last().reportError()
-    assertDropped()
-    assertIllegal { recorder.resume() }
+      pause()
+      captures.last().reportError()
+      assertDropped()
+      assertIllegal { recorder.resume() }
+    }
   }
 
   @Test
@@ -429,5 +439,99 @@ class AndroidVoiceRecorderTest {
     assertFails { recorder.stop() }
 
     assertDropped()
+  }
+
+  @Test
+  fun reachingTheLimitPausesTheCaptureAndAStopStillReturnsTheFile() {
+    record(maxMillis - tickMillis)
+    assertEquals(recordingOf(maxMillis - tickMillis), recorder.state.value)
+    assertEquals(0, captures.single().pauses)
+
+    advance(tickMillis)
+    assertEquals(pausedAt(maxMillis), recorder.state.value)
+    advance(tickMillis * 10)
+    assertEquals(pausedAt(maxMillis), recorder.state.value)
+    assertEquals(1, captures.single().pauses)
+    assertFalse(captures.single().stopped)
+
+    val audio = recorder.stop()
+
+    assertSame(files.single(), audio.file)
+    assertTrue(audio.file.exists())
+    assertEquals(AndroidVoiceRecorder.MAX_DURATION, audio.duration)
+    assertIdleForGood()
+  }
+
+  @Test
+  fun aPauseDoesNotCountTowardsTheLimit() {
+    record(maxMillis - minMillis)
+    recorder.pause()
+    advance(maxMillis * 2)
+    recorder.resume()
+
+    advance(minMillis - tickMillis)
+    assertEquals(recordingOf(maxMillis - tickMillis), recorder.state.value)
+    advance(tickMillis)
+    assertEquals(pausedAt(maxMillis), recorder.state.value)
+  }
+
+  @Test
+  fun aRecordingPausedJustBeforeTheLimitCanResumeAndPassesItByLessThanATick() {
+    val justBefore = maxMillis - tickMillis / 2
+    record(justBefore)
+    recorder.pause()
+    recorder.resume()
+    assertEquals(1, captures.single().resumes)
+
+    advance(tickMillis)
+
+    assertEquals(pausedAt(justBefore + tickMillis), recorder.state.value)
+    assertEquals(Duration.ofMillis(justBefore + tickMillis), recorder.stop().duration)
+  }
+
+  @Test
+  fun resumeAtTheLimitThrowsAndLeavesTheRecordingIntact() {
+    val reachTheLimit =
+        listOf(
+            { record(maxMillis) },
+            // By hand, between the limit and the tick that would have paused it.
+            {
+              record(maxMillis - tickMillis / 2)
+              recorder.pause()
+              recorder.resume()
+              advance(tickMillis / 2)
+              recorder.pause()
+            },
+        )
+    reachTheLimit.forEach { reach ->
+      reach()
+      val resumes = captures.last().resumes
+
+      assertFails { recorder.resume() }
+
+      assertEquals(pausedAt(maxMillis), recorder.state.value)
+      assertEquals(resumes, captures.last().resumes)
+      assertFalse(captures.last().stopped)
+      assertFalse(captures.last().released)
+      assertTrue(files.last().exists())
+      assertEquals(AndroidVoiceRecorder.MAX_DURATION, recorder.stop().duration)
+    }
+  }
+
+  @Test
+  fun anAutomaticPauseThatFailsDropsTheRecordingWithoutThrowing() {
+    newCapture = {
+      FakeCapture(pauseFailure = IllegalStateException(), stopFailure = RuntimeException())
+    }
+
+    record(maxMillis)
+
+    assertEquals(1, captures.single().pauses)
+    assertTrue(captures.single().stopped)
+    assertDropped()
+    assertIllegal { recorder.stop() }
+    // An exception that escaped from the timer would have cancelled this scope.
+    assertTrue(scope.isActive)
+    assertCanRecordAgain()
   }
 }
