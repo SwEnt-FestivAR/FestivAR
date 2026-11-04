@@ -1,7 +1,9 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
-package com.android.festivar.ui.task.create
+package com.android.festivar.ui.task
 
 import com.android.festivar.ui.components.DateTimeField
+import com.android.festivar.ui.task.create.CreateTaskUiState
+import com.android.festivar.ui.task.create.MIN_MAX_ASSIGN
 import java.time.LocalDate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
@@ -16,7 +18,6 @@ class TaskFormEditingTest {
   private val editing =
       TaskFormEditing().also {
         it.applyEdit = { change -> state.update(change) }
-        it.applyPicker = { change -> state.update(change) }
         it.current = { state.value }
       }
 

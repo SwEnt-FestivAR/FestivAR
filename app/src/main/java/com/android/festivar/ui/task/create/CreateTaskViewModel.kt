@@ -13,6 +13,8 @@ import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryProvider
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.FieldError
+import com.android.festivar.ui.task.TaskFormEditing
+import com.android.festivar.ui.task.TaskFormEditor
 import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalTime
@@ -126,6 +128,7 @@ data class CreateTaskUiState(
   val canCreate: Boolean
     get() = isValid && !isSaving && !isCreated
 
+  /** Whether it has a title and no field error; [canCreate] adds the saving and created flags. */
   internal val isValid: Boolean
     get() =
         title.isNotBlank() &&
@@ -160,7 +163,7 @@ data class CreateTaskUiState(
 }
 
 /** The most digits of the estimated time: 9 digits is always below `Int.MAX_VALUE`. */
-private const val MAX_ESTIMATED_DIGITS = 9
+internal const val MAX_ESTIMATED_DIGITS = 9
 
 /** The fewest people a task can need, and the number of people a new task starts with. */
 const val MIN_MAX_ASSIGN = 1
@@ -170,126 +173,6 @@ val START_OF_DAY: LocalTime = LocalTime.MIDNIGHT
 
 /** The time of an end date picked without a time: the last minute the forms can show. */
 val END_OF_DAY: LocalTime = LocalTime.of(23, 59)
-
-/** The setters a task form screen needs, shared by the create and edit ViewModels. */
-interface TaskFormEditor {
-  /** Sets the title and marks it as edited, so that an empty title is reported. */
-  fun updateTitle(title: String)
-
-  /** Sets the description. */
-  fun updateDescription(description: String)
-
-  /** Sets the location. */
-  fun updateLocation(location: String)
-
-  /** Sets the priority. */
-  fun updatePriority(priority: Priority)
-
-  /** Adds one to the number of people the task needs. */
-  fun incrementMaxAssign()
-
-  /** Removes one from the number of people the task needs, down to [MIN_MAX_ASSIGN]. */
-  fun decrementMaxAssign()
-
-  /**
-   * Sets the estimated time, in minutes. Anything but digits is dropped, and at most
-   * [MAX_ESTIMATED_DIGITS] digits are kept, so that the number always fits in an `Int`.
-   */
-  fun updateEstimatedMinutes(text: String)
-
-  /** Sets the date the task starts. */
-  fun updateStartDate(date: LocalDate)
-
-  /** Sets the time the task starts. */
-  fun updateStartTime(time: LocalTime)
-
-  /** Sets the date the task ends. */
-  fun updateEndDate(date: LocalDate)
-
-  /** Sets the time the task ends. */
-  fun updateEndTime(time: LocalTime)
-
-  /** Opens the picker dialog of [field], or closes the open one when [field] is `null`. */
-  fun showPicker(field: DateTimeField?)
-
-  /** Sets [date] in the field whose picker is open, then closes the picker. */
-  fun pickDate(date: LocalDate)
-
-  /** Sets [time] in the field whose picker is open, then closes the picker. */
-  fun pickTime(time: LocalTime)
-}
-
-/**
- * The one implementation of [TaskFormEditor], over a form it does not own: the owning ViewModel
- * decides how a change reaches its state, and when it is ignored.
- */
-internal class TaskFormEditing : TaskFormEditor {
-  /**
-   * Applies a change of a form field. Set by the owning ViewModel in its init, before any setter
-   * runs.
-   */
-  lateinit var applyEdit: ((CreateTaskUiState) -> CreateTaskUiState) -> Unit
-
-  /**
-   * Applies a change of the open picker only. Set by the owning ViewModel in its init; it may let
-   * pickers work where [applyEdit] ignores changes.
-   */
-  lateinit var applyPicker: ((CreateTaskUiState) -> CreateTaskUiState) -> Unit
-
-  /**
-   * The form as it is now, read by [pickDate] and [pickTime]. Set by the owning ViewModel in its
-   * init.
-   */
-  lateinit var current: () -> CreateTaskUiState
-
-  override fun updateTitle(title: String) = applyEdit { it.copy(title = title, titleEdited = true) }
-
-  override fun updateDescription(description: String) = applyEdit {
-    it.copy(description = description)
-  }
-
-  override fun updateLocation(location: String) = applyEdit { it.copy(location = location) }
-
-  override fun updatePriority(priority: Priority) = applyEdit { it.copy(priority = priority) }
-
-  override fun incrementMaxAssign() = applyEdit { it.copy(maxAssign = it.maxAssign + 1) }
-
-  override fun decrementMaxAssign() = applyEdit {
-    it.copy(maxAssign = (it.maxAssign - 1).coerceAtLeast(MIN_MAX_ASSIGN))
-  }
-
-  override fun updateEstimatedMinutes(text: String) = applyEdit {
-    it.copy(estimatedMinutes = text.filter(Char::isDigit).take(MAX_ESTIMATED_DIGITS))
-  }
-
-  override fun updateStartDate(date: LocalDate) = applyEdit { it.copy(startDate = date) }
-
-  override fun updateStartTime(time: LocalTime) = applyEdit { it.copy(startTime = time) }
-
-  override fun updateEndDate(date: LocalDate) = applyEdit { it.copy(endDate = date) }
-
-  override fun updateEndTime(time: LocalTime) = applyEdit { it.copy(endTime = time) }
-
-  override fun showPicker(field: DateTimeField?) = applyPicker { it.copy(openPicker = field) }
-
-  override fun pickDate(date: LocalDate) {
-    when (current().openPicker) {
-      DateTimeField.START_DATE -> updateStartDate(date)
-      DateTimeField.END_DATE -> updateEndDate(date)
-      else -> Unit
-    }
-    showPicker(null)
-  }
-
-  override fun pickTime(time: LocalTime) {
-    when (current().openPicker) {
-      DateTimeField.START_TIME -> updateStartTime(time)
-      DateTimeField.END_TIME -> updateEndTime(time)
-      else -> Unit
-    }
-    showPicker(null)
-  }
-}
 
 private const val TAG = "CreateTaskViewModel"
 
@@ -344,16 +227,17 @@ private constructor(
   private val _uiState = MutableStateFlow(CreateTaskUiState(zone = zone))
   val uiState: StateFlow<CreateTaskUiState> = _uiState.asStateFlow()
 
-  // Once the task is created the form is final: later edits are ignored.
+  // Once the task is created the form is final: later edits are ignored, except closing the
+  // picker, so that one opened during a slow save does not stay open.
   private fun edit(change: (CreateTaskUiState) -> CreateTaskUiState) = _uiState.update {
-    if (it.isCreated) it else change(it)
+    if (!it.isCreated) return@update change(it)
+    val closed = it.copy(openPicker = null)
+    if (change(it) == closed) closed else it
   }
 
   init {
-    // The form setters come from TaskFormEditing. Opening or closing a picker is not an edit, so
-    // it still works once the task is created.
+    // The form setters come from TaskFormEditing. Pickers follow the same guard as the fields.
     formEditing.applyEdit = ::edit
-    formEditing.applyPicker = { change -> _uiState.update(change) }
     formEditing.current = { _uiState.value }
   }
 
