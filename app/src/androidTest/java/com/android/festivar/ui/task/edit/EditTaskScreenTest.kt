@@ -4,6 +4,7 @@ package com.android.festivar.ui.task.edit
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -12,12 +13,14 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.festivar.R
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.task.create.CreateTaskActions
 import com.android.festivar.ui.task.create.CreateTaskScreenTestTags
+import com.android.festivar.ui.task.create.string
 import com.android.festivar.ui.theme.AppTheme
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
@@ -195,13 +198,20 @@ class EditTaskScreenTest {
     assertEquals(0, backCount)
   }
 
-  // Breaks if a user who does not own the task can press "Save changes".
+  // Breaks if a user who does not own the task gets the form, or no notice saying why not.
   @Test
-  fun aNonOwnerSeesTheFormButCannotSave() {
-    showLoadedScreen(userId = "volunteer-1")
-    editTitle("Run power to the stage")
+  fun aNonOwnerSeesWhyInsteadOfTheForm() {
+    seed()
+    showScreen(userId = "volunteer-1")
+    composeTestRule.waitUntil(5_000) { exists(EditTaskScreenTestTags.NOT_OWNER) }
 
-    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.CREATE_BUTTON).assertIsNotEnabled()
+    composeTestRule
+        .onNodeWithTag(EditTaskScreenTestTags.NOT_OWNER)
+        .assertTextEquals(string(R.string.edit_task_not_owner))
+    assertFalse(exists(CreateTaskScreenTestTags.TITLE_FIELD))
+    assertFalse(exists(CreateTaskScreenTestTags.CREATE_BUTTON))
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.BACK_BUTTON).performClick()
+    assertEquals(1, backCount)
   }
 
   // Breaks if the screen drops the save error from the form, or a failed save clears the edit.

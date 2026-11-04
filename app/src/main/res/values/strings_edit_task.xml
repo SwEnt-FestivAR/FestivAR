@@ -5,4 +5,5 @@
     <string name="edit_task_discard_title">Discard your changes?</string>
     <string name="edit_task_error_load_failed">Unable to load the task.</string>
     <string name="edit_task_error_save_failed">Unable to save the task.</string>
+    <string name="edit_task_not_owner">Only the person who created this task can edit it.</string>
 </resources>

@@ -52,6 +52,7 @@ object EditTaskScreenTestTags {
   const val LOADING = "editTaskLoading"
   const val LOAD_ERROR = "editTaskLoadError"
   const val LOAD_RETRY = "editTaskLoadRetry"
+  const val NOT_OWNER = "editTaskNotOwner"
 }
 
 /**
@@ -91,7 +92,8 @@ fun EditTaskScreen(
 
 /**
  * Stateless Edit task screen: the Create task form filled with the task once it is loaded, the load
- * error with a retry when a load failed, and otherwise a spinner.
+ * error with a retry when a load failed, a short notice instead of the form for a user who does not
+ * own the task, and otherwise a spinner.
  *
  * @param actions The form's input; `onCreate` saves the edit.
  * @param onRetry Loads the task again after a failed load.
@@ -106,6 +108,18 @@ fun EditTaskContent(
   Box(modifier = modifier.testTag(EditTaskScreenTestTags.SCREEN)) {
     val loadError = state.errorMsg
     when {
+      // Reached through a link to the edit route: the details only show the edit button to the
+      // owner. A form that looks editable but can never be saved would not say why.
+      state.task != null && !state.isOwner() ->
+          NoForm(actions.onBack) {
+            Text(
+                text = stringResource(R.string.edit_task_not_owner),
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                modifier =
+                    Modifier.padding(horizontal = 32.dp).testTag(EditTaskScreenTestTags.NOT_OWNER),
+            )
+          }
       state.task != null ->
           CreateTaskContent(
               state = state.form.copy(errorMsg = state.errorMsg),
