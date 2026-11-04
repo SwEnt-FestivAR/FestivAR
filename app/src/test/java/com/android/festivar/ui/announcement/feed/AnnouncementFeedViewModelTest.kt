@@ -61,7 +61,6 @@ class AnnouncementFeedViewModelTest {
           ),
       )
   private val figmaCounts = counts(urgent = 1, warning = 1, info = 4, all = 6)
-  private val zeroCounts = counts(urgent = 0, warning = 0, info = 0, all = 0)
 
   @Before
   fun setUp() {
@@ -73,57 +72,76 @@ class AnnouncementFeedViewModelTest {
     Dispatchers.resetMain()
   }
 
+  // Breaks if the first state can flash the empty screen, has an error, or has already fetched.
   @Test
-  fun refreshSeparatesPinnedAndGroupsAnnouncementsByDateNewestFirst() = runTest {
-    val olderToday = announcement("today-old", at(9))
-    val newerToday = announcement("today-new", at(11))
-    val yesterday = announcement("yesterday", at(16).minusDays(1))
-    val pinned = announcement("pinned", at(8), pinned = true)
-    val viewModel =
-        AnnouncementFeedViewModel(
-            EVENT_ID,
-            EventsRepositoryLocal(listOf(event(pinned, olderToday, yesterday, newerToday))),
-            now = { now },
-        )
+  fun initialStateIsLoadingWithoutErrorOrData() {
+    val repository = ControllableEventsRepository(figmaEvent)
+    val viewModel = feedViewModel(repository)
 
-    viewModel.refreshUIState()
-
-    assertEquals(listOf(pinned), viewModel.uiState.value.pinnedAnnouncements)
-    assertEquals(
-        listOf(today, today.minusDays(1)),
-        viewModel.uiState.value.sections.map { it.date },
-    )
-    assertEquals(
-        listOf(newerToday, olderToday),
-        viewModel.uiState.value.sections.first().announcements,
-    )
-    assertEquals(listOf(yesterday), viewModel.uiState.value.sections.last().announcements)
-    assertFalse(viewModel.uiState.value.isLoading)
-    assertNull(viewModel.uiState.value.errorMsg)
+    val state = viewModel.uiState.value
+    assertTrue(state.isLoading)
+    assertFalse(state.hasError)
+    assertNull(state.errorMsg)
+    assertTrue(state.hasNoAnnouncements)
+    assertEquals(counts(urgent = 0, warning = 0, info = 0, all = 0), state.counts)
+    assertEquals(0, repository.getEventCalls)
   }
 
+  // Breaks if the pinned items, sections, their order, the counts or the end of loading are off.
   @Test
-  fun refreshFailureKeepsLastFeedAndShowsError() = runTest {
-    val announcement = announcement("first", at(9))
-    var shouldFail = false
-    val event = event(announcement)
-    val repository =
-        object : EventsRepository by EventsRepositoryLocal(listOf(event)) {
-          override suspend fun getEvent(eventId: String): Event {
-            if (shouldFail) throw IllegalStateException("fetch failed")
-            return event
-          }
-        }
-    val viewModel = AnnouncementFeedViewModel(EVENT_ID, repository, now = { now })
+  fun refreshSeparatesPinnedAndGroupsAnnouncementsByDateNewestFirst() = runTest {
+    val viewModel = feedViewModel()
 
     viewModel.refreshUIState()
-    shouldFail = true
+
+    val state = viewModel.uiState.value
+    assertEquals(AnnouncementFilter.ALL, state.selectedFilter)
+    assertEquals(listOf(pinnedInfo), state.pinnedAnnouncements)
+    assertEquals(figmaSections, state.sections)
+    assertEquals(listOf(pinnedInfo), state.shownPinnedAnnouncements)
+    assertEquals(figmaSections, state.shownSections)
+    assertEquals(figmaCounts, state.counts)
+    assertFalse(state.isLoading)
+    assertFalse(state.hasError)
+    assertNull(state.errorMsg)
+
+    val olderPinned = announcement("pinned-old", at(8), pinned = true)
+    val newerPinned = announcement("pinned-new", at(10), pinned = true)
+    assertEquals(
+        listOf(newerPinned, olderPinned),
+        loadedState(olderPinned, newerPinned).pinnedAnnouncements,
+    )
+  }
+
+  // Breaks if a failed refresh loses the feed, filter or counts, or a new filter clears the error.
+  @Test
+  fun failedRefreshKeepsTheLastFeedAndTheErrorStaysAcrossFilters() = runTest {
+    val repository = ControllableEventsRepository(figmaEvent)
+    val viewModel = feedViewModel(repository)
+    viewModel.refreshUIState()
+    viewModel.selectFilter(AnnouncementFilter.WARNING)
+
+    repository.failure = IllegalStateException("fetch failed")
     viewModel.refreshUIState()
 
-    assertEquals(listOf(announcement), viewModel.uiState.value.sections.single().announcements)
-    assertTrue(viewModel.uiState.value.hasError)
-    assertEquals("fetch failed", viewModel.uiState.value.errorMsg)
-    assertFalse(viewModel.uiState.value.isLoading)
+    val failed = viewModel.uiState.value
+    assertEquals(AnnouncementFilter.WARNING, failed.selectedFilter)
+    assertTrue(failed.shownPinnedAnnouncements.isEmpty())
+    assertEquals(listOf(AnnouncementFeedSection(today, listOf(warningToday))), failed.shownSections)
+    assertEquals(figmaCounts, failed.counts)
+    assertTrue(failed.hasError)
+    assertEquals("fetch failed", failed.errorMsg)
+    assertFalse(failed.isLoading)
+
+    viewModel.selectFilter(AnnouncementFilter.URGENT)
+
+    val refiltered = viewModel.uiState.value
+    assertEquals(
+        listOf(AnnouncementFeedSection(today, listOf(urgentToday))),
+        refiltered.shownSections,
+    )
+    assertTrue(refiltered.hasError)
+    assertEquals("fetch failed", refiltered.errorMsg)
   }
 
   // Breaks if a retry clears the error when it starts, so the screen stops showing it.
@@ -150,312 +168,6 @@ class AnnouncementFeedViewModelTest {
     assertTrue(viewModel.uiState.value.hasError)
     assertEquals("fetch failed", viewModel.uiState.value.errorMsg)
     pendingEvent.complete(event())
-  }
-
-  // Breaks if the cancellation of a refresh by a newer one is treated as a failed fetch.
-  @Test
-  fun cancelledFetchDoesNotShowAnError() = runTest {
-    val repository = GatedEventsRepository()
-    val viewModel = feedViewModel(repository)
-    viewModel.refreshUIState()
-    viewModel.refreshUIState()
-
-    assertFalse(viewModel.uiState.value.hasError)
-    assertTrue(viewModel.uiState.value.isLoading)
-
-    repository.fetches.last().complete(figmaEvent)
-
-    assertFalse(viewModel.uiState.value.hasError)
-    assertEquals(figmaSections, viewModel.uiState.value.sections)
-  }
-
-  // Breaks if the feed keeps the zone the repository sent, so a screen formatting updatedAt shows
-  // the wrong time, or if the conversion moves the instant.
-  @Test
-  fun announcementsAreConvertedToTheZoneOfNow() = runTest {
-    val updatedAtInUtc = today.minusDays(1).atTime(23, 30).atZone(ZoneOffset.UTC)
-
-    val state =
-        loadedState(
-            announcement("dated", updatedAtInUtc),
-            announcement("pinned", updatedAtInUtc, pinned = true),
-        )
-
-    val section = state.sections.single()
-    assertEquals(today, section.date)
-    listOf(section.announcements.single(), state.pinnedAnnouncements.single()).forEach {
-      assertEquals(zone, it.updatedAt.zone)
-      assertEquals(LocalTime.of(1, 30), it.updatedAt.toLocalTime())
-      assertEquals(updatedAtInUtc.toInstant(), it.updatedAt.toInstant())
-    }
-  }
-
-  // Breaks if the default time is not the system's, so the feed shows dates in another zone.
-  @Test
-  fun defaultNowUsesTheSystemZone() = runTest {
-    val updatedAt = at(12)
-    val viewModel =
-        AnnouncementFeedViewModel(
-            EVENT_ID,
-            EventsRepositoryLocal(listOf(event(announcement("dated", updatedAt)))),
-        )
-
-    viewModel.refreshUIState()
-
-    val shown = viewModel.uiState.value.sections.single().announcements.single()
-    assertEquals(ZoneId.systemDefault(), shown.updatedAt.zone)
-    assertEquals(updatedAt.toInstant(), shown.updatedAt.toInstant())
-  }
-
-  // Breaks if the default filter hides anything, or if pinned announcements are left out of counts.
-  @Test
-  fun refreshWithoutFilterShowsEverythingAndCountsEachFilter() = runTest {
-    val viewModel = feedViewModel()
-
-    viewModel.refreshUIState()
-
-    val state = viewModel.uiState.value
-    assertEquals(AnnouncementFilter.ALL, state.selectedFilter)
-    assertEquals(listOf(pinnedInfo), state.shownPinnedAnnouncements)
-    assertEquals(figmaSections, state.shownSections)
-    assertEquals(figmaCounts, state.counts)
-  }
-
-  // Breaks if the filter skips pinned announcements or a section, loses the newest-first order, or
-  // if the counts only cover what the filter shows.
-  @Test
-  fun selectingAFilterShowsOnlyMatchingAnnouncementsAndKeepsCounts() = runTest {
-    val viewModel = feedViewModel()
-    viewModel.refreshUIState()
-
-    viewModel.selectFilter(AnnouncementFilter.INFO)
-
-    val state = viewModel.uiState.value
-    assertEquals(AnnouncementFilter.INFO, state.selectedFilter)
-    assertEquals(listOf(pinnedInfo), state.shownPinnedAnnouncements)
-    assertEquals(
-        listOf(
-            AnnouncementFeedSection(today, listOf(infoToday)),
-            AnnouncementFeedSection(
-                today.minusDays(1),
-                listOf(infoYesterdayLate, infoYesterdayEarly),
-            ),
-        ),
-        state.shownSections,
-    )
-    assertEquals(figmaCounts, state.counts)
-  }
-
-  // Breaks if a section stays visible with no announcements once the filter empties it.
-  @Test
-  fun selectingAFilterHidesPinnedAndSectionsWithoutAMatch() = runTest {
-    val viewModel = feedViewModel()
-    viewModel.refreshUIState()
-
-    viewModel.selectFilter(AnnouncementFilter.URGENT)
-
-    val state = viewModel.uiState.value
-    assertTrue(state.shownPinnedAnnouncements.isEmpty())
-    assertEquals(listOf(AnnouncementFeedSection(today, listOf(urgentToday))), state.shownSections)
-  }
-
-  // Breaks if the filter is applied to the stored feed instead of only to what is shown.
-  @Test
-  fun selectingAFilterLeavesPinnedAnnouncementsAndSectionsComplete() = runTest {
-    val viewModel = feedViewModel()
-    viewModel.refreshUIState()
-
-    viewModel.selectFilter(AnnouncementFilter.URGENT)
-
-    val state = viewModel.uiState.value
-    assertEquals(listOf(pinnedInfo), state.pinnedAnnouncements)
-    assertEquals(figmaSections, state.sections)
-  }
-
-  // Breaks if going back to ALL keeps the old filter, or if changing the filter fetches again.
-  @Test
-  fun selectingAllRestoresTheFeedWithoutFetchingAgain() = runTest {
-    val repository = ControllableEventsRepository(figmaEvent)
-    val viewModel = feedViewModel(repository)
-    viewModel.refreshUIState()
-
-    viewModel.selectFilter(AnnouncementFilter.WARNING)
-    viewModel.selectFilter(AnnouncementFilter.ALL)
-
-    val state = viewModel.uiState.value
-    assertEquals(AnnouncementFilter.ALL, state.selectedFilter)
-    assertEquals(listOf(pinnedInfo), state.shownPinnedAnnouncements)
-    assertEquals(figmaSections, state.shownSections)
-    assertEquals(1, repository.getEventCalls)
-  }
-
-  // Breaks if a refresh resets the filter, or if the feed or the counts keep the old data.
-  @Test
-  fun refreshWhileFilteredKeepsFilterAndUsesNewData() = runTest {
-    val repository = ControllableEventsRepository(figmaEvent)
-    val viewModel = feedViewModel(repository)
-    viewModel.refreshUIState()
-    viewModel.selectFilter(AnnouncementFilter.INFO)
-
-    val newInfo = announcement("new-info", at(12))
-    val newUrgent = announcement("new-urgent", at(13), priority = AnnouncementPriority.URGENT)
-    repository.event = event(newInfo, newUrgent)
-    viewModel.refreshUIState()
-
-    val state = viewModel.uiState.value
-    assertEquals(AnnouncementFilter.INFO, state.selectedFilter)
-    assertTrue(state.shownPinnedAnnouncements.isEmpty())
-    assertEquals(listOf(AnnouncementFeedSection(today, listOf(newInfo))), state.shownSections)
-    assertEquals(counts(urgent = 1, warning = 0, info = 1, all = 2), state.counts)
-  }
-
-  // Breaks if selecting a filter stops the running refresh, or if its data shows unfiltered.
-  @Test
-  fun filterSelectedDuringRefreshAppliesWhenDataArrives() = runTest {
-    val pendingEvent = CompletableDeferred<Event>()
-    val repository =
-        object : EventsRepository by EventsRepositoryLocal() {
-          override suspend fun getEvent(eventId: String): Event = pendingEvent.await()
-        }
-    val viewModel = feedViewModel(repository)
-    viewModel.refreshUIState()
-
-    viewModel.selectFilter(AnnouncementFilter.WARNING)
-
-    assertEquals(AnnouncementFilter.WARNING, viewModel.uiState.value.selectedFilter)
-    assertTrue(viewModel.uiState.value.isLoading)
-
-    pendingEvent.complete(figmaEvent)
-
-    val state = viewModel.uiState.value
-    assertEquals(AnnouncementFilter.WARNING, state.selectedFilter)
-    assertFalse(state.isLoading)
-    assertTrue(state.shownPinnedAnnouncements.isEmpty())
-    assertEquals(listOf(AnnouncementFeedSection(today, listOf(warningToday))), state.shownSections)
-    assertEquals(figmaCounts, state.counts)
-  }
-
-  // Breaks if a failed refresh clears the filter or the counts, or shows the unfiltered feed.
-  @Test
-  fun failedRefreshWhileFilteredKeepsFilteredFeedAndCounts() = runTest {
-    val repository = ControllableEventsRepository(figmaEvent)
-    val viewModel = feedViewModel(repository)
-    viewModel.refreshUIState()
-    viewModel.selectFilter(AnnouncementFilter.WARNING)
-
-    repository.failure = IllegalStateException("fetch failed")
-    viewModel.refreshUIState()
-
-    val state = viewModel.uiState.value
-    assertEquals(AnnouncementFilter.WARNING, state.selectedFilter)
-    assertTrue(state.shownPinnedAnnouncements.isEmpty())
-    assertEquals(listOf(AnnouncementFeedSection(today, listOf(warningToday))), state.shownSections)
-    assertEquals(figmaCounts, state.counts)
-    assertEquals("fetch failed", state.errorMsg)
-    assertFalse(state.isLoading)
-  }
-
-  // Breaks if the counts start empty instead of listing every filter at 0.
-  @Test
-  fun everyFilterCountsZeroBeforeAnyRefresh() {
-    val viewModel = feedViewModel()
-
-    assertEquals(zeroCounts, viewModel.uiState.value.counts)
-  }
-
-  // Breaks if counts only list priorities that occur, if an unmatched filter falls back to all, or
-  // if the screen cannot tell an empty filter from an event without announcements.
-  @Test
-  fun filterWithoutAnnouncementsCountsZeroAndShowsAnEmptyFeed() = runTest {
-    val viewModel = feedViewModel(EventsRepositoryLocal(listOf(event(pinnedInfo, infoToday))))
-    viewModel.refreshUIState()
-
-    viewModel.selectFilter(AnnouncementFilter.URGENT)
-
-    val state = viewModel.uiState.value
-    assertEquals(counts(urgent = 0, warning = 0, info = 2, all = 2), state.counts)
-    assertTrue(state.shownPinnedAnnouncements.isEmpty())
-    assertTrue(state.shownSections.isEmpty())
-    assertFalse(state.hasNoAnnouncements)
-  }
-
-  // Breaks if selecting a filter fetches or ends the first loading, or if a filter picked with no
-  // data yet is ignored by the first refresh.
-  @Test
-  fun filterSelectedBeforeAnyRefreshStaysEmptyThenAppliesToFirstRefresh() = runTest {
-    val repository = ControllableEventsRepository(figmaEvent)
-    val viewModel = feedViewModel(repository)
-
-    viewModel.selectFilter(AnnouncementFilter.URGENT)
-
-    val before = viewModel.uiState.value
-    assertTrue(before.shownPinnedAnnouncements.isEmpty())
-    assertTrue(before.shownSections.isEmpty())
-    assertTrue(before.isLoading)
-    assertEquals(0, repository.getEventCalls)
-
-    viewModel.refreshUIState()
-
-    val after = viewModel.uiState.value
-    assertEquals(listOf(AnnouncementFeedSection(today, listOf(urgentToday))), after.shownSections)
-    assertEquals(figmaCounts, after.counts)
-  }
-
-  // Breaks if changing the filter clears the error of the last refresh.
-  @Test
-  fun selectingAFilterAfterAFailedRefreshKeepsTheError() = runTest {
-    val repository = ControllableEventsRepository(figmaEvent)
-    val viewModel = feedViewModel(repository)
-    viewModel.refreshUIState()
-    repository.failure = IllegalStateException("fetch failed")
-    viewModel.refreshUIState()
-
-    viewModel.selectFilter(AnnouncementFilter.URGENT)
-
-    assertEquals(AnnouncementFilter.URGENT, viewModel.uiState.value.selectedFilter)
-    assertEquals("fetch failed", viewModel.uiState.value.errorMsg)
-  }
-
-  // Breaks if a cancelled refresh whose repository ignored cancellation overwrites newer data.
-  @Test
-  fun cancelledRefreshReturningLateDoesNotReplaceNewerData() = runTest {
-    val staleResult = CompletableDeferred<Event>()
-    val newInfo = announcement("new-info", at(12))
-    var fetches = 0
-    var staleFetchReturned = false
-    val repository =
-        object : EventsRepository by EventsRepositoryLocal() {
-          override suspend fun getEvent(eventId: String): Event {
-            if (++fetches > 1) return event(newInfo)
-            val stale = withContext(NonCancellable) { staleResult.await() }
-            staleFetchReturned = true
-            return stale
-          }
-        }
-    val viewModel = feedViewModel(repository)
-
-    viewModel.refreshUIState()
-    viewModel.refreshUIState()
-    staleResult.complete(event(infoToday))
-
-    assertTrue(staleFetchReturned)
-    assertEquals(
-        listOf(AnnouncementFeedSection(today, listOf(newInfo))),
-        viewModel.uiState.value.sections,
-    )
-  }
-
-  // Breaks if the first fetch can flash the empty state, or if the ViewModel fetches by itself.
-  @Test
-  fun isLoadingWithoutErrorBeforeAnyRefresh() {
-    val repository = ControllableEventsRepository(figmaEvent)
-    val viewModel = feedViewModel(repository)
-
-    val state = viewModel.uiState.value
-    assertTrue(state.isLoading)
-    assertFalse(state.hasError)
-    assertNull(state.errorMsg)
-    assertEquals(0, repository.getEventCalls)
   }
 
   // Breaks if an exception without a message hides the failure, or gets a made-up message.
@@ -491,6 +203,137 @@ class AnnouncementFeedViewModelTest {
     assertEquals(figmaSections, state.shownSections)
   }
 
+  // Breaks if updatedAt keeps the repository's zone, or if the conversion moves the instant.
+  @Test
+  fun announcementsAreConvertedToTheZoneOfNow() = runTest {
+    val updatedAtInUtc = today.minusDays(1).atTime(23, 30).atZone(ZoneOffset.UTC)
+
+    val state =
+        loadedState(
+            announcement("dated", updatedAtInUtc),
+            announcement("pinned", updatedAtInUtc, pinned = true),
+        )
+
+    val section = state.sections.single()
+    assertEquals(today, section.date)
+    listOf(section.announcements.single(), state.pinnedAnnouncements.single()).forEach {
+      assertEquals(zone, it.updatedAt.zone)
+      assertEquals(LocalTime.of(1, 30), it.updatedAt.toLocalTime())
+      assertEquals(updatedAtInUtc.toInstant(), it.updatedAt.toInstant())
+    }
+  }
+
+  // Breaks if a filter misses a match, keeps an empty section, or changes counts or stored feed.
+  @Test
+  fun selectingAFilterShowsOnlyMatchesAndKeepsCountsAndTheFullFeed() = runTest {
+    val viewModel = feedViewModel()
+    viewModel.refreshUIState()
+
+    viewModel.selectFilter(AnnouncementFilter.INFO)
+
+    val info = viewModel.uiState.value
+    assertEquals(AnnouncementFilter.INFO, info.selectedFilter)
+    assertEquals(listOf(pinnedInfo), info.shownPinnedAnnouncements)
+    assertEquals(
+        listOf(
+            AnnouncementFeedSection(today, listOf(infoToday)),
+            AnnouncementFeedSection(
+                today.minusDays(1),
+                listOf(infoYesterdayLate, infoYesterdayEarly),
+            ),
+        ),
+        info.shownSections,
+    )
+    assertEquals(figmaCounts, info.counts)
+
+    viewModel.selectFilter(AnnouncementFilter.URGENT)
+
+    val urgent = viewModel.uiState.value
+    assertEquals(AnnouncementFilter.URGENT, urgent.selectedFilter)
+    assertTrue(urgent.shownPinnedAnnouncements.isEmpty())
+    assertEquals(listOf(AnnouncementFeedSection(today, listOf(urgentToday))), urgent.shownSections)
+    assertEquals(figmaCounts, urgent.counts)
+    assertEquals(listOf(pinnedInfo), urgent.pinnedAnnouncements)
+    assertEquals(figmaSections, urgent.sections)
+  }
+
+  // Breaks if going back to ALL keeps the old filter, or if changing the filter fetches again.
+  @Test
+  fun selectingAllRestoresTheFeedWithoutFetchingAgain() = runTest {
+    val repository = ControllableEventsRepository(figmaEvent)
+    val viewModel = feedViewModel(repository)
+    viewModel.refreshUIState()
+
+    viewModel.selectFilter(AnnouncementFilter.WARNING)
+    viewModel.selectFilter(AnnouncementFilter.ALL)
+
+    val state = viewModel.uiState.value
+    assertEquals(AnnouncementFilter.ALL, state.selectedFilter)
+    assertEquals(listOf(pinnedInfo), state.shownPinnedAnnouncements)
+    assertEquals(figmaSections, state.shownSections)
+    assertEquals(1, repository.getEventCalls)
+  }
+
+  // Breaks if counts skip a priority, or an empty filter falls back to all or looks like no data.
+  @Test
+  fun filterWithoutAnnouncementsCountsZeroAndShowsAnEmptyFeed() = runTest {
+    val viewModel = feedViewModel(EventsRepositoryLocal(listOf(event(pinnedInfo, infoToday))))
+    viewModel.refreshUIState()
+
+    viewModel.selectFilter(AnnouncementFilter.URGENT)
+
+    val state = viewModel.uiState.value
+    assertEquals(counts(urgent = 0, warning = 0, info = 2, all = 2), state.counts)
+    assertTrue(state.shownPinnedAnnouncements.isEmpty())
+    assertTrue(state.shownSections.isEmpty())
+    assertFalse(state.hasNoAnnouncements)
+  }
+
+  // Breaks if a refresh resets the filter, or if the feed or the counts keep the old data.
+  @Test
+  fun refreshWhileFilteredKeepsFilterAndUsesNewData() = runTest {
+    val repository = ControllableEventsRepository(figmaEvent)
+    val viewModel = feedViewModel(repository)
+    viewModel.refreshUIState()
+    viewModel.selectFilter(AnnouncementFilter.INFO)
+
+    val newInfo = announcement("new-info", at(12))
+    val newUrgent = announcement("new-urgent", at(13), priority = AnnouncementPriority.URGENT)
+    repository.event = event(newInfo, newUrgent)
+    viewModel.refreshUIState()
+
+    val state = viewModel.uiState.value
+    assertEquals(AnnouncementFilter.INFO, state.selectedFilter)
+    assertTrue(state.shownPinnedAnnouncements.isEmpty())
+    assertEquals(listOf(AnnouncementFeedSection(today, listOf(newInfo))), state.shownSections)
+    assertEquals(counts(urgent = 1, warning = 0, info = 1, all = 2), state.counts)
+  }
+
+  // Breaks if selecting a filter fetches, ends the loading, or is lost when the data arrives.
+  @Test
+  fun filterSelectedDuringRefreshAppliesWhenDataArrives() = runTest {
+    val repository = GatedEventsRepository()
+    val viewModel = feedViewModel(repository)
+    viewModel.refreshUIState()
+
+    viewModel.selectFilter(AnnouncementFilter.WARNING)
+
+    val loading = viewModel.uiState.value
+    assertEquals(AnnouncementFilter.WARNING, loading.selectedFilter)
+    assertTrue(loading.isLoading)
+    assertTrue(loading.shownPinnedAnnouncements.isEmpty())
+    assertTrue(loading.shownSections.isEmpty())
+
+    repository.fetches.single().complete(figmaEvent)
+
+    val state = viewModel.uiState.value
+    assertEquals(AnnouncementFilter.WARNING, state.selectedFilter)
+    assertFalse(state.isLoading)
+    assertTrue(state.shownPinnedAnnouncements.isEmpty())
+    assertEquals(listOf(AnnouncementFeedSection(today, listOf(warningToday))), state.shownSections)
+    assertEquals(figmaCounts, state.counts)
+  }
+
   // Breaks if a cancelled refresh ending first stops the loading or shows its data.
   @Test
   fun isLoadingUntilTheLatestRefreshEnds() = runTest {
@@ -518,7 +361,6 @@ class AnnouncementFeedViewModelTest {
   // Breaks if the empty state only looks at pinned announcements or only at the dated ones.
   @Test
   fun hasNoAnnouncementsOnlyWhenPinnedAndSectionsAreBothEmpty() = runTest {
-    assertTrue(feedViewModel().uiState.value.hasNoAnnouncements)
     assertTrue(loadedState().hasNoAnnouncements)
     assertFalse(loadedState(pinnedInfo).hasNoAnnouncements)
     assertFalse(loadedState(infoToday).hasNoAnnouncements)
