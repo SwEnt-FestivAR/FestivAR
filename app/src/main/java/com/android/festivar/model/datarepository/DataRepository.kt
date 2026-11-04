@@ -369,20 +369,7 @@ interface DataRepository {
     val newEvent = event.copy(tasks = event.tasks.map { if (it.taskId == taskId) newTask else it })
 
     // Store the changes.
-    val undoProcess = ArrayDeque<suspend () -> Unit>()
-    try {
-
-      eventsRepository.editEvent(event.eventId, newEvent)
-      undoProcess.addFirst { eventsRepository.editEvent(event.eventId, event) }
-
-      tasksRepository.editTask(taskId, newTask)
-      undoProcess.addFirst { tasksRepository.editTask(taskId, task) }
-      usersRepository.editUser(userId, newUser)
-      undoProcess.addFirst { usersRepository.editUser(userId, user) }
-    } catch (e: Exception) {
-      rollback(undoProcess, e)
-      throw e
-    }
+    changeAssignment(event.eventId, event, newEvent, taskId, task, newTask, userId, user, newUser)
   }
 
   /**
@@ -409,6 +396,21 @@ interface DataRepository {
     val newEvent = event.copy(tasks = event.tasks.map { if (it.taskId == taskId) newTask else it })
 
     // Store the changes.
+    changeAssignment(event.eventId, event, newEvent, taskId, task, newTask, userId, user, newUser)
+  }
+
+  private suspend fun changeAssignment(
+      eventId: String,
+      event: Event,
+      newEvent: Event,
+      taskId: String,
+      task: Task,
+      newTask: Task,
+      userId: String,
+      user: User,
+      newUser: User,
+  ) {
+
     val undoProcess = ArrayDeque<suspend () -> Unit>()
     try {
 
