@@ -25,11 +25,13 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * UI state of the create event form.
@@ -186,7 +188,13 @@ class CreateEventViewModel(
 
     val newEvent = _uiState.value.toEvent(eventsRepository.getNewUid(), listOf(creator))
     eventsRepository.addEvent(newEvent)
-    usersRepository.editUser(creator.uid, creator.addJoinedEvent(newEvent.eventId))
+    try {
+      usersRepository.editUser(creator.uid, creator.addJoinedEvent(newEvent.eventId))
+    } catch (e: Exception) {
+      // Do not leave an event that the creator's profile does not know about
+      withContext(NonCancellable) { runCatching { eventsRepository.deleteEvent(newEvent.eventId) } }
+      throw e
+    }
 
     _uiState.update { it.copy(isSaving = false, createdEventId = newEvent.eventId) }
   }
