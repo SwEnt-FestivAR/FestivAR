@@ -6,6 +6,7 @@ import com.android.festivar.R
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.DateTimeField
@@ -212,6 +213,7 @@ class EditEventViewModelTest {
     assertEquals(initialEvent.members, saved.members)
     assertEquals(initialEvent.tasks, saved.tasks)
     assertEquals(initialEvent.announcements, saved.announcements)
+    assertTrue(saved.closed)
     assertEquals(initialEvent.eventId, viewModel.uiState.value.savedEventId)
     assertFalse(viewModel.uiState.value.isSaving)
     assertFalse(viewModel.uiState.value.hasChanges)
@@ -351,9 +353,29 @@ class EditEventViewModelTest {
         eventId = "event-1",
         title = "Festival",
         description = "Bring supplies",
+        members = listOf(User(uid = "member-1")),
         startDate = start,
         endDate = start.plusHours(3),
         location = "Main square",
+        tasks =
+            listOf(
+                Task(
+                    taskId = "task-1",
+                    eventId = "event-1",
+                    title = "Set up stage",
+                    ownerId = "organizer",
+                )
+            ),
+        closed = true,
+        announcements =
+            listOf(
+                Announcement(
+                    announcementId = "announcement-1",
+                    title = "Welcome",
+                    authorId = "organizer",
+                    updatedAt = start,
+                )
+            ),
     )
   }
 }
