@@ -218,7 +218,7 @@ class EditEventViewModelTest {
   @Test
   fun savingAnotherFieldPreservesEndInstantAndZoneWhenZonesDiffer() = runTest {
     val differentZoneEnd =
-        ZonedDateTime.of(2026, 11, 10, 16, 0, 0, 0, ZoneId.of("America/Los_Angeles"))
+        initialEvent.endDate.withZoneSameInstant(ZoneId.of("America/Los_Angeles"))
     val eventWithDifferentZones = initialEvent.copy(endDate = differentZoneEnd)
     eventsRepository = EventsRepositoryLocal(listOf(eventWithDifferentZones))
     viewModel = EditEventViewModel(eventsRepository)
@@ -317,7 +317,7 @@ class EditEventViewModelTest {
   }
 
   private fun testEvent(): Event {
-    val start = ZonedDateTime.of(2026, 11, 10, 10, 0, 0, 0, ZoneId.of("Europe/Zurich"))
+    val start = ZonedDateTime.now(ZoneId.of("Europe/Zurich")).plusDays(2)
     return Event(
         eventId = "event-1",
         title = "Festival",
