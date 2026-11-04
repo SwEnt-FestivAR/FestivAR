@@ -37,9 +37,10 @@ class EventDetailsViewModelTest {
   }
 
   @Test
-  fun fetchEventLoadsEventWithRequestedId() = runTest {
+  fun fetchEventLoadsEvent() = runTest {
     val event = testEvent("event-1")
     val viewModel = EventDetailsViewModel(EventsRepositoryLocal(listOf(event)), event.eventId)
+    viewModel.fetchEvent()
 
     advanceUntilIdle()
 
@@ -47,7 +48,7 @@ class EventDetailsViewModelTest {
   }
 
   @Test
-  fun fetchEventSilentlyKeepsEventNullWhenRepositoryFails() = runTest {
+  fun fetchEventReportsErrorWhenRepositoryFails() = runTest {
     val viewModel =
         EventDetailsViewModel(
             object : EventsRepository by EventsRepositoryLocal() {
@@ -58,6 +59,7 @@ class EventDetailsViewModelTest {
             eventId = "missing",
         )
 
+    viewModel.fetchEvent()
     advanceUntilIdle()
 
     assertNull(viewModel.uiState.value.event)
@@ -77,10 +79,10 @@ class EventDetailsViewModelTest {
         }
     val viewModel = EventDetailsViewModel(repository, event.eventId)
 
-    viewModel.fetchEvent(event.eventId)
+    viewModel.fetchEvent()
     advanceUntilIdle()
     shouldFail = true
-    viewModel.fetchEvent(event.eventId)
+    viewModel.fetchEvent()
     advanceUntilIdle()
 
     assertNull(viewModel.uiState.value.event)
@@ -99,12 +101,13 @@ class EventDetailsViewModelTest {
           }
         }
     val viewModel = EventDetailsViewModel(repository, event.eventId)
+    viewModel.fetchEvent()
 
     advanceUntilIdle()
     assertEquals(R.string.event_details_fetch_error, viewModel.uiState.value.errorMsg)
 
     shouldFail = false
-    viewModel.fetchEvent(event.eventId)
+    viewModel.fetchEvent()
     advanceUntilIdle()
 
     assertEquals(event, viewModel.uiState.value.event)

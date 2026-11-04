@@ -43,12 +43,8 @@ class EventDetailsViewModel(
   private val _uiState = MutableStateFlow(EventDetailsUIState())
   val uiState: StateFlow<EventDetailsUIState> = _uiState.asStateFlow()
 
-  init {
-    fetchEvent(eventId)
-  }
-
   /** Loads [eventId] and updates the UI state with either the event or a loading error. */
-  fun fetchEvent(eventId: String) {
+  fun fetchEvent() {
     viewModelScope.launch {
       _uiState.update { EventDetailsUIState() }
       try {
