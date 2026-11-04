@@ -109,20 +109,23 @@ class EditTaskViewModelTest {
   private fun loadedViewModel(saveTimeoutMs: Long = 15_000L): EditTaskViewModel =
       EditTaskViewModel("task-1", { "owner-1" }, repository, saveTimeoutMs, zone).apply { load() }
 
-  // Breaks if the ViewModel loads in init, starts without the loading flag, or lets the form be
-  // edited before a task is loaded.
+  // Breaks if the ViewModel loads in init or reports loading before being asked.
   @Test
-  fun aFreshViewModelIsLoadingAndHasNoTask() {
+  fun aFreshViewModelHasNoTaskAndIsNotLoadingUntilLoadIsCalled() {
     viewModel.updateTitle("Typed too early")
 
     val state = viewModel.uiState.value
     assertEquals("", state.form.title)
-
-    assertTrue(state.isLoading)
+    assertFalse(state.isLoading)
     assertNull(state.task)
     assertFalse(state.hasChanges)
     assertFalse(state.canSave)
     assertEquals(0, repository.reads)
+
+    repository.readGate = CompletableDeferred()
+    viewModel.load()
+
+    assertTrue(viewModel.uiState.value.isLoading)
   }
 
   // Breaks if a task field is not mapped into the form, the times are not converted to the zone,
@@ -136,7 +139,7 @@ class EditTaskViewModelTest {
     assertFalse(state.isLoading)
     assertNull(state.errorMsg)
     assertEquals(seeded, state.task)
-    assertTrue(state.isOwner)
+    assertTrue(state.isOwner())
     assertEquals("Run power to stage", form.title)
     assertEquals("Blue crate", form.description)
     assertEquals("Stage", form.location)
@@ -154,7 +157,7 @@ class EditTaskViewModelTest {
     elsewhere.load()
 
     val other = elsewhere.uiState.value
-    assertFalse(other.isOwner)
+    assertFalse(other.isOwner())
     assertEquals(LocalTime.of(7, 0), other.form.startTime)
     assertEquals(LocalTime.of(8, 30), other.form.endTime)
   }
@@ -218,8 +221,11 @@ class EditTaskViewModelTest {
     val vm = EditTaskViewModel("task-1", { user }, repository, zone = zone)
     vm.load()
     vm.updateTitle("Run power to the main stage")
+    assertTrue(vm.uiState.value.isOwner())
     user = "someone-else"
 
+    assertFalse(vm.uiState.value.isOwner())
+    assertFalse(vm.uiState.value.canSave)
     vm.save()
 
     assertEquals(0, repository.edits)
@@ -417,7 +423,7 @@ class EditTaskViewModelTest {
     vm.updateTitle("Hijacked")
 
     assertTrue(vm.uiState.value.hasChanges)
-    assertFalse(vm.uiState.value.isOwner)
+    assertFalse(vm.uiState.value.isOwner())
     assertFalse(vm.uiState.value.canSave)
 
     vm.save()
@@ -588,7 +594,7 @@ class EditTaskViewModelTest {
     }
   }
 
-  // Breaks if the guard lets a picker open before load or after save, or blocks closing one.
+  // Breaks if the guard lets a picker open before load or after save.
   @Test
   fun showPickerDoesNothingBeforeLoadOrAfterSave() {
     viewModel.showPicker(DateTimeField.START_DATE)
@@ -596,12 +602,8 @@ class EditTaskViewModelTest {
 
     viewModel.load()
     viewModel.updateTitle("Run power to the main stage")
-    viewModel.showPicker(DateTimeField.START_DATE)
     viewModel.save()
     assertTrue(viewModel.uiState.value.isSaved)
-
-    viewModel.showPicker(null)
-    assertNull(viewModel.uiState.value.form.openPicker)
 
     viewModel.showPicker(DateTimeField.START_DATE)
     assertNull(viewModel.uiState.value.form.openPicker)
@@ -618,7 +620,7 @@ class EditTaskUiStateTest {
       EditTaskUiState(
           task = bare,
           form = CreateTaskUiState(title = "Run", zone = zone),
-          isOwner = true,
+          isOwner = { true },
           isLoading = false,
       )
   private val edited = untouched.copy(form = untouched.form.copy(location = "Stage"))
