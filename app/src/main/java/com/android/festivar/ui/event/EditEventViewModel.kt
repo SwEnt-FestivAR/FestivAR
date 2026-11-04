@@ -101,13 +101,13 @@ data class EditEventUIState(
   val isValid: Boolean
     get() =
         isEventFormValid(
-            event != null,
-            name,
-            startDateTime,
-            endDateTime,
-            nameError,
-            startDateError,
-            endDateError,
+            isLoaded = event != null,
+            name = name,
+            startDateTime = startDateTime,
+            endDateTime = endDateTime,
+            nameError = nameError,
+            startDateError = startDateError,
+            endDateError = endDateError,
         )
 
   /** True when the current draft differs from the original event and therefore needs saving. */
