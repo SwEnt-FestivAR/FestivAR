@@ -135,8 +135,9 @@ class AuthRepositoryFirebase(
             }
 
         try {
-          ensureUserExistsOrSignOut(user)
           if (isAnonymousLink) {
+            // Ensure profile exists and update email in Firestore for upgraded user
+            ensureUserExistsOrSignOut(user)
             val existing = usersRepository.getUser(user.uid)
             usersRepository.editUser(user.uid, existing.copy(email = user.email.orEmpty()))
           } else {
