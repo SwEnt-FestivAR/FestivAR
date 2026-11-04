@@ -628,6 +628,37 @@ class TaskOverviewViewModelTest {
     assertEquals(6, viewModel.uiState.value.counts[OverviewFilter.OPEN])
   }
 
+  /** Turns red when a successful delete leaves the task in its rows or chip counts. */
+  @Test
+  fun deletingATaskRemovesItAndUpdatesCounts() {
+    val viewModel = overview()
+    viewModel.selectFilter(OverviewFilter.ALL)
+
+    viewModel.deleteTask("power")
+
+    assertFalse("power" in viewModel.uiState.value.visibleIds())
+    assertEquals(6, viewModel.uiState.value.counts[OverviewFilter.ALL])
+    assertEquals(4, viewModel.uiState.value.counts[OverviewFilter.OPEN])
+    assertFalse(runBlocking { repository.getAllTasks(EVENT).any { it.taskId == "power" } })
+  }
+
+  /** Turns red when a failed delete hides the task or fails to expose its error. */
+  @Test
+  fun aFailedDeleteKeepsTheTaskAndSetsTheError() {
+    val failing =
+        object : TasksRepository by repository {
+          override suspend fun deleteTask(taskId: String) {
+            throw IllegalStateException("Delete failed")
+          }
+        }
+    val viewModel = overview(repo = failing)
+
+    viewModel.deleteTask("power")
+
+    assertTrue("power" in viewModel.uiState.value.visibleIds())
+    assertEquals("Delete failed", viewModel.uiState.value.errorMsg)
+  }
+
   /** Turns red when a manual refresh runs without showing progress, or drops the last rows. */
   @Test
   fun aRefreshIsLoadingUntilTheRepositoryAnswers() {

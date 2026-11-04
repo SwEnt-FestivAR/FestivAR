@@ -116,6 +116,7 @@ class TaskOverviewViewModel(
 
   private var tasks: List<Task> = emptyList()
   private var load: Job? = null
+  private val deletingTaskIds = mutableSetOf<String>()
 
   /** Pinged after every load, so a waiting regroup recomputes its next boundary. */
   private val tasksChanged = Channel<Unit>(Channel.CONFLATED)
@@ -165,6 +166,25 @@ class TaskOverviewViewModel(
   /** Replaces the search text; a blank query shows every task of the current chip. */
   fun setQuery(query: String) {
     _uiState.update { derive(it.copy(query = query)) }
+  }
+
+  /** Deletes [taskId] and removes it from the overview only after the repository succeeds. */
+  fun deleteTask(taskId: String) {
+    if (!deletingTaskIds.add(taskId)) return
+    viewModelScope.launch {
+      try {
+        repository.deleteTask(taskId)
+        tasks = tasks.filterNot { it.taskId == taskId }
+        _uiState.update { derive(it.copy(errorMsg = null)) }
+        tasksChanged.trySend(Unit)
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        _uiState.update { it.copy(errorMsg = e.message ?: e.toString()) }
+      } finally {
+        deletingTaskIds.remove(taskId)
+      }
+    }
   }
 
   /**
