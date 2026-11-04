@@ -23,6 +23,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
@@ -413,77 +414,126 @@ class CreateEventViewModelTest {
   }
 
   /**
-   * Red if a cancellation from the events repository is converted into a save error instead of
-   * being propagated.
-   */
-  @Test
-  fun createEventPropagatesCancellationExceptionFromEventsRepository() = runBlocking {
-    val cancellationAddEventStarted = CompletableDeferred<Unit>()
-    val cancelledAddEventRepository =
-        object : EventsRepository by eventsRepository {
-          override suspend fun addEvent(event: Event) {
-            throwCancellationException(cancellationAddEventStarted)
-          }
-        }
-    testCancellationException(
-        cancelledAddEventRepository,
-        usersRepository,
-        cancellationAddEventStarted,
-    )
-  }
-
-  /**
-   * Red if a cancellation from the users repository is converted into a save error instead of being
+   * Red if a cancellation from `addEvent` is converted into a save error instead of being
    * propagated.
    */
   @Test
-  fun createEventPropagatesCancellationExceptionFromUsersRepository() = runBlocking {
-    val cancellationGetUserStarted = CompletableDeferred<Unit>()
-    val cancelledGetUserRepository =
+  fun createEventPropagatesCancellationExceptionFromAddEvent() = runBlocking {
+    val cancelledAddEventRepository =
+        object : EventsRepository by eventsRepository {
+          override suspend fun addEvent(event: Event) {
+            throw CancellationException("Cancelled")
+          }
+        }
+    testCancellationException(cancelledAddEventRepository, usersRepository)
+  }
+
+  /**
+   * Red if a cancellation from `getUser` is converted into a save error instead of being
+   * propagated.
+   */
+  @Test
+  fun createEventPropagatesCancellationExceptionFromGetUser() = runBlocking {
+    val cancelledGetUser =
         object : UsersRepository by usersRepository {
           override suspend fun getUser(uId: String): User {
-            throwCancellationException(cancellationGetUserStarted)
-            return creator
+            throw CancellationException("Cancelled")
           }
         }
-    testCancellationException(
-        eventsRepository,
-        cancelledGetUserRepository,
-        cancellationGetUserStarted,
-    )
+    testCancellationException(eventsRepository, cancelledGetUser)
+  }
 
-    val cancellationEditUserStarted = CompletableDeferred<Unit>()
-    val cancelledEditUserRepository =
+  /**
+   * Red if a cancellation from `editUser` is converted into a save error instead of being
+   * propagated.
+   */
+  @Test
+  fun createEventPropagatesCancellationExceptionFromEditUser() = runBlocking {
+    val cancelledEditUser =
         object : UsersRepository by usersRepository {
           override suspend fun editUser(uId: String, newValue: User) {
-            throwCancellationException(cancellationEditUserStarted)
+            throw CancellationException("Cancelled")
           }
         }
-    testCancellationException(
-        eventsRepository,
-        cancelledEditUserRepository,
-        cancellationEditUserStarted,
-    )
+    testCancellationException(eventsRepository, cancelledEditUser)
+  }
+
+  /** Red if a non-CancellationException from `getUser` is not reported to the user */
+  @Test
+  fun getUserExceptionIsReportedToUser() = runBlocking {
+    val failingGetUser =
+        object : UsersRepository by usersRepository {
+          override suspend fun getUser(uId: String): User {
+            error("offline")
+          }
+        }
+    testNonCancellationException(eventsRepository, failingGetUser)
+  }
+
+  /** Red if a non-CancellationException from `editUser` is not reported to the user */
+  @Test
+  fun editUserExceptionIsReportedToUser() = runBlocking {
+    val failingEditUser =
+        object : UsersRepository by usersRepository {
+          override suspend fun editUser(uId: String, newValue: User) {
+            error("offline")
+          }
+        }
+    testNonCancellationException(eventsRepository, failingEditUser)
+  }
+
+  /** Red if a failure from `editUser` does not undo the previous `addEvent` operation */
+  @Test
+  fun failureFromEditUserDeletesEventFromRepository() = runBlocking {
+    val started = CompletableDeferred<Unit>()
+    val failingEditUser =
+        object : UsersRepository by usersRepository {
+          override suspend fun editUser(uId: String, newValue: User) {
+            started.await()
+            error("offline")
+          }
+        }
+
+    fillFormAndCreateEvent(eventsRepository, failingEditUser)
+    withTimeout(5_000.milliseconds) {
+      // The event should have been created
+      while (eventsRepository.getAllEvents().isEmpty()) delay(10.milliseconds)
+    }
+    started.complete(Unit)
+    withTimeout(5_000.milliseconds) {
+      // The event should have been deleted
+      while (eventsRepository.getAllEvents().isNotEmpty()) delay(10.milliseconds)
+    }
+  }
+
+  private fun fillFormAndCreateEvent(
+      eventsRepository: EventsRepository,
+      usersRepository: UsersRepository,
+  ) {
+    viewModel = CreateEventViewModel(eventsRepository, usersRepository, creator.uid)
+    fillRequiredFields()
+    viewModel.createEvent()
   }
 
   private suspend fun testCancellationException(
       eventsRepository: EventsRepository,
       usersRepository: UsersRepository,
-      cancellationStarted: CompletableDeferred<Unit>,
   ) {
-    viewModel = CreateEventViewModel(eventsRepository, usersRepository, creator.uid)
-    fillRequiredFields()
-
-    viewModel.createEvent()
-    withTimeout(5_000.milliseconds) { cancellationStarted.await() }
+    fillFormAndCreateEvent(eventsRepository, usersRepository)
     delay(10.milliseconds)
-
     assertNull(viewModel.uiState.value.errorMsg)
   }
 
-  private fun throwCancellationException(cancellationStarted: CompletableDeferred<Unit>) {
-    cancellationStarted.complete(Unit)
-    throw CancellationException("cancelled")
+  private suspend fun testNonCancellationException(
+      eventsRepository: EventsRepository,
+      usersRepository: UsersRepository,
+  ) {
+    fillFormAndCreateEvent(eventsRepository, usersRepository)
+    withTimeout(5_000.milliseconds) {
+      while (viewModel.uiState.value.errorMsg == null) delay(10.milliseconds)
+    }
+    assertNotNull(viewModel.uiState.value.errorMsg)
+    assertFalse(viewModel.uiState.value.isSaving)
   }
 
   private fun fillRequiredFields() {
