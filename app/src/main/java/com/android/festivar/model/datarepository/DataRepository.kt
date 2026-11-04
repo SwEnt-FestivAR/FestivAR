@@ -23,8 +23,8 @@ import kotlinx.coroutines.withContext
  *    the writes already done are undone in reverse order, then the original exception is rethrown.
  *
  * The undo is not a transaction: it writes back the versions read in phase 1, so a change made by
- * someone else in the meantime can be overwritten. Moreover, there can be an error of
- * synchronization if during the undo process one of the undo processes doesn't work.
+ * someone else in the meantime can be overwritten. If an undo fails too, the data stays
+ * inconsistent and a [DataInconsistencyException] is thrown.
  *
  * @property authRepository The repository handling the authentication.
  * @property tasksRepository The repository storing the [Task]s.
@@ -59,13 +59,13 @@ interface DataRepository {
    * Stores a new [Task], adds it to its [Event] and to the [User.tasksAssigned] of its owner and of
    * each of its assignees.
    *
-   * This function doesn't check whether the task assigned users are members of the [Event], this
-   * is left to the caller to be aware of.
+   * This function does not check that the owner and the assignees are members of the [Event]: the
+   * caller is responsible for it.
    *
    * @param task The new [Task]. Its [Task.eventId] must be an existing [Event].
    * @throws NoSuchElementException If the event, the owner or an assignee does not exist.
-   * @throws IllegalArgumentException If the task is already in the event, or already assigned to
-   *   its owner or to one of its assignees.
+   * @throws IllegalArgumentException If the task already exists or is already in the event, or if
+   *   its owner or one of its assignees already lists it in [User.tasksAssigned].
    * @throws DataInconsistencyException If a write failed and could not be fully undone.
    */
   suspend fun addTask(task: Task) {
@@ -99,12 +99,13 @@ interface DataRepository {
 
   /**
    * Deletes a [Task], removes it from its [Event] and from the [User.tasksAssigned] of its owner
-   * and of each of its assignees.
+   * and of each of its assignees. If the owner no longer lists the task (for example after
+   * [quitTask] or [quitEvent]), their [User.tasksAssigned] is left unchanged.
    *
    * @param taskId The identifier of the [Task] to delete.
    * @throws NoSuchElementException If the task, its event, its owner or an assignee does not exist.
-   * @throws IllegalArgumentException If the event does not contain the task, or if the owner or an
-   *   assignee does not list it in [User.tasksAssigned].
+   * @throws IllegalArgumentException If the event does not contain the task, or if an assignee who
+   *   is not the owner does not list it in [User.tasksAssigned].
    * @throws DataInconsistencyException If a write failed and could not be fully undone.
    */
   suspend fun deleteTask(taskId: String) {
@@ -120,11 +121,11 @@ interface DataRepository {
     val newEvent = event.removeTask(taskId)
     val newUsers = users.map { it.removeAssignedTask(taskId) }
     val newOwnerUser =
-      if(ownerUser.tasksAssigned.contains(taskId)){
-        ownerUser.removeAssignedTask(taskId)
-      } else {
-        ownerUser
-      }
+        if (ownerUser.tasksAssigned.contains(taskId)) {
+          ownerUser.removeAssignedTask(taskId)
+        } else {
+          ownerUser
+        }
 
     // Store the changes.
     val undoProcess = ArrayDeque<suspend () -> Unit>()
@@ -143,7 +144,6 @@ interface DataRepository {
 
       usersRepository.editUser(ownerUserId, newOwnerUser)
       undoProcess.addFirst { usersRepository.editUser(ownerUserId, ownerUser) }
-
     } catch (e: Exception) {
       rollback(undoProcess, e)
       throw e
@@ -279,7 +279,10 @@ interface DataRepository {
    * then removes the event from the user's [User.joinedEvents] and its tasks from
    * [User.tasksAssigned].
    *
-   * The user stays the owner of the tasks they created: [Task.ownerId] is not changed.
+   * The user stays the owner of the tasks they created: [Task.ownerId] is not changed, but these
+   * tasks are still removed from their [User.tasksAssigned].
+   *
+   * The [Event.tasks] of the stored event are replaced by the tasks stored in [tasksRepository].
    *
    * @param eventId The identifier of the [Event] to quit.
    * @param userId The [User.uid] of the user quitting it.
@@ -334,11 +337,11 @@ interface DataRepository {
 
   /**
    * Adds a [User] to the assignees of a [Task], in the task and in its [Event], and the task to the
-   * user's [User.tasksAssigned]. The owner of the task already lists it, so their
+   * user's [User.tasksAssigned]. If the user already lists the task (for example its owner), their
    * [User.tasksAssigned] is left unchanged.
    *
-   * This function doesn't make a verification on whether the user is part of the [Event] this
-   * [Task] is part of. It is to the caller to be aware of that necessity.
+   * This function does not check that the user is a member of the [Event] the [Task] belongs to:
+   * the caller is responsible for it.
    *
    * @param taskId The identifier of the [Task] to join.
    * @param userId The [User.uid] of the user joining it.
@@ -384,12 +387,13 @@ interface DataRepository {
 
   /**
    * Removes a [User] from the assignees of a [Task], in the task and in its [Event], and the task
-   * from the user's [User.tasksAssigned].
+   * from the user's [User.tasksAssigned], even if the user is its owner.
    *
    * @param taskId The identifier of the [Task] to quit.
    * @param userId The [User.uid] of the user quitting it.
    * @throws NoSuchElementException If the task, its event or the user does not exist.
-   * @throws IllegalArgumentException If the user is not assigned to the task.
+   * @throws IllegalArgumentException If the user is not assigned to the task or does not list it in
+   *   [User.tasksAssigned], or if the event does not contain the task.
    * @throws DataInconsistencyException If a write failed and could not be fully undone.
    */
   suspend fun quitTask(taskId: String, userId: String) {
