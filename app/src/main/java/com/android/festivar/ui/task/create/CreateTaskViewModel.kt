@@ -12,7 +12,12 @@ import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryProvider
 import com.android.festivar.ui.components.DateTimeField
+import com.android.festivar.ui.components.DateTimeRange
+import com.android.festivar.ui.components.END_OF_DAY
 import com.android.festivar.ui.components.FieldError
+import com.android.festivar.ui.components.START_OF_DAY
+import com.android.festivar.ui.components.endDateError
+import com.android.festivar.ui.components.startDateError
 import com.android.festivar.ui.task.TaskFormEditing
 import com.android.festivar.ui.task.TaskFormEditor
 import java.time.Duration
@@ -74,22 +79,13 @@ data class CreateTaskUiState(
   val titleError: FieldError?
     get() = if (titleEdited && title.isBlank()) FieldError.EMPTY_TITLE else null
 
-  /** The error shown under the start date, or `null`. */
+  /** The error shown under the start date, or `null`. See [startDateError]. */
   val startDateError: FieldError?
-    get() = if (startTime != null && startDate == null) FieldError.MISSING_DATE else null
+    get() = startDateError(startDate, startTime)
 
-  /** The error shown under the end date, or `null`. */
+  /** The error shown under the end date, or `null`. See [endDateError]. */
   val endDateError: FieldError?
-    get() {
-      if (endTime != null && endDate == null) return FieldError.MISSING_DATE
-      val start = startDateTime
-      val end = endDateTime
-      return if (start != null && end != null && end.isBefore(start)) {
-        FieldError.END_BEFORE_START
-      } else {
-        null
-      }
-    }
+    get() = endDateError(DateTimeRange(startDate, startTime, endDate, endTime), zone)
 
   /**
    * The error shown under the estimated time field, or `null`. It is optional, so empty is fine,
@@ -167,12 +163,6 @@ internal const val MAX_ESTIMATED_DIGITS = 9
 
 /** The fewest people a task can need, and the number of people a new task starts with. */
 const val MIN_MAX_ASSIGN = 1
-
-/** The time of a start date picked without a time. */
-val START_OF_DAY: LocalTime = LocalTime.MIDNIGHT
-
-/** The time of an end date picked without a time: the last minute the forms can show. */
-val END_OF_DAY: LocalTime = LocalTime.of(23, 59)
 
 private const val TAG = "CreateTaskViewModel"
 
