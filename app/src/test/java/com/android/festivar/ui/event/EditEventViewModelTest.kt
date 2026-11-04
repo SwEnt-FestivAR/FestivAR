@@ -18,6 +18,7 @@ import java.time.ZonedDateTime
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -356,6 +357,29 @@ class EditEventViewModelTest {
     assertEquals(R.string.edit_event_error_save_failed, viewModel.uiState.value.errorMsg)
     assertEquals("Updated festival", viewModel.uiState.value.name)
     assertFalse(viewModel.uiState.value.isSaving)
+  }
+
+  @Test
+  fun timedOutSaveReadsBackAndRecognizesPersistedEvent() = runTest {
+    val repository =
+        object : EventsRepository by eventsRepository {
+          override suspend fun editEvent(eventId: String, newValue: Event) {
+            eventsRepository.editEvent(eventId, newValue)
+            delay(100)
+          }
+        }
+    viewModel = EditEventViewModel(repository, saveTimeoutMs = 10)
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+    viewModel.updateName("Updated festival")
+
+    viewModel.saveChanges()
+    advanceUntilIdle()
+
+    assertEquals("Updated festival", eventsRepository.getEvent(initialEvent.eventId).title)
+    assertEquals(initialEvent.eventId, viewModel.uiState.value.savedEventId)
+    assertFalse(viewModel.uiState.value.isSaving)
+    assertNull(viewModel.uiState.value.errorMsg)
   }
 
   @Test

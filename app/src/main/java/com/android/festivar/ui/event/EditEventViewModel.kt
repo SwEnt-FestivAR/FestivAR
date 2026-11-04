@@ -16,8 +16,12 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
+
+private const val SAVE_TIMEOUT_MS = 15_000L
 
 data class EditEventUIState(
     // The event currently being edited, or null before a record has been loaded.
@@ -153,10 +157,16 @@ data class EditEventUIState(
       )
 }
 
-class EditEventViewModel(private val eventsRepository: EventsRepository) :
-    EventFormViewModel<EditEventUIState>(EditEventUIState()) {
+class EditEventViewModel(
+    private val eventsRepository: EventsRepository,
+    private val saveTimeoutMs: Long = SAVE_TIMEOUT_MS,
+) : EventFormViewModel<EditEventUIState>(EditEventUIState()) {
   val uiState: StateFlow<EditEventUIState> = formState
   private var loadJob: Job? = null
+
+  init {
+    require(saveTimeoutMs > 0) { "saveTimeoutMs must be positive" }
+  }
 
   override fun clearError(state: EditEventUIState) = state.copy(errorMsg = null)
 
@@ -241,7 +251,8 @@ class EditEventViewModel(private val eventsRepository: EventsRepository) :
     updateState { it.copy(isSaving = true, errorMsg = null) }
     viewModelScope.launch {
       try {
-        val latestEvent = eventsRepository.getEvent(updatedEvent.eventId)
+        val latestEvent =
+            withTimeout(saveTimeoutMs) { eventsRepository.getEvent(updatedEvent.eventId) }
         val eventToSave =
             latestEvent.copy(
                 title = updatedEvent.title,
@@ -250,14 +261,46 @@ class EditEventViewModel(private val eventsRepository: EventsRepository) :
                 endDate = updatedEvent.endDate,
                 location = updatedEvent.location,
             )
-        eventsRepository.editEvent(eventToSave.eventId, eventToSave)
+        withTimeout(saveTimeoutMs) { eventsRepository.editEvent(eventToSave.eventId, eventToSave) }
         updateState { it.load(eventToSave).copy(savedEventId = eventToSave.eventId) }
+      } catch (e: TimeoutCancellationException) {
+        onSaveFailed(updatedEvent, e)
       } catch (e: CancellationException) {
+        updateState { it.copy(isSaving = false) }
         throw e
       } catch (e: Exception) {
-        Log.e("EditEventViewModel", "Saving the event failed", e)
-        updateState { it.copy(isSaving = false, errorMsg = R.string.edit_event_error_save_failed) }
+        onSaveFailed(updatedEvent, e)
       }
     }
   }
+
+  private suspend fun onSaveFailed(updatedEvent: Event, error: Exception) {
+    Log.w("EditEventViewModel", "Saving event failed; checking whether it was stored", error)
+    val storedEvent =
+        try {
+          withTimeout(saveTimeoutMs) { eventsRepository.getEvent(updatedEvent.eventId) }
+        } catch (e: TimeoutCancellationException) {
+          Log.e("EditEventViewModel", "Could not verify event save before timeout", e)
+          null
+        } catch (e: CancellationException) {
+          updateState { it.copy(isSaving = false) }
+          throw e
+        } catch (e: Exception) {
+          Log.e("EditEventViewModel", "Could not verify event save", e)
+          null
+        }
+
+    if (storedEvent != null && storedEvent.hasSameFormValuesAs(updatedEvent)) {
+      updateState { it.load(storedEvent).copy(savedEventId = storedEvent.eventId) }
+    } else {
+      updateState { it.copy(isSaving = false, errorMsg = R.string.edit_event_error_save_failed) }
+    }
+  }
+
+  private fun Event.hasSameFormValuesAs(other: Event): Boolean =
+      title == other.title &&
+          description == other.description &&
+          startDate == other.startDate &&
+          endDate == other.endDate &&
+          location == other.location
 }
