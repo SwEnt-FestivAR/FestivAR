@@ -132,7 +132,7 @@ fun TaskDetailsContent(
                         onClick = { onEdit(task.taskId) },
                         Modifier.testTag(TaskDetailsScreenTestTags.EDIT_BUTTON),
                     ) {
-                      Icon(Icons.Rounded.Edit, stringResource(R.string.task_details_edit))
+                      Icon(Icons.Rounded.Edit, stringResource(R.string.edit_task))
                     }
                   }
             },
