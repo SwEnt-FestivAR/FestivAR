@@ -1,6 +1,6 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Gemini <noreply@google.com>
-package com.android.festivar.navigation
+package com.android.festivar.navigation.task
 
 import androidx.navigation.NavHostController
 

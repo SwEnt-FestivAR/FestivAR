@@ -1,5 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
-package com.android.festivar.navigation
+package com.android.festivar.navigation.authentification
 
 import androidx.credentials.CredentialManager
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -7,6 +7,7 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.navigation.AppScreens
 import com.android.festivar.ui.authentication.forgotpassword.ForgotPasswordScreen
 import com.android.festivar.ui.authentication.forgotpassword.ForgotPasswordViewModel
 import com.android.festivar.ui.authentication.login.LoginScreen

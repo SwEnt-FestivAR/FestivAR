@@ -5,6 +5,7 @@ package com.android.festivar.ui.event
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.ui.event.details.EventDetailsViewModel
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlin.coroutines.cancellation.CancellationException
@@ -51,9 +52,9 @@ class EventDetailsViewModelTest {
     val viewModel =
         EventDetailsViewModel(
             object : EventsRepository by EventsRepositoryLocal() {
-              override suspend fun getEvent(eventId: String): Event {
-                throw IllegalStateException("fetch failed")
-              }
+                override suspend fun getEvent(eventId: String): Event {
+                    throw IllegalStateException("fetch failed")
+                }
             }
         )
 
@@ -115,9 +116,9 @@ class EventDetailsViewModelTest {
     val viewModel =
         EventDetailsViewModel(
             object : EventsRepository by EventsRepositoryLocal() {
-              override suspend fun getEvent(eventId: String): Event {
-                throw CancellationException("fetch cancelled")
-              }
+                override suspend fun getEvent(eventId: String): Event {
+                    throw CancellationException("fetch cancelled")
+                }
             }
         )
 

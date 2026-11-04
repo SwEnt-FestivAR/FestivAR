@@ -5,6 +5,7 @@ package com.android.festivar.navigation
 import androidx.navigation.NavHostController
 import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.navOptions
+import com.android.festivar.navigation.authentification.LoginNavigator
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify

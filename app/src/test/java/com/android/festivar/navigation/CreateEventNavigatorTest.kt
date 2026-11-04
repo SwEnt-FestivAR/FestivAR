@@ -4,6 +4,7 @@
 package com.android.festivar.navigation
 
 import androidx.navigation.NavHostController
+import com.android.festivar.navigation.event.CreateEventNavigator
 import io.mockk.mockk
 import io.mockk.verify
 import org.junit.Test

@@ -13,6 +13,15 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.ui.event.details.EventDetailsScreen
+import com.android.festivar.ui.event.details.EventDetailsScreenTestTags
+import com.android.festivar.ui.event.details.EventDetailsViewModel
+import com.android.festivar.ui.event.details.eventDifferentMonth
+import com.android.festivar.ui.event.details.eventDifferentYear
+import com.android.festivar.ui.event.details.eventNoTasks
+import com.android.festivar.ui.event.details.eventSameDay
+import com.android.festivar.ui.event.details.eventSameMonth
+import com.android.festivar.ui.event.details.tasksListSize
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -44,7 +53,7 @@ class EventDetailsScreenTest {
     composeTestRule.onNodeWithText("Sami K.").assertIsDisplayed()
     composeTestRule.onNodeWithText(event.location).assertIsDisplayed()
     composeTestRule.onNodeWithText("${tasksListSize / 2}").assertIsDisplayed()
-    composeTestRule.onNodeWithText("of $tasksListSize").assertIsDisplayed()
+    composeTestRule.onNodeWithText("of ${tasksListSize}").assertIsDisplayed()
     composeTestRule.onNodeWithText("tasks still open").assertIsDisplayed()
     composeTestRule.onNodeWithText("Fri 16 to Sun 18 Oct").assertIsDisplayed()
   }
@@ -78,19 +87,19 @@ class EventDetailsScreenTest {
   @Test
   fun displaysErrorWhenEventCannotBeFetched() {
     composeTestRule.setContent {
-      EventDetailsScreen(
-          eventId = "missing",
-          viewModel =
-              EventDetailsViewModel(
-                  object : EventsRepository by EventsRepositoryLocal() {
-                    override suspend fun getEvent(eventId: String): Event {
-                      throw IllegalStateException("fetch failed")
+        EventDetailsScreen(
+            eventId = "missing",
+            viewModel =
+                EventDetailsViewModel(
+                    object : EventsRepository by EventsRepositoryLocal() {
+                        override suspend fun getEvent(eventId: String): Event {
+                            throw IllegalStateException("fetch failed")
+                        }
                     }
-                  }
-              ),
-          onTasksButtonClicked = {},
-          onBack = {},
-      )
+                ),
+            onTasksButtonClicked = {},
+            onBack = {},
+        )
     }
     composeTestRule.waitForIdle()
 
@@ -141,12 +150,12 @@ class EventDetailsScreenTest {
       onBack: () -> Unit = {},
   ) {
     composeTestRule.setContent {
-      EventDetailsScreen(
-          eventId = event.eventId,
-          viewModel = EventDetailsViewModel(EventsRepositoryLocal(listOf(event))),
-          onTasksButtonClicked = onTasksButtonClicked,
-          onBack = onBack,
-      )
+        EventDetailsScreen(
+            eventId = event.eventId,
+            viewModel = EventDetailsViewModel(EventsRepositoryLocal(listOf(event))),
+            onTasksButtonClicked = onTasksButtonClicked,
+            onBack = onBack,
+        )
     }
     composeTestRule.waitForIdle()
   }

@@ -1,7 +1,7 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
-package com.android.festivar.navigation
+package com.android.festivar.navigation.event
 
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -13,14 +13,15 @@ import androidx.navigation.navArgument
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.event.EventsRepositoryProvider
 import com.android.festivar.model.user.UsersRepositoryProvider
-import com.android.festivar.ui.event.CreateEventScreen
-import com.android.festivar.ui.event.CreateEventViewModel
-import com.android.festivar.ui.event.EventDetailsScreen
-import com.android.festivar.ui.event.EventDetailsViewModel
-import com.android.festivar.ui.event.EventsOverviewScreen
-import com.android.festivar.ui.event.EventsOverviewViewModel
-import com.android.festivar.ui.event.JoinEventScreen
-import com.android.festivar.ui.event.JoinEventViewModel
+import com.android.festivar.navigation.AppScreens
+import com.android.festivar.ui.event.create.CreateEventScreen
+import com.android.festivar.ui.event.create.CreateEventViewModel
+import com.android.festivar.ui.event.details.EventDetailsScreen
+import com.android.festivar.ui.event.details.EventDetailsViewModel
+import com.android.festivar.ui.event.overview.EventsOverviewScreen
+import com.android.festivar.ui.event.overview.EventsOverviewViewModel
+import com.android.festivar.ui.event.join.JoinEventScreen
+import com.android.festivar.ui.event.join.JoinEventViewModel
 
 /** The destinations of the event feature. */
 fun NavGraphBuilder.eventGraph(navController: NavHostController, authRepository: AuthRepository) {

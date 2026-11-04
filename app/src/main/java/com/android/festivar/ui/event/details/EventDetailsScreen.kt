@@ -1,4 +1,4 @@
-package com.android.festivar.ui.event
+package com.android.festivar.ui.event.details
 
 // Co-authored-by: Copilot App
 // Co-authored-by: Claude Sonnet 5.5
@@ -40,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
@@ -106,7 +107,7 @@ fun EventDetailsScreen(
                 text = stringResource(R.string.event_details_fetch_error),
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodyMedium,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                textAlign = TextAlign.Center,
                 modifier = Modifier.testTag(EventDetailsScreenTestTags.FETCH_ERROR),
             )
           }
