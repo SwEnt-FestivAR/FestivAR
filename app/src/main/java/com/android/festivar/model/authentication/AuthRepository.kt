@@ -26,6 +26,6 @@ interface AuthRepository {
   /** Send a password reset email */
   suspend fun forgotPassword(email: String): Result<Unit>
 
-  /** Signs in anonymously * */
+  /** Signs in anonymously */
   suspend fun signInAnonymous(): Result<FirebaseUser>
 }

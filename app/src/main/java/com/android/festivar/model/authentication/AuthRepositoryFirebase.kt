@@ -12,6 +12,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.auth
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.tasks.await
 
 // Logs tag
@@ -26,7 +27,7 @@ class AuthRepositoryFirebase(
     get() = firebaseAuth.currentUser
 
   override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> =
-      runCatching {
+      try {
         val firebaseCredential = googleSignInHelper.getFirebaseCredential(credential)
         val currentUser = runCatching { firebaseAuth.currentUser }.getOrNull()
         // Upgrade anonymous account with Google if current user is anonymous
@@ -39,24 +40,32 @@ class AuthRepositoryFirebase(
                   ?: throw IllegalStateException("Firebase sign-in returned no user")
             }
         ensureUserExistsOrSignOut(user)
-        try {
-          val existing = usersRepository.getUser(user.uid)
-          usersRepository.editUser(user.uid, existing.copy(email = user.email.orEmpty()))
-        } catch (_: Exception) {
-          ensureUserExists(user)
-        }
         Log.d(TAG, "Successfully signed in/linked user with Google: ${user.uid}")
-        user
+        Result.success(user)
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        Log.e(TAG, "Failed to sign in with Google", e)
+        Result.failure(e)
       }
-      .onFailure { e -> Log.e(TAG, "Failed to sign in with Google", e) }
 
-  override suspend fun signOut(): Result<Unit> = runCatching { firebaseAuth.signOut() }
+  override suspend fun signOut(): Result<Unit> =
+      try {
+        firebaseAuth.signOut()
+        Result.success(Unit)
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        Result.failure(e)
+      }
 
   override suspend fun forgotPassword(email: String): Result<Unit> =
       try {
         firebaseAuth.sendPasswordResetEmail(email).await()
         Log.d(TAG, "Password reset email sent to ${maskEmail(email)}.")
         Result.success(Unit)
+      } catch (e: CancellationException) {
+        throw e
       } catch (_: FirebaseAuthInvalidUserException) {
         Log.w(
             TAG,
@@ -68,60 +77,63 @@ class AuthRepositoryFirebase(
         Result.failure(exception)
       }
 
-  override suspend fun signInAnonymous(): Result<FirebaseUser> {
-    return runCatching {
-      val user =
-          firebaseAuth.signInAnonymously().await().user
-              ?: throw IllegalStateException("Anonymous sign-in returned no user")
-      ensureUserExistsOrSignOut(user)
-      Log.d(TAG, "Successfully signed in anonymously: ${user.uid}")
-      user
-    }
-        .onFailure { e -> Log.e(TAG, "Failed to sign in anonymously", e) }
-  }
+  override suspend fun signInAnonymous(): Result<FirebaseUser> =
+      try {
+        val user =
+            firebaseAuth.signInAnonymously().await().user
+                ?: throw IllegalStateException("Anonymous sign-in returned no user")
+        ensureUserExistsOrSignOut(user)
+        Log.d(TAG, "Successfully signed in anonymously: ${user.uid}")
+        Result.success(user)
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        Log.e(TAG, "Failed to sign in anonymously", e)
+        Result.failure(e)
+      }
 
   override suspend fun signInWithEmailAndPassword(
       email: String,
       password: String,
-  ): Result<FirebaseUser> {
-    return runCatching {
-      val user =
-          firebaseAuth.signInWithEmailAndPassword(email, password).await().user
-              ?: throw IllegalStateException("Firebase sign-in returned no user")
-      ensureUserExistsOrSignOut(user)
-      Log.d(TAG, "Successfully signed in user with mail and pass: ${user.uid}")
-      user
-    }
-        .onFailure { e -> Log.e(TAG, "Failed to sign in with mail and pass", e) }
-  }
+  ): Result<FirebaseUser> =
+      try {
+        val user =
+            firebaseAuth.signInWithEmailAndPassword(email, password).await().user
+                ?: throw IllegalStateException("Firebase sign-in returned no user")
+        ensureUserExistsOrSignOut(user)
+        Log.d(TAG, "Successfully signed in user with mail and pass: ${user.uid}")
+        Result.success(user)
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        Log.e(TAG, "Failed to sign in with mail and pass", e)
+        Result.failure(e)
+      }
 
   override suspend fun signUpWithEmailAndPassword(
       email: String,
       password: String,
-  ): Result<FirebaseUser> {
-    return runCatching {
-      val currentUser = runCatching { firebaseAuth.currentUser }.getOrNull()
-      // Check if current user is anonymous for account upgrade/linking
-      val isAnonymousLink = currentUser != null && currentUser.isAnonymous
-      val user =
-          if (isAnonymousLink) {
-            val emailCredential = EmailAuthProvider.getCredential(email, password)
-            // Link email credential to upgrade anonymous account, preserving UID
-            currentUser.linkWithCredential(emailCredential).await().user
-                ?: throw IllegalStateException("Email account linking returned no user")
-          } else {
-            firebaseAuth.createUserWithEmailAndPassword(email, password).await().user
-                ?: throw IllegalStateException("Firebase sign-in returned no user")
-          }
-
+  ): Result<FirebaseUser> =
       try {
-        if (isAnonymousLink) {
-          // Ensure profile exists and update email in Firestore for upgraded user
-          ensureUserExistsOrSignOut(user)
-          try {
-            val existing = usersRepository.getUser(user.uid)
-            usersRepository.editUser(user.uid, existing.copy(email = user.email.orEmpty()))
-          } catch (_: Exception) {
+        val currentUser = runCatching { firebaseAuth.currentUser }.getOrNull()
+        // Check if current user is anonymous for account upgrade/linking
+        val isAnonymousLink = currentUser != null && currentUser.isAnonymous
+        val user =
+            if (isAnonymousLink) {
+              val emailCredential = EmailAuthProvider.getCredential(email, password)
+              // Link email credential to upgrade anonymous account, preserving UID
+              currentUser.linkWithCredential(emailCredential).await().user
+                  ?: throw IllegalStateException("Email account linking returned no user")
+            } else {
+              firebaseAuth.createUserWithEmailAndPassword(email, password).await().user
+                  ?: throw IllegalStateException("Firebase sign-in returned no user")
+            }
+
+        try {
+          if (isAnonymousLink) {
+            // Ensure profile exists and update email in Firestore for upgraded user
+            ensureUserExistsOrSignOut(user)
+          } else {
             usersRepository.addUser(
                 User(
                     uid = user.uid,
@@ -129,34 +141,30 @@ class AuthRepositoryFirebase(
                 )
             )
           }
-        } else {
-          usersRepository.addUser(
-              User(
-                  uid = user.uid,
-                  email = user.email.orEmpty(),
-              )
+          Log.d(
+              TAG,
+              "Successfully created/linked user and Firestore document",
           )
+        } catch (e: Exception) {
+          if (e is CancellationException) throw e
+          Log.e(
+              TAG,
+              "Failed to create/update Firestore document for user",
+              e,
+          )
+          if (!isAnonymousLink) {
+            user.delete().await()
+          }
+          throw e
         }
-        Log.d(
-            TAG,
-            "Successfully created/linked user and Firestore document",
-        )
-      } catch (e: Exception) {
-        Log.e(
-            TAG,
-            "Failed to create/update Firestore document for user",
-            e,
-        )
-        if (!isAnonymousLink) {
-          user.delete().await()
-        }
-        throw e
-      }
 
-      user
-    }
-        .onFailure { e -> Log.d(TAG, "Sign up/linking failed", e) }
-  }
+        Result.success(user)
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        Log.d(TAG, "Sign up/linking failed", e)
+        Result.failure(e)
+      }
 
   /**
    * Creates the [User] document of [firebaseUser] in Firestore if it does not exist yet.
@@ -165,9 +173,16 @@ class AuthRepositoryFirebase(
    */
   private suspend fun ensureUserExists(firebaseUser: FirebaseUser) {
     try {
-      usersRepository.getUser(firebaseUser.uid)
+      val existing = usersRepository.getUser(firebaseUser.uid)
+      val email = firebaseUser.email.orEmpty()
+      if (email.isNotBlank() && existing.email != email) {
+        usersRepository.editUser(firebaseUser.uid, existing.copy(email = email))
+      }
     } catch (_: NoSuchElementException) {
       usersRepository.addUser(User(uid = firebaseUser.uid, email = firebaseUser.email.orEmpty()))
+    } catch (e: Exception) {
+      if (e is CancellationException) throw e
+      throw e
     }
   }
 
@@ -185,6 +200,7 @@ class AuthRepositoryFirebase(
     try {
       ensureUserExists(firebaseUser)
     } catch (e: Exception) {
+      if (e is CancellationException) throw e
       firebaseAuth.signOut()
       throw e
     }
