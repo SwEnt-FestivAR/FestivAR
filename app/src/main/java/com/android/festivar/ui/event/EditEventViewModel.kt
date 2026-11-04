@@ -231,8 +231,17 @@ class EditEventViewModel(private val eventsRepository: EventsRepository) :
     updateState { it.copy(isSaving = true, errorMsg = null) }
     viewModelScope.launch {
       try {
-        eventsRepository.editEvent(updatedEvent.eventId, updatedEvent)
-        updateState { it.load(updatedEvent).copy(savedEventId = updatedEvent.eventId) }
+        val latestEvent = eventsRepository.getEvent(updatedEvent.eventId)
+        val eventToSave =
+            latestEvent.copy(
+                title = updatedEvent.title,
+                description = updatedEvent.description,
+                startDate = updatedEvent.startDate,
+                endDate = updatedEvent.endDate,
+                location = updatedEvent.location,
+            )
+        eventsRepository.editEvent(eventToSave.eventId, eventToSave)
+        updateState { it.load(eventToSave).copy(savedEventId = eventToSave.eventId) }
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {

@@ -6,6 +6,8 @@ import com.android.festivar.R
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.model.task.Task
+import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.FieldError
 import java.time.LocalDate
@@ -213,6 +215,33 @@ class EditEventViewModelTest {
     assertEquals(initialEvent.eventId, viewModel.uiState.value.savedEventId)
     assertFalse(viewModel.uiState.value.isSaving)
     assertFalse(viewModel.uiState.value.hasChanges)
+  }
+
+  @Test
+  fun saveChangesPreservesMembersAndTasksAddedWhileFormWasOpen() = runTest {
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+    viewModel.updateName("Updated festival")
+    val joinedMember = User(uid = "new-member")
+    val addedTask =
+        Task(
+            taskId = "new-task",
+            eventId = initialEvent.eventId,
+            title = "New task",
+            ownerId = "organizer",
+        )
+    eventsRepository.editEvent(
+        initialEvent.eventId,
+        initialEvent.copy(members = listOf(joinedMember), tasks = listOf(addedTask)),
+    )
+
+    viewModel.saveChanges()
+    advanceUntilIdle()
+
+    val saved = eventsRepository.getEvent(initialEvent.eventId)
+    assertEquals("Updated festival", saved.title)
+    assertEquals(listOf(joinedMember), saved.members)
+    assertEquals(listOf(addedTask), saved.tasks)
   }
 
   @Test
