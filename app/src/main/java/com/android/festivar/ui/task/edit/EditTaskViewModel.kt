@@ -29,8 +29,9 @@ import kotlinx.coroutines.withTimeout
  *
  * @property task The task as stored, or null until it is loaded (or if it could not be loaded).
  * @property form What the user edits, with the field rules of the Create task form.
- * @property isOwner Whether the signed-in user owns [task]: only the owner can save.
- * @property isLoading True until the first load ends.
+ * @property isOwner Whether the current user owns the task, read when asked so a sign out after
+ *   load is seen. Only the owner can save.
+ * @property isLoading True while a load runs; false before [EditTaskViewModel.load] is called.
  * @property isSaving True while a save is running, so a second tap does nothing.
  * @property isSaved True once the edit is stored; the form is then final.
  * @property errorMsg The string resource of the last failure, or null.
@@ -38,8 +39,8 @@ import kotlinx.coroutines.withTimeout
 data class EditTaskUiState(
     val task: Task? = null,
     val form: CreateTaskUiState = CreateTaskUiState(),
-    val isOwner: Boolean = false,
-    val isLoading: Boolean = true,
+    val isOwner: () -> Boolean = { false },
+    val isLoading: Boolean = false,
     val isSaving: Boolean = false,
     val isSaved: Boolean = false,
     @StringRes val errorMsg: Int? = null,
@@ -62,7 +63,8 @@ data class EditTaskUiState(
 
   /** Whether the "Save" button can be pressed. [hasChanges] implies that a task is loaded. */
   val canSave: Boolean
-    get() = isOwner && form.isValid && maxAssignError == null && hasChanges && !isSaving && !isSaved
+    get() =
+        isOwner() && form.isValid && maxAssignError == null && hasChanges && !isSaving && !isSaved
 
   /**
    * Builds the edited [Task]. What the form does not own (assignees, completion, voice note, owner,
@@ -178,7 +180,7 @@ private constructor(
           it.copy(
               task = task,
               form = task.toForm(zone),
-              isOwner = task.ownerId == currentUserId(),
+              isOwner = { task.ownerId == currentUserId() },
               isLoading = false,
               errorMsg = null,
           )
@@ -194,12 +196,9 @@ private constructor(
     }
   }
 
-  // Changes are ignored while no task is loaded and once the edit is saved, except closing the
-  // picker, so that one opened during a slow save does not stay open.
+  // A finished form ignores every change, pickers included, since the screen leaves on save.
   private fun edit(change: (CreateTaskUiState) -> CreateTaskUiState) = _uiState.update {
-    if (it.task != null && !it.isSaved) return@update it.copy(form = change(it.form))
-    val closed = it.form.copy(openPicker = null)
-    if (change(it.form) == closed) it.copy(form = closed) else it
+    if (it.task == null || it.isSaved) it else it.copy(form = change(it.form))
   }
 
   init {
@@ -211,18 +210,23 @@ private constructor(
   /** Clears the error message. */
   fun clearError() = _uiState.update { it.copy(errorMsg = null) }
 
-  /** Saves the edited task. Does nothing unless [EditTaskUiState.canSave]. */
+  /**
+   * Saves the edited task. Does nothing unless [EditTaskUiState.canSave]; a loaded task the user no
+   * longer owns shows the save error instead.
+   */
   fun save() {
     val state = _uiState.value
-    if (!state.canSave) return
-    // Built outside the try: the state was just checked, so a failure here is a bug.
-    val newTask = state.toTask()
-    if (currentUserId() != newTask.ownerId) {
+    // Checked before canSave, which also reads isOwner: the screen may still show the button
+    // enabled from before a sign out, so the tap must say why nothing is saved.
+    if (state.task != null && !state.isOwner()) {
       // The signed-in user changed since the load: save nothing and show the save error.
       Log.e(TAG, "save called by a user who does not own task $taskId")
       _uiState.update { it.copy(errorMsg = R.string.edit_task_error_save_failed) }
       return
     }
+    if (!state.canSave) return
+    // Built outside the try: the state was just checked, so a failure here is a bug.
+    val newTask = state.toTask()
     _uiState.update { it.copy(isSaving = true, errorMsg = null) }
     viewModelScope.launch {
       val saved =

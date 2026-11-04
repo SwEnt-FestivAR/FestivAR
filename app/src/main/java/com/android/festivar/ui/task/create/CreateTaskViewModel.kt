@@ -227,12 +227,9 @@ private constructor(
   private val _uiState = MutableStateFlow(CreateTaskUiState(zone = zone))
   val uiState: StateFlow<CreateTaskUiState> = _uiState.asStateFlow()
 
-  // Once the task is created the form is final: later edits are ignored, except closing the
-  // picker, so that one opened during a slow save does not stay open.
+  // A finished form ignores every change, pickers included, since the screen leaves on creation.
   private fun edit(change: (CreateTaskUiState) -> CreateTaskUiState) = _uiState.update {
-    if (!it.isCreated) return@update change(it)
-    val closed = it.copy(openPicker = null)
-    if (change(it) == closed) closed else it
+    if (it.isCreated) it else change(it)
   }
 
   init {
