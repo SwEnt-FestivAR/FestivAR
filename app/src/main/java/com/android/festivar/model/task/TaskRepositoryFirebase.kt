@@ -2,7 +2,7 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.model.task
 
-import com.android.festivar.model.user.UserRepositoryFirebase
+import com.android.festivar.model.user.UsersRepositoryFirebase
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import java.time.Duration
@@ -17,7 +17,7 @@ class TaskRepositoryFirebase(
     private val db: FirebaseFirestore,
 ) : TasksRepository {
 
-  private val userRepo by lazy { UserRepositoryFirebase(db) }
+  private val userRepo by lazy { UsersRepositoryFirebase(db) }
 
   private val taskCollection
     get() = db.collection(TASK_COLLECTION_PATH)

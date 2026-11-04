@@ -32,7 +32,7 @@ import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.task.TasksRepositoryProvider
 import com.android.festivar.model.user.User
-import com.android.festivar.model.user.UserRepositoryFirebase
+import com.android.festivar.model.user.UsersRepositoryFirebase
 import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.model.user.UsersRepositoryProvider
 import com.android.festivar.navigation.AppScreens
@@ -218,7 +218,7 @@ class MainActivityNavigationTest {
         )
     // The joined user is written on the event as a member, and every later read of the events
     // resolves its members in Firestore, so the stored profile must exist there too
-    val users = UserRepositoryFirebase(Firebase.firestore)
+    val users = UsersRepositoryFirebase(Firebase.firestore)
     val events = EventRepositoryFirebase(Firebase.firestore)
     runBlocking {
       Firebase.auth.signInAnonymously().await()
@@ -301,7 +301,7 @@ class MainActivityNavigationTest {
             startDate = now.minusHours(1),
             endDate = now.plusHours(5),
         )
-    val users = UserRepositoryFirebase(Firebase.firestore)
+    val users = UsersRepositoryFirebase(Firebase.firestore)
     val events = EventRepositoryFirebase(Firebase.firestore)
     runBlocking {
       Firebase.auth.signInAnonymously().await()

@@ -9,7 +9,7 @@ import com.google.firebase.firestore.firestore
  */
 object UsersRepositoryProvider {
   private val firebaseRepository: UsersRepository by lazy {
-    UserRepositoryFirebase(Firebase.firestore)
+    UsersRepositoryFirebase(Firebase.firestore)
   }
 
   // @Volatile: the repository can be set on one thread (for example a test) and read on another
