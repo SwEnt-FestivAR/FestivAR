@@ -1,5 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
-package com.android.festivar.navigation.authentification
+package com.android.festivar.navigation.authentication
 
 import androidx.credentials.CredentialManager
 import androidx.lifecycle.viewmodel.compose.viewModel

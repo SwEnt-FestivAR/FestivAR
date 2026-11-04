@@ -22,7 +22,7 @@ import androidx.navigation.compose.rememberNavController
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.authentication.AuthRepositoryFirebase
 import com.android.festivar.navigation.AppScreens
-import com.android.festivar.navigation.authentification.authGraph
+import com.android.festivar.navigation.authentication.authGraph
 import com.android.festivar.navigation.event.eventGraph
 import com.android.festivar.navigation.profile.profileGraph
 import com.android.festivar.navigation.task.taskGraph
