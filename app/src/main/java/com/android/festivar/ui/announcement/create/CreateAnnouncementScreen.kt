@@ -41,6 +41,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
@@ -60,6 +62,7 @@ object CreateAnnouncementScreenTestTags {
   const val TITLE_ERROR = "createAnnouncementTitleError"
   const val DESCRIPTION_FIELD = "createAnnouncementDescriptionField"
   const val DESCRIPTION_ERROR = "createAnnouncementDescriptionError"
+  const val PRIORITY_LABEL = "createAnnouncementPriorityLabel"
   const val SAVE_ERROR = "createAnnouncementSaveError"
   const val PUBLISH_BUTTON = "createAnnouncementPublishButton"
   const val SAVING_INDICATOR = "createAnnouncementSavingIndicator"
@@ -254,9 +257,12 @@ private fun PublishBar(state: CreateAnnouncementUiState, onPublish: () -> Unit) 
                 .testTag(CreateAnnouncementScreenTestTags.PUBLISH_BUTTON),
     ) {
       if (state.isSaving) {
+        val publishing = stringResource(R.string.create_announcement_publishing)
         CircularProgressIndicator(
             modifier =
-                Modifier.size(16.dp).testTag(CreateAnnouncementScreenTestTags.SAVING_INDICATOR),
+                Modifier.size(16.dp)
+                    .semantics { contentDescription = publishing }
+                    .testTag(CreateAnnouncementScreenTestTags.SAVING_INDICATOR),
             color = MaterialTheme.colorScheme.onSurface,
             strokeWidth = 2.dp,
         )
@@ -272,7 +278,7 @@ private fun PublishBar(state: CreateAnnouncementUiState, onPublish: () -> Unit) 
 
 /** The string resource that names [priority] on the chips of this screen. */
 @StringRes
-private fun priorityLabelRes(priority: AnnouncementPriority): Int =
+private fun announcementPriorityLabelRes(priority: AnnouncementPriority): Int =
     when (priority) {
       AnnouncementPriority.INFO -> R.string.create_announcement_priority_info
       AnnouncementPriority.WARNING -> R.string.create_announcement_priority_warning
@@ -290,14 +296,17 @@ private fun AnnouncementPrioritySelector(
     enabled: Boolean,
 ) {
   Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-    SectionLabel(stringResource(R.string.create_announcement_field_priority))
+    SectionLabel(
+        stringResource(R.string.create_announcement_field_priority),
+        modifier = Modifier.testTag(CreateAnnouncementScreenTestTags.PRIORITY_LABEL),
+    )
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.horizontalScroll(rememberScrollState()),
     ) {
       AnnouncementPriority.entries.forEach { priority ->
         FilterChip(
-            label = stringResource(priorityLabelRes(priority)),
+            label = stringResource(announcementPriorityLabelRes(priority)),
             selected = priority == selected,
             onClick = { onSelect(priority) },
             enabled = enabled,
@@ -319,6 +328,34 @@ internal fun CreateAnnouncementContentPreview() {
                 content = "Strong wind on the hill. Send everyone to the north gate until 16:00.",
                 priority = AnnouncementPriority.URGENT,
             ),
+        actions = CreateAnnouncementActions(),
+    )
+  }
+}
+
+@Preview(showBackground = true)
+@Composable
+internal fun CreateAnnouncementContentSavingPreview() {
+  AppTheme {
+    CreateAnnouncementContent(
+        state =
+            CreateAnnouncementUiState(
+                title = "Stage B is closed",
+                content = "Strong wind on the hill. Send everyone to the north gate until 16:00.",
+                priority = AnnouncementPriority.URGENT,
+                isSaving = true,
+            ),
+        actions = CreateAnnouncementActions(),
+    )
+  }
+}
+
+@Preview(showBackground = true)
+@Composable
+internal fun CreateAnnouncementContentFieldErrorsPreview() {
+  AppTheme {
+    CreateAnnouncementContent(
+        state = CreateAnnouncementUiState(titleEdited = true, contentEdited = true),
         actions = CreateAnnouncementActions(),
     )
   }
