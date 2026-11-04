@@ -1,12 +1,11 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.announcement.feed
 
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.announcement.Announcement
-import java.time.Clock
-import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlin.coroutines.cancellation.CancellationException
@@ -29,7 +28,7 @@ import org.junit.Test
 class AnnouncementFeedViewModelTest {
   private val dispatcher = UnconfinedTestDispatcher()
   private val zone = ZoneId.of("Europe/Zurich")
-  private val clock = Clock.fixed(Instant.parse("2026-10-17T10:00:00Z"), zone)
+  private val now = at(12)
 
   @Before
   fun setUp() {
@@ -51,10 +50,10 @@ class AnnouncementFeedViewModelTest {
         AnnouncementFeedViewModel(
             EVENT_ID,
             EventsRepositoryLocal(listOf(event(pinned, olderToday, yesterday, newerToday))),
-            clock,
+            now = { now },
         )
 
-    viewModel.refresh()
+    viewModel.refreshUIState()
 
     assertEquals(listOf(pinned), viewModel.uiState.value.pinnedAnnouncements)
     assertEquals(
@@ -82,19 +81,20 @@ class AnnouncementFeedViewModelTest {
             return event
           }
         }
-    val viewModel = AnnouncementFeedViewModel(EVENT_ID, repository, clock)
+    val viewModel = AnnouncementFeedViewModel(EVENT_ID, repository, now = { now })
 
-    viewModel.refresh()
+    viewModel.refreshUIState()
     shouldFail = true
-    viewModel.refresh()
+    viewModel.refreshUIState()
 
     assertEquals(listOf(announcement), viewModel.uiState.value.sections.single().announcements)
     assertEquals("fetch failed", viewModel.uiState.value.errorMsg)
     assertFalse(viewModel.uiState.value.isLoading)
   }
 
+  // Breaks if a retry clears the error when it starts, so the screen stops showing it.
   @Test
-  fun refreshClearsPreviousErrorWhileLoading() = runTest {
+  fun errorStaysWhileRetrying() = runTest {
     val pendingEvent = CompletableDeferred<Event>()
     var shouldWait = false
     val repository =
@@ -104,16 +104,17 @@ class AnnouncementFeedViewModelTest {
             throw IllegalStateException("fetch failed")
           }
         }
-    val viewModel = AnnouncementFeedViewModel(EVENT_ID, repository, clock)
+    val viewModel = AnnouncementFeedViewModel(EVENT_ID, repository, now = { now })
 
-    viewModel.refresh()
+    viewModel.refreshUIState()
     assertEquals("fetch failed", viewModel.uiState.value.errorMsg)
 
     shouldWait = true
-    viewModel.refresh()
+    viewModel.refreshUIState()
 
     assertTrue(viewModel.uiState.value.isLoading)
-    assertNull(viewModel.uiState.value.errorMsg)
+    assertTrue(viewModel.uiState.value.hasError)
+    assertEquals("fetch failed", viewModel.uiState.value.errorMsg)
     pendingEvent.complete(event())
   }
 
@@ -125,9 +126,9 @@ class AnnouncementFeedViewModelTest {
             throw CancellationException("fetch cancelled")
           }
         }
-    val viewModel = AnnouncementFeedViewModel(EVENT_ID, repository, clock)
+    val viewModel = AnnouncementFeedViewModel(EVENT_ID, repository, now = { now })
 
-    viewModel.refresh()
+    viewModel.refreshUIState()
 
     assertNull(viewModel.uiState.value.errorMsg)
   }
