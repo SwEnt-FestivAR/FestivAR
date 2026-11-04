@@ -10,10 +10,7 @@ import com.android.festivar.R
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.ui.components.DateTimeField
-import com.android.festivar.ui.components.END_OF_DAY
 import com.android.festivar.ui.components.FieldError
-import com.android.festivar.ui.components.START_OF_DAY
-import com.android.festivar.ui.components.startDateError
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
@@ -68,19 +65,19 @@ data class EditEventUIState(
 ) {
   // Full start timestamp assembled from the selected start date, time, and zone.
   val startDateTime: ZonedDateTime?
-    get() = startDate?.atTime(startTime ?: START_OF_DAY)?.atZone(zone)
+    get() = computeStartDateTime(startDate, startTime, zone)
 
   // Full end timestamp assembled from the selected end date, time, and zone.
   val endDateTime: ZonedDateTime?
-    get() = endDate?.atTime(endTime ?: END_OF_DAY)?.atZone(endZone)
+    get() = computeEndDateTime(endDate, endTime, endZone)
 
   // Validation error for the title field when it has been edited and left blank.
   val nameError: FieldError?
-    get() = if (nameEdited && name.isBlank()) FieldError.EMPTY_EVENT_NAME else null
+    get() = validateEventName(name, nameEdited)
 
   // Validation error for the start date/time combination before saving.
   val startDateError: FieldError?
-    get() = startDateError(startDate, startTime)
+    get() = validateStartDate(startDate, startTime)
 
   // Validation error for the end date/time combination before saving.
   val endDateError: FieldError?
@@ -207,21 +204,23 @@ class EditEventViewModel(private val eventsRepository: EventsRepository) : ViewM
 
   // Applies the selected date to whichever field is currently being edited.
   fun pickDate(date: LocalDate) {
-    when (_uiState.value.openPicker) {
-      DateTimeField.START_DATE -> updateStartDate(date)
-      DateTimeField.END_DATE -> updateEndDate(date)
-      else -> Unit
-    }
+    pickEventDate(
+        _uiState.value.openPicker,
+        date,
+        { updateStartDate(it) },
+        { updateEndDate(it) },
+    )
     showPicker(null)
   }
 
   // Applies the selected time to whichever field is currently being edited.
   fun pickTime(time: LocalTime) {
-    when (_uiState.value.openPicker) {
-      DateTimeField.START_TIME -> updateStartTime(time)
-      DateTimeField.END_TIME -> updateEndTime(time)
-      else -> Unit
-    }
+    pickEventTime(
+        _uiState.value.openPicker,
+        time,
+        { updateStartTime(it) },
+        { updateEndTime(it) },
+    )
     showPicker(null)
   }
 

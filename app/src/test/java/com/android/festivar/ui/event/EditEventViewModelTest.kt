@@ -23,6 +23,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -74,6 +75,78 @@ class EditEventViewModelTest {
 
     assertEquals(date, viewModel.uiState.value.startDate)
     assertNull(viewModel.uiState.value.openPicker)
+  }
+
+  @Test
+  fun pickerUpdatesEveryDateAndTimeFieldAndIgnoresMismatchedPicker() = runTest {
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+    val state = viewModel.uiState.value
+    val date = state.startDate!!.plusDays(1)
+    val time = state.startTime!!.plusHours(1)
+
+    viewModel.showPicker(DateTimeField.END_DATE)
+    viewModel.pickDate(date)
+    assertEquals(date, viewModel.uiState.value.endDate)
+
+    viewModel.showPicker(DateTimeField.START_TIME)
+    viewModel.pickTime(time)
+    assertEquals(time, viewModel.uiState.value.startTime)
+
+    viewModel.showPicker(DateTimeField.END_TIME)
+    viewModel.pickTime(time)
+    assertEquals(time, viewModel.uiState.value.endTime)
+
+    viewModel.showPicker(DateTimeField.START_DATE)
+    viewModel.pickTime(time)
+    assertEquals(state.startDate, viewModel.uiState.value.startDate)
+    assertNull(viewModel.uiState.value.openPicker)
+
+    viewModel.showPicker(null)
+    viewModel.pickDate(date)
+    assertNull(viewModel.uiState.value.openPicker)
+  }
+
+  @Test
+  fun initialStateValidationAndEventConversionAreSafe() {
+    val state = EditEventUIState()
+
+    assertNull(state.startDateTime)
+    assertNull(state.endDateTime)
+    assertNull(state.nameError)
+    assertNull(state.startDateError)
+    assertNull(state.endDateError)
+    assertFalse(state.isValid)
+    assertFalse(state.hasChanges)
+    assertFalse(state.canSave)
+    assertThrows(IllegalStateException::class.java) { state.toEvent() }
+  }
+
+  @Test
+  fun stateValidationAndEventConversionReflectDraft() {
+    val future = ZonedDateTime.now().plusDays(2)
+    val event =
+        initialEvent.copy(
+            startDate = future,
+            endDate = future.plusHours(3),
+        )
+    val loadedState = EditEventUIState().load(event)
+    val updatedState = loadedState.copy(name = "Updated festival", notes = "New notes")
+
+    assertTrue(loadedState.isValid)
+    assertFalse(loadedState.hasChanges)
+    assertEquals(event, loadedState.toEvent())
+    assertTrue(updatedState.hasChanges)
+    assertEquals("Updated festival", updatedState.toEvent().title)
+    assertEquals("New notes", updatedState.toEvent().description)
+    assertFalse(updatedState.copy(isLoading = true).canSave)
+    assertFalse(updatedState.copy(isSaving = true).canSave)
+    assertFalse(updatedState.copy(savedEventId = event.eventId).canSave)
+    assertEquals(
+        FieldError.EMPTY_EVENT_NAME,
+        loadedState.copy(name = " ", nameEdited = true).nameError,
+    )
+    assertThrows(IllegalArgumentException::class.java) { loadedState.copy(name = "").toEvent() }
   }
 
   @Test
@@ -212,6 +285,18 @@ class EditEventViewModelTest {
     assertEquals(initialEvent.title, viewModel.uiState.value.name)
     assertTrue(viewModel.uiState.value.isDiscarded)
     assertFalse(viewModel.uiState.value.showDiscardConfirmation)
+  }
+
+  @Test
+  fun discardWithoutChangesAndConfirmBeforeLoadingDiscardImmediately() {
+    viewModel.requestDiscard()
+    assertTrue(viewModel.uiState.value.isDiscarded)
+    assertFalse(viewModel.uiState.value.showDiscardConfirmation)
+
+    val freshViewModel = EditEventViewModel(eventsRepository)
+    freshViewModel.confirmDiscard()
+    assertTrue(freshViewModel.uiState.value.isDiscarded)
+    assertFalse(freshViewModel.uiState.value.showDiscardConfirmation)
   }
 
   @Test

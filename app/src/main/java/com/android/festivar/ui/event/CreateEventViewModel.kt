@@ -15,11 +15,8 @@ import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryProvider
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.DateTimeRange
-import com.android.festivar.ui.components.END_OF_DAY
 import com.android.festivar.ui.components.FieldError
-import com.android.festivar.ui.components.START_OF_DAY
 import com.android.festivar.ui.components.endDateError
-import com.android.festivar.ui.components.startDateError
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
@@ -55,16 +52,16 @@ data class CreateEventUIState(
     @StringRes val errorMsg: Int? = null,
 ) {
   val startDateTime: ZonedDateTime?
-    get() = startDate?.atTime(startTime ?: START_OF_DAY)?.atZone(zone)
+    get() = computeStartDateTime(startDate, startTime, zone)
 
   val endDateTime: ZonedDateTime?
-    get() = endDate?.atTime(endTime ?: END_OF_DAY)?.atZone(zone)
+    get() = computeEndDateTime(endDate, endTime, zone)
 
   val nameError: FieldError?
-    get() = if (nameEdited && name.isBlank()) FieldError.EMPTY_EVENT_NAME else null
+    get() = validateEventName(name, nameEdited)
 
   val startDateError: FieldError?
-    get() = startDateError(startDate, startTime)
+    get() = validateStartDate(startDate, startTime)
 
   val endDateError: FieldError?
     get() = endDateError(DateTimeRange(startDate, startTime, endDate, endTime), zone)
@@ -138,21 +135,23 @@ class CreateEventViewModel(
 
   /** Sets [date] in the field whose picker is open, then closes the picker. */
   fun pickDate(date: LocalDate) {
-    when (_uiState.value.openPicker) {
-      DateTimeField.START_DATE -> updateStartDate(date)
-      DateTimeField.END_DATE -> updateEndDate(date)
-      else -> Unit
-    }
+    pickEventDate(
+        _uiState.value.openPicker,
+        date,
+        { updateStartDate(it) },
+        { updateEndDate(it) },
+    )
     showPicker(null)
   }
 
   /** Sets [time] in the field whose picker is open, then closes the picker. */
   fun pickTime(time: LocalTime) {
-    when (_uiState.value.openPicker) {
-      DateTimeField.START_TIME -> updateStartTime(time)
-      DateTimeField.END_TIME -> updateEndTime(time)
-      else -> Unit
-    }
+    pickEventTime(
+        _uiState.value.openPicker,
+        time,
+        { updateStartTime(it) },
+        { updateEndTime(it) },
+    )
     showPicker(null)
   }
 
