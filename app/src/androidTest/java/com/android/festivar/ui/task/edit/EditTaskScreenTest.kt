@@ -16,6 +16,7 @@ import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.user.User
+import com.android.festivar.ui.task.create.CreateTaskActions
 import com.android.festivar.ui.task.create.CreateTaskScreenTestTags
 import com.android.festivar.ui.theme.AppTheme
 import kotlinx.coroutines.CompletableDeferred
@@ -111,6 +112,24 @@ class EditTaskScreenTest {
     composeTestRule.waitUntil(5_000) { exists(CreateTaskScreenTestTags.TITLE_FIELD) }
     composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.TITLE_FIELD).assert(hasText(task.title))
     assertFalse(exists(EditTaskScreenTestTags.LOADING))
+  }
+
+  // Breaks if a state that has not been loaded yet shows the load error instead of the spinner.
+  @Test
+  fun beforeTheLoadRunsTheScreenShowsTheSpinnerNotTheLoadError() {
+    val notLoaded = EditTaskViewModel(task.taskId, { "owner-1" }, repository).uiState.value
+    composeTestRule.setContent {
+      AppTheme {
+        EditTaskContent(
+            state = notLoaded,
+            actions = CreateTaskActions(),
+            onRetry = {},
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag(EditTaskScreenTestTags.LOADING).assertIsDisplayed()
+    assertFalse(exists(EditTaskScreenTestTags.LOAD_ERROR))
   }
 
   // Breaks if a failed load shows no error, or the retry does not load the task again.

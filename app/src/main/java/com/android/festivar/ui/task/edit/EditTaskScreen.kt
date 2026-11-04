@@ -90,8 +90,8 @@ fun EditTaskScreen(
 }
 
 /**
- * Stateless Edit task screen: a spinner while the task loads, the load error with a retry when it
- * could not be loaded, and otherwise the Create task form filled with the task.
+ * Stateless Edit task screen: the Create task form filled with the task once it is loaded, the load
+ * error with a retry when a load failed, and otherwise a spinner.
  *
  * @param actions The form's input; `onCreate` saves the edit.
  * @param onRetry Loads the task again after a failed load.
@@ -104,16 +104,9 @@ fun EditTaskContent(
     modifier: Modifier = Modifier,
 ) {
   Box(modifier = modifier.testTag(EditTaskScreenTestTags.SCREEN)) {
+    val loadError = state.errorMsg
     when {
-      state.isLoading ->
-          NoForm(actions.onBack) {
-            CircularProgressIndicator(Modifier.testTag(EditTaskScreenTestTags.LOADING))
-          }
-      state.task == null ->
-          NoForm(actions.onBack) {
-            LoadError(state.errorMsg ?: R.string.edit_task_error_load_failed, onRetry)
-          }
-      else ->
+      state.task != null ->
           CreateTaskContent(
               state = state.form.copy(errorMsg = state.errorMsg),
               actions = actions,
@@ -121,6 +114,13 @@ fun EditTaskContent(
               canSubmit = state.canSave,
               maxAssignError = state.maxAssignError,
           )
+      loadError != null && !state.isLoading ->
+          NoForm(actions.onBack) { LoadError(loadError, onRetry) }
+      // The spinner also covers the first frames, before load() has run.
+      else ->
+          NoForm(actions.onBack) {
+            CircularProgressIndicator(Modifier.testTag(EditTaskScreenTestTags.LOADING))
+          }
     }
   }
 }
@@ -195,7 +195,7 @@ private val previewForm =
     )
 
 private val previewLoaded =
-    EditTaskUiState(task = previewTask, form = previewForm, isOwner = true, isLoading = false)
+    EditTaskUiState(task = previewTask, form = previewForm, isOwner = { true })
 
 @Composable
 private fun EditTaskPreview(state: EditTaskUiState) {
