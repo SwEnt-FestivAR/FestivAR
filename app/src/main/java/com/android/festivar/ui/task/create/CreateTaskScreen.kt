@@ -2,8 +2,6 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.create
 
-import androidx.activity.compose.BackHandler
-import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,25 +13,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -47,14 +37,17 @@ import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.DateTimeRange
 import com.android.festivar.ui.components.FestivarDateTimePickerDialog
 import com.android.festivar.ui.components.FestivarDateTimeRow
-import com.android.festivar.ui.components.FestivarDiscardDialog
 import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.components.FestivarFieldWithError
 import com.android.festivar.ui.components.FestivarPrioritySelector
 import com.android.festivar.ui.components.FestivarStepper
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.components.FieldError
-import com.android.festivar.ui.task.TaskFormEditor
+import com.android.festivar.ui.task.DiscardTaskDialog
+import com.android.festivar.ui.task.TaskFormBackHandling
+import com.android.festivar.ui.task.TaskFormLabels
+import com.android.festivar.ui.task.TaskFormTopBar
+import com.android.festivar.ui.task.taskFormActions
 import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
 import java.time.LocalTime
@@ -136,118 +129,6 @@ fun CreateTaskScreen(
     )
   }
 }
-
-/** The actions of a task form whose fields are set through [editor]. */
-fun taskFormActions(
-    editor: TaskFormEditor,
-    onBack: () -> Unit,
-    onSubmit: () -> Unit,
-): CreateTaskActions =
-    CreateTaskActions(
-        onBack = onBack,
-        onTitleChange = editor::updateTitle,
-        onDescriptionChange = editor::updateDescription,
-        onLocationChange = editor::updateLocation,
-        onPriorityChange = editor::updatePriority,
-        onMaxAssignDecrease = editor::decrementMaxAssign,
-        onMaxAssignIncrease = editor::incrementMaxAssign,
-        onEstimatedMinutesChange = editor::updateEstimatedMinutes,
-        onShowPicker = editor::showPicker,
-        onDatePicked = editor::pickDate,
-        onTimePicked = editor::pickTime,
-        onCreate = onSubmit,
-    )
-
-/**
- * Back handling of the task forms: going back, by the system or by the top bar button passed to
- * [content] as `requestBack`, asks first in the discard dialog when [needsConfirmation].
- *
- * @param onBack Called when the user leaves, at once or after confirming the discard.
- * @param dialogTitle The question the discard dialog asks.
- */
-@Composable
-internal fun TaskFormBackHandling(
-    needsConfirmation: Boolean,
-    onBack: () -> Unit,
-    @StringRes dialogTitle: Int,
-    content: @Composable (requestBack: () -> Unit) -> Unit,
-) {
-  var askToDiscard by rememberSaveable { mutableStateOf(false) }
-  val requestBack = { if (needsConfirmation) askToDiscard = true else onBack() }
-  BackHandler(onBack = requestBack)
-
-  content(requestBack)
-
-  if (askToDiscard) {
-    DiscardTaskDialog(
-        onConfirm = {
-          askToDiscard = false
-          onBack()
-        },
-        onDismiss = { askToDiscard = false },
-        title = dialogTitle,
-    )
-  }
-}
-
-/**
- * The discard dialog of the task forms, shown when going back from an edited form.
- *
- * @param title The question asked, "Discard this task?" by default.
- */
-@Composable
-internal fun DiscardTaskDialog(
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-    @StringRes title: Int = R.string.create_task_discard_title,
-) {
-  FestivarDiscardDialog(
-      title = stringResource(title),
-      onConfirm = onConfirm,
-      onDismiss = onDismiss,
-      modifier = Modifier.testTag(CreateTaskScreenTestTags.DISCARD_DIALOG),
-      confirmModifier = Modifier.testTag(CreateTaskScreenTestTags.DISCARD_BUTTON),
-      dismissModifier = Modifier.testTag(CreateTaskScreenTestTags.KEEP_EDITING_BUTTON),
-  )
-}
-
-/** The top bar of the task forms: the back button and the [title]. */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-internal fun TaskFormTopBar(@StringRes title: Int, onBack: () -> Unit) {
-  TopAppBar(
-      title = {
-        Text(
-            text = stringResource(title),
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.testTag(CreateTaskScreenTestTags.TITLE),
-        )
-      },
-      navigationIcon = {
-        IconButton(
-            onClick = onBack,
-            modifier = Modifier.testTag(CreateTaskScreenTestTags.BACK_BUTTON),
-        ) {
-          Icon(
-              Icons.AutoMirrored.Rounded.ArrowBack,
-              contentDescription = stringResource(R.string.create_task_back),
-          )
-        }
-      },
-      colors =
-          TopAppBarDefaults.topAppBarColors(
-              containerColor = MaterialTheme.colorScheme.background,
-          ),
-  )
-}
-
-/**
- * The texts that differ between the forms built on [CreateTaskContent].
- *
- * @property title The title in the top bar.
- * @property submit The text of the button at the bottom.
- */
-data class TaskFormLabels(@StringRes val title: Int, @StringRes val submit: Int)
 
 /**
  * Stateless Create task screen: draws [state] and reports user input through [actions]. The open
