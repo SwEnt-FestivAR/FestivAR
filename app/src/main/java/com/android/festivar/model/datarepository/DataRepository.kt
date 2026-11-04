@@ -87,10 +87,7 @@ interface DataRepository {
       eventsRepository.editEvent(event.eventId, newEvent)
       undoProcess.addFirst { eventsRepository.editEvent(event.eventId, event) }
 
-      for ((old, new) in users.zip(newUsers)) {
-        usersRepository.editUser(new.uid, new)
-        undoProcess.addFirst { usersRepository.editUser(old.uid, old) }
-      }
+      editUsers(users, newUsers, undoProcess)
     } catch (e: Exception) {
       rollback(undoProcess, e)
       throw e
@@ -137,10 +134,7 @@ interface DataRepository {
       eventsRepository.editEvent(event.eventId, newEvent)
       undoProcess.addFirst { eventsRepository.editEvent(event.eventId, event) }
 
-      for ((old, new) in users.zip(newUsers)) {
-        usersRepository.editUser(new.uid, new)
-        undoProcess.addFirst { usersRepository.editUser(old.uid, old) }
-      }
+      editUsers(users, newUsers, undoProcess)
 
       usersRepository.editUser(ownerUserId, newOwnerUser)
       undoProcess.addFirst { usersRepository.editUser(ownerUserId, ownerUser) }
@@ -176,10 +170,7 @@ interface DataRepository {
       eventsRepository.addEvent(event)
       undoProcess.addFirst { eventsRepository.deleteEvent(event.eventId) }
 
-      for ((old, new) in users.zip(newUsers)) {
-        usersRepository.editUser(new.uid, new)
-        undoProcess.addFirst { usersRepository.editUser(old.uid, old) }
-      }
+      editUsers(users, newUsers, undoProcess)
     } catch (e: Exception) {
       rollback(undoProcess, e)
       throw e
@@ -230,10 +221,7 @@ interface DataRepository {
         undoProcess.addFirst { tasksRepository.addTask(task) }
       }
 
-      for ((old, new) in users.zip(newUsers)) {
-        usersRepository.editUser(new.uid, new)
-        undoProcess.addFirst { usersRepository.editUser(old.uid, old) }
-      }
+      editUsers(users, newUsers, undoProcess)
     } catch (e: Exception) {
       rollback(undoProcess, e)
       throw e
@@ -369,7 +357,7 @@ interface DataRepository {
     val newEvent = event.copy(tasks = event.tasks.map { if (it.taskId == taskId) newTask else it })
 
     // Store the changes.
-    changeAssignment(event.eventId, event, newEvent, taskId, task, newTask, userId, user, newUser)
+    changeAssignment(event, newEvent, task, newTask, user, newUser)
   }
 
   /**
@@ -396,35 +384,62 @@ interface DataRepository {
     val newEvent = event.copy(tasks = event.tasks.map { if (it.taskId == taskId) newTask else it })
 
     // Store the changes.
-    changeAssignment(event.eventId, event, newEvent, taskId, task, newTask, userId, user, newUser)
+    changeAssignment(event, newEvent, task, newTask, user, newUser)
   }
 
+  /**
+   * Stores the new versions of an [Event], one of its [Task]s and a [User] after the user joined or
+   * quit the task. If a write fails, the writes already done are undone, then the original
+   * exception is rethrown.
+   *
+   * @param event The current version of the event, read before any write.
+   * @param newEvent The new version of the event, with [newTask] in place of [task].
+   * @param task The current version of the task, read before any write.
+   * @param newTask The new version of the task.
+   * @param user The current version of the user, read before any write.
+   * @param newUser The new version of the user.
+   * @throws DataInconsistencyException If a write failed and could not be fully undone.
+   */
   private suspend fun changeAssignment(
-      eventId: String,
       event: Event,
       newEvent: Event,
-      taskId: String,
       task: Task,
       newTask: Task,
-      userId: String,
       user: User,
       newUser: User,
   ) {
-
     val undoProcess = ArrayDeque<suspend () -> Unit>()
     try {
-
       eventsRepository.editEvent(event.eventId, newEvent)
       undoProcess.addFirst { eventsRepository.editEvent(event.eventId, event) }
 
-      tasksRepository.editTask(taskId, newTask)
-      undoProcess.addFirst { tasksRepository.editTask(taskId, task) }
+      tasksRepository.editTask(task.taskId, newTask)
+      undoProcess.addFirst { tasksRepository.editTask(task.taskId, task) }
 
-      usersRepository.editUser(userId, newUser)
-      undoProcess.addFirst { usersRepository.editUser(userId, user) }
+      usersRepository.editUser(user.uid, newUser)
+      undoProcess.addFirst { usersRepository.editUser(user.uid, user) }
     } catch (e: Exception) {
       rollback(undoProcess, e)
       throw e
+    }
+  }
+
+  /**
+   * Stores the new version of each [User] and remembers how to undo each write, in the same way as
+   * the other writes of an operation.
+   *
+   * @param users The current versions of the users, read before any write.
+   * @param newUsers The new versions to store, in the same order as [users].
+   * @param undoProcess The undos of the operation, to which the undo of each user write is added.
+   */
+  private suspend fun editUsers(
+      users: List<User>,
+      newUsers: List<User>,
+      undoProcess: ArrayDeque<suspend () -> Unit>,
+  ) {
+    for ((old, new) in users.zip(newUsers)) {
+      usersRepository.editUser(new.uid, new)
+      undoProcess.addFirst { usersRepository.editUser(old.uid, old) }
     }
   }
 }
