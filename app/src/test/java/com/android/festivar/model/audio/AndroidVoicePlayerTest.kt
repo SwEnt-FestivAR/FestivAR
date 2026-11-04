@@ -2,6 +2,7 @@
 package com.android.festivar.model.audio
 
 import android.content.Context
+import android.media.MediaPlayer
 import android.os.Looper
 import androidx.core.net.toUri
 import androidx.test.core.app.ApplicationProvider
@@ -31,6 +32,9 @@ class AndroidVoicePlayerTest {
   /** The fake players created so far, oldest first: one per note played. */
   private val players = mutableListOf<ShadowMediaPlayer>()
 
+  /** The real players behind [players], in the same order, to read their position. */
+  private val mediaPlayers = mutableListOf<MediaPlayer>()
+
   private lateinit var player: AndroidVoicePlayer
 
   @Before
@@ -41,7 +45,10 @@ class AndroidVoicePlayerTest {
           ShadowMediaPlayer.MediaInfo(DURATION_MS, 0),
       )
     }
-    ShadowMediaPlayer.setCreateListener { _, created -> players += created }
+    ShadowMediaPlayer.setCreateListener { real, created ->
+      mediaPlayers += real
+      players += created
+    }
     player = AndroidVoicePlayer(context)
   }
 
@@ -172,6 +179,183 @@ class AndroidVoicePlayerTest {
   fun release_stopsTheNote() {
     player.play(first)
     idle()
+
+    player.release()
+
+    assertEquals(PlayerState.Idle, player.state.value)
+    assertEquals(State.END, players.single().state)
+  }
+
+  @Test
+  fun pause_keepsThePlayerAndReportsPaused() {
+    player.play(first)
+    idle()
+
+    player.pause()
+
+    assertEquals(PlayerState.Paused(first), player.state.value)
+    assertEquals(State.PAUSED, players.single().state)
+  }
+
+  @Test
+  fun resume_continuesTheSamePlayerFromWhereItStopped() {
+    player.play(first)
+    idle(Duration.ofMillis(2_000))
+    player.pause()
+    val pausedAt = mediaPlayers.single().currentPosition
+
+    idle(Duration.ofMillis(3_000))
+    assertEquals(pausedAt, mediaPlayers.single().currentPosition)
+
+    player.resume()
+
+    assertEquals(PlayerState.Playing(first), player.state.value)
+    assertEquals(State.STARTED, players.single().state)
+    assertEquals(1, players.size)
+    assertEquals(pausedAt, mediaPlayers.single().currentPosition)
+  }
+
+  @Test
+  fun resume_thenTheNoteEndsAsUsual() {
+    player.play(first)
+    idle(Duration.ofMillis(2_000))
+    player.pause()
+    player.resume()
+
+    idle(Duration.ofMillis(DURATION_MS + 1_000L))
+
+    assertEquals(PlayerState.Idle, player.state.value)
+    assertEquals(State.END, players.single().state)
+  }
+
+  @Test
+  fun pause_whileLoadingNeverStartsTheNote() {
+    player.play(first)
+
+    player.pause()
+    idle()
+
+    assertEquals(PlayerState.Paused(first), player.state.value)
+    assertEquals(State.PREPARED, players.single().state)
+  }
+
+  @Test
+  fun resume_afterPausingWhileLoadingStartsTheNote() {
+    player.play(first)
+    player.pause()
+    idle()
+
+    player.resume()
+
+    assertEquals(PlayerState.Playing(first), player.state.value)
+    assertEquals(State.STARTED, players.single().state)
+  }
+
+  @Test
+  fun resume_whileStillLoadingStartsTheNoteWhenReady() {
+    player.play(first)
+    player.pause()
+    player.resume()
+
+    assertEquals(State.PREPARING, players.single().state)
+
+    idle()
+
+    assertEquals(PlayerState.Playing(first), player.state.value)
+    assertEquals(State.STARTED, players.single().state)
+  }
+
+  @Test
+  fun pause_whenNothingPlaysDoesNothing() {
+    player.pause()
+
+    assertEquals(PlayerState.Idle, player.state.value)
+    assertEquals(emptyList<ShadowMediaPlayer>(), players)
+  }
+
+  @Test
+  fun pause_whenAlreadyPausedDoesNothing() {
+    player.play(first)
+    idle()
+    player.pause()
+
+    player.pause()
+
+    assertEquals(PlayerState.Paused(first), player.state.value)
+    assertEquals(State.PAUSED, players.single().state)
+  }
+
+  @Test
+  fun resume_whenNothingIsPausedDoesNothing() {
+    player.resume()
+    assertEquals(PlayerState.Idle, player.state.value)
+
+    player.play(first)
+    idle()
+    player.resume()
+
+    assertEquals(PlayerState.Playing(first), player.state.value)
+    assertEquals(State.STARTED, players.single().state)
+  }
+
+  @Test
+  fun stop_whilePausedGoesIdleAndFreesThePlayer() {
+    player.play(first)
+    idle()
+    player.pause()
+
+    player.stop()
+
+    assertEquals(PlayerState.Idle, player.state.value)
+    assertEquals(State.END, players.single().state)
+  }
+
+  @Test
+  fun play_afterStoppingAPausedNoteStartsAgainFromTheBeginning() {
+    player.play(first)
+    idle(Duration.ofMillis(2_000))
+    player.pause()
+    player.stop()
+
+    player.play(first)
+    idle()
+
+    assertEquals(PlayerState.Playing(first), player.state.value)
+    assertEquals(2, players.size)
+    assertEquals(0, mediaPlayers[1].currentPosition)
+  }
+
+  @Test
+  fun play_anotherNoteReplacesAPausedOne() {
+    player.play(first)
+    idle()
+    player.pause()
+
+    player.play(second)
+    idle()
+
+    assertEquals(PlayerState.Playing(second), player.state.value)
+    assertEquals(State.END, players[0].state)
+    assertEquals(State.STARTED, players[1].state)
+  }
+
+  @Test
+  fun pause_thenAPlayerErrorFailsTheNote() {
+    player.play(first)
+    idle()
+    player.pause()
+
+    players.single().invokeErrorListener(1, 0)
+
+    assertEquals(PlayerState.Failed(first), player.state.value)
+    assertEquals(State.END, players.single().state)
+  }
+
+  @Test
+  fun release_whilePausedStopsTheNote() {
+    player.play(first)
+    idle()
+    player.pause()
 
     player.release()
 
