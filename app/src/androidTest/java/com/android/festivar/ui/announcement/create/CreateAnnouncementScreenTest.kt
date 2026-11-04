@@ -150,8 +150,8 @@ class CreateAnnouncementScreenTest {
     composeTestRule.onNodeWithTag(Tags.DESCRIPTION_ERROR).assertDoesNotExist()
   }
 
-  // Breaks if the fields swap their values, a chip reports the wrong priority, or the button does
-  // not publish what the form shows.
+  // Breaks if the fields swap their values, a chip reports the wrong priority, the button does not
+  // publish what the form shows, or the inputs can still be edited once it is published.
   @Test
   fun publishingSavesTheFormAndReportsItOnce() {
     typeTitle("Stage B is closed")
@@ -170,6 +170,7 @@ class CreateAnnouncementScreenTest {
     assertEquals(AnnouncementPriority.URGENT, saved.priority)
     assertEquals(1, publishedCount)
     assertEquals(0, backCount)
+    inputs().forEach { it.assertIsNotEnabled() }
   }
 
   // Breaks if a message is mapped to the wrong field, or stays once the field is filled again.
