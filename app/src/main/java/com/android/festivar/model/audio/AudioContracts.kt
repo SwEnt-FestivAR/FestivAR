@@ -27,7 +27,8 @@ import kotlinx.coroutines.flow.StateFlow
  *
  * To remove it: call [Task.removeVoiceNote], save the returned [Task], then call
  * [AudioRepository.delete] with the old audio URL. To listen to it: call [VoicePlayer.play] with
- * the audio URL, and call [VoicePlayer.release] when the screen is closed.
+ * the audio URL, [VoicePlayer.pause] and [VoicePlayer.resume] to hold and continue it, and
+ * [VoicePlayer.release] when the screen is closed.
  */
 
 /**
@@ -127,6 +128,9 @@ sealed interface PlayerState {
   /** Playing the note at [audioUrl]. */
   data class Playing(val audioUrl: String) : PlayerState
 
+  /** The note at [audioUrl] is paused: [VoicePlayer.resume] continues it from where it stopped. */
+  data class Paused(val audioUrl: String) : PlayerState
+
   /** The note at [audioUrl] could not be played. */
   data class Failed(val audioUrl: String) : PlayerState
 }
@@ -139,7 +143,22 @@ interface VoicePlayer {
   /** Plays the note at [audioUrl], stopping any other one. */
   fun play(audioUrl: String)
 
-  /** Stops playing. Does nothing if nothing is playing. */
+  /**
+   * Pauses the note and keeps its position: the state becomes [PlayerState.Paused]. Does nothing
+   * unless a note is playing.
+   */
+  fun pause()
+
+  /**
+   * Continues a paused note from where it stopped, without loading it again: the state becomes
+   * [PlayerState.Playing]. Does nothing unless a note is paused.
+   */
+  fun resume()
+
+  /**
+   * Stops playing, whether the note is playing or paused. The position is lost: [play] starts the
+   * note again from the beginning. Does nothing if nothing is playing.
+   */
   fun stop()
 
   /** Frees the underlying player. The instance must not be used afterwards. */
