@@ -99,6 +99,8 @@ data class CreateEventUIState(
   }
 }
 
+private const val TAG = "CreateEventViewModel"
+
 /**
  * Holds the create event form, validates it and saves the event with the signed-in user as its
  * first member.
@@ -170,7 +172,7 @@ class CreateEventViewModel(
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
-        Log.e("CreateEventViewModel", "Saving the event failed", e)
+        Log.e(TAG, e.message ?: "Saving the event failed", e)
         _uiState.update {
           it.copy(isSaving = false, errorMsg = R.string.create_event_error_save_failed)
         }
@@ -179,13 +181,8 @@ class CreateEventViewModel(
   }
 
   private suspend fun save() {
-    val creator =
-        if (userId.isNotBlank()) {
-          usersRepository.getUser(userId)
-        } else {
-          Log.e("CreateEventViewModel", "User not signed in")
-          throw IllegalStateException("User not signed in")
-        }
+    check(userId.isNotBlank()) { "User not signed in" }
+    val creator = usersRepository.getUser(userId)
 
     val newEvent = _uiState.value.toEvent(eventsRepository.getNewUid(), listOf(creator))
     eventsRepository.addEvent(newEvent)
