@@ -199,7 +199,8 @@ class AuthRepositoryFirebaseNullUserTest {
   }
 
   @Test
-  fun signInWithGoogle_editsExistingProfileWhenUserExists() = runBlocking {
+  fun signInWithGoogle_anonymousUpgradeEditsExistingProfileWhenUserExists() = runBlocking {
+    val anonUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
     val firebaseUser =
         mockk<FirebaseUser> {
           every { uid } returns UID
@@ -208,7 +209,8 @@ class AuthRepositoryFirebaseNullUserTest {
     val authResult = mockk<AuthResult> { every { user } returns firebaseUser }
     val auth =
         mockk<FirebaseAuth> {
-          every { signInWithCredential(any()) } returns Tasks.forResult(authResult)
+          every { currentUser } returns anonUser
+          every { anonUser.linkWithCredential(any()) } returns Tasks.forResult(authResult)
         }
     val googleSignInHelper =
         mockk<GoogleSignInHelper> { every { getFirebaseCredential(any()) } returns mockk() }
@@ -299,7 +301,7 @@ class AuthRepositoryFirebaseNullUserTest {
       }
 
   @Test
-  fun signUpWithEmailAndPassword_anonymousUpgradeAddsProfileWhenUserDoesNotExist() = runBlocking {
+  fun signUpWithEmailAndPassword_anonymousUpgradeReturnsFailureWhenEditUserFails() = runBlocking {
     val anonUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
     val linkedUser =
         mockk<FirebaseUser> {
@@ -313,18 +315,18 @@ class AuthRepositoryFirebaseNullUserTest {
           every { anonUser.linkWithCredential(any()) } returns Tasks.forResult(authResult)
         }
 
+    val exception = IllegalStateException("Edit failed")
     val usersRepository =
         mockk<UsersRepository> {
-          coEvery { getUser(UID) } throws NoSuchElementException("Not found")
-          coEvery { addUser(any()) } just Runs
+          coEvery { getUser(UID) } returns User(uid = UID, email = "")
+          coEvery { editUser(UID, any()) } throws exception
         }
     val repository = AuthRepositoryFirebase(firebaseAuth = auth, usersRepository = usersRepository)
 
     val result = repository.signUpWithEmailAndPassword(EMAIL, PASSWORD)
 
-    assertTrue(result.isSuccess)
-    assertEquals(linkedUser, result.getOrNull())
-    coVerify { usersRepository.addUser(User(uid = UID, email = EMAIL)) }
+    assertTrue(result.isFailure)
+    assertSame(exception, result.exceptionOrNull())
   }
 
   @Test

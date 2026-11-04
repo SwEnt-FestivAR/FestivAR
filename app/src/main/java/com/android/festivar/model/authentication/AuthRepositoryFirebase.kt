@@ -31,8 +31,9 @@ class AuthRepositoryFirebase(
         val firebaseCredential = googleSignInHelper.getFirebaseCredential(credential)
         val currentUser = runCatching { firebaseAuth.currentUser }.getOrNull()
         // Upgrade anonymous account with Google if current user is anonymous
+        val isLink = currentUser != null && currentUser.isAnonymous
         val user =
-            if (currentUser != null && currentUser.isAnonymous) {
+            if (isLink) {
               currentUser.linkWithCredential(firebaseCredential).await().user
                   ?: throw IllegalStateException("Google account linking returned no user")
             } else {
@@ -40,6 +41,10 @@ class AuthRepositoryFirebase(
                   ?: throw IllegalStateException("Firebase sign-in returned no user")
             }
         ensureUserExistsOrSignOut(user)
+        if (isLink) {
+          val existing = usersRepository.getUser(user.uid)
+          usersRepository.editUser(user.uid, existing.copy(email = user.email.orEmpty()))
+        }
         Log.d(TAG, "Successfully signed in/linked user with Google: ${user.uid}")
         Result.success(user)
       } catch (e: CancellationException) {
@@ -130,9 +135,10 @@ class AuthRepositoryFirebase(
             }
 
         try {
+          ensureUserExistsOrSignOut(user)
           if (isAnonymousLink) {
-            // Ensure profile exists and update email in Firestore for upgraded user
-            ensureUserExistsOrSignOut(user)
+            val existing = usersRepository.getUser(user.uid)
+            usersRepository.editUser(user.uid, existing.copy(email = user.email.orEmpty()))
           } else {
             usersRepository.addUser(
                 User(
@@ -173,11 +179,7 @@ class AuthRepositoryFirebase(
    */
   private suspend fun ensureUserExists(firebaseUser: FirebaseUser) {
     try {
-      val existing = usersRepository.getUser(firebaseUser.uid)
-      val email = firebaseUser.email.orEmpty()
-      if (email.isNotBlank() && existing.email != email) {
-        usersRepository.editUser(firebaseUser.uid, existing.copy(email = email))
-      }
+      usersRepository.getUser(firebaseUser.uid)
     } catch (_: NoSuchElementException) {
       usersRepository.addUser(User(uid = firebaseUser.uid, email = firebaseUser.email.orEmpty()))
     } catch (e: Exception) {
