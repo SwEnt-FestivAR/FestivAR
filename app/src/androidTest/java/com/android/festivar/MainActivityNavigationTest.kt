@@ -598,7 +598,7 @@ class MainActivityNavigationTest {
 
   // Breaks if the details do not reload on resume, so a saved edit is not shown on return.
   @Test
-  fun editingTheTitleThenGoingBackShowsItOnTheDetails() {
+  fun savingTheTitleShowsItOnTheDetailsOnReturn() {
     openTheEditOfAnOwnedTaskFromItsDetails()
 
     composeTestRule
