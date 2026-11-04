@@ -284,15 +284,16 @@ fun CreateTaskContent(
   )
 }
 
-// A fixed zone and dates keep the previews the same on every machine.
+// A fixed zone and dates keep the previews the same on every machine. The day is far ahead, since
+// the form shows an error for an end in the past; 2037 has the weekdays of 2026.
 private val previewForm =
     CreateTaskUiState(
         title = "Run power to stage",
         description = "Extension reel is in the blue crate by the van.",
         location = "Stage, north corner",
-        startDate = LocalDate.of(2026, 10, 17),
+        startDate = LocalDate.of(2037, 10, 17),
         startTime = LocalTime.of(9, 0),
-        endDate = LocalDate.of(2026, 10, 17),
+        endDate = LocalDate.of(2037, 10, 17),
         endTime = LocalTime.of(11, 0),
         zone = ZoneOffset.UTC,
     )
