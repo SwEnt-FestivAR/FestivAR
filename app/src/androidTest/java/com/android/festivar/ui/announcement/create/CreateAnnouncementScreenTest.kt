@@ -262,13 +262,15 @@ class CreateAnnouncementScreenTest {
     composeTestRule.onNodeWithTag(Tags.DISCARD_DIALOG).assertDoesNotExist()
   }
 
-  // Breaks if the back arrow leaves an edited form, or if "Keep editing" leaves or loses the text.
+  // Breaks if the back arrow leaves an edited form, if the dialog asks with another title than this
+  // screen's, or if "Keep editing" leaves or loses the text.
   @Test
   fun backFromAnEditedFormAsksAndKeepEditingStays() {
     typeTitle("Stage B")
 
     composeTestRule.onNodeWithTag(Tags.BACK_BUTTON).performClick()
     composeTestRule.onNodeWithTag(Tags.DISCARD_DIALOG).assertIsDisplayed()
+    composeTestRule.onNodeWithText("Discard this announcement?").assertIsDisplayed()
     assertEquals(0, backCount)
 
     composeTestRule.onNodeWithTag(Tags.KEEP_EDITING_BUTTON).performClick()

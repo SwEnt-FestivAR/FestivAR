@@ -55,12 +55,21 @@ class AnnouncementNavGraphTest {
               )
           )
       )
+  private val signedInUser = mockk<FirebaseUser> { every { uid } returns USER_ID }
   private lateinit var navController: NavHostController
 
   @Before
   fun setUp() {
     EventsRepositoryProvider.repository = repository
-    val user = mockk<FirebaseUser> { every { uid } returns USER_ID }
+  }
+
+  @After
+  fun tearDown() {
+    EventsRepositoryProvider.reset()
+  }
+
+  /** Opens the route as [user]; null means that nobody is signed in. */
+  private fun openTheRouteAs(user: FirebaseUser?) {
     composeTestRule.setContent {
       navController = rememberNavController()
       NavHost(navController = navController, startDestination = PREVIOUS_SCREEN) {
@@ -74,9 +83,9 @@ class AnnouncementNavGraphTest {
     composeTestRule.onNodeWithTag(Tags.TITLE).assertIsDisplayed()
   }
 
-  @After
-  fun tearDown() {
-    EventsRepositoryProvider.reset()
+  private fun fillTheForm() {
+    composeTestRule.onNodeWithTag(Tags.TITLE_FIELD).performTextInput("Stage B is closed")
+    composeTestRule.onNodeWithTag(Tags.DESCRIPTION_FIELD).performTextInput("Strong wind.")
   }
 
   /** Fails unless the route was popped: a navigate() to the previous screen would keep an entry. */
@@ -92,8 +101,8 @@ class AnnouncementNavGraphTest {
   // publishing does not pop the route, for example by navigating to the previous screen instead.
   @Test
   fun publishingSavesInTheEventOfTheRouteAsTheUserAndGoesBack() {
-    composeTestRule.onNodeWithTag(Tags.TITLE_FIELD).performTextInput("Stage B is closed")
-    composeTestRule.onNodeWithTag(Tags.DESCRIPTION_FIELD).performTextInput("Strong wind.")
+    openTheRouteAs(signedInUser)
+    fillTheForm()
     composeTestRule.onNodeWithTag(Tags.PUBLISH_BUTTON).performClick()
 
     assertThePreviousScreenIsAloneOnTheBackStack()
@@ -102,10 +111,25 @@ class AnnouncementNavGraphTest {
     assertEquals(USER_ID, saved.authorId)
   }
 
+  // Breaks if the route stops treating a missing user as a blank author: the announcement would
+  // then be saved without an author, or the screen would leave as if it had been published.
+  @Test
+  fun publishingWhileSignedOutShowsTheErrorAndStaysWithoutSaving() {
+    openTheRouteAs(null)
+    fillTheForm()
+    composeTestRule.onNodeWithTag(Tags.PUBLISH_BUTTON).performClick()
+
+    composeTestRule.onNodeWithTag(Tags.SAVE_ERROR).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(Tags.TITLE).assertIsDisplayed()
+    val announcements = runBlocking { repository.getEvent(EVENT_ID).announcements }
+    assertEquals(0, announcements.size)
+  }
+
   // Breaks if the back arrow of the screen is not connected to the back stack, or if it does not
   // pop the route, for example by navigating to the previous screen instead.
   @Test
   fun backGoesToThePreviousScreenWithoutSaving() {
+    openTheRouteAs(signedInUser)
     composeTestRule.onNodeWithTag(Tags.BACK_BUTTON).performClick()
 
     assertThePreviousScreenIsAloneOnTheBackStack()
@@ -117,6 +141,7 @@ class AnnouncementNavGraphTest {
   // back stack here and leaves a blank screen.
   @Test
   fun twoTapsOnBackBeforeTheTransitionEndsLeaveOnlyOnce() {
+    openTheRouteAs(signedInUser)
     composeTestRule.mainClock.autoAdvance = false
     composeTestRule.onNodeWithTag(Tags.BACK_BUTTON).performClick()
     composeTestRule.mainClock.advanceTimeBy(TAP_GAP_MILLIS)
@@ -131,8 +156,8 @@ class AnnouncementNavGraphTest {
   // that tap saves the announcement a second time.
   @Test
   fun aTapOnBackJustAfterPublishingLeavesOnlyOnce() {
-    composeTestRule.onNodeWithTag(Tags.TITLE_FIELD).performTextInput("Stage B is closed")
-    composeTestRule.onNodeWithTag(Tags.DESCRIPTION_FIELD).performTextInput("Strong wind.")
+    openTheRouteAs(signedInUser)
+    fillTheForm()
 
     composeTestRule.mainClock.autoAdvance = false
     composeTestRule.onNodeWithTag(Tags.PUBLISH_BUTTON).performClick()
