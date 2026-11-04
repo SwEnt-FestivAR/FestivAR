@@ -1,5 +1,6 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored by Gemini
 package com.android.festivar.model.authentication
 
 import android.os.Bundle
@@ -381,6 +382,151 @@ class AuthRepositoryFirebaseNullUserTest {
       val usersRepository = mockk<UsersRepository> { coEvery { getUser(UID) } throws cancellation }
       val repository =
           AuthRepositoryFirebase(firebaseAuth = auth, usersRepository = usersRepository)
+
+      Assert.assertThrows(CancellationException::class.java) {
+        runBlocking { repository.signUpWithEmailAndPassword(EMAIL, PASSWORD) }
+      }
+    }
+  }
+
+  @Test
+  fun signOut_propagatesCancellationException() {
+    runBlocking {
+      val auth =
+          mockk<FirebaseAuth> { every { signOut() } throws CancellationException("Cancelled") }
+      val repository = newRepository(auth)
+      Assert.assertThrows(CancellationException::class.java) {
+        runBlocking { repository.signOut() }
+      }
+    }
+  }
+
+  @Test
+  fun forgotPassword_propagatesCancellationException() {
+    runBlocking {
+      val auth =
+          mockk<FirebaseAuth> {
+            every { sendPasswordResetEmail(EMAIL) } returns
+                Tasks.forException(CancellationException("Cancelled"))
+          }
+      val repository = newRepository(auth)
+      Assert.assertThrows(CancellationException::class.java) {
+        runBlocking { repository.forgotPassword(EMAIL) }
+      }
+    }
+  }
+
+  @Test
+  fun signInAnonymous_propagatesCancellationException() {
+    runBlocking {
+      val auth =
+          mockk<FirebaseAuth> {
+            every { signInAnonymously() } returns
+                Tasks.forException(CancellationException("Cancelled"))
+          }
+      val repository = newRepository(auth)
+      Assert.assertThrows(CancellationException::class.java) {
+        runBlocking { repository.signInAnonymous() }
+      }
+    }
+  }
+
+  @Test
+  fun signInWithEmailAndPassword_propagatesCancellationException() {
+    runBlocking {
+      val auth =
+          mockk<FirebaseAuth> {
+            every { signInWithEmailAndPassword(EMAIL, PASSWORD) } returns
+                Tasks.forException(CancellationException("Cancelled"))
+          }
+      val repository = newRepository(auth)
+      Assert.assertThrows(CancellationException::class.java) {
+        runBlocking { repository.signInWithEmailAndPassword(EMAIL, PASSWORD) }
+      }
+    }
+  }
+
+  @Test
+  fun signInWithGoogle_anonymousUpgradeReturnsFailureWhenLinkingFails() = runBlocking {
+    val anonUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+    val exception = IllegalStateException("Linking failed")
+    val auth =
+        mockk<FirebaseAuth> {
+          every { currentUser } returns anonUser
+          every { anonUser.linkWithCredential(any()) } returns Tasks.forException(exception)
+        }
+    val googleSignInHelper =
+        mockk<GoogleSignInHelper> { every { getFirebaseCredential(any()) } returns mockk() }
+    val repository =
+        AuthRepositoryFirebase(
+            googleSignInHelper = googleSignInHelper,
+            firebaseAuth = auth,
+            usersRepository = mockk(),
+        )
+    val credential =
+        CustomCredential(GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL, Bundle())
+
+    val result = repository.signInWithGoogle(credential)
+
+    assertTrue(result.isFailure)
+    assertSame(exception, result.exceptionOrNull())
+  }
+
+  @Test
+  fun signUpWithEmailAndPassword_anonymousUpgradeReturnsFailureWhenLinkingFails() = runBlocking {
+    val anonUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+    val exception = IllegalStateException("Linking failed")
+    val auth =
+        mockk<FirebaseAuth> {
+          every { currentUser } returns anonUser
+          every { anonUser.linkWithCredential(any()) } returns Tasks.forException(exception)
+        }
+    val repository = AuthRepositoryFirebase(firebaseAuth = auth, usersRepository = mockk())
+
+    val result = repository.signUpWithEmailAndPassword(EMAIL, PASSWORD)
+
+    assertTrue(result.isFailure)
+    assertSame(exception, result.exceptionOrNull())
+  }
+
+  @Test
+  fun signInWithGoogle_anonymousUpgradePropagatesCancellationExceptionDuringLinking() {
+    runBlocking {
+      val anonUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+      val auth =
+          mockk<FirebaseAuth> {
+            every { currentUser } returns anonUser
+            every { anonUser.linkWithCredential(any()) } returns
+                Tasks.forException(CancellationException("Cancelled"))
+          }
+      val googleSignInHelper =
+          mockk<GoogleSignInHelper> { every { getFirebaseCredential(any()) } returns mockk() }
+      val repository =
+          AuthRepositoryFirebase(
+              googleSignInHelper = googleSignInHelper,
+              firebaseAuth = auth,
+              usersRepository = mockk(),
+          )
+      val credential =
+          CustomCredential(GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL, Bundle())
+
+      Assert.assertThrows(CancellationException::class.java) {
+        runBlocking { repository.signInWithGoogle(credential) }
+      }
+    }
+  }
+
+  @Test
+  fun signUpWithEmailAndPassword_anonymousUpgradePropagatesCancellationExceptionDuringLinking() {
+    runBlocking {
+      val anonUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+      val auth =
+          mockk<FirebaseAuth> {
+            every { currentUser } returns anonUser
+            every { anonUser.linkWithCredential(any()) } returns
+                Tasks.forException(CancellationException("Cancelled"))
+          }
+      val repository = AuthRepositoryFirebase(firebaseAuth = auth, usersRepository = mockk())
 
       Assert.assertThrows(CancellationException::class.java) {
         runBlocking { repository.signUpWithEmailAndPassword(EMAIL, PASSWORD) }
