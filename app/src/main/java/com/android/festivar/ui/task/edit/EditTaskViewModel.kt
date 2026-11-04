@@ -155,10 +155,6 @@ private constructor(
       zone: ZoneId = ZoneId.systemDefault(),
   ) : this(taskId, currentUserId, repository, saveTimeoutMs, zone, TaskFormEditing())
 
-  init {
-    require(taskId.isNotBlank()) { "taskId must not be blank" }
-  }
-
   private val _uiState = MutableStateFlow(EditTaskUiState(form = CreateTaskUiState(zone = zone)))
 
   /** The state of the form, read by the screen. */
@@ -202,6 +198,7 @@ private constructor(
   }
 
   init {
+    require(taskId.isNotBlank()) { "taskId must not be blank" }
     // The form setters come from TaskFormEditing. Pickers follow the same guard as the fields.
     formEditing.applyEdit = ::edit
     formEditing.current = { _uiState.value.form }
