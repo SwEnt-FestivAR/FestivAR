@@ -36,6 +36,8 @@ class CreateTaskViewModelTest {
   private val repository = TasksRepositoryLocal()
   private val zone = ZoneId.of("Europe/Zurich")
   private val viewModel = CreateTaskViewModel("event-1", { "owner-1" }, repository, zone = zone)
+  // Far in the future on purpose: endDateError() rejects an end in the past (OUTDATED), so a
+  // date close to today would make these tests fail once that day has passed.
   private val day = LocalDate.of(2099, 10, 17)
 
   private fun savedTasks(): List<Task> = runBlocking { repository.getAllTasks("event-1") }
@@ -607,6 +609,8 @@ class CreateTaskViewModelTest {
 
 class CreateTaskUiStateTest {
   private val zone = ZoneId.of("Europe/Zurich")
+  // Far in the future on purpose: endDateError() rejects an end in the past (OUTDATED), so a
+  // date close to today would make these tests fail once that day has passed.
   private val day = LocalDate.of(2099, 10, 17)
   private val valid = CreateTaskUiState(title = "Run power to stage", zone = zone)
 
