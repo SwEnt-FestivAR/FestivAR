@@ -406,7 +406,7 @@ interface DataRepository {
     // Compute the new versions that have to be stored.
     val newTask = task.removeAssignee(user)
     val newUser = user.removeAssignedTask(taskId)
-    val newEvent = event.removeTask(taskId).addTask(newTask)
+    val newEvent = event.copy(tasks = event.tasks.map { if (it.taskId == taskId) newTask else it })
 
     // Store the changes.
     val undoProcess = ArrayDeque<suspend () -> Unit>()
