@@ -12,6 +12,7 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.AuthCredential
 import com.google.firebase.auth.AuthResult
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseUser
 import io.mockk.Runs
 import io.mockk.coEvery
@@ -181,6 +182,87 @@ class AuthRepositoryFirebaseNullUserTest {
 
     assertTrue(result.isFailure)
     assertSame(exception, result.exceptionOrNull())
+  }
+
+  @Test
+  fun forgotPassword_returnsSuccessForInvalidUserException() = runBlocking {
+    val auth = mockk<FirebaseAuth>()
+    val exception = FirebaseAuthInvalidUserException("ERROR_USER_NOT_FOUND", "User not found")
+    every { auth.sendPasswordResetEmail(EMAIL) } returns Tasks.forException(exception)
+    val repository = newRepository(auth)
+
+    val result = repository.forgotPassword(EMAIL)
+
+    assertTrue(result.isSuccess)
+  }
+
+  @Test
+  fun signInWithGoogle_editsExistingProfileWhenUserExists() = runBlocking {
+    val firebaseUser =
+        mockk<FirebaseUser> {
+          every { uid } returns UID
+          every { email } returns EMAIL
+        }
+    val authResult = mockk<AuthResult> { every { user } returns firebaseUser }
+    val auth =
+        mockk<FirebaseAuth> {
+          every { signInWithCredential(any()) } returns Tasks.forResult(authResult)
+        }
+    val googleSignInHelper =
+        mockk<GoogleSignInHelper> { every { getFirebaseCredential(any()) } returns mockk() }
+    val usersRepository =
+        mockk<UsersRepository> {
+          coEvery { getUser(UID) } returns User(uid = UID, email = "")
+          coEvery { editUser(UID, any()) } just Runs
+        }
+    val repository =
+        AuthRepositoryFirebase(
+            googleSignInHelper = googleSignInHelper,
+            firebaseAuth = auth,
+            usersRepository = usersRepository,
+        )
+    val credential =
+        CustomCredential(GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL, Bundle())
+
+    val result = repository.signInWithGoogle(credential)
+
+    assertTrue(result.isSuccess)
+    assertEquals(firebaseUser, result.getOrNull())
+    coVerify { usersRepository.editUser(UID, User(uid = UID, email = EMAIL)) }
+  }
+
+  @Test
+  fun signInWithGoogle_addsProfileWhenUserDoesNotExist() = runBlocking {
+    val firebaseUser =
+        mockk<FirebaseUser> {
+          every { uid } returns UID
+          every { email } returns EMAIL
+        }
+    val authResult = mockk<AuthResult> { every { user } returns firebaseUser }
+    val auth =
+        mockk<FirebaseAuth> {
+          every { signInWithCredential(any()) } returns Tasks.forResult(authResult)
+        }
+    val googleSignInHelper =
+        mockk<GoogleSignInHelper> { every { getFirebaseCredential(any()) } returns mockk() }
+    val usersRepository =
+        mockk<UsersRepository> {
+          coEvery { getUser(UID) } throws NoSuchElementException("Not found")
+          coEvery { addUser(any()) } just Runs
+        }
+    val repository =
+        AuthRepositoryFirebase(
+            googleSignInHelper = googleSignInHelper,
+            firebaseAuth = auth,
+            usersRepository = usersRepository,
+        )
+    val credential =
+        CustomCredential(GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL, Bundle())
+
+    val result = repository.signInWithGoogle(credential)
+
+    assertTrue(result.isSuccess)
+    assertEquals(firebaseUser, result.getOrNull())
   }
 
   @Test
