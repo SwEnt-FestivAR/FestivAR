@@ -301,6 +301,18 @@ class DataRepositoryLocalTest {
   }
 
   @Test
+  fun deleteTask_ownerNoLongerListingIt_deletesItAnyway() = runTest {
+    // alice, the owner of t1, loses it from her tasks when she quits e1.
+    dataRepository.quitEvent("e1", "alice")
+
+    dataRepository.deleteTask("t1")
+
+    assertTrue(taskIds("e1").isEmpty())
+    assertUser("alice", emptyList(), emptyList())
+    assertUser("bob", listOf("e1", "e2"), listOf("t2"))
+  }
+
+  @Test
   fun deleteTask_unknownTask_throwsAndChangesNothing() = runTest {
     assertFailsWithoutChanges(NoSuchElementException::class.java) {
       dataRepository.deleteTask("unknown")
@@ -308,7 +320,11 @@ class DataRepositoryLocalTest {
   }
 
   @Test
-  fun deleteTask_failingWrite_isUndone() = runTest { assertRollsBack("bob") { deleteTask("t1") } }
+  fun deleteTask_failingWrite_isUndone() = runTest {
+    // The assignees are edited before the owner: the owner's write fails last.
+    assertRollsBack("bob") { deleteTask("t1") }
+    assertRollsBack("alice") { deleteTask("t1") }
+  }
 
   // ********************************* createEvent ********************************* //
 
@@ -442,6 +458,16 @@ class DataRepositoryLocalTest {
   }
 
   @Test
+  fun quitEvent_byATaskOwner_keepsTheOwnerButRemovesTheTaskFromTheirTasks() = runTest {
+    dataRepository.quitEvent("e1", "alice")
+
+    assertEquals(listOf("bob"), memberIds("e1"))
+    assertEquals(listOf("t1"), taskIds("e1"))
+    assertEquals("alice", tasksRepository.getTask("t1").ownerId)
+    assertUser("alice", emptyList(), emptyList())
+  }
+
+  @Test
   fun quitEvent_notMember_throwsAndChangesNothing() = runTest {
     assertFailsWithoutChanges(IllegalArgumentException::class.java) {
       dataRepository.quitEvent("e1", "carla")
@@ -483,6 +509,27 @@ class DataRepositoryLocalTest {
   }
 
   @Test
+  fun joinTask_byItsOwnerAfterQuittingIt_addsTheTaskBackToTheOwner() = runTest {
+    dataRepository.joinTask("t1", "alice")
+    dataRepository.quitTask("t1", "alice")
+    assertUser("alice", listOf("e1"), emptyList())
+
+    dataRepository.joinTask("t1", "alice")
+
+    assertAssignees("t1", listOf("bob", "alice"))
+    assertUser("alice", listOf("e1"), listOf("t1"))
+  }
+
+  @Test
+  fun joinTask_keepsThePositionOfTheTaskInItsEvent() = runTest {
+    dataRepository.addTask(t3)
+
+    dataRepository.joinTask("t1", "carla")
+
+    assertEquals(listOf("t1", "t3"), taskIds("e1"))
+  }
+
+  @Test
   fun joinTask_fullTask_throwsAndChangesNothing() = runTest {
     assertFailsWithoutChanges(IllegalStateException::class.java) {
       dataRepository.joinTask("t2", "carla")
@@ -520,6 +567,15 @@ class DataRepositoryLocalTest {
 
     assertAssignees("t1", emptyList())
     assertUser("bob", listOf("e1", "e2"), listOf("t2"))
+  }
+
+  @Test
+  fun quitTask_keepsThePositionOfTheTaskInItsEvent() = runTest {
+    dataRepository.addTask(t3)
+
+    dataRepository.quitTask("t1", "bob")
+
+    assertEquals(listOf("t1", "t3"), taskIds("e1"))
   }
 
   @Test

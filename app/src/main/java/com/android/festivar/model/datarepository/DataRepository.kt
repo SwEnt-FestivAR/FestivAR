@@ -393,7 +393,7 @@ interface DataRepository {
    * @param userId The [User.uid] of the user quitting it.
    * @throws NoSuchElementException If the task, its event or the user does not exist.
    * @throws IllegalArgumentException If the user is not assigned to the task or does not list it in
-   *   [User.tasksAssigned], or if the event does not contain the task.
+   *   [User.tasksAssigned].
    * @throws DataInconsistencyException If a write failed and could not be fully undone.
    */
   suspend fun quitTask(taskId: String, userId: String) {
