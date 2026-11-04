@@ -111,7 +111,8 @@ class TaskDetailsViewModel(
 
   /**
    * Loads the task; on failure the error is set and the version already shown, if any, stays shown.
-   * Does nothing while an action is saving or another load is running.
+   * A successful load clears a load error but keeps a save error. Does nothing while an action is
+   * saving or another load is running.
    */
   fun load() {
     if (_uiState.value.isUpdating || loadJob?.isActive == true) return
@@ -119,7 +120,15 @@ class TaskDetailsViewModel(
       _uiState.update { it.copy(isLoading = true) }
       try {
         val task = repository.getTask(taskId)
-        _uiState.update { it.copy(task = task, isLoading = false, errorMsg = null) }
+        // Only a load error is cleared: a save error stays until the user dismisses it, even
+        // when the task reloads on resume.
+        _uiState.update {
+          it.copy(
+              task = task,
+              isLoading = false,
+              errorMsg = it.errorMsg.takeUnless { e -> e == R.string.task_details_load_failed },
+          )
+        }
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {

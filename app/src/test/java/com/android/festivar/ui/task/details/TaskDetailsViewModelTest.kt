@@ -205,6 +205,19 @@ class TaskDetailsViewModelTest {
     assertEquals(TaskStatus.OPEN, vm.uiState.value.status)
   }
 
+  // Breaks if a reload on resume clears a save error the user has not dismissed yet.
+  @Test
+  fun reloadAfterAFailedSave_keepsTheSaveError() {
+    val vm = viewModel(task())
+    repository.editFailure = IOException("no network")
+    vm.take()
+
+    vm.load()
+
+    assertEquals(R.string.task_details_save_failed, vm.uiState.value.errorMsg)
+    assertEquals(TaskStatus.OPEN, vm.uiState.value.status)
+  }
+
   @Test
   fun failedReload_keepsTheTaskShownAndSetsTheError() {
     val vm = viewModel(task())
