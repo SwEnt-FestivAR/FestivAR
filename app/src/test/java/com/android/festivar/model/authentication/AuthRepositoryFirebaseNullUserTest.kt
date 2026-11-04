@@ -534,6 +534,65 @@ class AuthRepositoryFirebaseNullUserTest {
     }
   }
 
+  @Test
+  fun signInWithGoogle_propagatesCancellationException() {
+    runBlocking {
+      val firebaseUser =
+          mockk<FirebaseUser> {
+            every { uid } returns UID
+            every { email } returns EMAIL
+          }
+      val authResult = mockk<AuthResult> { every { user } returns firebaseUser }
+      val auth =
+          mockk<FirebaseAuth> {
+            every { signInWithCredential(any()) } returns Tasks.forResult(authResult)
+          }
+      val googleSignInHelper =
+          mockk<GoogleSignInHelper> { every { getFirebaseCredential(any()) } returns mockk() }
+      val cancellation = CancellationException("Cancelled")
+      val usersRepository = mockk<UsersRepository> { coEvery { getUser(UID) } throws cancellation }
+      val repository =
+          AuthRepositoryFirebase(
+              googleSignInHelper = googleSignInHelper,
+              firebaseAuth = auth,
+              usersRepository = usersRepository,
+          )
+      val credential =
+          CustomCredential(GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL, Bundle())
+
+      Assert.assertThrows(CancellationException::class.java) {
+        runBlocking { repository.signInWithGoogle(credential) }
+      }
+    }
+  }
+
+  @Test
+  fun signUpWithEmailAndPassword_anonymousUpgradePropagatesCancellationException() {
+    runBlocking {
+      val anonUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+      val linkedUser =
+          mockk<FirebaseUser> {
+            every { uid } returns UID
+            every { email } returns EMAIL
+          }
+      val authResult = mockk<AuthResult> { every { user } returns linkedUser }
+      val auth =
+          mockk<FirebaseAuth> {
+            every { currentUser } returns anonUser
+            every { anonUser.linkWithCredential(any()) } returns Tasks.forResult(authResult)
+          }
+
+      val cancellation = CancellationException("Cancelled")
+      val usersRepository = mockk<UsersRepository> { coEvery { getUser(UID) } throws cancellation }
+      val repository =
+          AuthRepositoryFirebase(firebaseAuth = auth, usersRepository = usersRepository)
+
+      Assert.assertThrows(CancellationException::class.java) {
+        runBlocking { repository.signUpWithEmailAndPassword(EMAIL, PASSWORD) }
+      }
+    }
+  }
+
   // A local users repository keeps the default Firestore one, unavailable here, from being built.
   private fun newRepository(
       auth: FirebaseAuth,
