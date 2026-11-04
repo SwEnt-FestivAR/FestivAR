@@ -50,7 +50,6 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, authRepository:
   composable(route = AppScreens.CreateEvent.name) {
     val navigator = CreateEventNavigator(navController)
     val firebaseUser = authRepository.currentUser
-    val userId = runCatching { firebaseUser?.uid }.getOrNull() ?: ""
     if (firebaseUser == null) {
       LaunchedEffect(Unit) { navigator.onSignedOut() }
     } else {
@@ -60,7 +59,7 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, authRepository:
                 CreateEventViewModel(
                     eventsRepository = EventsRepositoryProvider.repository,
                     usersRepository = UsersRepositoryProvider.repository,
-                    userId = userId,
+                    userId = firebaseUser.uid,
                 )
               },
           onBack = navigator.onBack,
