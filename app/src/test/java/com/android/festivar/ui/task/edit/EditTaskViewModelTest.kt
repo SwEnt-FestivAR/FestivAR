@@ -588,7 +588,7 @@ class EditTaskViewModelTest {
     }
   }
 
-  // Breaks if the edit ViewModel routes the picker around its guard.
+  // Breaks if the guard lets a picker open before load or after save, or blocks closing one.
   @Test
   fun showPickerDoesNothingBeforeLoadOrAfterSave() {
     viewModel.showPicker(DateTimeField.START_DATE)
@@ -596,8 +596,12 @@ class EditTaskViewModelTest {
 
     viewModel.load()
     viewModel.updateTitle("Run power to the main stage")
+    viewModel.showPicker(DateTimeField.START_DATE)
     viewModel.save()
     assertTrue(viewModel.uiState.value.isSaved)
+
+    viewModel.showPicker(null)
+    assertNull(viewModel.uiState.value.form.openPicker)
 
     viewModel.showPicker(DateTimeField.START_DATE)
     assertNull(viewModel.uiState.value.form.openPicker)

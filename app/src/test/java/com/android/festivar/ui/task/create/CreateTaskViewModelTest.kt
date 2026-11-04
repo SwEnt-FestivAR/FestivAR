@@ -604,17 +604,18 @@ class CreateTaskViewModelTest {
     assertEquals(1, savedTasks().size)
   }
 
-  // Breaks if the create ViewModel routes the picker through its created guard.
+  // Breaks if the created guard blocks closing a picker, or lets one open.
   @Test
-  fun showPicker_afterTheTaskIsCreated_stillOpensAndCloses() {
+  fun showPicker_afterTheTaskIsCreated_cannotOpenButCanClose() {
     viewModel.updateTitle("Run power to stage")
+    viewModel.showPicker(DateTimeField.START_DATE)
     viewModel.createTask()
     assertTrue(viewModel.uiState.value.isCreated)
 
-    viewModel.showPicker(DateTimeField.START_DATE)
-    assertEquals(DateTimeField.START_DATE, viewModel.uiState.value.openPicker)
-
     viewModel.showPicker(null)
+    assertNull(viewModel.uiState.value.openPicker)
+
+    viewModel.showPicker(DateTimeField.START_DATE)
     assertNull(viewModel.uiState.value.openPicker)
   }
 }

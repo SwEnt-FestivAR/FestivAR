@@ -10,9 +10,9 @@ import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryProvider
 import com.android.festivar.ui.components.FieldError
+import com.android.festivar.ui.task.TaskFormEditing
+import com.android.festivar.ui.task.TaskFormEditor
 import com.android.festivar.ui.task.create.CreateTaskUiState
-import com.android.festivar.ui.task.create.TaskFormEditing
-import com.android.festivar.ui.task.create.TaskFormEditor
 import java.time.ZoneId
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -194,15 +194,17 @@ private constructor(
     }
   }
 
-  // Changes are ignored while no task is loaded and once the edit is saved.
+  // Changes are ignored while no task is loaded and once the edit is saved, except closing the
+  // picker, so that one opened during a slow save does not stay open.
   private fun edit(change: (CreateTaskUiState) -> CreateTaskUiState) = _uiState.update {
-    if (it.task == null || it.isSaved) it else it.copy(form = change(it.form))
+    if (it.task != null && !it.isSaved) return@update it.copy(form = change(it.form))
+    val closed = it.form.copy(openPicker = null)
+    if (change(it.form) == closed) it.copy(form = closed) else it
   }
 
   init {
     // The form setters come from TaskFormEditing. Pickers follow the same guard as the fields.
     formEditing.applyEdit = ::edit
-    formEditing.applyPicker = ::edit
     formEditing.current = { _uiState.value.form }
   }
 
