@@ -36,7 +36,7 @@ class CreateTaskViewModelTest {
   private val repository = TasksRepositoryLocal()
   private val zone = ZoneId.of("Europe/Zurich")
   private val viewModel = CreateTaskViewModel("event-1", { "owner-1" }, repository, zone = zone)
-  private val day = LocalDate.of(2026, 10, 17)
+  private val day = LocalDate.of(2099, 10, 17)
 
   private fun savedTasks(): List<Task> = runBlocking { repository.getAllTasks("event-1") }
 
@@ -54,8 +54,8 @@ class CreateTaskViewModelTest {
     assertEquals("Run power to stage", state.title)
     assertEquals("Blue crate", state.description)
     assertEquals("Stage", state.location)
-    assertEquals(ZonedDateTime.of(2026, 10, 17, 9, 30, 0, 0, zone), state.startDateTime)
-    assertEquals(ZonedDateTime.of(2026, 10, 17, 9, 50, 0, 0, zone), state.endDateTime)
+    assertEquals(ZonedDateTime.of(2099, 10, 17, 9, 30, 0, 0, zone), state.startDateTime)
+    assertEquals(ZonedDateTime.of(2099, 10, 17, 9, 50, 0, 0, zone), state.endDateTime)
   }
 
   @Test
@@ -607,7 +607,7 @@ class CreateTaskViewModelTest {
 
 class CreateTaskUiStateTest {
   private val zone = ZoneId.of("Europe/Zurich")
-  private val day = LocalDate.of(2026, 10, 17)
+  private val day = LocalDate.of(2099, 10, 17)
   private val valid = CreateTaskUiState(title = "Run power to stage", zone = zone)
 
   @Test
@@ -636,7 +636,7 @@ class CreateTaskUiStateTest {
   @Test
   fun dateWithoutTime_startsAtMidnight() {
     assertEquals(
-        ZonedDateTime.of(2026, 10, 17, 0, 0, 0, 0, zone),
+        ZonedDateTime.of(2099, 10, 17, 0, 0, 0, 0, zone),
         valid.copy(startDate = day).startDateTime,
     )
   }
@@ -670,7 +670,7 @@ class CreateTaskUiStateTest {
   }
 
   @Test
-  fun endEqualToStart_isValid() {
+  fun endEqualToStart_isAnError() {
     val state =
         valid.copy(
             startDate = day,
@@ -678,7 +678,14 @@ class CreateTaskUiStateTest {
             endDate = day,
             endTime = LocalTime.of(9, 30),
         )
-    assertNull(state.endDateError)
+    assertEquals(FieldError.END_BEFORE_START, state.endDateError)
+  }
+
+  @Test
+  fun endInThePast_isAnError() {
+    val state = valid.copy(endDate = LocalDate.of(2000, 1, 1))
+    assertEquals(FieldError.OUTDATED, state.endDateError)
+    assertFalse(state.canCreate)
   }
 
   // An end date without a time covers that whole day, so picking the start day as the end date
@@ -693,7 +700,7 @@ class CreateTaskUiStateTest {
   @Test
   fun endDateWithoutTime_endsAtTheLastMinuteOfTheDay() {
     assertEquals(
-        ZonedDateTime.of(2026, 10, 17, 23, 59, 0, 0, zone),
+        ZonedDateTime.of(2099, 10, 17, 23, 59, 0, 0, zone),
         valid.copy(endDate = day).endDateTime,
     )
   }
@@ -709,8 +716,8 @@ class CreateTaskUiStateTest {
   @Test
   fun toTask_withDatesOnly_coversTheWholeDay() {
     val task = valid.copy(startDate = day, endDate = day).toTask("t1", "e1", "owner-1")
-    assertEquals(ZonedDateTime.of(2026, 10, 17, 0, 0, 0, 0, zone), task.startTime)
-    assertEquals(ZonedDateTime.of(2026, 10, 17, 23, 59, 0, 0, zone), task.endTime)
+    assertEquals(ZonedDateTime.of(2099, 10, 17, 0, 0, 0, 0, zone), task.startTime)
+    assertEquals(ZonedDateTime.of(2099, 10, 17, 23, 59, 0, 0, zone), task.endTime)
   }
 
   @Test
@@ -755,8 +762,8 @@ class CreateTaskUiStateTest {
     assertEquals("Run power to stage", task.title)
     assertEquals("Extension reel is in the blue crate.", task.description)
     assertEquals("Stage, north corner", task.location)
-    assertEquals(ZonedDateTime.of(2026, 10, 17, 9, 30, 0, 0, zone), task.startTime)
-    assertEquals(ZonedDateTime.of(2026, 10, 17, 9, 50, 0, 0, zone), task.endTime)
+    assertEquals(ZonedDateTime.of(2099, 10, 17, 9, 30, 0, 0, zone), task.startTime)
+    assertEquals(ZonedDateTime.of(2099, 10, 17, 9, 50, 0, 0, zone), task.endTime)
   }
 
   @Test

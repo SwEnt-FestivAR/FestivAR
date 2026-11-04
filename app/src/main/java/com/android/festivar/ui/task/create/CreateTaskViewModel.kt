@@ -12,7 +12,10 @@ import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryProvider
 import com.android.festivar.ui.components.DateTimeField
+import com.android.festivar.ui.components.DateTimeRange
 import com.android.festivar.ui.components.FieldError
+import com.android.festivar.ui.components.endDateError
+import com.android.festivar.ui.components.startDateError
 import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalTime
@@ -72,22 +75,13 @@ data class CreateTaskUiState(
   val titleError: FieldError?
     get() = if (titleEdited && title.isBlank()) FieldError.EMPTY_TITLE else null
 
-  /** The error shown under the start date, or `null`. */
+  /** The error shown under the start date, or `null`. See [startDateError]. */
   val startDateError: FieldError?
-    get() = if (startTime != null && startDate == null) FieldError.MISSING_DATE else null
+    get() = startDateError(startDate, startTime)
 
-  /** The error shown under the end date, or `null`. */
+  /** The error shown under the end date, or `null`. See [endDateError]. */
   val endDateError: FieldError?
-    get() {
-      if (endTime != null && endDate == null) return FieldError.MISSING_DATE
-      val start = startDateTime
-      val end = endDateTime
-      return if (start != null && end != null && end.isBefore(start)) {
-        FieldError.END_BEFORE_START
-      } else {
-        null
-      }
-    }
+    get() = endDateError(DateTimeRange(startDate, startTime, endDate, endTime), zone)
 
   /**
    * The error shown under the estimated time field, or `null`. It is optional, so empty is fine,
