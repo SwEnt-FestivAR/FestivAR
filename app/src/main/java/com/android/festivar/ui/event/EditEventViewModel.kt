@@ -59,8 +59,8 @@ data class EditEventUIState(
     val showDiscardConfirmation: Boolean = false,
     /** True when the user has confirmed the form should be discarded. */
     val isDiscarded: Boolean = false,
-    /** True when loading the event failed and the UI should show a fetch error. */
-    val errorFetch: Boolean = false,
+    /** Resource id for an event fetch error, or null when loading succeeded. */
+    @param:StringRes val errorFetchMsg: Int? = null,
     /** Time zone used for the start date/time when building the event timestamp. */
     val zone: ZoneId = ZoneId.systemDefault(),
     /** Time zone used for the end date/time when building the event timestamp. */
@@ -157,7 +157,7 @@ data class EditEventUIState(
           savedEventId = null,
           showDiscardConfirmation = false,
           isDiscarded = false,
-          errorFetch = false,
+          errorFetchMsg = null,
           zone = event.startDate.zone,
           endZone = event.endDate.zone,
           errorMsg = null,
@@ -211,12 +211,18 @@ class EditEventViewModel(
   fun fetchEvent(eventId: String) {
     if (eventId.isBlank()) {
       Log.e("EditEventViewModel", "Cannot load an event with a blank id")
-      updateState { if (it.event == null) it.copy(isLoading = false, errorFetch = true) else it }
+      updateState {
+        if (it.event == null) {
+          it.copy(isLoading = false, errorFetchMsg = R.string.edit_event_error_fetch_failed)
+        } else {
+          it
+        }
+      }
       return
     }
     if (currentState.event != null || currentState.isSaving || loadJob?.isActive == true) return
 
-    updateState { it.copy(isLoading = true, errorFetch = false) }
+    updateState { it.copy(isLoading = true, errorFetchMsg = null) }
     loadJob = viewModelScope.launch {
       try {
         val event = eventsRepository.getEvent(eventId)
@@ -225,7 +231,9 @@ class EditEventViewModel(
         throw e
       } catch (e: Exception) {
         Log.e("EditEventViewModel", "Loading event $eventId failed", e)
-        updateState { it.copy(isLoading = false, errorFetch = true) }
+        updateState {
+          it.copy(isLoading = false, errorFetchMsg = R.string.edit_event_error_fetch_failed)
+        }
       }
     }
   }

@@ -126,7 +126,10 @@ class EditEventViewModelTest {
 
     assertEquals(0, fetchCount)
     assertFalse(viewModel.uiState.value.isLoading)
-    assertTrue(viewModel.uiState.value.errorFetch)
+    assertEquals(
+        R.string.edit_event_error_fetch_failed,
+        viewModel.uiState.value.errorFetchMsg,
+    )
   }
 
   @Test
@@ -567,12 +570,15 @@ class EditEventViewModelTest {
     viewModel.fetchEvent(initialEvent.eventId)
     advanceUntilIdle()
 
-    assertTrue(viewModel.uiState.value.errorFetch)
+    assertEquals(
+        R.string.edit_event_error_fetch_failed,
+        viewModel.uiState.value.errorFetchMsg,
+    )
     assertFalse(viewModel.uiState.value.isLoading)
     shouldFail = false
     viewModel.fetchEvent(initialEvent.eventId)
     advanceUntilIdle()
-    assertFalse(viewModel.uiState.value.errorFetch)
+    assertNull(viewModel.uiState.value.errorFetchMsg)
     assertEquals(initialEvent.title, viewModel.uiState.value.name)
   }
 
