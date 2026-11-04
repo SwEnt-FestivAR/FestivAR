@@ -3,11 +3,13 @@ package com.android.festivar.ui.announcement.create
 
 import androidx.activity.ComponentActivity
 import androidx.annotation.StringRes
+import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -36,6 +38,7 @@ import org.junit.Rule
 import org.junit.Test
 
 private const val EVENT_ID = "event-1"
+private const val UI_WAIT_TIMEOUT = 5_000L
 
 class CreateAnnouncementScreenTest {
   @get:Rule val composeTestRule = createAndroidComposeRule<ComponentActivity>()
@@ -122,14 +125,26 @@ class CreateAnnouncementScreenTest {
   // default priority, or a Publish button that can be tapped.
   @Test
   fun anEmptyFormShowsTheDesignWithInfoSelectedAndPublishDisabled() {
-    composeTestRule.onNodeWithTag(Tags.TITLE).assertTextEquals("Create announcement")
-    composeTestRule.onNodeWithText("Title").assertIsDisplayed()
-    composeTestRule.onNodeWithText("Description").assertIsDisplayed()
-    composeTestRule.onNodeWithText("PRIORITY").assertIsDisplayed()
-    chip(AnnouncementPriority.INFO).assertIsSelected().assertTextEquals("Info")
-    chip(AnnouncementPriority.WARNING).assertIsNotSelected().assertTextEquals("Warning")
-    chip(AnnouncementPriority.URGENT).assertIsNotSelected().assertTextEquals("Urgent")
-    composeTestRule.onNodeWithText("Publish").assertIsDisplayed()
+    composeTestRule.onNodeWithTag(Tags.TITLE).assertTextEquals(string(R.string.create_announcement))
+    composeTestRule
+        .onNodeWithTag(Tags.TITLE_FIELD)
+        .assertTextContains(string(R.string.create_announcement_field_title))
+    composeTestRule
+        .onNodeWithTag(Tags.DESCRIPTION_FIELD)
+        .assertTextContains(string(R.string.create_announcement_field_description))
+    composeTestRule
+        .onNodeWithTag(Tags.PRIORITY_LABEL)
+        .assertTextEquals(string(R.string.create_announcement_field_priority).uppercase())
+    chip(AnnouncementPriority.INFO)
+        .assertIsSelected()
+        .assertTextEquals(string(R.string.create_announcement_priority_info))
+    chip(AnnouncementPriority.WARNING)
+        .assertIsNotSelected()
+        .assertTextEquals(string(R.string.create_announcement_priority_warning))
+    chip(AnnouncementPriority.URGENT)
+        .assertIsNotSelected()
+        .assertTextEquals(string(R.string.create_announcement_priority_urgent))
+    publishButton().assertTextEquals(string(R.string.create_announcement_publish))
     publishButton().assertIsNotEnabled()
     composeTestRule.onNodeWithTag(Tags.TITLE_ERROR).assertDoesNotExist()
     composeTestRule.onNodeWithTag(Tags.DESCRIPTION_ERROR).assertDoesNotExist()
@@ -157,8 +172,7 @@ class CreateAnnouncementScreenTest {
     assertEquals(0, backCount)
   }
 
-  // Breaks if a message is mapped to the wrong field, differs from the Figma, or stays once the
-  // field is filled again.
+  // Breaks if a message is mapped to the wrong field, or stays once the field is filled again.
   @Test
   fun clearingAFieldShowsItsOwnErrorUntilItIsFilledAgain() {
     typeTitle("Stage B")
@@ -167,20 +181,22 @@ class CreateAnnouncementScreenTest {
     composeTestRule.onNodeWithTag(Tags.TITLE_FIELD).performTextReplacement("")
     composeTestRule
         .onNodeWithTag(Tags.TITLE_ERROR)
-        .assertTextEquals("Give the announcement a title")
+        .assertTextEquals(string(R.string.field_error_empty_announcement_title))
     composeTestRule.onNodeWithTag(Tags.DESCRIPTION_ERROR).assertDoesNotExist()
     publishButton().assertIsNotEnabled()
 
     composeTestRule.onNodeWithTag(Tags.DESCRIPTION_FIELD).performTextReplacement("")
-    composeTestRule.onNodeWithTag(Tags.DESCRIPTION_ERROR).assertTextEquals("Write the announcement")
+    composeTestRule
+        .onNodeWithTag(Tags.DESCRIPTION_ERROR)
+        .assertTextEquals(string(R.string.field_error_empty_announcement_content))
 
     typeTitle("Stage B")
     composeTestRule.onNodeWithTag(Tags.TITLE_ERROR).assertDoesNotExist()
   }
 
-  // Breaks if the spinner is not shown, if Publish can be tapped again during the save, if a field
-  // or a chip can still be edited, as the form could then differ from what gets stored, or if the
-  // save reports success early or never finishes.
+  // Breaks if the spinner is not shown or has no screen reader label, if Publish can be tapped
+  // again during the save, if a field or a chip can still be edited, as the form could then differ
+  // from what gets stored, or if the save reports success early or never finishes.
   @Test
   fun aRunningSaveShowsTheIndicatorAndLocksTheForm() {
     val gate = CompletableDeferred<Unit>()
@@ -188,13 +204,15 @@ class CreateAnnouncementScreenTest {
 
     fillAndPublish()
 
-    composeTestRule.onNodeWithTag(Tags.SAVING_INDICATOR, useUnmergedTree = true).assertExists()
+    composeTestRule
+        .onNodeWithTag(Tags.SAVING_INDICATOR, useUnmergedTree = true)
+        .assertContentDescriptionEquals(string(R.string.create_announcement_publishing))
     publishButton().assertIsNotEnabled()
     inputs().forEach { it.assertIsNotEnabled() }
     assertEquals(0, publishedCount)
 
     gate.complete(Unit)
-    composeTestRule.waitUntil { publishedCount == 1 }
+    composeTestRule.waitUntil(UI_WAIT_TIMEOUT) { publishedCount == 1 }
     assertEquals(1, stored().size)
   }
 
@@ -215,7 +233,7 @@ class CreateAnnouncementScreenTest {
     composeTestRule.onNodeWithTag(Tags.DISCARD_DIALOG).assertDoesNotExist()
 
     gate.complete(Unit)
-    composeTestRule.waitUntil { publishedCount == 1 }
+    composeTestRule.waitUntil(UI_WAIT_TIMEOUT) { publishedCount == 1 }
     assertEquals(1, stored().size)
     assertEquals(0, backCount)
     composeTestRule.onNodeWithTag(Tags.DISCARD_DIALOG).assertDoesNotExist()
@@ -270,12 +288,14 @@ class CreateAnnouncementScreenTest {
 
     composeTestRule.onNodeWithTag(Tags.BACK_BUTTON).performClick()
     composeTestRule.onNodeWithTag(Tags.DISCARD_DIALOG).assertIsDisplayed()
-    composeTestRule.onNodeWithText("Discard this announcement?").assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(string(R.string.create_announcement_discard_title))
+        .assertIsDisplayed()
     assertEquals(0, backCount)
 
     composeTestRule.onNodeWithTag(Tags.KEEP_EDITING_BUTTON).performClick()
     composeTestRule.onNodeWithTag(Tags.DISCARD_DIALOG).assertDoesNotExist()
-    composeTestRule.onNodeWithText("Stage B").assertIsDisplayed()
+    composeTestRule.onNodeWithTag(Tags.TITLE_FIELD).assertTextContains("Stage B")
     assertEquals(0, backCount)
   }
 

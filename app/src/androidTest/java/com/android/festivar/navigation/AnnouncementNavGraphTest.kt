@@ -152,8 +152,7 @@ class AnnouncementNavGraphTest {
   }
 
   // Breaks if a tap on the arrow just after publishing pops again: publishing reaches the same pop
-  // through onPublished, so guarding only the arrow would leave this case open. Also breaks if
-  // that tap saves the announcement a second time.
+  // through onPublished, so guarding only the arrow would leave this case open.
   @Test
   fun aTapOnBackJustAfterPublishingLeavesOnlyOnce() {
     openTheRouteAs(signedInUser)
