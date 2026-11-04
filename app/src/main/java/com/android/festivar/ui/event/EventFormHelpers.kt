@@ -2,6 +2,7 @@ package com.android.festivar.ui.event
 
 // Co-authored-by: Copilot App
 
+import androidx.lifecycle.ViewModel
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.END_OF_DAY
 import com.android.festivar.ui.components.FieldError
@@ -11,6 +12,79 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+
+abstract class EventFormViewModel<S>(initialState: S) : ViewModel() {
+  private val _uiState = MutableStateFlow(initialState)
+  protected val formState: StateFlow<S> = _uiState.asStateFlow()
+  protected val currentState: S
+    get() = _uiState.value
+
+  protected abstract fun clearError(state: S): S
+
+  protected abstract fun updateNameState(state: S, newName: String): S
+
+  protected abstract fun updateStartDateState(state: S, newDate: LocalDate): S
+
+  protected abstract fun updateEndDateState(state: S, newDate: LocalDate): S
+
+  protected abstract fun updateStartTimeState(state: S, time: LocalTime): S
+
+  protected abstract fun updateEndTimeState(state: S, time: LocalTime): S
+
+  protected abstract fun updateVenueState(state: S, newVenue: String): S
+
+  protected abstract fun updateNotesState(state: S, newNotes: String): S
+
+  protected abstract fun updatePickerState(state: S, picker: DateTimeField?): S
+
+  protected abstract fun currentPicker(state: S): DateTimeField?
+
+  protected fun updateState(change: (S) -> S) {
+    _uiState.update(change)
+  }
+
+  private fun edit(change: (S) -> S) {
+    _uiState.update { clearError(change(it)) }
+  }
+
+  fun updateName(newName: String) = edit { updateNameState(it, newName) }
+
+  fun updateStartDate(newDate: LocalDate) = edit { updateStartDateState(it, newDate) }
+
+  fun updateEndDate(newDate: LocalDate) = edit { updateEndDateState(it, newDate) }
+
+  fun updateStartTime(time: LocalTime) = edit { updateStartTimeState(it, time) }
+
+  fun updateEndTime(time: LocalTime) = edit { updateEndTimeState(it, time) }
+
+  fun updateVenue(newVenue: String) = edit { updateVenueState(it, newVenue) }
+
+  fun updateNotes(newNotes: String) = edit { updateNotesState(it, newNotes) }
+
+  fun showPicker(newOpenPicker: DateTimeField?) = edit { updatePickerState(it, newOpenPicker) }
+
+  fun pickDate(date: LocalDate) {
+    when (currentPicker(currentState)) {
+      DateTimeField.START_DATE -> updateStartDate(date)
+      DateTimeField.END_DATE -> updateEndDate(date)
+      else -> Unit
+    }
+    showPicker(null)
+  }
+
+  fun pickTime(time: LocalTime) {
+    when (currentPicker(currentState)) {
+      DateTimeField.START_TIME -> updateStartTime(time)
+      DateTimeField.END_TIME -> updateEndTime(time)
+      else -> Unit
+    }
+    showPicker(null)
+  }
+}
 
 internal fun computeStartDateTime(
     date: LocalDate?,
@@ -30,28 +104,19 @@ internal fun validateEventName(name: String, edited: Boolean): FieldError? =
 internal fun validateStartDate(date: LocalDate?, time: LocalTime?): FieldError? =
     startDateError(date, time)
 
-internal fun pickEventDate(
-    picker: DateTimeField?,
-    date: LocalDate,
-    updateStartDate: (LocalDate) -> Unit,
-    updateEndDate: (LocalDate) -> Unit,
-) {
-  when (picker) {
-    DateTimeField.START_DATE -> updateStartDate(date)
-    DateTimeField.END_DATE -> updateEndDate(date)
-    else -> Unit
-  }
-}
-
-internal fun pickEventTime(
-    picker: DateTimeField?,
-    time: LocalTime,
-    updateStartTime: (LocalTime) -> Unit,
-    updateEndTime: (LocalTime) -> Unit,
-) {
-  when (picker) {
-    DateTimeField.START_TIME -> updateStartTime(time)
-    DateTimeField.END_TIME -> updateEndTime(time)
-    else -> Unit
-  }
-}
+internal fun isEventFormValid(
+    isLoaded: Boolean,
+    name: String,
+    startDateTime: ZonedDateTime?,
+    endDateTime: ZonedDateTime?,
+    nameError: FieldError?,
+    startDateError: FieldError?,
+    endDateError: FieldError?,
+): Boolean =
+    isLoaded &&
+        name.isNotBlank() &&
+        startDateTime != null &&
+        endDateTime != null &&
+        nameError == null &&
+        startDateError == null &&
+        endDateError == null

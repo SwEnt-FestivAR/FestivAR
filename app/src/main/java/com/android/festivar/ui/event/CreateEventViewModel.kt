@@ -5,7 +5,6 @@ package com.android.festivar.ui.event
 
 import android.util.Log
 import androidx.annotation.StringRes
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
 import com.android.festivar.model.event.Event
@@ -22,10 +21,7 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
@@ -68,12 +64,15 @@ data class CreateEventUIState(
 
   val isValid: Boolean
     get() =
-        name.isNotBlank() &&
-            startDateTime != null &&
-            endDateTime != null &&
-            nameError == null &&
-            startDateError == null &&
-            endDateError == null
+        isEventFormValid(
+            true,
+            name,
+            startDateTime,
+            endDateTime,
+            nameError,
+            startDateError,
+            endDateError,
+        )
 
   /**
    * Whether the "Create event" button can be pressed. It is false while a save is running and once
@@ -108,52 +107,36 @@ class CreateEventViewModel(
     private val eventsRepository: EventsRepository,
     private val usersRepository: UsersRepository = UsersRepositoryProvider.repository,
     private val userId: String = "",
-) : ViewModel() {
-  private val _uiState = MutableStateFlow(CreateEventUIState())
-  val uiState: StateFlow<CreateEventUIState> = _uiState.asStateFlow()
+) : EventFormViewModel<CreateEventUIState>(CreateEventUIState()) {
+  val uiState: StateFlow<CreateEventUIState> = formState
 
-  /** Applies an edit of the form; the save error is stale once the form changes, so it goes. */
-  private fun edit(change: (CreateEventUIState) -> CreateEventUIState) = _uiState.update {
-    change(it).copy(errorMsg = null)
-  }
+  override fun clearError(state: CreateEventUIState) = state.copy(errorMsg = null)
 
-  fun updateName(newName: String) = edit { it.copy(name = newName, nameEdited = true) }
+  override fun updateNameState(state: CreateEventUIState, newName: String) =
+      state.copy(name = newName, nameEdited = true)
 
-  fun updateStartDate(newDate: LocalDate) = edit { it.copy(startDate = newDate) }
+  override fun updateStartDateState(state: CreateEventUIState, newDate: LocalDate) =
+      state.copy(startDate = newDate)
 
-  fun updateEndDate(newDate: LocalDate) = edit { it.copy(endDate = newDate) }
+  override fun updateEndDateState(state: CreateEventUIState, newDate: LocalDate) =
+      state.copy(endDate = newDate)
 
-  fun updateStartTime(time: LocalTime) = edit { it.copy(startTime = time) }
+  override fun updateStartTimeState(state: CreateEventUIState, time: LocalTime) =
+      state.copy(startTime = time)
 
-  fun updateEndTime(time: LocalTime) = edit { it.copy(endTime = time) }
+  override fun updateEndTimeState(state: CreateEventUIState, time: LocalTime) =
+      state.copy(endTime = time)
 
-  fun updateVenue(newVenue: String) = edit { it.copy(venue = newVenue) }
+  override fun updateVenueState(state: CreateEventUIState, newVenue: String) =
+      state.copy(venue = newVenue)
 
-  fun updateNotes(newNotes: String) = edit { it.copy(notes = newNotes) }
+  override fun updateNotesState(state: CreateEventUIState, newNotes: String) =
+      state.copy(notes = newNotes)
 
-  fun showPicker(newOpenPicker: DateTimeField?) = edit { it.copy(openPicker = newOpenPicker) }
+  override fun updatePickerState(state: CreateEventUIState, picker: DateTimeField?) =
+      state.copy(openPicker = picker)
 
-  /** Sets [date] in the field whose picker is open, then closes the picker. */
-  fun pickDate(date: LocalDate) {
-    pickEventDate(
-        _uiState.value.openPicker,
-        date,
-        { updateStartDate(it) },
-        { updateEndDate(it) },
-    )
-    showPicker(null)
-  }
-
-  /** Sets [time] in the field whose picker is open, then closes the picker. */
-  fun pickTime(time: LocalTime) {
-    pickEventTime(
-        _uiState.value.openPicker,
-        time,
-        { updateStartTime(it) },
-        { updateEndTime(it) },
-    )
-    showPicker(null)
-  }
+  override fun currentPicker(state: CreateEventUIState) = state.openPicker
 
   /**
    * Saves the form as a new event with the creator as its first member. Ignored while a save runs
@@ -161,8 +144,8 @@ class CreateEventViewModel(
    * [CreateEventUIState.errorMsg].
    */
   fun createEvent() {
-    if (!_uiState.value.canCreate) return
-    _uiState.update { it.copy(isSaving = true, errorMsg = null) }
+    if (!currentState.canCreate) return
+    updateState { it.copy(isSaving = true, errorMsg = null) }
     viewModelScope.launch {
       try {
         save()
@@ -170,7 +153,7 @@ class CreateEventViewModel(
         throw e
       } catch (e: Exception) {
         Log.e("CreateEventViewModel", "Saving the event failed", e)
-        _uiState.update {
+        updateState {
           it.copy(isSaving = false, errorMsg = R.string.create_event_error_save_failed)
         }
       }
@@ -190,7 +173,7 @@ class CreateEventViewModel(
     val fallbackCreator = creator ?: if (userId.isNotBlank()) User(uid = userId) else null
     val membersList = if (fallbackCreator != null) listOf(fallbackCreator) else emptyList()
 
-    val newEvent = _uiState.value.toEvent(eventsRepository.getNewUid(), membersList)
+    val newEvent = currentState.toEvent(eventsRepository.getNewUid(), membersList)
     eventsRepository.addEvent(newEvent)
 
     if (creator != null) {
@@ -201,6 +184,6 @@ class CreateEventViewModel(
         // If updating user joinedEvents fails, event is still created
       }
     }
-    _uiState.update { it.copy(isSaving = false, createdEventId = newEvent.eventId) }
+    updateState { it.copy(isSaving = false, createdEventId = newEvent.eventId) }
   }
 }
