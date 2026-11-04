@@ -59,6 +59,9 @@ interface DataRepository {
    * Stores a new [Task], adds it to its [Event] and to the [User.tasksAssigned] of its owner and of
    * each of its assignees.
    *
+   * This function doesn't check whether the task assigned users are members of the [Event], this
+   * is left to the caller to be aware of.
+   *
    * @param task The new [Task]. Its [Task.eventId] must be an existing [Event].
    * @throws NoSuchElementException If the event, the owner or an assignee does not exist.
    * @throws IllegalArgumentException If the task is already in the event, or already assigned to
@@ -108,12 +111,20 @@ interface DataRepository {
     // Get the necessary objects.
     val task = tasksRepository.getTask(taskId)
     val event = eventsRepository.getEvent(task.eventId)
-    val userIds = (listOf(task.ownerId) + task.assignees.map { it.uid }).distinct()
+    val userIds = task.assignees.map { it.uid }.distinct().filter { it != task.ownerId }
     val users = usersRepository.getListUsers(userIds)
+    val ownerUserId = task.ownerId
+    val ownerUser = usersRepository.getUser(ownerUserId)
 
     // Compute the new versions that have to be stored.
     val newEvent = event.removeTask(taskId)
     val newUsers = users.map { it.removeAssignedTask(taskId) }
+    val newOwnerUser =
+      if(ownerUser.tasksAssigned.contains(taskId)){
+        ownerUser.removeAssignedTask(taskId)
+      } else {
+        ownerUser
+      }
 
     // Store the changes.
     val undoProcess = ArrayDeque<suspend () -> Unit>()
@@ -129,6 +140,10 @@ interface DataRepository {
         usersRepository.editUser(new.uid, new)
         undoProcess.addFirst { usersRepository.editUser(old.uid, old) }
       }
+
+      usersRepository.editUser(ownerUserId, newOwnerUser)
+      undoProcess.addFirst { usersRepository.editUser(ownerUserId, ownerUser) }
+
     } catch (e: Exception) {
       rollback(undoProcess, e)
       throw e
@@ -322,6 +337,9 @@ interface DataRepository {
    * user's [User.tasksAssigned]. The owner of the task already lists it, so their
    * [User.tasksAssigned] is left unchanged.
    *
+   * This function doesn't make a verification on whether the user is part of the [Event] this
+   * [Task] is part of. It is to the caller to be aware of that necessity.
+   *
    * @param taskId The identifier of the [Task] to join.
    * @param userId The [User.uid] of the user joining it.
    * @throws NoSuchElementException If the task, its event or the user does not exist.
@@ -339,12 +357,13 @@ interface DataRepository {
     // Compute the new versions that have to be stored.
     val newTask = task.addAssignee(user)
     val newUser =
-        if (newTask.ownerId != user.uid) {
+        if (!user.tasksAssigned.contains(task.taskId)) {
           user.addAssignedTask(taskId)
         } else {
           user
         }
-    val newEvent = event.removeTask(taskId).addTask(newTask)
+
+    val newEvent = event.copy(tasks = event.tasks.map { if (it.taskId == taskId) newTask else it })
 
     // Store the changes.
     val undoProcess = ArrayDeque<suspend () -> Unit>()
