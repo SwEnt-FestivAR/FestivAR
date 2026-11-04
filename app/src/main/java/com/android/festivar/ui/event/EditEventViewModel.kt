@@ -15,6 +15,7 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
@@ -155,6 +156,7 @@ data class EditEventUIState(
 class EditEventViewModel(private val eventsRepository: EventsRepository) :
     EventFormViewModel<EditEventUIState>(EditEventUIState()) {
   val uiState: StateFlow<EditEventUIState> = formState
+  private var loadJob: Job? = null
 
   override fun clearError(state: EditEventUIState) = state.copy(errorMsg = null)
 
@@ -186,14 +188,22 @@ class EditEventViewModel(private val eventsRepository: EventsRepository) :
 
   // Loads an event by id and populates the form so the user can edit the existing event details.
   fun fetchEvent(eventId: String) {
-    updateState { EditEventUIState(isLoading = true) }
-    viewModelScope.launch {
+    if (eventId.isBlank()) {
+      Log.e("EditEventViewModel", "Cannot load an event with a blank id")
+      updateState { if (it.event == null) it.copy(isLoading = false, errorFetch = true) else it }
+      return
+    }
+    if (currentState.event != null || currentState.isSaving || loadJob?.isActive == true) return
+
+    updateState { it.copy(isLoading = true, errorFetch = false) }
+    loadJob = viewModelScope.launch {
       try {
         val event = eventsRepository.getEvent(eventId)
         updateState { it.load(event) }
       } catch (e: CancellationException) {
         throw e
-      } catch (_: Exception) {
+      } catch (e: Exception) {
+        Log.e("EditEventViewModel", "Loading event $eventId failed", e)
         updateState { it.copy(isLoading = false, errorFetch = true) }
       }
     }

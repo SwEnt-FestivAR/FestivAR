@@ -15,11 +15,13 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
@@ -65,6 +67,62 @@ class EditEventViewModelTest {
     assertEquals(initialEvent.description, state.notes)
     assertFalse(state.hasChanges)
     assertFalse(state.canSave)
+  }
+
+  @Test
+  fun fetchEventIgnoresDuplicateCallsWhileLoading() = runTest {
+    val pendingEvent = CompletableDeferred<Event>()
+    var fetchCount = 0
+    val repository =
+        object : EventsRepository by eventsRepository {
+          override suspend fun getEvent(eventId: String): Event {
+            fetchCount++
+            return pendingEvent.await()
+          }
+        }
+    viewModel = EditEventViewModel(repository)
+
+    viewModel.fetchEvent(initialEvent.eventId)
+    viewModel.fetchEvent(initialEvent.eventId)
+    runCurrent()
+
+    assertEquals(1, fetchCount)
+    assertTrue(viewModel.uiState.value.isLoading)
+    pendingEvent.complete(initialEvent)
+    advanceUntilIdle()
+    assertEquals(initialEvent.title, viewModel.uiState.value.name)
+  }
+
+  @Test
+  fun fetchEventDoesNotResetLoadedDraft() = runTest {
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+    viewModel.updateName("Draft name")
+
+    viewModel.fetchEvent(initialEvent.eventId)
+
+    assertEquals("Draft name", viewModel.uiState.value.name)
+    assertTrue(viewModel.uiState.value.hasChanges)
+  }
+
+  @Test
+  fun fetchEventRejectsBlankIdWithoutRepositoryRead() = runTest {
+    var fetchCount = 0
+    val repository =
+        object : EventsRepository by eventsRepository {
+          override suspend fun getEvent(eventId: String): Event {
+            fetchCount++
+            return eventsRepository.getEvent(eventId)
+          }
+        }
+    viewModel = EditEventViewModel(repository)
+
+    viewModel.fetchEvent(" ")
+    advanceUntilIdle()
+
+    assertEquals(0, fetchCount)
+    assertFalse(viewModel.uiState.value.isLoading)
+    assertTrue(viewModel.uiState.value.errorFetch)
   }
 
   @Test
@@ -301,6 +359,35 @@ class EditEventViewModelTest {
   }
 
   @Test
+  fun fetchEventDoesNotResetFormWhileSaveIsInProgress() = runTest {
+    val writeStarted = CompletableDeferred<Unit>()
+    val finishWrite = CompletableDeferred<Unit>()
+    val repository =
+        object : EventsRepository by eventsRepository {
+          override suspend fun editEvent(eventId: String, newValue: Event) {
+            writeStarted.complete(Unit)
+            finishWrite.await()
+            eventsRepository.editEvent(eventId, newValue)
+          }
+        }
+    viewModel = EditEventViewModel(repository)
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+    viewModel.updateName("Draft name")
+
+    viewModel.saveChanges()
+    runCurrent()
+    writeStarted.await()
+    viewModel.fetchEvent(initialEvent.eventId)
+
+    assertTrue(viewModel.uiState.value.isSaving)
+    assertEquals("Draft name", viewModel.uiState.value.name)
+    finishWrite.complete(Unit)
+    advanceUntilIdle()
+    assertEquals("Draft name", eventsRepository.getEvent(initialEvent.eventId).title)
+  }
+
+  @Test
   fun discardConfirmationCanBeCancelledOrConfirmed() = runTest {
     viewModel.fetchEvent(initialEvent.eventId)
     advanceUntilIdle()
@@ -332,19 +419,26 @@ class EditEventViewModelTest {
 
   @Test
   fun fetchFailureSetsErrorAndClearsLoading() = runTest {
-    val failingRepository =
-        object : EventsRepository by EventsRepositoryLocal() {
+    var shouldFail = true
+    val repository =
+        object : EventsRepository by EventsRepositoryLocal(listOf(initialEvent)) {
           override suspend fun getEvent(eventId: String): Event {
-            error("offline")
+            if (shouldFail) error("offline")
+            return initialEvent
           }
         }
-    viewModel = EditEventViewModel(failingRepository)
+    viewModel = EditEventViewModel(repository)
 
     viewModel.fetchEvent(initialEvent.eventId)
     advanceUntilIdle()
 
     assertTrue(viewModel.uiState.value.errorFetch)
     assertFalse(viewModel.uiState.value.isLoading)
+    shouldFail = false
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+    assertFalse(viewModel.uiState.value.errorFetch)
+    assertEquals(initialEvent.title, viewModel.uiState.value.name)
   }
 
   private fun testEvent(): Event {
