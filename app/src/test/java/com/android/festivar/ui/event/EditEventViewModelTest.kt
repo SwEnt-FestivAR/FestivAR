@@ -15,6 +15,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -214,6 +215,16 @@ class EditEventViewModelTest {
   }
 
   @Test
+  fun changingEachDateOrTimeFieldMarksDraftAsChanged() {
+    val state = EditEventUIState().load(initialEvent)
+
+    assertTrue(state.copy(startDate = state.startDate!!.plusDays(1)).hasChanges)
+    assertTrue(state.copy(endDate = state.endDate!!.plusDays(1)).hasChanges)
+    assertTrue(state.copy(startTime = state.startTime!!.plusHours(1)).hasChanges)
+    assertTrue(state.copy(endTime = state.endTime!!.plusHours(1)).hasChanges)
+  }
+
+  @Test
   fun endDateErrorRequiresDateWhenEndTimeIsSet() = runTest {
     viewModel.fetchEvent(initialEvent.eventId)
     advanceUntilIdle()
@@ -300,6 +311,37 @@ class EditEventViewModelTest {
   }
 
   @Test
+  fun doubleTapWhileSavingWritesOnlyOnce() = runTest {
+    val writeStarted = CompletableDeferred<Unit>()
+    val finishWrite = CompletableDeferred<Unit>()
+    var writeCount = 0
+    val repository =
+        object : EventsRepository by eventsRepository {
+          override suspend fun editEvent(eventId: String, newValue: Event) {
+            writeCount++
+            writeStarted.complete(Unit)
+            finishWrite.await()
+            eventsRepository.editEvent(eventId, newValue)
+          }
+        }
+    viewModel = createViewModel(repository)
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+    viewModel.updateName("Updated festival")
+
+    viewModel.saveChanges()
+    viewModel.saveChanges()
+    runCurrent()
+    writeStarted.await()
+    assertEquals(1, writeCount)
+    finishWrite.complete(Unit)
+    advanceUntilIdle()
+
+    assertEquals(1, writeCount)
+    assertEquals("Updated festival", eventsRepository.getEvent(initialEvent.eventId).title)
+  }
+
+  @Test
   fun saveChangesPreservesMembersAndTasksAddedWhileFormWasOpen() = runTest {
     viewModel.fetchEvent(initialEvent.eventId)
     advanceUntilIdle()
@@ -378,6 +420,28 @@ class EditEventViewModelTest {
     assertEquals(R.string.edit_event_error_save_failed, viewModel.uiState.value.errorMsg)
     assertEquals("Updated festival", viewModel.uiState.value.name)
     assertFalse(viewModel.uiState.value.isSaving)
+  }
+
+  @Test
+  fun saveCancellationDoesNotBecomeSaveError() = runTest {
+    val repository =
+        object : EventsRepository by eventsRepository {
+          override suspend fun editEvent(eventId: String, newValue: Event) {
+            throw CancellationException("save cancelled")
+          }
+        }
+    viewModel = createViewModel(repository)
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+    viewModel.updateName("Updated festival")
+
+    viewModel.saveChanges()
+    advanceUntilIdle()
+
+    assertFalse(viewModel.uiState.value.isSaving)
+    assertNull(viewModel.uiState.value.errorMsg)
+    assertEquals("Updated festival", viewModel.uiState.value.name)
+    assertEquals(initialEvent, eventsRepository.getEvent(initialEvent.eventId))
   }
 
   @Test
