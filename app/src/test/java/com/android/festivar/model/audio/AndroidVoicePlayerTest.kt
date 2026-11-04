@@ -363,6 +363,37 @@ class AndroidVoicePlayerTest {
     assertEquals(State.STARTED, players[1].state)
   }
 
+  /** Breaks if a pause refused by the MediaPlayer leaves the note Playing instead of Failed. */
+  @Test
+  fun pause_failsAndFreesThePlayerWhenThePlayerRefusesIt() {
+    player.play(first)
+    idle()
+    // A MediaPlayer that was already released throws IllegalStateException on pause().
+    players.single().setInvalidStateBehavior(ShadowMediaPlayer.InvalidStateBehavior.EMULATE)
+    players.single().setState(State.END)
+
+    player.pause()
+
+    assertEquals(PlayerState.Failed(first), player.state.value)
+    assertEquals(State.END, players.single().state)
+  }
+
+  /** Breaks if a start refused by the MediaPlayer leaves the note Paused instead of Failed. */
+  @Test
+  fun resume_failsAndFreesThePlayerWhenThePlayerRefusesIt() {
+    player.play(first)
+    idle()
+    player.pause()
+    // A MediaPlayer that was already released throws IllegalStateException on start().
+    players.single().setInvalidStateBehavior(ShadowMediaPlayer.InvalidStateBehavior.EMULATE)
+    players.single().setState(State.END)
+
+    player.resume()
+
+    assertEquals(PlayerState.Failed(first), player.state.value)
+    assertEquals(State.END, players.single().state)
+  }
+
   /** Breaks if a player error while paused leaves the state Paused. */
   @Test
   fun pause_thenAPlayerErrorFailsTheNote() {
