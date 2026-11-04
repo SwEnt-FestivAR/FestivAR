@@ -9,7 +9,9 @@ import com.android.festivar.R
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.ui.components.DateTimeField
+import com.android.festivar.ui.components.DateTimeRange
 import com.android.festivar.ui.components.FieldError
+import com.android.festivar.ui.components.endDateError as validateEndDateError
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
@@ -82,15 +84,15 @@ data class EditEventUIState(
 
   // Validation error for the end date/time combination before saving.
   val endDateError: FieldError?
-    get() {
-      if (endTime != null && endDate == null) return FieldError.MISSING_DATE
-      val end = endDateTime ?: return null
-      return when {
-        startDateTime != null && !end.isAfter(startDateTime) -> FieldError.END_BEFORE_START
-        end.isBefore(ZonedDateTime.now()) -> FieldError.OUTDATED
-        else -> null
-      }
-    }
+    get() = endDateErrorAt(ZonedDateTime.now())
+
+  internal fun endDateErrorAt(now: ZonedDateTime): FieldError? =
+      validateEndDateError(
+          DateTimeRange(startDate, startTime, endDate, endTime),
+          zone,
+          now,
+          endZone,
+      )
 
   // True when the loaded event data is complete and satisfies the form validation rules.
   val isValid: Boolean

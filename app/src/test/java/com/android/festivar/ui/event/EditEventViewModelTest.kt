@@ -228,7 +228,8 @@ class EditEventViewModelTest {
     viewModel.fetchEvent(initialEvent.eventId)
     advanceUntilIdle()
 
-    val yesterday = LocalDate.now().minusDays(1)
+    val now = ZonedDateTime.of(2026, 11, 5, 12, 0, 0, 0, ZoneId.of("Europe/Zurich"))
+    val yesterday = now.toLocalDate().minusDays(1)
     val state =
         viewModel.uiState.value.copy(
             startDate = yesterday.minusDays(1),
@@ -237,7 +238,25 @@ class EditEventViewModelTest {
             endTime = LocalTime.NOON,
         )
 
-    assertEquals(FieldError.OUTDATED, state.endDateError)
+    assertEquals(FieldError.OUTDATED, state.endDateErrorAt(now))
+  }
+
+  @Test
+  fun endDateErrorUsesEndZoneAndProvidedCurrentTime() = runTest {
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+    val startDate = LocalDate.of(2026, 11, 6)
+    val state =
+        viewModel.uiState.value.copy(
+            startDate = startDate,
+            startTime = LocalTime.of(23, 0),
+            endDate = startDate,
+            endTime = LocalTime.of(17, 0),
+            endZone = ZoneId.of("America/Los_Angeles"),
+        )
+    val now = ZonedDateTime.of(2026, 11, 5, 12, 0, 0, 0, ZoneId.of("Europe/Zurich"))
+
+    assertNull(state.endDateErrorAt(now))
   }
 
   @Test
