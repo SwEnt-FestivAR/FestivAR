@@ -197,7 +197,7 @@ fun CreateAnnouncementContent(
             value = state.title,
             onValueChange = actions.onTitleChange,
             label = stringResource(R.string.create_announcement_field_title),
-            enabled = !state.isSaving,
+            enabled = state.isEditable,
             isError = state.titleError != null,
             modifier = Modifier.testTag(CreateAnnouncementScreenTestTags.TITLE_FIELD),
         )
@@ -210,7 +210,7 @@ fun CreateAnnouncementContent(
             value = state.content,
             onValueChange = actions.onContentChange,
             label = stringResource(R.string.create_announcement_field_description),
-            enabled = !state.isSaving,
+            enabled = state.isEditable,
             singleLine = false,
             isError = state.contentError != null,
             modifier =
@@ -221,7 +221,7 @@ fun CreateAnnouncementContent(
       AnnouncementPrioritySelector(
           selected = state.priority,
           onSelect = actions.onPriorityChange,
-          enabled = !state.isSaving,
+          enabled = state.isEditable,
       )
     }
   }
