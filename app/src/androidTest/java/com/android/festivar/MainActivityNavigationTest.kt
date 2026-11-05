@@ -684,4 +684,7 @@ class FakeAuthRepository(override val currentUser: FirebaseUser?) : AuthReposito
       email: String,
       password: String,
   ): Result<FirebaseUser> = Result.failure(UnsupportedOperationException())
+
+  override suspend fun signInAnonymous(): Result<FirebaseUser> =
+      Result.failure(UnsupportedOperationException())
 }

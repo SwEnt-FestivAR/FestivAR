@@ -140,5 +140,8 @@ class ForgotPasswordScreenTest {
         email: String,
         password: String,
     ): Result<FirebaseUser> = Result.failure(UnsupportedOperationException("Not used in this test"))
+
+    override suspend fun signInAnonymous(): Result<FirebaseUser> =
+        Result.failure(UnsupportedOperationException("Not used in this test"))
   }
 }

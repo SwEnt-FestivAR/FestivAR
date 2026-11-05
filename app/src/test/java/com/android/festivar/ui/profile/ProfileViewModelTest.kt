@@ -94,6 +94,9 @@ class ProfileViewModelTest {
         email: String,
         password: String,
     ): Result<FirebaseUser> = Result.failure(UnsupportedOperationException("Not used"))
+
+    override suspend fun signInAnonymous(): Result<FirebaseUser> =
+        Result.failure(UnsupportedOperationException("Not used"))
   }
 
   private val testDispatcher = StandardTestDispatcher()
