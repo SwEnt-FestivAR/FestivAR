@@ -6,10 +6,12 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
@@ -17,6 +19,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.unit.dp
 import androidx.credentials.Credential
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -149,6 +152,17 @@ class ProfileScreenTest {
             ProfileScreenTestTags.SIGN_OUT_BUTTON,
         )
         .forEach { tag -> composeTestRule.onNodeWithTag(tag).assertIsDisplayed() }
+  }
+
+  /** Turns red when the avatar stops being shown at its large size of 96.dp. */
+  @Test
+  fun theAvatarIsShownLarge() {
+    setProfile()
+
+    composeTestRule
+        .onNodeWithTag(ProfileScreenTestTags.AVATAR)
+        .assertWidthIsEqualTo(96.dp)
+        .assertHeightIsEqualTo(96.dp)
   }
 
   /** Turns red when the fields stop showing the loaded user. */

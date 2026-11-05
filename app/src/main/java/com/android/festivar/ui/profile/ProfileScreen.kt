@@ -207,7 +207,9 @@ internal fun ProfileScreenContent(
       // The avatar shows the saved user, so its initials only change once the changes are saved.
       // The email is shown under it and cannot be edited.
       uiState.user.let { user ->
-        Box(modifier = Modifier.testTag(ProfileScreenTestTags.AVATAR)) { Avatar(user = user) }
+        Box(modifier = Modifier.testTag(ProfileScreenTestTags.AVATAR)) {
+          Avatar(user = user, modifier = Modifier.size(96.dp))
+        }
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = user.email,
