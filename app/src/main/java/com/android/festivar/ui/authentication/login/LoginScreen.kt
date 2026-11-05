@@ -30,7 +30,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -58,6 +57,7 @@ import androidx.credentials.CredentialManager
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.R
 import com.android.festivar.ui.components.FestivarTextField
+import com.android.festivar.ui.components.NoticeSnackbar
 import com.android.festivar.ui.theme.AppTheme
 
 internal object LoginScreenTestTags {
@@ -98,19 +98,12 @@ fun LoginScreen(
       modifier = modifier,
       snackbarHost = {
         SnackbarHost(snackbarHostState) { data ->
-          Snackbar(
+          NoticeSnackbar(
+              message = data.visuals.message,
+              actionLabel = stringResource(R.string.signup_snackbar_ok),
+              onAction = { data.dismiss() },
               modifier = Modifier.testTag(LoginScreenTestTags.ERROR_MESSAGE),
-              action = {
-                TextButton(onClick = { data.dismiss() }) {
-                  Text(
-                      text = stringResource(R.string.signup_snackbar_ok),
-                      color = MaterialTheme.colorScheme.primary,
-                  )
-                }
-              },
-          ) {
-            Text(data.visuals.message)
-          }
+          )
         }
       },
   ) { padding ->

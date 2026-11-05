@@ -92,7 +92,7 @@ class TaskDetailsContentTest {
   @Test
   fun openTaskOffersTake() {
     var taken = 0
-    show(state(task.removeAssignee(sami)), onTake = { taken++ })
+    show(state(task.removeAssignee(sami.uid)), onTake = { taken++ })
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.TAKE_BUTTON).performClick()
     assertEquals(1, taken)
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MARK_DONE_BUTTON).assertDoesNotExist()

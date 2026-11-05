@@ -486,12 +486,25 @@ class MainActivityNavigationTest {
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          authRepository = FakeAuthRepository(currentUser = mockk()),
+          authRepository = FakeAuthRepository(currentUser = signedInUser),
           startDestinationOverride = AppScreens.CreateEvent.name,
       )
     }
 
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  @Test
+  fun createEventRouteDisplaysLoginScreenIfFirebaseUserIsNull() {
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          authRepository = FakeAuthRepository(currentUser = null),
+          startDestinationOverride = AppScreens.CreateEvent.name,
+      )
+    }
+
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
   }
 
   @Test
