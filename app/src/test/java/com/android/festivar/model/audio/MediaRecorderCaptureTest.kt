@@ -34,6 +34,7 @@ class MediaRecorderCaptureTest {
   private fun startCapture(onError: () -> Unit = {}): File =
       folder.newFile("note.m4a").also { capture.start(it, onError) }
 
+  /** Breaks if the source, format, file or quality of the recording changes. */
   @Test
   fun start_recordsAacInMpeg4FromTheMicrophoneIntoTheFile() {
     val file = startCapture()
@@ -48,6 +49,7 @@ class MediaRecorderCaptureTest {
     assertEquals(64_000, shadow.audioEncodingBitRate)
   }
 
+  /** Breaks if an error of the MediaRecorder never reaches the recorder. */
   @Test
   fun start_reportsALaterErrorOfTheRecorder() {
     var failed = false
@@ -59,10 +61,10 @@ class MediaRecorderCaptureTest {
     assertTrue(failed)
   }
 
+  /** Breaks if MediaRecorder(Context) is used below Android 12, where it crashes. */
   @Test
   @Config(sdk = [28])
   fun capture_canBeCreatedOnTheOldestSupportedAndroid() {
-    // MediaRecorder(Context) only exists from Android 12, so using it here would crash.
     val oldCapture = MediaRecorderCapture(context)
 
     oldCapture.start(folder.newFile("old.m4a")) {}

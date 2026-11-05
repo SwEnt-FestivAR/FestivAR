@@ -22,6 +22,11 @@ import kotlinx.coroutines.launch
  * [MediaRecorder]. It records one note at a time and must be used from the main thread, where the
  * [MediaRecorder] reports back.
  *
+ * **Injected parts.** Unlike [AndroidVoicePlayer], most of this class handles failures and timing,
+ * which a real [MediaRecorder] cannot produce on demand, and the one of Robolectric writes no
+ * audio. So the capture, the file and the clock are injected, and only the public constructor uses
+ * the real ones.
+ *
  * @param createCapture Creates the capture of each recording, so the tests can replace
  *   [MediaRecorder].
  * @param createOutputFile Creates the new temporary file of each recording.

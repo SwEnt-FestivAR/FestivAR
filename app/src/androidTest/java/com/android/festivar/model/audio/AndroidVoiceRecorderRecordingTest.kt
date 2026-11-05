@@ -41,6 +41,7 @@ class AndroidVoiceRecorderRecordingTest {
     }
   }
 
+  /** Breaks if a resumed real recording is unplayable or contains its pause. */
   @Test
   fun resume_leavesThePauseOutOfTheFile() {
     instrumentation.runOnMainSync { recorder.start() }
@@ -57,6 +58,7 @@ class AndroidVoiceRecorderRecordingTest {
     assertTrue("The file lasts $fileMillis ms", fileMillis in 2_500L..5_000L)
   }
 
+  /** Breaks if a real recording stopped while paused is unplayable or contains its pause. */
   @Test
   fun stop_whilePausedProducesAPlayableFileWithoutThePause() {
     instrumentation.runOnMainSync { recorder.start() }

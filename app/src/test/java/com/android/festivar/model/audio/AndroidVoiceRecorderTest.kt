@@ -139,6 +139,7 @@ class AndroidVoiceRecorderTest {
     assertThrows(IllegalStateException::class.java) { call() }
   }
 
+  /** Breaks if a recording does not write to its new file or does not start at zero. */
   @Test
   fun start_recordsIntoANewFileFromZero() {
     recorder.start()
@@ -148,6 +149,7 @@ class AndroidVoiceRecorderTest {
     assertEquals(recordingOf(0), recorder.state.value)
   }
 
+  /** Breaks if a second recording reuses the file or the start time of the first one. */
   @Test
   fun start_afterAStopUsesAnotherFileAndTimesItFromItsOwnStart() {
     record()
@@ -162,6 +164,7 @@ class AndroidVoiceRecorderTest {
     assertEquals(AndroidVoiceRecorder.MIN_DURATION, recorder.stop().duration)
   }
 
+  /** Breaks if a second start replaces or harms the recording in progress. */
   @Test
   fun start_whileRunningThrowsAndLeavesTheRecordingIntact() {
     record()
@@ -175,6 +178,7 @@ class AndroidVoiceRecorderTest {
     assertSame(files.single(), recorder.stop().file)
   }
 
+  /** Breaks if a file that cannot be created leaks an IOException or blocks later starts. */
   @Test
   fun start_failsWhenTheFileCannotBeCreated() {
     val cause = IOException("no space")
@@ -187,6 +191,7 @@ class AndroidVoiceRecorderTest {
     assertCanRecordAgain()
   }
 
+  /** Breaks if the file is left behind when the capture cannot be created. */
   @Test
   fun start_failsAndDeletesTheFileWhenTheCaptureCannotBeCreated() {
     val cause = RuntimeException("no recorder")
@@ -199,7 +204,7 @@ class AndroidVoiceRecorderTest {
     assertCanRecordAgain()
   }
 
-  // Includes a busy microphone: its IllegalStateException must not look like a wrong-state call.
+  /** Breaks if the IllegalStateException of a busy microphone looks like a wrong call. */
   @Test
   fun start_failsWhenTheCaptureCannotStart() {
     listOf(IOException("cannot write"), IllegalStateException("busy")).forEach { cause ->
@@ -210,6 +215,7 @@ class AndroidVoiceRecorderTest {
     assertCanRecordAgain()
   }
 
+  /** Breaks if a recording that failed by itself blocks the next start. */
   @Test
   fun start_afterACaptureErrorRecordsAgain() {
     record()
@@ -218,6 +224,7 @@ class AndroidVoiceRecorderTest {
     assertCanRecordAgain()
   }
 
+  /** Breaks if stop deletes the file, gets the duration wrong or keeps the capture open. */
   @Test
   fun stop_returnsTheFileWithTheDurationOfTheClockAndKeepsIt() {
     record(1_234)
@@ -232,7 +239,7 @@ class AndroidVoiceRecorderTest {
     assertStaysIn(RecorderState.Idle)
   }
 
-  // A zero duration must fail here, not leak the IllegalArgumentException of Audio.
+  /** Breaks if a zero duration leaks the IllegalArgumentException of Audio. */
   @Test
   fun stop_dropsARecordingShorterThanTheMinimumAndKeepsOneOfExactlyIt() {
     listOf(0, minMillis - 1).forEach { millis ->
@@ -246,6 +253,7 @@ class AndroidVoiceRecorderTest {
     assertEquals(AndroidVoiceRecorder.MIN_DURATION, recorder.stop().duration)
   }
 
+  /** Breaks if a failed stop keeps the file or is reported as too short. */
   @Test
   fun stop_failsAndDropsTheRecordingWhenTheCaptureCannotStop() {
     val cause = RuntimeException("nothing captured")
@@ -259,6 +267,7 @@ class AndroidVoiceRecorderTest {
     assertCanRecordAgain()
   }
 
+  /** Breaks if a quick tap, which makes MediaRecorder.stop throw, is not called too short. */
   @Test
   fun stop_reportsAShortRecordingAsTooShortWhenTheCaptureCannotStop() {
     val cause = RuntimeException("no valid audio")
@@ -271,6 +280,7 @@ class AndroidVoiceRecorderTest {
     assertDropped()
   }
 
+  /** Breaks if a file with no data is returned as a recording. */
   @Test
   fun stop_failsAndDropsAnEmptyFile() {
     newCapture = { FakeCapture(writesAudio = false) }
@@ -281,6 +291,7 @@ class AndroidVoiceRecorderTest {
     assertDropped()
   }
 
+  /** Breaks if paused time counts in the duration, or a stop while paused loses the file. */
   @Test
   fun stop_leavesEveryPauseOutOfTheDurationUpToAStopWhilePaused() {
     record(3_000)
@@ -300,6 +311,7 @@ class AndroidVoiceRecorderTest {
     assertStaysIn(RecorderState.Idle)
   }
 
+  /** Breaks if a stop with no recording is not refused as a wrong call. */
   @Test
   fun stop_whenIdleThrows() {
     assertIllegal { recorder.stop() }
@@ -307,6 +319,7 @@ class AndroidVoiceRecorderTest {
     assertEquals(RecorderState.Idle, recorder.state.value)
   }
 
+  /** Breaks if a cancel with no recording throws or touches a capture. */
   @Test
   fun cancel_whenIdleDoesNothing() {
     recorder.cancel()
@@ -315,6 +328,7 @@ class AndroidVoiceRecorderTest {
     assertTrue(captures.isEmpty())
   }
 
+  /** Breaks if a cancel leaves the file or the capture behind, or blocks the next start. */
   @Test
   fun cancel_dropsTheRecordingAndEndsInIdle() {
     record()
@@ -326,6 +340,7 @@ class AndroidVoiceRecorderTest {
     assertCanRecordAgain()
   }
 
+  /** Breaks if a failing capture makes cancel throw, which onCleared cannot handle. */
   @Test
   fun cancel_neverThrowsEvenIfTheCaptureDoes() {
     newCapture = {
@@ -338,6 +353,7 @@ class AndroidVoiceRecorderTest {
     assertDropped()
   }
 
+  /** Breaks if a capture error is not reported as Failed with everything freed. */
   @Test
   fun captureError_whileRecordingDropsTheRecordingAndEndsInFailed() {
     record()
@@ -347,10 +363,11 @@ class AndroidVoiceRecorderTest {
     assertDropped(RecorderState.Failed)
   }
 
-  // The collector runs inside each change of state, so it also sees the ones that last no time.
-  // Recording(0), which the error replaces at once, shows that it does.
+  /** Breaks if a failed recording passes through Idle, which looks like a cancel. */
   @Test
   fun captureError_goesFromRecordingToFailedWithoutPassingThroughIdle() {
+    // The collector runs inside each change of state, so it also sees the ones that last no time.
+    // Recording(0), which the error replaces at once, shows that it does.
     val seen = mutableListOf<RecorderState>()
     scope.backgroundScope.launch(UnconfinedTestDispatcher(scope.testScheduler)) {
       recorder.state.toList(seen)
@@ -362,6 +379,7 @@ class AndroidVoiceRecorderTest {
     assertEquals(listOf(RecorderState.Idle, recordingOf(0), RecorderState.Failed), seen)
   }
 
+  /** Breaks if a late error of an old capture drops a finished or newer recording. */
   @Test
   fun captureError_ofAnEndedRecordingIsIgnored() {
     record()
@@ -381,6 +399,7 @@ class AndroidVoiceRecorderTest {
     assertEquals(recordingOf(0), recorder.state.value)
   }
 
+  /** Breaks if a pause with nothing running reaches the capture instead of being refused. */
   @Test
   fun pause_whenIdleOrAlreadyPausedThrowsAndChangesNothing() {
     assertIllegal { recorder.pause() }
@@ -396,6 +415,7 @@ class AndroidVoiceRecorderTest {
     assertEquals(pausedAt(tickMillis), recorder.state.value)
   }
 
+  /** Breaks if the timer runs during a pause or restarts from another value on resume. */
   @Test
   fun pause_freezesTheTimerAndResumeContinuesItFromTheSameValue() {
     record(tickMillis * 2)
@@ -415,6 +435,7 @@ class AndroidVoiceRecorderTest {
     assertEquals(recordingOf(tickMillis * 3), recorder.state.value)
   }
 
+  /** Breaks if a failed pause leaks IllegalStateException or keeps the recording. */
   @Test
   fun pause_failsAndDropsTheRecordingWithoutLeakingIllegalStateException() {
     val cause = IllegalStateException("wrong state")
@@ -427,6 +448,7 @@ class AndroidVoiceRecorderTest {
     assertDropped()
   }
 
+  /** Breaks if a resume with nothing paused reaches the capture instead of being refused. */
   @Test
   fun resume_whenIdleOrRunningThrowsAndChangesNothing() {
     assertIllegal { recorder.resume() }
@@ -441,6 +463,7 @@ class AndroidVoiceRecorderTest {
     assertEquals(recordingOf(tickMillis), recorder.state.value)
   }
 
+  /** Breaks if a failed resume leaks IllegalStateException or keeps the recording. */
   @Test
   fun resume_failsAndDropsTheRecordingWithoutLeakingIllegalStateException() {
     val cause = IllegalStateException("wrong state")
@@ -455,6 +478,7 @@ class AndroidVoiceRecorderTest {
     assertCanRecordAgain()
   }
 
+  /** Breaks if the timer does not update the state exactly once per tick. */
   @Test
   fun timer_advancesOnEachTick() {
     record(tickMillis)

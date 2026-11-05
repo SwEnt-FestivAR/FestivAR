@@ -32,6 +32,7 @@ class AndroidVoiceRecorderWiringTest {
 
   private fun idleFor(duration: Duration) = shadowOf(Looper.getMainLooper()).idleFor(duration)
 
+  /** Breaks if the file leaves the cache, loses its .m4a suffix or survives a cancel. */
   @Test
   fun start_recordsIntoAnM4aFileOfTheCacheThatCancelDeletes() {
     recorder.start()
@@ -43,6 +44,7 @@ class AndroidVoiceRecorderWiringTest {
     assertTrue(voiceNoteFiles().isEmpty())
   }
 
+  /** Breaks if the real timer does not tick on the main thread. */
   @Test
   fun start_timesTheRecordingOnTheMainThread() {
     recorder.start()
