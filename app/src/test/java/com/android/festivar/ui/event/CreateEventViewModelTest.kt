@@ -522,6 +522,7 @@ class CreateEventViewModelTest {
     fillFormAndCreateEvent(eventsRepository, usersRepository)
     delay(10.milliseconds)
     assertNull(viewModel.uiState.value.errorMsg)
+    assertTrue(eventsRepository.getAllEvents().isEmpty())
   }
 
   private suspend fun testNonCancellationException(
