@@ -2,8 +2,8 @@
 <!-- Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com> -->
 <resources>
     <string name="app_name">FestivAR</string>
-    <string name="title_activity_main">MainActivity</string>
-    <string name="title_activity_second">SecondActivity</string>
+    <string name="title_activity_main">FestivAR</string>
+    <string name="title_activity_second">FestivAR</string>
     <!-- Common actions -->
     <string name="action_ok">OK</string>
     <string name="action_cancel">Cancel</string>
