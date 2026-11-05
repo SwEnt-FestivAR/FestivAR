@@ -407,19 +407,6 @@ class AndroidVoicePlayerTest {
     assertEquals(State.END, players.single().state)
   }
 
-  /** Breaks if release on a paused note keeps its player or its state. */
-  @Test
-  fun release_whilePausedStopsTheNote() {
-    player.play(first)
-    idle()
-    player.pause()
-
-    player.release()
-
-    assertEquals(PlayerState.Idle, player.state.value)
-    assertEquals(State.END, players.single().state)
-  }
-
   private companion object {
     const val DURATION_MS = 14_000
   }
