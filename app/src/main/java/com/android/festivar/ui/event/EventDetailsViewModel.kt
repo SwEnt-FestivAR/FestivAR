@@ -29,7 +29,7 @@ data class EventDetailsUIState(
 /**
  * Loads and exposes the event shown by the Event Details screen.
  *
- * Loading starts when the ViewModel is created. A failed reload clears the currently displayed
+ * Loading starts when the screen calls [fetchEvent]. A failed reload clears the currently displayed
  * event and exposes [EventDetailsUIState.errorMsg] so the screen can show an error.
  *
  * @param eventsRepository repository used to retrieve the event.
