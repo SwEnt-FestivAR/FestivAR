@@ -168,15 +168,14 @@ data class Task(
   }
 
   /**
-   * Returns a new version of `this` but with the [startTime] and [endTime] updated to the new
-   * values.
+   * Returns a new version of `this` but with the [priority] updated to the new value.
    *
-   * @return The [Task] but with the [startTime] and [endTime] updated.
-   * @throws IllegalArgumentException If newEndTime is before newStartTime. Equal values are
-   *   accepted.
+   * @param newPriority The new priority of the [Task]
+   * @return The [Task] but with the [priority] updated.
    */
-  fun editTimes(newStartTime: ZonedDateTime, newEndTime: ZonedDateTime): Task {
-    require(!newEndTime.isBefore(newStartTime)) { "newEndTime must not be before newStartTime." }
-    return copy(startTime = newStartTime, endTime = newEndTime)
+  fun editPriority(newPriority: Priority): Task {
+    return copy(priority = newPriority)
   }
+
+
 }
