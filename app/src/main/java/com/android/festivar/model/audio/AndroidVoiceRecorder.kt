@@ -6,7 +6,6 @@ import android.media.MediaRecorder
 import android.os.SystemClock
 import android.util.Log
 import java.io.File
-import java.io.IOException
 import java.time.Duration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -57,17 +56,20 @@ internal constructor(
 
   override fun start() {
     check(current == null) { "A recording is already running." }
-    val file = startStep(undo = {}) { createOutputFile() }
-    val capture = startStep(undo = { deleteFile(file) }) { createCapture() }
-    startStep(
-        undo = {
-          release(capture)
-          deleteFile(file)
+    var file: File? = null
+    var capture: AudioCapture? = null
+    val recording =
+        try {
+          val newFile = createOutputFile().also { file = it }
+          val newCapture = createCapture().also { capture = it }
+          newCapture.start(newFile) { onCaptureError(newCapture) }
+          ActiveRecording(newCapture, newFile, runningSince = clock())
+        } catch (e: Exception) {
+          // Includes the IllegalStateException of a busy MediaRecorder, which is not a wrong call.
+          capture?.let { release(it) }
+          file?.let { deleteFile(it) }
+          throw VoiceRecorderException("The recording could not start.", e)
         }
-    ) {
-      capture.start(file) { onCaptureError(capture) }
-    }
-    val recording = ActiveRecording(capture, file, runningSince = clock())
     current = recording
     _state.value = RecorderState.Recording(Duration.ZERO)
     launchTimer(recording)
@@ -122,21 +124,6 @@ internal constructor(
   override fun cancel() {
     current?.let { drop(it) }
   }
-
-  /**
-   * Runs one [step] of [start]. Anything that goes wrong, including the [IllegalStateException] of
-   * a busy [MediaRecorder], is reported as a [VoiceRecorderException] after running [undo].
-   */
-  private inline fun <T> startStep(undo: () -> Unit, step: () -> T): T =
-      try {
-        step()
-      } catch (e: IOException) {
-        undo()
-        throw VoiceRecorderException(START_FAILED, e)
-      } catch (e: RuntimeException) {
-        undo()
-        throw VoiceRecorderException(START_FAILED, e)
-      }
 
   /**
    * Runs [action] on the capture of the [recording]. If it fails, including with the
@@ -240,7 +227,6 @@ internal constructor(
 
     private const val FILE_PREFIX = "voice_note_"
     private const val FILE_SUFFIX = ".m4a"
-    private const val START_FAILED = "The recording could not start."
     private const val TOO_SHORT = "The recording is too short."
     private const val LOG_TAG = "AndroidVoiceRecorder"
   }
