@@ -3,7 +3,6 @@ package com.android.festivar.model.audio
 
 import android.content.Context
 import android.media.MediaRecorder
-import android.os.Build
 import android.os.SystemClock
 import android.util.Log
 import java.io.File
@@ -19,91 +18,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-/** One recording of the microphone into a file: the small part of [MediaRecorder] that is used. */
-internal interface AudioCapture {
-  /**
-   * Starts recording into [outputFile], then calls [onError] if the recording fails later on.
-   *
-   * @throws IOException if the file cannot be written.
-   * @throws RuntimeException if the microphone is busy or the permission is missing.
-   */
-  fun start(outputFile: File, onError: () -> Unit)
-
-  /**
-   * Pauses recording, so that nothing is added to the file until [resume].
-   *
-   * @throws RuntimeException if the recording cannot be paused.
-   */
-  fun pause()
-
-  /**
-   * Resumes recording after [pause].
-   *
-   * @throws RuntimeException if the recording cannot be resumed.
-   */
-  fun resume()
-
-  /**
-   * Stops recording, even if it is paused, and finishes the file.
-   *
-   * @throws RuntimeException if no audio was captured.
-   */
-  fun stop()
-
-  /** Frees the capture. It must not be used afterwards. */
-  fun release()
-}
-
-/** Creates the [AudioCapture] of each recording, so the tests can replace [MediaRecorder]. */
-internal fun interface AudioCaptureFactory {
-  fun create(): AudioCapture
-}
-
-/** The [AudioCapture] backed by a [MediaRecorder] that writes AAC audio into an MPEG-4 file. */
-internal class MediaRecorderCapture(private val recorder: MediaRecorder) : AudioCapture {
-
-  constructor(context: Context) : this(newRecorder(context))
-
-  override fun start(outputFile: File, onError: () -> Unit) {
-    recorder.setOnErrorListener { _, _, _ -> onError() }
-    recorder.setAudioSource(MediaRecorder.AudioSource.MIC)
-    recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-    recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-    recorder.setAudioSamplingRate(SAMPLING_RATE_HZ)
-    recorder.setAudioEncodingBitRate(BIT_RATE)
-    recorder.setOutputFile(outputFile.absolutePath)
-    recorder.prepare()
-    recorder.start()
-  }
-
-  override fun pause() = recorder.pause()
-
-  override fun resume() = recorder.resume()
-
-  override fun stop() = recorder.stop()
-
-  override fun release() = recorder.release()
-
-  private companion object {
-    // Without these, the default AAC settings of many devices sound muffled.
-    const val SAMPLING_RATE_HZ = 44_100
-    const val BIT_RATE = 64_000
-
-    fun newRecorder(context: Context): MediaRecorder =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-          MediaRecorder(context)
-        } else {
-          @Suppress("DEPRECATION") MediaRecorder()
-        }
-  }
-}
-
 /**
  * The Android [VoiceRecorder]: records the microphone into a temporary `.m4a` file with a
  * [MediaRecorder]. It records one note at a time and must be used from the main thread, where the
  * [MediaRecorder] reports back.
  *
- * @param factory Creates the capture of each recording.
+ * @param createCapture Creates the capture of each recording, so the tests can replace
+ *   [MediaRecorder].
  * @param createOutputFile Creates the new temporary file of each recording.
  * @param clock The current time in milliseconds. It must never go backwards.
  * @param timerScope Runs the timer behind [RecorderState.Recording], which also pauses the
@@ -111,7 +32,7 @@ internal class MediaRecorderCapture(private val recorder: MediaRecorder) : Audio
  */
 class AndroidVoiceRecorder
 internal constructor(
-    private val factory: AudioCaptureFactory,
+    private val createCapture: () -> AudioCapture,
     private val createOutputFile: () -> File,
     private val clock: () -> Long,
     private val timerScope: CoroutineScope,
@@ -121,7 +42,7 @@ internal constructor(
   constructor(
       context: Context
   ) : this(
-      factory = AudioCaptureFactory { MediaRecorderCapture(context.applicationContext) },
+      createCapture = { MediaRecorderCapture(context.applicationContext) },
       createOutputFile = {
         File.createTempFile(FILE_PREFIX, FILE_SUFFIX, context.applicationContext.cacheDir)
       },
@@ -137,7 +58,7 @@ internal constructor(
   override fun start() {
     check(current == null) { "A recording is already running." }
     val file = startStep(undo = {}) { createOutputFile() }
-    val capture = startStep(undo = { deleteFile(file) }) { factory.create() }
+    val capture = startStep(undo = { deleteFile(file) }) { createCapture() }
     startStep(
         undo = {
           release(capture)
@@ -257,7 +178,7 @@ internal constructor(
       recording.capture.pause()
     } catch (e: RuntimeException) {
       Log.e(LOG_TAG, "The recording could not be paused at its limit and was dropped", e)
-      drop(recording)
+      drop(recording, RecorderState.Failed)
       return
     }
     freeze(recording)
@@ -281,25 +202,28 @@ internal constructor(
   private fun onCaptureError(capture: AudioCapture) {
     val recording = current?.takeIf { it.capture === capture } ?: return
     Log.e(LOG_TAG, "The recording failed and was dropped")
-    drop(recording)
+    drop(recording, RecorderState.Failed)
   }
 
-  /** Ends the [recording] and deletes its file. It never throws, as `onCleared` relies on it. */
-  private fun drop(recording: ActiveRecording) {
+  /**
+   * Ends the [recording] in [finalState] and deletes its file. It never throws, as `onCleared`
+   * relies on it.
+   */
+  private fun drop(recording: ActiveRecording, finalState: RecorderState = RecorderState.Idle) {
     try {
       recording.capture.stop()
     } catch (e: RuntimeException) {
       // Expected when nothing was captured yet, and the file is deleted anyway.
       Log.w(LOG_TAG, "Error stopping a dropped recording", e)
     }
-    end(recording)
+    end(recording, finalState)
     deleteFile(recording.file)
   }
 
-  private fun end(recording: ActiveRecording) {
+  private fun end(recording: ActiveRecording, finalState: RecorderState = RecorderState.Idle) {
     recording.timer?.cancel()
     current = null
-    _state.value = RecorderState.Idle
+    _state.value = finalState
     release(recording.capture)
   }
 

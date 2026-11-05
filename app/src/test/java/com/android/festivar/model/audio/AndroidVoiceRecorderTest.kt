@@ -5,8 +5,11 @@ import java.io.File
 import java.io.IOException
 import java.time.Duration
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import org.junit.Assert.assertEquals
@@ -80,7 +83,7 @@ class AndroidVoiceRecorderTest {
 
   private val recorder =
       AndroidVoiceRecorder(
-          factory = AudioCaptureFactory { newCapture().also { captures += it } },
+          createCapture = { newCapture().also { captures += it } },
           createOutputFile = { newFile().also { files += it } },
           clock = { scope.testScheduler.currentTime },
           timerScope = scope,
@@ -100,17 +103,17 @@ class AndroidVoiceRecorderTest {
   private fun pausedAt(millis: Long) =
       RecorderState.Recording(Duration.ofMillis(millis), isPaused = true)
 
-  /** Asserts the state is [RecorderState.Idle] and no timer is left to change it afterwards. */
-  private fun assertIdleForGood() {
+  /** Asserts the state is [expected] and no timer is left to change it afterwards. */
+  private fun assertStaysIn(expected: RecorderState) {
     advance(tickMillis * 10)
-    assertEquals(RecorderState.Idle, recorder.state.value)
+    assertEquals(expected, recorder.state.value)
   }
 
-  /** Asserts the last recording is over, with its capture freed and its file deleted. */
-  private fun assertDropped() {
+  /** Asserts the last recording is over in [finalState], with capture freed and file deleted. */
+  private fun assertDropped(finalState: RecorderState = RecorderState.Idle) {
     assertTrue(captures.last().released)
     assertFalse(files.last().exists())
-    assertIdleForGood()
+    assertStaysIn(finalState)
   }
 
   /** Asserts a failure left nothing behind: the next recording works from the start. */
@@ -138,34 +141,44 @@ class AndroidVoiceRecorderTest {
   }
 
   @Test
-  fun eachRecordingGoesIntoItsOwnNewFileAndIsTimedFromItsOwnStart() {
+  fun start_recordsIntoANewFileFromZero() {
     recorder.start()
+
     assertTrue(files.single().exists())
     assertEquals(files.single(), captures.single().outputFile)
     assertEquals(recordingOf(0), recorder.state.value)
-    advance(minMillis)
-    val first = recorder.stop()
-
-    advance(tickMillis)
-    record()
-    val second = recorder.stop()
-
-    assertNotEquals(first.file, second.file)
-    assertTrue(first.file.exists())
-    assertEquals(second.file, captures[1].outputFile)
-    assertEquals(AndroidVoiceRecorder.MIN_DURATION, second.duration)
   }
 
   @Test
-  fun startWhileRunningOrPausedThrowsAndLeavesTheRecordingIntact() {
+  fun start_afterAStopUsesAnotherFileAndKeepsTheFirst() {
     record()
+    val first = recorder.stop()
+
+    recorder.start()
+
+    assertNotEquals(first.file, files[1])
+    assertEquals(files[1], captures[1].outputFile)
+    assertTrue(first.file.exists())
+  }
+
+  @Test
+  fun start_afterAStopTimesTheRecordingFromItsOwnStart() {
+    record()
+    recorder.stop()
+    advance(tickMillis)
+
+    record()
+
+    assertEquals(AndroidVoiceRecorder.MIN_DURATION, recorder.stop().duration)
+  }
+
+  @Test
+  fun start_whileRunningThrowsAndLeavesTheRecordingIntact() {
+    record()
+
     assertIllegal { recorder.start() }
+
     assertEquals(recordingOf(minMillis), recorder.state.value)
-
-    recorder.pause()
-    assertIllegal { recorder.start() }
-    assertEquals(pausedAt(minMillis), recorder.state.value)
-
     assertEquals(1, captures.size)
     assertEquals(1, files.size)
     assertFalse(captures.single().stopped)
@@ -173,32 +186,46 @@ class AndroidVoiceRecorderTest {
   }
 
   @Test
-  fun aFileThatCannotBeCreatedFailsTheStart() {
+  fun start_whilePausedThrowsAndLeavesTheRecordingIntact() {
+    record()
+    recorder.pause()
+
+    assertIllegal { recorder.start() }
+
+    assertEquals(pausedAt(minMillis), recorder.state.value)
+    assertEquals(1, captures.size)
+    assertEquals(1, files.size)
+    assertFalse(captures.single().stopped)
+    assertSame(files.single(), recorder.stop().file)
+  }
+
+  @Test
+  fun start_failsWhenTheFileCannotBeCreated() {
     val cause = IOException("no space")
     newFile = { throw cause }
 
     assertFails(cause) { recorder.start() }
 
     assertTrue(captures.isEmpty())
-    assertIdleForGood()
+    assertStaysIn(RecorderState.Idle)
     assertCanRecordAgain()
   }
 
   @Test
-  fun aRecorderThatCannotBeCreatedFailsTheStartAndDeletesTheFile() {
+  fun start_failsAndDeletesTheFileWhenTheCaptureCannotBeCreated() {
     val cause = RuntimeException("no recorder")
     newCapture = { throw cause }
 
     assertFails(cause) { recorder.start() }
 
     assertFalse(files.single().exists())
-    assertIdleForGood()
+    assertStaysIn(RecorderState.Idle)
     assertCanRecordAgain()
   }
 
   // Includes a busy microphone: its IllegalStateException must not look like a wrong-state call.
   @Test
-  fun aCaptureThatCannotStartFailsTheStart() {
+  fun start_failsWhenTheCaptureCannotStart() {
     listOf(IOException("cannot write"), IllegalStateException("busy"), SecurityException("denied"))
         .forEach { cause ->
           newCapture = { FakeCapture(startFailure = cause) }
@@ -209,20 +236,25 @@ class AndroidVoiceRecorderTest {
   }
 
   @Test
-  fun aReleaseThatThrowsLosesNeitherTheRecordingNorTheFailureOfTheStart() {
+  fun start_reportsItsOwnFailureWhenReleaseAlsoThrows() {
     val cause = IOException("cannot write")
     newCapture = { FakeCapture(startFailure = cause, releaseFailure = IllegalStateException()) }
-    assertFails(cause) { recorder.start() }
-    assertDropped()
 
-    newCapture = { FakeCapture(releaseFailure = IllegalStateException()) }
-    record()
-    assertTrue(recorder.stop().file.exists())
-    assertIdleForGood()
+    assertFails(cause) { recorder.start() }
+
+    assertDropped()
   }
 
   @Test
-  fun stopReturnsTheFileWithTheDurationOfTheClockAndKeepsIt() {
+  fun start_afterACaptureErrorRecordsAgain() {
+    record()
+    captures.single().reportError()
+
+    assertCanRecordAgain()
+  }
+
+  @Test
+  fun stop_returnsTheFileWithTheDurationOfTheClockAndKeepsIt() {
     record(1_234)
 
     val audio = recorder.stop()
@@ -232,23 +264,38 @@ class AndroidVoiceRecorderTest {
     assertEquals(Duration.ofMillis(1_234), audio.duration)
     assertTrue(captures.single().stopped)
     assertTrue(captures.single().released)
-    assertIdleForGood()
+    assertStaysIn(RecorderState.Idle)
+  }
+
+  @Test
+  fun stop_keepsTheRecordingWhenReleaseThrows() {
+    newCapture = { FakeCapture(releaseFailure = IllegalStateException()) }
+    record()
+
+    assertTrue(recorder.stop().file.exists())
+
+    assertStaysIn(RecorderState.Idle)
   }
 
   // A zero duration must fail here, not leak the IllegalArgumentException of Audio.
   @Test
-  fun onlyARecordingOfAtLeastTheMinimumDurationIsKept() {
+  fun stop_failsAndDropsARecordingShorterThanTheMinimum() {
     listOf(0, minMillis - 1).forEach { millis ->
       record(millis)
       assertFails { recorder.stop() }
       assertDropped()
     }
+  }
+
+  @Test
+  fun stop_keepsARecordingOfExactlyTheMinimum() {
     record()
+
     assertEquals(AndroidVoiceRecorder.MIN_DURATION, recorder.stop().duration)
   }
 
   @Test
-  fun aCaptureStopThatThrowsFailsTheStop() {
+  fun stop_failsAndDropsTheRecordingWhenTheCaptureCannotStop() {
     val cause = RuntimeException("nothing captured")
     newCapture = { FakeCapture(stopFailure = cause) }
     record()
@@ -260,158 +307,17 @@ class AndroidVoiceRecorderTest {
   }
 
   @Test
-  fun anEmptyOrMissingFileFailsTheStop() {
+  fun stop_failsAndDropsAnEmptyFile() {
     newCapture = { FakeCapture(writesAudio = false) }
     record()
+
     assertFails { recorder.stop() }
-    assertDropped()
-
-    newCapture = { FakeCapture() }
-    record()
-    files.last().delete()
-    assertFails { recorder.stop() }
-    assertDropped()
-  }
-
-  @Test
-  fun cancelDropsTheRecordingAndDoesNothingWhenIdle() {
-    recorder.cancel()
-    assertEquals(RecorderState.Idle, recorder.state.value)
-    assertTrue(captures.isEmpty())
-
-    record()
-    recorder.cancel()
-    assertTrue(captures.single().stopped)
-    assertDropped()
-    assertCanRecordAgain()
-  }
-
-  @Test
-  fun cancelNeverThrowsEvenIfTheCaptureDoes() {
-    newCapture = {
-      FakeCapture(stopFailure = RuntimeException(), releaseFailure = IllegalStateException())
-    }
-    recorder.start()
-
-    recorder.cancel()
 
     assertDropped()
   }
 
   @Test
-  fun anErrorWhileRecordingDropsTheRecording() {
-    record()
-
-    captures.single().reportError()
-
-    assertDropped()
-    assertIllegal { recorder.stop() }
-    assertCanRecordAgain()
-  }
-
-  @Test
-  fun anErrorOfAnEndedCaptureIsIgnored() {
-    record()
-    val audio = recorder.stop()
-    captures[0].reportError()
-    assertTrue(audio.file.exists())
-    assertEquals(RecorderState.Idle, recorder.state.value)
-
-    recorder.start()
-    captures[0].reportError()
-    assertTrue(files[1].exists())
-    assertFalse(captures[1].released)
-    assertEquals(recordingOf(0), recorder.state.value)
-  }
-
-  @Test
-  fun cancelOrAnErrorWhilePausedOrAtTheLimitDropsTheRecording() {
-    val pauseIt =
-        listOf(
-            {
-              recorder.start()
-              recorder.pause()
-            },
-            { record(maxMillis) },
-        )
-    pauseIt.forEach { pause ->
-      pause()
-      recorder.cancel()
-      assertTrue(captures.last().stopped)
-      assertDropped()
-
-      pause()
-      captures.last().reportError()
-      assertDropped()
-      assertIllegal { recorder.resume() }
-    }
-  }
-
-  @Test
-  fun callsThatDoNotMatchTheStateThrowAndChangeNothing() {
-    assertIllegal { recorder.stop() }
-    assertIllegal { recorder.pause() }
-    assertIllegal { recorder.resume() }
-    assertEquals(RecorderState.Idle, recorder.state.value)
-
-    record(tickMillis)
-    assertIllegal { recorder.resume() }
-    assertEquals(0, captures.single().resumes)
-    assertEquals(recordingOf(tickMillis), recorder.state.value)
-
-    recorder.pause()
-    assertIllegal { recorder.pause() }
-    assertEquals(1, captures.single().pauses)
-    assertEquals(pausedAt(tickMillis), recorder.state.value)
-  }
-
-  @Test
-  fun theTimerAdvancesOnEachTick() {
-    record(tickMillis)
-    assertEquals(recordingOf(tickMillis), recorder.state.value)
-    advance(tickMillis - 1)
-    assertEquals(recordingOf(tickMillis), recorder.state.value)
-    advance(1)
-    assertEquals(recordingOf(tickMillis * 2), recorder.state.value)
-  }
-
-  @Test
-  fun pauseStopsTheTimerAndResumeContinuesItFromTheSameValue() {
-    record(tickMillis * 2)
-
-    recorder.pause()
-    assertEquals(1, captures.single().pauses)
-    advance(tickMillis * 10)
-    assertEquals(pausedAt(tickMillis * 2), recorder.state.value)
-
-    recorder.resume()
-    assertEquals(1, captures.single().resumes)
-    advance(tickMillis - 1)
-    assertEquals(recordingOf(tickMillis * 2), recorder.state.value)
-    advance(1)
-    assertEquals(recordingOf(tickMillis * 3), recorder.state.value)
-  }
-
-  @Test
-  fun aPauseOrResumeThatFailsDropsTheRecordingWithoutLeakingIllegalStateException() {
-    val cause = IllegalStateException("wrong state")
-    newCapture = { FakeCapture(pauseFailure = cause) }
-    recorder.start()
-    assertFails(cause) { recorder.pause() }
-    assertTrue(captures.last().stopped)
-    assertDropped()
-
-    newCapture = { FakeCapture(resumeFailure = cause) }
-    recorder.start()
-    recorder.pause()
-    assertFails(cause) { recorder.resume() }
-    assertTrue(captures.last().stopped)
-    assertDropped()
-    assertCanRecordAgain()
-  }
-
-  @Test
-  fun theDurationLeavesOutEveryPauseUpToAStopWhilePaused() {
+  fun stop_leavesEveryPauseOutOfTheDurationUpToAStopWhilePaused() {
     record(3_000)
     recorder.pause()
     advance(10_000)
@@ -426,57 +332,227 @@ class AndroidVoiceRecorderTest {
     assertTrue(audio.file.exists())
     assertTrue(captures.single().stopped)
     assertTrue(captures.single().released)
-    assertIdleForGood()
+    assertStaysIn(RecorderState.Idle)
   }
 
   @Test
-  fun aPauseDoesNotCountTowardsTheMinimumDuration() {
-    record(500)
-    recorder.pause()
-    advance(10_000)
-    recorder.resume()
-
-    assertFails { recorder.stop() }
-
-    assertDropped()
-  }
-
-  @Test
-  fun reachingTheLimitPausesTheCaptureAndAStopStillReturnsTheFile() {
-    record(maxMillis - tickMillis)
-    assertEquals(recordingOf(maxMillis - tickMillis), recorder.state.value)
-    assertEquals(0, captures.single().pauses)
-
-    advance(tickMillis)
-    assertEquals(pausedAt(maxMillis), recorder.state.value)
-    advance(tickMillis * 10)
-    assertEquals(pausedAt(maxMillis), recorder.state.value)
-    assertEquals(1, captures.single().pauses)
-    assertFalse(captures.single().stopped)
+  fun stop_atTheLimitReturnsTheFile() {
+    record(maxMillis)
 
     val audio = recorder.stop()
 
     assertSame(files.single(), audio.file)
     assertTrue(audio.file.exists())
     assertEquals(AndroidVoiceRecorder.MAX_DURATION, audio.duration)
-    assertIdleForGood()
+    assertStaysIn(RecorderState.Idle)
   }
 
   @Test
-  fun aPauseDoesNotCountTowardsTheLimit() {
-    record(maxMillis - minMillis)
+  fun stop_whenIdleThrows() {
+    assertIllegal { recorder.stop() }
+
+    assertEquals(RecorderState.Idle, recorder.state.value)
+  }
+
+  @Test
+  fun stop_afterACaptureErrorThrowsAndStaysFailed() {
+    record()
+    captures.single().reportError()
+
+    assertIllegal { recorder.stop() }
+
+    assertEquals(RecorderState.Failed, recorder.state.value)
+  }
+
+  @Test
+  fun cancel_whenIdleDoesNothing() {
+    recorder.cancel()
+
+    assertEquals(RecorderState.Idle, recorder.state.value)
+    assertTrue(captures.isEmpty())
+  }
+
+  @Test
+  fun cancel_dropsTheRecordingAndEndsInIdle() {
+    record()
+
+    recorder.cancel()
+
+    assertTrue(captures.single().stopped)
+    assertDropped()
+    assertCanRecordAgain()
+  }
+
+  @Test
+  fun cancel_whilePausedDropsTheRecordingAndEndsInIdle() {
+    recorder.start()
     recorder.pause()
-    advance(maxMillis * 2)
+
+    recorder.cancel()
+
+    assertTrue(captures.single().stopped)
+    assertDropped()
+  }
+
+  @Test
+  fun cancel_neverThrowsEvenIfTheCaptureDoes() {
+    newCapture = {
+      FakeCapture(stopFailure = RuntimeException(), releaseFailure = IllegalStateException())
+    }
+    recorder.start()
+
+    recorder.cancel()
+
+    assertDropped()
+  }
+
+  @Test
+  fun captureError_whileRecordingDropsTheRecordingAndEndsInFailed() {
+    record()
+
+    captures.single().reportError()
+
+    assertDropped(RecorderState.Failed)
+  }
+
+  @Test
+  fun captureError_whilePausedDropsTheRecordingAndEndsInFailed() {
+    recorder.start()
+    recorder.pause()
+
+    captures.single().reportError()
+
+    assertDropped(RecorderState.Failed)
+  }
+
+  // The collector runs inside each change of state, so it also sees the ones that last no time.
+  // Recording(0), which the error replaces at once, shows that it does.
+  @Test
+  fun captureError_goesFromRecordingToFailedWithoutPassingThroughIdle() {
+    val seen = mutableListOf<RecorderState>()
+    scope.backgroundScope.launch(UnconfinedTestDispatcher(scope.testScheduler)) {
+      recorder.state.toList(seen)
+    }
+
+    recorder.start()
+    captures.single().reportError()
+
+    assertEquals(listOf(RecorderState.Idle, recordingOf(0), RecorderState.Failed), seen)
+  }
+
+  @Test
+  fun captureError_afterAStopIsIgnored() {
+    record()
+    val audio = recorder.stop()
+
+    captures.single().reportError()
+
+    assertTrue(audio.file.exists())
+    assertEquals(RecorderState.Idle, recorder.state.value)
+  }
+
+  @Test
+  fun captureError_ofThePreviousRecordingLeavesTheNewOneIntact() {
+    record()
+    recorder.stop()
+    recorder.start()
+
+    captures[0].reportError()
+
+    assertTrue(files[1].exists())
+    assertFalse(captures[1].released)
+    assertEquals(recordingOf(0), recorder.state.value)
+  }
+
+  @Test
+  fun pause_whenIdleThrows() {
+    assertIllegal { recorder.pause() }
+
+    assertEquals(RecorderState.Idle, recorder.state.value)
+  }
+
+  @Test
+  fun pause_whilePausedThrowsAndChangesNothing() {
+    record(tickMillis)
+    recorder.pause()
+
+    assertIllegal { recorder.pause() }
+
+    assertEquals(1, captures.single().pauses)
+    assertEquals(pausedAt(tickMillis), recorder.state.value)
+  }
+
+  @Test
+  fun pause_freezesTheTimer() {
+    record(tickMillis * 2)
+
+    recorder.pause()
+
+    assertEquals(1, captures.single().pauses)
+    advance(tickMillis * 10)
+    assertEquals(pausedAt(tickMillis * 2), recorder.state.value)
+  }
+
+  @Test
+  fun pause_failsAndDropsTheRecordingWithoutLeakingIllegalStateException() {
+    val cause = IllegalStateException("wrong state")
+    newCapture = { FakeCapture(pauseFailure = cause) }
+    recorder.start()
+
+    assertFails(cause) { recorder.pause() }
+
+    assertTrue(captures.single().stopped)
+    assertDropped()
+  }
+
+  @Test
+  fun resume_whenIdleThrows() {
+    assertIllegal { recorder.resume() }
+
+    assertEquals(RecorderState.Idle, recorder.state.value)
+  }
+
+  @Test
+  fun resume_whileRunningThrowsAndChangesNothing() {
+    record(tickMillis)
+
+    assertIllegal { recorder.resume() }
+
+    assertEquals(0, captures.single().resumes)
+    assertEquals(recordingOf(tickMillis), recorder.state.value)
+  }
+
+  @Test
+  fun resume_continuesTheTimerFromTheSameValue() {
+    record(tickMillis * 2)
+    recorder.pause()
+    advance(tickMillis * 10)
+
     recorder.resume()
 
-    advance(minMillis - tickMillis)
-    assertEquals(recordingOf(maxMillis - tickMillis), recorder.state.value)
-    advance(tickMillis)
-    assertEquals(pausedAt(maxMillis), recorder.state.value)
+    assertEquals(1, captures.single().resumes)
+    advance(tickMillis - 1)
+    assertEquals(recordingOf(tickMillis * 2), recorder.state.value)
+    advance(1)
+    assertEquals(recordingOf(tickMillis * 3), recorder.state.value)
   }
 
   @Test
-  fun aRecordingPausedJustBeforeTheLimitCanResumeAndPassesItByLessThanATick() {
+  fun resume_failsAndDropsTheRecordingWithoutLeakingIllegalStateException() {
+    val cause = IllegalStateException("wrong state")
+    newCapture = { FakeCapture(resumeFailure = cause) }
+    recorder.start()
+    recorder.pause()
+
+    assertFails(cause) { recorder.resume() }
+
+    assertTrue(captures.single().stopped)
+    assertDropped()
+    assertCanRecordAgain()
+  }
+
+  @Test
+  fun resume_justBeforeTheLimitPassesItByLessThanATick() {
     val justBefore = maxMillis - tickMillis / 2
     record(justBefore)
     recorder.pause()
@@ -490,36 +566,47 @@ class AndroidVoiceRecorderTest {
   }
 
   @Test
-  fun resumeAtTheLimitThrowsAndLeavesTheRecordingIntact() {
-    val reachTheLimit =
-        listOf(
-            { record(maxMillis) },
-            // By hand, between the limit and the tick that would have paused it.
-            {
-              record(maxMillis - tickMillis / 2)
-              recorder.pause()
-              recorder.resume()
-              advance(tickMillis / 2)
-              recorder.pause()
-            },
-        )
-    reachTheLimit.forEach { reach ->
-      reach()
-      val resumes = captures.last().resumes
+  fun resume_atTheLimitThrowsAndLeavesTheRecordingIntact() {
+    record(maxMillis)
 
-      assertFails { recorder.resume() }
+    assertFails { recorder.resume() }
 
-      assertEquals(pausedAt(maxMillis), recorder.state.value)
-      assertEquals(resumes, captures.last().resumes)
-      assertFalse(captures.last().stopped)
-      assertFalse(captures.last().released)
-      assertTrue(files.last().exists())
-      assertEquals(AndroidVoiceRecorder.MAX_DURATION, recorder.stop().duration)
-    }
+    assertEquals(pausedAt(maxMillis), recorder.state.value)
+    assertEquals(0, captures.single().resumes)
+    assertFalse(captures.single().stopped)
+    assertFalse(captures.single().released)
+    assertTrue(files.single().exists())
+    assertEquals(AndroidVoiceRecorder.MAX_DURATION, recorder.stop().duration)
   }
 
   @Test
-  fun anAutomaticPauseThatFailsDropsTheRecordingWithoutThrowing() {
+  fun timer_advancesOnEachTick() {
+    record(tickMillis)
+    assertEquals(recordingOf(tickMillis), recorder.state.value)
+
+    advance(tickMillis - 1)
+    assertEquals(recordingOf(tickMillis), recorder.state.value)
+
+    advance(1)
+    assertEquals(recordingOf(tickMillis * 2), recorder.state.value)
+  }
+
+  @Test
+  fun timer_pausesTheCaptureAtTheLimit() {
+    record(maxMillis - tickMillis)
+    assertEquals(recordingOf(maxMillis - tickMillis), recorder.state.value)
+    assertEquals(0, captures.single().pauses)
+
+    advance(tickMillis)
+    assertEquals(pausedAt(maxMillis), recorder.state.value)
+
+    assertStaysIn(pausedAt(maxMillis))
+    assertEquals(1, captures.single().pauses)
+    assertFalse(captures.single().stopped)
+  }
+
+  @Test
+  fun timer_dropsTheRecordingAndEndsInFailedWhenThePauseAtTheLimitFails() {
     newCapture = {
       FakeCapture(pauseFailure = IllegalStateException(), stopFailure = RuntimeException())
     }
@@ -528,8 +615,15 @@ class AndroidVoiceRecorderTest {
 
     assertEquals(1, captures.single().pauses)
     assertTrue(captures.single().stopped)
-    assertDropped()
-    assertIllegal { recorder.stop() }
+    assertDropped(RecorderState.Failed)
+  }
+
+  @Test
+  fun timer_keepsItsScopeAliveWhenThePauseAtTheLimitFails() {
+    newCapture = { FakeCapture(pauseFailure = IllegalStateException()) }
+
+    record(maxMillis)
+
     // An exception that escaped from the timer would have cancelled this scope.
     assertTrue(scope.isActive)
     assertCanRecordAgain()

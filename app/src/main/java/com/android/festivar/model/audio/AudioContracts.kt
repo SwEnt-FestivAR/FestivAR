@@ -68,6 +68,9 @@ sealed interface RecorderState {
    * @property isPaused Whether the recording is paused. [elapsed] does not change while it is.
    */
   data class Recording(val elapsed: Duration, val isPaused: Boolean = false) : RecorderState
+
+  /** The recording failed by itself and was dropped. [VoiceRecorder.start] can begin a new one. */
+  data object Failed : RecorderState
 }
 
 /** A recording could not be started or finished (microphone busy, no space, too short...). */
