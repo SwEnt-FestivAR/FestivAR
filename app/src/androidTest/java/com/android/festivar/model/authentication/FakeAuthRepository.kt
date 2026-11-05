@@ -7,10 +7,15 @@ import kotlinx.coroutines.CompletableDeferred
 
 open class FakeAuthRepository(
     override val currentUser: FirebaseUser? = null,
-    var signInResult: Result<FirebaseUser> = Result.failure(UnsupportedOperationException("Not used")),    var signOutResult: Result<Unit> = Result.success(Unit),
+    var signInResult: Result<FirebaseUser> =
+        Result.failure(UnsupportedOperationException("Not used")),
+    var signOutResult: Result<Unit> = Result.success(Unit),
     var forgotPasswordResult: Result<Unit> = Result.success(Unit),
-    var signUpResult: Result<FirebaseUser> = Result.failure(UnsupportedOperationException("Not used")),
-    var signInAnonymousResult: Result<FirebaseUser> = Result.failure(UnsupportedOperationException("Not used")),    var lastResetEmail: String? = null,
+    var signUpResult: Result<FirebaseUser> =
+        Result.failure(UnsupportedOperationException("Not used")),
+    var signInAnonymousResult: Result<FirebaseUser> =
+        Result.failure(UnsupportedOperationException("Not used")),
+    var lastResetEmail: String? = null,
     var lastSignUpCredentials: Pair<String, String>? = null,
     var signOutCount: Int = 0,
     var signOutGate: CompletableDeferred<Unit>? = null,
