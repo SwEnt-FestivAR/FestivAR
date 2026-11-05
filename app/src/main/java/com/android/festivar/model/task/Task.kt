@@ -154,17 +154,16 @@ data class Task(
   }
 
   /**
-   * Removes an assigned [User] from the [Task] by returning a version of `this` with [user] removed
-   * from the [assignees] list. The assignee is identified by its [User.uid], so it is removed even
-   * if its name or surname differ from the ones of [user].
+   * Removes an assigned [User] from the [Task] by returning a version of `this` with the user
+   * removed from the [assignees] list. It is identified by the [userId].
    *
-   * @param user The [User] that is going to be removed from `this`, from [assignees] list.
-   * @return The [Task] but with [user] removed from it.
-   * @throws IllegalArgumentException If [user] is not assigned, identified by its [User.uid].
+   * @param userId The unique identifier of the user that is going to be removed from `this`, from
+   *   [assignees] list.
+   * @return The [Task] but with the user removed from it.
+   * @throws IllegalArgumentException If the user is not assigned, identified by the [userId].
    */
-  fun removeAssignee(user: User): Task {
-    require(assignees.any { it.uid == user.uid }) { "This user is not assigned to the task." }
-
-    return copy(assignees = assignees.filterNot { it.uid == user.uid })
+  fun removeAssignee(userId: String): Task {
+    require(assignees.any { it.uid == userId }) { "This user is not assigned to the task." }
+    return copy(assignees = assignees.filterNot { it.uid == userId })
   }
 }

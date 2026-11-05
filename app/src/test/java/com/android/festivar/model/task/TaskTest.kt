@@ -642,7 +642,7 @@ class TaskTest {
       val task = taskWith(maxAssign = size, assignees = users(size))
 
       for (user in task.assignees) {
-        val result = task.removeAssignee(user)
+        val result = task.removeAssignee(user.uid)
 
         assertEquals(users(size) - user, result.assignees) // Others kept, in the same order.
         assertFalse(result.assignees.contains(user))
@@ -660,7 +660,7 @@ class TaskTest {
 
       for (user in listOf(outsider, User("user$size"), User("user-1"))) {
         assertThrowsWithMessage(IllegalArgumentException::class.java, notAssignedMessage) {
-          task.removeAssignee(user)
+          task.removeAssignee(user.uid)
         }
       }
       assertEquals(users(size), task.assignees) // The task is not modified.
@@ -697,27 +697,15 @@ class TaskTest {
     assertEquals(listOf(sara), task.assignees) // The task is not modified.
   }
 
-  /** removeAssignee removes the assignee with the same uid, even if its names differ. */
+  /** removeAssignee removes the assignee with the given uid, whatever its name or surname. */
   @Test
-  fun removeAssignee_removesTheAssigneeWithTheSameUid() {
+  fun removeAssignee_removesTheAssigneeWithTheGivenUid() {
     val assignees = listOf(User("user0"), sara, User("user1"))
     val task = taskWith(maxAssign = 3, assignees = assignees)
 
-    val result = task.removeAssignee(User("u1"))
+    val result = task.removeAssignee("u1")
 
     assertEquals(task.copy(assignees = listOf(User("user0"), User("user1"))), result)
     assertEquals(assignees, task.assignees) // The original task is not modified.
-  }
-
-  /**
-   * removeAssignee refuses a user whose uid is not assigned, even with the names of an assignee.
-   */
-  @Test
-  fun removeAssignee_fails_whenNoAssigneeHasTheUid_evenWithTheSameNames() {
-    val task = taskWith(maxAssign = 3, assignees = listOf(sara))
-
-    assertThrowsWithMessage(IllegalArgumentException::class.java, notAssignedMessage) {
-      task.removeAssignee(User("u2", name = "Sara", surname = "Keller"))
-    }
   }
 }

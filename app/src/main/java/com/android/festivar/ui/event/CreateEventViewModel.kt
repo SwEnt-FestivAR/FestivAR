@@ -21,8 +21,11 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * UI state of the create event form.
@@ -95,6 +98,8 @@ data class CreateEventUIState(
   }
 }
 
+private const val TAG = "CreateEventViewModel"
+
 /**
  * Holds the create event form, validates it and saves the event with the signed-in user as its
  * first member.
@@ -152,8 +157,8 @@ class CreateEventViewModel(
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
-        Log.e("CreateEventViewModel", "Saving the event failed", e)
-        updateState {
+        Log.e(TAG, e.message ?: "Saving the event failed", e)
+        _uiState.update {
           it.copy(isSaving = false, errorMsg = R.string.create_event_error_save_failed)
         }
       }
@@ -175,14 +180,17 @@ class CreateEventViewModel(
 
     val newEvent = currentState.toEvent(eventsRepository.getNewUid(), membersList)
     eventsRepository.addEvent(newEvent)
+    check(userId.isNotBlank()) { "User not signed in" }
+    val creator = usersRepository.getUser(userId)
 
-    if (creator != null) {
-      val repo = usersRepository
-      try {
-        repo.editUser(creator.uid, creator.addJoinedEvent(newEvent.eventId))
-      } catch (_: Exception) {
-        // If updating user joinedEvents fails, event is still created
-      }
+    val newEvent = _uiState.value.toEvent(eventsRepository.getNewUid(), listOf(creator))
+    eventsRepository.addEvent(newEvent)
+    try {
+      usersRepository.editUser(creator.uid, creator.addJoinedEvent(newEvent.eventId))
+    } catch (e: Exception) {
+      // Do not leave an event that the creator's profile does not know about
+      withContext(NonCancellable) { runCatching { eventsRepository.deleteEvent(newEvent.eventId) } }
+      throw e
     }
     updateState { it.copy(isSaving = false, createdEventId = newEvent.eventId) }
   }
