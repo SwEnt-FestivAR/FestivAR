@@ -76,15 +76,14 @@ private class ScriptedRepository(val local: TasksRepositoryLocal) : TasksReposit
 @RunWith(AndroidJUnit4::class)
 class EditTaskViewModelTest {
   private val zone = ZoneId.of("Europe/Zurich")
-  // A fixed day far ahead: the form refuses an end in the past. 2037 has the calendar of 2026, so
-  // the weekdays and the night Zurich leaves summer time stay the same.
-  private val day = LocalDate.of(2037, 10, 17)
+  // Tomorrow, like the picker tests of #371: the form refuses an end in the past.
+  private val day = LocalDate.now(zone).plusDays(1)
   private val voiceNote =
       VoiceNote(
           id = "note-1",
           audioUrl = "https://example.com/note-1.m4a",
           duration = Duration.ofSeconds(12),
-          createdAt = ZonedDateTime.of(2037, 10, 1, 8, 0, 0, 0, zone),
+          createdAt = ZonedDateTime.of(day, LocalTime.of(8, 0), zone),
       )
   private val seeded =
       Task(
@@ -92,8 +91,8 @@ class EditTaskViewModelTest {
           eventId = "event-1",
           title = "Run power to stage",
           description = "Blue crate",
-          startTime = ZonedDateTime.of(2037, 10, 17, 9, 0, 0, 0, zone),
-          endTime = ZonedDateTime.of(2037, 10, 17, 10, 30, 0, 0, zone),
+          startTime = ZonedDateTime.of(day, LocalTime.of(9, 0), zone),
+          endTime = ZonedDateTime.of(day, LocalTime.of(10, 30), zone),
           estimatedTime = Duration.ofMinutes(45),
           location = "Stage",
           priority = Priority.HIGH,
@@ -162,8 +161,10 @@ class EditTaskViewModelTest {
 
     val other = elsewhere.uiState.value
     assertFalse(other.isOwner())
-    assertEquals(LocalTime.of(7, 0), other.form.startTime)
-    assertEquals(LocalTime.of(8, 30), other.form.endTime)
+    // Zurich is one or two hours ahead of UTC depending on the season of tomorrow.
+    val utc = ZoneId.of("UTC")
+    assertEquals(seeded.startTime?.withZoneSameInstant(utc)?.toLocalTime(), other.form.startTime)
+    assertEquals(seeded.endTime?.withZoneSameInstant(utc)?.toLocalTime(), other.form.endTime)
   }
 
   // Breaks if load reloads an already loaded task.
@@ -276,8 +277,8 @@ class EditTaskViewModelTest {
     val wholeDay =
         seeded.copy(
             taskId = "task-3",
-            startTime = ZonedDateTime.of(2037, 10, 17, 0, 0, 0, 0, zone),
-            endTime = ZonedDateTime.of(2037, 10, 17, 23, 59, 0, 0, zone),
+            startTime = ZonedDateTime.of(day, LocalTime.MIDNIGHT, zone),
+            endTime = ZonedDateTime.of(day, LocalTime.of(23, 59), zone),
         )
     runBlocking { local.addTask(wholeDay) }
     val vm = EditTaskViewModel("task-3", { "owner-1" }, repository, zone = zone)
@@ -294,7 +295,8 @@ class EditTaskViewModelTest {
   // the earlier offset as documented, or if that lossy mapping alone counts as a change.
   @Test
   fun aTimeInTheSecondRepeatedHourMapsToTheEarlierOffset() {
-    // Zurich leaves summer time on 25 October 2037: 02:00 to 03:00 happens twice.
+    // The one fixed date: Zurich leaves summer time on 25 October 2037, so 02:00 to 03:00 happens
+    // twice. Far ahead, since the form refuses an end in the past.
     val repeated = LocalDateTime.of(2037, 10, 25, 2, 30)
     val secondOccurrence = ZonedDateTime.ofLocal(repeated, zone, ZoneOffset.ofHours(1))
     val firstOccurrence = ZonedDateTime.ofLocal(repeated, zone, ZoneOffset.ofHours(2))
@@ -492,7 +494,7 @@ class EditTaskViewModelTest {
     assertEquals("Main stage", saved.location)
     assertEquals(Priority.URGENT, saved.priority)
     assertEquals(Duration.ofMinutes(90), saved.estimatedTime)
-    assertEquals(ZonedDateTime.of(2037, 10, 17, 11, 0, 0, 0, zone), saved.endTime)
+    assertEquals(ZonedDateTime.of(day, LocalTime.of(11, 0), zone), saved.endTime)
     assertEquals(seeded.startTime, saved.startTime)
     assertEquals(seeded.assignees, saved.assignees)
     assertTrue(saved.completed)
@@ -655,9 +657,8 @@ class EditTaskViewModelTest {
 /** Tests of the rules of [EditTaskUiState], without a ViewModel. */
 class EditTaskUiStateTest {
   private val zone = ZoneId.of("Europe/Zurich")
-  // A fixed day far ahead: the form refuses an end in the past. 2037 has the calendar of 2026, so
-  // the weekdays and the night Zurich leaves summer time stay the same.
-  private val day = LocalDate.of(2037, 10, 17)
+  // Tomorrow, like the picker tests of #371: the form refuses an end in the past.
+  private val day = LocalDate.now(zone).plusDays(1)
   private val bare =
       Task(taskId = "task-1", eventId = "event-1", title = "Run", ownerId = "owner-1")
   private val untouched =
