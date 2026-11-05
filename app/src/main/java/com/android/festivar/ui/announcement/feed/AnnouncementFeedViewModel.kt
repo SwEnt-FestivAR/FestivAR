@@ -2,8 +2,11 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.announcement.feed
 
+import android.util.Log
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.android.festivar.R
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryProvider
 import com.android.festivar.model.event.announcement.Announcement
@@ -17,6 +20,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+private const val LOG_TAG = "AnnouncementFeedViewModel"
 
 /**
  * Which announcements the feed shows, selected with the chips at the top of the screen.
@@ -55,18 +60,15 @@ data class AnnouncementFeedSection(
  * @property selectedFilter Which announcements are shown: [shownPinnedAnnouncements] and
  *   [shownSections]. A refresh keeps it.
  * @property isLoading Whether the announcements are currently being fetched.
- * @property hasError Whether the last fetch of the announcements failed. It stays `true` until a
- *   fetch succeeds, so the screen can keep showing the error with a retry.
- * @property errorMsg The cause of the failed fetch, as given by the repository. `null` if there is
- *   no error, or if the repository gave no cause. The screen words the error itself.
+ * @property errorMsg The string resource of the failed fetch, or `null` if there is no error. It
+ *   stays until a fetch succeeds, so the screen can keep showing the error with a retry.
  */
 data class AnnouncementFeedUIState(
     val pinnedAnnouncements: List<Announcement> = emptyList(),
     val sections: List<AnnouncementFeedSection> = emptyList(),
     val selectedFilter: AnnouncementFilter = AnnouncementFilter.ALL,
     val isLoading: Boolean = false,
-    val hasError: Boolean = false,
-    val errorMsg: String? = null,
+    @StringRes val errorMsg: Int? = null,
 ) {
   /** The [pinnedAnnouncements] selected by [selectedFilter]. */
   val shownPinnedAnnouncements: List<Announcement>
@@ -184,7 +186,6 @@ class AnnouncementFeedViewModel(
               pinnedAnnouncements = pinned,
               sections = sections,
               isLoading = false,
-              hasError = false,
               errorMsg = null,
           )
         }
@@ -192,7 +193,10 @@ class AnnouncementFeedViewModel(
         // A cancelled fetch must not touch the state. A CancellationException from
         // the repository while this fetch is still active is a normal failure.
         ensureActive()
-        _uiState.update { it.copy(isLoading = false, hasError = true, errorMsg = e.message) }
+        Log.e(LOG_TAG, "Error loading the announcements of event $eventId", e)
+        _uiState.update {
+          it.copy(isLoading = false, errorMsg = R.string.announcement_feed_load_failed)
+        }
       }
     }
   }

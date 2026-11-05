@@ -2,6 +2,7 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.announcement.feed
 
+import com.android.festivar.R
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
@@ -82,7 +83,6 @@ class AnnouncementFeedViewModelTest {
 
     val state = viewModel.uiState.value
     assertTrue(state.isLoading)
-    assertFalse(state.hasError)
     assertNull(state.errorMsg)
     assertTrue(state.hasNoAnnouncements)
     assertEquals(counts(urgent = 0, warning = 0, info = 0, all = 0), state.counts)
@@ -104,7 +104,6 @@ class AnnouncementFeedViewModelTest {
     assertEquals(figmaSections, state.shownSections)
     assertEquals(figmaCounts, state.counts)
     assertFalse(state.isLoading)
-    assertFalse(state.hasError)
     assertNull(state.errorMsg)
 
     val olderPinned = announcement("pinned-old", at(8), pinned = true)
@@ -131,8 +130,7 @@ class AnnouncementFeedViewModelTest {
     assertTrue(failed.shownPinnedAnnouncements.isEmpty())
     assertEquals(listOf(AnnouncementFeedSection(today, listOf(warningToday))), failed.shownSections)
     assertEquals(figmaCounts, failed.counts)
-    assertTrue(failed.hasError)
-    assertEquals("fetch failed", failed.errorMsg)
+    assertEquals(R.string.announcement_feed_load_failed, failed.errorMsg)
     assertFalse(failed.isLoading)
 
     viewModel.selectFilter(AnnouncementFilter.URGENT)
@@ -142,8 +140,7 @@ class AnnouncementFeedViewModelTest {
         listOf(AnnouncementFeedSection(today, listOf(urgentToday))),
         refiltered.shownSections,
     )
-    assertTrue(refiltered.hasError)
-    assertEquals("fetch failed", refiltered.errorMsg)
+    assertEquals(R.string.announcement_feed_load_failed, refiltered.errorMsg)
   }
 
   // Breaks if a retry clears the error when it starts, so the screen stops showing it.
@@ -161,30 +158,14 @@ class AnnouncementFeedViewModelTest {
     val viewModel = AnnouncementFeedViewModel(EVENT_ID, repository, clock = clock)
 
     viewModel.refreshUIState()
-    assertEquals("fetch failed", viewModel.uiState.value.errorMsg)
+    assertEquals(R.string.announcement_feed_load_failed, viewModel.uiState.value.errorMsg)
 
     shouldWait = true
     viewModel.refreshUIState()
 
     assertTrue(viewModel.uiState.value.isLoading)
-    assertTrue(viewModel.uiState.value.hasError)
-    assertEquals("fetch failed", viewModel.uiState.value.errorMsg)
+    assertEquals(R.string.announcement_feed_load_failed, viewModel.uiState.value.errorMsg)
     pendingEvent.complete(event())
-  }
-
-  // Breaks if an exception without a message hides the failure, or gets a made-up message.
-  @Test
-  fun failureWithoutAMessageSetsHasErrorAndNoErrorMsg() = runTest {
-    val repository = ControllableEventsRepository(figmaEvent)
-    repository.failure = IllegalStateException()
-    val viewModel = feedViewModel(repository)
-
-    viewModel.refreshUIState()
-
-    val state = viewModel.uiState.value
-    assertTrue(state.hasError)
-    assertNull(state.errorMsg)
-    assertFalse(state.isLoading)
   }
 
   // Breaks if a successful refresh leaves the error of the failed one, or keeps loading.
@@ -199,7 +180,6 @@ class AnnouncementFeedViewModelTest {
     viewModel.refreshUIState()
 
     val state = viewModel.uiState.value
-    assertFalse(state.hasError)
     assertNull(state.errorMsg)
     assertFalse(state.isLoading)
     assertEquals(figmaSections, state.shownSections)
@@ -348,7 +328,7 @@ class AnnouncementFeedViewModelTest {
     olderFetch.complete(event(infoToday))
 
     assertTrue(viewModel.uiState.value.isLoading)
-    assertFalse(viewModel.uiState.value.hasError)
+    assertNull(viewModel.uiState.value.errorMsg)
     assertTrue(viewModel.uiState.value.hasNoAnnouncements)
 
     val newInfo = announcement("new-info", at(12))
@@ -356,7 +336,7 @@ class AnnouncementFeedViewModelTest {
 
     val state = viewModel.uiState.value
     assertFalse(state.isLoading)
-    assertFalse(state.hasError)
+    assertNull(state.errorMsg)
     assertEquals(listOf(AnnouncementFeedSection(today, listOf(newInfo))), state.sections)
   }
 
@@ -372,14 +352,13 @@ class AnnouncementFeedViewModelTest {
     olderFetch.completeExceptionally(IllegalStateException("stale failure"))
 
     assertTrue(viewModel.uiState.value.isLoading)
-    assertFalse(viewModel.uiState.value.hasError)
     assertNull(viewModel.uiState.value.errorMsg)
 
     newerFetch.complete(event(infoToday))
 
     val state = viewModel.uiState.value
     assertFalse(state.isLoading)
-    assertFalse(state.hasError)
+    assertNull(state.errorMsg)
     assertEquals(listOf(AnnouncementFeedSection(today, listOf(infoToday))), state.sections)
   }
 
@@ -394,8 +373,7 @@ class AnnouncementFeedViewModelTest {
 
     val state = viewModel.uiState.value
     assertFalse(state.isLoading)
-    assertTrue(state.hasError)
-    assertEquals("fetch cancelled", state.errorMsg)
+    assertEquals(R.string.announcement_feed_load_failed, state.errorMsg)
   }
 
   // Breaks if the empty state only looks at pinned announcements or only at the dated ones.
