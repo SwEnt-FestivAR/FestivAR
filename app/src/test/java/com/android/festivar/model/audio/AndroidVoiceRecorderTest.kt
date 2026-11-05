@@ -129,9 +129,10 @@ class AndroidVoiceRecorderTest {
     advance(millis)
   }
 
-  private fun assertFails(cause: Exception? = null, call: () -> Unit) {
+  private fun assertFails(cause: Exception? = null, call: () -> Unit): VoiceRecorderException {
     val thrown = assertThrows(VoiceRecorderException::class.java) { call() }
     if (cause != null) assertSame(cause, thrown.cause)
+    return thrown
   }
 
   private fun assertIllegal(call: () -> Unit) {
@@ -251,10 +252,23 @@ class AndroidVoiceRecorderTest {
     newCapture = { FakeCapture(stopFailure = cause) }
     record()
 
-    assertFails(cause) { recorder.stop() }
+    val thrown = assertFails(cause) { recorder.stop() }
 
+    assertEquals("The recording could not be finished.", thrown.message)
     assertDropped()
     assertCanRecordAgain()
+  }
+
+  @Test
+  fun stop_reportsAShortRecordingAsTooShortWhenTheCaptureCannotStop() {
+    val cause = RuntimeException("no valid audio")
+    newCapture = { FakeCapture(stopFailure = cause) }
+    record(minMillis - 1)
+
+    val thrown = assertFails(cause) { recorder.stop() }
+
+    assertEquals("The recording is too short.", thrown.message)
+    assertDropped()
   }
 
   @Test

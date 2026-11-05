@@ -100,12 +100,15 @@ internal constructor(
     } catch (e: RuntimeException) {
       end(recording)
       deleteFile(recording.file)
-      throw VoiceRecorderException("The recording could not be finished.", e)
+      // MediaRecorder throws here when it has no valid audio, as with a very short recording.
+      val message =
+          if (duration < MIN_DURATION) TOO_SHORT else "The recording could not be finished."
+      throw VoiceRecorderException(message, e)
     }
     end(recording)
     val problem =
         when {
-          duration < MIN_DURATION -> "The recording is too short."
+          duration < MIN_DURATION -> TOO_SHORT
           recording.file.length() == 0L -> "The recording is empty."
           else -> null
         }
@@ -238,6 +241,7 @@ internal constructor(
     private const val FILE_PREFIX = "voice_note_"
     private const val FILE_SUFFIX = ".m4a"
     private const val START_FAILED = "The recording could not start."
+    private const val TOO_SHORT = "The recording is too short."
     private const val LOG_TAG = "AndroidVoiceRecorder"
   }
 }
