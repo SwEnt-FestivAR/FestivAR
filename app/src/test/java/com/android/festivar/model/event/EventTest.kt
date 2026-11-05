@@ -239,23 +239,23 @@ class EventTest {
     assertInvalid(alreadyMemberMessage) { event.addMember(User("same")) }
   }
 
-  /** removeMember removes only the given user and does not change the original. */
+  /** removeMember removes only the user with the given id and does not change the original. */
   @Test
   fun removeMember_removesOnlyTheGivenUser() {
     val event = eventWith(members = listOf(alice, bob))
 
-    val result = event.removeMember(alice)
+    val result = event.removeMember(alice.uid)
 
     assertEquals(event.copy(members = listOf(bob)), result)
     assertEquals(listOf(alice, bob), event.members)
   }
 
-  /** removeMember refuses a user that is not a member. */
+  /** removeMember refuses an id that is not the one of a member. */
   @Test
   fun removeMember_fails_whenUserIsNotMember() {
     val event = eventWith(members = listOf(alice))
 
-    assertInvalid(notMemberMessage) { event.removeMember(outsider) }
+    assertInvalid(notMemberMessage) { event.removeMember(outsider.uid) }
   }
 
   // Members are identified by their uid, whatever their name or surname.
@@ -276,26 +276,24 @@ class EventTest {
     assertInvalid(alreadyMemberMessage) { event.addMember(User("u1")) }
   }
 
-  /** removeMember removes the member with the same uid, even if its names differ. */
+  /** removeMember removes the member with the given uid, whatever its names. */
   @Test
   fun removeMember_removesTheMemberWithTheSameUid() {
     val sara = User("u1", name = "Sara", surname = "Keller")
     val event = eventWith(members = listOf(alice, sara, bob))
 
-    val result = event.removeMember(User("u1"))
+    val result = event.removeMember("u1")
 
     assertEquals(event.copy(members = listOf(alice, bob)), result)
     assertEquals(listOf(alice, sara, bob), event.members)
   }
 
-  /** removeMember refuses a user whose uid is not a member, even with the names of a member. */
+  /** removeMember identifies a member by its uid only: the name of a member is refused. */
   @Test
-  fun removeMember_fails_whenNoMemberHasTheUid_evenWithTheSameNames() {
+  fun removeMember_fails_whenGivenTheNameOfAMember() {
     val event = eventWith(members = listOf(User("u1", name = "Sara", surname = "Keller")))
 
-    assertInvalid(notMemberMessage) {
-      event.removeMember(User("u2", name = "Sara", surname = "Keller"))
-    }
+    assertInvalid(notMemberMessage) { event.removeMember("Sara") }
   }
 
   /** addTask adds the task at the end, keeps every other field and does not change the original. */

@@ -293,7 +293,7 @@ interface DataRepository {
         it
       }
     }
-    val newEvent = event.copy(tasks = newTasks).removeMember(user)
+    val newEvent = event.copy(tasks = newTasks).removeMember(userId)
     var newUser = user.removeJoinedEvent(eventId)
     for (task in tasks) {
       if (newUser.tasksAssigned.contains(task.taskId)) {

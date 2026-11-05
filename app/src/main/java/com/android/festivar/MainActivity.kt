@@ -5,6 +5,7 @@
 package com.android.festivar
 
 import android.content.Context
+import android.content.pm.ActivityInfo
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -34,6 +35,11 @@ class MainActivity : ComponentActivity() {
     // The system start screen is the app's only splash, shown while the app starts
     installSplashScreen()
     super.onCreate(savedInstanceState)
+    // Source - https://stackoverflow.com/q/73598309
+    // Posted by Alix Blaine
+    // Retrieved 2026-11-05, License - CC BY-SA 4.0
+
+    this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
 
     setContent { AppTheme { Surface(modifier = Modifier.fillMaxSize()) { FestivAR() } } }
   }
