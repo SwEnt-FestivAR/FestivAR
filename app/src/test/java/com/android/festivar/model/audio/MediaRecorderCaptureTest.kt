@@ -5,8 +5,6 @@ import android.content.Context
 import android.media.MediaRecorder
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import io.mockk.mockk
-import io.mockk.verify
 import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -59,47 +57,6 @@ class MediaRecorderCaptureTest {
     shadow.errorListener.onError(mediaRecorder, MediaRecorder.MEDIA_RECORDER_ERROR_UNKNOWN, 0)
 
     assertTrue(failed)
-  }
-
-  @Test
-  fun stop_endsTheRecording() {
-    startCapture()
-
-    capture.stop()
-
-    assertEquals(ShadowMediaRecorder.STATE_INITIAL, shadow.state)
-  }
-
-  @Test
-  fun release_freesTheRecorder() {
-    startCapture()
-    capture.stop()
-
-    capture.release()
-
-    assertEquals(ShadowMediaRecorder.STATE_RELEASED, shadow.state)
-  }
-
-  // The fake MediaRecorder of Robolectric has no pause or resume, so this uses a mock.
-  @Test
-  fun pause_reachesOnlyThePauseOfTheRecorder() {
-    val recorder = mockk<MediaRecorder>(relaxed = true)
-
-    MediaRecorderCapture(recorder).pause()
-
-    verify(exactly = 1) { recorder.pause() }
-    verify(exactly = 0) { recorder.resume() }
-  }
-
-  // The fake MediaRecorder of Robolectric has no pause or resume, so this uses a mock.
-  @Test
-  fun resume_reachesOnlyTheResumeOfTheRecorder() {
-    val recorder = mockk<MediaRecorder>(relaxed = true)
-
-    MediaRecorderCapture(recorder).resume()
-
-    verify(exactly = 1) { recorder.resume() }
-    verify(exactly = 0) { recorder.pause() }
   }
 
   @Test

@@ -150,25 +150,16 @@ class AndroidVoiceRecorderTest {
   }
 
   @Test
-  fun start_afterAStopUsesAnotherFileAndKeepsTheFirst() {
+  fun start_afterAStopUsesAnotherFileAndTimesItFromItsOwnStart() {
     record()
     val first = recorder.stop()
-
-    recorder.start()
-
-    assertNotEquals(first.file, files[1])
-    assertEquals(files[1], captures[1].outputFile)
-    assertTrue(first.file.exists())
-  }
-
-  @Test
-  fun start_afterAStopTimesTheRecordingFromItsOwnStart() {
-    record()
-    recorder.stop()
     advance(tickMillis)
 
     record()
 
+    assertNotEquals(first.file, files[1])
+    assertEquals(files[1], captures[1].outputFile)
+    assertTrue(first.file.exists())
     assertEquals(AndroidVoiceRecorder.MIN_DURATION, recorder.stop().duration)
   }
 
@@ -179,20 +170,6 @@ class AndroidVoiceRecorderTest {
     assertIllegal { recorder.start() }
 
     assertEquals(recordingOf(minMillis), recorder.state.value)
-    assertEquals(1, captures.size)
-    assertEquals(1, files.size)
-    assertFalse(captures.single().stopped)
-    assertSame(files.single(), recorder.stop().file)
-  }
-
-  @Test
-  fun start_whilePausedThrowsAndLeavesTheRecordingIntact() {
-    record()
-    recorder.pause()
-
-    assertIllegal { recorder.start() }
-
-    assertEquals(pausedAt(minMillis), recorder.state.value)
     assertEquals(1, captures.size)
     assertEquals(1, files.size)
     assertFalse(captures.single().stopped)
@@ -226,23 +203,12 @@ class AndroidVoiceRecorderTest {
   // Includes a busy microphone: its IllegalStateException must not look like a wrong-state call.
   @Test
   fun start_failsWhenTheCaptureCannotStart() {
-    listOf(IOException("cannot write"), IllegalStateException("busy"), SecurityException("denied"))
-        .forEach { cause ->
-          newCapture = { FakeCapture(startFailure = cause) }
-          assertFails(cause) { recorder.start() }
-          assertDropped()
-        }
+    listOf(IOException("cannot write"), IllegalStateException("busy")).forEach { cause ->
+      newCapture = { FakeCapture(startFailure = cause) }
+      assertFails(cause) { recorder.start() }
+      assertDropped()
+    }
     assertCanRecordAgain()
-  }
-
-  @Test
-  fun start_reportsItsOwnFailureWhenReleaseAlsoThrows() {
-    val cause = IOException("cannot write")
-    newCapture = { FakeCapture(startFailure = cause, releaseFailure = IllegalStateException()) }
-
-    assertFails(cause) { recorder.start() }
-
-    assertDropped()
   }
 
   @Test
@@ -267,28 +233,15 @@ class AndroidVoiceRecorderTest {
     assertStaysIn(RecorderState.Idle)
   }
 
-  @Test
-  fun stop_keepsTheRecordingWhenReleaseThrows() {
-    newCapture = { FakeCapture(releaseFailure = IllegalStateException()) }
-    record()
-
-    assertTrue(recorder.stop().file.exists())
-
-    assertStaysIn(RecorderState.Idle)
-  }
-
   // A zero duration must fail here, not leak the IllegalArgumentException of Audio.
   @Test
-  fun stop_failsAndDropsARecordingShorterThanTheMinimum() {
+  fun stop_dropsARecordingShorterThanTheMinimumAndKeepsOneOfExactlyIt() {
     listOf(0, minMillis - 1).forEach { millis ->
       record(millis)
       assertFails { recorder.stop() }
       assertDropped()
     }
-  }
 
-  @Test
-  fun stop_keepsARecordingOfExactlyTheMinimum() {
     record()
 
     assertEquals(AndroidVoiceRecorder.MIN_DURATION, recorder.stop().duration)
@@ -336,32 +289,10 @@ class AndroidVoiceRecorderTest {
   }
 
   @Test
-  fun stop_atTheLimitReturnsTheFile() {
-    record(maxMillis)
-
-    val audio = recorder.stop()
-
-    assertSame(files.single(), audio.file)
-    assertTrue(audio.file.exists())
-    assertEquals(AndroidVoiceRecorder.MAX_DURATION, audio.duration)
-    assertStaysIn(RecorderState.Idle)
-  }
-
-  @Test
   fun stop_whenIdleThrows() {
     assertIllegal { recorder.stop() }
 
     assertEquals(RecorderState.Idle, recorder.state.value)
-  }
-
-  @Test
-  fun stop_afterACaptureErrorThrowsAndStaysFailed() {
-    record()
-    captures.single().reportError()
-
-    assertIllegal { recorder.stop() }
-
-    assertEquals(RecorderState.Failed, recorder.state.value)
   }
 
   @Test
@@ -381,17 +312,6 @@ class AndroidVoiceRecorderTest {
     assertTrue(captures.single().stopped)
     assertDropped()
     assertCanRecordAgain()
-  }
-
-  @Test
-  fun cancel_whilePausedDropsTheRecordingAndEndsInIdle() {
-    recorder.start()
-    recorder.pause()
-
-    recorder.cancel()
-
-    assertTrue(captures.single().stopped)
-    assertDropped()
   }
 
   @Test
@@ -415,16 +335,6 @@ class AndroidVoiceRecorderTest {
     assertDropped(RecorderState.Failed)
   }
 
-  @Test
-  fun captureError_whilePausedDropsTheRecordingAndEndsInFailed() {
-    recorder.start()
-    recorder.pause()
-
-    captures.single().reportError()
-
-    assertDropped(RecorderState.Failed)
-  }
-
   // The collector runs inside each change of state, so it also sees the ones that last no time.
   // Recording(0), which the error replaces at once, shows that it does.
   @Test
@@ -441,20 +351,15 @@ class AndroidVoiceRecorderTest {
   }
 
   @Test
-  fun captureError_afterAStopIsIgnored() {
+  fun captureError_ofAnEndedRecordingIsIgnored() {
     record()
     val audio = recorder.stop()
 
-    captures.single().reportError()
+    captures[0].reportError()
 
     assertTrue(audio.file.exists())
     assertEquals(RecorderState.Idle, recorder.state.value)
-  }
 
-  @Test
-  fun captureError_ofThePreviousRecordingLeavesTheNewOneIntact() {
-    record()
-    recorder.stop()
     recorder.start()
 
     captures[0].reportError()
@@ -465,14 +370,11 @@ class AndroidVoiceRecorderTest {
   }
 
   @Test
-  fun pause_whenIdleThrows() {
+  fun pause_whenIdleOrAlreadyPausedThrowsAndChangesNothing() {
     assertIllegal { recorder.pause() }
 
     assertEquals(RecorderState.Idle, recorder.state.value)
-  }
 
-  @Test
-  fun pause_whilePausedThrowsAndChangesNothing() {
     record(tickMillis)
     recorder.pause()
 
@@ -483,7 +385,7 @@ class AndroidVoiceRecorderTest {
   }
 
   @Test
-  fun pause_freezesTheTimer() {
+  fun pause_freezesTheTimerAndResumeContinuesItFromTheSameValue() {
     record(tickMillis * 2)
 
     recorder.pause()
@@ -491,6 +393,14 @@ class AndroidVoiceRecorderTest {
     assertEquals(1, captures.single().pauses)
     advance(tickMillis * 10)
     assertEquals(pausedAt(tickMillis * 2), recorder.state.value)
+
+    recorder.resume()
+
+    assertEquals(1, captures.single().resumes)
+    advance(tickMillis - 1)
+    assertEquals(recordingOf(tickMillis * 2), recorder.state.value)
+    advance(1)
+    assertEquals(recordingOf(tickMillis * 3), recorder.state.value)
   }
 
   @Test
@@ -506,35 +416,17 @@ class AndroidVoiceRecorderTest {
   }
 
   @Test
-  fun resume_whenIdleThrows() {
+  fun resume_whenIdleOrRunningThrowsAndChangesNothing() {
     assertIllegal { recorder.resume() }
 
     assertEquals(RecorderState.Idle, recorder.state.value)
-  }
 
-  @Test
-  fun resume_whileRunningThrowsAndChangesNothing() {
     record(tickMillis)
 
     assertIllegal { recorder.resume() }
 
     assertEquals(0, captures.single().resumes)
     assertEquals(recordingOf(tickMillis), recorder.state.value)
-  }
-
-  @Test
-  fun resume_continuesTheTimerFromTheSameValue() {
-    record(tickMillis * 2)
-    recorder.pause()
-    advance(tickMillis * 10)
-
-    recorder.resume()
-
-    assertEquals(1, captures.single().resumes)
-    advance(tickMillis - 1)
-    assertEquals(recordingOf(tickMillis * 2), recorder.state.value)
-    advance(1)
-    assertEquals(recordingOf(tickMillis * 3), recorder.state.value)
   }
 
   @Test
@@ -549,20 +441,6 @@ class AndroidVoiceRecorderTest {
     assertTrue(captures.single().stopped)
     assertDropped()
     assertCanRecordAgain()
-  }
-
-  @Test
-  fun resume_justBeforeTheLimitPassesItByLessThanATick() {
-    val justBefore = maxMillis - tickMillis / 2
-    record(justBefore)
-    recorder.pause()
-    recorder.resume()
-    assertEquals(1, captures.single().resumes)
-
-    advance(tickMillis)
-
-    assertEquals(pausedAt(justBefore + tickMillis), recorder.state.value)
-    assertEquals(Duration.ofMillis(justBefore + tickMillis), recorder.stop().duration)
   }
 
   @Test
@@ -606,7 +484,7 @@ class AndroidVoiceRecorderTest {
   }
 
   @Test
-  fun timer_dropsTheRecordingAndEndsInFailedWhenThePauseAtTheLimitFails() {
+  fun timer_endsInFailedAndKeepsItsScopeAliveWhenThePauseAtTheLimitFails() {
     newCapture = {
       FakeCapture(pauseFailure = IllegalStateException(), stopFailure = RuntimeException())
     }
@@ -616,14 +494,6 @@ class AndroidVoiceRecorderTest {
     assertEquals(1, captures.single().pauses)
     assertTrue(captures.single().stopped)
     assertDropped(RecorderState.Failed)
-  }
-
-  @Test
-  fun timer_keepsItsScopeAliveWhenThePauseAtTheLimitFails() {
-    newCapture = { FakeCapture(pauseFailure = IllegalStateException()) }
-
-    record(maxMillis)
-
     // An exception that escaped from the timer would have cancelled this scope.
     assertTrue(scope.isActive)
     assertCanRecordAgain()

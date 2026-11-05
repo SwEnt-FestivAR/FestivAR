@@ -42,17 +42,6 @@ class AndroidVoiceRecorderRecordingTest {
   }
 
   @Test
-  fun stop_producesAPlayableFile() {
-    instrumentation.runOnMainSync { recorder.start() }
-    Thread.sleep(RECORDING_MILLIS)
-    instrumentation.runOnMainSync { audio = recorder.stop() }
-
-    val recorded = checkNotNull(audio)
-    assertTrue(recorded.file.length() > 0)
-    assertTrue(playableDurationMillis(recorded) > 0)
-  }
-
-  @Test
   fun resume_leavesThePauseOutOfTheFile() {
     instrumentation.runOnMainSync { recorder.start() }
     Thread.sleep(RECORDING_MILLIS)

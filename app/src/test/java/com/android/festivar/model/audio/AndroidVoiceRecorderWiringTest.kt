@@ -33,15 +33,10 @@ class AndroidVoiceRecorderWiringTest {
   private fun idleFor(duration: Duration) = shadowOf(Looper.getMainLooper()).idleFor(duration)
 
   @Test
-  fun start_recordsIntoAnM4aFileOfTheCache() {
+  fun start_recordsIntoAnM4aFileOfTheCacheThatCancelDeletes() {
     recorder.start()
 
     assertEquals(1, voiceNoteFiles().size)
-  }
-
-  @Test
-  fun cancel_deletesTheFileFromTheCache() {
-    recorder.start()
 
     recorder.cancel()
 
