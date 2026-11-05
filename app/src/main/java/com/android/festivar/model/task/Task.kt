@@ -174,7 +174,7 @@ data class Task(
    * @param newPriority The new priority of the [Task]
    * @return The [Task] but with the [priority] updated.
    */
-  fun editPriority(newPriority: Priority): Task {
+  fun withPriority(newPriority: Priority): Task {
     return copy(priority = newPriority)
   }
 
