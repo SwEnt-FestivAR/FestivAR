@@ -18,6 +18,8 @@ import com.android.festivar.ui.components.FieldError
 import com.android.festivar.ui.components.START_OF_DAY
 import com.android.festivar.ui.components.endDateError
 import com.android.festivar.ui.components.startDateError
+import com.android.festivar.ui.task.TaskFormEditing
+import com.android.festivar.ui.task.TaskFormEditor
 import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalTime
@@ -122,7 +124,8 @@ data class CreateTaskUiState(
   val canCreate: Boolean
     get() = isValid && !isSaving && !isCreated
 
-  private val isValid: Boolean
+  /** Whether it has a title and no field error; [canCreate] adds the saving and created flags. */
+  internal val isValid: Boolean
     get() =
         title.isNotBlank() &&
             startDateError == null &&
@@ -156,7 +159,7 @@ data class CreateTaskUiState(
 }
 
 /** The most digits of the estimated time: 9 digits is always below `Int.MAX_VALUE`. */
-private const val MAX_ESTIMATED_DIGITS = 9
+internal const val MAX_ESTIMATED_DIGITS = 9
 
 /** The fewest people a task can need, and the number of people a new task starts with. */
 const val MIN_MAX_ASSIGN = 1
@@ -183,94 +186,43 @@ private const val SAVE_TIMEOUT_MS = 15_000L
  *   the same timeout, so the saving state lasts at most twice this long.
  * @param zone The time zone of the created task's start and end. The device's one by default.
  */
-class CreateTaskViewModel(
+class CreateTaskViewModel
+private constructor(
     private val eventId: String,
     private val currentUserId: () -> String,
-    private val tasksRepository: TasksRepository = TasksRepositoryProvider.repository,
-    private val saveTimeoutMs: Long = SAVE_TIMEOUT_MS,
-    zone: ZoneId = ZoneId.systemDefault(),
-) : ViewModel() {
+    private val tasksRepository: TasksRepository,
+    private val saveTimeoutMs: Long,
+    zone: ZoneId,
+    private val formEditing: TaskFormEditing,
+) : ViewModel(), TaskFormEditor by formEditing {
+
+  constructor(
+      eventId: String,
+      currentUserId: () -> String,
+      tasksRepository: TasksRepository = TasksRepositoryProvider.repository,
+      saveTimeoutMs: Long = SAVE_TIMEOUT_MS,
+      zone: ZoneId = ZoneId.systemDefault(),
+  ) : this(eventId, currentUserId, tasksRepository, saveTimeoutMs, zone, TaskFormEditing())
+
   // The id of the task being created. It is kept across retries: if a save timed out or failed
   // after reaching the server, the retry targets the same task instead of creating a second one.
   private var pendingTaskId: String? = null
-
-  init {
-    // A Task needs an event: a blank one is a mistake of the caller.
-    require(eventId.isNotBlank()) { "eventId must not be blank" }
-  }
 
   // Create task UI state
   private val _uiState = MutableStateFlow(CreateTaskUiState(zone = zone))
   val uiState: StateFlow<CreateTaskUiState> = _uiState.asStateFlow()
 
-  // Functions to update the UI state.
-
-  // Once the task is created the form is final: later edits are ignored.
+  // A finished form ignores every change, pickers included, since the screen leaves on creation.
   private fun edit(change: (CreateTaskUiState) -> CreateTaskUiState) = _uiState.update {
     if (it.isCreated) it else change(it)
   }
 
-  /** Sets the title and marks it as edited, so that an empty title is reported. */
-  fun updateTitle(title: String) = edit { it.copy(title = title, titleEdited = true) }
-
-  /** Sets the description. */
-  fun updateDescription(description: String) = edit { it.copy(description = description) }
-
-  /** Sets the location. */
-  fun updateLocation(location: String) = edit { it.copy(location = location) }
-
-  /** Sets the priority. */
-  fun updatePriority(priority: Priority) = edit { it.copy(priority = priority) }
-
-  /** Adds one to the number of people the task needs. */
-  fun incrementMaxAssign() = edit { it.copy(maxAssign = it.maxAssign + 1) }
-
-  /** Removes one from the number of people the task needs, down to [MIN_MAX_ASSIGN]. */
-  fun decrementMaxAssign() = edit {
-    it.copy(maxAssign = (it.maxAssign - 1).coerceAtLeast(MIN_MAX_ASSIGN))
-  }
-
-  /**
-   * Sets the estimated time, in minutes. Anything but digits is dropped, and at most
-   * [MAX_ESTIMATED_DIGITS] digits are kept, so that the number always fits in an `Int`.
-   */
-  fun updateEstimatedMinutes(text: String) = edit {
-    it.copy(estimatedMinutes = text.filter(Char::isDigit).take(MAX_ESTIMATED_DIGITS))
-  }
-
-  /** Sets the date the task starts. */
-  fun updateStartDate(date: LocalDate) = edit { it.copy(startDate = date) }
-
-  /** Sets the time the task starts. */
-  fun updateStartTime(time: LocalTime) = edit { it.copy(startTime = time) }
-
-  /** Sets the date the task ends. */
-  fun updateEndDate(date: LocalDate) = edit { it.copy(endDate = date) }
-
-  /** Sets the time the task ends. */
-  fun updateEndTime(time: LocalTime) = edit { it.copy(endTime = time) }
-
-  /** Opens the picker dialog of [field], or closes the open one when [field] is `null`. */
-  fun showPicker(field: DateTimeField?) = _uiState.update { it.copy(openPicker = field) }
-
-  /** Sets [date] in the field whose picker is open, then closes the picker. */
-  fun pickDate(date: LocalDate) {
-    when (_uiState.value.openPicker) {
-      DateTimeField.START_DATE -> updateStartDate(date)
-      DateTimeField.END_DATE -> updateEndDate(date)
-      else -> Unit
-    }
-    showPicker(null)
-  }
-
-  /** Sets [time] in the field whose picker is open, then closes the picker. */
-  fun pickTime(time: LocalTime) {
-    when (_uiState.value.openPicker) {
-      DateTimeField.START_TIME -> updateStartTime(time)
-      DateTimeField.END_TIME -> updateEndTime(time)
-      else -> Unit
-    }
-    showPicker(null)
+  init {
+    // A Task needs an event: a blank one is a mistake of the caller.
+    require(eventId.isNotBlank()) { "eventId must not be blank" }
+    // The form setters come from TaskFormEditing. Pickers follow the same guard as the fields.
+    formEditing.applyEdit = ::edit
+    formEditing.current = { _uiState.value }
   }
 
   /** Saves the task if the form is valid. Does nothing while a save is running. */

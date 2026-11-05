@@ -1,0 +1,5 @@
+<!-- Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com> -->
+<resources>
+    <string name="edit_task_error_load_failed">Unable to load the task.</string>
+    <string name="edit_task_error_save_failed">Unable to save the task.</string>
+</resources>

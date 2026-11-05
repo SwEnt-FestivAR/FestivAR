@@ -603,6 +603,17 @@ class CreateTaskViewModelTest {
 
     assertEquals(1, savedTasks().size)
   }
+
+  // Breaks if the picker setter bypasses the created guard.
+  @Test
+  fun showPicker_afterTheTaskIsCreated_isIgnored() {
+    viewModel.updateTitle("Run power to stage")
+    viewModel.createTask()
+    assertTrue(viewModel.uiState.value.isCreated)
+
+    viewModel.showPicker(DateTimeField.START_DATE)
+    assertNull(viewModel.uiState.value.openPicker)
+  }
 }
 
 class CreateTaskUiStateTest {

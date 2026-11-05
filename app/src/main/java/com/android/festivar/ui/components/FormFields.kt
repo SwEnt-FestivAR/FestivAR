@@ -168,6 +168,9 @@ enum class FieldError {
 
   /** The selected DateTime range is in the past. */
   OUTDATED,
+
+  /** Fewer people than are already assigned. */
+  TOO_FEW_SLOTS,
 }
 
 /** The string resource of the message shown under a field for [error]. */
@@ -182,6 +185,7 @@ fun fieldErrorMessageRes(error: FieldError): Int =
       FieldError.END_BEFORE_START -> R.string.field_error_end_before_start
       FieldError.INVALID_ESTIMATED_TIME -> R.string.field_error_invalid_estimated_time
       FieldError.OUTDATED -> R.string.field_error_outdated
+      FieldError.TOO_FEW_SLOTS -> R.string.field_error_too_few_slots
     }
 
 /**
