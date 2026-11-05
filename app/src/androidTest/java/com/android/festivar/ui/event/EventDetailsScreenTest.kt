@@ -4,6 +4,7 @@ package com.android.festivar.ui.event
 
 import android.annotation.SuppressLint
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
@@ -132,6 +133,23 @@ class EventDetailsScreenTest {
     composeTestRule.onNodeWithText("No location specified").assertIsDisplayed()
   }
 
+  @Test
+  fun truncatesLongLocationWithinAddressRow() {
+    val longLocation =
+        "Main entrance, north-western courtyard beside the temporary festival information tent"
+    setContent(eventSameMonth.copy(location = longLocation))
+
+    val rowBounds =
+        composeTestRule
+            .onNodeWithTag(EventDetailsScreenTestTags.ADDRESS_ROW)
+            .assertIsDisplayed()
+            .getUnclippedBoundsInRoot()
+    val valueBounds =
+        composeTestRule.onNodeWithText(longLocation).assertIsDisplayed().getUnclippedBoundsInRoot()
+
+    assertTrue(valueBounds.right <= rowBounds.right)
+    assertTrue(valueBounds.bottom <= rowBounds.bottom)
+  }
 
   @SuppressLint("ViewModelConstructorInComposable")
   @Test
