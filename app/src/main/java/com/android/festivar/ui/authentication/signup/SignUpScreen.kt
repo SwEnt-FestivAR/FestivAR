@@ -49,8 +49,6 @@ import androidx.compose.ui.unit.dp
 import com.android.festivar.R
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.components.NoticeSnackbar
-import com.android.festivar.ui.theme.AppTheme
-import com.google.firebase.auth.FirebaseUser
 
 object SignUpScreenTestTags {
   const val ERROR_MESSAGE: String = "errorMessage"
