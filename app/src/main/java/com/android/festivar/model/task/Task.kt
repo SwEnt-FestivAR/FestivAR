@@ -166,14 +166,4 @@ data class Task(
     require(assignees.any { it.uid == userId }) { "This user is not assigned to the task." }
     return copy(assignees = assignees.filterNot { it.uid == userId })
   }
-
-  /**
-   * Returns a new version of `this` but with the [priority] updated to the new value.
-   *
-   * @param newPriority The new priority of the [Task]
-   * @return The [Task] but with the [priority] updated.
-   */
-  fun withPriority(newPriority: Priority): Task {
-    return copy(priority = newPriority)
-  }
 }
