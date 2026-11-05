@@ -309,7 +309,8 @@ private fun EventDetailsRow(
     )
     Text(
         text = value,
-        modifier = Modifier.padding(start = 10.dp),
+        modifier = Modifier.weight(1f).padding(start = 10.dp),
+        textAlign = TextAlign.End,
         maxLines = 2,
         overflow = TextOverflow.Ellipsis,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
