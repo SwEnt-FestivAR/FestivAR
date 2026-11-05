@@ -79,9 +79,6 @@ class VoiceRecorderException(message: String, cause: Throwable? = null) : Except
 /**
  * Records one voice note at a time. The microphone permission is checked by the caller before
  * [start]; this class only records.
- *
- * A recording stops growing at a limit chosen by the implementation: it then stays paused until
- * [stop] or [cancel], and what was recorded is kept.
  */
 interface VoiceRecorder {
   /** The current state, updated while recording so the screen can show the timer. */
@@ -106,11 +103,10 @@ interface VoiceRecorder {
 
   /**
    * Resumes the paused recording. If that fails, the recorder drops the recording and deletes its
-   * file. At the limit of the recorder it refuses instead, and the recording stays paused and
-   * intact, so [stop] can still return it. [state] tells the two apart.
+   * file.
    *
    * @throws IllegalStateException if no recording is paused.
-   * @throws VoiceRecorderException if the recording cannot be resumed or has reached the limit.
+   * @throws VoiceRecorderException if the recording cannot be resumed.
    */
   fun resume()
 

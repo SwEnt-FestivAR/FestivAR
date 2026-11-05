@@ -6,7 +6,6 @@ import java.io.IOException
 import java.time.Duration
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.toList
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -90,7 +89,6 @@ class AndroidVoiceRecorderTest {
       )
 
   private val minMillis = AndroidVoiceRecorder.MIN_DURATION.toMillis()
-  private val maxMillis = AndroidVoiceRecorder.MAX_DURATION.toMillis()
   private val tickMillis = AndroidVoiceRecorder.TICK_INTERVAL_MILLIS
 
   private fun advance(millis: Long) {
@@ -444,20 +442,6 @@ class AndroidVoiceRecorderTest {
   }
 
   @Test
-  fun resume_atTheLimitThrowsAndLeavesTheRecordingIntact() {
-    record(maxMillis)
-
-    assertFails { recorder.resume() }
-
-    assertEquals(pausedAt(maxMillis), recorder.state.value)
-    assertEquals(0, captures.single().resumes)
-    assertFalse(captures.single().stopped)
-    assertFalse(captures.single().released)
-    assertTrue(files.single().exists())
-    assertEquals(AndroidVoiceRecorder.MAX_DURATION, recorder.stop().duration)
-  }
-
-  @Test
   fun timer_advancesOnEachTick() {
     record(tickMillis)
     assertEquals(recordingOf(tickMillis), recorder.state.value)
@@ -467,35 +451,5 @@ class AndroidVoiceRecorderTest {
 
     advance(1)
     assertEquals(recordingOf(tickMillis * 2), recorder.state.value)
-  }
-
-  @Test
-  fun timer_pausesTheCaptureAtTheLimit() {
-    record(maxMillis - tickMillis)
-    assertEquals(recordingOf(maxMillis - tickMillis), recorder.state.value)
-    assertEquals(0, captures.single().pauses)
-
-    advance(tickMillis)
-    assertEquals(pausedAt(maxMillis), recorder.state.value)
-
-    assertStaysIn(pausedAt(maxMillis))
-    assertEquals(1, captures.single().pauses)
-    assertFalse(captures.single().stopped)
-  }
-
-  @Test
-  fun timer_endsInFailedAndKeepsItsScopeAliveWhenThePauseAtTheLimitFails() {
-    newCapture = {
-      FakeCapture(pauseFailure = IllegalStateException(), stopFailure = RuntimeException())
-    }
-
-    record(maxMillis)
-
-    assertEquals(1, captures.single().pauses)
-    assertTrue(captures.single().stopped)
-    assertDropped(RecorderState.Failed)
-    // An exception that escaped from the timer would have cancelled this scope.
-    assertTrue(scope.isActive)
-    assertCanRecordAgain()
   }
 }

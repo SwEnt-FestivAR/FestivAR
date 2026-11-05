@@ -57,7 +57,6 @@ class AndroidVoiceRecorderRecordingTest {
     assertTrue("The file lasts $fileMillis ms", fileMillis in 2_500L..5_000L)
   }
 
-  // Every recording that reaches the limit ends this way: paused by the timer, then stopped.
   @Test
   fun stop_whilePausedProducesAPlayableFileWithoutThePause() {
     instrumentation.runOnMainSync { recorder.start() }

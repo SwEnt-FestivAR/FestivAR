@@ -27,8 +27,8 @@ import kotlinx.coroutines.launch
  *   [MediaRecorder].
  * @param createOutputFile Creates the new temporary file of each recording.
  * @param clock The current time in milliseconds. It must never go backwards.
- * @param timerScope Runs the timer behind [RecorderState.Recording], which also pauses the
- *   recording at [MAX_DURATION]. Its dispatcher must use the same thread as the callers.
+ * @param timerScope Runs the timer behind [RecorderState.Recording]. Its dispatcher must use the
+ *   same thread as the callers.
  */
 class AndroidVoiceRecorder
 internal constructor(
@@ -77,15 +77,15 @@ internal constructor(
     val recording = current
     check(recording != null && !recording.isPaused) { "No running recording to pause." }
     changeCapture(recording, "The recording could not be paused.") { recording.capture.pause() }
-    freeze(recording)
+    recording.timer?.cancel()
+    recording.recordedBefore = elapsed(recording)
+    recording.runningSince = null
+    _state.value = RecorderState.Recording(recording.recordedBefore, isPaused = true)
   }
 
   override fun resume() {
     val recording = current
     check(recording != null && recording.isPaused) { "No paused recording to resume." }
-    if (recording.recordedBefore >= MAX_DURATION) {
-      throw VoiceRecorderException("The recording has reached its maximum duration.")
-    }
     changeCapture(recording, "The recording could not be resumed.") { recording.capture.resume() }
     recording.runningSince = clock()
     _state.value = RecorderState.Recording(recording.recordedBefore)
@@ -157,39 +157,9 @@ internal constructor(
     recording.timer = timerScope.launch {
       while (isActive) {
         delay(TICK_INTERVAL_MILLIS)
-        val elapsed = elapsed(recording)
-        if (elapsed >= MAX_DURATION) {
-          pauseAtLimit(recording)
-        } else {
-          _state.value = RecorderState.Recording(elapsed)
-        }
+        _state.value = RecorderState.Recording(elapsed(recording))
       }
     }
-  }
-
-  /**
-   * Pauses the [recording] at [MAX_DURATION], so that a later [stop] still returns it. This is not
-   * done with `MediaRecorder.setMaxDuration`, which stops the recorder by itself, asynchronously,
-   * and would complicate that [stop]. It runs in the timer, where nothing can catch an exception,
-   * so a failure drops the recording like an error in the middle of a recording.
-   */
-  private fun pauseAtLimit(recording: ActiveRecording) {
-    try {
-      recording.capture.pause()
-    } catch (e: RuntimeException) {
-      Log.e(LOG_TAG, "The recording could not be paused at its limit and was dropped", e)
-      drop(recording, RecorderState.Failed)
-      return
-    }
-    freeze(recording)
-  }
-
-  /** Stops the timer of the [recording] and keeps its state at the time recorded so far. */
-  private fun freeze(recording: ActiveRecording) {
-    recording.timer?.cancel()
-    recording.recordedBefore = elapsed(recording)
-    recording.runningSince = null
-    _state.value = RecorderState.Recording(recording.recordedBefore, isPaused = true)
   }
 
   /** The time recorded so far by the [recording], without the time it spent paused. */
@@ -261,12 +231,6 @@ internal constructor(
   internal companion object {
     /** Shorter recordings are unusable, so [stop] deletes them and throws. */
     val MIN_DURATION: Duration = Duration.ofSeconds(1)
-
-    /**
-     * The recorded time at which a recording stops growing: it is paused, and [resume] refuses to
-     * continue it. It can go over by up to [TICK_INTERVAL_MILLIS].
-     */
-    val MAX_DURATION: Duration = Duration.ofMinutes(5)
 
     /** How often [RecorderState.Recording] is updated. */
     const val TICK_INTERVAL_MILLIS = 200L
