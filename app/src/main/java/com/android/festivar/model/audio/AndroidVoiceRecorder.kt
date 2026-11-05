@@ -3,11 +3,11 @@ package com.android.festivar.model.audio
 
 import android.content.Context
 import android.media.MediaRecorder
+import android.os.Build
 import android.os.SystemClock
 import android.util.Log
 import java.io.File
 import java.time.Duration
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.delay
@@ -22,37 +22,11 @@ import kotlinx.coroutines.launch
  * [MediaRecorder]. It records one note at a time and must be used from the main thread, where the
  * [MediaRecorder] reports back.
  *
- * **Injected parts.** Unlike [AndroidVoicePlayer], most of this class handles failures and timing,
- * which a real [MediaRecorder] cannot produce on demand, and the one of Robolectric writes no
- * audio. So the capture, the file and the clock are injected, and only the public constructor uses
- * the real ones.
- *
- * @param createCapture Creates the capture of each recording, so the tests can replace
- *   [MediaRecorder].
- * @param createOutputFile Creates the new temporary file of each recording.
- * @param clock The current time in milliseconds. It must never go backwards.
- * @param timerScope Runs the timer behind [RecorderState.Recording]. Its dispatcher must use the
- *   same thread as the callers.
+ * @param context Any context; only its application context is kept, so no screen is leaked.
  */
-class AndroidVoiceRecorder
-internal constructor(
-    private val createCapture: () -> AudioCapture,
-    private val createOutputFile: () -> File,
-    private val clock: () -> Long,
-    private val timerScope: CoroutineScope,
-) : VoiceRecorder {
-
-  /** Creates a recorder that uses the application context of [context]. */
-  constructor(
-      context: Context
-  ) : this(
-      createCapture = { MediaRecorderCapture(context.applicationContext) },
-      createOutputFile = {
-        File.createTempFile(FILE_PREFIX, FILE_SUFFIX, context.applicationContext.cacheDir)
-      },
-      clock = SystemClock::elapsedRealtime,
-      timerScope = MainScope(),
-  )
+class AndroidVoiceRecorder(context: Context) : VoiceRecorder {
+  private val appContext = context.applicationContext
+  private val timerScope = MainScope()
 
   private val _state = MutableStateFlow<RecorderState>(RecorderState.Idle)
   override val state: StateFlow<RecorderState> = _state.asStateFlow()
@@ -62,16 +36,17 @@ internal constructor(
   override fun start() {
     check(current == null) { "A recording is already running." }
     var file: File? = null
-    var capture: AudioCapture? = null
+    var recorder: MediaRecorder? = null
     val recording =
         try {
-          val newFile = createOutputFile().also { file = it }
-          val newCapture = createCapture().also { capture = it }
-          newCapture.start(newFile) { onCaptureError(newCapture) }
-          ActiveRecording(newCapture, newFile, runningSince = clock())
+          val newFile =
+              File.createTempFile(FILE_PREFIX, FILE_SUFFIX, appContext.cacheDir).also { file = it }
+          val newRecorder = newRecorder().also { recorder = it }
+          startRecorder(newRecorder, newFile)
+          ActiveRecording(newRecorder, newFile, runningSince = SystemClock.elapsedRealtime())
         } catch (e: Exception) {
           // Includes the IllegalStateException of a busy MediaRecorder, which is not a wrong call.
-          capture?.let { release(it) }
+          recorder?.let { release(it) }
           file?.let { deleteFile(it) }
           throw VoiceRecorderException("The recording could not start.", e)
         }
@@ -83,7 +58,7 @@ internal constructor(
   override fun pause() {
     val recording = current
     check(recording != null && !recording.isPaused) { "No running recording to pause." }
-    changeCapture(recording, "The recording could not be paused.") { recording.capture.pause() }
+    changeRecorder(recording, "The recording could not be paused.") { recording.recorder.pause() }
     recording.timer?.cancel()
     recording.recordedBefore = elapsed(recording)
     recording.runningSince = null
@@ -93,8 +68,8 @@ internal constructor(
   override fun resume() {
     val recording = current
     check(recording != null && recording.isPaused) { "No paused recording to resume." }
-    changeCapture(recording, "The recording could not be resumed.") { recording.capture.resume() }
-    recording.runningSince = clock()
+    changeRecorder(recording, "The recording could not be resumed.") { recording.recorder.resume() }
+    recording.runningSince = SystemClock.elapsedRealtime()
     _state.value = RecorderState.Recording(recording.recordedBefore)
     launchTimer(recording)
   }
@@ -103,7 +78,7 @@ internal constructor(
     val recording = checkNotNull(current) { "No recording is running." }
     val duration = elapsed(recording)
     try {
-      recording.capture.stop()
+      recording.recorder.stop()
     } catch (e: RuntimeException) {
       end(recording)
       deleteFile(recording.file)
@@ -130,12 +105,36 @@ internal constructor(
     current?.let { drop(it) }
   }
 
+  private fun newRecorder(): MediaRecorder =
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        MediaRecorder(appContext)
+      } else {
+        @Suppress("DEPRECATION") MediaRecorder()
+      }
+
+  /** Starts [recorder] on AAC audio in an MPEG-4 [file]. */
+  private fun startRecorder(recorder: MediaRecorder, file: File) {
+    recorder.setOnErrorListener { _, what, extra ->
+      Log.e(LOG_TAG, "MediaRecorder error what=$what extra=$extra")
+      onRecorderError(recorder)
+    }
+    recorder.setAudioSource(MediaRecorder.AudioSource.MIC)
+    recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+    recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+    // Without these, the default AAC settings of many devices sound muffled.
+    recorder.setAudioSamplingRate(SAMPLING_RATE_HZ)
+    recorder.setAudioEncodingBitRate(BIT_RATE)
+    recorder.setOutputFile(file.absolutePath)
+    recorder.prepare()
+    recorder.start()
+  }
+
   /**
-   * Runs [action] on the capture of the [recording]. If it fails, including with the
+   * Runs [action] on the recorder of the [recording]. If it fails, including with the
    * [IllegalStateException] of [MediaRecorder], the recording is dropped and the [failure] message
    * is reported as a [VoiceRecorderException].
    */
-  private inline fun changeCapture(
+  private inline fun changeRecorder(
       recording: ActiveRecording,
       failure: String,
       action: () -> Unit,
@@ -160,12 +159,13 @@ internal constructor(
   /** The time recorded so far by the [recording], without the time it spent paused. */
   private fun elapsed(recording: ActiveRecording): Duration {
     val runningSince = recording.runningSince ?: return recording.recordedBefore
-    return recording.recordedBefore + Duration.ofMillis(clock() - runningSince)
+    return recording.recordedBefore +
+        Duration.ofMillis(SystemClock.elapsedRealtime() - runningSince)
   }
 
-  /** Drops the recording after an error, unless [capture] has already been replaced or ended. */
-  private fun onCaptureError(capture: AudioCapture) {
-    val recording = current?.takeIf { it.capture === capture } ?: return
+  /** Drops the recording after an error, unless [recorder] has already been replaced or ended. */
+  private fun onRecorderError(recorder: MediaRecorder) {
+    val recording = current?.takeIf { it.recorder === recorder } ?: return
     Log.e(LOG_TAG, "The recording failed and was dropped")
     drop(recording, RecorderState.Failed)
   }
@@ -176,7 +176,7 @@ internal constructor(
    */
   private fun drop(recording: ActiveRecording, finalState: RecorderState = RecorderState.Idle) {
     try {
-      recording.capture.stop()
+      recording.recorder.stop()
     } catch (e: RuntimeException) {
       // Expected when nothing was captured yet, and the file is deleted anyway.
       Log.w(LOG_TAG, "Error stopping a dropped recording", e)
@@ -189,14 +189,14 @@ internal constructor(
     recording.timer?.cancel()
     current = null
     _state.value = finalState
-    release(recording.capture)
+    release(recording.recorder)
   }
 
-  private fun release(capture: AudioCapture) {
+  private fun release(recorder: MediaRecorder) {
     try {
-      capture.release()
+      recorder.release()
     } catch (e: RuntimeException) {
-      // Nothing more to free: the capture is already unusable.
+      // Nothing more to free: the recorder is already unusable.
       Log.w(LOG_TAG, "Error releasing the recorder", e)
     }
   }
@@ -213,7 +213,7 @@ internal constructor(
    * @property timer The timer of the current run. It is cancelled while the recording is paused.
    */
   private class ActiveRecording(
-      val capture: AudioCapture,
+      val recorder: MediaRecorder,
       val file: File,
       var runningSince: Long?,
       var recordedBefore: Duration = Duration.ZERO,
@@ -232,6 +232,8 @@ internal constructor(
 
     private const val FILE_PREFIX = "voice_note_"
     private const val FILE_SUFFIX = ".m4a"
+    private const val SAMPLING_RATE_HZ = 44_100
+    private const val BIT_RATE = 64_000
     private const val TOO_SHORT = "The recording is too short."
     private const val LOG_TAG = "AndroidVoiceRecorder"
   }
