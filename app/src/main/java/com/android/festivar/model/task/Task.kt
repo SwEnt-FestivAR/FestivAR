@@ -176,6 +176,4 @@ data class Task(
   fun withPriority(newPriority: Priority): Task {
     return copy(priority = newPriority)
   }
-
-
 }
