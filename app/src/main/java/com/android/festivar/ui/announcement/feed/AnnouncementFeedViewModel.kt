@@ -5,10 +5,11 @@ package com.android.festivar.ui.announcement.feed
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.model.event.EventsRepository
+import com.android.festivar.model.event.EventsRepositoryProvider
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.event.announcement.AnnouncementPriority
+import java.time.Clock
 import java.time.LocalDate
-import java.time.ZonedDateTime
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,7 +37,7 @@ private fun AnnouncementFilter.matches(announcement: Announcement): Boolean =
 /**
  * The unpinned announcements updated on the same day.
  *
- * @property date The day of the update, in the time zone of the current time.
+ * @property date The day of the update, in the time zone of the ViewModel's clock.
  * @property announcements The announcements of that day, the most recently updated first.
  */
 data class AnnouncementFeedSection(
@@ -111,18 +112,18 @@ data class AnnouncementFeedUIState(
  * first fetch, the UI state is already loading.
  *
  * Pinned announcements appear separately, followed by unpinned announcements grouped by their
- * update date. The announcements in the state have their `updatedAt` in the time zone of [now], so
- * the times the screen shows always match the date headers.
+ * update date. The announcements in the state have their `updatedAt` in the time zone of [clock],
+ * so the times the screen shows always match the date headers.
  *
  * @property eventId The unique identifier of the event whose announcements are shown.
  * @property eventsRepository The repository used to fetch the announcements.
- * @property now Gives the current time, whose time zone is used for the announcements' `updatedAt`
- *   and the sections' dates.
+ * @property clock Gives the time zone of the announcements' `updatedAt` and the sections' dates.
+ *   The device's clock by default.
  */
 class AnnouncementFeedViewModel(
     private val eventId: String,
-    private val eventsRepository: EventsRepository,
-    private val now: () -> ZonedDateTime = ZonedDateTime::now,
+    private val eventsRepository: EventsRepository = EventsRepositoryProvider.repository,
+    private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
 
   // Loading from the start: nothing is fetched until the screen calls refreshUIState on resume, and
@@ -161,10 +162,9 @@ class AnnouncementFeedViewModel(
         // repository that ignores cancellation still returns its announcements, so stop here
         // before these stale announcements reach the UI state.
         ensureActive()
-        val currentTime = now()
         val announcements =
             event.announcements.map {
-              it.copy(updatedAt = it.updatedAt.withZoneSameInstant(currentTime.zone))
+              it.copy(updatedAt = it.updatedAt.withZoneSameInstant(clock.zone))
             }
         val pinned =
             announcements.filter { it.pinned }.sortedByDescending { it.updatedAt.toInstant() }

@@ -7,6 +7,7 @@ import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.event.announcement.AnnouncementPriority
+import java.time.Clock
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZoneOffset
@@ -33,7 +34,7 @@ import org.junit.Test
 class AnnouncementFeedViewModelTest {
   private val dispatcher = UnconfinedTestDispatcher()
   private val zone = ZoneId.of("Europe/Zurich")
-  private val now = at(12)
+  private val clock = Clock.fixed(at(12).toInstant(), zone)
 
   // The feed of the Figma frames 2979:6369 and 3237:7284.
   private val pinnedInfo = announcement("pinned-info", at(9).minusDays(1), pinned = true)
@@ -157,7 +158,7 @@ class AnnouncementFeedViewModelTest {
             throw IllegalStateException("fetch failed")
           }
         }
-    val viewModel = AnnouncementFeedViewModel(EVENT_ID, repository, now = { now })
+    val viewModel = AnnouncementFeedViewModel(EVENT_ID, repository, clock = clock)
 
     viewModel.refreshUIState()
     assertEquals("fetch failed", viewModel.uiState.value.errorMsg)
@@ -407,7 +408,7 @@ class AnnouncementFeedViewModelTest {
 
   private fun feedViewModel(
       repository: EventsRepository = EventsRepositoryLocal(listOf(figmaEvent))
-  ) = AnnouncementFeedViewModel(EVENT_ID, repository, now = { now })
+  ) = AnnouncementFeedViewModel(EVENT_ID, repository, clock = clock)
 
   private fun loadedState(vararg announcements: Announcement): AnnouncementFeedUIState {
     val viewModel = feedViewModel(EventsRepositoryLocal(listOf(event(*announcements))))
