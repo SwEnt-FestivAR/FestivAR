@@ -50,10 +50,14 @@ class AudioContractsTest {
   fun playerState_subtypesWork() {
     val idle = PlayerState.Idle
     val playing = PlayerState.Playing("url1")
+    val paused = PlayerState.Paused("url3")
     val failed = PlayerState.Failed("url2")
 
     assertEquals(PlayerState.Idle, idle)
     assertEquals("url1", playing.audioUrl)
+    assertEquals("url3", paused.audioUrl)
+    assertNotNull(paused.toString())
+    assertNotNull(paused.hashCode())
     assertEquals("url2", failed.audioUrl)
     assertNotNull(playing.toString())
     assertNotNull(playing.hashCode())

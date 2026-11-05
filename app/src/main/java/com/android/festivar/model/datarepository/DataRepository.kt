@@ -288,7 +288,7 @@ interface DataRepository {
     // Compute the new versions that have to be stored.
     val newTasks = tasks.map {
       if (it.assignees.map { it2 -> it2.uid }.contains(userId)) {
-        it.removeAssignee(user)
+        it.removeAssignee(userId)
       } else {
         it
       }
@@ -379,7 +379,7 @@ interface DataRepository {
     val event = eventsRepository.getEvent(task.eventId)
 
     // Compute the new versions that have to be stored.
-    val newTask = task.removeAssignee(user)
+    val newTask = task.removeAssignee(userId)
     val newUser = user.removeAssignedTask(taskId)
     val newEvent = event.copy(tasks = event.tasks.map { if (it.taskId == taskId) newTask else it })
 
