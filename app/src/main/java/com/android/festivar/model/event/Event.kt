@@ -106,18 +106,17 @@ data class Event(
   }
 
   /**
-   * Removes a member [User] from the [Event] by returning a version of `this` with [user] removed
-   * from the [members] list. The member is identified by its [User.uid], so it is removed even if
-   * its name or surname differ from the ones of [user].
+   * Removes a member [User] from the [Event] by returning a version of `this` with the user removed
+   * from the [members] list. The member is identified by the [userId].
    *
-   * @param user The [User] that is going to be removed from `this`, from [members] list.
-   * @return The [Event] but with [user] removed from it.
-   * @throws IllegalArgumentException If [user] is not a member, identified by its [User.uid].
+   * @param userId The identifier of the [User] that is going to be removed from `this`, from [members] list.
+   * @return The [Event] but with the user removed from it.
+   * @throws IllegalArgumentException If the user is not a member, identified by [userId].
    */
-  fun removeMember(user: User): Event {
-    require(members.any { it.uid == user.uid }) { "This user is not a member of the event." }
+  fun removeMember(userId: String): Event {
+    require(members.any { it.uid == userId }) { "This user is not a member of the event." }
 
-    return copy(members = members.filterNot { it.uid == user.uid })
+    return copy(members = members.filterNot { it.uid == userId })
   }
 
   /**
