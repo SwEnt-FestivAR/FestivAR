@@ -3,6 +3,7 @@ package com.android.festivar.ui.event
 // Co-authored-by: Copilot App
 
 import android.annotation.SuppressLint
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -10,6 +11,7 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
@@ -20,6 +22,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -149,6 +152,17 @@ class EventDetailsScreenTest {
 
     assertTrue(valueBounds.right <= rowBounds.right)
     assertTrue(valueBounds.bottom <= rowBounds.bottom)
+
+    val layouts = mutableListOf<TextLayoutResult>()
+    composeTestRule
+        .onNodeWithText(longLocation)
+        .fetchSemanticsNode()
+        .config[SemanticsActions.GetTextLayoutResult]
+        .action
+        ?.invoke(layouts)
+
+    assertEquals(2, layouts.single().lineCount)
+    assertTrue(layouts.single().isLineEllipsized(1))
   }
 
   @SuppressLint("ViewModelConstructorInComposable")
