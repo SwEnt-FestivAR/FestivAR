@@ -77,6 +77,10 @@ data class TaskDetailsUiState(
   val canMarkDone: Boolean
     get() = status == TaskStatus.YOURS && !isUpdating && !isLoading
 
+  /** Whether the edit button is shown: only the owner of [task] can edit it. */
+  val canEdit: Boolean
+    get() = task != null && task.ownerId == currentUserId
+
   /** Whether the actions bar is shown at all: only open and own tasks have one. */
   val hasActions: Boolean
     get() = status == TaskStatus.OPEN || status == TaskStatus.YOURS
@@ -86,6 +90,9 @@ data class TaskDetailsUiState(
  * Holds the state of the Task details screen and applies its three actions: take the task, give it
  * back and mark it done. Each action saves the new version of the task in [repository] and shows it
  * only once saved.
+ *
+ * Nothing loads until [load] is called: the screen calls it on every resume, the first one
+ * included, so a load at construction would read the task twice on open.
  *
  * @param taskId the task to show.
  * @param currentUser the signed-in user. The caller must pass it: this class does not check that
@@ -102,13 +109,10 @@ class TaskDetailsViewModel(
   // isLoading starts true, so it cannot tell a running load from the initial state.
   private var loadJob: Job? = null
 
-  init {
-    load()
-  }
-
   /**
    * Loads the task; on failure the error is set and the version already shown, if any, stays shown.
-   * Does nothing while an action is saving or another load is running.
+   * A successful load clears a load error but keeps a save error. Does nothing while an action is
+   * saving or another load is running.
    */
   fun load() {
     if (_uiState.value.isUpdating || loadJob?.isActive == true) return
@@ -116,7 +120,15 @@ class TaskDetailsViewModel(
       _uiState.update { it.copy(isLoading = true) }
       try {
         val task = repository.getTask(taskId)
-        _uiState.update { it.copy(task = task, isLoading = false, errorMsg = null) }
+        // Only a load error is cleared: a save error stays until the user dismisses it, even
+        // when the task reloads on resume.
+        _uiState.update {
+          it.copy(
+              task = task,
+              isLoading = false,
+              errorMsg = it.errorMsg.takeUnless { e -> e == R.string.task_details_load_failed },
+          )
+        }
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {

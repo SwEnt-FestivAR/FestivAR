@@ -11,7 +11,9 @@ import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.user.User
 import com.android.festivar.model.voicenote.VoiceNote
 import com.android.festivar.ui.components.DateTimeField
+import com.android.festivar.ui.components.END_OF_DAY
 import com.android.festivar.ui.components.FieldError
+import com.android.festivar.ui.components.START_OF_DAY
 import com.android.festivar.ui.task.create.CreateTaskUiState
 import java.time.Duration
 import java.time.LocalDate
@@ -277,8 +279,8 @@ class EditTaskViewModelTest {
     val wholeDay =
         seeded.copy(
             taskId = "task-3",
-            startTime = ZonedDateTime.of(day, LocalTime.MIDNIGHT, zone),
-            endTime = ZonedDateTime.of(day, LocalTime.of(23, 59), zone),
+            startTime = ZonedDateTime.of(day, START_OF_DAY, zone),
+            endTime = ZonedDateTime.of(day, END_OF_DAY, zone),
         )
     runBlocking { local.addTask(wholeDay) }
     val vm = EditTaskViewModel("task-3", { "owner-1" }, repository, zone = zone)
@@ -286,8 +288,8 @@ class EditTaskViewModelTest {
     vm.load()
 
     val form = vm.uiState.value.form
-    assertEquals(LocalTime.MIDNIGHT, form.startTime)
-    assertEquals(LocalTime.of(23, 59), form.endTime)
+    assertEquals(START_OF_DAY, form.startTime)
+    assertEquals(END_OF_DAY, form.endTime)
     assertFalse(vm.uiState.value.hasChanges)
   }
 
