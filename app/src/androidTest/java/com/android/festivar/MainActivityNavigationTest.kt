@@ -19,10 +19,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
-import androidx.credentials.Credential
 import androidx.credentials.CredentialManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventRepositoryFirebase
 import com.android.festivar.model.event.EventsRepositoryLocal
@@ -679,27 +678,4 @@ class MainActivityNavigationTest {
       composeTestRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
     }
   }
-}
-
-class FakeAuthRepository(override val currentUser: FirebaseUser?) : AuthRepository {
-  override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> =
-      Result.failure(UnsupportedOperationException())
-
-  override suspend fun signOut(): Result<Unit> = Result.success(Unit)
-
-  override suspend fun forgotPassword(email: String): Result<Unit> =
-      Result.failure(UnsupportedOperationException())
-
-  override suspend fun signInWithEmailAndPassword(
-      email: String,
-      password: String,
-  ): Result<FirebaseUser> = Result.failure(UnsupportedOperationException())
-
-  override suspend fun signUpWithEmailAndPassword(
-      email: String,
-      password: String,
-  ): Result<FirebaseUser> = Result.failure(UnsupportedOperationException())
-
-  override suspend fun signInAnonymous(): Result<FirebaseUser> =
-      Result.failure(UnsupportedOperationException())
 }

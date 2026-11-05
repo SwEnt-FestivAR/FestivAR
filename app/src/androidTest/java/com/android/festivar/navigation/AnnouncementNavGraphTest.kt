@@ -12,7 +12,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.android.festivar.FakeAuthRepository
+import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.EventsRepositoryProvider

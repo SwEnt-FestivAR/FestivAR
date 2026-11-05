@@ -1,13 +1,11 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.profile
 
-import androidx.credentials.Credential
 import com.android.festivar.R
-import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryLocal
-import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -59,44 +57,6 @@ class ProfileViewModelTest {
       editError?.let { throw it }
       local.editUser(uId, newValue)
     }
-  }
-
-  /**
-   * An [AuthRepository] whose sign out returns [signOutResult] and counts its calls. While
-   * [signOutGate] is set, a sign out waits until the test completes it, so the tests can act during
-   * a sign out.
-   */
-  private class FakeAuthRepository(
-      var signOutResult: Result<Unit> = Result.success(Unit),
-      var signOutGate: CompletableDeferred<Unit>? = null,
-  ) : AuthRepository {
-    var signOutCount = 0
-      private set
-
-    override suspend fun signOut(): Result<Unit> {
-      signOutCount += 1
-      signOutGate?.await()
-      return signOutResult
-    }
-
-    override suspend fun forgotPassword(email: String): Result<Unit> =
-        Result.failure(UnsupportedOperationException("Not used"))
-
-    override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> =
-        Result.failure(UnsupportedOperationException("Not used"))
-
-    override suspend fun signInWithEmailAndPassword(
-        email: String,
-        password: String,
-    ): Result<FirebaseUser> = Result.failure(UnsupportedOperationException("Not used"))
-
-    override suspend fun signUpWithEmailAndPassword(
-        email: String,
-        password: String,
-    ): Result<FirebaseUser> = Result.failure(UnsupportedOperationException("Not used"))
-
-    override suspend fun signInAnonymous(): Result<FirebaseUser> =
-        Result.failure(UnsupportedOperationException("Not used"))
   }
 
   private val testDispatcher = StandardTestDispatcher()

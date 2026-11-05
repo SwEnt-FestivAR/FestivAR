@@ -12,10 +12,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
-import androidx.credentials.Credential
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.android.festivar.model.authentication.AuthRepository
-import com.google.firebase.auth.FirebaseUser
+import com.android.festivar.model.authentication.FakeAuthRepository
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -220,39 +218,5 @@ class SignUpScreenTest {
 
     composeTestRule.waitForIdle()
     assertTrue(callbackInvoked)
-  }
-
-  private class FakeAuthRepository : AuthRepository {
-    var lastSignUpCredentials: Pair<String, String>? = null
-      private set
-
-    var signUpErrorMessage: String = "Not configured"
-    var signUpResult: Result<FirebaseUser>? = null
-
-    override suspend fun signUpWithEmailAndPassword(
-        email: String,
-        password: String,
-    ): Result<FirebaseUser> {
-      lastSignUpCredentials = email to password
-      return signUpResult ?: Result.failure(UnsupportedOperationException(signUpErrorMessage))
-    }
-
-    override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> {
-      return Result.failure(UnsupportedOperationException("Not configured"))
-    }
-
-    override suspend fun signOut(): Result<Unit> =
-        Result.failure(UnsupportedOperationException("Not configured"))
-
-    override suspend fun forgotPassword(email: String): Result<Unit> =
-        Result.failure(UnsupportedOperationException("Not configured"))
-
-    override suspend fun signInWithEmailAndPassword(
-        email: String,
-        password: String,
-    ): Result<FirebaseUser> = Result.failure(UnsupportedOperationException("Not configured"))
-
-    override suspend fun signInAnonymous(): Result<FirebaseUser> =
-        Result.failure(UnsupportedOperationException("Not configured"))
   }
 }

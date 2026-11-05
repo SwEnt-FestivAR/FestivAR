@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.festivar.ui.authentication.login
 
 import androidx.compose.ui.semantics.Role
@@ -14,10 +15,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
-import androidx.credentials.Credential
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.android.festivar.model.authentication.AuthRepository
-import com.google.firebase.auth.FirebaseUser
+import com.android.festivar.model.authentication.FakeAuthRepository
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -29,7 +28,7 @@ import org.junit.runner.RunWith
 class LoginScreenTest {
   @get:Rule val composeTestRule = createComposeRule()
 
-  private val viewModel = LoginViewModel(UnusedAuthRepository)
+  private val viewModel = LoginViewModel(FakeAuthRepository())
 
   @Test
   fun displaysLoginFieldsAndMasksPassword() {
@@ -84,7 +83,7 @@ class LoginScreenTest {
 
   @Test
   fun passwordDoneImeActionSignsIn() {
-    val loginViewModel = LoginViewModel(UnusedAuthRepository)
+    val loginViewModel = LoginViewModel(FakeAuthRepository())
     composeTestRule.setContent {
       LoginScreen(
           viewModel = loginViewModel,
@@ -106,7 +105,7 @@ class LoginScreenTest {
   @Test
   fun createAccountFooterUsesButtonAndNavigatesOnClick() {
     var signUpClicked = false
-    val loginViewModel = LoginViewModel(UnusedAuthRepository)
+    val loginViewModel = LoginViewModel(FakeAuthRepository())
     composeTestRule.setContent {
       LoginScreen(
           viewModel = loginViewModel,
@@ -126,7 +125,7 @@ class LoginScreenTest {
   @Test
   fun forgotPasswordButtonInvokesCallback() {
     var forgotPasswordClicked = false
-    val loginViewModel = LoginViewModel(UnusedAuthRepository)
+    val loginViewModel = LoginViewModel(FakeAuthRepository())
     composeTestRule.setContent {
       LoginScreen(
           viewModel = loginViewModel,
@@ -142,7 +141,7 @@ class LoginScreenTest {
 
   @Test
   fun googleSignInButtonIsDisabledWhileAnotherSignInIsLoading() {
-    val authRepository = DeferredAuthRepository()
+    val authRepository = FakeAuthRepository(signInDeferred = CompletableDeferred())
     val loadingViewModel = LoginViewModel(authRepository)
     composeTestRule.setContent {
       LoginScreen(
@@ -158,61 +157,8 @@ class LoginScreenTest {
     composeTestRule.onNodeWithTag(LoginScreenTestTags.LOGIN_BUTTON).performClick()
 
     composeTestRule.onNodeWithTag(LoginScreenTestTags.GOOGLE_BUTTON).assertIsNotEnabled()
-    authRepository.signInResult.complete(
+    authRepository.signInDeferred?.complete(
         Result.failure(UnsupportedOperationException("Not used in this UI test"))
     )
   }
-}
-
-private class DeferredAuthRepository : AuthRepository {
-  val signInResult = CompletableDeferred<Result<FirebaseUser>>()
-
-  override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> =
-      Result.failure(UnsupportedOperationException("Not used in this UI test"))
-
-  override suspend fun signOut(): Result<Unit> =
-      Result.failure(UnsupportedOperationException("Not used in this UI test"))
-
-  override suspend fun forgotPassword(email: String): Result<Unit> =
-      Result.failure(UnsupportedOperationException("Not used in this UI test"))
-
-  override suspend fun signInWithEmailAndPassword(
-      email: String,
-      password: String,
-  ): Result<FirebaseUser> = signInResult.await()
-
-  override suspend fun signUpWithEmailAndPassword(
-      email: String,
-      password: String,
-  ): Result<FirebaseUser> =
-      Result.failure(UnsupportedOperationException("Not used in this UI test"))
-
-  override suspend fun signInAnonymous(): Result<FirebaseUser> =
-      Result.failure(UnsupportedOperationException("Not used in this UI test"))
-}
-
-private object UnusedAuthRepository : AuthRepository {
-  override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> =
-      Result.failure(UnsupportedOperationException("Not used in this UI test"))
-
-  override suspend fun signOut(): Result<Unit> =
-      Result.failure(UnsupportedOperationException("Not used in this UI test"))
-
-  override suspend fun forgotPassword(email: String): Result<Unit> =
-      Result.failure(UnsupportedOperationException("Not used in this UI test"))
-
-  override suspend fun signInWithEmailAndPassword(
-      email: String,
-      password: String,
-  ): Result<FirebaseUser> =
-      Result.failure(UnsupportedOperationException("Not used in this UI test"))
-
-  override suspend fun signUpWithEmailAndPassword(
-      email: String,
-      password: String,
-  ): Result<FirebaseUser> =
-      Result.failure(UnsupportedOperationException("Not used in this UI test"))
-
-  override suspend fun signInAnonymous(): Result<FirebaseUser> =
-      Result.failure(UnsupportedOperationException("Not used in this UI test"))
 }
