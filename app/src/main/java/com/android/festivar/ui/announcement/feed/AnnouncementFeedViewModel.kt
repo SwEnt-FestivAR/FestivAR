@@ -9,7 +9,6 @@ import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.event.announcement.AnnouncementPriority
 import java.time.LocalDate
 import java.time.ZonedDateTime
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -189,10 +188,10 @@ class AnnouncementFeedViewModel(
               errorMsg = null,
           )
         }
-      } catch (e: CancellationException) {
-        // Cancelled by a newer fetch or because the ViewModel is cleared: not an error
-        throw e
       } catch (e: Exception) {
+        // A cancelled fetch must not touch the state. A CancellationException from
+        // the repository while this fetch is still active is a normal failure.
+        ensureActive()
         _uiState.update { it.copy(isLoading = false, hasError = true, errorMsg = e.message) }
       }
     }

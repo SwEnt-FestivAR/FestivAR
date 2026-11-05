@@ -11,6 +11,7 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -356,6 +357,44 @@ class AnnouncementFeedViewModelTest {
     assertFalse(state.isLoading)
     assertFalse(state.hasError)
     assertEquals(listOf(AnnouncementFeedSection(today, listOf(newInfo))), state.sections)
+  }
+
+  // Breaks if a cancelled refresh failing first stops the loading or shows its error.
+  @Test
+  fun aCancelledFetchThatFailsDoesNotTouchTheState() = runTest {
+    val repository = GatedEventsRepository(ignoresCancellation = true)
+    val viewModel = feedViewModel(repository)
+    viewModel.refreshUIState()
+    viewModel.refreshUIState()
+    val (olderFetch, newerFetch) = repository.fetches
+
+    olderFetch.completeExceptionally(IllegalStateException("stale failure"))
+
+    assertTrue(viewModel.uiState.value.isLoading)
+    assertFalse(viewModel.uiState.value.hasError)
+    assertNull(viewModel.uiState.value.errorMsg)
+
+    newerFetch.complete(event(infoToday))
+
+    val state = viewModel.uiState.value
+    assertFalse(state.isLoading)
+    assertFalse(state.hasError)
+    assertEquals(listOf(AnnouncementFeedSection(today, listOf(infoToday))), state.sections)
+  }
+
+  // Breaks if a CancellationException of the repository leaves an active fetch loading forever.
+  @Test
+  fun aCancellationExceptionFromTheRepositoryWhileActiveIsAFailure() = runTest {
+    val repository = ControllableEventsRepository(figmaEvent)
+    repository.failure = CancellationException("fetch cancelled")
+    val viewModel = feedViewModel(repository)
+
+    viewModel.refreshUIState()
+
+    val state = viewModel.uiState.value
+    assertFalse(state.isLoading)
+    assertTrue(state.hasError)
+    assertEquals("fetch cancelled", state.errorMsg)
   }
 
   // Breaks if the empty state only looks at pinned announcements or only at the dated ones.
