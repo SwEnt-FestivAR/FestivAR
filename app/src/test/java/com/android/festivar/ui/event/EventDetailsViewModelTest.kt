@@ -125,6 +125,7 @@ class EventDetailsViewModelTest {
             },
             eventId = "event-1",
         )
+    viewModel.fetchEvent()
     advanceUntilIdle()
 
     assertNull(viewModel.uiState.value.event)
