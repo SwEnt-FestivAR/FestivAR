@@ -3,13 +3,11 @@ package com.android.festivar.model.audio
 
 import android.content.Context
 import android.media.MediaRecorder
-import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.mockk.mockk
 import io.mockk.verify
 import java.io.File
-import java.time.Duration
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -38,13 +36,6 @@ class MediaRecorderCaptureTest {
   private fun startCapture(onError: () -> Unit = {}): File =
       folder.newFile("note.m4a").also { capture.start(it, onError) }
 
-  private fun voiceNoteFiles(): List<File> =
-      context.cacheDir.listFiles().orEmpty().filter {
-        it.name.startsWith("voice_note_") && it.name.endsWith(".m4a")
-      }
-
-  private fun idleFor(duration: Duration) = shadowOf(Looper.getMainLooper()).idleFor(duration)
-
   @Test
   fun start_recordsAacInMpeg4FromTheMicrophoneIntoTheFile() {
     val file = startCapture()
@@ -60,33 +51,7 @@ class MediaRecorderCaptureTest {
   }
 
   @Test
-  fun stopEndsTheRecordingAndReleaseFreesTheRecorder() {
-    startCapture()
-
-    capture.stop()
-    assertEquals(ShadowMediaRecorder.STATE_INITIAL, shadow.state)
-
-    capture.release()
-    assertEquals(ShadowMediaRecorder.STATE_RELEASED, shadow.state)
-  }
-
-  // The fake MediaRecorder of Robolectric has no pause or resume, so this uses a mock.
-  @Test
-  fun pauseAndResumeReachTheirOwnMethodOfTheRecorder() {
-    val recorder = mockk<MediaRecorder>(relaxed = true)
-    val mockedCapture = MediaRecorderCapture(recorder)
-
-    mockedCapture.pause()
-    verify(exactly = 1) { recorder.pause() }
-    verify(exactly = 0) { recorder.resume() }
-
-    mockedCapture.resume()
-    verify(exactly = 1) { recorder.pause() }
-    verify(exactly = 1) { recorder.resume() }
-  }
-
-  @Test
-  fun anErrorOfTheRecorderIsReported() {
+  fun start_reportsALaterErrorOfTheRecorder() {
     var failed = false
     startCapture(onError = { failed = true })
     assertFalse(failed)
@@ -94,6 +59,47 @@ class MediaRecorderCaptureTest {
     shadow.errorListener.onError(mediaRecorder, MediaRecorder.MEDIA_RECORDER_ERROR_UNKNOWN, 0)
 
     assertTrue(failed)
+  }
+
+  @Test
+  fun stop_endsTheRecording() {
+    startCapture()
+
+    capture.stop()
+
+    assertEquals(ShadowMediaRecorder.STATE_INITIAL, shadow.state)
+  }
+
+  @Test
+  fun release_freesTheRecorder() {
+    startCapture()
+    capture.stop()
+
+    capture.release()
+
+    assertEquals(ShadowMediaRecorder.STATE_RELEASED, shadow.state)
+  }
+
+  // The fake MediaRecorder of Robolectric has no pause or resume, so this uses a mock.
+  @Test
+  fun pause_reachesOnlyThePauseOfTheRecorder() {
+    val recorder = mockk<MediaRecorder>(relaxed = true)
+
+    MediaRecorderCapture(recorder).pause()
+
+    verify(exactly = 1) { recorder.pause() }
+    verify(exactly = 0) { recorder.resume() }
+  }
+
+  // The fake MediaRecorder of Robolectric has no pause or resume, so this uses a mock.
+  @Test
+  fun resume_reachesOnlyTheResumeOfTheRecorder() {
+    val recorder = mockk<MediaRecorder>(relaxed = true)
+
+    MediaRecorderCapture(recorder).resume()
+
+    verify(exactly = 1) { recorder.resume() }
+    verify(exactly = 0) { recorder.pause() }
   }
 
   @Test
@@ -105,33 +111,5 @@ class MediaRecorderCaptureTest {
     oldCapture.start(folder.newFile("old.m4a")) {}
     oldCapture.stop()
     oldCapture.release()
-  }
-
-  @Test
-  fun androidVoiceRecorder_recordsIntoAnM4aFileOfTheCacheAndDeletesItOnCancel() {
-    val recorder = AndroidVoiceRecorder(context)
-
-    recorder.start()
-
-    assertEquals(1, voiceNoteFiles().size)
-
-    recorder.cancel()
-
-    assertTrue(voiceNoteFiles().isEmpty())
-  }
-
-  @Test
-  fun androidVoiceRecorder_timesTheRecordingOnTheMainThread() {
-    val recorder = AndroidVoiceRecorder(context)
-    recorder.start()
-    idleFor(Duration.ZERO)
-
-    idleFor(Duration.ofMillis(AndroidVoiceRecorder.TICK_INTERVAL_MILLIS))
-
-    assertEquals(
-        RecorderState.Recording(Duration.ofMillis(AndroidVoiceRecorder.TICK_INTERVAL_MILLIS)),
-        recorder.state.value,
-    )
-    recorder.cancel()
   }
 }

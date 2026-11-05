@@ -42,7 +42,7 @@ class AndroidVoiceRecorderRecordingTest {
   }
 
   @Test
-  fun aRealRecordingIsAPlayableFile() {
+  fun stop_producesAPlayableFile() {
     instrumentation.runOnMainSync { recorder.start() }
     Thread.sleep(RECORDING_MILLIS)
     instrumentation.runOnMainSync { audio = recorder.stop() }
@@ -53,7 +53,7 @@ class AndroidVoiceRecorderRecordingTest {
   }
 
   @Test
-  fun aPauseLeavesItsGapOutOfTheRealFile() {
+  fun resume_leavesThePauseOutOfTheFile() {
     instrumentation.runOnMainSync { recorder.start() }
     Thread.sleep(RECORDING_MILLIS)
     instrumentation.runOnMainSync { recorder.pause() }
@@ -66,6 +66,21 @@ class AndroidVoiceRecorderRecordingTest {
     val fileMillis = playableDurationMillis(recorded)
     // About 4 s recorded in the 6 s it took: longer than one run, and without the pause.
     assertTrue("The file lasts $fileMillis ms", fileMillis in 2_500L..5_000L)
+  }
+
+  // Every recording that reaches the limit ends this way: paused by the timer, then stopped.
+  @Test
+  fun stop_whilePausedProducesAPlayableFileWithoutThePause() {
+    instrumentation.runOnMainSync { recorder.start() }
+    Thread.sleep(RECORDING_MILLIS)
+    instrumentation.runOnMainSync { recorder.pause() }
+    Thread.sleep(RECORDING_MILLIS)
+    instrumentation.runOnMainSync { audio = recorder.stop() }
+
+    val recorded = checkNotNull(audio)
+    val fileMillis = playableDurationMillis(recorded)
+    // About 2 s recorded in the 4 s it took.
+    assertTrue("The file lasts $fileMillis ms", fileMillis in 1_000L..3_000L)
   }
 
   private companion object {
