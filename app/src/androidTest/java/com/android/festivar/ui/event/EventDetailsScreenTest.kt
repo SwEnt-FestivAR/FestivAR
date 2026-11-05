@@ -117,12 +117,21 @@ class EventDetailsScreenTest {
   }
 
   @Test
-  fun displaysFallbackWhenEventHasNoLocation() {
+  fun displaysFallbackWhenEventHasEmptyLocationString() {
     setContent(eventSameMonth.copy(location = ""))
 
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.ADDRESS_ROW).assertIsDisplayed()
     composeTestRule.onNodeWithText("No location specified").assertIsDisplayed()
   }
+
+  @Test
+  fun displaysFallbackWhenEventHasWhitespaceOnlyLocationString() {
+    setContent(eventSameMonth.copy(location = "     "))
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.ADDRESS_ROW).assertIsDisplayed()
+    composeTestRule.onNodeWithText("No location specified").assertIsDisplayed()
+  }
+
 
   @SuppressLint("ViewModelConstructorInComposable")
   @Test
