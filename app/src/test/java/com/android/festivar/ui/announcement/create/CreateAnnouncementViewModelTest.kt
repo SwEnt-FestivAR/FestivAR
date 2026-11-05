@@ -181,6 +181,34 @@ class CreateAnnouncementViewModelTest {
     assertFalse(vm.uiState.value.needsDiscardConfirmation)
   }
 
+  // Breaks if isEditable ignores isSaving or isPublished, or if a failed save leaves the form
+  // locked, so the user cannot fix it and retry.
+  @Test
+  fun theFormIsEditableExceptDuringASaveAndOncePublished() {
+    val gate = CompletableDeferred<Unit>()
+    repo.beforeStore = {
+      gate.await()
+      throw IllegalStateException("offline")
+    }
+    val vm = viewModel()
+    assertTrue(vm.uiState.value.isEditable)
+
+    vm.fill()
+    vm.publish()
+    assertTrue(vm.uiState.value.isSaving)
+    assertFalse(vm.uiState.value.isEditable)
+
+    gate.complete(Unit)
+    idle()
+    assertEquals(R.string.create_announcement_error_save_failed, vm.uiState.value.errorMsg)
+    assertTrue(vm.uiState.value.isEditable)
+
+    repo.beforeStore = {}
+    vm.publish()
+    assertTrue(vm.uiState.value.isPublished)
+    assertFalse(vm.uiState.value.isEditable)
+  }
+
   // Breaks if the text is stored untrimmed, the author, priority or time is wrong, or the id is
   // not the one the repository handed out.
   @Test

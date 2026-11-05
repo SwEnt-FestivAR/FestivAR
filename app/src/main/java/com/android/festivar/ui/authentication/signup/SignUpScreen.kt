@@ -2,7 +2,6 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.authentication.signup
 
-import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -46,15 +45,10 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.credentials.Credential
 import com.android.festivar.R
-import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.components.NoticeSnackbar
-import com.android.festivar.ui.theme.AppTheme
-import com.google.firebase.auth.FirebaseUser
 
 object SignUpScreenTestTags {
   const val ERROR_MESSAGE: String = "errorMessage"
@@ -352,41 +346,4 @@ private fun SignUpFooter(onSignInClick: () -> Unit) {
       )
     }
   }
-}
-
-@SuppressLint("ViewModelConstructorInComposable")
-@Preview(showBackground = true)
-@Composable
-fun SignUpScreenPreview() {
-  AppTheme {
-    SignUpScreen(
-        modifier = Modifier.fillMaxSize(),
-        onSignInClick = {},
-        onBackClick = {},
-        viewModel = SignUpViewModel(PreviewAuthRepository),
-        onSignUpSuccess = {},
-    )
-  }
-}
-
-private object PreviewAuthRepository : AuthRepository {
-  const val STR: String = "Preview only"
-
-  override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> =
-      Result.failure(UnsupportedOperationException(STR))
-
-  override suspend fun signOut(): Result<Unit> = Result.failure(UnsupportedOperationException(STR))
-
-  override suspend fun forgotPassword(email: String): Result<Unit> =
-      Result.failure(UnsupportedOperationException(STR))
-
-  override suspend fun signInWithEmailAndPassword(
-      email: String,
-      password: String,
-  ): Result<FirebaseUser> = Result.failure(UnsupportedOperationException(STR))
-
-  override suspend fun signUpWithEmailAndPassword(
-      email: String,
-      password: String,
-  ): Result<FirebaseUser> = Result.failure(UnsupportedOperationException(STR))
 }

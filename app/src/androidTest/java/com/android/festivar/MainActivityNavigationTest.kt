@@ -39,6 +39,7 @@ import com.android.festivar.model.user.UsersRepositoryFirebase
 import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.model.user.UsersRepositoryProvider
 import com.android.festivar.navigation.AppScreens
+import com.android.festivar.ui.announcement.create.CreateAnnouncementScreenTestTags
 import com.android.festivar.ui.authentication.login.LoginScreenTestTags
 import com.android.festivar.ui.authentication.signup.SignUpScreenTestTags
 import com.android.festivar.ui.components.AvatarTestTags
@@ -522,6 +523,20 @@ class MainActivityNavigationTest {
   }
 
   @Test
+  fun createAnnouncementRouteDisplaysCreateAnnouncementScreen() {
+    EventsRepositoryProvider.repository = EventsRepositoryLocal()
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          authRepository = FakeAuthRepository(currentUser = firebaseUser),
+          startDestinationOverride = AppScreens.createAnnouncement("e1"),
+      )
+    }
+
+    composeTestRule.onNodeWithTag(CreateAnnouncementScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  @Test
   fun taskDetailsRouteDisplaysTaskDetailsScreen() {
     seedTask()
 
@@ -757,4 +772,7 @@ class FakeAuthRepository(override val currentUser: FirebaseUser?) : AuthReposito
       email: String,
       password: String,
   ): Result<FirebaseUser> = Result.failure(UnsupportedOperationException())
+
+  override suspend fun signInAnonymous(): Result<FirebaseUser> =
+      Result.failure(UnsupportedOperationException())
 }

@@ -76,8 +76,7 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, authRepository:
     require(eventId.isNotBlank()) { "eventId must not be blank" }
     val navigator = EventDetailsNavigator(navController)
     EventDetailsScreen(
-        eventId = eventId,
-        viewModel { EventDetailsViewModel(EventsRepositoryProvider.repository) },
+        viewModel { EventDetailsViewModel(EventsRepositoryProvider.repository, eventId) },
         onBack = navigator.onBack,
         onTasksButtonClicked = { navigator.onTasksButtonClicked(eventId) },
     )

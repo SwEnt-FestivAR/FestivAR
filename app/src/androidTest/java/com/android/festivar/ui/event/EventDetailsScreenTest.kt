@@ -3,16 +3,26 @@ package com.android.festivar.ui.event
 // Co-authored-by: Copilot App
 
 import android.annotation.SuppressLint
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.model.task.Task
+import com.android.festivar.model.user.User
+import io.mockk.mockk
+import io.mockk.verify
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -23,6 +33,43 @@ class EventDetailsScreenTest {
 
   @get:Rule val composeTestRule = createComposeRule()
 
+  private val eventStartDate: ZonedDateTime =
+      ZonedDateTime.of(2026, 10, 16, 10, 0, 0, 0, ZoneId.of("Europe/Zurich"))
+  private val eventEndDate: ZonedDateTime =
+      ZonedDateTime.of(2026, 10, 18, 18, 0, 0, 0, ZoneId.of("Europe/Zurich"))
+
+  private val tasksListSize = 10
+
+  private val eventSameMonth =
+      Event(
+          eventId = "0",
+          title = "Fête de l'Asso 2026",
+          members = listOf(User(uid = "user", name = "Sami K.")),
+          startDate = eventStartDate,
+          endDate = eventEndDate,
+          location = "Parc de Vidy, Lausanne",
+          tasks =
+              List(
+                  size = tasksListSize,
+                  init = { index ->
+                    Task(
+                        taskId = index.toString(),
+                        eventId = "0",
+                        title = "Task $index",
+                        ownerId = "user",
+                        completed = index % 2 == 0,
+                    )
+                  },
+              ),
+      )
+
+  private val eventSameDay =
+      eventSameMonth.copy(endDate = eventEndDate.withDayOfMonth(eventStartDate.dayOfMonth))
+  private val eventDifferentMonth = eventSameMonth.copy(endDate = eventStartDate.plusMonths(1))
+  private val eventDifferentYear = eventSameMonth.copy(endDate = eventStartDate.plusYears(1))
+  private val eventNoTasks = eventSameMonth.copy(tasks = emptyList())
+
+  /** Red if the screen does not display the event information and expected controls. */
   @Test
   fun displaysEventDataAndTaggedElements() {
     val event = eventSameMonth
@@ -49,24 +96,28 @@ class EventDetailsScreenTest {
     composeTestRule.onNodeWithText("Fri 16 to Sun 18 Oct").assertIsDisplayed()
   }
 
+  /** Red if an event ending on its start day is formatted as a multi-day event. */
   @Test
   fun displaysSameDayEventDate() {
     setContent(eventSameDay)
     composeTestRule.onNodeWithText("Fri 16 Oct").assertIsDisplayed()
   }
 
+  /** Red if an event spanning one month is formatted without both endpoint dates. */
   @Test
   fun displaysDifferentMonthEventDate() {
     setContent(eventDifferentMonth)
     composeTestRule.onNodeWithText("Fri 16 Oct to Mon 16 Nov").assertIsDisplayed()
   }
 
+  /** Red if an event spanning one year omits either year from the displayed date. */
   @Test
   fun displaysDifferentYearEventDate() {
     setContent(eventDifferentYear)
     composeTestRule.onNodeWithText("Fri 16 Oct 2026 to Sat 16 Oct 2027").assertIsDisplayed()
   }
 
+  /** Red if an event with no tasks displays incorrect task statistics. */
   @Test
   fun displaysNoTasksEventStatistics() {
     setContent(eventNoTasks)
@@ -74,19 +125,68 @@ class EventDetailsScreenTest {
     composeTestRule.onNodeWithText("of 0").assertIsDisplayed()
   }
 
+  /** Red if an empty location does not display the address fallback text. */
+  @Test
+  fun displaysFallbackWhenEventHasEmptyLocationString() {
+    setContent(eventSameMonth.copy(location = ""))
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.ADDRESS_ROW).assertIsDisplayed()
+    composeTestRule.onNodeWithText("No location specified").assertIsDisplayed()
+  }
+
+  /** Red if a whitespace-only location is not treated as missing. */
+  @Test
+  fun displaysFallbackWhenEventHasWhitespaceOnlyLocationString() {
+    setContent(eventSameMonth.copy(location = "     "))
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.ADDRESS_ROW).assertIsDisplayed()
+    composeTestRule.onNodeWithText("No location specified").assertIsDisplayed()
+  }
+
+  /** Red if a long location overflows its address row or is not ellipsized. */
+  @Test
+  fun truncatesLongLocationWithinAddressRow() {
+    val longLocation =
+        "Main entrance, north-western courtyard beside the temporary festival information tent"
+    setContent(eventSameMonth.copy(location = longLocation))
+
+    val rowBounds =
+        composeTestRule
+            .onNodeWithTag(EventDetailsScreenTestTags.ADDRESS_ROW)
+            .assertIsDisplayed()
+            .getUnclippedBoundsInRoot()
+    val valueBounds =
+        composeTestRule.onNodeWithText(longLocation).assertIsDisplayed().getUnclippedBoundsInRoot()
+
+    assertTrue(valueBounds.right <= rowBounds.right)
+    assertTrue(valueBounds.bottom <= rowBounds.bottom)
+
+    val layouts = mutableListOf<TextLayoutResult>()
+    composeTestRule
+        .onNodeWithText(longLocation)
+        .fetchSemanticsNode()
+        .config[SemanticsActions.GetTextLayoutResult]
+        .action
+        ?.invoke(layouts)
+
+    assertEquals(2, layouts.single().lineCount)
+    assertTrue(layouts.single().isLineEllipsized(1))
+  }
+
+  /** Red if a fetch failure leaves event content or actions visible. */
   @SuppressLint("ViewModelConstructorInComposable")
   @Test
   fun displaysErrorWhenEventCannotBeFetched() {
     composeTestRule.setContent {
       EventDetailsScreen(
-          eventId = "missing",
           viewModel =
               EventDetailsViewModel(
                   object : EventsRepository by EventsRepositoryLocal() {
                     override suspend fun getEvent(eventId: String): Event {
                       throw IllegalStateException("fetch failed")
                     }
-                  }
+                  },
+                  eventId = "missing",
               ),
           onTasksButtonClicked = {},
           onBack = {},
@@ -110,28 +210,30 @@ class EventDetailsScreenTest {
     )
   }
 
+  /** Red if clicking See tasks does not invoke the supplied callback exactly once. */
   @Test
   fun clickingSeeTasksButtonCallsOnTasksButtonClicked() {
-    var tasksButtonClicked = false
+    val onTasksButtonClicked = mockk<() -> Unit>(relaxed = true)
     val event = eventSameMonth
 
-    setContent(event, onTasksButtonClicked = { tasksButtonClicked = true })
+    setContent(event, onTasksButtonClicked = onTasksButtonClicked)
 
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.SEE_TASKS_BUTTON).performClick()
 
-    assertTrue(tasksButtonClicked)
+    verify(exactly = 1) { onTasksButtonClicked() }
   }
 
+  /** Red if clicking Back does not invoke the supplied callback exactly once. */
   @Test
   fun clickingBackButtonCallsOnBack() {
-    var backClicked = false
+    val onBack = mockk<() -> Unit>(relaxed = true)
     val event = eventSameMonth
 
-    setContent(event, onBack = { backClicked = true })
+    setContent(event, onBack = onBack)
 
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.BACK_BUTTON).performClick()
 
-    assertTrue(backClicked)
+    verify(exactly = 1) { onBack() }
   }
 
   @SuppressLint("ViewModelConstructorInComposable")
@@ -142,8 +244,7 @@ class EventDetailsScreenTest {
   ) {
     composeTestRule.setContent {
       EventDetailsScreen(
-          eventId = event.eventId,
-          viewModel = EventDetailsViewModel(EventsRepositoryLocal(listOf(event))),
+          viewModel = EventDetailsViewModel(EventsRepositoryLocal(listOf(event)), event.eventId),
           onTasksButtonClicked = onTasksButtonClicked,
           onBack = onBack,
       )

@@ -105,6 +105,9 @@ class ProfileScreenTest {
         password: String,
     ): Result<FirebaseUser> =
         Result.failure(UnsupportedOperationException("Not used in this UI test"))
+
+    override suspend fun signInAnonymous(): Result<FirebaseUser> =
+        Result.failure(UnsupportedOperationException("Not used in this UI test"))
   }
 
   /**

@@ -8,7 +8,7 @@ interface AuthRepository {
   val currentUser: FirebaseUser?
     get() = null
 
-  /** signs in with Google */
+  /** Signs in with Google, or upgrades the current anonymous account if signed in anonymously */
   suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser>
 
   /** signs out of the app */
@@ -17,9 +17,15 @@ interface AuthRepository {
   /** Sign in with password and email */
   suspend fun signInWithEmailAndPassword(email: String, password: String): Result<FirebaseUser>
 
-  /** Sign up with password and email */
+  /**
+   * Sign up with password and email, or upgrades the current anonymous account if signed in
+   * anonymously
+   */
   suspend fun signUpWithEmailAndPassword(email: String, password: String): Result<FirebaseUser>
 
   /** Send a password reset email */
   suspend fun forgotPassword(email: String): Result<Unit>
+
+  /** Signs in anonymously */
+  suspend fun signInAnonymous(): Result<FirebaseUser>
 }

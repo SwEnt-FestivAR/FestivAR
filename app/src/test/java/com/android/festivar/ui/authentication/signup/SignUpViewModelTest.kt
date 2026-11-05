@@ -136,5 +136,8 @@ class SignUpViewModelTest {
         email: String,
         password: String,
     ): Result<FirebaseUser> = Result.failure(UnsupportedOperationException("Not configured"))
+
+    override suspend fun signInAnonymous(): Result<FirebaseUser> =
+        Result.failure(UnsupportedOperationException("Not used in these tests"))
   }
 }
