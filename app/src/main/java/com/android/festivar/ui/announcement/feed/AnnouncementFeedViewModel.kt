@@ -13,6 +13,7 @@ import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.event.announcement.AnnouncementPriority
 import java.time.Clock
 import java.time.LocalDate
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -190,8 +191,8 @@ class AnnouncementFeedViewModel(
           )
         }
       } catch (e: Exception) {
-        // A cancelled fetch must not touch the state. A CancellationException from
-        // the repository while this fetch is still active is a normal failure.
+        // A cancelled fetch must not touch the state, whatever it failed with. A
+        // CancellationException is never a feed error, even from the repository, so rethrow it.
         ensureActive()
         if (e is CancellationException) throw e
 

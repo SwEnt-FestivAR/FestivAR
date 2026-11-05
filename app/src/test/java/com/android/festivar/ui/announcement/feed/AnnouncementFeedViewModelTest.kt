@@ -362,18 +362,24 @@ class AnnouncementFeedViewModelTest {
     assertEquals(listOf(AnnouncementFeedSection(today, listOf(infoToday))), state.sections)
   }
 
-  // Breaks if a CancellationException of the repository leaves an active fetch loading forever.
+  // Breaks if a CancellationException of the repository shows an error or blocks the next refresh.
   @Test
-  fun aCancellationExceptionFromTheRepositoryWhileActiveIsAFailure() = runTest {
+  fun aCancellationExceptionFromTheRepositoryIsNotAFeedError() = runTest {
     val repository = ControllableEventsRepository(figmaEvent)
     repository.failure = CancellationException("fetch cancelled")
     val viewModel = feedViewModel(repository)
 
     viewModel.refreshUIState()
 
+    assertNull(viewModel.uiState.value.errorMsg)
+
+    repository.failure = null
+    viewModel.refreshUIState()
+
     val state = viewModel.uiState.value
     assertFalse(state.isLoading)
-    assertEquals(R.string.announcement_feed_load_failed, state.errorMsg)
+    assertNull(state.errorMsg)
+    assertEquals(figmaSections, state.sections)
   }
 
   // Breaks if the empty state only looks at pinned announcements or only at the dated ones.
