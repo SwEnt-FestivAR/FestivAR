@@ -133,7 +133,7 @@ class TaskDetailsViewModel(
   fun take() = saveIf({ it.canTake }) { it.addAssignee(currentUser) }
 
   /** Removes the current user from the assignees. Does nothing unless the task is yours. */
-  fun giveBack() = saveIf({ it.canGiveBack }) { it.removeAssignee(currentUser) }
+  fun giveBack() = saveIf({ it.canGiveBack }) { it.removeAssignee(currentUser.uid) }
 
   /** Completes the task. Does nothing unless the task is yours. */
   fun markDone() = saveIf({ it.canMarkDone }) { it.complete() }
