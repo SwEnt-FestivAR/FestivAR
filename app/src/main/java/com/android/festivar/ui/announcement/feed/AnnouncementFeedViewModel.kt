@@ -192,7 +192,9 @@ class AnnouncementFeedViewModel(
       } catch (e: Exception) {
         // A cancelled fetch must not touch the state. A CancellationException from
         // the repository while this fetch is still active is a normal failure.
-        ensureActive()
+ ensureActive()
+ if(e is CancellationException) throw e
+
         Log.e(LOG_TAG, "Error loading the announcements of event $eventId", e)
         _uiState.update {
           it.copy(isLoading = false, errorMsg = R.string.announcement_feed_load_failed)
