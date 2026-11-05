@@ -109,7 +109,8 @@ data class Event(
    * Removes a member [User] from the [Event] by returning a version of `this` with the user removed
    * from the [members] list. The member is identified by the [userId].
    *
-   * @param userId The identifier of the [User] that is going to be removed from `this`, from [members] list.
+   * @param userId The identifier of the [User] that is going to be removed from `this`, from
+   *   [members] list.
    * @return The [Event] but with the user removed from it.
    * @throws IllegalArgumentException If the user is not a member, identified by [userId].
    */
