@@ -36,6 +36,7 @@ class EventDetailsViewModelTest {
     kotlinx.coroutines.Dispatchers.resetMain()
   }
 
+  /** Red if the ViewModel does not load the event identified by its constructor argument. */
   @Test
   fun fetchEventLoadsEvent() = runTest {
     val event = testEvent("event-1")
@@ -47,6 +48,7 @@ class EventDetailsViewModelTest {
     assertEquals(event, viewModel.uiState.value.event)
   }
 
+  /** Red if a repository failure does not expose the event fetch error resource. */
   @Test
   fun fetchEventReportsErrorWhenRepositoryFails() = runTest {
     val viewModel =
@@ -66,6 +68,7 @@ class EventDetailsViewModelTest {
     assertEquals(R.string.event_details_fetch_error, viewModel.uiState.value.errorMsg)
   }
 
+  /** Red if a failed reload leaves stale event data visible. */
   @Test
   fun failedRefetchClearsPreviouslyLoadedEvent() = runTest {
     var shouldFail = false
@@ -89,6 +92,7 @@ class EventDetailsViewModelTest {
     assertEquals(R.string.event_details_fetch_error, viewModel.uiState.value.errorMsg)
   }
 
+  /** Red if a successful reload does not clear the previous fetch error. */
   @Test
   fun successfulRefetchClearsPreviousError() = runTest {
     var shouldFail = true
@@ -114,6 +118,7 @@ class EventDetailsViewModelTest {
     assertNull(viewModel.uiState.value.errorMsg)
   }
 
+  /** Red if cancellation is incorrectly converted into a user-facing fetch error. */
   @Test
   fun fetchEventDoesNotConvertCancellationExceptionIntoFetchError() = runTest {
     val viewModel =

@@ -69,6 +69,7 @@ class EventDetailsScreenTest {
   private val eventDifferentYear = eventSameMonth.copy(endDate = eventStartDate.plusYears(1))
   private val eventNoTasks = eventSameMonth.copy(tasks = emptyList())
 
+  /** Red if the screen does not display the event information and expected controls. */
   @Test
   fun displaysEventDataAndTaggedElements() {
     val event = eventSameMonth
@@ -95,24 +96,28 @@ class EventDetailsScreenTest {
     composeTestRule.onNodeWithText("Fri 16 to Sun 18 Oct").assertIsDisplayed()
   }
 
+  /** Red if an event ending on its start day is formatted as a multi-day event. */
   @Test
   fun displaysSameDayEventDate() {
     setContent(eventSameDay)
     composeTestRule.onNodeWithText("Fri 16 Oct").assertIsDisplayed()
   }
 
+  /** Red if an event spanning one month is formatted without both endpoint dates. */
   @Test
   fun displaysDifferentMonthEventDate() {
     setContent(eventDifferentMonth)
     composeTestRule.onNodeWithText("Fri 16 Oct to Mon 16 Nov").assertIsDisplayed()
   }
 
+  /** Red if an event spanning one year omits either year from the displayed date. */
   @Test
   fun displaysDifferentYearEventDate() {
     setContent(eventDifferentYear)
     composeTestRule.onNodeWithText("Fri 16 Oct 2026 to Sat 16 Oct 2027").assertIsDisplayed()
   }
 
+  /** Red if an event with no tasks displays incorrect task statistics. */
   @Test
   fun displaysNoTasksEventStatistics() {
     setContent(eventNoTasks)
@@ -120,6 +125,7 @@ class EventDetailsScreenTest {
     composeTestRule.onNodeWithText("of 0").assertIsDisplayed()
   }
 
+  /** Red if an empty location does not display the address fallback text. */
   @Test
   fun displaysFallbackWhenEventHasEmptyLocationString() {
     setContent(eventSameMonth.copy(location = ""))
@@ -128,6 +134,7 @@ class EventDetailsScreenTest {
     composeTestRule.onNodeWithText("No location specified").assertIsDisplayed()
   }
 
+  /** Red if a whitespace-only location is not treated as missing. */
   @Test
   fun displaysFallbackWhenEventHasWhitespaceOnlyLocationString() {
     setContent(eventSameMonth.copy(location = "     "))
@@ -136,6 +143,7 @@ class EventDetailsScreenTest {
     composeTestRule.onNodeWithText("No location specified").assertIsDisplayed()
   }
 
+  /** Red if a long location overflows its address row or is not ellipsized. */
   @Test
   fun truncatesLongLocationWithinAddressRow() {
     val longLocation =
@@ -165,6 +173,7 @@ class EventDetailsScreenTest {
     assertTrue(layouts.single().isLineEllipsized(1))
   }
 
+  /** Red if a fetch failure leaves event content or actions visible. */
   @SuppressLint("ViewModelConstructorInComposable")
   @Test
   fun displaysErrorWhenEventCannotBeFetched() {
@@ -201,6 +210,7 @@ class EventDetailsScreenTest {
     )
   }
 
+  /** Red if clicking See tasks does not invoke the supplied callback exactly once. */
   @Test
   fun clickingSeeTasksButtonCallsOnTasksButtonClicked() {
     val onTasksButtonClicked = mockk<() -> Unit>(relaxed = true)
@@ -213,6 +223,7 @@ class EventDetailsScreenTest {
     verify(exactly = 1) { onTasksButtonClicked() }
   }
 
+  /** Red if clicking Back does not invoke the supplied callback exactly once. */
   @Test
   fun clickingBackButtonCallsOnBack() {
     val onBack = mockk<() -> Unit>(relaxed = true)
