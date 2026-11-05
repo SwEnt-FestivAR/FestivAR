@@ -34,7 +34,7 @@ class EventDetailsScreenTest {
   private val eventEndDate: ZonedDateTime =
       ZonedDateTime.of(2026, 10, 18, 18, 0, 0, 0, ZoneId.of("Europe/Zurich"))
 
-  private val TASKS_LIST_SIZE = 10
+  private val tasksListSize = 10
 
   private val eventSameMonth =
       Event(
@@ -46,7 +46,7 @@ class EventDetailsScreenTest {
           location = "Parc de Vidy, Lausanne",
           tasks =
               List(
-                  size = TASKS_LIST_SIZE,
+                  size = tasksListSize,
                   init = { index ->
                     Task(
                         taskId = index.toString(),
@@ -85,8 +85,8 @@ class EventDetailsScreenTest {
     composeTestRule.onNodeWithText(event.title).assertIsDisplayed()
     composeTestRule.onNodeWithText("Sami K.").assertIsDisplayed()
     composeTestRule.onNodeWithText(event.location).assertIsDisplayed()
-    composeTestRule.onNodeWithText("${TASKS_LIST_SIZE / 2}").assertIsDisplayed()
-    composeTestRule.onNodeWithText("of $TASKS_LIST_SIZE").assertIsDisplayed()
+    composeTestRule.onNodeWithText("${tasksListSize / 2}").assertIsDisplayed()
+    composeTestRule.onNodeWithText("of $tasksListSize").assertIsDisplayed()
     composeTestRule.onNodeWithText("tasks still open").assertIsDisplayed()
     composeTestRule.onNodeWithText("Fri 16 to Sun 18 Oct").assertIsDisplayed()
   }
