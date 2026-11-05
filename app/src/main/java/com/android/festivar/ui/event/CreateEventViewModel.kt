@@ -22,7 +22,6 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -158,7 +157,7 @@ class CreateEventViewModel(
         throw e
       } catch (e: Exception) {
         Log.e(TAG, e.message ?: "Saving the event failed", e)
-        _uiState.update {
+        updateState {
           it.copy(isSaving = false, errorMsg = R.string.create_event_error_save_failed)
         }
       }
@@ -166,24 +165,10 @@ class CreateEventViewModel(
   }
 
   private suspend fun save() {
-    val creator =
-        if (userId.isNotBlank()) {
-          try {
-            usersRepository.getUser(userId)
-          } catch (_: Exception) {
-            null
-          }
-        } else null
-
-    val fallbackCreator = creator ?: if (userId.isNotBlank()) User(uid = userId) else null
-    val membersList = if (fallbackCreator != null) listOf(fallbackCreator) else emptyList()
-
-    val newEvent = currentState.toEvent(eventsRepository.getNewUid(), membersList)
-    eventsRepository.addEvent(newEvent)
     check(userId.isNotBlank()) { "User not signed in" }
     val creator = usersRepository.getUser(userId)
 
-    val newEvent = _uiState.value.toEvent(eventsRepository.getNewUid(), listOf(creator))
+    val newEvent = currentState.toEvent(eventsRepository.getNewUid(), listOf(creator))
     eventsRepository.addEvent(newEvent)
     try {
       usersRepository.editUser(creator.uid, creator.addJoinedEvent(newEvent.eventId))
