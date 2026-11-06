@@ -80,10 +80,13 @@ class UserListTest {
     composeTestRule.onNodeWithText("${unknown.uppercase()}, 1").assertIsDisplayed()
   }
 
-  /** Test that by default only the full names are shown, with no title and no header. */
+  /**
+   * Test that by default only the full names are shown, with no title, no header and no click. The
+   * list is called with its users only, so that the default values are the ones used.
+   */
   @Test
   fun byDefaultShowsOnlyTheNames() {
-    setList()
+    composeTestRule.setContent { AppTheme { UserList(users = users) } }
 
     composeTestRule.onNodeWithText("Sami Kabbaj").assertIsDisplayed()
     // A user without surname has no trailing space after its name.
@@ -91,6 +94,7 @@ class UserListTest {
     composeTestRule.onNodeWithTag(UserListTestTags.TITLE).assertDoesNotExist()
     composeTestRule.onNodeWithTag(UserListTestTags.SUBTITLE).assertDoesNotExist()
     composeTestRule.onNodeWithTag(UserListTestTags.header("")).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(UserListTestTags.row(lea.uid)).assertHasNoClickAction()
   }
 
   /** Test that each user gets its own supporting text and tags, up to the maximum of tags. */
@@ -126,13 +130,6 @@ class UserListTest {
     assertEquals(listOf(lea), clicked)
   }
 
-  /** Test that the rows are not clickable without onUserClick. */
-  @Test
-  fun rowsAreNotClickableWithoutOnUserClick() {
-    setList()
-    composeTestRule.onNodeWithTag(UserListTestTags.row(lea.uid)).assertHasNoClickAction()
-  }
-
   /** Test that the list scrolls down to a user far below the screen. */
   @Test
   fun scrollsToTheLastUser() {
@@ -144,27 +141,40 @@ class UserListTest {
     composeTestRule.onNodeWithText("User 49").assertIsDisplayed()
   }
 
-  /** Test that the sheet shows the list, forwards clicks, and reports when back closes it. */
+  /** Test that the sheet shows the list, here a subtitle without title, and forwards clicks. */
   @OptIn(ExperimentalMaterial3Api::class)
   @Test
-  fun bottomSheetShowsTheListAndReportsItsDismissal() {
+  fun bottomSheetShowsTheListAndForwardsClicks() {
     val clicked = mutableListOf<User>()
-    var dismissals = 0
     composeTestRule.setContent {
       AppTheme {
         UserListBottomSheet(
             users = users,
-            onDismissRequest = { dismissals++ },
-            title = "Members",
+            onDismissRequest = {},
+            subtitle = "3 members",
             onUserClick = { clicked += it },
         )
       }
     }
 
-    composeTestRule.onNodeWithText("Members").assertIsDisplayed()
+    composeTestRule.onNodeWithText("3 members").assertIsDisplayed()
+    composeTestRule.onNodeWithTag(UserListTestTags.TITLE).assertDoesNotExist()
     composeTestRule.onNodeWithText("Léa Martin").performClick()
     assertEquals(listOf(lea), clicked)
+  }
 
+  /**
+   * Test that back closes the sheet through onDismissRequest, and that by default rows ignore taps.
+   */
+  @OptIn(ExperimentalMaterial3Api::class)
+  @Test
+  fun bottomSheetReportsItsDismissalOnBack() {
+    var dismissals = 0
+    composeTestRule.setContent {
+      AppTheme { UserListBottomSheet(users = users, onDismissRequest = { dismissals++ }) }
+    }
+
+    composeTestRule.onNodeWithTag(UserListTestTags.row(lea.uid)).assertHasNoClickAction()
     Espresso.pressBack()
     composeTestRule.waitForIdle()
     assertEquals(1, dismissals)
