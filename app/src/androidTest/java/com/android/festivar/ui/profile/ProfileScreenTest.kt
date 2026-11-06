@@ -108,6 +108,10 @@ class ProfileScreenTest {
   private fun string(@StringRes id: Int) =
       InstrumentationRegistry.getInstrumentation().targetContext.getString(id)
 
+  private fun confirmSignOut() {
+    composeTestRule.onNodeWithText(string(R.string.action_continue_anyway)).performClick()
+  }
+
   /** Turns red when the title, the back arrow, the avatar, a field or a button disappears. */
   @Test
   fun everyPartOfTheProfileShows() {
@@ -283,6 +287,7 @@ class ProfileScreenTest {
     val viewModel = setProfile(onSignedOut = { signedOut = true })
 
     composeTestRule.onNodeWithTag(ProfileScreenTestTags.SIGN_OUT_BUTTON).performClick()
+    confirmSignOut()
 
     composeTestRule.waitUntil(5_000) { signedOut }
     assertTrue(viewModel.uiState.value.signedOut)
@@ -294,6 +299,7 @@ class ProfileScreenTest {
     setProfile(authRepository = neverSigningOut())
 
     composeTestRule.onNodeWithTag(ProfileScreenTestTags.SIGN_OUT_BUTTON).performClick()
+    confirmSignOut()
 
     composeTestRule.onNodeWithTag(ProfileScreenTestTags.SIGN_OUT_BUTTON).assertIsNotEnabled()
   }
@@ -310,6 +316,7 @@ class ProfileScreenTest {
     setProfile(authRepository = authRepository, onSignedOut = { signedOut = true })
 
     composeTestRule.onNodeWithTag(ProfileScreenTestTags.SIGN_OUT_BUTTON).performClick()
+    confirmSignOut()
 
     waitForTag(ProfileScreenTestTags.ERROR_MESSAGE)
     composeTestRule.onNodeWithText(string(R.string.profile_sign_out_failed)).assertIsDisplayed()

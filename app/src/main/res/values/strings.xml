@@ -69,5 +69,4 @@
         <item quantity="one">%d member</item>
         <item quantity="other">%d members</item>
     </plurals>
-    <string name="profile_anon_upgrade">Up</string>
 </resources>
