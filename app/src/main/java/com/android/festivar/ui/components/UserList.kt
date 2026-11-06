@@ -19,7 +19,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetState
@@ -40,28 +39,22 @@ import com.android.festivar.model.user.User
 /** Most tags a user can have in a [UserList], so that they leave room for its name. */
 const val MAX_TAGS_PER_USER = 3
 
+/** Test tags of the [UserList]. */
 object UserListTestTags {
   const val LIST = "userList"
   const val TITLE = "userListTitle"
   const val SUBTITLE = "userListSubtitle"
 
-  /**
-   * TestTag of the header of the category [category] as the component creates more of them when it
-   * is used.
-   */
+  /** Test tag of the header of [category]. There is one per category, so it depends on its name. */
   fun header(category: String) = "userListHeader_$category"
 
-  /**
-   * TestTag of the row of the user with the given [uid] as the component creates more of them when
-   * it is used. Making one for each [User] in a row.
-   */
+  /** Test tag of the row of the user with the given [uid]. There is one per [User]. */
   fun row(uid: String) = "userListRow_$uid"
 }
 
 /**
- * Represents the tag that is assigned to a [User]. That can represent different things depending on
- * the screen that is considered: the [Task] is done; the [User] role; the [User] permissions. It is
- * free to implement what is needed.
+ * A tag shown at the end of the row of a [User]. Its meaning depends on the screen, e.g. the role
+ * of the user, its permissions, or whether its task is done.
  *
  * @property label The text of the tag.
  * @property containerColor The background of the tag. [Color.Unspecified] uses the ink of the
@@ -77,8 +70,8 @@ data class UserTag(
 /**
  * A group of [users] shown under one header, or without header if [category] is `null`.
  *
- * @property category The category in which the users are.
- * @property users The users within the category.
+ * @property category The name of the category, or `null` for a category without header.
+ * @property users The users of the category, in the order they are shown.
  */
 internal data class UserCategory(
     val category: String?,
@@ -90,8 +83,8 @@ internal data class UserCategory(
  *
  * The categories keep the order in which they first appear in [users], and the users keep their
  * order inside each category. The users without category go in a last category named
- * [uncategorizedLabel], merged with a category of that name if there is one, that category appears
- * only if there is at least one [User] that has a category.
+ * [uncategorizedLabel], merged with a category of that name if there is one. That last category
+ * appears only if at least one [User] has no category.
  *
  * @param users The users to split, in the order they are shown.
  * @param categoryOf Gives the category of a user, or `null` if it has none. If [categoryOf] itself
@@ -105,11 +98,11 @@ internal fun categorize(
     categoryOf: ((User) -> String?)?,
     uncategorizedLabel: String,
 ): List<UserCategory> {
-  // If there is no category announced, then all the users are just in the same one.
+  // Without categories, all the users are in a single category without header.
   if (categoryOf == null) return listOf(UserCategory(null, users))
 
-  // Separates the users into their categories and keeps in a single category map the ones
-  // that don't have a category initially.
+  // Groups the users by category, the ones without category under uncategorizedLabel, then puts
+  // that group apart so that it can go last.
   val (uncategorized, categorized) =
       users
           .groupBy { categoryOf(it) ?: uncategorizedLabel }
@@ -156,7 +149,7 @@ fun UserList(
     tags: (User) -> List<UserTag> = { emptyList() },
     onUserClick: ((User) -> Unit)? = null,
 ) {
-  // Transforms the given user list into the necessary categories for the composable?
+  // Splits the users into the categories shown, each under its own header.
   val categories = categorize(users, categoryOf, uncategorizedLabel)
 
   LazyColumn(
@@ -192,7 +185,7 @@ fun UserList(
  * @param onDismissRequest Called when the user closes the sheet.
  * @param sheetState The state of the sheet, to open or close it from the caller.
  * @param users The users to show, in this order (within their category if [categoryOf] is given).
- * @param modifier The [Modifier] applied to the list.
+ * @param modifier The [Modifier] applied to the sheet.
  * @param title The title above the list, e.g. "Members". No title if `null`.
  * @param subtitle The line below the title, e.g. "12 members · Fête de l'Asso 2026". None if
  *   `null`.
@@ -271,18 +264,15 @@ private fun UserListTitle(title: String?, subtitle: String?) {
   }
 }
 
-/** Header of a [category], e.g. "ORGANIZER, 1". */
+/**
+ * Header of a [category], e.g. "ORGANIZER, 1": its name and its number of users, in the design's
+ * [SectionLabel], which puts it in capitals.
+ */
 @Composable
 private fun UserListHeader(category: UserCategory) {
-
-  Text(
-      text = "${category.category.orEmpty().uppercase()}, ${category.users.size}",
-      style = MaterialTheme.typography.labelLarge,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
-      modifier =
-          Modifier.fillMaxWidth()
-              .padding(top = 24.dp, bottom = 4.dp)
-              .testTag(UserListTestTags.header(category.category.orEmpty())),
+  SectionLabel(
+      text = "${category.category.orEmpty()}, ${category.users.size}",
+      modifier = Modifier.testTag(UserListTestTags.header(category.category.orEmpty())),
   )
 }
 
@@ -342,11 +332,14 @@ private fun UserRow(
       }
     }
 
-    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+    Hairline()
   }
 }
 
-/** Pill of a [tag], in its colors, or in the ink of the design for the unspecified ones. */
+/**
+ * Pill of a [tag], with the size and text style of the design's [StatusPill], in the colors of the
+ * tag, or in the ink of the design ([PillStyle.INK]) for the unspecified ones.
+ */
 @Composable
 private fun UserTagPill(tag: UserTag) {
   val container = tag.containerColor.takeOrElse { MaterialTheme.colorScheme.secondaryContainer }
@@ -355,11 +348,11 @@ private fun UserTagPill(tag: UserTag) {
   Box(
       contentAlignment = Alignment.Center,
       modifier =
-          Modifier.height(28.dp).background(container, CircleShape).padding(horizontal = 12.dp),
+          Modifier.height(24.dp).background(container, CircleShape).padding(horizontal = 8.dp),
   ) {
     Text(
         text = tag.label,
-        style = MaterialTheme.typography.labelLarge,
+        style = MaterialTheme.typography.labelMedium,
         color = content,
         maxLines = 1,
     )
