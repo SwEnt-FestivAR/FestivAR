@@ -7,7 +7,6 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.navigation.AppScreens
 import com.android.festivar.ui.announcement.create.CreateAnnouncementScreen

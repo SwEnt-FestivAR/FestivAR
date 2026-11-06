@@ -20,8 +20,6 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.credentials.CredentialManager
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
-import com.android.festivar.model.authentication.AuthRepository
-import com.android.festivar.model.authentication.AuthRepositoryFirebase
 import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.datarepository.DataRepositoryFirebase
 import com.android.festivar.navigation.AppScreens
