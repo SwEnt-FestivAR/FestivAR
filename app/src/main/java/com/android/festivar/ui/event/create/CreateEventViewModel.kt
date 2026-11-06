@@ -1,4 +1,4 @@
-package com.android.festivar.ui.event
+package com.android.festivar.ui.event.create
 
 // Co-authored-by: Copilot App
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
@@ -16,6 +16,12 @@ import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.DateTimeRange
 import com.android.festivar.ui.components.FieldError
 import com.android.festivar.ui.components.endDateError
+import com.android.festivar.ui.event.EventFormViewModel
+import com.android.festivar.ui.event.computeEndDateTime
+import com.android.festivar.ui.event.computeStartDateTime
+import com.android.festivar.ui.event.isEventFormValid
+import com.android.festivar.ui.event.validateEventName
+import com.android.festivar.ui.event.validateStartDate
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId

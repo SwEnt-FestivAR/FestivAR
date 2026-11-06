@@ -1,4 +1,4 @@
-package com.android.festivar.ui.event
+package com.android.festivar.ui.event.create
 
 // Co-authored-by: Copilot App
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
