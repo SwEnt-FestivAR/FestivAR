@@ -26,17 +26,24 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
 import com.android.festivar.model.user.User
@@ -44,6 +51,7 @@ import com.android.festivar.ui.components.Avatar
 import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.components.NoticeSnackbar
+import com.android.festivar.ui.theme.AppTheme
 
 /** Tags that the UI tests use to find the elements of the profile screen. */
 object ProfileScreenTestTags {
@@ -90,6 +98,9 @@ fun ProfileScreen(
 
   val profileUIState by profileViewModel.uiState.collectAsState()
   val snackbarHostState = remember { SnackbarHostState() }
+  var isUpgrading by rememberSaveable { mutableStateOf(false) }
+  val sheetState = rememberModalBottomSheetState()
+  val scope = rememberCoroutineScope()
 
   // Shows each error once in the snackbar, then clears it so it does not come back.
   val errorMsg = profileUIState.errorMsg?.let { stringResource(it) }
@@ -102,6 +113,13 @@ fun ProfileScreen(
 
   // Leaves the screen once the sign out succeeded.
   LaunchedEffect(profileUIState.signedOut) { if (profileUIState.signedOut) onSignedOut() }
+
+  // Closes bottom sheet once upgrade/linking succeeded.
+  LaunchedEffect(profileUIState.isUserAnonymous) {
+    if (!profileUIState.isUserAnonymous && isUpgrading) {
+      isUpgrading = false
+    }
+  }
 
   Scaffold(
       topBar = {
@@ -141,8 +159,22 @@ fun ProfileScreen(
         onSaveClick = profileViewModel::saveChanges,
         onSignOutClick = profileViewModel::signOut,
         onRetryClick = profileViewModel::getUserInformation,
+        onUpgradeClick = { isUpgrading = true },
         modifier = Modifier.padding(padding),
     )
+
+    if (isUpgrading) {
+      UpgradeBottomSheet(
+          onUpgradeCancel = { isUpgrading = false },
+          scope = scope,
+          sheetState = sheetState,
+          uiState = profileUIState,
+          onEmailChange = profileViewModel::updateEmail,
+          onPasswordChange = profileViewModel::updatePassword,
+          onLoginClick = profileViewModel::upgradeWithEmail,
+          onTogglePasswordVisibility = profileViewModel::togglePasswordVisibility,
+      )
+    }
   }
 }
 
@@ -166,6 +198,7 @@ internal fun ProfileScreenContent(
     onSaveClick: () -> Unit,
     onSignOutClick: () -> Unit,
     onRetryClick: () -> Unit,
+    onUpgradeClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
   Column(
@@ -252,6 +285,25 @@ internal fun ProfileScreenContent(
       }
     }
 
+    if (uiState.isUserAnonymous) {
+      Button(
+          onClick = onUpgradeClick,
+          enabled = true,
+          shape = RoundedCornerShape(12.dp),
+          modifier =
+              Modifier.fillMaxWidth().height(48.dp).testTag(ProfileScreenTestTags.SAVE_BUTTON),
+      ) {
+        if (uiState.isSaving) {
+          CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+        } else {
+          Text(
+              text = stringResource(R.string.profile_anon_upgrade),
+              style = MaterialTheme.typography.labelLarge,
+          )
+        }
+      }
+    }
+
     Spacer(modifier = Modifier.height(16.dp))
 
     Button(
@@ -293,6 +345,75 @@ private fun SignOutButton(onClick: () -> Unit, isSigningOut: Boolean, signedOut:
       CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
     } else {
       Text(text = stringResource(R.string.profile_sign_out))
+    }
+  }
+}
+
+@Preview(showBackground = true, heightDp = 700)
+@Composable
+internal fun ProfileScreenLoadedPreview() {
+  AppTheme {
+    ProfileScreenContent(
+        uiState =
+            ProfileUIState(
+                user =
+                    User(
+                        uid = "u1",
+                        name = "skibidi",
+                        surname = "toilet",
+                        email = "skibidi@toilet.ch",
+                    ),
+                name = "skibidi",
+                surname = "toilet",
+                isUserAnonymous = true,
+            ),
+        onSurnameChange = {},
+        onNameChange = {},
+        onSaveClick = {},
+        onSignOutClick = {},
+        onRetryClick = {},
+        onUpgradeClick = {},
+    )
+  }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true, heightDp = 700)
+@Composable
+internal fun ProfileScreenBottomSheetPreview() {
+  AppTheme {
+    Box(modifier = Modifier.fillMaxSize()) {
+      ProfileScreenContent(
+          uiState =
+              ProfileUIState(
+                  user =
+                      User(
+                          uid = "u1",
+                          name = "skibidi",
+                          surname = "toilet",
+                          email = "skibidi@toilet.ch",
+                      ),
+                  name = "skibidi",
+                  surname = "toilet",
+                  isUserAnonymous = true,
+              ),
+          onSurnameChange = {},
+          onNameChange = {},
+          onSaveClick = {},
+          onSignOutClick = {},
+          onRetryClick = {},
+          onUpgradeClick = {},
+      )
+
+      Box(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
+        Surface(
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+            tonalElevation = 8.dp,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+          UpgradeBottomSheetPreview()
+        }
+      }
     }
   }
 }
