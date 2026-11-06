@@ -179,10 +179,7 @@ class EventsOverviewScreenTest {
     return viewModel
   }
 
-  /**
-   * Shows [com.android.festivar.ui.event.overview.EventsOverviewContent] alone, with the given
-   * [uiState].
-   */
+  /** Shows [EventsOverviewContent] alone, with the given [uiState]. */
   private fun setContent(uiState: EventsOverviewUIState) {
     composeTestRule.setContent { AppTheme { EventsOverviewContent(uiState = uiState) } }
   }
