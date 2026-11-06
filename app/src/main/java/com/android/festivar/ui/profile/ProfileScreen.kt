@@ -157,7 +157,11 @@ fun ProfileScreen(
 
     if (isUpgrading) {
       UpgradeBottomSheet(
-          onUpgradeCancel = { isUpgrading = false },
+          onUpgradeCancel = {
+            isUpgrading = false
+            profileViewModel.updateEmail("")
+            profileViewModel.updatePassword("")
+          },
           scope = scope,
           sheetState = sheetState,
           uiState = profileUIState,
