@@ -18,6 +18,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
@@ -59,10 +60,12 @@ class CreateEventScreenTest {
     override suspend fun addEvent(event: Event): Unit = throw IllegalStateException("offline")
   }
 
+  private val dataRepository = DataRepositoryLocal()
+
   /** Red if the screen does not display non-error tagged elements. */
   @Test
   fun nonErrorTaggedElementsAreDisplayed() {
-    viewModel = CreateEventViewModel(EventsRepositoryLocal())
+    viewModel = CreateEventViewModel(dataRepository)
     composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
 
     listOf(
@@ -88,7 +91,7 @@ class CreateEventScreenTest {
   fun fieldsReceiveAndDisplayInput() {
     val startDate = LocalDate.now()
     val endDate = startDate.plusDays(1)
-    viewModel = CreateEventViewModel(EventsRepositoryLocal())
+    viewModel = CreateEventViewModel(dataRepository)
     composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
 
     composeTestRule
@@ -129,7 +132,7 @@ class CreateEventScreenTest {
   /** Red if an edited blank name shows no error. */
   @Test
   fun fieldsDisplayErrorWhenNeeded() {
-    viewModel = CreateEventViewModel(EventsRepositoryLocal())
+    viewModel = CreateEventViewModel(dataRepository)
     composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
 
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAME_FIELD).performTextInput("Festival")
@@ -148,7 +151,7 @@ class CreateEventScreenTest {
   /** Red if cancelling a date picker changes the associated field. */
   @Test
   fun cancellingDatePickerKeepsTheDateUnchanged() {
-    viewModel = CreateEventViewModel(EventsRepositoryLocal())
+    viewModel = CreateEventViewModel(dataRepository)
     composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
 
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.START_DATE_FIELD).performClick()
@@ -161,7 +164,7 @@ class CreateEventScreenTest {
   /** Red if cancelling either time picker changes the form or leaves a dialog open. */
   @Test
   fun cancellingTimePickersClosesTheDialog() {
-    viewModel = CreateEventViewModel(EventsRepositoryLocal())
+    viewModel = CreateEventViewModel(dataRepository)
     composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
 
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.START_TIME_FIELD).performClick()
@@ -177,7 +180,7 @@ class CreateEventScreenTest {
   fun endDateRangeErrorIsDisplayed() {
     val startDate = LocalDate.now().plusDays(1)
     val endDate = LocalDate.now()
-    viewModel = CreateEventViewModel(EventsRepositoryLocal())
+    viewModel = CreateEventViewModel(dataRepository)
     composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
 
     viewModel.updateName("Summer festival")
@@ -193,7 +196,7 @@ class CreateEventScreenTest {
   @Test
   fun navigateButtonCallsOnBack() {
     val onBack = mockk<() -> Unit>(relaxed = true)
-    viewModel = spyk(CreateEventViewModel(EventsRepositoryLocal()))
+    viewModel = spyk(CreateEventViewModel(dataRepository))
     composeTestRule.setContent { CreateEventScreen(viewModel = viewModel, onBack = onBack) }
 
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAVIGATION_BUTTON).performClick()
@@ -203,7 +206,7 @@ class CreateEventScreenTest {
   /** Red if the create button is enabled even though the form is invalid. */
   @Test
   fun createButtonIsDisabledWithInvalidForm() {
-    viewModel = CreateEventViewModel(EventsRepositoryLocal())
+    viewModel = CreateEventViewModel(dataRepository)
     composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
 
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsNotEnabled()
@@ -217,7 +220,7 @@ class CreateEventScreenTest {
   /** Red if clicking the create button with an invalid form invokes createEvent(). */
   @Test
   fun createButtonDoesNotCallCreateEventWhenFieldsAreInvalid() {
-    viewModel = spyk(CreateEventViewModel(EventsRepositoryLocal()))
+    viewModel = spyk(CreateEventViewModel(dataRepository))
     composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
 
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).performClick()
@@ -227,7 +230,7 @@ class CreateEventScreenTest {
   /** Red if a valid event form leaves the create button disabled. */
   @Test
   fun createButtonIsEnabledWithValidForm() {
-    viewModel = CreateEventViewModel(EventsRepositoryLocal())
+    viewModel = CreateEventViewModel(dataRepository)
     composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
 
     val startDate = LocalDate.now()
@@ -243,7 +246,7 @@ class CreateEventScreenTest {
   /** Red if clicking create with a valid form does not call createEvent. */
   @Test
   fun createButtonCallsCreateEventWhenValid() {
-    viewModel = spyk(CreateEventViewModel(EventsRepositoryLocal()))
+    viewModel = spyk(CreateEventViewModel(dataRepository))
     composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
 
     val startDate = LocalDate.now()
@@ -272,8 +275,10 @@ class CreateEventScreenTest {
     val creator = User("creator-123", "Alice", "AliceInWonderland")
     viewModel =
         CreateEventViewModel(
-            GatedRepository(gate),
-            UsersRepositoryLocal(listOf(creator)),
+            DataRepositoryLocal(
+                eventsRepository = GatedRepository(gate),
+                usersRepository = UsersRepositoryLocal(listOf(creator)),
+            ),
             creator.uid,
         )
     composeTestRule.setContent { CreateEventScreen(viewModel = viewModel, onCreated = onCreated) }
@@ -300,7 +305,7 @@ class CreateEventScreenTest {
     val onCreated = mockk<() -> Unit>(relaxed = true)
     val startDate = LocalDate.now()
     val endDate = startDate.plusDays(1)
-    viewModel = CreateEventViewModel(FailingRepository())
+    viewModel = CreateEventViewModel(DataRepositoryLocal(eventsRepository = FailingRepository()))
     composeTestRule.setContent { CreateEventScreen(viewModel = viewModel, onCreated = onCreated) }
 
     viewModel.updateName("Summer festival")
@@ -321,7 +326,7 @@ class CreateEventScreenTest {
   fun editingAfterAFailedSaveHidesTheErrorLine() {
     val startDate = LocalDate.now()
     val endDate = startDate.plusDays(1)
-    viewModel = CreateEventViewModel(FailingRepository())
+    viewModel = CreateEventViewModel(DataRepositoryLocal(eventsRepository = FailingRepository()))
     composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
 
     viewModel.updateName("Summer festival")

@@ -39,6 +39,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.R
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
@@ -315,8 +316,10 @@ private fun CreateEventScreenPreview() {
     CreateEventScreen(
         viewModel =
             CreateEventViewModel(
-                SlowEventsRepository(),
-                UsersRepositoryLocal(listOf(creator)),
+                DataRepositoryLocal(
+                    eventsRepository = SlowEventsRepository(),
+                    usersRepository = UsersRepositoryLocal(listOf(creator)),
+                ),
                 creator.uid,
             )
     )
