@@ -77,4 +77,12 @@ class VoiceNotePreviewsTest {
 
     composeTestRule.onNodeWithContentDescription("Stop the voice note").assertIsDisplayed()
   }
+
+  /** Breaks if the preview of the player with the trash no longer shows the trash. */
+  @Test
+  fun playerWithTrashPreview_showsTheTrash() {
+    composeTestRule.setContent { VoiceNotePlayerWithTrashPreview() }
+
+    composeTestRule.onNodeWithTag(VoiceNoteTestTags.VOICE_NOTE_DELETE).assertIsDisplayed()
+  }
 }
