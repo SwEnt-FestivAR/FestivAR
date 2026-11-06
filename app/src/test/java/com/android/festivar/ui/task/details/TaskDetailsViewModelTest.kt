@@ -445,6 +445,31 @@ class TaskDetailsViewModelTest {
   }
 
   @Test
+  fun deleteTask_whileLoadingDoesNothing() {
+    repository.getGate = CompletableDeferred()
+    val vm = TaskDetailsViewModel("t1", User(uid = "owner-1"), repository, dataRepository)
+
+    vm.load()
+    vm.deleteTask()
+
+    coVerify(exactly = 0) { dataRepository.deleteTask(any()) }
+    assertTrue(vm.uiState.value.isLoading)
+    assertFalse(vm.uiState.value.isUpdating)
+  }
+
+  @Test
+  fun deleteTask_whileSavingDoesNothing() {
+    repository.editGate = CompletableDeferred()
+    val vm = viewModel(task(), User(uid = "owner-1"))
+    vm.take()
+
+    vm.deleteTask()
+
+    coVerify(exactly = 0) { dataRepository.deleteTask(any()) }
+    assertTrue(vm.uiState.value.isUpdating)
+  }
+
+  @Test
   fun deleteTask_deletesThroughDataRepository() {
     val vm = viewModel(task(), User(uid = "owner-1"))
 
@@ -464,6 +489,17 @@ class TaskDetailsViewModelTest {
 
     assertEquals(R.string.task_details_save_failed, vm.uiState.value.errorMsg)
     assertFalse(vm.uiState.value.isUpdating)
+  }
+
+  @Test
+  fun deleteTask_cancelledResetStateWithoutError() {
+    val vm = viewModel(task(), User(uid = "owner-1"))
+    coEvery { dataRepository.deleteTask("t1") } throws CancellationException("cancelled")
+
+    vm.deleteTask()
+
+    assertFalse(vm.uiState.value.isUpdating)
+    assertNull(vm.uiState.value.errorMsg)
   }
 
   @Test
