@@ -204,9 +204,20 @@ class VoiceNoteContentTest {
   }
 
   @Test
+  fun failedRecordingShowsANoticeAndKeepsTheRecordButton() {
+    show(VoiceNoteUiState(canManage = true, recorder = RecorderState.Failed))
+    tag(VoiceNoteTestTags.RECORDING_ERROR).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText("Couldn't record. Hold the button to try again.")
+        .assertIsDisplayed()
+    tag(VoiceNoteTestTags.VOICE_NOTE_RECORD).assertIsDisplayed()
+  }
+
+  @Test
   fun noErrorsByDefault() {
     show(VoiceNoteUiState(note = note, canManage = true))
     tag(VoiceNoteTestTags.PLAYBACK_ERROR).assertDoesNotExist()
+    tag(VoiceNoteTestTags.RECORDING_ERROR).assertDoesNotExist()
     tag(VoiceNoteTestTags.SEND_ERROR).assertDoesNotExist()
     tag(VoiceNoteTestTags.MIC_DENIED).assertDoesNotExist()
   }

@@ -14,7 +14,8 @@ import java.time.Duration
  *   other users can only listen.
  * @property recorder What the recorder is doing, to show the timer.
  * @property player What the player is doing.
- * @property sendFailed Whether the last recording could not be uploaded.
+ * @property sendFailed Whether the last recording could not be uploaded. (A recording that failed
+ *   while it was made is not a flag: it is [RecorderState.Failed], read by [recordingFailed].)
  * @property micDenied Whether the microphone permission is refused, so the user cannot record.
  * @property showDeleteConfirm Whether the dialog asking to confirm the deletion is open.
  *
@@ -74,9 +75,16 @@ data class VoiceNoteUiState(
   val playbackFailed: Boolean
     get() = note != null && (player as? PlayerState.Failed)?.audioUrl == note.audioUrl
 
+  /**
+   * Whether the last recording failed by itself and was dropped. It ends when the owner starts a
+   * new recording, which moves the recorder out of [RecorderState.Failed].
+   */
+  val recordingFailed: Boolean
+    get() = recorder is RecorderState.Failed
+
   /** Whether a notice (error or information) has to be shown above the record bar. */
   val hasNotices: Boolean
-    get() = playbackFailed || (showRecordBar && (sendFailed || micDenied))
+    get() = playbackFailed || (showRecordBar && (sendFailed || micDenied || recordingFailed))
 }
 
 /**

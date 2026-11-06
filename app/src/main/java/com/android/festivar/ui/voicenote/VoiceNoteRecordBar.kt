@@ -141,8 +141,9 @@ private fun RecordButton(enabled: Boolean, callbacks: VoiceNoteCallbacks) {
 }
 
 /**
- * The notices fixed just above the record bar: the failed send or playback (with a Retry) and the
- * information that the microphone is off (with a button to the settings).
+ * The notices fixed just above the record bar: the failed send or playback (with a Retry), a
+ * recording that failed by itself, and the information that the microphone is off (with a button to
+ * the settings).
  */
 @Composable
 fun VoiceNoteNotices(
@@ -171,6 +172,13 @@ fun VoiceNoteNotices(
           onAction = callbacks.onRetry,
           modifier = Modifier.testTag(VoiceNoteTestTags.SEND_ERROR),
           actionModifier = Modifier.testTag(VoiceNoteTestTags.SEND_RETRY),
+      )
+    }
+    if (state.showRecordBar && state.recordingFailed) {
+      // No action: the owner tries again by holding the record button, which clears the notice.
+      InfoNote(
+          message = stringResource(R.string.voice_note_recording_failed),
+          modifier = Modifier.testTag(VoiceNoteTestTags.RECORDING_ERROR),
       )
     }
     if (state.showRecordBar && state.micDenied) {

@@ -49,6 +49,7 @@ object VoiceNoteTestTags {
   const val RECORDING_HINT = "voiceNoteRecordingHint"
   const val RECORDING_BAR = "voiceNoteRecordingBar"
   const val VOICE_NOTE_RECORD = "voiceNoteRecord"
+  const val RECORDING_ERROR = "voiceNoteRecordingError"
   const val SEND_ERROR = "voiceNoteSendError"
   const val SEND_RETRY = "voiceNoteSendRetry"
   const val MIC_DENIED = "voiceNoteMicDenied"

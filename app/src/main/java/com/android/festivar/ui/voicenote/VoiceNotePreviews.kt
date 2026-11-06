@@ -72,6 +72,12 @@ internal fun VoiceNoteRecordingPreview() {
 
 @Preview(showBackground = true)
 @Composable
+internal fun VoiceNoteRecordingFailedPreview() {
+  VoiceNotePreviewScreen(VoiceNoteUiState(canManage = true, recorder = RecorderState.Failed))
+}
+
+@Preview(showBackground = true)
+@Composable
 internal fun VoiceNoteSendFailedPreview() {
   VoiceNotePreviewScreen(VoiceNoteUiState(canManage = true, sendFailed = true))
 }
