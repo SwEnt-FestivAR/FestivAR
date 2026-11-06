@@ -1,7 +1,12 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.components
 
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasTestTag
@@ -18,6 +23,7 @@ import com.android.festivar.model.user.User
 import com.android.festivar.ui.theme.AppTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -139,6 +145,66 @@ class UserListTest {
         .onNodeWithTag(UserListTestTags.LIST)
         .performScrollToNode(hasTestTag(UserListTestTags.row("u49")))
     composeTestRule.onNodeWithText("User 49").assertIsDisplayed()
+  }
+
+  /**
+   * Test that a given scroll state starts the list at its position, and is updated by scrolling.
+   */
+  @Test
+  fun listStartsAtTheGivenScrollStateAndUpdatesIt() {
+    lateinit var listState: LazyListState
+    composeTestRule.setContent {
+      listState = rememberLazyListState(initialFirstVisibleItemIndex = 40)
+      AppTheme {
+        UserList(
+            users = List(50) { User("u$it", name = "User $it") },
+            modifier = Modifier.testTag("screenList"),
+            listState = listState,
+        )
+      }
+    }
+
+    // Without title nor categories, item 40 is the 41st user: the first ones are not composed.
+    assertEquals(40, listState.firstVisibleItemIndex)
+    composeTestRule.onNodeWithText("User 40").assertIsDisplayed()
+    composeTestRule.onNodeWithTag(UserListTestTags.row("u0")).assertDoesNotExist()
+    // The modifier of the caller is applied to the list.
+    composeTestRule
+        .onNodeWithTag("screenList")
+        .performScrollToNode(hasTestTag(UserListTestTags.row("u2")))
+    composeTestRule.onNodeWithText("User 2").assertIsDisplayed()
+    assertTrue(listState.firstVisibleItemIndex <= 2)
+  }
+
+  /** Test that the sheet passes every option of the list on, a custom last category included. */
+  @OptIn(ExperimentalMaterial3Api::class)
+  @Test
+  fun bottomSheetPassesEveryOptionToTheList() {
+    composeTestRule.setContent {
+      AppTheme {
+        UserListBottomSheet(
+            users = users,
+            onDismissRequest = {},
+            modifier = Modifier.testTag("sheet"),
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            listState = rememberLazyListState(),
+            title = "Members",
+            subtitle = "3 members",
+            categoryOf = ::categoryOf,
+            uncategorizedLabel = "Others",
+            supportingText = { if (it == lea) "Volunteer · 1 task" else null },
+            tags = { if (it == sami) listOf(UserTag("Organizer")) else emptyList() },
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag("sheet").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Members").assertIsDisplayed()
+    composeTestRule.onNodeWithText("3 members").assertIsDisplayed()
+    composeTestRule.onNodeWithText("ORGANIZER, 1").assertIsDisplayed()
+    composeTestRule.onNodeWithText("OTHERS, 1").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Volunteer · 1 task").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Organizer").assertIsDisplayed()
   }
 
   /** Test that the sheet shows the list, here a subtitle without title, and forwards clicks. */
