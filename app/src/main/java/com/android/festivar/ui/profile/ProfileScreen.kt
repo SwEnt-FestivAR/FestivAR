@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import com.android.festivar.R
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.Avatar
+import com.android.festivar.ui.components.FestivarConfirmDialog
 import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.components.NoticeSnackbar
@@ -101,6 +102,7 @@ fun ProfileScreen(
   var isUpgrading by rememberSaveable { mutableStateOf(false) }
   val sheetState = rememberModalBottomSheetState()
   val scope = rememberCoroutineScope()
+  var showSignOutWarning by rememberSaveable { mutableStateOf(false) }
 
   // Shows each error once in the snackbar, then clears it so it does not come back.
   val errorMsg = profileUIState.errorMsg?.let { stringResource(it) }
@@ -111,7 +113,7 @@ fun ProfileScreen(
     }
   }
 
-  // Leaves the screen once the sign out succeeded.
+  // Leaves the screen once the sign-out succeeded.
   LaunchedEffect(profileUIState.signedOut) { if (profileUIState.signedOut) onSignedOut() }
 
   // Closes bottom sheet once upgrade/linking succeeded.
@@ -148,7 +150,7 @@ fun ProfileScreen(
           onSurnameChange = profileViewModel::updateSurname,
           onNameChange = profileViewModel::updateName,
           onSaveClick = profileViewModel::saveChanges,
-          onSignOutClick = profileViewModel::signOut,
+          onSignOutClick = { showSignOutWarning = true },
           onRetryClick = profileViewModel::getUserInformation,
           onUpgradeClick = { isUpgrading = true },
           modifier = Modifier.padding(padding),
@@ -169,6 +171,21 @@ fun ProfileScreen(
           onPasswordChange = profileViewModel::updatePassword,
           onLoginClick = profileViewModel::upgradeWithEmail,
           onTogglePasswordVisibility = profileViewModel::togglePasswordVisibility,
+      )
+    }
+
+    if (showSignOutWarning) {
+      FestivarConfirmDialog(
+          title = stringResource(R.string.login_warning),
+          message = stringResource(R.string.profile_anon_sign_out_warning),
+          confirmText = stringResource(R.string.action_continue_anyway),
+          dismissText = stringResource(R.string.action_cancel),
+          onConfirm = {
+            showSignOutWarning = false
+            profileViewModel.signOut()
+          },
+          onDismiss = { showSignOutWarning = false },
+          destructive = true,
       )
     }
 
