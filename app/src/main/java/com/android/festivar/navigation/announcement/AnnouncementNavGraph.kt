@@ -1,5 +1,5 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
-package com.android.festivar.navigation
+package com.android.festivar.navigation.announcement
 
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraphBuilder
@@ -8,6 +8,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.navigation.AppScreens
 import com.android.festivar.ui.announcement.create.CreateAnnouncementScreen
 import com.android.festivar.ui.announcement.create.CreateAnnouncementViewModel
 
