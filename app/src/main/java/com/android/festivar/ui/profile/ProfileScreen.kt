@@ -121,47 +121,39 @@ fun ProfileScreen(
     }
   }
 
-  Scaffold(
-      topBar = {
-        TopAppBar(
-            title = {
-              Text(
-                  text = stringResource(R.string.profile_title),
-                  style = MaterialTheme.typography.titleLarge,
-                  modifier = Modifier.testTag(ProfileScreenTestTags.TITLE),
-              )
-            },
-            navigationIcon = {
-              IconButton(onClick = onBack, Modifier.testTag(ProfileScreenTestTags.BACK)) {
-                Icon(
-                    Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = stringResource(R.string.profile_back),
+  Box(modifier = Modifier.fillMaxSize()) {
+    Scaffold(
+        topBar = {
+          TopAppBar(
+              title = {
+                Text(
+                    text = stringResource(R.string.profile_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.testTag(ProfileScreenTestTags.TITLE),
                 )
-              }
-            },
-        )
-      },
-      snackbarHost = {
-        SnackbarHost(snackbarHostState) { data ->
-          NoticeSnackbar(
-              message = data.visuals.message,
-              actionLabel = "",
-              onAction = {},
-              modifier = Modifier.testTag(ProfileScreenTestTags.ERROR_MESSAGE),
+              },
+              navigationIcon = {
+                IconButton(onClick = onBack, Modifier.testTag(ProfileScreenTestTags.BACK)) {
+                  Icon(
+                      Icons.AutoMirrored.Filled.ArrowBack,
+                      contentDescription = stringResource(R.string.profile_back),
+                  )
+                }
+              },
           )
-        }
-      },
-  ) { padding ->
-    ProfileScreenContent(
-        uiState = profileUIState,
-        onSurnameChange = profileViewModel::updateSurname,
-        onNameChange = profileViewModel::updateName,
-        onSaveClick = profileViewModel::saveChanges,
-        onSignOutClick = profileViewModel::signOut,
-        onRetryClick = profileViewModel::getUserInformation,
-        onUpgradeClick = { isUpgrading = true },
-        modifier = Modifier.padding(padding),
-    )
+        },
+    ) { padding ->
+      ProfileScreenContent(
+          uiState = profileUIState,
+          onSurnameChange = profileViewModel::updateSurname,
+          onNameChange = profileViewModel::updateName,
+          onSaveClick = profileViewModel::saveChanges,
+          onSignOutClick = profileViewModel::signOut,
+          onRetryClick = profileViewModel::getUserInformation,
+          onUpgradeClick = { isUpgrading = true },
+          modifier = Modifier.padding(padding),
+      )
+    }
 
     if (isUpgrading) {
       UpgradeBottomSheet(
@@ -173,6 +165,18 @@ fun ProfileScreen(
           onPasswordChange = profileViewModel::updatePassword,
           onLoginClick = profileViewModel::upgradeWithEmail,
           onTogglePasswordVisibility = profileViewModel::togglePasswordVisibility,
+      )
+    }
+
+    SnackbarHost(
+        hostState = snackbarHostState,
+        modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
+    ) { data ->
+      NoticeSnackbar(
+          message = data.visuals.message,
+          actionLabel = "",
+          onAction = {},
+          modifier = Modifier.testTag(ProfileScreenTestTags.ERROR_MESSAGE),
       )
     }
   }

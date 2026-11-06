@@ -14,5 +14,4 @@
     <string name="profile_anon_upgrade">Upgrade to a full account</string>
     <string name="profile_anon_sign_out_warning">This account will not be recoverable if you sign out.</string>
     <string name="profile_anon_upgrade_failed">Unable to upgrade your profile.</string>
-
 </resources>
