@@ -60,4 +60,21 @@ class VoiceNotePreviewsTest {
     composeTestRule.onNodeWithText("Organizer · 09:12").assertIsDisplayed()
     composeTestRule.onNodeWithTag(VoiceNoteTestTags.VOICE_NOTE_DELETE).assertDoesNotExist()
   }
+
+  /** Breaks if the player preview no longer shows the play button and the duration. */
+  @Test
+  fun playerPreview_showsThePlayButtonAndTheDuration() {
+    composeTestRule.setContent { VoiceNotePlayerPreview() }
+
+    composeTestRule.onNodeWithContentDescription("Play the voice note").assertIsDisplayed()
+    composeTestRule.onNodeWithText("0:14").assertIsDisplayed()
+  }
+
+  /** Breaks if the playing preview of the player no longer offers to stop the note. */
+  @Test
+  fun playerPlayingPreview_showsTheStopButton() {
+    composeTestRule.setContent { VoiceNotePlayerPlayingPreview() }
+
+    composeTestRule.onNodeWithContentDescription("Stop the voice note").assertIsDisplayed()
+  }
 }

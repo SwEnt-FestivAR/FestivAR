@@ -22,8 +22,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
+import com.android.festivar.ui.theme.AppTheme
 import java.time.Duration
 
 /** Relative heights of the bars of the static waveform. */
@@ -91,5 +93,31 @@ private fun Waveform(isPlaying: Boolean, modifier: Modifier = Modifier) {
     waveform.forEach { level ->
       Box(Modifier.width(3.dp).height(28.dp * level).background(color, RoundedCornerShape(2.dp)))
     }
+  }
+}
+
+@Preview(showBackground = true)
+@Composable
+internal fun VoiceNotePlayerPreview() {
+  AppTheme {
+    VoiceNotePlayer(
+        Duration.ofSeconds(14),
+        isPlaying = false,
+        onTogglePlay = {},
+        Modifier.padding(20.dp),
+    )
+  }
+}
+
+@Preview(showBackground = true)
+@Composable
+internal fun VoiceNotePlayerPlayingPreview() {
+  AppTheme {
+    VoiceNotePlayer(
+        Duration.ofSeconds(14),
+        isPlaying = true,
+        onTogglePlay = {},
+        Modifier.padding(20.dp),
+    )
   }
 }
