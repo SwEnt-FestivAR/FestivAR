@@ -31,6 +31,11 @@ import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepositoryLocal
+import com.android.festivar.ui.event.overview.EventsOverviewContent
+import com.android.festivar.ui.event.overview.EventsOverviewScreen
+import com.android.festivar.ui.event.overview.EventsOverviewScreenTestTags
+import com.android.festivar.ui.event.overview.EventsOverviewUIState
+import com.android.festivar.ui.event.overview.EventsOverviewViewModel
 import com.android.festivar.ui.theme.AppTheme
 import java.time.ZoneId
 import java.time.ZonedDateTime

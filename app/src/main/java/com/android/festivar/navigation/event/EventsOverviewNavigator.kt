@@ -1,8 +1,9 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
-package com.android.festivar.navigation
+package com.android.festivar.navigation.event
 
 import androidx.navigation.NavHostController
 import com.android.festivar.model.event.Event
+import com.android.festivar.navigation.AppScreens
 
 class EventsOverviewNavigator(private val navController: NavHostController) {
   val onSelectEvent: (Event) -> Unit = { event ->

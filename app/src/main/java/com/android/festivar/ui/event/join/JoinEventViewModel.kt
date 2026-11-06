@@ -1,6 +1,6 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
-package com.android.festivar.ui.event
+package com.android.festivar.ui.event.join
 
 import android.util.Log
 import androidx.annotation.StringRes
