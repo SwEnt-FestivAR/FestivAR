@@ -1,9 +1,9 @@
 <resources>
-    <string name="signup_snackbar_ok">OK</string>
+    <string name="signup_snackbar_ok" translatable="false">OK</string>
     <string name="signup_back">Back</string>
     <string name="signup_title">Create an account</string>
     <string name="signup_description">Your organizer adds you to an event by code once you are in.</string>
-    <string name="signup_email">Email</string>
+    <string name="signup_email" translatable="false">Email</string>
     <string name="signup_password">Password</string>
     <string name="signup_confirm_password">Confirm password</string>
     <string name="signup_passwords_do_not_match">Passwords do not match</string>
@@ -17,5 +17,4 @@
     <string name="signup_terms">By continuing you accept the terms and the privacy notice. Your phone number, if you add one later, is only shown to organizers.</string>
     <string name="signup_already_have_account">Already have an account?</string>
     <string name="signup_sign_in">Sign in</string>
-    <string name="signup_preview_error">Email already used</string>
 </resources>

@@ -6,10 +6,12 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
@@ -17,15 +19,15 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextReplacement
-import androidx.credentials.Credential
+import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.android.festivar.R
 import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryLocal
-import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -75,34 +77,7 @@ class ProfileScreenTest {
       }
 
   /** An [AuthRepository] whose sign out never ends, so the profile stays signing out. */
-  private fun neverSigningOut() =
-      object : AuthRepository by FakeAuthRepository() {
-        override suspend fun signOut(): Result<Unit> = awaitCancellation()
-      }
-
-  /** An [AuthRepository] whose sign out returns [signOutResult]. */
-  private class FakeAuthRepository(var signOutResult: Result<Unit> = Result.success(Unit)) :
-      AuthRepository {
-    override suspend fun signOut(): Result<Unit> = signOutResult
-
-    override suspend fun forgotPassword(email: String): Result<Unit> =
-        Result.failure(UnsupportedOperationException("Not used in this UI test"))
-
-    override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> =
-        Result.failure(UnsupportedOperationException("Not used in this UI test"))
-
-    override suspend fun signInWithEmailAndPassword(
-        email: String,
-        password: String,
-    ): Result<FirebaseUser> =
-        Result.failure(UnsupportedOperationException("Not used in this UI test"))
-
-    override suspend fun signUpWithEmailAndPassword(
-        email: String,
-        password: String,
-    ): Result<FirebaseUser> =
-        Result.failure(UnsupportedOperationException("Not used in this UI test"))
-  }
+  private fun neverSigningOut() = FakeAuthRepository(signOutBehavior = { awaitCancellation() })
 
   /**
    * Shows the profile of [ME] on [usersRepository], and waits until it is loaded unless
@@ -149,6 +124,17 @@ class ProfileScreenTest {
             ProfileScreenTestTags.SIGN_OUT_BUTTON,
         )
         .forEach { tag -> composeTestRule.onNodeWithTag(tag).assertIsDisplayed() }
+  }
+
+  /** Turns red when the avatar stops being shown at its large size of 96.dp. */
+  @Test
+  fun theAvatarIsShownLarge() {
+    setProfile()
+
+    composeTestRule
+        .onNodeWithTag(ProfileScreenTestTags.AVATAR)
+        .assertWidthIsEqualTo(96.dp)
+        .assertHeightIsEqualTo(96.dp)
   }
 
   /** Turns red when the fields stop showing the loaded user. */

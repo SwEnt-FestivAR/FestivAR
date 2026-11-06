@@ -84,7 +84,7 @@ class TaskDetailsViewModelTest {
 
   private fun viewModel(task: Task, user: User = me): TaskDetailsViewModel {
     runBlocking { repository.local.addTask(task) }
-    return TaskDetailsViewModel(task.taskId, user, repository)
+    return TaskDetailsViewModel(task.taskId, user, repository).also { it.load() }
   }
 
   private fun task(
@@ -105,6 +105,15 @@ class TaskDetailsViewModelTest {
   private fun stored(): Task = runBlocking { repository.local.getTask("t1") }
 
   // State of the screen
+
+  // Breaks if canEdit compares the owner with the wrong id, or lets anyone edit.
+  @Test
+  fun canEditIsTrueOnlyForTheOwner() {
+    assertTrue(viewModel(task(), User(uid = "owner-1")).uiState.value.canEdit)
+    // An assignee who is not the owner, and the owner before any task is loaded.
+    assertFalse(TaskDetailsUiState(me.uid, task(assignees = listOf(me))).canEdit)
+    assertFalse(TaskDetailsUiState(currentUserId = "owner-1").canEdit)
+  }
 
   @Test
   fun freeTask_isOpenWithTakeAction() {
@@ -174,7 +183,7 @@ class TaskDetailsViewModelTest {
 
   @Test
   fun missingTask_setsErrorAndClearErrorResetsIt() {
-    val vm = TaskDetailsViewModel("missing", me, repository)
+    val vm = TaskDetailsViewModel("missing", me, repository).also { it.load() }
     assertNull(vm.uiState.value.task)
     assertEquals(R.string.task_details_load_failed, vm.uiState.value.errorMsg)
     assertFalse(vm.uiState.value.isLoading)
@@ -193,6 +202,34 @@ class TaskDetailsViewModelTest {
     vm.load()
 
     assertNull(vm.uiState.value.errorMsg)
+    assertEquals(TaskStatus.OPEN, vm.uiState.value.status)
+  }
+
+  // Breaks if the view model reads the task at construction again, so the screen's first resume
+  // reads it twice on open.
+  @Test
+  fun nothingIsReadBeforeLoad() {
+    runBlocking { repository.local.addTask(task()) }
+    val vm = TaskDetailsViewModel("t1", me, repository)
+
+    assertEquals(0, repository.getCalls)
+    assertNull(vm.uiState.value.task)
+
+    vm.load()
+
+    assertEquals(1, repository.getCalls)
+  }
+
+  // Breaks if a reload on resume clears a save error the user has not dismissed yet.
+  @Test
+  fun reloadAfterAFailedSave_keepsTheSaveError() {
+    val vm = viewModel(task())
+    repository.editFailure = IOException("no network")
+    vm.take()
+
+    vm.load()
+
+    assertEquals(R.string.task_details_save_failed, vm.uiState.value.errorMsg)
     assertEquals(TaskStatus.OPEN, vm.uiState.value.status)
   }
 

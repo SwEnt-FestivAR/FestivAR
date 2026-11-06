@@ -86,15 +86,16 @@ class TaskDetailsViewModelVoiceNoteTest {
       }
     }
     return TaskDetailsViewModel(
-        taskId = task.taskId,
-        currentUser = user,
-        repository = repository,
-        recorder = recorder.takeIf { withRecorder },
-        storage = storage.takeIf { withStorage },
-        player = player.takeIf { withPlayer },
-        newId = { "id-${++ids}" },
-        now = { recordedAt },
-    )
+            taskId = task.taskId,
+            currentUser = user,
+            repository = repository,
+            recorder = recorder.takeIf { withRecorder },
+            storage = storage.takeIf { withStorage },
+            player = player.takeIf { withPlayer },
+            newId = { "id-${++ids}" },
+            now = { recordedAt },
+        )
+        .also { it.load() }
   }
 
   private fun stored(): Task = runBlocking { repository.local.getTask("t1") }
@@ -266,6 +267,30 @@ class TaskDetailsViewModelVoiceNoteTest {
   }
 
   @Test
+  fun newRecording_deletesTheFileOfTheRecordingThatCouldNotBeSent() {
+    storage.uploadFailure = IOException("offline")
+    val vm = viewModel()
+    vm.record()
+    val unsent = recorder.lastAudio!!.file
+    assertTrue(unsent.exists())
+
+    vm.startRecording()
+
+    assertFalse(unsent.exists())
+  }
+
+  @Test
+  fun pausedRecording_canBeFinishedAndSent() {
+    val vm = viewModel()
+    vm.startRecording()
+    recorder.pause()
+
+    vm.finishRecording()
+
+    assertNotNull(stored().voiceNote)
+  }
+
+  @Test
   fun whileUploading_theOtherActionsAreBlocked() {
     val gate = CompletableDeferred<Unit>()
     storage.uploadGate = gate
@@ -358,6 +383,18 @@ class TaskDetailsViewModelVoiceNoteTest {
     assertEquals(PlayerState.Idle, vm.voiceNote.value.player)
   }
 
+  @Test
+  fun delete_stopsThePausedPlaybackOfTheNote() {
+    val vm = viewModel(task(note))
+    vm.togglePlay()
+    player.pause()
+    assertFalse(vm.voiceNote.value.isPlaying)
+
+    vm.confirmDeleteVoiceNote()
+
+    assertEquals(PlayerState.Idle, vm.voiceNote.value.player)
+  }
+
   // Playing
 
   @Test
@@ -370,6 +407,18 @@ class TaskDetailsViewModelVoiceNoteTest {
     vm.togglePlay()
 
     assertFalse(vm.voiceNote.value.isPlaying)
+    assertEquals(1, player.played.size)
+  }
+
+  @Test
+  fun togglePlay_onAPausedNote_stopsIt() {
+    val vm = viewModel(task(note), volunteer)
+    vm.togglePlay()
+    player.pause()
+
+    vm.togglePlay()
+
+    assertEquals(PlayerState.Idle, vm.voiceNote.value.player)
     assertEquals(1, player.played.size)
   }
 

@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.details
 
 import androidx.compose.foundation.layout.Column
@@ -20,6 +21,7 @@ import com.android.festivar.ui.theme.AppTheme
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -56,11 +58,34 @@ class TaskDetailsScreenTest {
   private fun exists(tag: String) =
       composeTestRule.onAllNodes(hasTestTag(tag)).fetchSemanticsNodes().isNotEmpty()
 
-  private fun showScreen(onBack: () -> Unit = {}) {
+  private fun showScreen(
+      user: User = sami,
+      onBack: () -> Unit = {},
+      onEdit: (String) -> Unit = {},
+  ) {
     composeTestRule.setContent {
-      AppTheme { TaskDetailsScreen(task.taskId, sami, onBack = onBack) }
+      AppTheme { TaskDetailsScreen(task.taskId, user, onBack = onBack, onEdit = onEdit) }
     }
     composeTestRule.waitUntil(5_000) { exists(TaskDetailsScreenTestTags.TITLE) }
+  }
+
+  // Breaks if the owner gets no edit button, or the tap does not pass the task id.
+  @Test
+  fun theOwnerSeesTheEditButtonAndATapCallsOnEdit() {
+    val edited = mutableListOf<String>()
+    showScreen(user = User("owner-1"), onEdit = { edited += it })
+
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.EDIT_BUTTON).performClick()
+
+    assertEquals(listOf(task.taskId), edited)
+  }
+
+  // Breaks if a volunteer who does not own the task is offered the edit.
+  @Test
+  fun aVolunteerSeesNoEditButton() {
+    showScreen()
+
+    assertFalse(exists(TaskDetailsScreenTestTags.EDIT_BUTTON))
   }
 
   private fun assertBadge(label: String) =

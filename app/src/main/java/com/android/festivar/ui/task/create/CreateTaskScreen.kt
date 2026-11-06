@@ -2,7 +2,6 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.create
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,25 +13,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -46,12 +37,17 @@ import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.DateTimeRange
 import com.android.festivar.ui.components.FestivarDateTimePickerDialog
 import com.android.festivar.ui.components.FestivarDateTimeRow
-import com.android.festivar.ui.components.FestivarDiscardDialog
 import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.components.FestivarFieldWithError
 import com.android.festivar.ui.components.FestivarPrioritySelector
 import com.android.festivar.ui.components.FestivarStepper
 import com.android.festivar.ui.components.FestivarTextField
+import com.android.festivar.ui.components.FieldError
+import com.android.festivar.ui.task.DiscardTaskDialog
+import com.android.festivar.ui.task.TaskFormBackHandling
+import com.android.festivar.ui.task.TaskFormLabels
+import com.android.festivar.ui.task.TaskFormTopBar
+import com.android.festivar.ui.task.taskFormActions
 import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
 import java.time.LocalTime
@@ -71,6 +67,7 @@ object CreateTaskScreenTestTags {
   const val MAX_ASSIGN_FIELD = "createTaskMaxAssignField"
   const val MAX_ASSIGN_DECREASE_BUTTON = "createTaskMaxAssignDecreaseButton"
   const val MAX_ASSIGN_INCREASE_BUTTON = "createTaskMaxAssignIncreaseButton"
+  const val MAX_ASSIGN_ERROR = "createTaskMaxAssignError"
   const val ESTIMATED_TIME_FIELD = "createTaskEstimatedTimeField"
   const val ESTIMATED_TIME_ERROR = "createTaskEstimatedTimeError"
   const val TITLE_ERROR = "createTaskTitleError"
@@ -115,61 +112,31 @@ fun CreateTaskScreen(
 ) {
   val state by viewModel.uiState.collectAsState()
 
-  var askToDiscard by rememberSaveable { mutableStateOf(false) }
-  val requestBack = { if (state.needsDiscardConfirmation) askToDiscard = true else onBack() }
-  BackHandler(onBack = requestBack)
-
   // The latest callback is called, even if the caller passed a new one during the save.
   val currentOnTaskCreated by rememberUpdatedState(onTaskCreated)
   LaunchedEffect(state.isCreated) { if (state.isCreated) currentOnTaskCreated() }
 
-  CreateTaskContent(
-      state = state,
-      actions =
-          CreateTaskActions(
-              onBack = requestBack,
-              onTitleChange = viewModel::updateTitle,
-              onDescriptionChange = viewModel::updateDescription,
-              onLocationChange = viewModel::updateLocation,
-              onPriorityChange = viewModel::updatePriority,
-              onMaxAssignDecrease = viewModel::decrementMaxAssign,
-              onMaxAssignIncrease = viewModel::incrementMaxAssign,
-              onEstimatedMinutesChange = viewModel::updateEstimatedMinutes,
-              onShowPicker = viewModel::showPicker,
-              onDatePicked = viewModel::pickDate,
-              onTimePicked = viewModel::pickTime,
-              onCreate = viewModel::createTask,
-          ),
-      modifier = modifier,
-  )
-
-  if (askToDiscard) {
-    DiscardTaskDialog(
-        onConfirm = {
-          askToDiscard = false
-          onBack()
-        },
-        onDismiss = { askToDiscard = false },
+  TaskFormBackHandling(
+      needsConfirmation = state.needsDiscardConfirmation,
+      onBack = onBack,
+      dialogTitle = R.string.create_task_discard_title,
+  ) { requestBack ->
+    CreateTaskContent(
+        state = state,
+        actions =
+            taskFormActions(viewModel, onBack = requestBack, onSubmit = viewModel::createTask),
+        modifier = modifier,
     )
   }
 }
 
-/** The "Discard this task?" dialog, shown when going back from an edited form. */
-@Composable
-private fun DiscardTaskDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
-  FestivarDiscardDialog(
-      title = stringResource(R.string.create_task_discard_title),
-      onConfirm = onConfirm,
-      onDismiss = onDismiss,
-      modifier = Modifier.testTag(CreateTaskScreenTestTags.DISCARD_DIALOG),
-      confirmModifier = Modifier.testTag(CreateTaskScreenTestTags.DISCARD_BUTTON),
-      dismissModifier = Modifier.testTag(CreateTaskScreenTestTags.KEEP_EDITING_BUTTON),
-  )
-}
-
 /**
  * Stateless Create task screen: draws [state] and reports user input through [actions]. The open
- * picker dialog is part of [state] too.
+ * picker dialog is part of [state] too. The Edit task screen draws its form with it as well.
+ *
+ * @param labels The top bar title and the button text.
+ * @param canSubmit Whether the button at the bottom can be pressed.
+ * @param maxAssignError The error shown under the people needed, or null for none.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -177,36 +144,14 @@ fun CreateTaskContent(
     state: CreateTaskUiState,
     actions: CreateTaskActions,
     modifier: Modifier = Modifier,
+    labels: TaskFormLabels = TaskFormLabels(R.string.create_task, R.string.create_task),
+    canSubmit: Boolean = state.canCreate,
+    maxAssignError: FieldError? = null,
 ) {
   Scaffold(
       modifier = modifier.imePadding(),
       containerColor = MaterialTheme.colorScheme.background,
-      topBar = {
-        TopAppBar(
-            title = {
-              Text(
-                  text = stringResource(R.string.create_task),
-                  style = MaterialTheme.typography.titleLarge,
-                  modifier = Modifier.testTag(CreateTaskScreenTestTags.TITLE),
-              )
-            },
-            navigationIcon = {
-              IconButton(
-                  onClick = actions.onBack,
-                  modifier = Modifier.testTag(CreateTaskScreenTestTags.BACK_BUTTON),
-              ) {
-                Icon(
-                    Icons.AutoMirrored.Rounded.ArrowBack,
-                    contentDescription = stringResource(R.string.create_task_back),
-                )
-              }
-            },
-            colors =
-                TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                ),
-        )
-      },
+      topBar = { TaskFormTopBar(labels.title, actions.onBack) },
       bottomBar = {
         Column {
           state.errorMsg?.let {
@@ -217,7 +162,7 @@ fun CreateTaskContent(
           }
           Button(
               onClick = actions.onCreate,
-              enabled = state.canCreate,
+              enabled = canSubmit,
               shape = RoundedCornerShape(12.dp),
               // As in Figma, the disabled button is the beige of the hairlines with dark text;
               // Material would draw it grey with faded text.
@@ -232,7 +177,7 @@ fun CreateTaskContent(
                       .height(52.dp)
                       .testTag(CreateTaskScreenTestTags.CREATE_BUTTON),
           ) {
-            Text(stringResource(R.string.create_task), style = MaterialTheme.typography.labelLarge)
+            Text(stringResource(labels.submit), style = MaterialTheme.typography.labelLarge)
           }
         }
       },
@@ -298,18 +243,22 @@ fun CreateTaskContent(
           modifier =
               Modifier.padding(bottom = 8.dp).testTag(CreateTaskScreenTestTags.PRIORITY_SELECTOR),
       )
-      FestivarStepper(
-          value = state.maxAssign,
-          label = stringResource(R.string.create_task_field_max_assign),
-          onDecrease = actions.onMaxAssignDecrease,
-          onIncrease = actions.onMaxAssignIncrease,
-          decreaseDescription = stringResource(R.string.create_task_max_assign_decrease),
-          increaseDescription = stringResource(R.string.create_task_max_assign_increase),
-          minValue = MIN_MAX_ASSIGN,
-          modifier = Modifier.testTag(CreateTaskScreenTestTags.MAX_ASSIGN_FIELD),
-          decreaseModifier = Modifier.testTag(CreateTaskScreenTestTags.MAX_ASSIGN_DECREASE_BUTTON),
-          increaseModifier = Modifier.testTag(CreateTaskScreenTestTags.MAX_ASSIGN_INCREASE_BUTTON),
-      )
+      FestivarFieldWithError(maxAssignError, CreateTaskScreenTestTags.MAX_ASSIGN_ERROR) {
+        FestivarStepper(
+            value = state.maxAssign,
+            label = stringResource(R.string.create_task_field_max_assign),
+            onDecrease = actions.onMaxAssignDecrease,
+            onIncrease = actions.onMaxAssignIncrease,
+            decreaseDescription = stringResource(R.string.create_task_max_assign_decrease),
+            increaseDescription = stringResource(R.string.create_task_max_assign_increase),
+            minValue = MIN_MAX_ASSIGN,
+            modifier = Modifier.testTag(CreateTaskScreenTestTags.MAX_ASSIGN_FIELD),
+            decreaseModifier =
+                Modifier.testTag(CreateTaskScreenTestTags.MAX_ASSIGN_DECREASE_BUTTON),
+            increaseModifier =
+                Modifier.testTag(CreateTaskScreenTestTags.MAX_ASSIGN_INCREASE_BUTTON),
+        )
+      }
       FestivarFieldWithError(
           state.estimatedTimeError,
           CreateTaskScreenTestTags.ESTIMATED_TIME_ERROR,
@@ -335,15 +284,16 @@ fun CreateTaskContent(
   )
 }
 
-// A fixed zone and dates keep the previews the same on every machine.
+// A fixed zone and dates keep the previews the same on every machine. The day is far ahead, since
+// the form shows an error for an end in the past; 2037 has the weekdays of 2026.
 private val previewForm =
     CreateTaskUiState(
         title = "Run power to stage",
         description = "Extension reel is in the blue crate by the van.",
         location = "Stage, north corner",
-        startDate = LocalDate.of(2026, 10, 17),
+        startDate = LocalDate.of(2037, 10, 17),
         startTime = LocalTime.of(9, 0),
-        endDate = LocalDate.of(2026, 10, 17),
+        endDate = LocalDate.of(2037, 10, 17),
         endTime = LocalTime.of(11, 0),
         zone = ZoneOffset.UTC,
     )

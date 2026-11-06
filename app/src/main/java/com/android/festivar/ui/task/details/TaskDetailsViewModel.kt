@@ -92,6 +92,10 @@ data class TaskDetailsUiState(
   val canMarkDone: Boolean
     get() = status == TaskStatus.YOURS && !isUpdating && !isLoading
 
+  /** Whether the edit button is shown: only the owner of [task] can edit it. */
+  val canEdit: Boolean
+    get() = task != null && task.ownerId == currentUserId
+
   /** Whether the actions bar is shown at all: only open and own tasks have one. */
   val hasActions: Boolean
     get() = status == TaskStatus.OPEN || status == TaskStatus.YOURS
@@ -101,6 +105,9 @@ data class TaskDetailsUiState(
  * Holds the state of the Task details screen and applies its three actions: take the task, give it
  * back and mark it done. Each action saves the new version of the task in [repository] and shows it
  * only once saved.
+ *
+ * Nothing loads until [load] is called: the screen calls it on every resume, the first one
+ * included, so a load at construction would read the task twice on open.
  *
  * It also drives the voice note section ([voiceNote]): everybody can play the note, and only the
  * task owner can record, replace (delete, then record) and delete it.
@@ -163,13 +170,10 @@ class TaskDetailsViewModel(
   // isLoading starts true, so it cannot tell a running load from the initial state.
   private var loadJob: Job? = null
 
-  init {
-    load()
-  }
-
   /**
    * Loads the task; on failure the error is set and the version already shown, if any, stays shown.
-   * Does nothing while an action is saving or another load is running.
+   * A successful load clears a load error but keeps a save error. Does nothing while an action is
+   * saving or another load is running.
    */
   fun load() {
     if (_uiState.value.isUpdating || loadJob?.isActive == true) return
@@ -177,7 +181,15 @@ class TaskDetailsViewModel(
       _uiState.update { it.copy(isLoading = true) }
       try {
         val task = repository.getTask(taskId)
-        _uiState.update { it.copy(task = task, isLoading = false, errorMsg = null) }
+        // Only a load error is cleared: a save error stays until the user dismisses it, even
+        // when the task reloads on resume.
+        _uiState.update {
+          it.copy(
+              task = task,
+              isLoading = false,
+              errorMsg = it.errorMsg.takeUnless { e -> e == R.string.task_details_load_failed },
+          )
+        }
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
@@ -194,7 +206,7 @@ class TaskDetailsViewModel(
   fun take() = saveIf({ it.canTake }) { it.addAssignee(currentUser) }
 
   /** Removes the current user from the assignees. Does nothing unless the task is yours. */
-  fun giveBack() = saveIf({ it.canGiveBack }) { it.removeAssignee(currentUser) }
+  fun giveBack() = saveIf({ it.canGiveBack }) { it.removeAssignee(currentUser.uid) }
 
   /** Completes the task. Does nothing unless the task is yours. */
   fun markDone() = saveIf({ it.canMarkDone }) { it.complete() }
@@ -228,7 +240,7 @@ class TaskDetailsViewModel(
   fun startRecording() {
     val recorder = recorder ?: return
     if (!canRecord(_uiState.value) || recorder.state.value is RecorderState.Recording) return
-    pendingAudio = null // a new recording replaces the one that could not be sent
+    discardPendingAudio() // a new recording replaces the one that could not be sent
     voiceFlags.update { it.copy(sendFailed = false) }
     try {
       recorder.start()
@@ -298,6 +310,12 @@ class TaskDetailsViewModel(
     }
   }
 
+  /** Gives up the recording that could not be sent: its temporary file is no longer needed. */
+  private fun discardPendingAudio() {
+    pendingAudio?.file?.delete()
+    pendingAudio = null
+  }
+
   private suspend fun deleteFileQuietly(storage: AudioRepository, url: String) {
     try {
       storage.delete(url)
@@ -312,9 +330,16 @@ class TaskDetailsViewModel(
   fun togglePlay() {
     val player = player ?: return
     val url = _uiState.value.task?.voiceNote?.audioUrl ?: return
-    if ((player.state.value as? PlayerState.Playing)?.audioUrl == url) player.stop()
-    else player.play(url)
+    if (isPlayerOn(url)) player.stop() else player.play(url)
   }
+
+  /** Whether the player is playing or holding (paused) the note at [url]. */
+  private fun isPlayerOn(url: String): Boolean =
+      when (val state = player?.state?.value) {
+        is PlayerState.Playing -> state.audioUrl == url
+        is PlayerState.Paused -> state.audioUrl == url
+        else -> false
+      }
 
   /** Tries again what failed last: sending the recording, or else playing the note. */
   fun retryVoiceNote() {
@@ -346,9 +371,7 @@ class TaskDetailsViewModel(
       try {
         val updated = task.removeVoiceNote(currentUser.uid)
         repository.editTask(taskId, updated)
-        if ((player?.state?.value as? PlayerState.Playing)?.audioUrl == note.audioUrl) {
-          player?.stop()
-        }
+        if (isPlayerOn(note.audioUrl)) player?.stop()
         _uiState.update { it.copy(task = updated, isUpdating = false) }
         deleteFileQuietly(storage, note.audioUrl)
       } catch (e: CancellationException) {
@@ -370,6 +393,7 @@ class TaskDetailsViewModel(
   fun onMicPermissionResult(granted: Boolean) = voiceFlags.update { it.copy(micDenied = !granted) }
 
   override fun onCleared() {
+    discardPendingAudio()
     recorder?.cancel()
     player?.release()
   }

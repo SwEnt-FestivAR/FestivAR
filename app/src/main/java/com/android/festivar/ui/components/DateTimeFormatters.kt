@@ -9,19 +9,17 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private val dateFormatter = DateTimeFormatter.ofPattern("EEE d MMM", Locale.ENGLISH)
-private val dateWithYearFormatter = DateTimeFormatter.ofPattern("EEE d MMM yyyy", Locale.ENGLISH)
-private val dayFormatter = DateTimeFormatter.ofPattern("EEE d", Locale.ENGLISH)
-private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.ENGLISH)
+private fun formatter(pattern: String): DateTimeFormatter =
+    DateTimeFormatter.ofPattern(pattern, Locale.getDefault())
 
 /** Formats a date the way the forms show it, e.g. `Sat 17 Oct`. */
-fun formatDate(date: LocalDate): String = date.format(dateFormatter)
+fun formatDate(date: LocalDate): String = date.format(formatter("EEE d MMM"))
 
 /** Formats a date with its year, e.g. `Sat 17 Oct 2026`. */
-fun formatDateWithYear(date: LocalDate): String = date.format(dateWithYearFormatter)
+fun formatDateWithYear(date: LocalDate): String = date.format(formatter("EEE d MMM yyyy"))
 
 /** Formats a date without its month, e.g. `Sat 17`, for a range ending in the same month. */
-fun formatDay(date: LocalDate): String = date.format(dayFormatter)
+fun formatDay(date: LocalDate): String = date.format(formatter("EEE d"))
 
 /**
  * Formats an event date range, omitting repeated month and year information where possible.
@@ -41,4 +39,4 @@ fun formatEventDate(event: Event): String {
 }
 
 /** Formats a time the way the forms show it, e.g. `09:30`. */
-fun formatTime(time: LocalTime): String = time.format(timeFormatter)
+fun formatTime(time: LocalTime): String = time.format(formatter("HH:mm"))

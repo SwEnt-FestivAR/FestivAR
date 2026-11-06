@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.details
 
 import androidx.compose.foundation.layout.Arrangement
@@ -14,6 +15,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -34,6 +36,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.R
@@ -51,6 +55,7 @@ import java.time.ZonedDateTime
 /** Test tags named after the tags of the "Task details" frames in Figma. */
 object TaskDetailsScreenTestTags {
   const val BACK_BUTTON = "detailsBackButton"
+  const val EDIT_BUTTON = "detailsEditButton"
   const val STATUS_BADGE = "detailsStatusBadge"
   const val TITLE = "detailsTitle"
   const val WHEN = "detailsWhen"
@@ -64,7 +69,13 @@ object TaskDetailsScreenTestTags {
   const val ERROR_ACTION = "detailsErrorAction"
 }
 
-/** The details of the task [taskId], where [currentUser] can take it, give it back or finish it. */
+/**
+ * The details of the task [taskId], where [currentUser] can take it, give it back or finish it. The
+ * task is loaded each time the screen comes to the front, the first time included, so an edit shows
+ * on return.
+ *
+ * @param onEdit Called with the task id when its owner taps the edit button.
+ */
 @Composable
 fun TaskDetailsScreen(
     taskId: String,
@@ -72,8 +83,10 @@ fun TaskDetailsScreen(
     viewModel: TaskDetailsViewModel =
         viewModel(key = "$taskId:${currentUser.uid}") { TaskDetailsViewModel(taskId, currentUser) },
     onBack: () -> Unit = {},
+    onEdit: (String) -> Unit = {},
 ) {
   val state by viewModel.uiState.collectAsStateWithLifecycle()
+  LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.load() }
   TaskDetailsContent(
       state = state,
       onBack = onBack,
@@ -82,6 +95,7 @@ fun TaskDetailsScreen(
       onMarkDone = viewModel::markDone,
       onRetry = viewModel::load,
       onDismissError = viewModel::clearError,
+      onEdit = onEdit,
   )
 }
 
@@ -96,6 +110,7 @@ fun TaskDetailsContent(
     onMarkDone: () -> Unit = {},
     onRetry: () -> Unit = {},
     onDismissError: () -> Unit = {},
+    onEdit: (String) -> Unit = {},
 ) {
   Scaffold(
       topBar = {
@@ -108,6 +123,18 @@ fun TaskDetailsContent(
               ) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.tasks_back))
               }
+            },
+            actions = {
+              state.task
+                  ?.takeIf { state.canEdit }
+                  ?.let { task ->
+                    IconButton(
+                        onClick = { onEdit(task.taskId) },
+                        Modifier.testTag(TaskDetailsScreenTestTags.EDIT_BUTTON),
+                    ) {
+                      Icon(Icons.Rounded.Edit, stringResource(R.string.edit_task))
+                    }
+                  }
             },
         )
       },

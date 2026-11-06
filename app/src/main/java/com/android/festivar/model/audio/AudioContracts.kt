@@ -1,3 +1,4 @@
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.audio
 
@@ -19,7 +20,8 @@ import kotlinx.coroutines.flow.StateFlow
  *
  * To add a voice note to a task (the caller is the task details view model):
  * 1. check the microphone permission, then call [VoiceRecorder.start];
- * 2. call [VoiceRecorder.stop] to get the [Audio] (or [VoiceRecorder.cancel] to drop it);
+ * 2. call [VoiceRecorder.stop] to get the [Audio] (or [VoiceRecorder.cancel] to drop it), with
+ *    [VoiceRecorder.pause] and [VoiceRecorder.resume] available in between;
  * 3. call [AudioRepository.upload] with the task id and the [Audio] to get the audio URL;
  * 4. delete the temporary [Audio.file], whether the upload succeeded or failed;
  * 5. build a [VoiceNote] with that URL and call [Task.attachVoiceNote];
@@ -27,7 +29,8 @@ import kotlinx.coroutines.flow.StateFlow
  *
  * To remove it: call [Task.removeVoiceNote], save the returned [Task], then call
  * [AudioRepository.delete] with the old audio URL. To listen to it: call [VoicePlayer.play] with
- * the audio URL, and call [VoicePlayer.release] when the screen is closed.
+ * the audio URL, [VoicePlayer.pause] and [VoicePlayer.resume] to hold and continue it, and
+ * [VoicePlayer.release] when the screen is closed.
  */
 
 /**
@@ -59,8 +62,16 @@ sealed interface RecorderState {
   /** Not recording. */
   data object Idle : RecorderState
 
-  /** Recording for [elapsed]. */
-  data class Recording(val elapsed: Duration) : RecorderState
+  /**
+   * A recording is in progress, even while it is paused.
+   *
+   * @property elapsed The recorded time, without the time spent paused.
+   * @property isPaused Whether the recording is paused. [elapsed] does not change while it is.
+   */
+  data class Recording(val elapsed: Duration, val isPaused: Boolean = false) : RecorderState
+
+  /** The recording failed by itself and was dropped. [VoiceRecorder.start] can begin a new one. */
+  data object Failed : RecorderState
 }
 
 /** A recording could not be started or finished (microphone busy, no space, too short...). */
@@ -78,21 +89,41 @@ interface VoiceRecorder {
    * Starts recording into a new temporary file. If the recording fails, the recorder deletes that
    * file itself.
    *
-   * @throws IllegalStateException if a recording is already running.
+   * @throws IllegalStateException if a recording is already running, even if it is paused.
    * @throws VoiceRecorderException if the recording cannot start.
    */
   fun start()
 
   /**
-   * Stops the recording and returns it. The caller then owns the temporary file (see [Audio]). If
-   * the recording is unusable, the recorder deletes the file and throws.
+   * Pauses the recording. If that fails, the recorder drops the recording and deletes its file.
+   *
+   * @throws IllegalStateException if nothing is being recorded or the recording is already paused.
+   * @throws VoiceRecorderException if the recording cannot be paused.
+   */
+  fun pause()
+
+  /**
+   * Resumes the paused recording. If that fails, the recorder drops the recording and deletes its
+   * file.
+   *
+   * @throws IllegalStateException if no recording is paused.
+   * @throws VoiceRecorderException if the recording cannot be resumed.
+   */
+  fun resume()
+
+  /**
+   * Stops the recording, even if it is paused, and returns it. The caller then owns the temporary
+   * file (see [Audio]). If the recording is unusable, the recorder deletes the file and throws.
    *
    * @throws IllegalStateException if nothing is being recorded.
    * @throws VoiceRecorderException if the recording is unusable (for example too short).
    */
   fun stop(): Audio
 
-  /** Stops the recording and deletes its file. Does nothing if nothing is being recorded. */
+  /**
+   * Stops the recording, even if it is paused, and deletes its file. Does nothing if nothing is
+   * being recorded.
+   */
   fun cancel()
 }
 
@@ -127,6 +158,9 @@ sealed interface PlayerState {
   /** Playing the note at [audioUrl]. */
   data class Playing(val audioUrl: String) : PlayerState
 
+  /** The note at [audioUrl] is paused: [VoicePlayer.resume] continues it from where it stopped. */
+  data class Paused(val audioUrl: String) : PlayerState
+
   /** The note at [audioUrl] could not be played. */
   data class Failed(val audioUrl: String) : PlayerState
 }
@@ -139,7 +173,22 @@ interface VoicePlayer {
   /** Plays the note at [audioUrl], stopping any other one. */
   fun play(audioUrl: String)
 
-  /** Stops playing. Does nothing if nothing is playing. */
+  /**
+   * Pauses the note and keeps its position: the state becomes [PlayerState.Paused]. Does nothing
+   * unless a note is playing.
+   */
+  fun pause()
+
+  /**
+   * Continues a paused note from where it stopped, without loading it again: the state becomes
+   * [PlayerState.Playing]. Does nothing unless a note is paused.
+   */
+  fun resume()
+
+  /**
+   * Stops playing, whether the note is playing or paused. The position is lost: [play] starts the
+   * note again from the beginning. Does nothing if nothing is playing.
+   */
   fun stop()
 
   /** Frees the underlying player. The instance must not be used afterwards. */

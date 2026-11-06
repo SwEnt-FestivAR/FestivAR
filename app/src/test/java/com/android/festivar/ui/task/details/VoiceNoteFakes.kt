@@ -45,6 +45,18 @@ class FakeVoiceRecorder : VoiceRecorder {
     _state.value = RecorderState.Recording(Duration.ZERO)
   }
 
+  override fun pause() {
+    val recording = _state.value as? RecorderState.Recording
+    check(recording != null && !recording.isPaused) { "No running recording." }
+    _state.value = recording.copy(isPaused = true)
+  }
+
+  override fun resume() {
+    val recording = _state.value as? RecorderState.Recording
+    check(recording != null && recording.isPaused) { "No paused recording." }
+    _state.value = recording.copy(isPaused = false)
+  }
+
   override fun stop(): Audio {
     check(_state.value is RecorderState.Recording) { "Not recording." }
     _state.value = RecorderState.Idle
@@ -103,6 +115,16 @@ class FakeVoicePlayer : VoicePlayer {
   override fun play(audioUrl: String) {
     played += audioUrl
     _state.value = PlayerState.Playing(audioUrl)
+  }
+
+  override fun pause() {
+    val playing = _state.value as? PlayerState.Playing ?: return
+    _state.value = PlayerState.Paused(playing.audioUrl)
+  }
+
+  override fun resume() {
+    val paused = _state.value as? PlayerState.Paused ?: return
+    _state.value = PlayerState.Playing(paused.audioUrl)
   }
 
   override fun stop() {
