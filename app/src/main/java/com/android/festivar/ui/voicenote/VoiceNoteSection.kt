@@ -12,9 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -102,25 +100,13 @@ private fun VoiceNoteRow(note: VoiceNote, state: VoiceNoteUiState, callbacks: Vo
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.testTag(VoiceNoteTestTags.VOICE_NOTE_AUTHOR),
     )
-    Row(verticalAlignment = Alignment.CenterVertically) {
-      VoiceNotePlayer(
-          note.duration,
-          state.isPlaying,
-          callbacks.onTogglePlay,
-          Modifier.weight(1f),
-      )
-      if (state.canManage) {
-        IconButton(
-            onClick = callbacks.onDelete,
-            modifier = Modifier.testTag(VoiceNoteTestTags.VOICE_NOTE_DELETE),
-        ) {
-          Icon(
-              Icons.Outlined.DeleteOutline,
-              contentDescription = stringResource(R.string.voice_note_delete),
-          )
-        }
-      }
-    }
+    VoiceNotePlayer(
+        note.duration,
+        state.isPlaying,
+        callbacks.onTogglePlay,
+        Modifier.fillMaxWidth(),
+        trailing = if (state.canManage) ({ VoiceNoteDeleteButton(callbacks.onDelete) }) else null,
+    )
   }
 }
 
