@@ -9,7 +9,7 @@ import kotlinx.coroutines.tasks.await
 const val USER_COLLECTION_PATH = "users"
 private const val FIRESTORE_IN_QUERY_LIMIT = 30
 
-class UserRepositoryFirebase(
+class UsersRepositoryFirebase(
     private val db: FirebaseFirestore,
 ) : UsersRepository {
   private val userCollection

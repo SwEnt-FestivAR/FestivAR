@@ -1,13 +1,16 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.navigation
 
 import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -16,6 +19,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
 import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.task.TasksRepositoryProvider
 import com.android.festivar.ui.task.create.CreateTaskScreenTestTags
@@ -32,7 +36,9 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** The create task route, opened through the navigation graph with a fake signed-in user. */
+/**
+ * The create and edit task routes, opened through the navigation graph with a fake signed-in user.
+ */
 @RunWith(AndroidJUnit4::class)
 class TaskNavGraphTest {
   @get:Rule val composeTestRule = createComposeRule()
@@ -92,8 +98,8 @@ class TaskNavGraphTest {
     assertTrue(runBlocking { repository.getAllTasks("event-1") }.isEmpty())
   }
 
-  // The create task screen is opened on top of a "start" screen, to see where leaving goes back to.
-  private fun openCreateTaskOnTopOfStart(authRepository: AuthRepository): NavHostController {
+  // The [route] is opened on top of a "start" screen, to see where leaving goes back to.
+  private fun openOnTopOfStart(route: String, authRepository: AuthRepository): NavHostController {
     lateinit var navController: NavHostController
     composeTestRule.setContent {
       AppTheme {
@@ -104,14 +110,20 @@ class TaskNavGraphTest {
         }
       }
     }
-    composeTestRule.runOnIdle { navController.navigate(AppScreens.createTask("event-1")) }
+    composeTestRule.runOnIdle { navController.navigate(route) }
     composeTestRule.waitForIdle()
     return navController
   }
 
+  private fun signedInAs(userId: String): AuthRepository {
+    val user = mockk<FirebaseUser> { every { uid } returns userId }
+    return mockk<AuthRepository> { every { currentUser } returns user }
+  }
+
   @Test
   fun createTaskRoute_backButton_returnsToThePreviousScreen() {
-    val navController = openCreateTaskOnTopOfStart(mockk<AuthRepository>(relaxed = true))
+    val navController =
+        openOnTopOfStart(AppScreens.createTask("event-1"), mockk<AuthRepository>(relaxed = true))
 
     composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.BACK_BUTTON).performClick()
     composeTestRule.waitForIdle()
@@ -121,9 +133,7 @@ class TaskNavGraphTest {
 
   @Test
   fun createTaskRoute_afterTheTaskIsCreated_returnsToThePreviousScreen() {
-    val user = mockk<FirebaseUser> { every { uid } returns "owner-1" }
-    val navController =
-        openCreateTaskOnTopOfStart(mockk<AuthRepository> { every { currentUser } returns user })
+    val navController = openOnTopOfStart(AppScreens.createTask("event-1"), signedInAs("owner-1"))
 
     composeTestRule
         .onNodeWithTag(CreateTaskScreenTestTags.TITLE_FIELD)
@@ -134,5 +144,45 @@ class TaskNavGraphTest {
     }
     val saved = runBlocking { repository.getAllTasks("event-1") }.single()
     assertEquals("owner-1", saved.ownerId)
+  }
+
+  // Opens the edit of task "t1", owned by the signed-in "owner-1", once its form is loaded.
+  private fun openEditTaskOnTopOfStart(): NavHostController {
+    runBlocking { repository.addTask(Task("t1", "event-1", "Old title", ownerId = "owner-1")) }
+    val navController = openOnTopOfStart(AppScreens.editTask("t1"), signedInAs("owner-1"))
+    composeTestRule.waitUntil(timeoutMillis = 5_000) {
+      composeTestRule
+          .onAllNodesWithTag(CreateTaskScreenTestTags.TITLE_FIELD)
+          .fetchSemanticsNodes()
+          .isNotEmpty()
+    }
+    return navController
+  }
+
+  // Breaks if the edit route does not save as the signed-in owner or does not leave once saved.
+  @Test
+  fun editTaskRoute_afterTheEditIsSaved_returnsToThePreviousScreen() {
+    val navController = openEditTaskOnTopOfStart()
+
+    composeTestRule
+        .onNodeWithTag(CreateTaskScreenTestTags.TITLE_FIELD)
+        .performTextReplacement("New title")
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.CREATE_BUTTON).performClick()
+    composeTestRule.waitUntil(timeoutMillis = 5_000) {
+      navController.currentBackStackEntry?.destination?.route == "start"
+    }
+    assertEquals("New title", runBlocking { repository.getTask("t1") }.title)
+  }
+
+  // Breaks if back from an unchanged edit form does not pop the edit route.
+  @Test
+  fun editTaskRoute_back_returnsToThePreviousScreen() {
+    val navController = openEditTaskOnTopOfStart()
+
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.BACK_BUTTON).performClick()
+    composeTestRule.waitForIdle()
+
+    assertEquals("start", navController.currentBackStackEntry?.destination?.route)
+    assertEquals("Old title", runBlocking { repository.getTask("t1") }.title)
   }
 }

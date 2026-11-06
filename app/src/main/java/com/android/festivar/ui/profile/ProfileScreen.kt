@@ -24,7 +24,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -44,6 +43,7 @@ import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.Avatar
 import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.components.FestivarTextField
+import com.android.festivar.ui.components.NoticeSnackbar
 
 /** Tags that the UI tests use to find the elements of the profile screen. */
 object ProfileScreenTestTags {
@@ -125,9 +125,12 @@ fun ProfileScreen(
       },
       snackbarHost = {
         SnackbarHost(snackbarHostState) { data ->
-          Snackbar(modifier = Modifier.testTag(ProfileScreenTestTags.ERROR_MESSAGE)) {
-            Text(data.visuals.message)
-          }
+          NoticeSnackbar(
+              message = data.visuals.message,
+              actionLabel = "",
+              onAction = {},
+              modifier = Modifier.testTag(ProfileScreenTestTags.ERROR_MESSAGE),
+          )
         }
       },
   ) { padding ->
@@ -204,7 +207,9 @@ internal fun ProfileScreenContent(
       // The avatar shows the saved user, so its initials only change once the changes are saved.
       // The email is shown under it and cannot be edited.
       uiState.user.let { user ->
-        Box(modifier = Modifier.testTag(ProfileScreenTestTags.AVATAR)) { Avatar(user = user) }
+        Box(modifier = Modifier.testTag(ProfileScreenTestTags.AVATAR)) {
+          Avatar(user = user, modifier = Modifier.size(96.dp))
+        }
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = user.email,

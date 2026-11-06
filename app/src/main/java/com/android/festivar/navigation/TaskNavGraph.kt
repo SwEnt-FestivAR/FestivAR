@@ -4,6 +4,7 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.navigation
 
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -17,6 +18,8 @@ import com.android.festivar.model.user.User
 import com.android.festivar.ui.task.create.CreateTaskScreen
 import com.android.festivar.ui.task.create.CreateTaskViewModel
 import com.android.festivar.ui.task.details.TaskDetailsScreen
+import com.android.festivar.ui.task.edit.EditTaskScreen
+import com.android.festivar.ui.task.edit.EditTaskViewModel
 import com.android.festivar.ui.task.overview.TaskOverviewScreen
 import com.android.festivar.ui.task.overview.TaskOverviewViewModel
 
@@ -79,11 +82,7 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, authRepository: 
     val navigator = TaskDetailsNavigator(navController)
 
     if (firebaseUser == null) {
-      LaunchedEffect(Unit) {
-        navController.navigate(AppScreens.Login.name) {
-          popUpTo(navController.graph.id) { inclusive = true }
-        }
-      }
+      RedirectToLogin(navController)
       return@composable
     }
 
@@ -100,6 +99,45 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, authRepository: 
         taskId = taskId,
         currentUser = currentUser,
         onBack = navigator.onBack,
+        onEdit = navigator.onEdit,
     )
+  }
+  // Reached through AppScreens.editTask(taskId), from the details of a task its owner opened.
+  composable(
+      route = "${AppScreens.EditTask.name}/{taskId}",
+      arguments = listOf(navArgument("taskId") { type = NavType.StringType }),
+  ) { backStackEntry ->
+    if (authRepository.currentUser == null) {
+      RedirectToLogin(navController)
+      return@composable
+    }
+    val taskId =
+        requireNotNull(backStackEntry.arguments?.getString("taskId")) {
+          "taskId argument is required"
+        }
+    require(taskId.isNotBlank()) { "taskId must not be blank" }
+    // Read at load, and again at save, so a sign out in between refuses the save.
+    val currentUserId: () -> String = { authRepository.currentUser?.uid.orEmpty() }
+    // Leaving the screen, whether the edit was saved or not, goes back to the task details.
+    val leave: () -> Unit = { navController.popBackStack() }
+    // No key needed: the view model is scoped to this back stack entry, which has its own taskId.
+    EditTaskScreen(
+        viewModel = viewModel { EditTaskViewModel(taskId, currentUserId) },
+        onBack = leave,
+        onSaved = leave,
+    )
+  }
+}
+
+/**
+ * Opens the login and clears the back stack, so back cannot return to a task screen that needs a
+ * signed-in user. The caller returns right after, drawing nothing else.
+ */
+@Composable
+private fun RedirectToLogin(navController: NavHostController) {
+  LaunchedEffect(Unit) {
+    navController.navigate(AppScreens.Login.name) {
+      popUpTo(navController.graph.id) { inclusive = true }
+    }
   }
 }

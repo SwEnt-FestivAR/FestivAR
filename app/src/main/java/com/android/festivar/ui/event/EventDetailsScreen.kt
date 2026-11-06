@@ -40,6 +40,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
@@ -53,6 +55,7 @@ import com.android.festivar.ui.theme.NumeralLarge
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
+/** Test tags named after the tags of the "Event details" frames in Figma. */
 object EventDetailsScreenTestTags {
   const val BACK_BUTTON = "backButton"
   const val EVENT_NAME = "eventName"
@@ -64,49 +67,73 @@ object EventDetailsScreenTestTags {
   const val SEE_TASKS_BUTTON = "seeTasksButton"
 }
 
+/** Callbacks handled by the Event Details screen. */
+class EventDetailsActions(
+    val onBack: () -> Unit = {},
+    val onTasksButtonClicked: () -> Unit = {},
+)
+
 /**
- * A screen for viewing event details.
+ * Displays the details of an event loaded by [viewModel].
  *
- * @param eventId The ID of the event whose details will be shown
- * @param onBack A callback to be invoked when the back button is clicked
- * @param onTasksButtonClicked A callback to be invoked when the "See tasks" button is clicked
+ * The screen is stateless with respect to data loading: it observes the ViewModel's state and
+ * forwards user actions through [EventDetailsActions].
+ *
+ * @param viewModel the ViewModel providing the event and loading error state.
+ * @param onBack called when the back button is clicked.
+ * @param onTasksButtonClicked called when the "See tasks" button is clicked.
+ * @param modifier modifier applied to the event content.
  */
 @Composable
 fun EventDetailsScreen(
-    eventId: String,
     viewModel: EventDetailsViewModel,
     onBack: () -> Unit,
     onTasksButtonClicked: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-  LaunchedEffect(Unit) { viewModel.fetchEvent(eventId) }
   val uiState by viewModel.uiState.collectAsState()
-  val event = uiState.event
+  LaunchedEffect(Unit) { viewModel.fetchEvent() }
 
+  EventDetailsContent(
+      state = uiState,
+      actions = EventDetailsActions(onBack = onBack, onTasksButtonClicked = onTasksButtonClicked),
+      modifier = modifier,
+  )
+}
+
+/** The stateless details screen: everything it shows comes from [state]. */
+@Composable
+private fun EventDetailsContent(
+    state: EventDetailsUIState,
+    actions: EventDetailsActions,
+    modifier: Modifier = Modifier,
+) {
+  val event = state.event
   Scaffold(
       containerColor = MaterialTheme.colorScheme.background,
-      topBar = { EventDetailsTopBar(onBack = onBack) },
+      topBar = { EventDetailsTopBar(onBack = actions.onBack) },
       bottomBar = {
         if (event != null) {
-          EventDetailsBottomBar(onTasksButtonClicked = onTasksButtonClicked)
+          EventDetailsBottomBar(onTasksButtonClicked = actions.onTasksButtonClicked)
         }
       },
   ) { paddingValues ->
     when {
       event != null ->
-          EventDetailsContent(
+          EventInfo(
               event = event,
-              modifier = Modifier.padding(paddingValues),
+              modifier = modifier.padding(paddingValues),
           )
-      uiState.errorFetch ->
+      state.errorMsg != null ->
           Box(
               modifier = Modifier.fillMaxSize().padding(10.dp),
               contentAlignment = Alignment.Center,
           ) {
             Text(
-                text = stringResource(R.string.event_details_fetch_error),
+                text = stringResource(state.errorMsg),
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodyMedium,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                textAlign = TextAlign.Center,
                 modifier = Modifier.testTag(EventDetailsScreenTestTags.FETCH_ERROR),
             )
           }
@@ -114,8 +141,9 @@ fun EventDetailsScreen(
   }
 }
 
+/** Displays the loaded event, including its task summary and identifying information. */
 @Composable
-private fun EventDetailsContent(
+private fun EventInfo(
     event: Event,
     modifier: Modifier = Modifier,
 ) {
@@ -191,13 +219,14 @@ private fun EventDetailsContent(
       HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
       EventDetailsRow(
           label = stringResource(R.string.event_details_address),
-          value = event.location,
+          value = event.location.ifBlank { stringResource(R.string.event_details_no_location) },
           tag = EventDetailsScreenTestTags.ADDRESS_ROW,
       )
     }
   }
 }
 
+/** Top app bar containing the navigation button for leaving the details screen. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EventDetailsTopBar(onBack: () -> Unit) {
@@ -226,6 +255,7 @@ private fun EventDetailsTopBar(onBack: () -> Unit) {
   )
 }
 
+/** The 'See tasks' button that opens the event's task list. */
 @Composable
 private fun EventDetailsBottomBar(onTasksButtonClicked: () -> Unit) {
   Button(
@@ -255,6 +285,12 @@ private fun EventDetailsBottomBar(onTasksButtonClicked: () -> Unit) {
   }
 }
 
+/**
+ * Displays one label/value pair from the event information card.
+ *
+ * The value is limited to two lines so long locations remain inside the card and are truncated with
+ * an ellipsis when necessary.
+ */
 @Composable
 private fun EventDetailsRow(
     label: String,
@@ -273,6 +309,10 @@ private fun EventDetailsRow(
     )
     Text(
         text = value,
+        modifier = Modifier.weight(1f).padding(start = 10.dp),
+        textAlign = TextAlign.End,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         style = MaterialTheme.typography.bodyMedium,
     )
@@ -280,12 +320,40 @@ private fun EventDetailsRow(
 }
 
 @SuppressLint("ViewModelConstructorInComposable")
+@Preview
 @Composable
-private fun EventDetailsScreenPreview(event: Event) {
+internal fun EventDetailsScreenPreview() {
+  val eventStartDate: ZonedDateTime =
+      ZonedDateTime.of(2026, 10, 16, 10, 0, 0, 0, ZoneId.of("Europe/Zurich"))
+  val eventEndDate: ZonedDateTime =
+      ZonedDateTime.of(2026, 10, 18, 18, 0, 0, 0, ZoneId.of("Europe/Zurich"))
+
+  val event =
+      Event(
+          eventId = "0",
+          title = "Fête de l'Asso 2026",
+          members = listOf(User(uid = "user", name = "Sami K.")),
+          startDate = eventStartDate,
+          endDate = eventEndDate,
+          location = "Parc de Vidy, Lausanne",
+          tasks =
+              List(
+                  size = 10,
+                  init = { index ->
+                    Task(
+                        taskId = index.toString(),
+                        eventId = "0",
+                        title = "Task $index",
+                        ownerId = "user",
+                        completed = index % 2 == 0,
+                    )
+                  },
+              ),
+      )
+
   AppTheme {
     EventDetailsScreen(
-        eventId = event.eventId,
-        viewModel = EventDetailsViewModel(EventsRepositoryLocal(listOf(event))),
+        viewModel = EventDetailsViewModel(EventsRepositoryLocal(listOf(event)), event.eventId),
         onTasksButtonClicked = {},
         onBack = {},
     )
@@ -295,68 +363,12 @@ private fun EventDetailsScreenPreview(event: Event) {
 @SuppressLint("ViewModelConstructorInComposable")
 @Preview
 @Composable
-private fun FetchErrorPreview() {
+internal fun FetchErrorPreview() {
   AppTheme {
     EventDetailsScreen(
-        eventId = eventSameMonth.eventId,
-        viewModel = EventDetailsViewModel(EventsRepositoryLocal(emptyList())),
+        viewModel = EventDetailsViewModel(EventsRepositoryLocal(emptyList()), "missing"),
         onTasksButtonClicked = {},
         onBack = {},
     )
   }
 }
-
-@Preview
-@Composable
-private fun EventDetailsScreenPreviewSameMonth() = EventDetailsScreenPreview(eventSameMonth)
-
-@Preview
-@Composable
-private fun EventDetailsScreenPreviewSameDay() = EventDetailsScreenPreview(eventSameDay)
-
-@Preview
-@Composable
-private fun EventDetailsScreenPreviewDifferentMonth() =
-    EventDetailsScreenPreview(eventDifferentMonth)
-
-@Preview
-@Composable
-private fun EventDetailsScreenPreviewNoTasks() = EventDetailsScreenPreview(eventNoTasks)
-
-@Preview
-@Composable
-private fun EventDetailsScreenPreviewDifferentYear() = EventDetailsScreenPreview(eventDifferentYear)
-
-val eventStartDate: ZonedDateTime =
-    ZonedDateTime.of(2026, 10, 16, 10, 0, 0, 0, ZoneId.of("Europe/Zurich"))
-val eventEndDate: ZonedDateTime =
-    ZonedDateTime.of(2026, 10, 18, 18, 0, 0, 0, ZoneId.of("Europe/Zurich"))
-const val tasksListSize = 10
-val eventSameMonth =
-    Event(
-        eventId = "0",
-        title = "Fête de l'Asso 2026",
-        members = listOf(User(uid = "user", name = "Sami K.")),
-        startDate = eventStartDate,
-        endDate = eventEndDate,
-        location = "Parc de Vidy, Lausanne",
-        tasks =
-            List(
-                size = tasksListSize,
-                init = { index ->
-                  Task(
-                      taskId = index.toString(),
-                      eventId = "0",
-                      title = "Task $index",
-                      ownerId = "user",
-                      completed = index % 2 == 0,
-                  )
-                },
-            ),
-    )
-
-val eventSameDay =
-    eventSameMonth.copy(endDate = eventEndDate.withDayOfMonth(eventStartDate.dayOfMonth))
-val eventDifferentMonth = eventSameMonth.copy(endDate = eventStartDate.plusMonths(1))
-val eventDifferentYear = eventSameMonth.copy(endDate = eventStartDate.plusYears(1))
-val eventNoTasks = eventSameMonth.copy(tasks = emptyList())

@@ -228,8 +228,16 @@ abstract class CreateTaskTest {
     /** The time a time picker proposes when its field is still empty. */
     val PICKER_DEFAULT_TIME: LocalTime = LocalTime.of(9, 0)
 
-    /** The date picker only offers the current month, so the sample dates are taken from it. */
-    private val firstOfMonth: LocalDate = LocalDate.now().withDayOfMonth(1)
+    /**
+     * The date picker only offers the current month, so the sample dates are taken from it. They
+     * start today and not on the 1st: an end in the past is refused. The two days after it must
+     * stay in the month, so on its last two days the base moves back and the tests that need a
+     * future end fail until the month changes.
+     */
+    private val baseDay: LocalDate =
+        LocalDate.now().let { today ->
+          minOf(today, today.withDayOfMonth(today.lengthOfMonth()).minusDays(2))
+        }
 
     /** A form with every field filled and a valid schedule. */
     val completeForm =
@@ -237,9 +245,9 @@ abstract class CreateTaskTest {
             title = "Run power to stage",
             description = "Extension reel is in the blue crate by the van.",
             location = "Stage, north corner",
-            startDate = firstOfMonth,
+            startDate = baseDay,
             startTime = PICKER_DEFAULT_TIME,
-            endDate = firstOfMonth.plusDays(1),
+            endDate = baseDay.plusDays(1),
             endTime = PICKER_DEFAULT_TIME,
         )
 

@@ -4,112 +4,102 @@ package com.android.festivar.model.audio
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.MediaPlayer
-import android.net.Uri
+import android.util.Log
+import androidx.core.net.toUri
+import java.io.IOException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-/** A single playback of one audio file: the small part of [MediaPlayer] that is used. */
-internal interface AudioPlayback {
-  /**
-   * Starts loading the audio at [url] without blocking, then calls [onPrepared] when it can start,
-   * [onCompleted] when it ends and [onError] if it cannot be loaded or played.
-   */
-  fun prepareAsync(
-      url: String,
-      onPrepared: () -> Unit,
-      onCompleted: () -> Unit,
-      onError: () -> Unit,
-  )
-
-  /** Starts playing once prepared. */
-  fun start()
-
-  /** Frees the playback. It must not be used afterwards. */
-  fun release()
-}
-
-/** Creates the [AudioPlayback] of each note, so the tests can replace [MediaPlayer]. */
-internal fun interface AudioPlaybackFactory {
-  fun create(): AudioPlayback
-}
-
-/** The [AudioPlayback] backed by a [MediaPlayer] that streams from a URL. */
-internal class MediaPlayerPlayback(private val context: Context) : AudioPlayback {
-  private val player =
-      MediaPlayer().apply {
-        setAudioAttributes(
-            AudioAttributes.Builder()
-                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                .setUsage(AudioAttributes.USAGE_MEDIA)
-                .build()
-        )
-      }
-
-  override fun prepareAsync(
-      url: String,
-      onPrepared: () -> Unit,
-      onCompleted: () -> Unit,
-      onError: () -> Unit,
-  ) {
-    player.setOnPreparedListener { onPrepared() }
-    player.setOnCompletionListener { onCompleted() }
-    player.setOnErrorListener { _, _, _ ->
-      onError()
-      true
-    }
-    player.setDataSource(context, Uri.parse(url))
-    player.prepareAsync()
-  }
-
-  override fun start() = player.start()
-
-  override fun release() = player.release()
-}
-
 /**
- * The Android [VoicePlayer]: streams the note from its URL with a [MediaPlayer]. It plays one note
- * at a time and must be used from the main thread, where the [MediaPlayer] reports back.
+ * The Android [VoicePlayer]: streams a voice note from its URL with a [MediaPlayer].
+ *
+ * **One [MediaPlayer] per note.** [play] creates a fresh player and frees the previous one, and a
+ * player is freed as soon as its note ends or fails. Nothing is reused, so there is no state to
+ * reset between two notes. [MediaPlayer.release] also clears the listeners of the freed player, so
+ * a late callback of a replaced or stopped note can never change the [state] of the current one.
+ *
+ * **State.** [PlayerState.Playing] is reported from the moment [play] is called, while the note is
+ * still loading, because the contract has no separate "loading" state. It becomes
+ * [PlayerState.Idle] when the note ends or is stopped, and [PlayerState.Failed] when it cannot be
+ * loaded or played; the cause is written to the log.
+ *
+ * **Pause and resume.** [pause] keeps the [MediaPlayer] and its position, and [resume] continues
+ * from there without loading the note again. Only [stop] (or the end of the note) frees the player
+ * and loses the position. The state alone tells whether the note should run, so pausing or resuming
+ * while the note is still loading just changes the state: the prepared listener starts the note
+ * only if the state is still [PlayerState.Playing] when it is ready.
+ *
+ * **Audio.** The note is declared as speech played as media (media volume). The player does not
+ * request audio focus: a note is a few seconds long and the user starts it deliberately.
+ *
+ * **Threading.** Use it from the main thread. A [MediaPlayer] reports back on the thread that
+ * created it, so every state change happens on that thread.
+ *
+ * **Lifecycle.** The owner calls [release] when the screen is closed. As the [VoicePlayer] contract
+ * says, the instance must not be used afterwards.
+ *
+ * @param context Any context; only its application context is kept, so no screen is leaked.
  */
-class AndroidVoicePlayer internal constructor(private val factory: AudioPlaybackFactory) :
-    VoicePlayer {
-
-  /** Creates a player that uses the application context of [context]. */
-  constructor(
-      context: Context
-  ) : this(AudioPlaybackFactory { MediaPlayerPlayback(context.applicationContext) })
+class AndroidVoicePlayer(context: Context) : VoicePlayer {
+  private val appContext = context.applicationContext
 
   private val _state = MutableStateFlow<PlayerState>(PlayerState.Idle)
   override val state: StateFlow<PlayerState> = _state.asStateFlow()
 
-  private var current: AudioPlayback? = null
-  private var released = false
+  /** The player of the note being played or loaded, or null when there is none. */
+  private var current: MediaPlayer? = null
+
+  /** Whether [current] has finished loading: before that it cannot be paused or started. */
+  private var prepared = false
 
   override fun play(audioUrl: String) {
-    if (released) return
     freeCurrent()
     _state.value = PlayerState.Playing(audioUrl)
-    val playback =
-        try {
-          factory.create()
-        } catch (e: RuntimeException) {
-          _state.value = PlayerState.Failed(audioUrl)
-          return
-        }
-    current = playback
-    // A callback of a playback that was replaced or stopped in the meantime is ignored.
-    fun ifCurrent(action: () -> Unit) = { if (current === playback) action() }
+
+    val player = MediaPlayer()
+    current = player
+    player.setAudioAttributes(
+        AudioAttributes.Builder()
+            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+            .setUsage(AudioAttributes.USAGE_MEDIA)
+            .build()
+    )
+    player.setOnPreparedListener {
+      prepared = true
+      // Paused while loading: stay ready, and start when resume() is called.
+      if (_state.value is PlayerState.Playing) it.start()
+    }
+    player.setOnCompletionListener { finish(PlayerState.Idle) }
+    player.setOnErrorListener { _, what, extra ->
+      Log.e(LOG_TAG, "MediaPlayer error what=$what extra=$extra")
+      finish(PlayerState.Failed(audioUrl))
+      true // Handled here, so the completion listener does not run as well.
+    }
+
+    // The exceptions setDataSource and prepareAsync document: a network or file problem (IO), a
+    // URL that cannot be used, or a player in the wrong state (runtime).
     try {
-      playback.prepareAsync(
-          audioUrl,
-          onPrepared = ifCurrent { playback.start() },
-          onCompleted = ifCurrent { finish(PlayerState.Idle) },
-          onError = ifCurrent { finish(PlayerState.Failed(audioUrl)) },
-      )
-    } catch (e: java.io.IOException) {
-      finish(PlayerState.Failed(audioUrl))
+      player.setDataSource(appContext, audioUrl.toUri())
+      player.prepareAsync()
+    } catch (e: IOException) {
+      fail(audioUrl, e)
     } catch (e: RuntimeException) {
-      finish(PlayerState.Failed(audioUrl))
+      fail(audioUrl, e)
+    }
+  }
+
+  override fun pause() {
+    val playing = _state.value as? PlayerState.Playing ?: return
+    if (changePlayback(playing.audioUrl) { pause() }) {
+      _state.value = PlayerState.Paused(playing.audioUrl)
+    }
+  }
+
+  override fun resume() {
+    val paused = _state.value as? PlayerState.Paused ?: return
+    if (changePlayback(paused.audioUrl) { start() }) {
+      _state.value = PlayerState.Playing(paused.audioUrl)
     }
   }
 
@@ -118,25 +108,43 @@ class AndroidVoicePlayer internal constructor(private val factory: AudioPlayback
     _state.value = PlayerState.Idle
   }
 
-  override fun release() {
-    freeCurrent()
-    released = true
-    _state.value = PlayerState.Idle
+  override fun release() = stop()
+
+  /**
+   * Applies [action] to the current player once it has finished loading. Before that there is
+   * nothing to apply: the prepared listener decides from the state. Returns false, and fails the
+   * note, if the player is in a state that refuses the action.
+   */
+  private fun changePlayback(audioUrl: String, action: MediaPlayer.() -> Unit): Boolean {
+    val player = current ?: return false
+    if (!prepared) return true
+    return try {
+      player.action()
+      true
+    } catch (e: IllegalStateException) {
+      fail(audioUrl, e)
+      false
+    }
   }
 
-  /** Ends the current playback with the final [result] state. */
+  private fun fail(audioUrl: String, cause: Exception) {
+    Log.e(LOG_TAG, "Error loading the voice note", cause)
+    finish(PlayerState.Failed(audioUrl))
+  }
+
+  /** Frees the current player and moves to its final [result] state. */
   private fun finish(result: PlayerState) {
     freeCurrent()
     _state.value = result
   }
 
   private fun freeCurrent() {
-    val playback = current ?: return
+    current?.release()
     current = null
-    try {
-      playback.release()
-    } catch (e: RuntimeException) {
-      // Nothing more to free: the playback is already unusable.
-    }
+    prepared = false
+  }
+
+  private companion object {
+    const val LOG_TAG = "AndroidVoicePlayer"
   }
 }

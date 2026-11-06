@@ -5,6 +5,8 @@
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 package com.android.festivar
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
@@ -19,10 +21,10 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
-import androidx.credentials.Credential
+import androidx.compose.ui.test.performTextReplacement
 import androidx.credentials.CredentialManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventRepositoryFirebase
 import com.android.festivar.model.event.EventsRepositoryLocal
@@ -32,10 +34,11 @@ import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.task.TasksRepositoryProvider
 import com.android.festivar.model.user.User
-import com.android.festivar.model.user.UserRepositoryFirebase
+import com.android.festivar.model.user.UsersRepositoryFirebase
 import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.model.user.UsersRepositoryProvider
 import com.android.festivar.navigation.AppScreens
+import com.android.festivar.ui.announcement.create.CreateAnnouncementScreenTestTags
 import com.android.festivar.ui.authentication.login.LoginScreenTestTags
 import com.android.festivar.ui.authentication.signup.SignUpScreenTestTags
 import com.android.festivar.ui.components.AvatarTestTags
@@ -46,6 +49,7 @@ import com.android.festivar.ui.event.JoinEventScreenTestTags
 import com.android.festivar.ui.profile.ProfileScreenTestTags
 import com.android.festivar.ui.task.create.CreateTaskScreenTestTags
 import com.android.festivar.ui.task.details.TaskDetailsScreenTestTags
+import com.android.festivar.ui.task.edit.EditTaskScreenTestTags
 import com.android.festivar.ui.task.overview.TaskOverviewScreenTestTags
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseUser
@@ -90,9 +94,14 @@ class MainActivityNavigationTest {
     firebaseUser = mockk(relaxed = true) { every { uid } returns testUserId }
   }
 
-  private fun seedTask(taskId: String = "t1", eventId: String = "e1", title: String = "Test Task") {
+  private fun seedTask(
+      taskId: String = "t1",
+      eventId: String = "e1",
+      title: String = "Test Task",
+      ownerId: String = "owner-1",
+  ) {
     val localRepo = TasksRepositoryLocal()
-    val task = Task(taskId, eventId, title, ownerId = "owner-1")
+    val task = Task(taskId, eventId, title, ownerId = ownerId)
     runBlocking { localRepo.addTask(task) }
     TasksRepositoryProvider.repository = localRepo
   }
@@ -218,7 +227,7 @@ class MainActivityNavigationTest {
         )
     // The joined user is written on the event as a member, and every later read of the events
     // resolves its members in Firestore, so the stored profile must exist there too
-    val users = UserRepositoryFirebase(Firebase.firestore)
+    val users = UsersRepositoryFirebase(Firebase.firestore)
     val events = EventRepositoryFirebase(Firebase.firestore)
     runBlocking {
       Firebase.auth.signInAnonymously().await()
@@ -301,7 +310,7 @@ class MainActivityNavigationTest {
             startDate = now.minusHours(1),
             endDate = now.plusHours(5),
         )
-    val users = UserRepositoryFirebase(Firebase.firestore)
+    val users = UsersRepositoryFirebase(Firebase.firestore)
     val events = EventRepositoryFirebase(Firebase.firestore)
     runBlocking {
       Firebase.auth.signInAnonymously().await()
@@ -477,12 +486,25 @@ class MainActivityNavigationTest {
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          authRepository = FakeAuthRepository(currentUser = mockk()),
+          authRepository = FakeAuthRepository(currentUser = signedInUser),
           startDestinationOverride = AppScreens.CreateEvent.name,
       )
     }
 
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  @Test
+  fun createEventRouteDisplaysLoginScreenIfFirebaseUserIsNull() {
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          authRepository = FakeAuthRepository(currentUser = null),
+          startDestinationOverride = AppScreens.CreateEvent.name,
+      )
+    }
+
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
   }
 
   @Test
@@ -497,6 +519,20 @@ class MainActivityNavigationTest {
     }
 
     composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  @Test
+  fun createAnnouncementRouteDisplaysCreateAnnouncementScreen() {
+    EventsRepositoryProvider.repository = EventsRepositoryLocal()
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          authRepository = FakeAuthRepository(currentUser = firebaseUser),
+          startDestinationOverride = AppScreens.createAnnouncement("e1"),
+      )
+    }
+
+    composeTestRule.onNodeWithTag(CreateAnnouncementScreenTestTags.TITLE).assertIsDisplayed()
   }
 
   @Test
@@ -559,6 +595,70 @@ class MainActivityNavigationTest {
     }
 
     composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  // Breaks if the edit route opens for nobody signed in instead of sending them to the login.
+  @Test
+  fun editTaskRouteRedirectsToLoginWhenUserIsNull() {
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          authRepository = FakeAuthRepository(currentUser = null),
+          startDestinationOverride = AppScreens.editTask("t1"),
+      )
+    }
+
+    waitUntilTagExists(LoginScreenTestTags.TITLE)
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  // Breaks if the details edit button is not wired to the edit route, or back from it does not
+  // return to the details.
+  @Test
+  fun taskDetailsEditOpensTheEditScreenAndBackReturns() {
+    openTheEditOfAnOwnedTaskFromItsDetails()
+
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.BACK_BUTTON).performClick()
+    waitUntilTagExists(TaskDetailsScreenTestTags.TITLE)
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  // Breaks if the details do not reload on resume, so a saved edit is not shown on return.
+  @Test
+  fun savingTheTitleShowsItOnTheDetailsOnReturn() {
+    openTheEditOfAnOwnedTaskFromItsDetails()
+
+    composeTestRule
+        .onNodeWithTag(CreateTaskScreenTestTags.TITLE_FIELD)
+        .performTextReplacement("Hang the banner")
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.CREATE_BUTTON).performClick()
+
+    composeTestRule.waitUntil(timeoutMillis = 10_000) {
+      composeTestRule.onAllNodesWithTag(TaskDetailsScreenTestTags.TITLE).fetchSemanticsNodes().any {
+        it.config.getOrNull(SemanticsProperties.Text)?.joinToString("") == "Hang the banner"
+      }
+    }
+    composeTestRule
+        .onNodeWithTag(TaskDetailsScreenTestTags.TITLE)
+        .assertIsDisplayed()
+        .assertTextEquals("Hang the banner")
+  }
+
+  /** Opens the details of a task the signed-in [firebaseUser] owns, then its edit screen. */
+  private fun openTheEditOfAnOwnedTaskFromItsDetails() {
+    seedTask(ownerId = testUserId)
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          authRepository = FakeAuthRepository(currentUser = firebaseUser),
+          startDestinationOverride = AppScreens.taskDetails("t1"),
+      )
+    }
+
+    waitUntilTagExists(TaskDetailsScreenTestTags.EDIT_BUTTON)
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.EDIT_BUTTON).performClick()
+    waitUntilTagExists(CreateTaskScreenTestTags.TITLE_FIELD)
+    composeTestRule.onNodeWithTag(EditTaskScreenTestTags.SCREEN).assertIsDisplayed()
   }
 
   /** Puts a user with the uid of [firebaseUser] in the users repository, for the profile screen. */
@@ -651,24 +751,4 @@ class MainActivityNavigationTest {
       composeTestRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
     }
   }
-}
-
-class FakeAuthRepository(override val currentUser: FirebaseUser?) : AuthRepository {
-  override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> =
-      Result.failure(UnsupportedOperationException())
-
-  override suspend fun signOut(): Result<Unit> = Result.success(Unit)
-
-  override suspend fun forgotPassword(email: String): Result<Unit> =
-      Result.failure(UnsupportedOperationException())
-
-  override suspend fun signInWithEmailAndPassword(
-      email: String,
-      password: String,
-  ): Result<FirebaseUser> = Result.failure(UnsupportedOperationException())
-
-  override suspend fun signUpWithEmailAndPassword(
-      email: String,
-      password: String,
-  ): Result<FirebaseUser> = Result.failure(UnsupportedOperationException())
 }

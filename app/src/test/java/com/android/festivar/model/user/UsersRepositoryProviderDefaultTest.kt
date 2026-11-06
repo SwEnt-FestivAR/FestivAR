@@ -33,7 +33,7 @@ class UsersRepositoryProviderDefaultTest {
   fun repository_isTheFirestoreOneByDefault() {
     val repository = UsersRepositoryProvider.repository
 
-    assertTrue(repository is UserRepositoryFirebase)
+    assertTrue(repository is UsersRepositoryFirebase)
   }
 
   // The Firestore repository is built once: the whole app shares the same instance.
@@ -48,6 +48,6 @@ class UsersRepositoryProviderDefaultTest {
 
     UsersRepositoryProvider.reset()
 
-    assertTrue(UsersRepositoryProvider.repository is UserRepositoryFirebase)
+    assertTrue(UsersRepositoryProvider.repository is UsersRepositoryFirebase)
   }
 }

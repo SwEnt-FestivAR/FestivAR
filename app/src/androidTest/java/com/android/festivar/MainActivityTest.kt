@@ -7,6 +7,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.credentials.CredentialManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.ui.authentication.login.LoginScreenTestTags
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth

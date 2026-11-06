@@ -22,7 +22,7 @@ import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventRepositoryFirebase
 import com.android.festivar.model.event.joinCodeOf
 import com.android.festivar.model.task.TaskRepositoryFirebase
-import com.android.festivar.model.user.UserRepositoryFirebase
+import com.android.festivar.model.user.UsersRepositoryFirebase
 import com.android.festivar.model.user.UsersRepositoryProvider
 import com.android.festivar.ui.authentication.login.LoginScreenTestTags
 import com.android.festivar.ui.authentication.signup.SignUpScreenTestTags
@@ -137,7 +137,7 @@ class EndToEndTest {
       asTheUser(MEMBER_EMAIL) { uid ->
         val stored = EventRepositoryFirebase(Firebase.firestore).getEvent(event.eventId)
         assertTrue("The event does not list the new member", stored.members.any { it.uid == uid })
-        val user = UserRepositoryFirebase(Firebase.firestore).getUser(uid)
+        val user = UsersRepositoryFirebase(Firebase.firestore).getUser(uid)
         assertTrue("The member does not list the joined event", event.eventId in user.joinedEvents)
         val tasks = TaskRepositoryFirebase(Firebase.firestore).getAllTasks(event.eventId)
         val task = tasks.single { it.title == TASK_TITLE }
@@ -358,7 +358,7 @@ class EndToEndTest {
         runCatching {
           asTheUser(email) { uid ->
             logged("delete leftover profile of $email") {
-              UserRepositoryFirebase(Firebase.firestore).deleteUser(uid)
+              UsersRepositoryFirebase(Firebase.firestore).deleteUser(uid)
             }
             logged("delete leftover account of $email") {
               Firebase.auth.currentUser?.delete()?.await()
@@ -395,7 +395,7 @@ class EndToEndTest {
         runCatching {
           asTheUser(email) { uid ->
             logged("delete the profile of $email") {
-              UserRepositoryFirebase(Firebase.firestore).deleteUser(uid)
+              UsersRepositoryFirebase(Firebase.firestore).deleteUser(uid)
             }
             logged("delete the account of $email") { Firebase.auth.currentUser?.delete()?.await() }
           }
