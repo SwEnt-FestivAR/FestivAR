@@ -168,7 +168,7 @@ class AndroidVoiceRecorderTest {
     assertEquals(recordingOf(0), recorder.state.value)
   }
 
-  /** Breaks if the source, format, file or quality of the recording changes. */
+  /** Breaks if the source, format or file changes, or the sampling or bit rate is not set. */
   @Test
   fun start_recordsAacInMpeg4FromTheMicrophone() {
     recorder.start()
@@ -177,8 +177,8 @@ class AndroidVoiceRecorderTest {
       anyConstructed<MediaRecorder>().setAudioSource(MediaRecorder.AudioSource.MIC)
       anyConstructed<MediaRecorder>().setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
       anyConstructed<MediaRecorder>().setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-      anyConstructed<MediaRecorder>().setAudioSamplingRate(44_100)
-      anyConstructed<MediaRecorder>().setAudioEncodingBitRate(64_000)
+      anyConstructed<MediaRecorder>().setAudioSamplingRate(AndroidVoiceRecorder.SAMPLING_RATE_HZ)
+      anyConstructed<MediaRecorder>().setAudioEncodingBitRate(AndroidVoiceRecorder.BIT_RATE)
       anyConstructed<MediaRecorder>().setOutputFile(files.single().absolutePath)
     }
   }

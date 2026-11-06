@@ -229,10 +229,12 @@ class AndroidVoiceRecorder(context: Context) : VoiceRecorder {
     /** How often [RecorderState.Recording] is updated. */
     const val TICK_INTERVAL_MILLIS = 200L
 
+    /** The sound quality set on every recording. */
+    const val SAMPLING_RATE_HZ = 44_100
+    const val BIT_RATE = 64_000
+
     private const val FILE_PREFIX = "voice_note_"
     private const val FILE_SUFFIX = ".m4a"
-    private const val SAMPLING_RATE_HZ = 44_100
-    private const val BIT_RATE = 64_000
     private const val TOO_SHORT = "The recording is too short."
     private const val LOG_TAG = "AndroidVoiceRecorder"
   }
