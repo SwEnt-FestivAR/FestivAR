@@ -18,6 +18,9 @@ import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
+import com.android.festivar.ui.event.details.EventDetailsScreen
+import com.android.festivar.ui.event.details.EventDetailsScreenTestTags
+import com.android.festivar.ui.event.details.EventDetailsViewModel
 import io.mockk.mockk
 import io.mockk.verify
 import java.time.ZoneId

@@ -1,9 +1,10 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Gemini <noreply@google.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
-package com.android.festivar.navigation
+package com.android.festivar.navigation.task
 
 import androidx.navigation.NavHostController
+import com.android.festivar.navigation.AppScreens
 
 /** Where the task details can go: back to whatever opened them, or to the edit of the task. */
 class TaskDetailsNavigator(private val navController: NavHostController) {

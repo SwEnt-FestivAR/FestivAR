@@ -1,5 +1,5 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
-package com.android.festivar.ui.event
+package com.android.festivar.ui.event.overview
 
 import androidx.activity.compose.BackHandler
 import androidx.annotation.DrawableRes

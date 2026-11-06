@@ -7,6 +7,8 @@ import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryLocal
+import com.android.festivar.ui.event.overview.EventsFilter
+import com.android.festivar.ui.event.overview.EventsOverviewViewModel
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlinx.coroutines.CompletableDeferred

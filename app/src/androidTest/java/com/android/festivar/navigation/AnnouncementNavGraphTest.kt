@@ -16,6 +16,7 @@ import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.EventsRepositoryProvider
+import com.android.festivar.navigation.announcement.announcementGraph
 import com.android.festivar.ui.announcement.create.CreateAnnouncementScreenTestTags as Tags
 import com.google.firebase.auth.FirebaseUser
 import io.mockk.every
