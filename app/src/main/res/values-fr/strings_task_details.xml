@@ -1,0 +1,16 @@
+<!-- Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com> -->
+<!-- Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com> -->
+<resources>
+    <string name="details_status_open">Ouverte</string>
+    <string name="details_status_taken">Prise</string>
+    <string name="details_status_yours">La vôtre</string>
+    <string name="details_status_done">Terminée</string>
+    <string name="details_description">Description</string>
+    <string name="details_take">Prendre cette tâche</string>
+    <string name="details_give_back">Rendre la tâche</string>
+    <string name="details_mark_done">Marquer comme terminée</string>
+    <string name="details_dismiss">Fermer</string>
+    <string name="details_retry">Réessayer</string>
+    <string name="details_location">Lieu : %s</string>
+    <string name="details_time_range">De %1$s à %2$s</string>
+</resources>

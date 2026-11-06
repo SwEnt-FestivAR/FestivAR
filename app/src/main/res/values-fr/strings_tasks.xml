@@ -1,0 +1,44 @@
+<!-- Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com> -->
+<!-- Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com> -->
+<resources>
+    <string name="tasks_back">Retour</string>
+
+    <string name="tasks_search">Rechercher</string>
+    <string name="tasks_search_hint">Nom ou lieu</string>
+
+
+    <string name="overview_title">Aperçu des tâches</string>
+    <string name="overview_chip_open">Ouvrir</string>
+    <string name="overview_chip_mine">Les miennes</string>
+
+    <string name="overview_chip_done">Finies</string>
+    <string name="overview_chip_all">Toutes</string>
+    <string name="overview_group_now">Maintenant</string>
+
+    <string name="overview_group_morning">Matin</string>
+    <string name="overview_group_afternoon">Après-midi</string>
+    <string name="overview_group_evening">Soir</string>
+    <string name="overview_group_anytime">Toutes</string>
+    <plurals name="overview_people_needed">
+        <item quantity="one">%d personne nécessaire</item>
+        <item quantity="other">%d personnes nécessaires</item>
+        <item quantity="many">%d personnes nécessaires</item>
+    </plurals>
+
+
+    <string name="overview_people">%1$d sur %2$d</string>
+    <string name="overview_empty">Rien ici. Essayez un autre filtre.</string>
+    <string name="overview_no_results">Aucun résultat pour “%1$s”.</string>
+    <string name="overview_retry">Réessayer</string>
+    <string name="overview_add_task">Ajouter une tâche</string>
+
+    <string name="pin_open">Ouvrir une tâche</string>
+
+    <string name="pin_mine">Vos tâches</string>
+    <string name="pin_taken">Tâches prises</string>
+    <string name="pin_done">Tâches finies</string>
+    <string name="task_details_load_failed">Échec du chargement de la tâche</string>
+    <string name="task_details_save_failed">Échec de la sauvegarde</string>
+
+
+</resources>
