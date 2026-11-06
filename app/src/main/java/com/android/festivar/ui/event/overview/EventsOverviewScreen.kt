@@ -381,7 +381,7 @@ private fun LazyItemScope.ErrorState(message: String, onRetry: () -> Unit) {
 @Composable
 private fun LazyItemScope.EmptyEventsState(onJoinEvent: () -> Unit, onAddEvent: () -> Unit) {
   val buttonShape = RoundedCornerShape(12.dp)
-  val buttonPadding = PaddingValues(horizontal = 20.dp)
+  val buttonPadding = PaddingValues(horizontal = 12.dp)
   Column(
       verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
       horizontalAlignment = Alignment.CenterHorizontally,

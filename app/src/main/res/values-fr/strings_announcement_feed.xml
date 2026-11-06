@@ -1,0 +1,4 @@
+<!-- Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com> -->
+<resources>
+    <string name="announcement_feed_load_failed">Impossible de charger les annonces.</string>
+</resources>
