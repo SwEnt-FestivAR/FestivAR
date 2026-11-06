@@ -3,6 +3,7 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar
 
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -655,8 +656,9 @@ class MainActivityNavigationTest {
       )
     }
 
-    waitUntilTagExists(TaskDetailsScreenTestTags.EDIT_BUTTON)
-    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.EDIT_BUTTON).performClick()
+    waitUntilTagExists(TaskDetailsScreenTestTags.MORE_ACTIONS_BUTTON)
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MORE_ACTIONS_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.EDIT_MENU_ITEM).performClick()
     waitUntilTagExists(CreateTaskScreenTestTags.TITLE_FIELD)
     composeTestRule.onNodeWithTag(EditTaskScreenTestTags.SCREEN).assertIsDisplayed()
   }
