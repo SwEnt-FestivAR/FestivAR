@@ -40,15 +40,25 @@ object VoiceNoteTestTags {
   const val VOICE_NOTE_DURATION = "voiceNoteDuration"
   const val VOICE_NOTE_DELETE = "voiceNoteDelete"
   const val VOICE_NOTE_EMPTY = "voiceNoteEmpty"
+  const val RECORDING_HINT = "voiceNoteRecordingHint"
+  const val RECORDING_BAR = "voiceNoteRecordingBar"
+  const val VOICE_NOTE_RECORD = "voiceNoteRecord"
+  const val SEND_ERROR = "voiceNoteSendError"
+  const val SEND_RETRY = "voiceNoteSendRetry"
+  const val MIC_DENIED = "voiceNoteMicDenied"
+  const val OPEN_SETTINGS = "voiceNoteOpenSettings"
   const val CONFIRM_DELETE = "voiceNoteConfirmDelete"
   const val KEEP_BUTTON = "voiceNoteKeep"
   const val CONFIRM_DELETE_BUTTON = "voiceNoteConfirmDeleteButton"
+  const val PLAYBACK_ERROR = "voiceNotePlaybackError"
+  const val PLAYBACK_RETRY = "voiceNotePlaybackRetry"
 }
 
 /**
  * The voice note section of a task, for the owner and for the volunteers: the label, then the note
  * or the empty state, and the dialog to confirm the deletion of the note. It shows nothing to a
- * volunteer when the task has no note.
+ * volunteer when the task has no note. The record bar and the notices are separate composables
+ * ([VoiceNoteRecordBar], [VoiceNoteNotices]) because the screen fixes them at the bottom.
  */
 @Composable
 fun VoiceNoteSection(

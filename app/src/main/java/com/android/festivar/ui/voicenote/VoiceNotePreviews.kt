@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.model.audio.PlayerState
+import com.android.festivar.model.audio.RecorderState
 import com.android.festivar.model.voicenote.VoiceNote
 import com.android.festivar.ui.theme.AppTheme
 import java.time.Duration
@@ -25,12 +26,14 @@ private val previewNote =
 
 private val callbacks = VoiceNoteCallbacks.NoOp
 
-/** The section as on the screen, in its scrolling column. */
+/** The section on top, the notices and the record bar fixed under it, as on the screen. */
 @Composable
 private fun VoiceNotePreviewScreen(state: VoiceNoteUiState) {
   AppTheme {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
-      VoiceNoteSection(state, callbacks)
+    Column(Modifier.fillMaxWidth()) {
+      Column(Modifier.padding(horizontal = 20.dp)) { VoiceNoteSection(state, callbacks) }
+      VoiceNoteNotices(state, callbacks)
+      VoiceNoteRecordBar(state, callbacks)
     }
   }
 }
@@ -61,6 +64,26 @@ internal fun VoiceNoteEmptyPreview() {
 
 @Preview(showBackground = true)
 @Composable
+internal fun VoiceNoteRecordingPreview() {
+  VoiceNotePreviewScreen(
+      VoiceNoteUiState(canManage = true, recorder = RecorderState.Recording(Duration.ofSeconds(3)))
+  )
+}
+
+@Preview(showBackground = true)
+@Composable
+internal fun VoiceNoteSendFailedPreview() {
+  VoiceNotePreviewScreen(VoiceNoteUiState(canManage = true, sendFailed = true))
+}
+
+@Preview(showBackground = true)
+@Composable
+internal fun VoiceNoteMicDeniedPreview() {
+  VoiceNotePreviewScreen(VoiceNoteUiState(canManage = true, micDenied = true))
+}
+
+@Preview(showBackground = true)
+@Composable
 internal fun VoiceNoteDeleteConfirmPreview() {
   VoiceNotePreviewScreen(
       VoiceNoteUiState(note = previewNote, canManage = true, showDeleteConfirm = true)
@@ -71,4 +94,12 @@ internal fun VoiceNoteDeleteConfirmPreview() {
 @Composable
 internal fun VoiceNoteVolunteerPreview() {
   VoiceNotePreviewScreen(VoiceNoteUiState(note = previewNote))
+}
+
+@Preview(showBackground = true)
+@Composable
+internal fun VoiceNoteVolunteerPlaybackFailedPreview() {
+  VoiceNotePreviewScreen(
+      VoiceNoteUiState(note = previewNote, player = PlayerState.Failed(previewNote.audioUrl))
+  )
 }

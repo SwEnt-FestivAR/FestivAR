@@ -1,15 +1,25 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.voicenote
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.center
+import androidx.compose.ui.test.down
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.moveBy
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.up
+import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.audio.PlayerState
+import com.android.festivar.model.audio.RecorderState
 import com.android.festivar.model.voicenote.VoiceNote
 import com.android.festivar.ui.theme.AppTheme
 import java.time.Duration
@@ -20,7 +30,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** The voice note section for every state, with no ViewModel. */
+/** The voice note section, the notices and the record bar for every state, with no ViewModel. */
 @RunWith(AndroidJUnit4::class)
 class VoiceNoteContentTest {
   @get:Rule val composeTestRule = createComposeRule()
@@ -49,7 +59,13 @@ class VoiceNoteContentTest {
       )
 
   private fun show(state: VoiceNoteUiState) = composeTestRule.setContent {
-    AppTheme { VoiceNoteSection(state, callbacks) }
+    AppTheme {
+      Column {
+        VoiceNoteSection(state, callbacks)
+        VoiceNoteNotices(state, callbacks)
+        VoiceNoteRecordBar(state, callbacks)
+      }
+    }
   }
 
   private fun tag(tag: String) = composeTestRule.onNodeWithTag(tag)
@@ -76,6 +92,7 @@ class VoiceNoteContentTest {
     show(VoiceNoteUiState())
     tag(VoiceNoteTestTags.VOICE_NOTE_EMPTY).assertDoesNotExist()
     tag(VoiceNoteTestTags.VOICE_NOTE_PLAY).assertDoesNotExist()
+    tag(VoiceNoteTestTags.VOICE_NOTE_RECORD).assertDoesNotExist()
   }
 
   @Test
@@ -137,5 +154,108 @@ class VoiceNoteContentTest {
   fun noDialogByDefault() {
     show(VoiceNoteUiState(note = note, canManage = true))
     tag(VoiceNoteTestTags.CONFIRM_DELETE).assertDoesNotExist()
+  }
+
+  /** Breaks if the record bar shows next to a note, or to somebody who cannot record. */
+  @Test
+  fun recordBarIsHiddenWhenANoteExists() {
+    show(VoiceNoteUiState(note = note, canManage = true))
+    tag(VoiceNoteTestTags.VOICE_NOTE_RECORD).assertDoesNotExist()
+    tag(VoiceNoteTestTags.RECORDING_BAR).assertDoesNotExist()
+  }
+
+  /** Breaks if the bar is not the 56dp of the design, or does not invite to hold to record. */
+  @Test
+  fun emptyStateComesWithTheRecordBar() {
+    show(VoiceNoteUiState(canManage = true))
+    composeTestRule.onNodeWithText("Hold to record").assertIsDisplayed()
+    tag(VoiceNoteTestTags.VOICE_NOTE_RECORD).assertIsDisplayed()
+    tag(VoiceNoteTestTags.RECORDING_BAR).assertHeightIsEqualTo(56.dp)
+    tag(VoiceNoteTestTags.RECORDING_HINT).assertDoesNotExist()
+  }
+
+  /** Breaks if the timer or the hint is missing while recording. */
+  @Test
+  fun recordingShowsTimerAndHint() {
+    show(
+        VoiceNoteUiState(
+            canManage = true,
+            recorder = RecorderState.Recording(Duration.ofSeconds(3)),
+        )
+    )
+    composeTestRule.onNodeWithText("Recording 0:03 · Release to stop").assertIsDisplayed()
+    tag(VoiceNoteTestTags.RECORDING_HINT)
+        .assertTextContains("Release to stop. Slide left to cancel.")
+    tag(VoiceNoteTestTags.RECORDING_BAR).assertIsDisplayed()
+  }
+
+  /** Breaks if releasing the button does not call the release callback. */
+  @Test
+  fun holdAndReleaseCallsRelease() {
+    show(VoiceNoteUiState(canManage = true))
+    tag(VoiceNoteTestTags.VOICE_NOTE_RECORD).performTouchInput {
+      down(center)
+      up()
+    }
+    assertEquals(listOf("start", "release"), events)
+  }
+
+  /** Breaks if sliding left and releasing sends the recording instead of dropping it. */
+  @Test
+  fun slideLeftThenReleaseCancels() {
+    show(VoiceNoteUiState(canManage = true))
+    tag(VoiceNoteTestTags.VOICE_NOTE_RECORD).performTouchInput {
+      down(center)
+      moveBy(Offset(-400f, 0f))
+      up()
+    }
+    assertEquals(listOf("start", "cancel"), events)
+  }
+
+  /** Breaks if the info note or its button is missing, or the button still records. */
+  @Test
+  fun deniedMicrophoneShowsTheNoteAndDisablesRecording() {
+    show(VoiceNoteUiState(canManage = true, micDenied = true))
+    // The tag is on the card and the text is in a child node, so each is checked on its own.
+    tag(VoiceNoteTestTags.MIC_DENIED).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText("Microphone is off for FestivAR", substring = true)
+        .assertIsDisplayed()
+    tag(VoiceNoteTestTags.OPEN_SETTINGS).performClick()
+    tag(VoiceNoteTestTags.VOICE_NOTE_RECORD).performTouchInput {
+      down(center)
+      up()
+    }
+    assertEquals(listOf("settings"), events)
+  }
+
+  /** Breaks if a failed send shows no snackbar, or its Retry does nothing. */
+  @Test
+  fun sendFailedShowsRetry() {
+    show(VoiceNoteUiState(canManage = true, sendFailed = true))
+    tag(VoiceNoteTestTags.SEND_ERROR).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText("Voice note not sent. Check your connection.")
+        .assertIsDisplayed()
+    tag(VoiceNoteTestTags.SEND_RETRY).performClick()
+    assertEquals(listOf("retry"), events)
+  }
+
+  /** Breaks if a failed playback shows no snackbar to a volunteer, or its Retry does nothing. */
+  @Test
+  fun playbackFailedShowsRetryForVolunteers() {
+    show(VoiceNoteUiState(note = note, player = PlayerState.Failed(note.audioUrl)))
+    tag(VoiceNoteTestTags.PLAYBACK_ERROR).assertIsDisplayed()
+    tag(VoiceNoteTestTags.PLAYBACK_RETRY).performClick()
+    assertEquals(listOf("retry"), events)
+  }
+
+  /** Breaks if an error shows without a reason. */
+  @Test
+  fun noErrorsByDefault() {
+    show(VoiceNoteUiState(note = note, canManage = true))
+    tag(VoiceNoteTestTags.PLAYBACK_ERROR).assertDoesNotExist()
+    tag(VoiceNoteTestTags.SEND_ERROR).assertDoesNotExist()
+    tag(VoiceNoteTestTags.MIC_DENIED).assertDoesNotExist()
   }
 }
