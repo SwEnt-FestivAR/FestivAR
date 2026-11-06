@@ -166,7 +166,6 @@ class AndroidVoiceRecorder(context: Context) : VoiceRecorder {
   /** Drops the recording after an error, unless [recorder] has already been replaced or ended. */
   private fun onRecorderError(recorder: MediaRecorder) {
     val recording = current?.takeIf { it.recorder === recorder } ?: return
-    Log.e(LOG_TAG, "The recording failed and was dropped")
     drop(recording, RecorderState.Failed)
   }
 
