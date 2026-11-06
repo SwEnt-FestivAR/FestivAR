@@ -1,0 +1,4 @@
+<!-- Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com> -->
+<resources>
+    <string name="voice_note_record_failed">Impossible d\'enregistrer la note vocale. Réessayez.</string>
+</resources>
