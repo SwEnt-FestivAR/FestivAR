@@ -77,6 +77,52 @@ class VoiceNoteUiStateTest {
     assertEquals(Duration.ofSeconds(3), state.elapsed)
   }
 
+  private val waiting = PendingRecording(Duration.ofSeconds(7))
+  private val uploading = waiting.copy(isUploading = true)
+
+  /** Breaks if the record button stays enabled while sending, or a wait counts as sending. */
+  @Test
+  fun recordingIsDisabledWhileSending() {
+    assertTrue(VoiceNoteUiState(canManage = true).recordEnabled)
+    assertTrue(VoiceNoteUiState(canManage = true, pending = waiting).recordEnabled)
+    assertFalse(VoiceNoteUiState(canManage = true, pending = uploading).recordEnabled)
+    assertFalse(VoiceNoteUiState(canManage = true, micDenied = true).recordEnabled)
+    assertTrue(VoiceNoteUiState(pending = uploading).isSending)
+    assertFalse(VoiceNoteUiState(pending = waiting).isSending)
+    assertFalse(VoiceNoteUiState().isSending)
+    // Sending is not a notice: the bar says it itself.
+    assertFalse(VoiceNoteUiState(canManage = true, pending = uploading).hasNotices)
+  }
+
+  /** Breaks if the dialog shows while sending or without a recording, or to somebody else. */
+  @Test
+  fun sendDialogShowsWhileTheRecordingWaitsForTheOwner() {
+    assertTrue(VoiceNoteUiState(canManage = true, pending = waiting).showSendDialog)
+    assertFalse(VoiceNoteUiState(canManage = true, pending = uploading).showSendDialog)
+    assertFalse(VoiceNoteUiState(canManage = true).showSendDialog)
+    assertFalse(VoiceNoteUiState(canManage = false, pending = waiting).showSendDialog)
+  }
+
+  /** Breaks if a failed recording counts as recording, or if only a failed one is reported. */
+  @Test
+  fun recordingFailedOnlyForAFailedRecorder() {
+    assertTrue(VoiceNoteUiState(recorder = RecorderState.Failed).recordingFailed)
+    assertFalse(VoiceNoteUiState(recorder = RecorderState.Failed).isRecording)
+    assertFalse(VoiceNoteUiState().recordingFailed)
+    assertFalse(
+        VoiceNoteUiState(recorder = RecorderState.Recording(Duration.ofSeconds(3))).recordingFailed
+    )
+  }
+
+  /** Breaks if a paused recording stops counting as a recording or loses its recorded time. */
+  @Test
+  fun aPausedRecordingIsStillRecording() {
+    val state =
+        VoiceNoteUiState(recorder = RecorderState.Recording(Duration.ofSeconds(7), isPaused = true))
+    assertTrue(state.isRecording)
+    assertEquals(Duration.ofSeconds(7), state.elapsed)
+  }
+
   @Test
   fun everyCallbackIsGivenByTheCaller() {
     val calls = mutableListOf<String>()
@@ -89,6 +135,9 @@ class VoiceNoteUiStateTest {
             onRecordStart = { calls += "start" },
             onRecordRelease = { calls += "release" },
             onRecordCancel = { calls += "cancel" },
+            onConfirmSend = { calls += "confirmSend" },
+            onCancelSend = { calls += "cancelSend" },
+            onDismissRecordingFailed = { calls += "dismissFailed" },
             onRetry = { calls += "retry" },
             onOpenSettings = { calls += "settings" },
         )
@@ -101,6 +150,9 @@ class VoiceNoteUiStateTest {
       onRecordStart()
       onRecordRelease()
       onRecordCancel()
+      onConfirmSend()
+      onCancelSend()
+      onDismissRecordingFailed()
       onRetry()
       onOpenSettings()
     }
@@ -114,6 +166,9 @@ class VoiceNoteUiStateTest {
             "start",
             "release",
             "cancel",
+            "confirmSend",
+            "cancelSend",
+            "dismissFailed",
             "retry",
             "settings",
         ),
@@ -131,6 +186,9 @@ class VoiceNoteUiStateTest {
       onRecordStart()
       onRecordRelease()
       onRecordCancel()
+      onConfirmSend()
+      onCancelSend()
+      onDismissRecordingFailed()
       onRetry()
       onOpenSettings()
     }
@@ -141,8 +199,12 @@ class VoiceNoteUiStateTest {
     assertFalse(VoiceNoteUiState(canManage = true).hasNotices)
     assertTrue(VoiceNoteUiState(canManage = true, sendFailed = true).hasNotices)
     assertTrue(VoiceNoteUiState(canManage = true, micDenied = true).hasNotices)
-    // Send and microphone notices only matter while the record bar is there.
+    assertTrue(VoiceNoteUiState(canManage = true, recorder = RecorderState.Failed).hasNotices)
+    // Send, recording and microphone notices only matter while the record bar is there.
     assertFalse(VoiceNoteUiState(note = note, canManage = true, sendFailed = true).hasNotices)
+    assertFalse(
+        VoiceNoteUiState(note = note, canManage = true, recorder = RecorderState.Failed).hasNotices
+    )
     assertFalse(VoiceNoteUiState(canManage = false, micDenied = true).hasNotices)
     assertTrue(VoiceNoteUiState(note = note, player = PlayerState.Failed(note.audioUrl)).hasNotices)
   }

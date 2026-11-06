@@ -1,24 +1,17 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -26,8 +19,9 @@ import com.android.festivar.ui.theme.AppTheme
 
 /**
  * A bar fixed to the bottom of a screen, above the system navigation bar, holding [content]. It
- * keeps the colour of the page, as the "composer (fixed)" frames of the S4 design do: a stack of
- * the record bar and the notices above it.
+ * keeps the colour of the page, as the "composer (fixed)" frames of the S4 design do: 20dp on the
+ * sides, 8dp above and 24dp below the content, which is stacked with 8dp between its items (for
+ * example the record bar and the notices above it).
  */
 @Composable
 fun FixedBottomBar(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
@@ -41,7 +35,7 @@ fun FixedBottomBar(modifier: Modifier = Modifier, content: @Composable ColumnSco
   }
 }
 
-/** The "Voice notes, organizer, recording" frame of S4: the hint above the recording bar. */
+/** A bar with two lines of placeholder content under a page, to see its padding and its colour. */
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 internal fun FixedBottomBarPreview() {
@@ -49,29 +43,8 @@ internal fun FixedBottomBarPreview() {
     Scaffold(
         bottomBar = {
           FixedBottomBar {
-            Text(
-                "Release to send. Slide left to cancel.",
-                style = MaterialTheme.typography.bodySmall,
-            )
-            Row(
-                Modifier.fillMaxWidth()
-                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
-                    .padding(horizontal = 20.dp, vertical = 18.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-              Text(
-                  "Recording 0:03",
-                  Modifier.weight(1f),
-                  style = MaterialTheme.typography.bodyLarge,
-                  color = MaterialTheme.colorScheme.onSurfaceVariant,
-              )
-              Text("Release to send", style = MaterialTheme.typography.labelLarge)
-              Box(
-                  Modifier.padding(start = 12.dp)
-                      .size(10.dp)
-                      .background(MaterialTheme.colorScheme.error, CircleShape)
-              )
-            }
+            Text("First line of the bar", style = MaterialTheme.typography.bodySmall)
+            Text("Second line of the bar", style = MaterialTheme.typography.bodyLarge)
           }
         }
     ) { padding ->

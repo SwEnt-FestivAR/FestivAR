@@ -36,6 +36,7 @@ class FixedBottomBarTest {
   fun preview_showsTheBar() {
     composeTestRule.setContent { FixedBottomBarPreview() }
 
-    composeTestRule.onNodeWithText("Release to send. Slide left to cancel.").assertIsDisplayed()
+    composeTestRule.onNodeWithText("First line of the bar").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Second line of the bar").assertIsDisplayed()
   }
 }
