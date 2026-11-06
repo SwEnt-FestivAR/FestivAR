@@ -271,11 +271,11 @@ class CreateEventScreenTest {
     val onCreated = mockk<() -> Unit>(relaxed = true)
     val creator = User("creator-123", "Alice", "AliceInWonderland")
     viewModel =
-      CreateEventViewModel(
-        GatedRepository(gate),
-        UsersRepositoryLocal(listOf(creator)),
-        creator.uid,
-      )
+        CreateEventViewModel(
+            GatedRepository(gate),
+            UsersRepositoryLocal(listOf(creator)),
+            creator.uid,
+        )
     composeTestRule.setContent { CreateEventScreen(viewModel = viewModel, onCreated = onCreated) }
 
     viewModel.updateName("Summer festival")

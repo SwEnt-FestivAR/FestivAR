@@ -11,12 +11,6 @@ import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.DateTimeRange
 import com.android.festivar.ui.components.FieldError
-import com.android.festivar.ui.event.create.EventFormViewModel
-import com.android.festivar.ui.event.create.computeEndDateTime
-import com.android.festivar.ui.event.create.computeStartDateTime
-import com.android.festivar.ui.event.create.isEventFormValid
-import com.android.festivar.ui.event.create.validateEventName
-import com.android.festivar.ui.event.create.validateStartDate
 import com.android.festivar.ui.components.endDateError as validateEndDateError
 import java.time.LocalDate
 import java.time.LocalTime

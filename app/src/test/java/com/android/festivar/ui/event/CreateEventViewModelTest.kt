@@ -260,11 +260,11 @@ class CreateEventViewModelTest {
     val oldStartDate = LocalDate.now().minusDays(2)
     val oldEndDate = LocalDate.now().minusDays(1)
     val state =
-      CreateEventUIState(
-        name = "Summer festival",
-        startDate = oldStartDate,
-        endDate = oldEndDate,
-      )
+        CreateEventUIState(
+            name = "Summer festival",
+            startDate = oldStartDate,
+            endDate = oldEndDate,
+        )
 
     assertEquals(FieldError.OUTDATED, state.endDateError)
     assertFalse(state.isValid)

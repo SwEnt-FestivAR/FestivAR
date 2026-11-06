@@ -13,14 +13,14 @@ import androidx.navigation.navArgument
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.event.EventsRepositoryProvider
 import com.android.festivar.model.user.UsersRepositoryProvider
-import com.android.festivar.ui.event.create.CreateEventScreen
-import com.android.festivar.ui.event.create.CreateEventViewModel
-import com.android.festivar.ui.event.EventDetailsScreen
-import com.android.festivar.ui.event.EventDetailsViewModel
 import com.android.festivar.ui.event.EventsOverviewScreen
 import com.android.festivar.ui.event.EventsOverviewViewModel
 import com.android.festivar.ui.event.JoinEventScreen
 import com.android.festivar.ui.event.JoinEventViewModel
+import com.android.festivar.ui.event.create.CreateEventScreen
+import com.android.festivar.ui.event.create.CreateEventViewModel
+import com.android.festivar.ui.event.details.EventDetailsScreen
+import com.android.festivar.ui.event.details.EventDetailsViewModel
 
 /** The destinations of the event feature. */
 fun NavGraphBuilder.eventGraph(navController: NavHostController, authRepository: AuthRepository) {
