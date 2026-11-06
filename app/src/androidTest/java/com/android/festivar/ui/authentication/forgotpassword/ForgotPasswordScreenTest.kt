@@ -9,10 +9,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
-import androidx.credentials.Credential
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.android.festivar.model.authentication.AuthRepository
-import com.google.firebase.auth.FirebaseUser
+import com.android.festivar.model.authentication.FakeAuthRepository
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -111,34 +109,5 @@ class ForgotPasswordScreenTest {
     composeTestRule.onNodeWithTag(ForgotPasswordScreenTestTags.RETURN_BUTTON).performClick()
 
     assertTrue(returnedToLogin)
-  }
-
-  private class FakeAuthRepository : AuthRepository {
-    var lastResetEmail: String? = null
-      private set
-
-    var resetResult: Result<Unit> = Result.success(Unit)
-    var pendingResetResult: CompletableDeferred<Result<Unit>>? = null
-
-    override suspend fun forgotPassword(email: String): Result<Unit> {
-      lastResetEmail = email
-      return pendingResetResult?.await() ?: resetResult
-    }
-
-    override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> =
-        Result.failure(UnsupportedOperationException("Not used in this test"))
-
-    override suspend fun signOut(): Result<Unit> =
-        Result.failure(UnsupportedOperationException("Not used in this test"))
-
-    override suspend fun signInWithEmailAndPassword(
-        email: String,
-        password: String,
-    ): Result<FirebaseUser> = Result.failure(UnsupportedOperationException("Not used in this test"))
-
-    override suspend fun signUpWithEmailAndPassword(
-        email: String,
-        password: String,
-    ): Result<FirebaseUser> = Result.failure(UnsupportedOperationException("Not used in this test"))
   }
 }

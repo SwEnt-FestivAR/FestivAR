@@ -82,6 +82,13 @@ data class CreateAnnouncementUiState(
   val canPublish: Boolean
     get() = isValid && !isSaving && !isPublished
 
+  /**
+   * Whether the inputs can be changed. They lock during a save and once the announcement is
+   * published, when the form is final, so what is shown stays what was published.
+   */
+  val isEditable: Boolean
+    get() = !isSaving && !isPublished
+
   private val isValid: Boolean
     get() = title.isNotBlank() && content.isNotBlank()
 

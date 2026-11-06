@@ -229,11 +229,12 @@ fun endDateError(
     range: DateTimeRange,
     zone: ZoneId = ZoneId.systemDefault(),
     now: ZonedDateTime = ZonedDateTime.now(),
+    endZone: ZoneId = zone,
 ): FieldError? {
   if (range.endTime != null && range.endDate == null) return FieldError.MISSING_DATE
 
   val start = range.startDate?.atTime(range.startTime ?: START_OF_DAY)?.atZone(zone)
-  val end = range.endDate?.atTime(range.endTime ?: END_OF_DAY)?.atZone(zone)
+  val end = range.endDate?.atTime(range.endTime ?: END_OF_DAY)?.atZone(endZone)
 
   return if (end != null) {
     when {

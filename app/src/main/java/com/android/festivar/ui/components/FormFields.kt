@@ -57,6 +57,7 @@ private fun festivarFieldColors(): TextFieldColors {
  * message under the field with [FestivarFieldError], and set [isError] to draw the field as
  * invalid.
  *
+ * @param enabled Whether the field can be edited. A disabled one is greyed out and takes no input.
  * @param keyboardOptions The keyboard to show, e.g. `KeyboardOptions(keyboardType =
  *   KeyboardType.Email)`.
  * @param visualTransformation How the text is displayed, e.g. [PasswordVisualTransformation] to
@@ -69,6 +70,7 @@ fun FestivarTextField(
     onValueChange: (String) -> Unit,
     label: String,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     singleLine: Boolean = true,
     isError: Boolean = false,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
@@ -80,6 +82,7 @@ fun FestivarTextField(
       value = value,
       onValueChange = onValueChange,
       modifier = modifier.fillMaxWidth(),
+      enabled = enabled,
       label = { Text(label) },
       textStyle = MaterialTheme.typography.bodyLarge,
       singleLine = singleLine,
@@ -168,6 +171,9 @@ enum class FieldError {
 
   /** The selected DateTime range is in the past. */
   OUTDATED,
+
+  /** Fewer people than are already assigned. */
+  TOO_FEW_SLOTS,
 }
 
 /** The string resource of the message shown under a field for [error]. */
@@ -182,6 +188,7 @@ fun fieldErrorMessageRes(error: FieldError): Int =
       FieldError.END_BEFORE_START -> R.string.field_error_end_before_start
       FieldError.INVALID_ESTIMATED_TIME -> R.string.field_error_invalid_estimated_time
       FieldError.OUTDATED -> R.string.field_error_outdated
+      FieldError.TOO_FEW_SLOTS -> R.string.field_error_too_few_slots
     }
 
 /**

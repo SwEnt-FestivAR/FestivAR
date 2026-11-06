@@ -1,9 +1,8 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.ui.authentication.signup
 
-import androidx.credentials.Credential
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.model.authentication.FakeAuthRepository
 import com.google.firebase.auth.FirebaseUser
 import io.mockk.mockk
 import kotlin.time.Duration.Companion.milliseconds
@@ -98,43 +97,5 @@ class SignUpViewModelTest {
       predicate: (SignUpUIState) -> Boolean,
   ): SignUpUIState = runBlocking {
     withTimeout(5_000.milliseconds) { viewModel.uiState.first(predicate) }
-  }
-
-  private class FakeAuthRepository : AuthRepository {
-    var signUpBehavior: suspend (String, String) -> Result<FirebaseUser> = { _, _ ->
-      Result.failure(UnsupportedOperationException("Not configured"))
-    }
-    var signUpCallCount = 0
-      private set
-
-    var lastSignUpCredentials: Pair<String, String>? = null
-      private set
-
-    var signOutBehavior: suspend () -> Result<Unit> = {
-      Result.failure(UnsupportedOperationException("Not configured"))
-    }
-
-    override suspend fun signUpWithEmailAndPassword(
-        email: String,
-        password: String,
-    ): Result<FirebaseUser> {
-      signUpCallCount += 1
-      lastSignUpCredentials = email to password
-      return signUpBehavior(email, password)
-    }
-
-    override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> {
-      return Result.failure(UnsupportedOperationException("Not used in these tests"))
-    }
-
-    override suspend fun signOut(): Result<Unit> = signOutBehavior()
-
-    override suspend fun forgotPassword(email: String): Result<Unit> =
-        Result.failure(UnsupportedOperationException("Not used in these tests"))
-
-    override suspend fun signInWithEmailAndPassword(
-        email: String,
-        password: String,
-    ): Result<FirebaseUser> = Result.failure(UnsupportedOperationException("Not configured"))
   }
 }

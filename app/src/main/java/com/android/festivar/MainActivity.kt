@@ -5,6 +5,7 @@
 package com.android.festivar
 
 import android.content.Context
+import android.content.pm.ActivityInfo
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -22,10 +23,11 @@ import androidx.navigation.compose.rememberNavController
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.authentication.AuthRepositoryFirebase
 import com.android.festivar.navigation.AppScreens
-import com.android.festivar.navigation.authGraph
-import com.android.festivar.navigation.eventGraph
-import com.android.festivar.navigation.profileGraph
-import com.android.festivar.navigation.taskGraph
+import com.android.festivar.navigation.announcement.announcementGraph
+import com.android.festivar.navigation.authentication.authGraph
+import com.android.festivar.navigation.event.eventGraph
+import com.android.festivar.navigation.profile.profileGraph
+import com.android.festivar.navigation.task.taskGraph
 import com.android.festivar.ui.theme.AppTheme
 
 class MainActivity : ComponentActivity() {
@@ -34,6 +36,11 @@ class MainActivity : ComponentActivity() {
     // The system start screen is the app's only splash, shown while the app starts
     installSplashScreen()
     super.onCreate(savedInstanceState)
+    // Source - https://stackoverflow.com/q/73598309
+    // Posted by Alix Blaine
+    // Retrieved 2026-11-05, License - CC BY-SA 4.0
+
+    this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
 
     setContent { AppTheme { Surface(modifier = Modifier.fillMaxSize()) { FestivAR() } } }
   }
@@ -64,6 +71,7 @@ fun FestivAR(
     authGraph(navController, credentialManager, authRepository)
     eventGraph(navController, authRepository)
     taskGraph(navController, authRepository)
+    announcementGraph(navController, authRepository)
     profileGraph(navController, authRepository)
   }
 }

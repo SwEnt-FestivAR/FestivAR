@@ -1,4 +1,15 @@
 <!-- Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com> -->
 <resources>
+    <string name="create_announcement">Create announcement</string>
+    <string name="create_announcement_back">Back</string>
+    <string name="create_announcement_field_title">Title</string>
+    <string name="create_announcement_field_description">Description</string>
+    <string name="create_announcement_field_priority">Priority</string>
+    <string name="create_announcement_priority_info">Info</string>
+    <string name="create_announcement_priority_warning">Warning</string>
+    <string name="create_announcement_priority_urgent">Urgent</string>
+    <string name="create_announcement_publish">Publish</string>
+    <string name="create_announcement_publishing">Publishing</string>
+    <string name="create_announcement_discard_title">Discard this announcement?</string>
     <string name="create_announcement_error_save_failed">Unable to publish the announcement.</string>
 </resources>

@@ -2,9 +2,11 @@ package com.android.festivar.ui.event
 
 // Co-authored-by: Copilot App
 
+import com.android.festivar.R
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.ui.event.details.EventDetailsViewModel
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlin.coroutines.cancellation.CancellationException
@@ -35,35 +37,39 @@ class EventDetailsViewModelTest {
     kotlinx.coroutines.Dispatchers.resetMain()
   }
 
+  /** Red if the ViewModel does not load the event identified by its constructor argument. */
   @Test
-  fun fetchEventLoadsEventWithRequestedId() = runTest {
+  fun fetchEventLoadsEvent() = runTest {
     val event = testEvent("event-1")
-    val viewModel = EventDetailsViewModel(EventsRepositoryLocal(listOf(event)))
+    val viewModel = EventDetailsViewModel(EventsRepositoryLocal(listOf(event)), event.eventId)
+    viewModel.fetchEvent()
 
-    viewModel.fetchEvent(event.eventId)
     advanceUntilIdle()
 
     assertEquals(event, viewModel.uiState.value.event)
   }
 
+  /** Red if a repository failure does not expose the event fetch error resource. */
   @Test
-  fun fetchEventSilentlyKeepsEventNullWhenRepositoryFails() = runTest {
+  fun fetchEventReportsErrorWhenRepositoryFails() = runTest {
     val viewModel =
         EventDetailsViewModel(
             object : EventsRepository by EventsRepositoryLocal() {
               override suspend fun getEvent(eventId: String): Event {
                 throw IllegalStateException("fetch failed")
               }
-            }
+            },
+            eventId = "missing",
         )
 
-    viewModel.fetchEvent("missing")
+    viewModel.fetchEvent()
     advanceUntilIdle()
 
     assertNull(viewModel.uiState.value.event)
-    assertEquals(true, viewModel.uiState.value.errorFetch)
+    assertEquals(R.string.event_details_fetch_error, viewModel.uiState.value.errorMsg)
   }
 
+  /** Red if a failed reload leaves stale event data visible. */
   @Test
   fun failedRefetchClearsPreviouslyLoadedEvent() = runTest {
     var shouldFail = false
@@ -75,18 +81,19 @@ class EventDetailsViewModelTest {
             return event
           }
         }
-    val viewModel = EventDetailsViewModel(repository)
+    val viewModel = EventDetailsViewModel(repository, event.eventId)
 
-    viewModel.fetchEvent(event.eventId)
+    viewModel.fetchEvent()
     advanceUntilIdle()
     shouldFail = true
-    viewModel.fetchEvent(event.eventId)
+    viewModel.fetchEvent()
     advanceUntilIdle()
 
     assertNull(viewModel.uiState.value.event)
-    assertEquals(true, viewModel.uiState.value.errorFetch)
+    assertEquals(R.string.event_details_fetch_error, viewModel.uiState.value.errorMsg)
   }
 
+  /** Red if a successful reload does not clear the previous fetch error. */
   @Test
   fun successfulRefetchClearsPreviousError() = runTest {
     var shouldFail = true
@@ -98,18 +105,21 @@ class EventDetailsViewModelTest {
             return event
           }
         }
-    val viewModel = EventDetailsViewModel(repository)
+    val viewModel = EventDetailsViewModel(repository, event.eventId)
+    viewModel.fetchEvent()
 
-    viewModel.fetchEvent(event.eventId)
     advanceUntilIdle()
+    assertEquals(R.string.event_details_fetch_error, viewModel.uiState.value.errorMsg)
+
     shouldFail = false
-    viewModel.fetchEvent(event.eventId)
+    viewModel.fetchEvent()
     advanceUntilIdle()
 
     assertEquals(event, viewModel.uiState.value.event)
-    assertEquals(false, viewModel.uiState.value.errorFetch)
+    assertNull(viewModel.uiState.value.errorMsg)
   }
 
+  /** Red if cancellation is incorrectly converted into a user-facing fetch error. */
   @Test
   fun fetchEventDoesNotConvertCancellationExceptionIntoFetchError() = runTest {
     val viewModel =
@@ -118,14 +128,14 @@ class EventDetailsViewModelTest {
               override suspend fun getEvent(eventId: String): Event {
                 throw CancellationException("fetch cancelled")
               }
-            }
+            },
+            eventId = "event-1",
         )
-
-    viewModel.fetchEvent("event-1")
+    viewModel.fetchEvent()
     advanceUntilIdle()
 
     assertNull(viewModel.uiState.value.event)
-    assertEquals(false, viewModel.uiState.value.errorFetch)
+    assertNull(viewModel.uiState.value.errorMsg)
   }
 
   private fun testEvent(eventId: String): Event {
