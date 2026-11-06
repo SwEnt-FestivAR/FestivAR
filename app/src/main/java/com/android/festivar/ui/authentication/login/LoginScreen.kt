@@ -195,50 +195,15 @@ private fun LoginScreenContent(
 
     Spacer(modifier = Modifier.height(20.dp))
 
-    FestivarTextField(
-        value = uiState.email,
-        onValueChange = onEmailChange,
-        label = stringResource(R.string.signup_email),
-        modifier = Modifier.fillMaxWidth().testTag(LoginScreenTestTags.EMAIL_INPUT),
-        keyboardOptions =
-            KeyboardOptions(
-                capitalization = KeyboardCapitalization.None,
-                keyboardType = KeyboardType.Email,
-                imeAction = ImeAction.Next,
-            ),
-    )
-    FestivarTextField(
-        value = uiState.password,
-        onValueChange = onPasswordChange,
-        label = stringResource(R.string.signup_password),
-        modifier = Modifier.fillMaxWidth().testTag(LoginScreenTestTags.PASSWORD_INPUT),
-        keyboardOptions =
-            KeyboardOptions(
-                capitalization = KeyboardCapitalization.None,
-                keyboardType = KeyboardType.Password,
-                imeAction = ImeAction.Done,
-            ),
-        keyboardActions = KeyboardActions(onDone = { onLoginClick() }),
-        singleLine = true,
-        visualTransformation =
-            if (uiState.isPasswordVisible) {
-              VisualTransformation.None
-            } else {
-              PasswordVisualTransformation()
-            },
-        trailingIcon = {
-          IconButton(onClick = onTogglePasswordVisibility) {
-            Icon(
-                imageVector =
-                    if (uiState.isPasswordVisible) Icons.Default.Visibility
-                    else Icons.Default.VisibilityOff,
-                contentDescription =
-                    if (uiState.isPasswordVisible) stringResource(R.string.signup_hide_password)
-                    else stringResource(R.string.signup_show_password),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-          }
-        },
+    EmailLoginForm(
+        email = uiState.email,
+        password = uiState.password,
+        isLoading = uiState.isLoading,
+        isPasswordVisible = uiState.isPasswordVisible,
+        onEmailChange = onEmailChange,
+        onPasswordChange = onPasswordChange,
+        onLoginClick = onLoginClick,
+        onTogglePasswordVisibility = onTogglePasswordVisibility,
     )
 
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -247,29 +212,6 @@ private fun LoginScreenContent(
             text = stringResource(R.string.login_forgot_password),
             color = MaterialTheme.colorScheme.onPrimaryContainer,
             style = MaterialTheme.typography.labelSmall,
-        )
-      }
-    }
-
-    Button(
-        onClick = onLoginClick,
-        enabled = !uiState.isLoading,
-        shape = RoundedCornerShape(16.dp),
-        contentPadding = PaddingValues(0.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-        modifier = Modifier.fillMaxWidth().height(44.dp).testTag(LoginScreenTestTags.LOGIN_BUTTON),
-    ) {
-      if (uiState.isLoading) {
-        CircularProgressIndicator(
-            modifier = Modifier.size(16.dp),
-            color = MaterialTheme.colorScheme.onPrimary,
-            strokeWidth = 2.dp,
-        )
-      } else {
-        Text(
-            text = stringResource(R.string.signup_sign_in),
-            color = MaterialTheme.colorScheme.onPrimary,
-            style = MaterialTheme.typography.labelLarge,
         )
       }
     }
@@ -314,6 +256,89 @@ private fun LoginScreenContent(
             text = stringResource(R.string.signup_title),
             color = MaterialTheme.colorScheme.onPrimaryContainer,
             style = MaterialTheme.typography.labelMedium,
+        )
+      }
+    }
+  }
+}
+
+@Composable
+fun EmailLoginForm(
+    email: String,
+    password: String,
+    isLoading: Boolean,
+    isPasswordVisible: Boolean,
+    onEmailChange: (String) -> Unit,
+    onPasswordChange: (String) -> Unit,
+    onLoginClick: () -> Unit,
+    onTogglePasswordVisibility: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+  Column(
+      modifier = modifier,
+      verticalArrangement = Arrangement.spacedBy(12.dp),
+  ) {
+    FestivarTextField(
+        value = email,
+        onValueChange = onEmailChange,
+        label = stringResource(R.string.signup_email),
+        modifier = Modifier.fillMaxWidth().testTag(LoginScreenTestTags.EMAIL_INPUT),
+        keyboardOptions =
+            KeyboardOptions(
+                capitalization = KeyboardCapitalization.None,
+                keyboardType = KeyboardType.Email,
+                imeAction = ImeAction.Next,
+            ),
+    )
+    FestivarTextField(
+        value = password,
+        onValueChange = onPasswordChange,
+        label = stringResource(R.string.signup_password),
+        modifier = Modifier.fillMaxWidth().testTag(LoginScreenTestTags.PASSWORD_INPUT),
+        keyboardOptions =
+            KeyboardOptions(
+                capitalization = KeyboardCapitalization.None,
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Done,
+            ),
+        keyboardActions = KeyboardActions(onDone = { onLoginClick() }),
+        singleLine = true,
+        visualTransformation =
+            if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+        trailingIcon = {
+          IconButton(onClick = onTogglePasswordVisibility) {
+            Icon(
+                imageVector =
+                    if (isPasswordVisible) Icons.Default.Visibility
+                    else Icons.Default.VisibilityOff,
+                contentDescription =
+                    if (isPasswordVisible) stringResource(R.string.signup_hide_password)
+                    else stringResource(R.string.signup_show_password),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+          }
+        },
+    )
+
+    Button(
+        onClick = onLoginClick,
+        enabled = !isLoading,
+        shape = RoundedCornerShape(16.dp),
+        contentPadding = PaddingValues(vertical = 12.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+        modifier = Modifier.fillMaxWidth().height(44.dp).testTag(LoginScreenTestTags.LOGIN_BUTTON),
+    ) {
+      if (isLoading) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(16.dp),
+            color = MaterialTheme.colorScheme.onPrimary,
+            strokeWidth = 2.dp,
+        )
+      } else {
+        Text(
+            text = stringResource(R.string.signup_sign_in),
+            color = MaterialTheme.colorScheme.onPrimary,
+            style = MaterialTheme.typography.labelLarge,
         )
       }
     }
