@@ -72,29 +72,6 @@ internal fun VoiceNoteRecordingPreview() {
 
 @Preview(showBackground = true)
 @Composable
-internal fun VoiceNoteRecordingLockedPreview() {
-  VoiceNotePreviewScreen(
-      VoiceNoteUiState(
-          canManage = true,
-          recorder = RecorderState.Recording(Duration.ofSeconds(7)),
-          recordLocked = true,
-      )
-  )
-}
-
-@Preview(showBackground = true)
-@Composable
-internal fun VoiceNoteRecordingPausedPreview() {
-  VoiceNotePreviewScreen(
-      VoiceNoteUiState(
-          canManage = true,
-          recorder = RecorderState.Recording(Duration.ofSeconds(7), isPaused = true),
-      )
-  )
-}
-
-@Preview(showBackground = true)
-@Composable
 internal fun VoiceNoteRecordingFailedPreview() {
   VoiceNotePreviewScreen(VoiceNoteUiState(canManage = true, recorder = RecorderState.Failed))
 }

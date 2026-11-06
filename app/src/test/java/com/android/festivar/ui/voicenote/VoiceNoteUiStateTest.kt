@@ -109,9 +109,6 @@ class VoiceNoteUiStateTest {
             onRecordStart = { calls += "start" },
             onRecordRelease = { calls += "release" },
             onRecordCancel = { calls += "cancel" },
-            onRecordLock = { calls += "lock" },
-            onRecordPause = { calls += "pause" },
-            onRecordResume = { calls += "resume" },
             onRetry = { calls += "retry" },
             onOpenSettings = { calls += "settings" },
         )
@@ -124,9 +121,6 @@ class VoiceNoteUiStateTest {
       onRecordStart()
       onRecordRelease()
       onRecordCancel()
-      onRecordLock()
-      onRecordPause()
-      onRecordResume()
       onRetry()
       onOpenSettings()
     }
@@ -140,9 +134,6 @@ class VoiceNoteUiStateTest {
             "start",
             "release",
             "cancel",
-            "lock",
-            "pause",
-            "resume",
             "retry",
             "settings",
         ),
@@ -160,42 +151,9 @@ class VoiceNoteUiStateTest {
       onRecordStart()
       onRecordRelease()
       onRecordCancel()
-      onRecordLock()
-      onRecordPause()
-      onRecordResume()
       onRetry()
       onOpenSettings()
     }
-  }
-
-  /**
-   * Breaks if the controls show without a recording, or do not show once it is locked or paused.
-   */
-  @Test
-  fun recordControlsShowForALockedOrPausedRecording() {
-    val recording = RecorderState.Recording(Duration.ofSeconds(3))
-    val paused = RecorderState.Recording(Duration.ofSeconds(3), isPaused = true)
-
-    assertFalse(VoiceNoteUiState(recorder = recording).showRecordControls)
-    assertTrue(VoiceNoteUiState(recorder = recording, recordLocked = true).showRecordControls)
-    assertTrue(VoiceNoteUiState(recorder = paused).showRecordControls)
-    // A lock left over from a recording that ended does not show the controls.
-    assertFalse(VoiceNoteUiState(recordLocked = true).showRecordControls)
-    assertFalse(
-        VoiceNoteUiState(recorder = RecorderState.Failed, recordLocked = true).showRecordControls
-    )
-  }
-
-  /** Breaks if isPaused reports a pause for a recording that runs or for no recording. */
-  @Test
-  fun isPausedOnlyForAPausedRecording() {
-    assertTrue(
-        VoiceNoteUiState(recorder = RecorderState.Recording(Duration.ofSeconds(3), true)).isPaused
-    )
-    assertFalse(
-        VoiceNoteUiState(recorder = RecorderState.Recording(Duration.ofSeconds(3))).isPaused
-    )
-    assertFalse(VoiceNoteUiState().isPaused)
   }
 
   @Test

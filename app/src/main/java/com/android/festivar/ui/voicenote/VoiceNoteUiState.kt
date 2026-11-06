@@ -18,9 +18,6 @@ import java.time.Duration
  *   while it was made is not a flag: it is [RecorderState.Failed], read by [recordingFailed].)
  * @property micDenied Whether the microphone permission is refused, so the user cannot record.
  * @property showDeleteConfirm Whether the dialog asking to confirm the deletion is open.
- * @property recordLocked Whether the owner slid up while holding the record button, so the
- *   recording goes on without the finger and the bar shows its controls (cancel, pause, send). A
- *   paused recording shows them too, locked or not.
  *
  * There is no `errorMsg` on purpose. The errors are a closed set that call for different actions
  * (retry the sending, retry the playback, open the settings), so the state names them with flags,
@@ -35,7 +32,6 @@ data class VoiceNoteUiState(
     val sendFailed: Boolean = false,
     val micDenied: Boolean = false,
     val showDeleteConfirm: Boolean = false,
-    val recordLocked: Boolean = false,
 ) {
   /**
    * Whether the section has something to show: a note to everybody, or the empty state to the
@@ -66,17 +62,6 @@ data class VoiceNoteUiState(
    */
   val isRecording: Boolean
     get() = recorder is RecorderState.Recording
-
-  /** Whether the recording is paused. Only a recording can be paused. */
-  val isPaused: Boolean
-    get() = (recorder as? RecorderState.Recording)?.isPaused == true
-
-  /**
-   * Whether the bar shows the controls of a recording (cancel, pause or resume, send) instead of
-   * the hold-to-record button: while the recording is locked or paused.
-   */
-  val showRecordControls: Boolean
-    get() = isRecording && (recordLocked || isPaused)
 
   /** The time recorded so far, zero when not recording. */
   val elapsed: Duration
@@ -120,20 +105,10 @@ class VoiceNoteCallbacks(
     val onDismissDelete: () -> Unit,
     /** The owner presses the record button. */
     val onRecordStart: () -> Unit,
-    /** The owner releases the button, or taps Send in the controls: the recording is sent. */
+    /** The owner releases the button: the recording is sent. */
     val onRecordRelease: () -> Unit,
-    /**
-     * The owner slides left and releases, or taps Cancel in the controls: the recording is dropped.
-     */
+    /** The owner slides left and releases: the recording is dropped. */
     val onRecordCancel: () -> Unit,
-    /**
-     * The owner slides up while holding: the recording is locked and goes on without the finger.
-     */
-    val onRecordLock: () -> Unit,
-    /** The owner taps Pause in the controls of a locked recording. */
-    val onRecordPause: () -> Unit,
-    /** The owner taps Resume in the controls of a paused recording. */
-    val onRecordResume: () -> Unit,
     /** Tries again the last failed action (sending or playing). */
     val onRetry: () -> Unit,
     /** Opens the settings of the app to turn the microphone on. */
@@ -150,9 +125,6 @@ class VoiceNoteCallbacks(
             onRecordStart = {},
             onRecordRelease = {},
             onRecordCancel = {},
-            onRecordLock = {},
-            onRecordPause = {},
-            onRecordResume = {},
             onRetry = {},
             onOpenSettings = {},
         )

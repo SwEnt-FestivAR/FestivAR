@@ -54,9 +54,6 @@ class VoiceNoteContentTest {
           onRecordStart = { events += "start" },
           onRecordRelease = { events += "release" },
           onRecordCancel = { events += "cancel" },
-          onRecordLock = { events += "lock" },
-          onRecordPause = { events += "pause" },
-          onRecordResume = { events += "resume" },
           onRetry = { events += "retry" },
           onOpenSettings = { events += "settings" },
       )
@@ -173,79 +170,6 @@ class VoiceNoteContentTest {
       up()
     }
     assertEquals(listOf("start", "cancel"), events)
-  }
-
-  @Test
-  fun slideUpLocksTheRecordingAndReleaseDoesNotSend() {
-    show(VoiceNoteUiState(canManage = true))
-    tag(VoiceNoteTestTags.VOICE_NOTE_RECORD).performTouchInput {
-      down(center)
-      moveBy(Offset(0f, -400f))
-      up()
-    }
-    assertEquals(listOf("start", "lock"), events)
-  }
-
-  @Test
-  fun lockedRecordingShowsTheControlsInPlaceOfTheRecordButton() {
-    show(
-        VoiceNoteUiState(
-            canManage = true,
-            recorder = RecorderState.Recording(Duration.ofSeconds(7)),
-            recordLocked = true,
-        )
-    )
-    composeTestRule.onNodeWithText("Recording 0:07").assertIsDisplayed()
-    tag(VoiceNoteTestTags.RECORDING_HINT).assertDoesNotExist()
-    tag(VoiceNoteTestTags.VOICE_NOTE_CANCEL).assertIsDisplayed()
-    tag(VoiceNoteTestTags.VOICE_NOTE_PAUSE).assertIsDisplayed()
-    tag(VoiceNoteTestTags.VOICE_NOTE_SEND).assertIsDisplayed()
-    tag(VoiceNoteTestTags.VOICE_NOTE_RESUME).assertDoesNotExist()
-    tag(VoiceNoteTestTags.VOICE_NOTE_RECORD).assertDoesNotExist()
-  }
-
-  @Test
-  fun pausedRecordingShowsResumeAndKeepsTheTime() {
-    show(
-        VoiceNoteUiState(
-            canManage = true,
-            recorder = RecorderState.Recording(Duration.ofSeconds(7), isPaused = true),
-        )
-    )
-    composeTestRule.onNodeWithText("Paused 0:07").assertIsDisplayed()
-    tag(VoiceNoteTestTags.RECORDING_HINT).assertDoesNotExist()
-    tag(VoiceNoteTestTags.VOICE_NOTE_CANCEL).assertIsDisplayed()
-    tag(VoiceNoteTestTags.VOICE_NOTE_SEND).assertIsDisplayed()
-    tag(VoiceNoteTestTags.VOICE_NOTE_RESUME).assertIsDisplayed()
-    tag(VoiceNoteTestTags.VOICE_NOTE_PAUSE).assertDoesNotExist()
-    tag(VoiceNoteTestTags.VOICE_NOTE_RECORD).assertDoesNotExist()
-  }
-
-  @Test
-  fun controlsCallTheirCallbacks() {
-    show(
-        VoiceNoteUiState(
-            canManage = true,
-            recorder = RecorderState.Recording(Duration.ofSeconds(7)),
-            recordLocked = true,
-        )
-    )
-    tag(VoiceNoteTestTags.VOICE_NOTE_PAUSE).performClick()
-    tag(VoiceNoteTestTags.VOICE_NOTE_SEND).performClick()
-    tag(VoiceNoteTestTags.VOICE_NOTE_CANCEL).performClick()
-    assertEquals(listOf("pause", "release", "cancel"), events)
-  }
-
-  @Test
-  fun resumeCallsItsCallback() {
-    show(
-        VoiceNoteUiState(
-            canManage = true,
-            recorder = RecorderState.Recording(Duration.ofSeconds(7), isPaused = true),
-        )
-    )
-    tag(VoiceNoteTestTags.VOICE_NOTE_RESUME).performClick()
-    assertEquals(listOf("resume"), events)
   }
 
   @Test
