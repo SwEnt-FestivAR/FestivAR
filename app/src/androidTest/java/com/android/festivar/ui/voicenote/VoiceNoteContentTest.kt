@@ -149,9 +149,9 @@ class VoiceNoteContentTest {
             recorder = RecorderState.Recording(Duration.ofSeconds(3)),
         )
     )
-    composeTestRule.onNodeWithText("Recording 0:03 · Release to send").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Recording 0:03 · Release to stop").assertIsDisplayed()
     tag(VoiceNoteTestTags.RECORDING_HINT)
-        .assertTextContains("Release to send. Slide left to cancel.")
+        .assertTextContains("Release to stop. Slide left to cancel.")
     tag(VoiceNoteTestTags.RECORDING_BAR).assertIsDisplayed()
   }
 
