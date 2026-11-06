@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored by Copilot
 package com.android.festivar.ui.profile
 
 import com.android.festivar.R
@@ -647,6 +648,32 @@ class ProfileViewModelTest {
 
     viewModel.updateEmail("sara@epfl.ch")
     viewModel.updatePassword("wrongpassword")
+    viewModel.upgradeWithEmail()
+    advanceUntilIdle()
+
+    assertEquals(R.string.profile_anon_upgrade_failed, viewModel.uiState.value.errorMsg)
+    assertFalse(viewModel.uiState.value.isLoading)
+  }
+
+  @Test
+  fun upgradeWithEmailThrownExceptionShowsError() = runTest {
+    val firebaseUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+    val authRepo =
+        object : FakeAuthRepository() {
+          override val currentUser = firebaseUser
+
+          override suspend fun signUpWithEmailAndPassword(
+              email: String,
+              password: String,
+          ): Result<FirebaseUser> {
+            throw RuntimeException("Network down")
+          }
+        }
+    val viewModel = ProfileViewModel(RecordingUsersRepository(listOf(sara)), authRepo, sara.uid)
+    advanceUntilIdle()
+
+    viewModel.updateEmail("sara@epfl.ch")
+    viewModel.updatePassword("secret123")
     viewModel.upgradeWithEmail()
     advanceUntilIdle()
 
