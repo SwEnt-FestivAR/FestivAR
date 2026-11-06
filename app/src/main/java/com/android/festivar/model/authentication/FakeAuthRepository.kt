@@ -1,3 +1,4 @@
+// Co-authored-by: Gemini
 package com.android.festivar.model.authentication
 
 import androidx.credentials.Credential
