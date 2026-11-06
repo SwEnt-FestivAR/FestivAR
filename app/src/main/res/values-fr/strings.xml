@@ -1,0 +1,73 @@
+<!-- Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com> -->
+<!-- Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com> -->
+<resources>
+
+
+
+    <!-- Common actions -->
+
+    <string name="action_cancel">Annuler</string>
+    <string name="action_retry">Réessayer</string>
+    <string name="action_open_settings">Ouvrir les paramètres</string>
+    <!-- Samples shown in the previews of the shared components -->
+    <string name="action_continue_anyway">Continuer</string>
+    <string name="notice_snackbar_sample_message">Erreur dans le processus lancé.</string>
+    <string name="info_note_sample_message">Le microphone de FestivAR est désactivé. Activez-le dans les paramètres pour enregistrer une note.</string>
+    <string name="discard_message">Votre saisie sera perdue.</string>
+    <string name="discard_confirm">Abandonner</string>
+    <string name="discard_keep">Continuer la modification</string>
+    <!-- Create task screen -->
+    <string name="create_task">Créer une tâche</string>
+    <string name="create_task_back">Retour</string>
+    <string name="create_task_field_title">Titre</string>
+    <string name="create_task_field_description">Description, facultative</string>
+    <string name="create_task_field_location">Lieu</string>
+    <string name="create_task_field_start_date">Date de début</string>
+    <string name="create_task_field_start_time">Heure de début</string>
+    <string name="create_task_field_end_date">Date de fin</string>
+    <string name="create_task_field_end_time">Heure de fin</string>
+    <string name="create_task_field_max_assign">Personnes nécessaires</string>
+    <string name="create_task_max_assign_decrease">Moins de personnes</string>
+    <string name="create_task_max_assign_increase">Plus de personnes</string>
+    <string name="create_task_field_estimated_time">Durée estimée (minutes)</string>
+    <string name="create_task_field_priority">Priorité</string>
+    <string name="field_error_empty_title">Donnez un titre à la tâche</string>
+    <string name="field_error_missing_date">Choisissez une date pour cette heure</string>
+    <string name="field_error_end_before_start">La fin précède le début</string>
+    <string name="field_error_invalid_estimated_time">Saisissez au moins 1 minute</string>
+    <string name="field_error_empty_event_name">Donnez un nom à l’événement</string>
+    <string name="field_error_empty_announcement_title">Donnez un titre à l’annonce</string>
+    <string name="field_error_empty_announcement_content">Rédigez l’annonce</string>
+    <string name="field_error_outdated">Déjà terminé</string>
+    <string name="field_error_too_few_slots">Moins de personnes que celles déjà assignées</string>
+    <string name="priority_none">Aucune</string>
+    <string name="priority_low">Faible</string>
+    <string name="priority_medium">Moyenne</string>
+    <string name="priority_high">Élevée</string>
+    <string name="priority_urgent">Urgente</string>
+    <string name="create_task_discard_title">Abandonner cette tâche ?</string>
+    <string name="create_task_error_save_failed">Impossible de créer la tâche.</string>
+    <!-- Join event screen -->
+    <string name="join_event_back">Retour</string>
+    <string name="join_event_title">Rejoindre par code</string>
+    <string name="join_event_subtitle">Saisissez le code à six caractères partagé par l’organisateur.</string>
+    <string name="join_event_not_found">Aucun événement ne correspond à ce code.</string>
+    <string name="join_event_lookup_failed">Impossible de rechercher le code. Réessayez.</string>
+    <string name="join_event_join_failed">Impossible de rejoindre l’événement. Réessayez.</string>
+    <string name="join_event_open_failed">Impossible d’ouvrir l’événement. Réessayez.</string>
+    <string name="join_event_several">Plusieurs événements partagent ce code. Choisissez le vôtre.</string>
+    <string name="join_event_join">Rejoindre comme bénévole</string>
+    <string name="join_event_open">Ouvrir l’événement</string>
+    <string name="join_event_already_member">Vous participez déjà à cet événement.</string>
+    <string name="join_event_code_field">Code de participation</string>
+    <string name="join_event_code_cell">Caractère %1$d du code</string>
+    <string name="join_event_code_empty">Le code est vide</string>
+    <string name="join_event_code_so_far">Code saisi : %1$s</string>
+
+    <plurals name="join_event_members">
+        <item quantity="one">%d membre</item>
+        <item quantity="other">%d membres</item>
+        <item quantity="many">%d membres</item>
+    </plurals>
+    <string name="action_continue">Continuer</string>
+</resources>

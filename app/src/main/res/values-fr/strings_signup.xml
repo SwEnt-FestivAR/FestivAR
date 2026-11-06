@@ -1,0 +1,20 @@
+<resources>
+
+    <string name="signup_back">Retour</string>
+    <string name="signup_title">Créer un compte</string>
+    <string name="signup_description">Votre organisateur vous ajoute à un événement par code une fois inscrit.</string>
+
+    <string name="signup_password">Mot de passe</string>
+    <string name="signup_confirm_password">Confirmer le mot de passe</string>
+    <string name="signup_passwords_do_not_match">Les mots de passe ne correspondent pas</string>
+    <string name="signup_password_hint">8 caractères ou plus.</string>
+    <string name="signup_hide_password">Masquer le mot de passe</string>
+    <string name="signup_show_password">Afficher le mot de passe</string>
+    <string name="signup_hide_confirmation_password">Masquer la confirmation du mot de passe</string>
+    <string name="signup_show_confirmation_password">Afficher la confirmation du mot de passe</string>
+    <string name="signup_signing_up">Inscription…</string>
+    <string name="signup_create_account">Créer un compte</string>
+    <string name="signup_terms">En continuant, vous acceptez les conditions et la politique de confidentialité. Votre numéro de téléphone, si vous l’ajoutez plus tard, est uniquement visible par les organisateurs.</string>
+    <string name="signup_already_have_account">Vous avez déjà un compte ?</string>
+    <string name="signup_sign_in">Se connecter</string>
+</resources>

@@ -1,0 +1,18 @@
+<!-- Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com> -->
+<resources>
+    <string name="profile_title">Profil</string>
+    <string name="profile_back">Retour</string>
+    <string name="profile_field_surname">Nom de famille</string>
+    <string name="profile_field_name">Prénom</string>
+    <string name="profile_save">Enregistrer les modifications</string>
+    <string name="profile_sign_out">Se déconnecter</string>
+    <string name="profile_retry">Réessayer</string>
+    <string name="profile_load_failed">Impossible de charger votre profil.</string>
+    <string name="profile_save_failed">Impossible de mettre à jour votre profil.</string>
+    <string name="profile_sign_out_failed">Impossible de se déconnecter.</string>
+    <string name="profile_invalid_name_chars">Utilisez au moins une lettre, et uniquement des lettres, espaces, traits d’union et apostrophes.</string>
+    <string name="profile_anon_upgrade">Passez à un compte complet</string>
+    <string name="profile_upgrade">Valider</string>
+    <string name="profile_anon_sign_out_warning">Ce compte va être perdu si vous vous déconnectez.</string>
+    <string name="profile_anon_upgrade_failed">Impossible de changer le compte.</string>
+</resources>
