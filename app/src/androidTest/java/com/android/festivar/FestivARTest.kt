@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryFirebase
 import com.android.festivar.ui.authentication.login.LoginScreenTestTags
 import com.android.festivar.ui.authentication.signup.SignUpScreenTestTags
 import io.mockk.mockk
@@ -23,7 +24,7 @@ class FestivARTest {
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk(relaxed = true),
-          authRepository = authRepository,
+          dataRepository = DataRepositoryFirebase(authRepository = authRepository),
       )
     }
     composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()

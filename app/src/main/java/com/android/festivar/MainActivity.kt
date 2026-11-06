@@ -20,8 +20,8 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.credentials.CredentialManager
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
-import com.android.festivar.model.authentication.AuthRepository
-import com.android.festivar.model.authentication.AuthRepositoryFirebase
+import com.android.festivar.model.datarepository.DataRepository
+import com.android.festivar.model.datarepository.DataRepositoryFirebase
 import com.android.festivar.navigation.AppScreens
 import com.android.festivar.navigation.announcement.announcementGraph
 import com.android.festivar.navigation.authentication.authGraph
@@ -54,25 +54,25 @@ class MainActivity : ComponentActivity() {
 fun FestivAR(
     context: Context = LocalContext.current,
     credentialManager: CredentialManager = CredentialManager.create(context),
-    authRepository: AuthRepository = remember { AuthRepositoryFirebase() },
+    dataRepository: DataRepository = remember { DataRepositoryFirebase() },
     startDestinationOverride: String? = null,
 ) {
   val navController = rememberNavController()
 
   val startDestination =
       startDestinationOverride
-          ?: if (authRepository.currentUser != null) AppScreens.EventsOverview.name
+          ?: if (dataRepository.authRepository.currentUser != null) AppScreens.EventsOverview.name
           else AppScreens.Login.name
 
   NavHost(
       navController = navController,
       startDestination = startDestination,
   ) {
-    authGraph(navController, credentialManager, authRepository)
-    eventGraph(navController, authRepository)
-    taskGraph(navController, authRepository)
-    announcementGraph(navController, authRepository)
-    profileGraph(navController, authRepository)
+    authGraph(navController, credentialManager, dataRepository)
+    eventGraph(navController, dataRepository)
+    taskGraph(navController, dataRepository)
+    announcementGraph(navController, dataRepository)
+    profileGraph(navController, dataRepository)
   }
 }
 
