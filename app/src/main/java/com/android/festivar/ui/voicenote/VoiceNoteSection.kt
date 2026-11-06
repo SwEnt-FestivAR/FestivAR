@@ -23,12 +23,33 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
+import com.android.festivar.model.audio.PlayerState
 import com.android.festivar.model.voicenote.VoiceNote
 import com.android.festivar.ui.components.FestivarConfirmDialog
 import com.android.festivar.ui.components.SectionLabel
 import com.android.festivar.ui.components.formatTime
+import com.android.festivar.ui.theme.AppTheme
+import java.time.Duration
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
+
+/**
+ * Test tags of the voice note section and of its player, named after the tags of the "Voice notes"
+ * frames in Figma.
+ */
+object VoiceNoteTestTags {
+  const val VOICE_NOTE_AUTHOR = "voiceNoteAuthor"
+  const val VOICE_NOTE_PLAY = "voiceNotePlay"
+  const val VOICE_NOTE_DURATION = "voiceNoteDuration"
+  const val VOICE_NOTE_DELETE = "voiceNoteDelete"
+  const val VOICE_NOTE_EMPTY = "voiceNoteEmpty"
+  const val CONFIRM_DELETE = "voiceNoteConfirmDelete"
+  const val KEEP_BUTTON = "voiceNoteKeep"
+  const val CONFIRM_DELETE_BUTTON = "voiceNoteConfirmDeleteButton"
+}
 
 /**
  * The voice note section of a task, for the owner and for the volunteers: the label, then the note
@@ -143,4 +164,62 @@ private fun EmptyVoiceNote() {
       }
     }
   }
+}
+
+private val previewNote =
+    VoiceNote(
+        id = "n1",
+        audioUrl = "https://example.com/n1.m4a",
+        duration = Duration.ofSeconds(14),
+        createdAt = ZonedDateTime.of(2026, 10, 17, 9, 12, 0, 0, ZoneOffset.UTC),
+    )
+
+private val callbacks = VoiceNoteCallbacks.NoOp
+
+/** The section as on the screen, in its scrolling column. */
+@Composable
+private fun VoiceNotePreviewScreen(state: VoiceNoteUiState) {
+  AppTheme {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+      VoiceNoteSection(state, callbacks)
+    }
+  }
+}
+
+@Preview(showBackground = true)
+@Composable
+internal fun VoiceNoteOwnerPreview() {
+  VoiceNotePreviewScreen(VoiceNoteUiState(note = previewNote, canManage = true))
+}
+
+@Preview(showBackground = true)
+@Composable
+internal fun VoiceNoteOwnerPlayingPreview() {
+  VoiceNotePreviewScreen(
+      VoiceNoteUiState(
+          note = previewNote,
+          canManage = true,
+          player = PlayerState.Playing(previewNote.audioUrl),
+      )
+  )
+}
+
+@Preview(showBackground = true)
+@Composable
+internal fun VoiceNoteEmptyPreview() {
+  VoiceNotePreviewScreen(VoiceNoteUiState(canManage = true))
+}
+
+@Preview(showBackground = true)
+@Composable
+internal fun VoiceNoteDeleteConfirmPreview() {
+  VoiceNotePreviewScreen(
+      VoiceNoteUiState(note = previewNote, canManage = true, showDeleteConfirm = true)
+  )
+}
+
+@Preview(showBackground = true)
+@Composable
+internal fun VoiceNoteVolunteerPreview() {
+  VoiceNotePreviewScreen(VoiceNoteUiState(note = previewNote))
 }
