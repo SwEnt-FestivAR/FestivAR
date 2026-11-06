@@ -68,11 +68,11 @@ fun FestivAR(
       navController = navController,
       startDestination = startDestination,
   ) {
-    authGraph(navController, credentialManager, dataRepository.authRepository)
-    eventGraph(navController, dataRepository.authRepository)
-    taskGraph(navController, dataRepository.authRepository)
-    announcementGraph(navController, dataRepository.authRepository)
-    profileGraph(navController, dataRepository.authRepository)
+    authGraph(navController, credentialManager, dataRepository)
+    eventGraph(navController, dataRepository)
+    taskGraph(navController, dataRepository)
+    announcementGraph(navController, dataRepository)
+    profileGraph(navController, dataRepository)
   }
 }
 
