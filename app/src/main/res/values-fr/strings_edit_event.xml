@@ -1,0 +1,5 @@
+<!-- Co-authored-by: Copilot App -->
+<resources>
+    <string name="edit_event_error_fetch_failed">Impossible de charger l’événement.</string>
+    <string name="edit_event_error_save_failed">Impossible d’enregistrer les modifications de l’événement.</string>
+</resources>
