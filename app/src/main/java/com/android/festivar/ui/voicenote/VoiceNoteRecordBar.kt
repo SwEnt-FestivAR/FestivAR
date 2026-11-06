@@ -1,6 +1,7 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.voicenote
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -43,8 +44,10 @@ private const val CANCEL_DISTANCE_DP = 80
 
 /**
  * The record bar, fixed above the bottom of the screen. Only the owner of a task without a note
- * sees it: it is hidden otherwise. The owner holds the round button to record, releases it to send
- * and slides left before releasing to cancel. Without the microphone permission it is greyed out.
+ * sees it: it is hidden otherwise. The owner holds the round button to record, releases it to stop
+ * and slides left before releasing to cancel. The recording then waits for the owner to confirm:
+ * the bar shows it like a note, behind the dialog of the section. Without the microphone
+ * permission, and while the recording is sent, the bar is greyed out.
  */
 @Composable
 fun VoiceNoteRecordBar(
@@ -54,34 +57,52 @@ fun VoiceNoteRecordBar(
 ) {
   if (!state.showRecordBar) return
   FixedBottomBar(modifier) {
-    Row(
-        Modifier.fillMaxWidth()
-            .alpha(if (state.recordEnabled) 1f else 0.5f)
-            // The tag is before the padding so that the node is the whole 56dp bar of the design
-            // (a 48dp button with 4dp above and below), not only its content.
-            .testTag(VoiceNoteTestTags.RECORDING_BAR)
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
-            .padding(start = 20.dp, top = 4.dp, end = 8.dp, bottom = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-      Box(Modifier.weight(1f)) {
-        if (state.isRecording) {
-          RecordingIndicator(state)
-        } else {
-          Text(
-              stringResource(
-                  if (state.sending) R.string.voice_note_sending
-                  else R.string.voice_note_hold_to_record
-              ),
-              style = MaterialTheme.typography.bodyLarge,
-              color = MaterialTheme.colorScheme.onSurfaceVariant,
-          )
-        }
-      }
-      RecordButton(state.recordEnabled, callbacks)
+    val waiting = state.pending?.takeUnless { it.isUploading }
+    if (waiting != null) {
+      // Nothing to play yet: the recording is not uploaded, so the player is disabled.
+      VoiceNotePlayer(waiting.duration, false, null, Modifier.fillMaxWidth())
+    } else {
+      RecordPill(state, callbacks)
     }
   }
+}
+
+/** The pill with the label (hint, timer or sending) and the record button. */
+@Composable
+private fun RecordPill(state: VoiceNoteUiState, callbacks: VoiceNoteCallbacks) {
+  Row(
+      Modifier.fillMaxWidth()
+          .alpha(if (state.recordEnabled) 1f else 0.5f)
+          // The tag is before the padding so that the node is the whole 56dp bar of the design
+          // (a 48dp button with 4dp above and below), not only its content.
+          .testTag(VoiceNoteTestTags.RECORDING_BAR)
+          .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
+          .padding(start = 20.dp, top = 4.dp, end = 8.dp, bottom = 4.dp),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(12.dp),
+  ) {
+    Box(Modifier.weight(1f)) {
+      if (state.isRecording) RecordingIndicator(state) else IdleLabel(state)
+    }
+    RecordButton(state.recordEnabled, callbacks)
+  }
+}
+
+/** The label of the idle pill: "Hold to record", or the length of the recording being sent. */
+@Composable
+private fun IdleLabel(state: VoiceNoteUiState) {
+  val sending = state.pending?.takeIf { it.isUploading }
+  Text(
+      if (sending != null) {
+        stringResource(R.string.voice_note_sending, formatVoiceDuration(sending.duration))
+      } else {
+        stringResource(R.string.voice_note_hold_to_record)
+      },
+      style = MaterialTheme.typography.bodyLarge,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      modifier =
+          if (sending != null) Modifier.testTag(VoiceNoteTestTags.VOICE_NOTE_SENDING) else Modifier,
+  )
 }
 
 /** The red dot, the timer and the hint shown while recording. */
@@ -146,8 +167,8 @@ private fun RecordButton(enabled: Boolean, callbacks: VoiceNoteCallbacks) {
 }
 
 /**
- * The notices fixed just above the record bar: the failed send or playback (with a Retry), a
- * recording that failed by itself, and the information that the microphone is off (with a button to
+ * The notices fixed just above the record bar: the failed playback, send or recording (each with an
+ * action: Retry, Retry, Dismiss), and the information that the microphone is off (with a button to
  * the settings).
  */
 @Composable
@@ -162,28 +183,30 @@ fun VoiceNoteNotices(
       verticalArrangement = Arrangement.spacedBy(8.dp),
   ) {
     if (state.playbackFailed) {
-      NoticeSnackbar(
-          message = stringResource(R.string.voice_note_playback_failed),
-          actionLabel = stringResource(R.string.voice_note_retry),
-          onAction = callbacks.onRetry,
-          modifier = Modifier.testTag(VoiceNoteTestTags.PLAYBACK_ERROR),
-          actionModifier = Modifier.testTag(VoiceNoteTestTags.PLAYBACK_RETRY),
+      ErrorNotice(
+          R.string.voice_note_playback_failed,
+          R.string.voice_note_retry,
+          callbacks.onRetry,
+          VoiceNoteTestTags.PLAYBACK_ERROR,
+          VoiceNoteTestTags.PLAYBACK_RETRY,
       )
     }
     if (state.showRecordBar && state.sendFailed) {
-      NoticeSnackbar(
-          message = stringResource(R.string.voice_note_send_failed),
-          actionLabel = stringResource(R.string.voice_note_retry),
-          onAction = callbacks.onRetry,
-          modifier = Modifier.testTag(VoiceNoteTestTags.SEND_ERROR),
-          actionModifier = Modifier.testTag(VoiceNoteTestTags.SEND_RETRY),
+      ErrorNotice(
+          R.string.voice_note_send_failed,
+          R.string.voice_note_retry,
+          callbacks.onRetry,
+          VoiceNoteTestTags.SEND_ERROR,
+          VoiceNoteTestTags.SEND_RETRY,
       )
     }
     if (state.showRecordBar && state.recordingFailed) {
-      // No action: the owner tries again by holding the record button, which clears the notice.
-      InfoNote(
-          message = stringResource(R.string.voice_note_recording_failed),
-          modifier = Modifier.testTag(VoiceNoteTestTags.RECORDING_ERROR),
+      ErrorNotice(
+          R.string.voice_note_recording_failed,
+          R.string.voice_note_dismiss,
+          callbacks.onDismissRecordingFailed,
+          VoiceNoteTestTags.RECORDING_ERROR,
+          VoiceNoteTestTags.RECORDING_ERROR_DISMISS,
       )
     }
     if (state.showRecordBar && state.micDenied) {
@@ -203,4 +226,22 @@ fun VoiceNoteNotices(
       )
     }
   }
+}
+
+/** An error of the voice note, shown with the shared snackbar and the one [action] that fits it. */
+@Composable
+private fun ErrorNotice(
+    @StringRes message: Int,
+    @StringRes action: Int,
+    onAction: () -> Unit,
+    tag: String,
+    actionTag: String,
+) {
+  NoticeSnackbar(
+      message = stringResource(message),
+      actionLabel = stringResource(action),
+      onAction = onAction,
+      modifier = Modifier.testTag(tag),
+      actionModifier = Modifier.testTag(actionTag),
+  )
 }

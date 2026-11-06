@@ -1,24 +1,19 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.voicenote
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.DeleteOutline
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -50,6 +45,11 @@ object VoiceNoteTestTags {
   const val RECORDING_BAR = "voiceNoteRecordingBar"
   const val VOICE_NOTE_RECORD = "voiceNoteRecord"
   const val RECORDING_ERROR = "voiceNoteRecordingError"
+  const val RECORDING_ERROR_DISMISS = "voiceNoteRecordingErrorDismiss"
+  const val VOICE_NOTE_SENDING = "voiceNoteSending"
+  const val CONFIRM_SEND = "voiceNoteConfirmSend"
+  const val CANCEL_SEND_BUTTON = "voiceNoteCancelSendButton"
+  const val CONFIRM_SEND_BUTTON = "voiceNoteConfirmSendButton"
   const val SEND_ERROR = "voiceNoteSendError"
   const val SEND_RETRY = "voiceNoteSendRetry"
   const val MIC_DENIED = "voiceNoteMicDenied"
@@ -61,15 +61,53 @@ object VoiceNoteTestTags {
   const val PLAYBACK_RETRY = "voiceNotePlaybackRetry"
 }
 
-/** Relative heights of the bars of the static waveform. */
-private val waveform =
-    listOf(0.3f, 0.5f, 0.8f, 0.6f, 0.9f, 0.4f, 0.7f, 1f, 0.55f, 0.35f, 0.65f, 0.85f, 0.45f, 0.3f)
+/**
+ * What tells one confirmation dialog of the section from the other: its texts, its test tags and
+ * whether confirming is destructive (the confirm button is then drawn in the error color).
+ */
+private class ConfirmDialogSpec(
+    @param:StringRes val title: Int,
+    @param:StringRes val body: Int,
+    @param:StringRes val confirm: Int,
+    @param:StringRes val dismiss: Int,
+    val dialogTag: String,
+    val confirmTag: String,
+    val dismissTag: String,
+    val destructive: Boolean,
+)
+
+/** The dialog that asks to confirm the deletion of the note. */
+private val DeleteDialog =
+    ConfirmDialogSpec(
+        title = R.string.voice_note_delete_title,
+        body = R.string.voice_note_delete_body,
+        confirm = R.string.voice_note_delete_confirm,
+        dismiss = R.string.voice_note_keep,
+        dialogTag = VoiceNoteTestTags.CONFIRM_DELETE,
+        confirmTag = VoiceNoteTestTags.CONFIRM_DELETE_BUTTON,
+        dismissTag = VoiceNoteTestTags.KEEP_BUTTON,
+        destructive = true,
+    )
+
+/** The dialog that asks to send or cancel the recording. */
+private val SendDialog =
+    ConfirmDialogSpec(
+        title = R.string.voice_note_send_title,
+        body = R.string.voice_note_send_body,
+        confirm = R.string.voice_note_send_confirm,
+        dismiss = R.string.voice_note_send_cancel,
+        dialogTag = VoiceNoteTestTags.CONFIRM_SEND,
+        confirmTag = VoiceNoteTestTags.CONFIRM_SEND_BUTTON,
+        dismissTag = VoiceNoteTestTags.CANCEL_SEND_BUTTON,
+        destructive = false,
+    )
 
 /**
  * The voice note section of a task, for the owner and for the volunteers: the label, then the note
- * or the empty state, and the dialog to confirm the deletion. It shows nothing to a volunteer when
- * the task has no note. The record bar and the notices are separate composables
- * ([VoiceNoteRecordBar], [VoiceNoteNotices]) because the screen fixes them at the bottom.
+ * or the empty state, and the dialogs to confirm the deletion of the note and the sending of a
+ * recording. It shows nothing to a volunteer when the task has no note. The record bar and the
+ * notices are separate composables ([VoiceNoteRecordBar], [VoiceNoteNotices]) because the screen
+ * fixes them at the bottom.
  */
 @Composable
 fun VoiceNoteSection(
@@ -88,18 +126,32 @@ fun VoiceNoteSection(
     }
   }
   if (state.showDeleteConfirm) {
-    FestivarConfirmDialog(
-        title = stringResource(R.string.voice_note_delete_title),
-        message = stringResource(R.string.voice_note_delete_body),
-        confirmText = stringResource(R.string.voice_note_delete_confirm),
-        dismissText = stringResource(R.string.voice_note_keep),
-        onConfirm = callbacks.onConfirmDelete,
-        onDismiss = callbacks.onDismissDelete,
-        modifier = Modifier.testTag(VoiceNoteTestTags.CONFIRM_DELETE),
-        confirmModifier = Modifier.testTag(VoiceNoteTestTags.CONFIRM_DELETE_BUTTON),
-        dismissModifier = Modifier.testTag(VoiceNoteTestTags.KEEP_BUTTON),
-    )
+    VoiceNoteConfirmDialog(DeleteDialog, callbacks.onConfirmDelete, callbacks.onDismissDelete)
   }
+  if (state.showSendDialog) {
+    VoiceNoteConfirmDialog(SendDialog, callbacks.onConfirmSend, callbacks.onCancelSend)
+  }
+}
+
+/** The shared confirmation dialog, filled with the texts and the tags of [spec]. */
+@Composable
+private fun VoiceNoteConfirmDialog(
+    spec: ConfirmDialogSpec,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+  FestivarConfirmDialog(
+      title = stringResource(spec.title),
+      message = stringResource(spec.body),
+      confirmText = stringResource(spec.confirm),
+      dismissText = stringResource(spec.dismiss),
+      onConfirm = onConfirm,
+      onDismiss = onDismiss,
+      modifier = Modifier.testTag(spec.dialogTag),
+      confirmModifier = Modifier.testTag(spec.confirmTag),
+      dismissModifier = Modifier.testTag(spec.dismissTag),
+      destructive = spec.destructive,
+  )
 }
 
 /** The note: who and when, then the player and, for the owner, the trash. */
@@ -118,21 +170,12 @@ private fun VoiceNoteRow(note: VoiceNote, state: VoiceNoteUiState, callbacks: Vo
         modifier = Modifier.testTag(VoiceNoteTestTags.VOICE_NOTE_AUTHOR),
     )
     Row(verticalAlignment = Alignment.CenterVertically) {
-      Row(
-          Modifier.weight(1f)
-              .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.medium)
-              .padding(10.dp),
-          verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.spacedBy(12.dp),
-      ) {
-        PlayButton(state.isPlaying, callbacks.onTogglePlay)
-        Waveform(state.isPlaying, Modifier.weight(1f))
-        Text(
-            formatVoiceDuration(note.duration),
-            style = MaterialTheme.typography.labelLarge,
-            modifier = Modifier.testTag(VoiceNoteTestTags.VOICE_NOTE_DURATION),
-        )
-      }
+      VoiceNotePlayer(
+          note.duration,
+          state.isPlaying,
+          callbacks.onTogglePlay,
+          Modifier.weight(1f),
+      )
       if (state.canManage) {
         IconButton(
             onClick = callbacks.onDelete,
@@ -144,38 +187,6 @@ private fun VoiceNoteRow(note: VoiceNote, state: VoiceNoteUiState, callbacks: Vo
           )
         }
       }
-    }
-  }
-}
-
-/** The lime round button that plays the note, or stops it while it plays. */
-@Composable
-private fun PlayButton(isPlaying: Boolean, onClick: () -> Unit) {
-  FilledIconButton(
-      onClick = onClick,
-      modifier = Modifier.size(40.dp).testTag(VoiceNoteTestTags.VOICE_NOTE_PLAY),
-  ) {
-    Icon(
-        if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-        contentDescription =
-            stringResource(if (isPlaying) R.string.voice_note_pause else R.string.voice_note_play),
-    )
-  }
-}
-
-/** A static waveform: the bars only decorate, they do not follow the audio. */
-@Composable
-private fun Waveform(isPlaying: Boolean, modifier: Modifier = Modifier) {
-  val color =
-      if (isPlaying) MaterialTheme.colorScheme.onPrimaryContainer
-      else MaterialTheme.colorScheme.outline
-  Row(
-      modifier.height(28.dp),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(3.dp),
-  ) {
-    waveform.forEach { level ->
-      Box(Modifier.width(3.dp).height(28.dp * level).background(color, RoundedCornerShape(2.dp)))
     }
   }
 }

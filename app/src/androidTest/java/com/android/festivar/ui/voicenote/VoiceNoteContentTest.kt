@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.center
 import androidx.compose.ui.test.down
@@ -54,6 +55,9 @@ class VoiceNoteContentTest {
           onRecordStart = { events += "start" },
           onRecordRelease = { events += "release" },
           onRecordCancel = { events += "cancel" },
+          onConfirmSend = { events += "send" },
+          onCancelSend = { events += "cancelSend" },
+          onDismissRecordingFailed = { events += "dismissFailed" },
           onRetry = { events += "retry" },
           onOpenSettings = { events += "settings" },
       )
@@ -172,16 +176,57 @@ class VoiceNoteContentTest {
     assertEquals(listOf("start", "cancel"), events)
   }
 
+  private val waiting = PendingRecording(Duration.ofSeconds(7))
+
+  /** Breaks if the bar loses the length of the recording while it is sent, or still records. */
   @Test
-  fun sendingGreysTheBarAndIgnoresThePress() {
-    show(VoiceNoteUiState(canManage = true, sending = true))
-    composeTestRule.onNodeWithText("Sending voice note…").assertIsDisplayed()
+  fun sendingGreysTheBarAndShowsTheLengthOfTheRecording() {
+    show(VoiceNoteUiState(canManage = true, pending = waiting.copy(isUploading = true)))
+    tag(VoiceNoteTestTags.VOICE_NOTE_SENDING).assertTextContains("Sending voice note · 0:07")
     composeTestRule.onNodeWithText("Hold to record").assertDoesNotExist()
     tag(VoiceNoteTestTags.VOICE_NOTE_RECORD).performTouchInput {
       down(center)
       up()
     }
     assertEquals(emptyList<String>(), events)
+  }
+
+  /** Breaks if the dialog is missing, or the bar does not show the recording that waits. */
+  @Test
+  fun waitingRecordingIsShownAsANoteBehindTheSendDialog() {
+    show(VoiceNoteUiState(canManage = true, pending = waiting))
+    tag(VoiceNoteTestTags.CONFIRM_SEND).assertIsDisplayed()
+    composeTestRule.onNodeWithText("Send this voice note?").assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText("The volunteers on this task will be able to listen to it.")
+        .assertIsDisplayed()
+    // The record bar is replaced by the recording, which cannot be played yet.
+    tag(VoiceNoteTestTags.VOICE_NOTE_DURATION).assertTextContains("0:07")
+    tag(VoiceNoteTestTags.VOICE_NOTE_PLAY).assertIsNotEnabled()
+    tag(VoiceNoteTestTags.VOICE_NOTE_RECORD).assertDoesNotExist()
+  }
+
+  /** Breaks if the buttons of the send dialog call the wrong callback. */
+  @Test
+  fun sendDialogOffersCancelAndSend() {
+    show(VoiceNoteUiState(canManage = true, pending = waiting))
+    tag(VoiceNoteTestTags.CANCEL_SEND_BUTTON).performClick()
+    tag(VoiceNoteTestTags.CONFIRM_SEND_BUTTON).performClick()
+    assertEquals(listOf("cancelSend", "send"), events)
+  }
+
+  /** Breaks if the send dialog opens without a recording to send. */
+  @Test
+  fun noSendDialogWithoutARecording() {
+    show(VoiceNoteUiState(canManage = true))
+    tag(VoiceNoteTestTags.CONFIRM_SEND).assertDoesNotExist()
+  }
+
+  /** Breaks if the send dialog stays open once the owner confirmed and the upload runs. */
+  @Test
+  fun noSendDialogWhileSending() {
+    show(VoiceNoteUiState(canManage = true, pending = waiting.copy(isUploading = true)))
+    tag(VoiceNoteTestTags.CONFIRM_SEND).assertDoesNotExist()
   }
 
   @Test
@@ -219,14 +264,17 @@ class VoiceNoteContentTest {
     assertEquals(listOf("retry"), events)
   }
 
+  /** Breaks if the recording failure is not an error snackbar, or Dismiss does nothing. */
   @Test
-  fun failedRecordingShowsANoticeAndKeepsTheRecordButton() {
+  fun failedRecordingShowsASnackbarThatCanBeDismissed() {
     show(VoiceNoteUiState(canManage = true, recorder = RecorderState.Failed))
     tag(VoiceNoteTestTags.RECORDING_ERROR).assertIsDisplayed()
     composeTestRule
         .onNodeWithText("Couldn't record. Hold the button to try again.")
         .assertIsDisplayed()
     tag(VoiceNoteTestTags.VOICE_NOTE_RECORD).assertIsDisplayed()
+    tag(VoiceNoteTestTags.RECORDING_ERROR_DISMISS).performClick()
+    assertEquals(listOf("dismissFailed"), events)
   }
 
   @Test

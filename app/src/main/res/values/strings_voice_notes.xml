@@ -9,7 +9,11 @@
     <string name="voice_note_empty_title">No voice note yet</string>
     <string name="voice_note_empty_body">Record a short explanation volunteers can listen to before they start.</string>
     <string name="voice_note_hold_to_record">Hold to record</string>
-    <string name="voice_note_sending">Sending voice note…</string>
+    <string name="voice_note_send_title">Send this voice note?</string>
+    <string name="voice_note_send_body">The volunteers on this task will be able to listen to it.</string>
+    <string name="voice_note_send_confirm">Send</string>
+    <string name="voice_note_send_cancel">Cancel</string>
+    <string name="voice_note_sending">Sending voice note · %s</string>
     <string name="voice_note_record">Record a voice note</string>
     <string name="voice_note_recording">Recording %s · Release to send</string>
     <string name="voice_note_recording_hint">Release to send. Slide left to cancel.</string>
@@ -17,6 +21,7 @@
     <string name="voice_note_recording_failed">Couldn\'t record. Hold the button to try again.</string>
     <string name="voice_note_playback_failed">Couldn\'t play this voice note. Check your connection.</string>
     <string name="voice_note_retry">Retry</string>
+    <string name="voice_note_dismiss">Dismiss</string>
     <string name="voice_note_mic_denied">Microphone is off for FestivAR. Turn it on in Settings to record a note.</string>
     <string name="voice_note_open_settings">Open settings</string>
     <string name="voice_note_delete_title">Delete this voice note?</string>

@@ -72,8 +72,21 @@ internal fun VoiceNoteRecordingPreview() {
 
 @Preview(showBackground = true)
 @Composable
+internal fun VoiceNoteSendConfirmPreview() {
+  VoiceNotePreviewScreen(
+      VoiceNoteUiState(canManage = true, pending = PendingRecording(Duration.ofSeconds(7)))
+  )
+}
+
+@Preview(showBackground = true)
+@Composable
 internal fun VoiceNoteSendingPreview() {
-  VoiceNotePreviewScreen(VoiceNoteUiState(canManage = true, sending = true))
+  VoiceNotePreviewScreen(
+      VoiceNoteUiState(
+          canManage = true,
+          pending = PendingRecording(Duration.ofSeconds(7), isUploading = true),
+      )
+  )
 }
 
 @Preview(showBackground = true)

@@ -7,6 +7,15 @@ import com.android.festivar.model.voicenote.VoiceNote
 import java.time.Duration
 
 /**
+ * A recording that is not sent yet: it first waits for the owner to confirm or cancel, then it is
+ * uploaded. It is not a [VoiceNote] yet, because it has no URL: only its length is known.
+ *
+ * @property duration The length of the recording, shown while it waits and while it is sent.
+ * @property isUploading Whether the owner confirmed and the recording is being uploaded.
+ */
+data class PendingRecording(val duration: Duration, val isUploading: Boolean = false)
+
+/**
  * Everything the voice note section of a task shows.
  *
  * @property note The voice note of the task, or `null` if it has none.
@@ -18,8 +27,8 @@ import java.time.Duration
  *   while it was made is not a flag: it is [RecorderState.Failed], read by [recordingFailed].)
  * @property micDenied Whether the microphone permission is refused, so the user cannot record.
  * @property showDeleteConfirm Whether the dialog asking to confirm the deletion is open.
- * @property sending Whether the last recording is being uploaded: the record bar is greyed out and
- *   says so until the upload ends.
+ * @property pending The recording that waits to be sent or is being sent, or `null` if there is
+ *   none.
  *
  * There is no `errorMsg` on purpose. The errors are a closed set that call for different actions
  * (retry the sending, retry the playback, open the settings), so the state names them with flags,
@@ -34,7 +43,7 @@ data class VoiceNoteUiState(
     val sendFailed: Boolean = false,
     val micDenied: Boolean = false,
     val showDeleteConfirm: Boolean = false,
-    val sending: Boolean = false,
+    val pending: PendingRecording? = null,
 ) {
   /**
    * Whether the section has something to show: a note to everybody, or the empty state to the
@@ -52,13 +61,24 @@ data class VoiceNoteUiState(
     get() = canManage && note == null
 
   /**
+   * Whether the dialog to send or cancel the recording is shown: while a recording waits for the
+   * owner, who is the only one to see the record bar.
+   */
+  val showSendDialog: Boolean
+    get() = showRecordBar && pending?.isUploading == false
+
+  /** Whether the recording is being uploaded: the record bar says so and is greyed out. */
+  val isSending: Boolean
+    get() = pending?.isUploading == true
+
+  /**
    * Whether the record button works: it does not without the microphone permission, nor while a
    * recording is being sent. The button only exists inside the record bar, so [showRecordBar]
    * already decides who can see it (the owner, without a note); this only decides if the shown
    * button is enabled.
    */
   val recordEnabled: Boolean
-    get() = !micDenied && !sending
+    get() = !micDenied && !isSending
 
   /**
    * Whether the user is recording right now. Unlike [isPlaying], the recorder is not tied to a note
@@ -80,8 +100,8 @@ data class VoiceNoteUiState(
     get() = note != null && (player as? PlayerState.Failed)?.audioUrl == note.audioUrl
 
   /**
-   * Whether the last recording failed by itself and was dropped. It ends when the owner starts a
-   * new recording, which moves the recorder out of [RecorderState.Failed].
+   * Whether the last recording failed by itself and was dropped. It ends when the owner dismisses
+   * the notice or starts a new recording: both move the recorder out of [RecorderState.Failed].
    */
   val recordingFailed: Boolean
     get() = recorder is RecorderState.Failed
@@ -109,10 +129,16 @@ class VoiceNoteCallbacks(
     val onDismissDelete: () -> Unit,
     /** The owner presses the record button. */
     val onRecordStart: () -> Unit,
-    /** The owner releases the button: the recording is sent. */
+    /** The owner releases the button: the recording stops and waits to be sent. */
     val onRecordRelease: () -> Unit,
     /** The owner slides left and releases: the recording is dropped. */
     val onRecordCancel: () -> Unit,
+    /** The owner confirms the sending of the recording. */
+    val onConfirmSend: () -> Unit,
+    /** The owner cancels the sending: the recording is dropped. */
+    val onCancelSend: () -> Unit,
+    /** The owner dismisses the notice of a recording that failed. */
+    val onDismissRecordingFailed: () -> Unit,
     /** Tries again the last failed action (sending or playing). */
     val onRetry: () -> Unit,
     /** Opens the settings of the app to turn the microphone on. */
@@ -129,6 +155,9 @@ class VoiceNoteCallbacks(
             onRecordStart = {},
             onRecordRelease = {},
             onRecordCancel = {},
+            onConfirmSend = {},
+            onCancelSend = {},
+            onDismissRecordingFailed = {},
             onRetry = {},
             onOpenSettings = {},
         )
