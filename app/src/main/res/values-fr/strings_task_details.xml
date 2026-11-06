@@ -8,7 +8,7 @@
     <string name="details_description">Description</string>
     <string name="details_take">Prendre cette tâche</string>
     <string name="details_give_back">Rendre la tâche</string>
-    <string name="details_mark_done">Marquer comme terminée</string>
+    <string name="details_mark_done">Terminée</string>
     <string name="details_dismiss">Fermer</string>
     <string name="details_retry">Réessayer</string>
     <string name="details_location">Lieu : %s</string>
