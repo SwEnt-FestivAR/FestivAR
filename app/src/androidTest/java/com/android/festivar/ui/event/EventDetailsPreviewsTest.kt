@@ -8,6 +8,9 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.festivar.ui.event.details.EventDetailsScreenPreview
+import com.android.festivar.ui.event.details.EventDetailsScreenTestTags
+import com.android.festivar.ui.event.details.FetchErrorPreview
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test

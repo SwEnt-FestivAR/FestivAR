@@ -1,3 +1,4 @@
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.audio
 
@@ -19,7 +20,8 @@ import kotlinx.coroutines.flow.StateFlow
  *
  * To add a voice note to a task (the caller is the task details view model):
  * 1. check the microphone permission, then call [VoiceRecorder.start];
- * 2. call [VoiceRecorder.stop] to get the [Audio] (or [VoiceRecorder.cancel] to drop it);
+ * 2. call [VoiceRecorder.stop] to get the [Audio] (or [VoiceRecorder.cancel] to drop it), with
+ *    [VoiceRecorder.pause] and [VoiceRecorder.resume] available in between;
  * 3. call [AudioRepository.upload] with the task id and the [Audio] to get the audio URL;
  * 4. delete the temporary [Audio.file], whether the upload succeeded or failed;
  * 5. build a [VoiceNote] with that URL and call [Task.attachVoiceNote];
@@ -87,21 +89,41 @@ interface VoiceRecorder {
    * Starts recording into a new temporary file. If the recording fails, the recorder deletes that
    * file itself.
    *
-   * @throws IllegalStateException if a recording is already running.
+   * @throws IllegalStateException if a recording is already running, even if it is paused.
    * @throws VoiceRecorderException if the recording cannot start.
    */
   fun start()
 
   /**
-   * Stops the recording and returns it. The caller then owns the temporary file (see [Audio]). If
-   * the recording is unusable, the recorder deletes the file and throws.
+   * Pauses the recording. If that fails, the recorder drops the recording and deletes its file.
+   *
+   * @throws IllegalStateException if nothing is being recorded or the recording is already paused.
+   * @throws VoiceRecorderException if the recording cannot be paused.
+   */
+  fun pause()
+
+  /**
+   * Resumes the paused recording. If that fails, the recorder drops the recording and deletes its
+   * file.
+   *
+   * @throws IllegalStateException if no recording is paused.
+   * @throws VoiceRecorderException if the recording cannot be resumed.
+   */
+  fun resume()
+
+  /**
+   * Stops the recording, even if it is paused, and returns it. The caller then owns the temporary
+   * file (see [Audio]). If the recording is unusable, the recorder deletes the file and throws.
    *
    * @throws IllegalStateException if nothing is being recorded.
    * @throws VoiceRecorderException if the recording is unusable (for example too short).
    */
   fun stop(): Audio
 
-  /** Stops the recording and deletes its file. Does nothing if nothing is being recorded. */
+  /**
+   * Stops the recording, even if it is paused, and deletes its file. Does nothing if nothing is
+   * being recorded.
+   */
   fun cancel()
 }
 
