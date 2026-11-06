@@ -35,6 +35,12 @@ import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.joinCodeOf
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepositoryLocal
+import com.android.festivar.ui.event.join.FoundEventUi
+import com.android.festivar.ui.event.join.JoinEventContent
+import com.android.festivar.ui.event.join.JoinEventScreen
+import com.android.festivar.ui.event.join.JoinEventScreenTestTags
+import com.android.festivar.ui.event.join.JoinEventUIState
+import com.android.festivar.ui.event.join.JoinEventViewModel
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import org.junit.Assert.assertEquals

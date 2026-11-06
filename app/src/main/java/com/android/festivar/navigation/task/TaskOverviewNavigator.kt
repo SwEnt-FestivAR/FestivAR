@@ -2,9 +2,10 @@
 // Co-authored-by: Gemini <noreply@google.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
-package com.android.festivar.navigation
+package com.android.festivar.navigation.task
 
 import androidx.navigation.NavHostController
+import com.android.festivar.navigation.AppScreens
 
 /**
  * Where the task overview can go: back to whatever opened it, to a task, to the task creation of

@@ -1,7 +1,8 @@
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
-package com.android.festivar.navigation
+package com.android.festivar.navigation.event
 
 import androidx.navigation.NavHostController
+import com.android.festivar.navigation.AppScreens
 
 /**
  * Where the join event screen can go: back, to the joined event, or to the login when signed out.
