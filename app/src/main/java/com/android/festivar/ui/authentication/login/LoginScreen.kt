@@ -68,6 +68,7 @@ internal object LoginScreenTestTags {
   const val PASSWORD_INPUT = "loginPasswordInput"
   const val LOGIN_BUTTON = "loginButton"
   const val GOOGLE_BUTTON = "googleSignInButton"
+  const val ANONYMOUS_BUTTON = "anonymousSignInButton"
   const val ERROR_MESSAGE = "loginError"
 
   const val CREATE_ACC_BUTTON = "createAccountButton"
@@ -114,6 +115,7 @@ fun LoginScreen(
         onTogglePasswordVisibility = viewModel::togglePasswordVisibility,
         onLoginClick = viewModel::signIn,
         onGoogleSignInClick = { viewModel.signInWithGoogle(context, credentialManager) },
+        onAnonSignInClick = { viewModel.anonymousAuth() },
         onForgotPasswordClick = onForgotPasswordClick,
         onSignUpClick = onSignUpClick,
         modifier = Modifier.padding(padding),
@@ -132,6 +134,7 @@ private fun LoginScreenContent(
     onForgotPasswordClick: () -> Unit,
     onSignUpClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onAnonSignInClick: () -> Unit,
 ) {
   Column(
       modifier =
@@ -223,7 +226,7 @@ private fun LoginScreenContent(
         Text(
             text = stringResource(R.string.login_forgot_password),
             color = MaterialTheme.colorScheme.onPrimaryContainer,
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.labelSmall,
         )
       }
     }
@@ -251,29 +254,23 @@ private fun LoginScreenContent(
       }
     }
 
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-      HorizontalDivider(
-          modifier = Modifier.weight(1f),
-          thickness = 1.dp,
-          color = MaterialTheme.colorScheme.outlineVariant,
-      )
-      Text(
-          text = stringResource(R.string.login_or),
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-          style = MaterialTheme.typography.bodySmall,
-          modifier = Modifier.padding(horizontal = 10.dp),
-      )
-      HorizontalDivider(
-          modifier = Modifier.weight(1f),
-          thickness = 1.dp,
-          color = MaterialTheme.colorScheme.outlineVariant,
-      )
-    }
+    OrSeparator()
 
-    GoogleSignInButton(onClick = onGoogleSignInClick, enabled = !uiState.isLoading)
+    SignInButton(
+        onClick = onGoogleSignInClick,
+        enabled = !uiState.isLoading,
+        showGoogle = true,
+        text = stringResource(R.string.login_continue_with_google),
+        testTag = LoginScreenTestTags.GOOGLE_BUTTON,
+    )
+
+    SignInButton(
+        onClick = onAnonSignInClick,
+        enabled = !uiState.isLoading,
+        showGoogle = false,
+        text = stringResource(R.string.login_no_account),
+        testTag = LoginScreenTestTags.ANONYMOUS_BUTTON,
+    )
 
     Spacer(modifier = Modifier.weight(1f))
 
@@ -301,8 +298,40 @@ private fun LoginScreenContent(
   }
 }
 
+/** Separator with "or" in the middle */
 @Composable
-private fun GoogleSignInButton(onClick: () -> Unit, enabled: Boolean) {
+private fun OrSeparator() {
+  Row(
+      verticalAlignment = Alignment.CenterVertically,
+      modifier = Modifier.fillMaxWidth(),
+  ) {
+    HorizontalDivider(
+        modifier = Modifier.weight(1f),
+        thickness = 1.dp,
+        color = MaterialTheme.colorScheme.outlineVariant,
+    )
+    Text(
+        text = stringResource(R.string.login_or),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = MaterialTheme.typography.bodySmall,
+        modifier = Modifier.padding(horizontal = 10.dp),
+    )
+    HorizontalDivider(
+        modifier = Modifier.weight(1f),
+        thickness = 1.dp,
+        color = MaterialTheme.colorScheme.outlineVariant,
+    )
+  }
+}
+
+@Composable
+private fun SignInButton(
+    onClick: () -> Unit,
+    enabled: Boolean,
+    showGoogle: Boolean,
+    text: String,
+    testTag: String,
+) {
   Button(
       onClick = onClick,
       enabled = enabled,
@@ -314,16 +343,18 @@ private fun GoogleSignInButton(onClick: () -> Unit, enabled: Boolean) {
               contentColor = MaterialTheme.colorScheme.onSurface,
           ),
       border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-      modifier = Modifier.fillMaxWidth().height(44.dp).testTag(LoginScreenTestTags.GOOGLE_BUTTON),
+      modifier = Modifier.fillMaxWidth().height(44.dp).testTag(testTag),
   ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-      Icon(
-          painter = painterResource(id = R.drawable.ic_google_logo),
-          contentDescription = "Google Logo",
-          tint = Color.Unspecified,
-      )
+      if (showGoogle) {
+        Icon(
+            painter = painterResource(id = R.drawable.ic_google_logo),
+            contentDescription = "Google Logo",
+            tint = Color.Unspecified,
+        )
+      }
       Text(
-          text = stringResource(R.string.login_continue_with_google),
+          text = text,
           color = MaterialTheme.colorScheme.onSurface,
           style = MaterialTheme.typography.labelLarge,
           modifier = Modifier.padding(start = 8.dp),
@@ -345,6 +376,6 @@ private fun LoginScreenPreview() {
         onGoogleSignInClick = {},
         onForgotPasswordClick = {},
         onSignUpClick = {},
-    )
+    ) {}
   }
 }

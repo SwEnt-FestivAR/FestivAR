@@ -6,4 +6,7 @@
     <string name="login_or">or</string>
     <string name="login_continue_with_google">Continue with Google</string>
     <string name="login_new_here">New here? </string>
+    <string name="login_no_account">Use without account</string>
+    <string name="login_no_account_warning">Use without account</string>
+
 </resources>

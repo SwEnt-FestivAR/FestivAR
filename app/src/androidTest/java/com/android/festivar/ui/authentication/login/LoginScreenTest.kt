@@ -8,7 +8,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -17,6 +17,8 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.authentication.FakeAuthRepository
+import com.google.firebase.auth.FirebaseUser
+import io.mockk.mockk
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -53,6 +55,10 @@ class LoginScreenTest {
         .assert(SemanticsMatcher.expectValue(SemanticsProperties.Password, Unit))
     composeTestRule.onNodeWithTag(LoginScreenTestTags.LOGIN_BUTTON).assertIsDisplayed()
     composeTestRule.onNodeWithTag(LoginScreenTestTags.GOOGLE_BUTTON).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(LoginScreenTestTags.ANONYMOUS_BUTTON)
+        .performScrollTo()
+        .assertIsDisplayed()
   }
 
   @Test
@@ -160,5 +166,31 @@ class LoginScreenTest {
     authRepository.signInDeferred?.complete(
         Result.failure(UnsupportedOperationException("Not used in this UI test"))
     )
+  }
+
+  @Test
+  fun anonymousSignInButtonSignsIn() {
+    val user = mockk<FirebaseUser>()
+    val authRepository = FakeAuthRepository(signInAnonymousResult = Result.success(user))
+    val loginViewModel = LoginViewModel(authRepository)
+    var signedIn = false
+
+    composeTestRule.setContent {
+      LoginScreen(
+          viewModel = loginViewModel,
+          onSignUpClick = {},
+          onSignedIn = { signedIn = true },
+      )
+    }
+
+    composeTestRule
+        .onNodeWithTag(LoginScreenTestTags.ANONYMOUS_BUTTON)
+        .performScrollTo()
+        .performClick()
+
+    composeTestRule.runOnIdle {
+      assertTrue(signedIn)
+      assertTrue(loginViewModel.uiState.value.isSignedIn)
+    }
   }
 }

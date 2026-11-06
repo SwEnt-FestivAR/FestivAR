@@ -136,6 +136,36 @@ class LoginViewModelTest {
   }
 
   @Test
+  fun anonymousSignInUpdatesStateOnSuccess() {
+    val user = mockk<FirebaseUser>()
+    coEvery { authRepository.signInAnonymous() } returns Result.success(user)
+
+    viewModel.anonymousAuth()
+    shadowOf(Looper.getMainLooper()).idle()
+
+    assertTrue(viewModel.uiState.value.isSignedIn)
+    assertFalse(viewModel.uiState.value.isLoading)
+    assertNull(viewModel.uiState.value.errorMsg)
+    coVerify(exactly = 1) { authRepository.signInAnonymous() }
+  }
+
+  @Test
+  fun anonymousSignInFailureShowsError() {
+    coEvery { authRepository.signInAnonymous() } returns
+        Result.failure(IllegalStateException("Anonymous sign-in rejected"))
+
+    viewModel.anonymousAuth()
+    shadowOf(Looper.getMainLooper()).idle()
+
+    assertFalse(viewModel.uiState.value.isSignedIn)
+    assertFalse(viewModel.uiState.value.isLoading)
+    assertEquals(
+        "Unable to sign in. Check your details and try again.",
+        viewModel.uiState.value.errorMsg,
+    )
+  }
+
+  @Test
   fun repositoryExceptionWithoutMessageUsesFallbackError() {
     coEvery { authRepository.signInWithEmailAndPassword("user@example.com", "secret") } coAnswers
         {
