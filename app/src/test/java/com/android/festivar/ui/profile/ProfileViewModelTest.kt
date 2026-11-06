@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored by Copilot
 package com.android.festivar.ui.profile
 
 import com.android.festivar.R
@@ -6,6 +7,9 @@ import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryLocal
+import com.google.firebase.auth.FirebaseUser
+import io.mockk.every
+import io.mockk.mockk
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -563,6 +567,136 @@ class ProfileViewModelTest {
 
     viewModel.clearErrorMsg()
 
+    assertNull(viewModel.uiState.value.errorMsg)
+  }
+
+  @Test
+  fun updateEmailUpdatesEmailAndClearsError() = runTest {
+    val viewModel = createViewModel()
+    advanceUntilIdle()
+    viewModel.updateEmail("test@example.com")
+    assertEquals("test@example.com", viewModel.uiState.value.email)
+    assertNull(viewModel.uiState.value.errorMsg)
+  }
+
+  @Test
+  fun updatePasswordUpdatesPasswordAndClearsError() = runTest {
+    val viewModel = createViewModel()
+    advanceUntilIdle()
+    viewModel.updatePassword("password123")
+    assertEquals("password123", viewModel.uiState.value.password)
+    assertNull(viewModel.uiState.value.errorMsg)
+  }
+
+  @Test
+  fun togglePasswordVisibilityTogglesState() = runTest {
+    val viewModel = createViewModel()
+    advanceUntilIdle()
+    assertFalse(viewModel.uiState.value.isPasswordVisible)
+    viewModel.togglePasswordVisibility()
+    assertTrue(viewModel.uiState.value.isPasswordVisible)
+    viewModel.togglePasswordVisibility()
+    assertFalse(viewModel.uiState.value.isPasswordVisible)
+  }
+
+  @Test
+  fun upgradeWithEmailWithBlankFieldsShowsError() = runTest {
+    val firebaseUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+    val authRepo =
+        object : FakeAuthRepository() {
+          override val currentUser = firebaseUser
+        }
+    val viewModel = ProfileViewModel(RecordingUsersRepository(listOf(sara)), authRepo, sara.uid)
+    advanceUntilIdle()
+
+    viewModel.updateEmail("")
+    viewModel.updatePassword("")
+    viewModel.upgradeWithEmail()
+    assertEquals(R.string.profile_anon_upgrade_failed, viewModel.uiState.value.errorMsg)
+  }
+
+  @Test
+  fun upgradeWithEmailSuccessRefreshesUser() = runTest {
+    val firebaseUser = mockk<FirebaseUser> { every { isAnonymous } returns false }
+    val authRepo =
+        object : FakeAuthRepository() {
+          override val currentUser = firebaseUser
+        }
+    authRepo.signUpResult = Result.success(firebaseUser)
+    val viewModel = ProfileViewModel(RecordingUsersRepository(listOf(sara)), authRepo, sara.uid)
+    advanceUntilIdle()
+
+    viewModel.updateEmail("sara@epfl.ch")
+    viewModel.updatePassword("secret123")
+    viewModel.upgradeWithEmail()
+    advanceUntilIdle()
+
+    assertNull(viewModel.uiState.value.errorMsg)
+    assertFalse(viewModel.uiState.value.isLoading)
+  }
+
+  @Test
+  fun upgradeWithEmailFailureShowsError() = runTest {
+    val firebaseUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+    val authRepo =
+        object : FakeAuthRepository() {
+          override val currentUser = firebaseUser
+        }
+    authRepo.signUpResult = Result.failure(RuntimeException("Invalid credentials"))
+    val viewModel = ProfileViewModel(RecordingUsersRepository(listOf(sara)), authRepo, sara.uid)
+    advanceUntilIdle()
+
+    viewModel.updateEmail("sara@epfl.ch")
+    viewModel.updatePassword("wrongpassword")
+    viewModel.upgradeWithEmail()
+    advanceUntilIdle()
+
+    assertEquals(R.string.profile_anon_upgrade_failed, viewModel.uiState.value.errorMsg)
+    assertFalse(viewModel.uiState.value.isLoading)
+  }
+
+  @Test
+  fun upgradeWithEmailThrownExceptionShowsError() = runTest {
+    val firebaseUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+    val authRepo =
+        object : FakeAuthRepository() {
+          override val currentUser = firebaseUser
+
+          override suspend fun signUpWithEmailAndPassword(
+              email: String,
+              password: String,
+          ): Result<FirebaseUser> {
+            throw RuntimeException("Network down")
+          }
+        }
+    val viewModel = ProfileViewModel(RecordingUsersRepository(listOf(sara)), authRepo, sara.uid)
+    advanceUntilIdle()
+
+    viewModel.updateEmail("sara@epfl.ch")
+    viewModel.updatePassword("secret123")
+    viewModel.upgradeWithEmail()
+    advanceUntilIdle()
+
+    assertEquals(R.string.profile_anon_upgrade_failed, viewModel.uiState.value.errorMsg)
+    assertFalse(viewModel.uiState.value.isLoading)
+  }
+
+  @Test
+  fun upgradeWithEmailIgnoredWhenNotAnonymous() = runTest {
+    val firebaseUser = mockk<FirebaseUser> { every { isAnonymous } returns false }
+    val authRepo =
+        object : FakeAuthRepository() {
+          override val currentUser = firebaseUser
+        }
+    val viewModel = ProfileViewModel(RecordingUsersRepository(listOf(sara)), authRepo, sara.uid)
+    advanceUntilIdle()
+
+    viewModel.updateEmail("sara@epfl.ch")
+    viewModel.updatePassword("secret123")
+    viewModel.upgradeWithEmail()
+    advanceUntilIdle()
+
+    assertEquals(0, authRepo.signUpCallCount)
     assertNull(viewModel.uiState.value.errorMsg)
   }
 }

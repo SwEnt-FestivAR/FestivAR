@@ -18,6 +18,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventRepositoryFirebase
 import com.android.festivar.model.event.joinCodeOf
@@ -240,6 +241,13 @@ class EndToEndTest {
     waitUntilTagExists(ProfileScreenTestTags.SIGN_OUT_BUTTON)
     composeTestRule.onNodeWithTag(ProfileScreenTestTags.EMAIL).assertTextEquals(email)
     composeTestRule.onNodeWithTag(ProfileScreenTestTags.SIGN_OUT_BUTTON).performClick()
+    composeTestRule
+        .onNodeWithText(
+            InstrumentationRegistry.getInstrumentation()
+                .targetContext
+                .getString(R.string.action_continue_anyway)
+        )
+        .performClick()
     waitUntilTagExists(LoginScreenTestTags.TITLE)
     composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
   }

@@ -46,6 +46,10 @@ data class ProfileUIState(
     val isSaving: Boolean = false,
     val signedOut: Boolean = false,
     val isSigningOut: Boolean = false,
+    val isUserAnonymous: Boolean = false,
+    val email: String = "",
+    val password: String = "",
+    val isPasswordVisible: Boolean = false,
 ) {
   /**
    * Whether the Save changes button can be pressed: the profile is loaded, no save is running, no
@@ -207,6 +211,60 @@ class ProfileViewModel(
     }
   }
 
+  /** Updates the email and clears any prior error. */
+  fun updateEmail(email: String) {
+    _uiState.update { it.copy(email = email, errorMsg = null) }
+  }
+
+  /** Updates the password and clears any prior error. */
+  fun updatePassword(password: String) {
+    _uiState.update { it.copy(password = password, errorMsg = null) }
+  }
+
+  /** Toggles whether the password is displayed in plain text. */
+  fun togglePasswordVisibility() {
+    _uiState.update { it.copy(isPasswordVisible = !it.isPasswordVisible) }
+  }
+
+  /** Upgrades the anonymous account with email and password. */
+  fun upgradeWithEmail() {
+    val state = _uiState.value
+    if (state.isLoading || !state.isUserAnonymous) return
+    if (state.email.isBlank() || state.password.isBlank()) {
+      _uiState.update { it.copy(errorMsg = R.string.profile_anon_upgrade_failed) }
+      return
+    }
+
+    val email = state.email.trim()
+    val password = state.password
+
+    _uiState.update { it.copy(isLoading = true, errorMsg = null) }
+    viewModelScope.launch {
+      try {
+        val result = authRepository.signUpWithEmailAndPassword(email, password)
+        result.fold(
+            onSuccess = {
+              _uiState.update { it.copy(isLoading = false) }
+              getUserInformation()
+            },
+            onFailure = { e ->
+              Log.e(LOG_TAG, "Error upgrading account with email", e)
+              _uiState.update {
+                it.copy(isLoading = false, errorMsg = R.string.profile_anon_upgrade_failed)
+              }
+            },
+        )
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        Log.e(LOG_TAG, "Error upgrading account with email", e)
+        _uiState.update {
+          it.copy(isLoading = false, errorMsg = R.string.profile_anon_upgrade_failed)
+        }
+      }
+    }
+  }
+
   /** Function that fetches the [User] item from the repository and updates the UI state. */
   fun getUserInformation() {
     if (_uiState.value.isLoading) return
@@ -219,12 +277,14 @@ class ProfileViewModel(
     viewModelScope.launch {
       try {
         val user = repository.getUser(uId)
+        val isAnonymous = authRepository.currentUser?.isAnonymous == true
         _uiState.update {
           it.copy(
               user = user,
               name = user.name,
               surname = user.surname,
               isLoading = false,
+              isUserAnonymous = isAnonymous,
           )
         }
       } catch (e: CancellationException) {
