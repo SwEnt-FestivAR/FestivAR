@@ -77,6 +77,18 @@ class VoiceNoteUiStateTest {
     assertEquals(Duration.ofSeconds(3), state.elapsed)
   }
 
+  /**
+   * Breaks if the record button stays enabled while sending, or if sending disables it for good.
+   */
+  @Test
+  fun recordingIsDisabledWhileSending() {
+    assertTrue(VoiceNoteUiState(canManage = true).recordEnabled)
+    assertFalse(VoiceNoteUiState(canManage = true, sending = true).recordEnabled)
+    assertFalse(VoiceNoteUiState(canManage = true, micDenied = true).recordEnabled)
+    // Sending is not a notice: the bar says it itself.
+    assertFalse(VoiceNoteUiState(canManage = true, sending = true).hasNotices)
+  }
+
   /** Breaks if a failed recording counts as recording, or if only a failed one is reported. */
   @Test
   fun recordingFailedOnlyForAFailedRecorder() {

@@ -173,6 +173,18 @@ class VoiceNoteContentTest {
   }
 
   @Test
+  fun sendingGreysTheBarAndIgnoresThePress() {
+    show(VoiceNoteUiState(canManage = true, sending = true))
+    composeTestRule.onNodeWithText("Sending voice note…").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Hold to record").assertDoesNotExist()
+    tag(VoiceNoteTestTags.VOICE_NOTE_RECORD).performTouchInput {
+      down(center)
+      up()
+    }
+    assertEquals(emptyList<String>(), events)
+  }
+
+  @Test
   fun deniedMicrophoneShowsTheNoteAndDisablesRecording() {
     show(VoiceNoteUiState(canManage = true, micDenied = true))
     // The tag is on the card and the text is in a child node, so each is checked on its own.

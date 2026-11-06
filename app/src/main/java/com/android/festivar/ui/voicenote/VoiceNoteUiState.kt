@@ -18,6 +18,8 @@ import java.time.Duration
  *   while it was made is not a flag: it is [RecorderState.Failed], read by [recordingFailed].)
  * @property micDenied Whether the microphone permission is refused, so the user cannot record.
  * @property showDeleteConfirm Whether the dialog asking to confirm the deletion is open.
+ * @property sending Whether the last recording is being uploaded: the record bar is greyed out and
+ *   says so until the upload ends.
  *
  * There is no `errorMsg` on purpose. The errors are a closed set that call for different actions
  * (retry the sending, retry the playback, open the settings), so the state names them with flags,
@@ -32,6 +34,7 @@ data class VoiceNoteUiState(
     val sendFailed: Boolean = false,
     val micDenied: Boolean = false,
     val showDeleteConfirm: Boolean = false,
+    val sending: Boolean = false,
 ) {
   /**
    * Whether the section has something to show: a note to everybody, or the empty state to the
@@ -49,12 +52,13 @@ data class VoiceNoteUiState(
     get() = canManage && note == null
 
   /**
-   * Whether the record button works: it does not without the microphone permission. The button only
-   * exists inside the record bar, so [showRecordBar] already decides who can see it (the owner,
-   * without a note); this only decides if the shown button is enabled.
+   * Whether the record button works: it does not without the microphone permission, nor while a
+   * recording is being sent. The button only exists inside the record bar, so [showRecordBar]
+   * already decides who can see it (the owner, without a note); this only decides if the shown
+   * button is enabled.
    */
   val recordEnabled: Boolean
-    get() = !micDenied
+    get() = !micDenied && !sending
 
   /**
    * Whether the user is recording right now. Unlike [isPlaying], the recorder is not tied to a note

@@ -70,7 +70,10 @@ fun VoiceNoteRecordBar(
           RecordingIndicator(state)
         } else {
           Text(
-              stringResource(R.string.voice_note_hold_to_record),
+              stringResource(
+                  if (state.sending) R.string.voice_note_sending
+                  else R.string.voice_note_hold_to_record
+              ),
               style = MaterialTheme.typography.bodyLarge,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
