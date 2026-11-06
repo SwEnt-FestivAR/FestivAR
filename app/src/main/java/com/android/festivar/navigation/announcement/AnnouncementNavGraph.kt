@@ -8,6 +8,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.navigation.AppScreens
 import com.android.festivar.ui.announcement.create.CreateAnnouncementScreen
 import com.android.festivar.ui.announcement.create.CreateAnnouncementViewModel
@@ -15,7 +16,7 @@ import com.android.festivar.ui.announcement.create.CreateAnnouncementViewModel
 /** The destinations of the announcement feature. */
 fun NavGraphBuilder.announcementGraph(
     navController: NavHostController,
-    authRepository: AuthRepository,
+    dataRepository: DataRepository,
 ) {
   // Reached through AppScreens.createAnnouncement(eventId). The route carries the id of the event
   // the new announcement belongs to.
@@ -29,7 +30,7 @@ fun NavGraphBuilder.announcementGraph(
         }
     // Asked at each tap on "Publish". Blank when nobody is signed in: the view model then refuses
     // to save (redirect left to #261).
-    val currentUserId: () -> String = { authRepository.currentUser?.uid.orEmpty() }
+    val currentUserId: () -> String = { dataRepository.authRepository.currentUser?.uid.orEmpty() }
     // Leaving the screen, whether the announcement was published or not, goes back. The arrow still
     // takes taps during the exit transition, so only this entry may pop itself, and only once.
     val leave: () -> Unit = {

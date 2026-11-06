@@ -7,6 +7,7 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.navigation.AppScreens
 import com.android.festivar.ui.authentication.forgotpassword.ForgotPasswordScreen
 import com.android.festivar.ui.authentication.forgotpassword.ForgotPasswordViewModel
@@ -19,12 +20,12 @@ import com.android.festivar.ui.authentication.signup.SignUpViewModel
 fun NavGraphBuilder.authGraph(
     navController: NavHostController,
     credentialManager: CredentialManager,
-    authRepository: AuthRepository,
+    dataRepository: DataRepository,
 ) {
   composable(route = AppScreens.SignUp.name) {
     val navigator = SignUpNavigator(navController)
     SignUpScreen(
-        viewModel = viewModel { SignUpViewModel(authRepository) },
+        viewModel = viewModel { SignUpViewModel(dataRepository.authRepository) },
         onSignInClick = navigator.onSignInClick,
         onBackClick = navigator.onBackClick,
         onSignUpSuccess = navigator.onSignUpSuccess,
@@ -34,7 +35,7 @@ fun NavGraphBuilder.authGraph(
     val navigator = LoginNavigator(navController)
     LoginScreen(
         credentialManager = credentialManager,
-        viewModel = viewModel { LoginViewModel(authRepository) },
+        viewModel = viewModel { LoginViewModel(dataRepository.authRepository) },
         onSignUpClick = navigator.onSignUpClick,
         onForgotPasswordClick = navigator.onForgotPasswordClick,
         onSignedIn = navigator.onSignedIn,
@@ -43,7 +44,7 @@ fun NavGraphBuilder.authGraph(
   composable(route = AppScreens.ForgotPassword.name) {
     val navigator = LoginNavigator(navController)
     ForgotPasswordScreen(
-        viewModel = viewModel { ForgotPasswordViewModel(authRepository) },
+        viewModel = viewModel { ForgotPasswordViewModel(dataRepository.authRepository) },
         onReturnToLogin = navigator.onReturnToLogin,
     )
   }

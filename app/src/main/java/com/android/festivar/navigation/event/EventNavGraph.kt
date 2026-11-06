@@ -11,6 +11,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.event.EventsRepositoryProvider
 import com.android.festivar.model.user.UsersRepositoryProvider
 import com.android.festivar.navigation.AppScreens
@@ -24,10 +25,10 @@ import com.android.festivar.ui.event.overview.EventsOverviewScreen
 import com.android.festivar.ui.event.overview.EventsOverviewViewModel
 
 /** The destinations of the event feature. */
-fun NavGraphBuilder.eventGraph(navController: NavHostController, authRepository: AuthRepository) {
+fun NavGraphBuilder.eventGraph(navController: NavHostController, dataRepository: DataRepository) {
   composable(route = AppScreens.EventsOverview.name) {
     val navigator = EventsOverviewNavigator(navController)
-    val firebaseUser = authRepository.currentUser
+    val firebaseUser = dataRepository.authRepository.currentUser
     if (firebaseUser == null) {
       // Nobody is signed in, so there are no events to show
       LaunchedEffect(Unit) { navigator.onSignedOut() }
@@ -50,7 +51,7 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, authRepository:
   }
   composable(route = AppScreens.CreateEvent.name) {
     val navigator = CreateEventNavigator(navController)
-    val firebaseUser = authRepository.currentUser
+    val firebaseUser = dataRepository.authRepository.currentUser
     if (firebaseUser == null) {
       LaunchedEffect(Unit) { navigator.onSignedOut() }
     } else {
@@ -84,7 +85,7 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, authRepository:
   }
   composable(route = AppScreens.JoinEvent.name) {
     val navigator = JoinEventNavigator(navController)
-    val firebaseUser = authRepository.currentUser
+    val firebaseUser = dataRepository.authRepository.currentUser
     if (firebaseUser == null) {
       // Nobody is signed in, so there is nobody to join as
       LaunchedEffect(Unit) { navigator.onSignedOut() }
