@@ -13,6 +13,8 @@ import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.END_OF_DAY
 import com.android.festivar.ui.components.FieldError
 import com.android.festivar.ui.components.START_OF_DAY
+import com.android.festivar.ui.event.create.CreateEventUIState
+import com.android.festivar.ui.event.create.CreateEventViewModel
 import java.time.LocalDate
 import java.time.LocalTime
 import kotlin.time.Duration.Companion.milliseconds
@@ -258,11 +260,11 @@ class CreateEventViewModelTest {
     val oldStartDate = LocalDate.now().minusDays(2)
     val oldEndDate = LocalDate.now().minusDays(1)
     val state =
-        CreateEventUIState(
-            name = "Summer festival",
-            startDate = oldStartDate,
-            endDate = oldEndDate,
-        )
+      CreateEventUIState(
+        name = "Summer festival",
+        startDate = oldStartDate,
+        endDate = oldEndDate,
+      )
 
     assertEquals(FieldError.OUTDATED, state.endDateError)
     assertFalse(state.isValid)

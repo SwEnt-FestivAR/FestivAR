@@ -25,6 +25,9 @@ import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.ui.components.formatDate
 import com.android.festivar.ui.components.formatTime
+import com.android.festivar.ui.event.create.CreateEventScreen
+import com.android.festivar.ui.event.create.CreateEventScreenTestTags
+import com.android.festivar.ui.event.create.CreateEventViewModel
 import io.mockk.mockk
 import io.mockk.spyk
 import io.mockk.verify
@@ -268,11 +271,11 @@ class CreateEventScreenTest {
     val onCreated = mockk<() -> Unit>(relaxed = true)
     val creator = User("creator-123", "Alice", "AliceInWonderland")
     viewModel =
-        CreateEventViewModel(
-            GatedRepository(gate),
-            UsersRepositoryLocal(listOf(creator)),
-            creator.uid,
-        )
+      CreateEventViewModel(
+        GatedRepository(gate),
+        UsersRepositoryLocal(listOf(creator)),
+        creator.uid,
+      )
     composeTestRule.setContent { CreateEventScreen(viewModel = viewModel, onCreated = onCreated) }
 
     viewModel.updateName("Summer festival")

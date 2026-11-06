@@ -26,7 +26,7 @@ import com.android.festivar.model.user.UsersRepositoryFirebase
 import com.android.festivar.model.user.UsersRepositoryProvider
 import com.android.festivar.ui.authentication.login.LoginScreenTestTags
 import com.android.festivar.ui.authentication.signup.SignUpScreenTestTags
-import com.android.festivar.ui.event.CreateEventScreenTestTags
+import com.android.festivar.ui.event.create.CreateEventScreenTestTags
 import com.android.festivar.ui.event.EventDetailsScreenTestTags
 import com.android.festivar.ui.event.EventsOverviewScreenTestTags
 import com.android.festivar.ui.event.JoinEventScreenTestTags

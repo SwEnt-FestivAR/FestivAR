@@ -13,8 +13,8 @@ import androidx.navigation.navArgument
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.event.EventsRepositoryProvider
 import com.android.festivar.model.user.UsersRepositoryProvider
-import com.android.festivar.ui.event.CreateEventScreen
-import com.android.festivar.ui.event.CreateEventViewModel
+import com.android.festivar.ui.event.create.CreateEventScreen
+import com.android.festivar.ui.event.create.CreateEventViewModel
 import com.android.festivar.ui.event.EventDetailsScreen
 import com.android.festivar.ui.event.EventDetailsViewModel
 import com.android.festivar.ui.event.EventsOverviewScreen
