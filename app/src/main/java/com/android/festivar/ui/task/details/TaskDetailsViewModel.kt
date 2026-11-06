@@ -1,5 +1,6 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.ui.task.details
 
 import android.util.Log
@@ -7,6 +8,8 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
+import com.android.festivar.model.datarepository.DataRepository
+import com.android.festivar.model.datarepository.DataRepositoryFirebase
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryProvider
@@ -102,6 +105,7 @@ class TaskDetailsViewModel(
     private val taskId: String,
     private val currentUser: User,
     private val repository: TasksRepository = TasksRepositoryProvider.repository,
+    private val dataRepository: DataRepository = DataRepositoryFirebase(),
 ) : ViewModel() {
   private val _uiState = MutableStateFlow(TaskDetailsUiState(currentUserId = currentUser.uid))
   val uiState: StateFlow<TaskDetailsUiState> = _uiState.asStateFlow()
@@ -149,6 +153,33 @@ class TaskDetailsViewModel(
 
   /** Completes the task. Does nothing unless the task is yours. */
   fun markDone() = saveIf({ it.canMarkDone }) { it.complete() }
+
+  /** Deletes the task. Does nothing unless the current user owns it. */
+  fun deleteTask() {
+    val before = _uiState.getAndUpdate {
+      if (it.canEdit && !it.isLoading && !it.isUpdating) {
+        it.copy(isUpdating = true, errorMsg = null)
+      } else {
+        it
+      }
+    }
+    if (!before.canEdit || before.isLoading || before.isUpdating) return
+
+    viewModelScope.launch {
+      try {
+        dataRepository.deleteTask(taskId)
+        _uiState.update { it.copy(isUpdating = false) }
+      } catch (e: CancellationException) {
+        _uiState.update { it.copy(isUpdating = false) }
+        throw e
+      } catch (e: Exception) {
+        Log.e(LOG_TAG, "Error deleting task $taskId", e)
+        _uiState.update {
+          it.copy(isUpdating = false, errorMsg = R.string.task_details_save_failed)
+        }
+      }
+    }
+  }
 
   /** Clears the error message. */
   fun clearError() = _uiState.update { it.copy(errorMsg = null) }
