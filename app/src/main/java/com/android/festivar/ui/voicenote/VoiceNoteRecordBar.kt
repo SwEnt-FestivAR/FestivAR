@@ -1,6 +1,7 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.voicenote
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -17,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -33,6 +36,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
 import com.android.festivar.ui.components.FixedBottomBar
+import com.android.festivar.ui.components.InfoNote
+import com.android.festivar.ui.components.NoticeSnackbar
 
 /** How far to the left (in dp) the finger has to slide before releasing to cancel. */
 private const val CANCEL_DISTANCE_DP = 80
@@ -140,4 +145,76 @@ private fun RecordButton(enabled: Boolean, callbacks: VoiceNoteCallbacks) {
   ) {
     Icon(Icons.Filled.Mic, contentDescription = null, tint = colors.onPrimary)
   }
+}
+
+/**
+ * The notices fixed just above the record bar: the failed playback and send (each with a Retry),
+ * and the information that the microphone is off (with a button to the settings).
+ */
+@Composable
+fun VoiceNoteNotices(
+    state: VoiceNoteUiState,
+    callbacks: VoiceNoteCallbacks,
+    modifier: Modifier = Modifier,
+) {
+  if (!state.hasNotices) return
+  Column(
+      modifier.fillMaxWidth().padding(horizontal = 20.dp),
+      verticalArrangement = Arrangement.spacedBy(8.dp),
+  ) {
+    if (state.playbackFailed) {
+      ErrorNotice(
+          R.string.voice_note_playback_failed,
+          R.string.voice_note_retry,
+          callbacks.onRetry,
+          VoiceNoteRecordTestTags.PLAYBACK_ERROR,
+          VoiceNoteRecordTestTags.PLAYBACK_RETRY,
+      )
+    }
+    if (state.showRecordBar && state.sendFailed) {
+      ErrorNotice(
+          R.string.voice_note_send_failed,
+          R.string.voice_note_retry,
+          callbacks.onRetry,
+          VoiceNoteRecordTestTags.SEND_ERROR,
+          VoiceNoteRecordTestTags.SEND_RETRY,
+      )
+    }
+    if (state.showRecordBar && state.micDenied) {
+      InfoNote(
+          message = stringResource(R.string.voice_note_mic_denied),
+          modifier = Modifier.testTag(VoiceNoteRecordTestTags.MIC_DENIED),
+          action = {
+            OutlinedButton(
+                onClick = callbacks.onOpenSettings,
+                modifier =
+                    Modifier.fillMaxWidth()
+                        .height(52.dp)
+                        .testTag(VoiceNoteRecordTestTags.OPEN_SETTINGS),
+                shape = MaterialTheme.shapes.medium,
+            ) {
+              Text(stringResource(R.string.voice_note_open_settings))
+            }
+          },
+      )
+    }
+  }
+}
+
+/** An error of the voice note, shown with the shared snackbar and the one [action] that fits it. */
+@Composable
+private fun ErrorNotice(
+    @StringRes message: Int,
+    @StringRes action: Int,
+    onAction: () -> Unit,
+    tag: String,
+    actionTag: String,
+) {
+  NoticeSnackbar(
+      message = stringResource(message),
+      actionLabel = stringResource(action),
+      onAction = onAction,
+      modifier = Modifier.testTag(tag),
+      actionModifier = Modifier.testTag(actionTag),
+  )
 }
