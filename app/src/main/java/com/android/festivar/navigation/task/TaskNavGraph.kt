@@ -13,7 +13,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.user.User
 import com.android.festivar.navigation.AppScreens
 import com.android.festivar.ui.task.create.CreateTaskScreen
@@ -25,14 +25,14 @@ import com.android.festivar.ui.task.overview.TaskOverviewScreen
 import com.android.festivar.ui.task.overview.TaskOverviewViewModel
 
 /** The destinations of the task feature. */
-fun NavGraphBuilder.taskGraph(navController: NavHostController, authRepository: AuthRepository) {
+fun NavGraphBuilder.taskGraph(navController: NavHostController, dataRepository: DataRepository) {
   // Reached through AppScreens.taskOverview(eventId)
   composable(
       route = "${AppScreens.TaskOverview.name}/{eventId}",
       arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
   ) { backStackEntry ->
     val navigator = TaskOverviewNavigator(navController)
-    val firebaseUser = authRepository.currentUser
+    val firebaseUser = dataRepository.authRepository.currentUser
     if (firebaseUser == null) {
       // Nobody is signed in, so there is nobody whose tasks to mark as mine
       LaunchedEffect(Unit) { navigator.onSignedOut() }
@@ -64,7 +64,7 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, authRepository: 
         }
     // Asked at each tap on "Create task". Blank when nobody is signed in: the view model then
     // refuses to save (redirect left to #261).
-    val currentUserId: () -> String = { authRepository.currentUser?.uid.orEmpty() }
+    val currentUserId: () -> String = { dataRepository.authRepository.currentUser?.uid.orEmpty() }
     // Leaving the screen, whether the task was created or not, goes back to the task overview.
     val leave: () -> Unit = { navController.popBackStack() }
     // No key needed: the view model is scoped to this back stack entry, which has its own eventId.
@@ -79,7 +79,7 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, authRepository: 
       arguments = listOf(navArgument("taskId") { type = NavType.StringType }),
   ) { backStackEntry ->
     val taskId = backStackEntry.arguments?.getString("taskId") ?: ""
-    val firebaseUser = authRepository.currentUser
+    val firebaseUser = dataRepository.authRepository.currentUser
     val navigator = TaskDetailsNavigator(navController)
 
     if (firebaseUser == null) {
@@ -108,7 +108,7 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, authRepository: 
       route = "${AppScreens.EditTask.name}/{taskId}",
       arguments = listOf(navArgument("taskId") { type = NavType.StringType }),
   ) { backStackEntry ->
-    if (authRepository.currentUser == null) {
+    if (dataRepository.authRepository.currentUser == null) {
       RedirectToLogin(navController)
       return@composable
     }
@@ -118,7 +118,7 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, authRepository: 
         }
     require(taskId.isNotBlank()) { "taskId must not be blank" }
     // Read at load, and again at save, so a sign out in between refuses the save.
-    val currentUserId: () -> String = { authRepository.currentUser?.uid.orEmpty() }
+    val currentUserId: () -> String = { dataRepository.authRepository.currentUser?.uid.orEmpty() }
     // Leaving the screen, whether the edit was saved or not, goes back to the task details.
     val leave: () -> Unit = { navController.popBackStack() }
     // No key needed: the view model is scoped to this back stack entry, which has its own taskId.
