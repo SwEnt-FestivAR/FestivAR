@@ -280,11 +280,7 @@ class TaskDetailsViewModel(
 
   private fun upload(audio: Audio) {
     val storage = storage ?: return
-    // Checking and setting isUpdating in one step, like the other actions.
-    val before = _uiState.getAndUpdate {
-      if (canRecord(it)) it.copy(isUpdating = true, errorMsg = null) else it
-    }
-    val task = before.task?.takeIf { canRecord(before) } ?: return
+    val task = startSaving(::canRecord) ?: return
     voiceFlags.update { it.copy(sendFailed = false) }
     viewModelScope.launch {
       var url: String? = null
@@ -362,13 +358,10 @@ class TaskDetailsViewModel(
   fun confirmDeleteVoiceNote() {
     voiceFlags.update { it.copy(showDeleteConfirm = false) }
     val storage = storage ?: return
-    val before = _uiState.getAndUpdate {
-      if (canDeleteVoiceNote(it)) it.copy(isUpdating = true, errorMsg = null) else it
-    }
-    val task = before.task?.takeIf { canDeleteVoiceNote(before) } ?: return
-    val note = task.voiceNote ?: return
+    val task = startSaving(::canDeleteVoiceNote) ?: return
     viewModelScope.launch {
       try {
+        val note = checkNotNull(task.voiceNote) { "canDeleteVoiceNote requires a note." }
         val updated = task.removeVoiceNote(currentUser.uid)
         repository.editTask(taskId, updated)
         if (isPlayerOn(note.audioUrl)) player?.stop()
@@ -398,15 +391,23 @@ class TaskDetailsViewModel(
     player?.release()
   }
 
-  // editTask overwrites the whole task, so two users acting at once can lose a change:
-  // https://github.com/SwEnt-FestivAR/FestivAR/issues/186
-  private fun saveIf(allowed: (TaskDetailsUiState) -> Boolean, change: (Task) -> Task) {
-    // Checking and setting isUpdating in one step, so two taps cannot both start a save.
+  /**
+   * Marks the state as updating if [allowed] and a task is shown, and returns that task; null if
+   * the action must not run. Checking and setting `isUpdating` is one step, so two taps cannot both
+   * start a save.
+   */
+  private fun startSaving(allowed: (TaskDetailsUiState) -> Boolean): Task? {
     val canRun = { state: TaskDetailsUiState -> allowed(state) && state.task != null }
     val before = _uiState.getAndUpdate {
       if (canRun(it)) it.copy(isUpdating = true, errorMsg = null) else it
     }
-    val task = before.task?.takeIf { canRun(before) } ?: return
+    return before.task?.takeIf { canRun(before) }
+  }
+
+  // editTask overwrites the whole task, so two users acting at once can lose a change:
+  // https://github.com/SwEnt-FestivAR/FestivAR/issues/186
+  private fun saveIf(allowed: (TaskDetailsUiState) -> Boolean, change: (Task) -> Task) {
+    val task = startSaving(allowed) ?: return
     viewModelScope.launch {
       try {
         val updated = change(task)
