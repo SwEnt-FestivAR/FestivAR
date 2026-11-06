@@ -187,6 +187,14 @@ class LoginScreenTest {
         .onNodeWithTag(LoginScreenTestTags.ANONYMOUS_BUTTON)
         .performScrollTo()
         .performClick()
+    composeTestRule.onNodeWithText("Cancel").performClick()
+    composeTestRule.runOnIdle { assertTrue(!loginViewModel.uiState.value.isSignedIn) }
+
+    composeTestRule
+        .onNodeWithTag(LoginScreenTestTags.ANONYMOUS_BUTTON)
+        .performScrollTo()
+        .performClick()
+    composeTestRule.onNodeWithText("Continue anyway").performClick()
 
     composeTestRule.runOnIdle {
       assertTrue(signedIn)

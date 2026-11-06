@@ -38,7 +38,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -56,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.credentials.CredentialManager
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.R
+import com.android.festivar.ui.components.FestivarConfirmDialog
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.components.NoticeSnackbar
 import com.android.festivar.ui.theme.AppTheme
@@ -87,6 +91,7 @@ fun LoginScreen(
   val context = LocalContext.current
   val uiState by viewModel.uiState.collectAsState()
   val snackbarHostState = remember { SnackbarHostState() }
+  var confirmAnonPopup by rememberSaveable { mutableStateOf(false) }
   LaunchedEffect(uiState.isSignedIn) { if (uiState.isSignedIn) onSignedIn() }
   LaunchedEffect(uiState.errorMsg) {
     uiState.errorMsg?.let { error ->
@@ -115,11 +120,26 @@ fun LoginScreen(
         onTogglePasswordVisibility = viewModel::togglePasswordVisibility,
         onLoginClick = viewModel::signIn,
         onGoogleSignInClick = { viewModel.signInWithGoogle(context, credentialManager) },
-        onAnonSignInClick = { viewModel.anonymousAuth() },
+        onAnonSignInClick = { confirmAnonPopup = true },
         onForgotPasswordClick = onForgotPasswordClick,
         onSignUpClick = onSignUpClick,
         modifier = Modifier.padding(padding),
     )
+
+    if (confirmAnonPopup) {
+      FestivarConfirmDialog(
+          title = stringResource(R.string.login_warning),
+          message = stringResource(R.string.login_warning_msg),
+          confirmText = stringResource(R.string.action_continue_anyway),
+          dismissText = stringResource(R.string.action_cancel),
+          onConfirm = {
+            viewModel.anonymousAuth()
+            confirmAnonPopup = false
+          },
+          onDismiss = { confirmAnonPopup = false },
+          destructive = false,
+      )
+    }
   }
 }
 
@@ -256,6 +276,7 @@ private fun LoginScreenContent(
 
     OrSeparator()
 
+    // Google
     SignInButton(
         onClick = onGoogleSignInClick,
         enabled = !uiState.isLoading,
@@ -264,6 +285,7 @@ private fun LoginScreenContent(
         testTag = LoginScreenTestTags.GOOGLE_BUTTON,
     )
 
+    // Anonymous
     SignInButton(
         onClick = onAnonSignInClick,
         enabled = !uiState.isLoading,
