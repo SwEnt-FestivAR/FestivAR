@@ -68,14 +68,16 @@ fun VoiceNoteRecordBar(
     Row(
         Modifier.fillMaxWidth()
             .alpha(if (state.recordEnabled) 1f else 0.5f)
+            // The tag is before the padding so that the node is the whole 56dp bar of the design
+            // (a 48dp button with 4dp above and below), not only its content.
+            .testTag(VoiceNoteTestTags.RECORDING_BAR)
             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
             .padding(
                 start = if (state.showRecordControls) 4.dp else 20.dp,
-                top = 6.dp,
-                end = 6.dp,
-                bottom = 6.dp,
-            )
-            .testTag(VoiceNoteTestTags.RECORDING_BAR),
+                top = 4.dp,
+                end = if (state.showRecordControls) 4.dp else 8.dp,
+                bottom = 4.dp,
+            ),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(if (state.showRecordControls) 8.dp else 12.dp),
     ) {

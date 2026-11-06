@@ -3,6 +3,7 @@ package com.android.festivar.ui.voicenote
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.center
@@ -15,6 +16,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.up
+import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.audio.PlayerState
 import com.android.festivar.model.audio.RecorderState
@@ -114,6 +116,8 @@ class VoiceNoteContentTest {
         .assertIsDisplayed()
     composeTestRule.onNodeWithText("Hold to record").assertIsDisplayed()
     tag(VoiceNoteTestTags.VOICE_NOTE_RECORD).assertIsDisplayed()
+    // The bar of the design: a 48dp button with 4dp above and below.
+    tag(VoiceNoteTestTags.RECORDING_BAR).assertHeightIsEqualTo(56.dp)
     tag(VoiceNoteTestTags.RECORDING_HINT).assertDoesNotExist()
   }
 
