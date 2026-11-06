@@ -7,7 +7,7 @@
     <string name="voice_note_pause">Stop the voice note</string>
     <string name="voice_note_delete">Delete the voice note</string>
     <string name="voice_note_empty_title">No voice note yet</string>
-    <string name="voice_note_empty_body">Record a short explanation for the volunteers. They can listen before they start.</string>
+    <string name="voice_note_empty_body">Record a short explanation volunteers can listen to before they start.</string>
     <string name="voice_note_hold_to_record">Hold to record</string>
     <string name="voice_note_record">Record a voice note</string>
     <string name="voice_note_recording">Recording %s · Release to send</string>

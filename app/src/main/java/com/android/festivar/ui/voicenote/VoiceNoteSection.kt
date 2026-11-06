@@ -11,8 +11,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.DeleteOutline
@@ -27,7 +29,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
 import com.android.festivar.model.voicenote.VoiceNote
@@ -178,7 +179,10 @@ private fun Waveform(isPlaying: Boolean, modifier: Modifier = Modifier) {
   }
 }
 
-/** What the owner sees when the task has no voice note. */
+/**
+ * What the owner sees when the task has no voice note: the compact "empty voice note" row of the S4
+ * design, a microphone on a round disc, the title and a one-line hint.
+ */
 @Composable
 private fun EmptyVoiceNote() {
   Surface(
@@ -186,21 +190,33 @@ private fun EmptyVoiceNote() {
       shape = MaterialTheme.shapes.medium,
       color = MaterialTheme.colorScheme.surfaceContainerLow,
   ) {
-    Column(
-        Modifier.padding(20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+    Row(
+        Modifier.padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-      Text(
-          stringResource(R.string.voice_note_empty_title),
-          style = MaterialTheme.typography.titleMedium,
-      )
-      Text(
-          stringResource(R.string.voice_note_empty_body),
-          style = MaterialTheme.typography.bodyMedium,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-          textAlign = TextAlign.Center,
-      )
+      Box(
+          Modifier.size(48.dp)
+              .background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape),
+          contentAlignment = Alignment.Center,
+      ) {
+        Icon(
+            Icons.Filled.Mic,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurface,
+        )
+      }
+      Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(
+            stringResource(R.string.voice_note_empty_title),
+            style = MaterialTheme.typography.titleSmall,
+        )
+        Text(
+            stringResource(R.string.voice_note_empty_body),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
     }
   }
 }

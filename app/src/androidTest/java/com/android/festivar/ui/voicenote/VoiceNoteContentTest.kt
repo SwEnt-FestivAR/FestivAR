@@ -106,6 +106,9 @@ class VoiceNoteContentTest {
     show(VoiceNoteUiState(canManage = true))
     tag(VoiceNoteTestTags.VOICE_NOTE_EMPTY).assertIsDisplayed()
     composeTestRule.onNodeWithText("No voice note yet").assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText("Record a short explanation volunteers can listen to before they start.")
+        .assertIsDisplayed()
     composeTestRule.onNodeWithText("Hold to record").assertIsDisplayed()
     tag(VoiceNoteTestTags.VOICE_NOTE_RECORD).assertIsDisplayed()
     tag(VoiceNoteTestTags.RECORDING_HINT).assertDoesNotExist()
