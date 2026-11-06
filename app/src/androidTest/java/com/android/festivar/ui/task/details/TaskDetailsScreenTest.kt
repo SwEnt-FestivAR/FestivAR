@@ -1,5 +1,6 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.ui.task.details
 
 import androidx.compose.foundation.layout.Column
@@ -75,17 +76,18 @@ class TaskDetailsScreenTest {
     val edited = mutableListOf<String>()
     showScreen(user = User("owner-1"), onEdit = { edited += it })
 
-    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.EDIT_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MORE_ACTIONS_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.EDIT_MENU_ITEM).performClick()
 
     assertEquals(listOf(task.taskId), edited)
   }
 
   // Breaks if a volunteer who does not own the task is offered the edit.
   @Test
-  fun aVolunteerSeesNoEditButton() {
+  fun aVolunteerSeesNoOwnerMenu() {
     showScreen()
 
-    assertFalse(exists(TaskDetailsScreenTestTags.EDIT_BUTTON))
+    assertFalse(exists(TaskDetailsScreenTestTags.MORE_ACTIONS_BUTTON))
   }
 
   private fun assertBadge(label: String) =
