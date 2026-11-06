@@ -62,6 +62,7 @@ android {
       if (ciSigningConfigured) {
         signingConfig = signingConfigs.getByName("ci")
       }
+      isPseudoLocalesEnabled = true
     }
   }
 
