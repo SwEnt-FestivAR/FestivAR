@@ -1,13 +1,18 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.ui.task.details
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
+import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.user.User
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.mockk
 import java.io.IOException
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -69,6 +74,7 @@ private class ControlledRepository(val local: TasksRepositoryLocal = TasksReposi
 @RunWith(AndroidJUnit4::class)
 class TaskDetailsViewModelTest {
   private val repository = ControlledRepository()
+  private val dataRepository = mockk<DataRepository>(relaxed = true)
   private val me = User(uid = "me")
   private val other = User(uid = "other")
 
@@ -84,7 +90,7 @@ class TaskDetailsViewModelTest {
 
   private fun viewModel(task: Task, user: User = me): TaskDetailsViewModel {
     runBlocking { repository.local.addTask(task) }
-    return TaskDetailsViewModel(task.taskId, user, repository).also { it.load() }
+    return TaskDetailsViewModel(task.taskId, user, repository, dataRepository).also { it.load() }
   }
 
   private fun task(
@@ -183,7 +189,7 @@ class TaskDetailsViewModelTest {
 
   @Test
   fun missingTask_setsErrorAndClearErrorResetsIt() {
-    val vm = TaskDetailsViewModel("missing", me, repository).also { it.load() }
+    val vm = TaskDetailsViewModel("missing", me, repository, dataRepository).also { it.load() }
     assertNull(vm.uiState.value.task)
     assertEquals(R.string.task_details_load_failed, vm.uiState.value.errorMsg)
     assertFalse(vm.uiState.value.isLoading)
@@ -210,7 +216,7 @@ class TaskDetailsViewModelTest {
   @Test
   fun nothingIsReadBeforeLoad() {
     runBlocking { repository.local.addTask(task()) }
-    val vm = TaskDetailsViewModel("t1", me, repository)
+    val vm = TaskDetailsViewModel("t1", me, repository, dataRepository)
 
     assertEquals(0, repository.getCalls)
     assertNull(vm.uiState.value.task)
@@ -436,5 +442,36 @@ class TaskDetailsViewModelTest {
     assertFalse(vm.uiState.value.isUpdating)
     assertNull(vm.uiState.value.errorMsg)
     assertEquals(TaskStatus.OPEN, vm.uiState.value.status)
+  }
+
+  @Test
+  fun deleteTask_deletesThroughDataRepository() {
+    val vm = viewModel(task(), User(uid = "owner-1"))
+
+    vm.deleteTask()
+
+    coVerify(exactly = 1) { dataRepository.deleteTask("t1") }
+    assertFalse(vm.uiState.value.isUpdating)
+    assertNull(vm.uiState.value.errorMsg)
+  }
+
+  @Test
+  fun deleteTask_failureShowsError() {
+    val vm = viewModel(task(), User(uid = "owner-1"))
+    coEvery { dataRepository.deleteTask("t1") } throws IOException("offline")
+
+    vm.deleteTask()
+
+    assertEquals(R.string.task_details_save_failed, vm.uiState.value.errorMsg)
+    assertFalse(vm.uiState.value.isUpdating)
+  }
+
+  @Test
+  fun deleteTask_nonOwnerDoesNothing() {
+    val vm = viewModel(task())
+
+    vm.deleteTask()
+
+    coVerify(exactly = 0) { dataRepository.deleteTask(any()) }
   }
 }
