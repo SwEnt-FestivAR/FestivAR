@@ -7,6 +7,7 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
+import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryProvider
@@ -101,8 +102,10 @@ data class TaskDetailsUiState(
 class TaskDetailsViewModel(
     private val taskId: String,
     private val currentUser: User,
-    private val repository: TasksRepository = TasksRepositoryProvider.repository,
+    private val dataRepository: DataRepository,
 ) : ViewModel() {
+  private val repository: TasksRepository = dataRepository.tasksRepository
+
   private val _uiState = MutableStateFlow(TaskDetailsUiState(currentUserId = currentUser.uid))
   val uiState: StateFlow<TaskDetailsUiState> = _uiState.asStateFlow()
 
@@ -142,40 +145,56 @@ class TaskDetailsViewModel(
    * Adds the current user to the task's assignees. Does nothing unless
    * [TaskDetailsUiState.canTake].
    */
-  fun take() = saveIf({ it.canTake }) { it.addAssignee(currentUser) }
+  fun take() = saveIf({ it.canTake }) { dataRepository.joinTask(taskId, currentUser.uid) }
 
   /** Removes the current user from the assignees. Does nothing unless the task is yours. */
-  fun giveBack() = saveIf({ it.canGiveBack }) { it.removeAssignee(currentUser.uid) }
+  fun giveBack() = saveIf({ it.canGiveBack }) { dataRepository.quitTask(taskId, currentUser.uid) }
 
   /** Completes the task. Does nothing unless the task is yours. */
-  fun markDone() = saveIf({ it.canMarkDone }) { it.complete() }
+  fun markDone() = saveIf({ it.canMarkDone }) { repository.editTask(taskId, it.complete()) }
 
   /** Clears the error message. */
   fun clearError() = _uiState.update { it.copy(errorMsg = null) }
 
   // editTask overwrites the whole task, so two users acting at once can lose a change:
   // https://github.com/SwEnt-FestivAR/FestivAR/issues/186
-  private fun saveIf(allowed: (TaskDetailsUiState) -> Boolean, change: (Task) -> Task) {
+  private fun saveIf(allowed: (TaskDetailsUiState) -> Boolean, save: suspend (Task) -> Unit) {
+
     // Checking and setting isUpdating in one step, so two taps cannot both start a save.
     val canRun = { state: TaskDetailsUiState -> allowed(state) && state.task != null }
+
     val before = _uiState.getAndUpdate {
       if (canRun(it)) it.copy(isUpdating = true, errorMsg = null) else it
     }
+
     val task = before.task?.takeIf { canRun(before) } ?: return
+
     viewModelScope.launch {
       try {
-        val updated = change(task)
-        repository.editTask(taskId, updated)
-        _uiState.update { it.copy(task = updated, isUpdating = false) }
+
+        save(task)
+
+        _uiState.update {
+          it.copy(
+            task = repository.getTask(taskId),
+            isUpdating = false
+          )
+        }
+
       } catch (e: CancellationException) {
         _uiState.update { it.copy(isUpdating = false) }
         throw e
+
       } catch (e: Exception) {
+
         Log.e(LOG_TAG, "Error saving task $taskId", e)
         _uiState.update {
           it.copy(isUpdating = false, errorMsg = R.string.task_details_save_failed)
         }
+
       }
     }
   }
+
+
 }
