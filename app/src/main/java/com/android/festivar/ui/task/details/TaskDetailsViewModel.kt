@@ -88,8 +88,9 @@ data class TaskDetailsUiState(
 
 /**
  * Holds the state of the Task details screen and applies its three actions: take the task, give it
- * back and mark it done. Each action saves its change through [dataRepository], then reads the task
- * again and shows it only once saved.
+ * back and mark it done. Each action saves its change through [dataRepository] and shows the task
+ * only once saved. Taking and giving back read the task again, since the stored assignee is the
+ * user's stored profile; marking done shows the completed task directly.
  *
  * Nothing loads until [load] is called: the screen calls it on every resume, the first one
  * included, so a load at construction would read the task twice on open.
@@ -146,32 +147,36 @@ class TaskDetailsViewModel(
    * Adds the current user to the task's assignees, and the task to the user's [User.tasksAssigned]
    * and to its event. Does nothing unless [TaskDetailsUiState.canTake].
    */
-  fun take() = saveIf({ it.canTake }) {
-    dataRepository.joinTask(taskId, currentUser.uid)
-    repository.getTask(taskId)
-  }
+  fun take() =
+      saveIf({ it.canTake }) {
+        dataRepository.joinTask(taskId, currentUser.uid)
+        repository.getTask(taskId)
+      }
 
   /**
    * Removes the current user from the assignees, in the task and in its event, and the task from
    * the user's [User.tasksAssigned]. Does nothing unless the task is yours.
    */
-  fun giveBack() = saveIf({ it.canGiveBack }) {
-    dataRepository.quitTask(taskId, currentUser.uid)
-    repository.getTask(taskId)
-  }
+  fun giveBack() =
+      saveIf({ it.canGiveBack }) {
+        dataRepository.quitTask(taskId, currentUser.uid)
+        repository.getTask(taskId)
+      }
 
   /** Completes the task. Does nothing unless the task is yours. */
-  fun markDone() = saveIf({ it.canMarkDone }) {
-    val completedTask = it.complete()
-    repository.editTask(taskId, completedTask)
-    completedTask
-  }
+  fun markDone() =
+      saveIf({ it.canMarkDone }) {
+        val completedTask = it.complete()
+        repository.editTask(taskId, completedTask)
+        completedTask
+      }
 
   /** Clears the error message. */
   fun clearError() = _uiState.update { it.copy(errorMsg = null) }
 
   // editTask overwrites the whole task, so two users acting at once can lose a change:
   // https://github.com/SwEnt-FestivAR/FestivAR/issues/186
+  // save stores the change and returns the task to show.
   private fun saveIf(allowed: (TaskDetailsUiState) -> Boolean, save: suspend (Task) -> Task) {
     // Checking and setting isUpdating in one step, so two taps cannot both start a save.
     val canRun = { state: TaskDetailsUiState -> allowed(state) && state.task != null }

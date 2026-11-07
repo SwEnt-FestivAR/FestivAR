@@ -360,6 +360,16 @@ class TaskDetailsViewModelTest {
     assertEquals(TaskStatus.DONE, vm.uiState.value.status)
   }
 
+  // Breaks if markDone() reads the task again: it already knows the completed version.
+  @Test
+  fun markDone_showsTheCompletedTaskWithoutReadingItAgain() {
+    val vm = viewModel(task(assignees = listOf(me)))
+    val readsBefore = repository.getCalls
+    vm.markDone()
+    assertEquals(readsBefore, repository.getCalls)
+    assertEquals(stored(), vm.uiState.value.task)
+  }
+
   // Breaks if take() edits only the task instead of going through dataRepository.joinTask.
   @Test
   fun take_addsTheTaskToTheUserAndUpdatesItInItsEvent() {
