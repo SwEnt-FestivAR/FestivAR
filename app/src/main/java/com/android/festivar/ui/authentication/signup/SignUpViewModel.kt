@@ -4,6 +4,7 @@ package com.android.festivar.ui.authentication.signup
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.ui.authentication.checkPassword
 import com.android.festivar.ui.authentication.isEmailValid
 import com.android.festivar.ui.authentication.isPasswordValid
@@ -30,7 +31,9 @@ data class SignUpUIState(
             !isLoading
 }
 
-class SignUpViewModel(private val authRepository: AuthRepository) : ViewModel() {
+class SignUpViewModel(private val dataRepository: DataRepository) : ViewModel() {
+
+  private val authRepository: AuthRepository = dataRepository.authRepository
   private val _uiState = MutableStateFlow(SignUpUIState())
   val uiState: StateFlow<SignUpUIState> = _uiState.asStateFlow()
 
