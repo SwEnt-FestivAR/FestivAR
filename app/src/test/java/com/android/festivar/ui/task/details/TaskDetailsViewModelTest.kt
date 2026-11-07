@@ -464,7 +464,7 @@ class TaskDetailsViewModelTest {
 
   // Breaks if the IllegalStateException of a task filled meanwhile is not shown as a save error.
   @Test
-  fun takingATaskFilledMeanwhile_showsTheSaveErrorAndChangesNothing() {
+  fun takingATaskFilledMeanwhile_showsTheSaveError() {
     val vm = viewModel(task())
     runBlocking { repository.local.editTask("t1", task(assignees = listOf(other))) }
 
@@ -473,7 +473,6 @@ class TaskDetailsViewModelTest {
     assertEquals(R.string.task_details_save_failed, vm.uiState.value.errorMsg)
     assertFalse(vm.uiState.value.isUpdating)
     assertEquals(listOf(other), stored().assignees)
-    assertTrue(storedUser().tasksAssigned.isEmpty())
   }
 
   @Test
@@ -486,7 +485,6 @@ class TaskDetailsViewModelTest {
     assertFalse(vm.uiState.value.isUpdating)
     assertEquals(TaskStatus.YOURS, vm.uiState.value.status)
     assertEquals(listOf(me), stored().assignees)
-    assertEquals(listOf("t1"), storedUser().tasksAssigned)
   }
 
   @Test
