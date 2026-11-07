@@ -82,6 +82,10 @@ class VoiceNoteContentTest {
 
   private fun tag(tag: String) = composeTestRule.onNodeWithTag(tag)
 
+  /** The label is drawn in capitals by `SectionLabel`, so it is matched without the case. */
+  private fun label() =
+      composeTestRule.onNodeWithText(text(R.string.voice_note_label), ignoreCase = true)
+
   /** The date and the time of the note as the author line shows them, in the year of the note. */
   private val recordedAt =
       formatRecordedAt(note.createdAt, thisYear, text(R.string.voice_note_today))
@@ -93,7 +97,7 @@ class VoiceNoteContentTest {
   @Test
   fun ownerSeesTheNoteWithTrash() {
     show(VoiceNoteUiState(note = note, canManage = true))
-    composeTestRule.onNodeWithText(text(R.string.voice_note_label)).assertIsDisplayed()
+    label().assertIsDisplayed()
     tag(VoiceNoteTestTags.VOICE_NOTE_AUTHOR)
         .assertTextContains(text(R.string.voice_note_author_you, recordedAt))
     tag(VoiceNoteTestTags.VOICE_NOTE_DURATION).assertTextContains("0:14")
@@ -105,7 +109,7 @@ class VoiceNoteContentTest {
   @Test
   fun volunteerSeesTheNoteWithoutTrash() {
     show(VoiceNoteUiState(note = note, canManage = false))
-    composeTestRule.onNodeWithText(text(R.string.voice_note_label)).assertIsDisplayed()
+    label().assertIsDisplayed()
     tag(VoiceNoteTestTags.VOICE_NOTE_AUTHOR)
         .assertTextContains(
             text(R.string.voice_note_author_other, text(R.string.voice_note_organizer), recordedAt)
@@ -166,7 +170,7 @@ class VoiceNoteContentTest {
   @Test
   fun volunteerSeesNothingWithoutNote() {
     show(VoiceNoteUiState())
-    composeTestRule.onNodeWithText(text(R.string.voice_note_label)).assertDoesNotExist()
+    label().assertDoesNotExist()
     tag(VoiceNoteTestTags.VOICE_NOTE_EMPTY).assertDoesNotExist()
     tag(VoiceNoteTestTags.VOICE_NOTE_PLAY).assertDoesNotExist()
   }
@@ -175,7 +179,7 @@ class VoiceNoteContentTest {
   @Test
   fun ownerSeesTheEmptyStateWithoutNote() {
     show(VoiceNoteUiState(canManage = true))
-    composeTestRule.onNodeWithText(text(R.string.voice_note_label)).assertIsDisplayed()
+    label().assertIsDisplayed()
     tag(VoiceNoteTestTags.VOICE_NOTE_EMPTY).assertIsDisplayed()
     composeTestRule.onNodeWithText(text(R.string.voice_note_empty_title)).assertIsDisplayed()
     composeTestRule.onNodeWithText(text(R.string.voice_note_empty_body)).assertIsDisplayed()
