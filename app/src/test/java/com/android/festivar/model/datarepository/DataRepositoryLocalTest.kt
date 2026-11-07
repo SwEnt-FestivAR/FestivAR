@@ -1,7 +1,7 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.datarepository
 
-import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.task.Task
@@ -10,7 +10,6 @@ import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryLocal
-import io.mockk.mockk
 import java.io.IOException
 import java.time.ZonedDateTime
 import kotlinx.coroutines.runBlocking
@@ -30,6 +29,7 @@ import org.junit.Test
  * - carla exists but is in no event and has no task.
  */
 class DataRepositoryLocalTest {
+  private lateinit var authRepository: FakeAuthRepository
   private lateinit var tasksRepository: TasksRepositoryLocal
   private lateinit var eventsRepository: EventsRepositoryLocal
   private lateinit var usersRepository: UsersRepositoryLocal
@@ -101,6 +101,7 @@ class DataRepositoryLocalTest {
 
   @Before
   fun setUp() {
+    authRepository = FakeAuthRepository()
     tasksRepository = TasksRepositoryLocal()
     eventsRepository = EventsRepositoryLocal(listOf(e1, e2))
     usersRepository = UsersRepositoryLocal(listOf(alice, bob, carla))
@@ -126,7 +127,7 @@ class DataRepositoryLocalTest {
   private fun repositoryWith(
       users: UsersRepository = usersRepository,
       tasks: TasksRepository = tasksRepository,
-  ) = DataRepositoryLocal(mockk<AuthRepository>(), tasks, eventsRepository, users)
+  ) = DataRepositoryLocal(authRepository, tasks, eventsRepository, users)
 
   /** A [TasksRepository] that behaves like [delegate], except that every edit fails. */
   private class BrokenTasksRepository(private val delegate: TasksRepository) :
@@ -219,7 +220,7 @@ class DataRepositoryLocalTest {
 
   @Test
   fun defaultRepositories_startEmpty() = runTest {
-    val repository = DataRepositoryLocal(mockk<AuthRepository>())
+    val repository = DataRepositoryLocal()
 
     assertTrue(repository.eventsRepository.getAllEvents().isEmpty())
     assertTrue(repository.tasksRepository.getAllTasks("e1").isEmpty())
