@@ -32,7 +32,7 @@ import org.junit.runner.RunWith
 
 /** The voice note section for every state, with no ViewModel. */
 @RunWith(AndroidJUnit4::class)
-class VoiceNoteContentTest {
+class VoiceNoteSectionTest {
   @get:Rule val composeTestRule = createComposeRule()
 
   private val note =
