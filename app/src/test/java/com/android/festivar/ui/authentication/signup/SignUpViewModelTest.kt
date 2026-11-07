@@ -1,8 +1,10 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.authentication.signup
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.google.firebase.auth.FirebaseUser
 import io.mockk.mockk
 import kotlin.time.Duration.Companion.milliseconds
@@ -27,7 +29,7 @@ class SignUpViewModelTest {
       repositoryStarted.complete(Unit)
       response.await()
     }
-    val viewModel = SignUpViewModel(authRepository)
+    val viewModel = SignUpViewModel(DataRepositoryLocal(authRepository))
 
     viewModel.signUp("user@example.com", "password")
     runBlocking { withTimeout(5_000.milliseconds) { repositoryStarted.await() } }
@@ -45,7 +47,7 @@ class SignUpViewModelTest {
   fun signUp_setsErrorWhenRepositoryFails() {
     val failure = IllegalStateException("Account already exists")
     authRepository.signUpBehavior = { _, _ -> Result.failure<FirebaseUser>(failure) }
-    val viewModel = SignUpViewModel(authRepository)
+    val viewModel = SignUpViewModel(DataRepositoryLocal(authRepository))
 
     viewModel.signUp("user@example.com", "password")
     val state = awaitState(viewModel) { it.errorMsg != null }
@@ -60,7 +62,7 @@ class SignUpViewModelTest {
     authRepository.signUpBehavior = { _, _ ->
       Result.failure(IllegalStateException("Account already exists"))
     }
-    val viewModel = SignUpViewModel(authRepository)
+    val viewModel = SignUpViewModel(DataRepositoryLocal(authRepository))
 
     viewModel.signUp("user@example.com", "password")
     awaitState(viewModel) { it.errorMsg != null }
@@ -78,7 +80,7 @@ class SignUpViewModelTest {
       repositoryStarted.complete(Unit)
       response.await()
     }
-    val viewModel = SignUpViewModel(authRepository)
+    val viewModel = SignUpViewModel(DataRepositoryLocal(authRepository))
 
     viewModel.signUp("user@example.com", "password")
     runBlocking { withTimeout(5_000.milliseconds) { repositoryStarted.await() } }
