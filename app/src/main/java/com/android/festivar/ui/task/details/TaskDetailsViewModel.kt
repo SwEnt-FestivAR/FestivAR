@@ -183,8 +183,8 @@ class TaskDetailsViewModel(
 
     viewModelScope.launch {
       try {
-        save(task)
-        val updated = repository.getTask(taskId)
+
+        val updated = save(task)
         _uiState.update {
           it.copy(
               task = updated,
