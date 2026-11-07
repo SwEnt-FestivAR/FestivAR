@@ -77,8 +77,8 @@ class JoinEventViewModel(
     private val dataRepository: DataRepository,
 ) : ViewModel() {
 
-    private val eventsRepository: EventsRepository = dataRepository.eventsRepository
-    private val usersRepository: UsersRepository = dataRepository.usersRepository
+  private val eventsRepository: EventsRepository = dataRepository.eventsRepository
+  private val usersRepository: UsersRepository = dataRepository.usersRepository
   private val _uiState = MutableStateFlow(JoinEventUIState())
   val uiState: StateFlow<JoinEventUIState> = _uiState.asStateFlow()
 
@@ -143,33 +143,30 @@ class JoinEventViewModel(
     _uiState.update { it.copy(isJoining = true, errorRes = null) }
 
     viewModelScope.launch {
-
       try {
         // Both sides are read again and only the missing one is written, so a join that stopped
         // halfway earlier is repaired instead of failing as "already joined" forever.
 
-          val event = eventsRepository.getEvent(eventId)
-          val user = usersRepository.getUser(userId)
-          val isMember = event.members.any { it.uid == userId }
-          val hasJoined = eventId in user.joinedEvents
+        val event = eventsRepository.getEvent(eventId)
+        val user = usersRepository.getUser(userId)
+        val isMember = event.members.any { it.uid == userId }
+        val hasJoined = eventId in user.joinedEvents
 
-          if(!isMember && !hasJoined){
-              dataRepository.joinEvent(eventId, userId)
-          } else if(isMember && !hasJoined){
-              usersRepository.editUser(userId, user.addJoinedEvent(eventId))
-          } else if (!isMember && hasJoined){
-              usersRepository.editUser(userId, user.removeJoinedEvent(eventId))
-              dataRepository.joinEvent(eventId, userId)
-          }
-          _uiState.update { it.copy(isJoining = false, joinedEventId = eventId) }
-
+        if (!isMember && !hasJoined) {
+          dataRepository.joinEvent(eventId, userId)
+        } else if (isMember && !hasJoined) {
+          usersRepository.editUser(userId, user.addJoinedEvent(eventId))
+        } else if (!isMember && hasJoined) {
+          usersRepository.editUser(userId, user.removeJoinedEvent(eventId))
+          dataRepository.joinEvent(eventId, userId)
+        }
+        _uiState.update { it.copy(isJoining = false, joinedEventId = eventId) }
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
         Log.e(LOG_TAG, "Error joining event $eventId", e)
         _uiState.update { it.copy(isJoining = false, errorRes = failure) }
       }
-
     }
   }
 
