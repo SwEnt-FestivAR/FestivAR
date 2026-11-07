@@ -60,15 +60,15 @@ object VoiceNoteTestTags {
  *
  * @param ownerName Who is credited with the note when the current user is not its owner. The owner
  *   of a task is not always the organizer of the event, since every member can create a task, so
- *   the caller must give the name of the owner.
+ *   the caller should give the name of the owner. It defaults to "Organizer".
  * @param clock Tells the current year, which the date of the note only shows when it is another.
  */
 @Composable
 fun VoiceNoteSection(
     state: VoiceNoteUiState,
     callbacks: VoiceNoteCallbacks,
-    ownerName: String,
     modifier: Modifier = Modifier,
+    ownerName: String = stringResource(R.string.voice_note_organizer),
     clock: Clock = Clock.systemDefaultZone(),
 ) {
   if (!state.isVisible) return
@@ -179,14 +179,14 @@ private val previewNote =
         createdAt = ZonedDateTime.of(2026, 10, 17, 9, 12, 0, 0, ZoneOffset.UTC),
     )
 
-private val previewCallbacks = VoiceNoteCallbacks.NoOp
+private val callbacks = VoiceNoteCallbacks.NoOp
 
 /** The section as on the screen, in its scrolling column. */
 @Composable
 private fun VoiceNotePreviewScreen(state: VoiceNoteUiState) {
   AppTheme {
     Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
-      VoiceNoteSection(state, previewCallbacks, stringResource(R.string.voice_note_organizer))
+      VoiceNoteSection(state, callbacks)
     }
   }
 }

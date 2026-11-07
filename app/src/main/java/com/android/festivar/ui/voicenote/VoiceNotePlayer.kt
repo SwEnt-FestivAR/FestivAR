@@ -11,8 +11,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
@@ -128,7 +128,7 @@ private fun PlayButton(isPlaying: Boolean, onClick: () -> Unit) {
       modifier = Modifier.size(40.dp).testTag(VoiceNoteTestTags.VOICE_NOTE_PLAY),
   ) {
     Icon(
-        if (isPlaying) Icons.Filled.Stop else Icons.Filled.PlayArrow,
+        if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
         contentDescription =
             stringResource(if (isPlaying) R.string.voice_note_pause else R.string.voice_note_play),
     )

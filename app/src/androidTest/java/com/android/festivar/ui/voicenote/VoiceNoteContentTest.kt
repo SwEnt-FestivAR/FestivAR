@@ -77,9 +77,7 @@ class VoiceNoteContentTest {
   private val thisYear = clockOn(LocalDate.of(2026, 11, 7))
 
   private fun show(state: VoiceNoteUiState, clock: Clock = thisYear) = composeTestRule.setContent {
-    AppTheme {
-      VoiceNoteSection(state, callbacks, text(R.string.voice_note_organizer), clock = clock)
-    }
+    AppTheme { VoiceNoteSection(state, callbacks, clock = clock) }
   }
 
   private fun tag(tag: String) = composeTestRule.onNodeWithTag(tag)
@@ -128,7 +126,7 @@ class VoiceNoteContentTest {
         VoiceNoteSection(
             VoiceNoteUiState(note = note),
             callbacks,
-            "Alice",
+            ownerName = "Alice",
             clock = thisYear,
         )
       }
