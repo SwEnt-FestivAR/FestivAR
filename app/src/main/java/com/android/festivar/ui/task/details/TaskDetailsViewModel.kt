@@ -10,7 +10,6 @@ import com.android.festivar.R
 import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
-import com.android.festivar.model.task.TasksRepositoryProvider
 import com.android.festivar.model.user.User
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Job
@@ -177,25 +176,20 @@ class TaskDetailsViewModel(
 
         _uiState.update {
           it.copy(
-            task = updated,
-            isUpdating = false
+              task = updated,
+              isUpdating = false,
           )
         }
-
       } catch (e: CancellationException) {
         _uiState.update { it.copy(isUpdating = false) }
         throw e
-
       } catch (e: Exception) {
 
         Log.e(LOG_TAG, "Error saving task $taskId", e)
         _uiState.update {
           it.copy(isUpdating = false, errorMsg = R.string.task_details_save_failed)
         }
-
       }
     }
   }
-
-
 }

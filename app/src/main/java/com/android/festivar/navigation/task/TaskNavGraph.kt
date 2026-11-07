@@ -100,7 +100,10 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, dataRepository: 
     TaskDetailsScreen(
         taskId = taskId,
         currentUser = currentUser,
-        viewModel = viewModel(key = "$taskId:${currentUser.uid}") { TaskDetailsViewModel(taskId, currentUser, dataRepository) },
+        viewModel =
+            viewModel(key = "$taskId:${currentUser.uid}") {
+              TaskDetailsViewModel(taskId, currentUser, dataRepository)
+            },
         onBack = navigator.onBack,
         onEdit = navigator.onEdit,
     )
