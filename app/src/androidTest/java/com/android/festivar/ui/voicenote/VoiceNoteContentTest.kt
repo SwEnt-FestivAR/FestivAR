@@ -9,15 +9,20 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
+import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
 import com.android.festivar.model.audio.PlayerState
 import com.android.festivar.model.voicenote.VoiceNote
+import com.android.festivar.ui.components.formatDate
+import com.android.festivar.ui.components.formatTime
 import com.android.festivar.ui.theme.AppTheme
+import io.mockk.confirmVerified
+import io.mockk.mockk
+import io.mockk.verify
 import java.time.Duration
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
-import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -38,20 +43,31 @@ class VoiceNoteContentTest {
   private fun text(id: Int, vararg args: Any) =
       ApplicationProvider.getApplicationContext<android.content.Context>().getString(id, *args)
 
-  private val events = mutableListOf<String>()
+  // JUnit creates a new instance of the class for every test, so these mocks start every test
+  // without any call
+  private val onTogglePlay = mockk<() -> Unit>(relaxed = true)
+  private val onDelete = mockk<() -> Unit>(relaxed = true)
+  private val onConfirmDelete = mockk<() -> Unit>(relaxed = true)
+  private val onDismissDelete = mockk<() -> Unit>(relaxed = true)
 
   private val callbacks =
-      VoiceNoteCallbacks(
-          onTogglePlay = { events += "toggle" },
-          onDelete = { events += "delete" },
-          onConfirmDelete = { events += "confirm" },
-          onDismissDelete = { events += "dismiss" },
-          onRecordStart = { events += "start" },
-          onRecordRelease = { events += "release" },
-          onRecordCancel = { events += "cancel" },
-          onRetry = { events += "retry" },
-          onOpenSettings = { events += "settings" },
-      )
+      VoiceNoteCallbacks.NoOp.let {
+        VoiceNoteCallbacks(
+            onTogglePlay = onTogglePlay,
+            onDelete = onDelete,
+            onConfirmDelete = onConfirmDelete,
+            onDismissDelete = onDismissDelete,
+            onRecordStart = it.onRecordStart,
+            onRecordRelease = it.onRecordRelease,
+            onRecordCancel = it.onRecordCancel,
+            onRetry = it.onRetry,
+            onOpenSettings = it.onOpenSettings,
+        )
+      }
+
+  /** Fails if a callback was called that the test did not verify, so a stray call is caught. */
+  private fun assertNoOtherCall() =
+      confirmVerified(onTogglePlay, onDelete, onConfirmDelete, onDismissDelete)
 
   private fun show(state: VoiceNoteUiState) = composeTestRule.setContent {
     AppTheme { VoiceNoteSection(state, callbacks) }
@@ -59,34 +75,56 @@ class VoiceNoteContentTest {
 
   private fun tag(tag: String) = composeTestRule.onNodeWithTag(tag)
 
+  /** The date and the time of the note as the author line shows them. */
+  private val recordedAt =
+      "${formatDate(note.createdAt.toLocalDate())}, ${formatTime(note.createdAt.toLocalTime())}"
+
   /**
-   * Breaks if the owner no longer sees the author line, the duration, the play button and the
-   * trash.
+   * Breaks if the owner no longer sees the label, the author line with the date and the time, the
+   * duration, the play button and the trash.
    */
   @Test
   fun ownerSeesTheNoteWithTrash() {
     show(VoiceNoteUiState(note = note, canManage = true))
+    composeTestRule.onNodeWithText(text(R.string.voice_note_label)).assertIsDisplayed()
     tag(VoiceNoteTestTags.VOICE_NOTE_AUTHOR)
-        .assertTextContains(text(R.string.voice_note_author_you, "09:12"))
+        .assertTextContains(text(R.string.voice_note_author_you, recordedAt))
     tag(VoiceNoteTestTags.VOICE_NOTE_DURATION).assertTextContains("0:14")
     tag(VoiceNoteTestTags.VOICE_NOTE_PLAY).assertIsDisplayed()
     tag(VoiceNoteTestTags.VOICE_NOTE_DELETE).assertIsDisplayed()
   }
 
-  /** Breaks if a volunteer sees the trash, or the note is not credited to the organizer. */
+  /** Breaks if a volunteer sees the trash, or the note is not credited to the default organizer. */
   @Test
   fun volunteerSeesTheNoteWithoutTrash() {
     show(VoiceNoteUiState(note = note, canManage = false))
+    composeTestRule.onNodeWithText(text(R.string.voice_note_label)).assertIsDisplayed()
     tag(VoiceNoteTestTags.VOICE_NOTE_AUTHOR)
-        .assertTextContains(text(R.string.voice_note_author_organizer, "09:12"))
+        .assertTextContains(
+            text(R.string.voice_note_author_other, text(R.string.voice_note_organizer), recordedAt)
+        )
     tag(VoiceNoteTestTags.VOICE_NOTE_PLAY).assertIsDisplayed()
     tag(VoiceNoteTestTags.VOICE_NOTE_DELETE).assertDoesNotExist()
   }
 
-  /** Breaks if a volunteer sees the empty state or a player for a task with no note. */
+  /** Breaks if the note is credited to the organizer even though its owner is somebody else. */
+  @Test
+  fun volunteerSeesTheNameOfTheOwner() {
+    composeTestRule.setContent {
+      AppTheme { VoiceNoteSection(VoiceNoteUiState(note = note), callbacks, ownerName = "Alice") }
+    }
+    tag(VoiceNoteTestTags.VOICE_NOTE_AUTHOR)
+        .assertTextContains(text(R.string.voice_note_author_other, "Alice", recordedAt))
+  }
+
+  /**
+   * Breaks if a volunteer sees the label, the empty state or a player for a task with no note: the
+   * whole section must be hidden.
+   */
   @Test
   fun volunteerSeesNothingWithoutNote() {
     show(VoiceNoteUiState())
+    composeTestRule.onNodeWithText(text(R.string.voice_note_label)).assertDoesNotExist()
     tag(VoiceNoteTestTags.VOICE_NOTE_EMPTY).assertDoesNotExist()
     tag(VoiceNoteTestTags.VOICE_NOTE_PLAY).assertDoesNotExist()
   }
@@ -95,6 +133,7 @@ class VoiceNoteContentTest {
   @Test
   fun ownerSeesTheEmptyStateWithoutNote() {
     show(VoiceNoteUiState(canManage = true))
+    composeTestRule.onNodeWithText(text(R.string.voice_note_label)).assertIsDisplayed()
     tag(VoiceNoteTestTags.VOICE_NOTE_EMPTY).assertIsDisplayed()
     composeTestRule.onNodeWithText(text(R.string.voice_note_empty_title)).assertIsDisplayed()
     composeTestRule.onNodeWithText(text(R.string.voice_note_empty_body)).assertIsDisplayed()
@@ -112,7 +151,8 @@ class VoiceNoteContentTest {
   fun playTogglesThroughTheCallback() {
     show(VoiceNoteUiState(note = note, canManage = true))
     tag(VoiceNoteTestTags.VOICE_NOTE_PLAY).performClick()
-    assertEquals(listOf("toggle"), events)
+    verify(exactly = 1) { onTogglePlay() }
+    assertNoOtherCall()
   }
 
   /** Breaks if the button does not offer to stop the note while it plays. */
@@ -124,6 +164,15 @@ class VoiceNoteContentTest {
         .assertIsDisplayed()
   }
 
+  /** Breaks if tapping the stop button of a playing note does not call onTogglePlay once. */
+  @Test
+  fun pauseTogglesThroughTheCallback() {
+    show(VoiceNoteUiState(note = note, player = PlayerState.Playing(note.audioUrl)))
+    composeTestRule.onNodeWithContentDescription(text(R.string.voice_note_pause)).performClick()
+    verify(exactly = 1) { onTogglePlay() }
+    assertNoOtherCall()
+  }
+
   /** Breaks if the button does not offer to play the note when nothing plays. */
   @Test
   fun idlePlayButtonOffersToPlay() {
@@ -131,30 +180,95 @@ class VoiceNoteContentTest {
     composeTestRule.onNodeWithContentDescription(text(R.string.voice_note_play)).assertIsDisplayed()
   }
 
+  /** Breaks if the trash of the owner loses its localized content description. */
+  @Test
+  fun trashHasAContentDescription() {
+    show(VoiceNoteUiState(note = note, canManage = true))
+    composeTestRule
+        .onNodeWithContentDescription(text(R.string.voice_note_delete))
+        .assertIsDisplayed()
+  }
+
   /** Breaks if the trash deletes right away instead of only asking to confirm. */
   @Test
   fun trashAsksToConfirm() {
     show(VoiceNoteUiState(note = note, canManage = true))
     tag(VoiceNoteTestTags.VOICE_NOTE_DELETE).performClick()
-    assertEquals(listOf("delete"), events)
+    verify(exactly = 1) { onDelete() }
+    assertNoOtherCall()
   }
 
-  /** Breaks if the dialog loses its texts, or its buttons stop calling dismiss and confirm. */
+  /** Breaks if the dialog loses its texts or its two buttons. */
   @Test
-  fun deleteDialogOffersKeepAndDelete() {
+  fun deleteDialogShowsItsTextsAndButtons() {
     show(VoiceNoteUiState(note = note, canManage = true, showDeleteConfirm = true))
     tag(VoiceNoteTestTags.CONFIRM_DELETE).assertIsDisplayed()
     composeTestRule.onNodeWithText(text(R.string.voice_note_delete_title)).assertIsDisplayed()
     composeTestRule.onNodeWithText(text(R.string.voice_note_delete_body)).assertIsDisplayed()
+    tag(VoiceNoteTestTags.KEEP_BUTTON).assertIsDisplayed()
+    tag(VoiceNoteTestTags.CONFIRM_DELETE_BUTTON).assertIsDisplayed()
+  }
+
+  /** Breaks if "Keep it" does not call onDismissDelete once, or also confirms the deletion. */
+  @Test
+  fun keepButtonDismissesTheDialog() {
+    show(VoiceNoteUiState(note = note, canManage = true, showDeleteConfirm = true))
     tag(VoiceNoteTestTags.KEEP_BUTTON).performClick()
+    verify(exactly = 1) { onDismissDelete() }
+    assertNoOtherCall()
+  }
+
+  /** Breaks if "Delete" does not call onConfirmDelete once, or also dismisses the dialog. */
+  @Test
+  fun deleteButtonConfirmsTheDeletion() {
+    show(VoiceNoteUiState(note = note, canManage = true, showDeleteConfirm = true))
     tag(VoiceNoteTestTags.CONFIRM_DELETE_BUTTON).performClick()
-    assertEquals(listOf("dismiss", "confirm"), events)
+    verify(exactly = 1) { onConfirmDelete() }
+    assertNoOtherCall()
+  }
+
+  /**
+   * Breaks if leaving the dialog without choosing does not call onDismissDelete. The back button of
+   * the device goes through the same `onDismissRequest` as a tap outside of the dialog.
+   */
+  @Test
+  fun leavingTheDialogDismissesIt() {
+    show(VoiceNoteUiState(note = note, canManage = true, showDeleteConfirm = true))
+    tag(VoiceNoteTestTags.CONFIRM_DELETE).assertIsDisplayed()
+    Espresso.pressBack()
+    composeTestRule.waitForIdle()
+    verify(exactly = 1) { onDismissDelete() }
+    assertNoOtherCall()
   }
 
   /** Breaks if the delete dialog is shown without being asked for. */
   @Test
   fun noDialogByDefault() {
     show(VoiceNoteUiState(note = note, canManage = true))
+    tag(VoiceNoteTestTags.CONFIRM_DELETE).assertDoesNotExist()
+  }
+
+  /** Breaks if a volunteer can get the delete dialog, even if the state asks to confirm. */
+  @Test
+  fun volunteerNeverSeesTheDeleteDialog() {
+    show(VoiceNoteUiState(note = note, canManage = false, showDeleteConfirm = true))
+    tag(VoiceNoteTestTags.CONFIRM_DELETE).assertDoesNotExist()
+  }
+
+  /** Breaks if the dialog shows for a volunteer of a task with no note (the section is hidden). */
+  @Test
+  fun volunteerWithoutNoteNeverSeesTheDeleteDialog() {
+    show(VoiceNoteUiState(canManage = false, showDeleteConfirm = true))
+    tag(VoiceNoteTestTags.CONFIRM_DELETE).assertDoesNotExist()
+  }
+
+  /**
+   * Breaks if the owner of a task with no note gets a dialog to delete a note that is not there.
+   */
+  @Test
+  fun ownerWithoutNoteNeverSeesTheDeleteDialog() {
+    show(VoiceNoteUiState(canManage = true, showDeleteConfirm = true))
+    tag(VoiceNoteTestTags.VOICE_NOTE_EMPTY).assertIsDisplayed()
     tag(VoiceNoteTestTags.CONFIRM_DELETE).assertDoesNotExist()
   }
 }
