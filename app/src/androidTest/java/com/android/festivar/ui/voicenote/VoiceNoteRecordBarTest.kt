@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.center
 import androidx.compose.ui.test.down
@@ -152,6 +153,31 @@ class VoiceNoteRecordBarTest {
       up()
     }
     assertEquals(listOf("settings"), events)
+  }
+
+  private val waiting = PendingRecording(Duration.ofSeconds(7))
+
+  /** Breaks if sending does not grey the bar, or does not say how long the recording is. */
+  @Test
+  fun sendingGreysTheBarAndShowsTheLengthOfTheRecording() {
+    show(VoiceNoteUiState(canManage = true, pending = waiting.copy(isUploading = true)))
+    tag(VoiceNoteRecordTestTags.VOICE_NOTE_SENDING)
+        .assertTextContains(text(R.string.voice_note_sending, "0:07"))
+    composeTestRule.onNodeWithText(text(R.string.voice_note_hold_to_record)).assertDoesNotExist()
+    tag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).performTouchInput {
+      down(center)
+      up()
+    }
+    assertEquals(emptyList<String>(), events)
+  }
+
+  /** Breaks if the waiting recording is not shown as a note that cannot be played yet. */
+  @Test
+  fun waitingRecordingIsShownAsADisabledNote() {
+    show(VoiceNoteUiState(canManage = true, pending = waiting))
+    tag(VoiceNoteTestTags.VOICE_NOTE_DURATION).assertTextContains("0:07")
+    tag(VoiceNoteTestTags.VOICE_NOTE_PLAY).assertIsNotEnabled()
+    tag(VoiceNoteRecordTestTags.RECORDING_BAR).assertDoesNotExist()
   }
 
   /** Breaks if a failed send shows no snackbar, or its Retry does nothing. */
