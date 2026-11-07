@@ -4,11 +4,17 @@ package com.android.festivar.ui.task.details
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
+import com.android.festivar.model.datarepository.DataRepositoryLocal
+import com.android.festivar.model.event.Event
+import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.user.User
+import com.android.festivar.model.user.UsersRepositoryLocal
+import io.mockk.mockk
 import java.io.IOException
+import java.time.ZonedDateTime
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -69,8 +75,18 @@ private class ControlledRepository(val local: TasksRepositoryLocal = TasksReposi
 @RunWith(AndroidJUnit4::class)
 class TaskDetailsViewModelTest {
   private val repository = ControlledRepository()
+  private val events = EventsRepositoryLocal()
+  private val users = UsersRepositoryLocal()
+  private val dataRepository =
+      DataRepositoryLocal(
+          authRepository = mockk(),
+          tasksRepository = repository,
+          eventsRepository = events,
+          usersRepository = users,
+      )
   private val me = User(uid = "me")
   private val other = User(uid = "other")
+  private val start = ZonedDateTime.parse("2026-07-01T14:00:00+02:00")
 
   @Before
   fun setUp() {
@@ -82,9 +98,26 @@ class TaskDetailsViewModelTest {
     Dispatchers.resetMain()
   }
 
+  /**
+   * Stores [task], its event and [user], consistent with each other: the user lists the task when
+   * they are one of its assignees. Then creates the view model and loads the task.
+   */
   private fun viewModel(task: Task, user: User = me): TaskDetailsViewModel {
-    runBlocking { repository.local.addTask(task) }
-    return TaskDetailsViewModel(task.taskId, user, repository).also { it.load() }
+    runBlocking {
+      repository.local.addTask(task)
+      events.addEvent(
+          Event(
+              eventId = task.eventId,
+              title = "Summer festival",
+              tasks = listOf(task),
+              startDate = start,
+              endDate = start.plusHours(10),
+          )
+      )
+      val assigned = task.assignees.any { it.uid == user.uid }
+      users.addUser(if (assigned) user.copy(tasksAssigned = listOf(task.taskId)) else user)
+    }
+    return TaskDetailsViewModel(task.taskId, user, dataRepository).also { it.load() }
   }
 
   private fun task(
@@ -103,6 +136,10 @@ class TaskDetailsViewModelTest {
       )
 
   private fun stored(): Task = runBlocking { repository.local.getTask("t1") }
+
+  private fun storedUser(): User = runBlocking { users.getUser(me.uid) }
+
+  private fun taskInEvent(): Task = runBlocking { events.getEvent("e1").tasks.single() }
 
   // State of the screen
 
@@ -183,7 +220,7 @@ class TaskDetailsViewModelTest {
 
   @Test
   fun missingTask_setsErrorAndClearErrorResetsIt() {
-    val vm = TaskDetailsViewModel("missing", me, repository).also { it.load() }
+    val vm = TaskDetailsViewModel("missing", me, dataRepository).also { it.load() }
     assertNull(vm.uiState.value.task)
     assertEquals(R.string.task_details_load_failed, vm.uiState.value.errorMsg)
     assertFalse(vm.uiState.value.isLoading)
@@ -210,7 +247,7 @@ class TaskDetailsViewModelTest {
   @Test
   fun nothingIsReadBeforeLoad() {
     runBlocking { repository.local.addTask(task()) }
-    val vm = TaskDetailsViewModel("t1", me, repository)
+    val vm = TaskDetailsViewModel("t1", me, dataRepository)
 
     assertEquals(0, repository.getCalls)
     assertNull(vm.uiState.value.task)
@@ -258,6 +295,8 @@ class TaskDetailsViewModelTest {
     assertNull(vm.uiState.value.errorMsg)
     assertFalse(vm.uiState.value.isLoading)
 
+    // The save reads the task again once stored, so the network is back by then.
+    repository.getFailure = null
     repository.editGate!!.complete(Unit)
 
     assertEquals(TaskStatus.YOURS, vm.uiState.value.status)
@@ -319,6 +358,26 @@ class TaskDetailsViewModelTest {
     vm.markDone()
     assertTrue(stored().completed)
     assertEquals(TaskStatus.DONE, vm.uiState.value.status)
+  }
+
+  // Breaks if take() edits only the task instead of going through dataRepository.joinTask.
+  @Test
+  fun take_addsTheTaskToTheUserAndUpdatesItInItsEvent() {
+    val vm = viewModel(task())
+    vm.take()
+    assertEquals(listOf("t1"), storedUser().tasksAssigned)
+    assertEquals(listOf(me.uid), taskInEvent().assignees.map { it.uid })
+    assertEquals(stored(), vm.uiState.value.task)
+  }
+
+  // Breaks if giveBack() edits only the task instead of going through dataRepository.quitTask.
+  @Test
+  fun giveBack_removesTheTaskFromTheUserAndUpdatesItInItsEvent() {
+    val vm = viewModel(task(assignees = listOf(other, me), maxAssign = 2))
+    vm.giveBack()
+    assertTrue(storedUser().tasksAssigned.isEmpty())
+    assertEquals(listOf(other.uid), taskInEvent().assignees.map { it.uid })
+    assertEquals(stored(), vm.uiState.value.task)
   }
 
   @Test
@@ -403,6 +462,20 @@ class TaskDetailsViewModelTest {
     assertEquals(listOf(me), stored().assignees)
   }
 
+  // Breaks if the IllegalStateException of a task filled meanwhile is not shown as a save error.
+  @Test
+  fun takingATaskFilledMeanwhile_showsTheSaveErrorAndChangesNothing() {
+    val vm = viewModel(task())
+    runBlocking { repository.local.editTask("t1", task(assignees = listOf(other))) }
+
+    vm.take()
+
+    assertEquals(R.string.task_details_save_failed, vm.uiState.value.errorMsg)
+    assertFalse(vm.uiState.value.isUpdating)
+    assertEquals(listOf(other), stored().assignees)
+    assertTrue(storedUser().tasksAssigned.isEmpty())
+  }
+
   @Test
   fun failedGiveBack_keepsTheTaskAndShowsTheError() {
     val vm = viewModel(task(assignees = listOf(me)))
@@ -413,6 +486,7 @@ class TaskDetailsViewModelTest {
     assertFalse(vm.uiState.value.isUpdating)
     assertEquals(TaskStatus.YOURS, vm.uiState.value.status)
     assertEquals(listOf(me), stored().assignees)
+    assertEquals(listOf("t1"), storedUser().tasksAssigned)
   }
 
   @Test
