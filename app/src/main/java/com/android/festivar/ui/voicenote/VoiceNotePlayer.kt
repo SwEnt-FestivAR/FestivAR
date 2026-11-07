@@ -65,6 +65,9 @@ private val waveform =
  * A voice note as the design shows it: the play button, a waveform, the duration and, if there is
  * one, an action of the owner (the trash), all on the same rounded card.
  *
+ * The duration and the waveform are fixed: they show the whole length of the note and do not count
+ * down or fill while it plays.
+ *
  * @param duration The length of the voice note.
  * @param isPlaying Whether it plays now, which changes the icon of the button.
  * @param onTogglePlay Plays the note, or stops it if it is playing.

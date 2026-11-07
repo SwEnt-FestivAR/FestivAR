@@ -2,7 +2,8 @@
 <resources>
     <string name="voice_note_label">Note vocale</string>
     <string name="voice_note_author_you">Vous · %s</string>
-    <string name="voice_note_author_organizer">Organisateur · %s</string>
+    <string name="voice_note_organizer">Organisateur</string>
+    <string name="voice_note_author_other">%1$s · %2$s</string>
     <string name="voice_note_play">Écouter la note vocale</string>
     <string name="voice_note_pause">Arrêter la note vocale</string>
     <string name="voice_note_delete">Supprimer la note vocale</string>

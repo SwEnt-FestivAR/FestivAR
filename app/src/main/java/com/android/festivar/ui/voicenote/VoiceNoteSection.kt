@@ -28,6 +28,7 @@ import com.android.festivar.model.audio.PlayerState
 import com.android.festivar.model.voicenote.VoiceNote
 import com.android.festivar.ui.components.FestivarConfirmDialog
 import com.android.festivar.ui.components.SectionLabel
+import com.android.festivar.ui.components.formatDate
 import com.android.festivar.ui.components.formatTime
 import com.android.festivar.ui.theme.AppTheme
 import java.time.Duration
@@ -53,24 +54,33 @@ object VoiceNoteTestTags {
  * The voice note section of a task, for the owner and for the volunteers: the label, then the note
  * or the empty state, and the dialog to confirm the deletion of the note. It shows nothing to a
  * volunteer when the task has no note.
+ *
+ * It only draws the note and the empty state. The record bar and the notices about the recording or
+ * the playback (errors, missing microphone permission) are other composables, so they are not shown
+ * here.
+ *
+ * @param ownerName Who is credited with the note when the current user is not its owner. The owner
+ *   of a task is not always the organizer of the event, since every member can create a task, so
+ *   the caller should give the name of the owner. It defaults to "Organizer".
  */
 @Composable
 fun VoiceNoteSection(
     state: VoiceNoteUiState,
     callbacks: VoiceNoteCallbacks,
     modifier: Modifier = Modifier,
+    ownerName: String = stringResource(R.string.voice_note_organizer),
 ) {
   if (!state.isVisible) return
   Column(modifier.fillMaxWidth()) {
     SectionLabel(stringResource(R.string.voice_note_label))
     val note = state.note
     if (note != null) {
-      VoiceNoteRow(note, state, callbacks)
+      VoiceNoteRow(note, state, callbacks, ownerName)
     } else {
       EmptyVoiceNote()
     }
   }
-  if (state.showDeleteConfirm) {
+  if (state.showDeleteDialog) {
     FestivarConfirmDialog(
         title = stringResource(R.string.voice_note_delete_title),
         message = stringResource(R.string.voice_note_delete_body),
@@ -85,17 +95,22 @@ fun VoiceNoteSection(
   }
 }
 
-/** The note: who and when, then the player and, for the owner, the trash. */
+/** The note: who and when (date and time), then the player and, for the owner, the trash. */
 @Composable
-private fun VoiceNoteRow(note: VoiceNote, state: VoiceNoteUiState, callbacks: VoiceNoteCallbacks) {
+private fun VoiceNoteRow(
+    note: VoiceNote,
+    state: VoiceNoteUiState,
+    callbacks: VoiceNoteCallbacks,
+    ownerName: String,
+) {
   Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    // The date is there because a task can last several days
+    val date = formatDate(note.createdAt.toLocalDate())
     val time = formatTime(note.createdAt.toLocalTime())
+    val recordedAt = "$date, $time"
     Text(
-        stringResource(
-            if (state.canManage) R.string.voice_note_author_you
-            else R.string.voice_note_author_organizer,
-            time,
-        ),
+        if (state.canManage) stringResource(R.string.voice_note_author_you, recordedAt)
+        else stringResource(R.string.voice_note_author_other, ownerName, recordedAt),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.testTag(VoiceNoteTestTags.VOICE_NOTE_AUTHOR),
