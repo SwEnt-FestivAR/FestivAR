@@ -1,0 +1,6 @@
+<!-- Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com> -->
+<resources>
+    <string name="voice_note_play">Play the voice note</string>
+    <string name="voice_note_stop">Stop the voice note</string>
+    <string name="voice_note_delete">Delete the voice note</string>
+</resources>
