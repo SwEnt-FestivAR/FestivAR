@@ -19,6 +19,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
 import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.task.TasksRepositoryProvider
@@ -61,7 +62,7 @@ class TaskNavGraphTest {
       AppTheme {
         val navController = rememberNavController()
         NavHost(navController, startDestination = AppScreens.createTask("event-1")) {
-          taskGraph(navController, authRepository)
+          taskGraph(navController, DataRepositoryLocal(authRepository))
         }
       }
     }
@@ -107,7 +108,7 @@ class TaskNavGraphTest {
         navController = rememberNavController()
         NavHost(navController, startDestination = "start") {
           composable("start") {}
-          taskGraph(navController, authRepository)
+          taskGraph(navController, DataRepositoryLocal(authRepository))
         }
       }
     }
