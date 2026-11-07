@@ -16,7 +16,9 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.up
 import androidx.compose.ui.unit.dp
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.festivar.R
 import com.android.festivar.model.audio.PlayerState
 import com.android.festivar.model.audio.RecorderState
 import com.android.festivar.model.voicenote.VoiceNote
@@ -41,6 +43,9 @@ class VoiceNoteRecordBarTest {
           Duration.ofSeconds(14),
           ZonedDateTime.of(2026, 10, 17, 9, 12, 0, 0, ZoneOffset.UTC),
       )
+
+  private fun text(id: Int, vararg args: Any) =
+      ApplicationProvider.getApplicationContext<android.content.Context>().getString(id, *args)
 
   private val events = mutableListOf<String>()
 
@@ -87,7 +92,7 @@ class VoiceNoteRecordBarTest {
   @Test
   fun idleBarInvitesToHoldToRecord() {
     show(VoiceNoteUiState(canManage = true))
-    composeTestRule.onNodeWithText("Hold to record").assertIsDisplayed()
+    composeTestRule.onNodeWithText(text(R.string.voice_note_hold_to_record)).assertIsDisplayed()
     tag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).assertIsDisplayed()
     tag(VoiceNoteRecordTestTags.RECORDING_BAR).assertHeightIsEqualTo(56.dp)
     tag(VoiceNoteRecordTestTags.RECORDING_HINT).assertDoesNotExist()
@@ -102,9 +107,9 @@ class VoiceNoteRecordBarTest {
             recorder = RecorderState.Recording(Duration.ofSeconds(3)),
         )
     )
-    composeTestRule.onNodeWithText("Recording 0:03 · Release to stop").assertIsDisplayed()
+    composeTestRule.onNodeWithText(text(R.string.voice_note_recording, "0:03")).assertIsDisplayed()
     tag(VoiceNoteRecordTestTags.RECORDING_HINT)
-        .assertTextContains("Release to stop. Slide left to cancel.")
+        .assertTextContains(text(R.string.voice_note_recording_hint))
     tag(VoiceNoteRecordTestTags.RECORDING_BAR).assertIsDisplayed()
   }
 
@@ -137,9 +142,7 @@ class VoiceNoteRecordBarTest {
     show(VoiceNoteUiState(canManage = true, micDenied = true))
     // The tag is on the card and the text is in a child node, so each is checked on its own.
     tag(VoiceNoteRecordTestTags.MIC_DENIED).assertIsDisplayed()
-    composeTestRule
-        .onNodeWithText("Microphone is off for FestivAR", substring = true)
-        .assertIsDisplayed()
+    composeTestRule.onNodeWithText(text(R.string.voice_note_mic_denied)).assertIsDisplayed()
     tag(VoiceNoteRecordTestTags.OPEN_SETTINGS).performClick()
     tag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).performTouchInput {
       down(center)
@@ -153,9 +156,7 @@ class VoiceNoteRecordBarTest {
   fun sendFailedShowsRetry() {
     show(VoiceNoteUiState(canManage = true, sendFailed = true))
     tag(VoiceNoteRecordTestTags.SEND_ERROR).assertIsDisplayed()
-    composeTestRule
-        .onNodeWithText("Voice note not sent. Check your connection.")
-        .assertIsDisplayed()
+    composeTestRule.onNodeWithText(text(R.string.voice_note_send_failed)).assertIsDisplayed()
     tag(VoiceNoteRecordTestTags.SEND_RETRY).performClick()
     assertEquals(listOf("retry"), events)
   }

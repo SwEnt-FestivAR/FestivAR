@@ -5,7 +5,9 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.festivar.R
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -18,12 +20,15 @@ import org.junit.runner.RunWith
 class VoiceNoteRecordBarPreviewsTest {
   @get:Rule val composeTestRule = createComposeRule()
 
+  private fun text(id: Int, vararg args: Any) =
+      ApplicationProvider.getApplicationContext<android.content.Context>().getString(id, *args)
+
   /** Breaks if the idle preview no longer shows the bar that invites to hold to record. */
   @Test
   fun idlePreview_showsTheBar() {
     composeTestRule.setContent { VoiceNoteRecordBarIdlePreview() }
 
-    composeTestRule.onNodeWithText("Hold to record").assertIsDisplayed()
+    composeTestRule.onNodeWithText(text(R.string.voice_note_hold_to_record)).assertIsDisplayed()
     composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).assertIsDisplayed()
   }
 
@@ -32,7 +37,7 @@ class VoiceNoteRecordBarPreviewsTest {
   fun recordingPreview_showsTheTimer() {
     composeTestRule.setContent { VoiceNoteRecordBarRecordingPreview() }
 
-    composeTestRule.onNodeWithText("Recording 0:03 · Release to stop").assertIsDisplayed()
+    composeTestRule.onNodeWithText(text(R.string.voice_note_recording, "0:03")).assertIsDisplayed()
     composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.RECORDING_HINT).assertIsDisplayed()
   }
 

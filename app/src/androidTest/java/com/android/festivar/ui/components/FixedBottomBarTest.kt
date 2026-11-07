@@ -15,6 +15,7 @@ import org.junit.runner.RunWith
 class FixedBottomBarTest {
   @get:Rule val composeTestRule = createComposeRule()
 
+  /** Breaks if the bar no longer shows every line placed in it. */
   @Test
   fun showsItsContent() {
     composeTestRule.setContent {
@@ -30,8 +31,9 @@ class FixedBottomBarTest {
     composeTestRule.onNodeWithText("second line").assertIsDisplayed()
   }
 
-  // The preview renders without crashing, so that one that no longer compiles is caught here and
-  // not only in Android Studio.
+  /**
+   * Breaks if the preview no longer compiles or draws, which Android Studio alone would not catch.
+   */
   @Test
   fun preview_showsTheBar() {
     composeTestRule.setContent { FixedBottomBarPreview() }
