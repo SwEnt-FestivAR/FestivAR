@@ -9,6 +9,8 @@
     <string name="action_cancel">Annuler</string>
     <string name="action_retry">Réessayer</string>
     <string name="action_open_settings">Ouvrir les paramètres</string>
+    <!-- User list -->
+    <string name="user_list_uncategorized">Inconnu</string>
     <!-- Samples shown in the previews of the shared components -->
     <string name="notice_snackbar_sample_message">Erreur dans le processus lancé.</string>
     <string name="info_note_sample_message">Le microphone de FestivAR est désactivé. Activez-le dans les paramètres pour enregistrer une note.</string>
