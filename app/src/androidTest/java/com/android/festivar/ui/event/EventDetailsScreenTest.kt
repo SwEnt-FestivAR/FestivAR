@@ -257,10 +257,15 @@ class EventDetailsScreenTest {
     composeTestRule.onNodeWithText(last.title).assertDoesNotExist()
   }
 
-  /** Red if the announcements row of an event without announcements does not say so. */
+  /**
+   * Red if the announcements row of an event without announcements does not say so, or if clicking
+   * it does not invoke the supplied callback exactly once.
+   */
   @Test
-  fun announcementsRowSaysWhenThereIsNoAnnouncement() {
-    setContent(eventSameMonth)
+  fun announcementsRowWithoutAnnouncementSaysSoAndCallsOnAnnouncementsClicked() {
+    val onAnnouncementsClicked = mockk<() -> Unit>(relaxed = true)
+
+    setContent(eventSameMonth, onAnnouncementsClicked = onAnnouncementsClicked)
 
     composeTestRule
         .onNode(
@@ -268,16 +273,7 @@ class EventDetailsScreenTest {
                 .and(hasText("No announcements yet"))
         )
         .assertIsDisplayed()
-  }
-
-  /** Red if clicking the announcements row does not invoke the supplied callback exactly once. */
-  @Test
-  fun clickingAnnouncementsRowCallsOnAnnouncementsClicked() {
-    val onAnnouncementsClicked = mockk<() -> Unit>(relaxed = true)
-
-    setContent(eventSameMonth, onAnnouncementsClicked = onAnnouncementsClicked)
-
-    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.ANNOUNCEMENTS_ROW).performClick()
+        .performClick()
 
     verify(exactly = 1) { onAnnouncementsClicked() }
   }

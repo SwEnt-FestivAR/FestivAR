@@ -191,9 +191,10 @@ class AnnouncementNavGraphTest {
   }
 
   // Breaks if the event id of the feed route does not reach its view model, which would then show
-  // the announcements of no event, or of another one.
+  // the announcements of no event, or of another one, or if "Add announcement" does not open the
+  // Create announcement route of the same event on top of the feed (e.g. by replacing it).
   @Test
-  fun feedShowsTheAnnouncementsOfTheEventOfTheRoute() {
+  fun feedShowsItsEventAndAddOpensCreateAnnouncementOnTop() {
     val announcement =
         Announcement(
             announcementId = "a1",
@@ -206,13 +207,6 @@ class AnnouncementNavGraphTest {
     openTheFeed()
 
     composeTestRule.onNodeWithTag(FeedTags.announcementRow(announcement)).assertIsDisplayed()
-  }
-
-  // Breaks if "Add announcement" does not open the Create announcement route of the same event,
-  // e.g. by replacing the feed instead of opening on top of it.
-  @Test
-  fun addOpensCreateAnnouncementForTheEventOnTopOfTheFeed() {
-    openTheFeed()
 
     composeTestRule.onNodeWithTag(FeedTags.ADD_ANNOUNCEMENT_FAB).performClick()
 
