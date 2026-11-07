@@ -3,8 +3,11 @@ package com.android.festivar.ui.voicenote
 
 import com.android.festivar.ui.components.formatDate
 import com.android.festivar.ui.components.formatDateWithYear
+import java.time.Clock
 import java.time.Duration
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import org.junit.Assert.assertEquals
@@ -44,13 +47,16 @@ class VoiceNoteFormatTest {
 
   private val recorded = ZonedDateTime.of(2026, 10, 17, 9, 12, 0, 0, ZoneOffset.UTC)
 
+  private fun clockOn(date: LocalDate, zone: ZoneId = ZoneOffset.UTC) =
+      Clock.fixed(Instant.parse("${date}T12:00:00Z"), zone)
+
   /** Breaks if a note of this year shows its year, or loses the date or the time. */
   @Test
   fun recordedAtHasNoYearInTheCurrentYear() {
     val today = LocalDate.of(2026, 11, 7)
     assertEquals(
         "${formatDate(recorded.toLocalDate())}, 09:12",
-        formatRecordedAt(recorded, today, "Today"),
+        formatRecordedAt(recorded, clockOn(today), "Today"),
     )
   }
 
@@ -58,21 +64,34 @@ class VoiceNoteFormatTest {
   @Test
   fun recordedAtShowsTheYearInAnotherYear() {
     val expected = "${formatDateWithYear(recorded.toLocalDate())}, 09:12"
-    assertEquals(expected, formatRecordedAt(recorded, LocalDate.of(2027, 1, 2), "Today"))
-    assertEquals(expected, formatRecordedAt(recorded, LocalDate.of(2025, 12, 31), "Today"))
+    assertEquals(expected, formatRecordedAt(recorded, clockOn(LocalDate.of(2027, 1, 2)), "Today"))
+    assertEquals(expected, formatRecordedAt(recorded, clockOn(LocalDate.of(2025, 12, 31)), "Today"))
   }
 
   /** Breaks if a note recorded today shows its date, or loses its time. */
   @Test
   fun recordedAtSaysTodayForTheDayOfToday() {
-    assertEquals("Today, 09:12", formatRecordedAt(recorded, LocalDate.of(2026, 10, 17), "Today"))
+    assertEquals(
+        "Today, 09:12",
+        formatRecordedAt(recorded, clockOn(LocalDate.of(2026, 10, 17)), "Today"),
+    )
   }
 
   /** Breaks if the day before or after the note is mistaken for today. */
   @Test
   fun recordedAtOnlySaysTodayOnTheSameDay() {
     val expected = "${formatDate(recorded.toLocalDate())}, 09:12"
-    assertEquals(expected, formatRecordedAt(recorded, LocalDate.of(2026, 10, 18), "Today"))
-    assertEquals(expected, formatRecordedAt(recorded, LocalDate.of(2026, 10, 16), "Today"))
+    assertEquals(expected, formatRecordedAt(recorded, clockOn(LocalDate.of(2026, 10, 18)), "Today"))
+    assertEquals(expected, formatRecordedAt(recorded, clockOn(LocalDate.of(2026, 10, 16)), "Today"))
+  }
+
+  /**
+   * Breaks if the date and the time are read in the zone of the note instead of the device zone.
+   */
+  @Test
+  fun recordedAtUsesTheZoneOfTheDevice() {
+    val lateUtc = ZonedDateTime.of(2026, 10, 17, 23, 30, 0, 0, ZoneOffset.UTC)
+    val clock = clockOn(LocalDate.of(2026, 10, 18), ZoneId.of("Europe/Paris"))
+    assertEquals("Today, 01:30", formatRecordedAt(lateUtc, clock, "Today"))
   }
 }

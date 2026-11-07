@@ -9,7 +9,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
-import java.time.LocalDate
+import java.time.Clock
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import org.junit.Rule
@@ -31,7 +31,7 @@ class VoiceNotePreviewsTest {
   private val recordedAt =
       formatRecordedAt(
           ZonedDateTime.of(2026, 10, 17, 9, 12, 0, 0, ZoneOffset.UTC),
-          LocalDate.now(),
+          Clock.systemDefaultZone(),
           text(R.string.voice_note_today),
       )
 

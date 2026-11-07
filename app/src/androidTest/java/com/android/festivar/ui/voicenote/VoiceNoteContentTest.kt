@@ -84,7 +84,7 @@ class VoiceNoteContentTest {
 
   /** The date and the time of the note as the author line shows them, in the year of the note. */
   private val recordedAt =
-      formatRecordedAt(note.createdAt, LocalDate.of(2026, 11, 7), text(R.string.voice_note_today))
+      formatRecordedAt(note.createdAt, thisYear, text(R.string.voice_note_today))
 
   /**
    * Breaks if the owner no longer sees the label, the author line with the date and the time, the
@@ -141,7 +141,7 @@ class VoiceNoteContentTest {
                 R.string.voice_note_author_you,
                 formatRecordedAt(
                     note.createdAt,
-                    LocalDate.of(2027, 1, 5),
+                    clockOn(LocalDate.of(2027, 1, 5)),
                     text(R.string.voice_note_today),
                 ),
             )

@@ -4,6 +4,7 @@ package com.android.festivar.ui.voicenote
 import com.android.festivar.ui.components.formatDate
 import com.android.festivar.ui.components.formatDateWithYear
 import com.android.festivar.ui.components.formatTime
+import java.time.Clock
 import java.time.Duration
 import java.time.LocalDate
 import java.time.ZonedDateTime
@@ -31,22 +32,25 @@ internal fun formatVoiceDuration(duration: Duration): String {
 }
 
 /**
- * The date and the time at which a note was recorded, like "Sat 17 Oct, 09:12". The date is
- * replaced by [todayLabel] ("Today, 09:12") for a note recorded on [today]. The year is only added
- * when it is not the year of [today], like "Sat 17 Oct 2025, 09:12", since a note of this year does
- * not need it.
+ * The date and the time at which a note was recorded, like "Sat 17 Oct, 09:12", in the time zone of
+ * [clock] (the one of the device), whatever the zone of [createdAt]. The date is replaced by
+ * [todayLabel] ("Today, 09:12") for a note recorded on the current day of [clock]. The year is only
+ * added when it is not the current year, like "Sat 17 Oct 2025, 09:12", since a note of this year
+ * does not need it.
  */
 internal fun formatRecordedAt(
     createdAt: ZonedDateTime,
-    today: LocalDate,
+    clock: Clock,
     todayLabel: String,
 ): String {
-  val date = createdAt.toLocalDate()
+  val local = createdAt.withZoneSameInstant(clock.zone)
+  val today = LocalDate.now(clock)
+  val date = local.toLocalDate()
   val day =
       when {
         date == today -> todayLabel
         date.year == today.year -> formatDate(date)
         else -> formatDateWithYear(date)
       }
-  return "$day, ${formatTime(createdAt.toLocalTime())}"
+  return "$day, ${formatTime(local.toLocalTime())}"
 }

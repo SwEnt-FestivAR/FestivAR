@@ -31,7 +31,6 @@ import com.android.festivar.ui.components.SectionLabel
 import com.android.festivar.ui.theme.AppTheme
 import java.time.Clock
 import java.time.Duration
-import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 
@@ -77,7 +76,7 @@ fun VoiceNoteSection(
     SectionLabel(stringResource(R.string.voice_note_label))
     val note = state.note
     if (note != null) {
-      VoiceNoteRow(note, state, callbacks, ownerName, LocalDate.now(clock))
+      VoiceNoteRow(note, state, callbacks, ownerName, clock)
     } else {
       EmptyVoiceNote()
     }
@@ -107,12 +106,12 @@ private fun VoiceNoteRow(
     state: VoiceNoteUiState,
     callbacks: VoiceNoteCallbacks,
     ownerName: String,
-    today: LocalDate,
+    clock: Clock,
 ) {
   Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
     // The date is there because a task can last several days
     val recordedAt =
-        formatRecordedAt(note.createdAt, today, stringResource(R.string.voice_note_today))
+        formatRecordedAt(note.createdAt, clock, stringResource(R.string.voice_note_today))
     Text(
         if (state.canManage) stringResource(R.string.voice_note_author_you, recordedAt)
         else stringResource(R.string.voice_note_author_other, ownerName, recordedAt),
