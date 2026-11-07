@@ -153,16 +153,21 @@ class JoinEventViewModel(
         val isMember = event.members.any { it.uid == userId }
         val hasJoined = eventId in user.joinedEvents
 
-        // A member on both sides needs no write.
-        if (!isMember && !hasJoined) {
-          dataRepository.joinEvent(eventId, userId)
-        } else if (isMember && !hasJoined) {
+        when {
+          // Neither side: a normal join.
+          !isMember && !hasJoined -> dataRepository.joinEvent(eventId, userId)
+
           // A member for the event: only the user side is missing.
-          usersRepository.editUser(userId, user.addJoinedEvent(eventId))
-        } else if (!isMember && hasJoined) {
+          isMember && !hasJoined -> usersRepository.editUser(userId, user.addJoinedEvent(eventId))
+
           // Not a member for the event: the user side is stale, drop it and join normally.
-          usersRepository.editUser(userId, user.removeJoinedEvent(eventId))
-          dataRepository.joinEvent(eventId, userId)
+          !isMember && hasJoined -> {
+            usersRepository.editUser(userId, user.removeJoinedEvent(eventId))
+            dataRepository.joinEvent(eventId, userId)
+          }
+
+          // A member on both sides needs no write.
+          else -> Unit
         }
         _uiState.update { it.copy(isJoining = false, joinedEventId = eventId) }
       } catch (e: CancellationException) {
