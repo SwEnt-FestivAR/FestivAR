@@ -83,7 +83,8 @@ class VoiceNoteContentTest {
   private fun tag(tag: String) = composeTestRule.onNodeWithTag(tag)
 
   /** The date and the time of the note as the author line shows them, in the year of the note. */
-  private val recordedAt = formatRecordedAt(note.createdAt, LocalDate.of(2026, 11, 7))
+  private val recordedAt =
+      formatRecordedAt(note.createdAt, LocalDate.of(2026, 11, 7), text(R.string.voice_note_today))
 
   /**
    * Breaks if the owner no longer sees the label, the author line with the date and the time, the
@@ -138,10 +139,24 @@ class VoiceNoteContentTest {
         .assertTextContains(
             text(
                 R.string.voice_note_author_you,
-                formatRecordedAt(note.createdAt, LocalDate.of(2027, 1, 5)),
+                formatRecordedAt(
+                    note.createdAt,
+                    LocalDate.of(2027, 1, 5),
+                    text(R.string.voice_note_today),
+                ),
             )
         )
     tag(VoiceNoteTestTags.VOICE_NOTE_AUTHOR).assertTextContains("2026", substring = true)
+  }
+
+  /** Breaks if a note recorded today shows its date instead of "Today". */
+  @Test
+  fun authorLineSaysTodayForANoteOfToday() {
+    show(VoiceNoteUiState(note = note, canManage = true), clockOn(LocalDate.of(2026, 10, 17)))
+    tag(VoiceNoteTestTags.VOICE_NOTE_AUTHOR)
+        .assertTextContains(
+            text(R.string.voice_note_author_you, "${text(R.string.voice_note_today)}, 09:12")
+        )
   }
 
   /**

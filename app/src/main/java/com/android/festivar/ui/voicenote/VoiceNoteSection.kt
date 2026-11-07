@@ -111,7 +111,8 @@ private fun VoiceNoteRow(
 ) {
   Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
     // The date is there because a task can last several days
-    val recordedAt = formatRecordedAt(note.createdAt, today)
+    val recordedAt =
+        formatRecordedAt(note.createdAt, today, stringResource(R.string.voice_note_today))
     Text(
         if (state.canManage) stringResource(R.string.voice_note_author_you, recordedAt)
         else stringResource(R.string.voice_note_author_other, ownerName, recordedAt),

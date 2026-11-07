@@ -3,6 +3,7 @@
     <string name="voice_note_label">Voice note</string>
     <string name="voice_note_author_you">You · %s</string>
     <string name="voice_note_organizer">Organizer</string>
+    <string name="voice_note_today">Today</string>
     <string name="voice_note_author_other">%1$s · %2$s</string>
     <string name="voice_note_play">Play the voice note</string>
     <string name="voice_note_pause">Stop the voice note</string>

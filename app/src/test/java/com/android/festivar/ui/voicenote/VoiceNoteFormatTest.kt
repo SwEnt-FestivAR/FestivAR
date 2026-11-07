@@ -50,7 +50,7 @@ class VoiceNoteFormatTest {
     val today = LocalDate.of(2026, 11, 7)
     assertEquals(
         "${formatDate(recorded.toLocalDate())}, 09:12",
-        formatRecordedAt(recorded, today),
+        formatRecordedAt(recorded, today, "Today"),
     )
   }
 
@@ -58,7 +58,21 @@ class VoiceNoteFormatTest {
   @Test
   fun recordedAtShowsTheYearInAnotherYear() {
     val expected = "${formatDateWithYear(recorded.toLocalDate())}, 09:12"
-    assertEquals(expected, formatRecordedAt(recorded, LocalDate.of(2027, 1, 2)))
-    assertEquals(expected, formatRecordedAt(recorded, LocalDate.of(2025, 12, 31)))
+    assertEquals(expected, formatRecordedAt(recorded, LocalDate.of(2027, 1, 2), "Today"))
+    assertEquals(expected, formatRecordedAt(recorded, LocalDate.of(2025, 12, 31), "Today"))
+  }
+
+  /** Breaks if a note recorded today shows its date, or loses its time. */
+  @Test
+  fun recordedAtSaysTodayForTheDayOfToday() {
+    assertEquals("Today, 09:12", formatRecordedAt(recorded, LocalDate.of(2026, 10, 17), "Today"))
+  }
+
+  /** Breaks if the day before or after the note is mistaken for today. */
+  @Test
+  fun recordedAtOnlySaysTodayOnTheSameDay() {
+    val expected = "${formatDate(recorded.toLocalDate())}, 09:12"
+    assertEquals(expected, formatRecordedAt(recorded, LocalDate.of(2026, 10, 18), "Today"))
+    assertEquals(expected, formatRecordedAt(recorded, LocalDate.of(2026, 10, 16), "Today"))
   }
 }

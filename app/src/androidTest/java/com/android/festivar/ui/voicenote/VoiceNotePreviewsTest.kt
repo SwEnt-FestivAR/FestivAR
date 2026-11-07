@@ -29,7 +29,11 @@ class VoiceNotePreviewsTest {
 
   /** The date and the time of the note of the previews (17/10/2026 at 09:12) as they show it. */
   private val recordedAt =
-      formatRecordedAt(ZonedDateTime.of(2026, 10, 17, 9, 12, 0, 0, ZoneOffset.UTC), LocalDate.now())
+      formatRecordedAt(
+          ZonedDateTime.of(2026, 10, 17, 9, 12, 0, 0, ZoneOffset.UTC),
+          LocalDate.now(),
+          text(R.string.voice_note_today),
+      )
 
   /** Breaks if the owner preview no longer shows the note with its author line and the trash. */
   @Test

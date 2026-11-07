@@ -31,12 +31,22 @@ internal fun formatVoiceDuration(duration: Duration): String {
 }
 
 /**
- * The date and the time at which a note was recorded, like "Sat 17 Oct, 09:12". The year is only
- * added when it is not the year of [today], like "Sat 17 Oct 2025, 09:12", since a note of this
- * year does not need it.
+ * The date and the time at which a note was recorded, like "Sat 17 Oct, 09:12". The date is
+ * replaced by [todayLabel] ("Today, 09:12") for a note recorded on [today]. The year is only added
+ * when it is not the year of [today], like "Sat 17 Oct 2025, 09:12", since a note of this year does
+ * not need it.
  */
-internal fun formatRecordedAt(createdAt: ZonedDateTime, today: LocalDate): String {
+internal fun formatRecordedAt(
+    createdAt: ZonedDateTime,
+    today: LocalDate,
+    todayLabel: String,
+): String {
   val date = createdAt.toLocalDate()
-  val day = if (date.year == today.year) formatDate(date) else formatDateWithYear(date)
+  val day =
+      when {
+        date == today -> todayLabel
+        date.year == today.year -> formatDate(date)
+        else -> formatDateWithYear(date)
+      }
   return "$day, ${formatTime(createdAt.toLocalTime())}"
 }
