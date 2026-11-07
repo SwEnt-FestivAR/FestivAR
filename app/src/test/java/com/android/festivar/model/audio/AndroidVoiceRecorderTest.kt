@@ -9,7 +9,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkConstructor
+import io.mockk.mockkStatic
 import io.mockk.unmockkAll
+import io.mockk.unmockkStatic
 import io.mockk.verify
 import java.io.File
 import java.io.IOException
@@ -98,7 +100,6 @@ class AndroidVoiceRecorderTest {
 
   @After
   fun tearDown() {
-    context.cacheDir.setWritable(true)
     files.forEach { it.delete() }
     unmockkAll()
   }
@@ -134,7 +135,6 @@ class AndroidVoiceRecorderTest {
     startFailure = null
     stopFailure = null
     releaseFailure = null
-    context.cacheDir.setWritable(true)
     recorder.start()
     assertEquals(recordingOf(0), recorder.state.value)
     advance(minMillis)
@@ -222,13 +222,15 @@ class AndroidVoiceRecorderTest {
   /** Breaks if a file that cannot be created leaks an IOException or blocks later starts. */
   @Test
   fun start_failsWhenTheFileCannotBeCreated() {
-    assertTrue(context.cacheDir.setWritable(false))
+    mockkStatic(File::class)
+    every { File.createTempFile(any(), any(), any()) } throws IOException("disk full")
 
     val thrown = assertFails { recorder.start() }
 
     assertTrue(thrown.cause is IOException)
     assertTrue(files.isEmpty())
     assertStaysIn(RecorderState.Idle)
+    unmockkStatic(File::class)
     assertCanRecordAgain()
   }
 
