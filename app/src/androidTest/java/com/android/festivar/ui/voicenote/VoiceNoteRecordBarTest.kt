@@ -58,6 +58,9 @@ class VoiceNoteRecordBarTest {
           onRecordStart = { events += "start" },
           onRecordRelease = { events += "release" },
           onRecordCancel = { events += "cancel" },
+          onConfirmSend = { events += "send" },
+          onCancelSend = { events += "cancelSend" },
+          onDismissRecordingFailed = { events += "dismissFailed" },
           onRetry = { events += "retry" },
           onOpenSettings = { events += "settings" },
       )
