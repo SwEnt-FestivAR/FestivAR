@@ -7,6 +7,7 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
+import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.JOIN_CODE_LENGTH
@@ -73,9 +74,11 @@ data class JoinEventUIState(
  */
 class JoinEventViewModel(
     private val userId: String,
-    private val eventsRepository: EventsRepository,
-    private val usersRepository: UsersRepository,
+    private val dataRepository: DataRepository,
 ) : ViewModel() {
+
+    private val eventsRepository: EventsRepository = dataRepository.eventsRepository
+    private val usersRepository: UsersRepository = dataRepository.usersRepository
   private val _uiState = MutableStateFlow(JoinEventUIState())
   val uiState: StateFlow<JoinEventUIState> = _uiState.asStateFlow()
 
@@ -131,29 +134,42 @@ class JoinEventViewModel(
   fun join(eventId: String) {
     val state = _uiState.value
     val match = state.matches.firstOrNull { it.id == eventId }
+
     if (state.isJoining || match == null) return
+
     val failure =
         if (match.isMember) R.string.join_event_open_failed else R.string.join_event_join_failed
+
     _uiState.update { it.copy(isJoining = true, errorRes = null) }
+
     viewModelScope.launch {
+
       try {
         // Both sides are read again and only the missing one is written, so a join that stopped
         // halfway earlier is repaired instead of failing as "already joined" forever.
-        val stored = usersRepository.getUser(userId)
-        val event = eventsRepository.getEvent(eventId)
-        if (event.members.none { it.uid == stored.uid }) {
-          eventsRepository.editEvent(event.eventId, event.addMember(stored))
-        }
-        if (event.eventId !in stored.joinedEvents) {
-          usersRepository.editUser(stored.uid, stored.addJoinedEvent(event.eventId))
-        }
-        _uiState.update { it.copy(isJoining = false, joinedEventId = eventId) }
+
+          val event = eventsRepository.getEvent(eventId)
+          val user = usersRepository.getUser(userId)
+          val isMember = event.members.any { it.uid == userId }
+          val hasJoined = eventId in user.joinedEvents
+
+          if(!isMember && !hasJoined){
+              dataRepository.joinEvent(eventId, userId)
+          } else if(isMember && !hasJoined){
+              usersRepository.editUser(userId, user.addJoinedEvent(eventId))
+          } else if (!isMember && hasJoined){
+              usersRepository.editUser(userId, user.removeJoinedEvent(eventId))
+              dataRepository.joinEvent(eventId, userId)
+          }
+          _uiState.update { it.copy(isJoining = false, joinedEventId = eventId) }
+
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
         Log.e(LOG_TAG, "Error joining event $eventId", e)
         _uiState.update { it.copy(isJoining = false, errorRes = failure) }
       }
+
     }
   }
 
