@@ -17,6 +17,7 @@ import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -125,6 +126,13 @@ private fun PlayButton(isPlaying: Boolean, onClick: (() -> Unit)?) {
       onClick = onClick ?: {},
       modifier = Modifier.size(40.dp).testTag(VoiceNoteTestTags.VOICE_NOTE_PLAY),
       enabled = onClick != null,
+      // A player with nothing to play yet keeps the lime button of the design (the "send confirm"
+      // frame), it is only not pressable.
+      colors =
+          IconButtonDefaults.filledIconButtonColors(
+              disabledContainerColor = MaterialTheme.colorScheme.primary,
+              disabledContentColor = MaterialTheme.colorScheme.onPrimary,
+          ),
   ) {
     Icon(
         if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
