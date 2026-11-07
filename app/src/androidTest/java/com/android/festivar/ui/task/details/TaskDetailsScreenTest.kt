@@ -80,8 +80,6 @@ class TaskDetailsScreenTest {
     composeTestRule.setContent {
       AppTheme {
         TaskDetailsScreen(
-            task.taskId,
-            user,
             viewModel = viewModel,
             onBack = onBack,
             onEdit = onEdit,

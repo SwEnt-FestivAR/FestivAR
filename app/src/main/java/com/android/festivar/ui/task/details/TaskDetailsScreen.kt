@@ -70,16 +70,16 @@ object TaskDetailsScreenTestTags {
 }
 
 /**
- * The details of the task [taskId], where [currentUser] can take it, give it back or finish it. The
- * task is loaded each time the screen comes to the front, the first time included, so an edit shows
- * on return.
+ * The details of a task, where the current user can take it, give it back or finish it. The task is
+ * loaded each time the screen comes to the front, the first time included, so an edit shows on
+ * return.
  *
+ * @param viewModel holds the task to show and the signed-in user, and applies the actions.
+ * @param onBack Called when the user taps the back button.
  * @param onEdit Called with the task id when its owner taps the edit button.
  */
 @Composable
 fun TaskDetailsScreen(
-    taskId: String,
-    currentUser: User,
     viewModel: TaskDetailsViewModel,
     onBack: () -> Unit = {},
     onEdit: (String) -> Unit = {},
