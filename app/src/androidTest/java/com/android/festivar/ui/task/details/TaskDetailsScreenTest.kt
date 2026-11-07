@@ -12,14 +12,17 @@ import androidx.compose.ui.test.onChild
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.festivar.model.datarepository.DataRepositoryLocal
+import com.android.festivar.model.event.Event
+import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.task.Task
-import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
-import com.android.festivar.model.task.TasksRepositoryProvider
 import com.android.festivar.model.user.User
+import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.ui.theme.AppTheme
+import io.mockk.mockk
+import java.time.ZonedDateTime
 import kotlinx.coroutines.runBlocking
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Before
@@ -39,20 +42,30 @@ class TaskDetailsScreenTest {
   private val sami = User("u1", "Sami", "Kabbaj")
   private val task = Task("t1", "e1", "Run power to stage", maxAssign = 1, ownerId = "owner-1")
 
-  private lateinit var original: TasksRepository
   private lateinit var repository: TasksRepositoryLocal
+  private lateinit var dataRepository: DataRepositoryLocal
 
+  // Taking the task goes through dataRepository.joinTask, which also reads its event and the user.
   @Before
   fun setUp() {
-    original = TasksRepositoryProvider.repository
+    val start = ZonedDateTime.parse("2026-07-01T14:00:00+02:00")
+    val event =
+        Event(
+            eventId = task.eventId,
+            title = "Summer festival",
+            tasks = listOf(task),
+            startDate = start,
+            endDate = start.plusHours(10),
+        )
     repository = TasksRepositoryLocal()
     runBlocking { repository.addTask(task) }
-    TasksRepositoryProvider.repository = repository
-  }
-
-  @After
-  fun tearDown() {
-    TasksRepositoryProvider.repository = original
+    dataRepository =
+        DataRepositoryLocal(
+            authRepository = mockk(),
+            tasksRepository = repository,
+            eventsRepository = EventsRepositoryLocal(listOf(event)),
+            usersRepository = UsersRepositoryLocal(listOf(sami)),
+        )
   }
 
   private fun exists(tag: String) =
@@ -63,8 +76,15 @@ class TaskDetailsScreenTest {
       onBack: () -> Unit = {},
       onEdit: (String) -> Unit = {},
   ) {
+    val viewModel = TaskDetailsViewModel(task.taskId, user, dataRepository)
     composeTestRule.setContent {
-      AppTheme { TaskDetailsScreen(task.taskId, user, onBack = onBack, onEdit = onEdit) }
+      AppTheme {
+        TaskDetailsScreen(
+            viewModel = viewModel,
+            onBack = onBack,
+            onEdit = onEdit,
+        )
+      }
     }
     composeTestRule.waitUntil(5_000) { exists(TaskDetailsScreenTestTags.TITLE) }
   }
