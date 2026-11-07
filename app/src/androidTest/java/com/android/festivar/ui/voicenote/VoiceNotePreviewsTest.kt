@@ -52,6 +52,14 @@ class VoiceNotePreviewsTest {
     composeTestRule.onNodeWithText("Delete this voice note?").assertIsDisplayed()
   }
 
+  /** Breaks if the send preview no longer shows the dialog that asks to send the recording. */
+  @Test
+  fun sendConfirmPreview_showsTheDialog() {
+    composeTestRule.setContent { VoiceNoteSendConfirmPreview() }
+
+    composeTestRule.onNodeWithTag(VoiceNoteTestTags.CONFIRM_SEND).assertIsDisplayed()
+  }
+
   /** Breaks if the volunteer preview no longer shows the note without the trash. */
   @Test
   fun volunteerPreview_showsTheNoteWithoutTrash() {

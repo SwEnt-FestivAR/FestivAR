@@ -77,6 +77,39 @@ class VoiceNoteUiStateTest {
     assertEquals(Duration.ofSeconds(3), state.elapsed)
   }
 
+  private val waiting = PendingRecording(Duration.ofSeconds(7))
+  private val uploading = waiting.copy(isUploading = true)
+
+  /** Breaks if the owner can record while the recording is sent, or loses the button before. */
+  @Test
+  fun recordingIsDisabledWhileSending() {
+    assertTrue(VoiceNoteUiState(canManage = true, pending = waiting).recordEnabled)
+    assertFalse(VoiceNoteUiState(canManage = true, pending = uploading).recordEnabled)
+    assertTrue(VoiceNoteUiState(pending = uploading).isSending)
+    assertFalse(VoiceNoteUiState(pending = waiting).isSending)
+    assertFalse(VoiceNoteUiState(canManage = true).isSending)
+  }
+
+  /** Breaks if the send dialog shows to somebody else than the owner, or at the wrong moment. */
+  @Test
+  fun sendDialogShowsWhileTheRecordingWaitsForTheOwner() {
+    assertTrue(VoiceNoteUiState(canManage = true, pending = waiting).showSendDialog)
+    assertFalse(VoiceNoteUiState(canManage = true, pending = uploading).showSendDialog)
+    assertFalse(VoiceNoteUiState(canManage = true).showSendDialog)
+    assertFalse(VoiceNoteUiState(canManage = false, pending = waiting).showSendDialog)
+  }
+
+  /** Breaks if a failed recording is not shown to the owner, or is shown to anybody else. */
+  @Test
+  fun recordingFailedOnlyForAFailedRecorder() {
+    assertTrue(VoiceNoteUiState(recorder = RecorderState.Failed).recordingFailed)
+    assertFalse(VoiceNoteUiState(recorder = RecorderState.Idle).recordingFailed)
+    assertTrue(VoiceNoteUiState(canManage = true, recorder = RecorderState.Failed).hasNotices)
+    assertFalse(
+        VoiceNoteUiState(note = note, canManage = true, recorder = RecorderState.Failed).hasNotices
+    )
+  }
+
   @Test
   fun everyCallbackIsGivenByTheCaller() {
     val calls = mutableListOf<String>()
@@ -89,6 +122,9 @@ class VoiceNoteUiStateTest {
             onRecordStart = { calls += "start" },
             onRecordRelease = { calls += "release" },
             onRecordCancel = { calls += "cancel" },
+            onConfirmSend = { calls += "send" },
+            onCancelSend = { calls += "cancelSend" },
+            onDismissRecordingFailed = { calls += "dismissFailed" },
             onRetry = { calls += "retry" },
             onOpenSettings = { calls += "settings" },
         )
@@ -101,6 +137,9 @@ class VoiceNoteUiStateTest {
       onRecordStart()
       onRecordRelease()
       onRecordCancel()
+      onConfirmSend()
+      onCancelSend()
+      onDismissRecordingFailed()
       onRetry()
       onOpenSettings()
     }
@@ -114,6 +153,9 @@ class VoiceNoteUiStateTest {
             "start",
             "release",
             "cancel",
+            "send",
+            "cancelSend",
+            "dismissFailed",
             "retry",
             "settings",
         ),
@@ -131,6 +173,9 @@ class VoiceNoteUiStateTest {
       onRecordStart()
       onRecordRelease()
       onRecordCancel()
+      onConfirmSend()
+      onCancelSend()
+      onDismissRecordingFailed()
       onRetry()
       onOpenSettings()
     }

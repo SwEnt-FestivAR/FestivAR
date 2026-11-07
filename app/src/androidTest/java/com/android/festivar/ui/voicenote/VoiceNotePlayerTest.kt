@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertHeightIsEqualTo
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -63,6 +64,13 @@ class VoiceNotePlayerTest {
     assertEquals(8f, (card.right - trailing.right).value, 0.5f)
     val duration = tag(VoiceNoteTestTags.VOICE_NOTE_DURATION).getBoundsInRoot()
     assertTrue(trailing.left >= duration.right)
+  }
+
+  /** Breaks if a player with nothing to play still lets the button be pressed. */
+  @Test
+  fun playButtonIsDisabledWithoutACallback() {
+    composeTestRule.setContent { AppTheme { VoiceNotePlayer(Duration.ofSeconds(7), false, null) } }
+    tag(VoiceNoteTestTags.VOICE_NOTE_PLAY).assertIsNotEnabled()
   }
 
   /** Breaks if the card has the padding of the owner when there is no action. */

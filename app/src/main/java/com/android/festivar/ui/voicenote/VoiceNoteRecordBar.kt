@@ -54,9 +54,12 @@ import java.time.ZonedDateTime
 object VoiceNoteRecordTestTags {
   const val RECORDING_HINT = "voiceNoteRecordingHint"
   const val RECORDING_BAR = "voiceNoteRecordingBar"
+  const val VOICE_NOTE_SENDING = "voiceNoteSending"
   const val VOICE_NOTE_RECORD = "voiceNoteRecord"
   const val SEND_ERROR = "voiceNoteSendError"
   const val SEND_RETRY = "voiceNoteSendRetry"
+  const val RECORDING_ERROR = "voiceNoteRecordingError"
+  const val RECORDING_ERROR_DISMISS = "voiceNoteRecordingErrorDismiss"
   const val MIC_DENIED = "voiceNoteMicDenied"
   const val OPEN_SETTINGS = "voiceNoteOpenSettings"
   const val PLAYBACK_ERROR = "voiceNotePlaybackError"
@@ -69,7 +72,9 @@ private const val CANCEL_DISTANCE_DP = 80
 /**
  * The record bar, fixed above the bottom of the screen. Only the owner of a task without a note
  * sees it: it is hidden otherwise. The owner holds the round button to record, releases it to stop
- * and slides left before releasing to cancel. Without the microphone permission it is greyed out.
+ * and slides left before releasing to cancel. Without the microphone permission, and while the
+ * recording is sent, it is greyed out. While the recording waits for the owner to send it, the bar
+ * shows it as a note that cannot be played yet.
  */
 @Composable
 fun VoiceNoteRecordBar(
@@ -78,12 +83,20 @@ fun VoiceNoteRecordBar(
     modifier: Modifier = Modifier,
 ) {
   if (!state.showRecordBar) return
-  FixedBottomBar(modifier) { RecordPill(state, callbacks) }
+  FixedBottomBar(modifier) {
+    val waiting = state.pending?.takeUnless { it.isUploading }
+    if (waiting != null) {
+      // Nothing to play yet: the recording is not uploaded, so the player is disabled.
+      VoiceNotePlayer(waiting.duration, false, null, Modifier.fillMaxWidth())
+    } else {
+      RecordPill(state, callbacks)
+    }
+  }
 }
 
 /**
- * The bar of the design: a white box with a border and rounded corners, with the hint or the timer
- * and the record button.
+ * The bar of the design: a white box with a border and rounded corners, with the label (hint, timer
+ * or sending) and the record button.
  */
 @Composable
 private fun RecordPill(state: VoiceNoteUiState, callbacks: VoiceNoteCallbacks) {
@@ -102,18 +115,28 @@ private fun RecordPill(state: VoiceNoteUiState, callbacks: VoiceNoteCallbacks) {
       horizontalArrangement = Arrangement.spacedBy(12.dp),
   ) {
     Box(Modifier.weight(1f)) {
-      if (state.isRecording) {
-        RecordingIndicator(state)
-      } else {
-        Text(
-            stringResource(R.string.voice_note_hold_to_record),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-      }
+      if (state.isRecording) RecordingIndicator(state) else IdleLabel(state)
     }
     RecordButton(state.recordEnabled, callbacks)
   }
+}
+
+/** The label of the idle bar: "Hold to record", or the length of the recording being sent. */
+@Composable
+private fun IdleLabel(state: VoiceNoteUiState) {
+  val sending = state.pending?.takeIf { it.isUploading }
+  Text(
+      if (sending != null) {
+        stringResource(R.string.voice_note_sending, formatVoiceDuration(sending.duration))
+      } else {
+        stringResource(R.string.voice_note_hold_to_record)
+      },
+      style = MaterialTheme.typography.bodyLarge,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      modifier =
+          if (sending != null) Modifier.testTag(VoiceNoteRecordTestTags.VOICE_NOTE_SENDING)
+          else Modifier,
+  )
 }
 
 /** The red dot, the timer and the hint shown while recording. */
@@ -178,8 +201,9 @@ private fun RecordButton(enabled: Boolean, callbacks: VoiceNoteCallbacks) {
 }
 
 /**
- * The notices fixed just above the record bar: the failed playback and send (each with a Retry),
- * and the information that the microphone is off (with a button to the settings).
+ * The notices fixed just above the record bar: the failed playback, send or recording (each with an
+ * action: Retry, Retry, Dismiss), and the information that the microphone is off (with a button to
+ * the settings).
  */
 @Composable
 fun VoiceNoteNotices(
@@ -208,6 +232,15 @@ fun VoiceNoteNotices(
           callbacks.onRetry,
           VoiceNoteRecordTestTags.SEND_ERROR,
           VoiceNoteRecordTestTags.SEND_RETRY,
+      )
+    }
+    if (state.showRecordBar && state.recordingFailed) {
+      ErrorNotice(
+          R.string.voice_note_recording_failed,
+          R.string.voice_note_dismiss,
+          callbacks.onDismissRecordingFailed,
+          VoiceNoteRecordTestTags.RECORDING_ERROR,
+          VoiceNoteRecordTestTags.RECORDING_ERROR_DISMISS,
       )
     }
     if (state.showRecordBar && state.micDenied) {
@@ -282,6 +315,31 @@ internal fun VoiceNoteRecordBarRecordingPreview() {
   VoiceNoteBarPreviewScreen(
       VoiceNoteUiState(canManage = true, recorder = RecorderState.Recording(Duration.ofSeconds(3)))
   )
+}
+
+@Preview(showBackground = true)
+@Composable
+internal fun VoiceNoteRecordBarWaitingPreview() {
+  VoiceNoteBarPreviewScreen(
+      VoiceNoteUiState(canManage = true, pending = PendingRecording(Duration.ofSeconds(7)))
+  )
+}
+
+@Preview(showBackground = true)
+@Composable
+internal fun VoiceNoteRecordBarSendingPreview() {
+  VoiceNoteBarPreviewScreen(
+      VoiceNoteUiState(
+          canManage = true,
+          pending = PendingRecording(Duration.ofSeconds(7), isUploading = true),
+      )
+  )
+}
+
+@Preview(showBackground = true)
+@Composable
+internal fun VoiceNoteRecordBarRecordingFailedPreview() {
+  VoiceNoteBarPreviewScreen(VoiceNoteUiState(canManage = true, recorder = RecorderState.Failed))
 }
 
 @Preview(showBackground = true)

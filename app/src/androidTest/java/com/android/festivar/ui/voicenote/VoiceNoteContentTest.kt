@@ -49,6 +49,9 @@ class VoiceNoteContentTest {
           onRecordStart = { events += "start" },
           onRecordRelease = { events += "release" },
           onRecordCancel = { events += "cancel" },
+          onConfirmSend = { events += "send" },
+          onCancelSend = { events += "cancelSend" },
+          onDismissRecordingFailed = { events += "dismissFailed" },
           onRetry = { events += "retry" },
           onOpenSettings = { events += "settings" },
       )
@@ -149,6 +152,34 @@ class VoiceNoteContentTest {
     tag(VoiceNoteTestTags.KEEP_BUTTON).performClick()
     tag(VoiceNoteTestTags.CONFIRM_DELETE_BUTTON).performClick()
     assertEquals(listOf("dismiss", "confirm"), events)
+  }
+
+  private val waiting = PendingRecording(Duration.ofSeconds(7))
+
+  /** Breaks if the send dialog loses its texts, or its buttons call the wrong callback. */
+  @Test
+  fun sendDialogOffersCancelAndSend() {
+    show(VoiceNoteUiState(canManage = true, pending = waiting))
+    tag(VoiceNoteTestTags.CONFIRM_SEND).assertIsDisplayed()
+    composeTestRule.onNodeWithText(text(R.string.voice_note_send_title)).assertIsDisplayed()
+    composeTestRule.onNodeWithText(text(R.string.voice_note_send_body)).assertIsDisplayed()
+    tag(VoiceNoteTestTags.CANCEL_SEND_BUTTON).performClick()
+    tag(VoiceNoteTestTags.CONFIRM_SEND_BUTTON).performClick()
+    assertEquals(listOf("cancelSend", "send"), events)
+  }
+
+  /** Breaks if the send dialog opens without a recording to send. */
+  @Test
+  fun noSendDialogWithoutARecording() {
+    show(VoiceNoteUiState(canManage = true))
+    tag(VoiceNoteTestTags.CONFIRM_SEND).assertDoesNotExist()
+  }
+
+  /** Breaks if the send dialog stays open once the owner confirmed and the upload runs. */
+  @Test
+  fun noSendDialogWhileSending() {
+    show(VoiceNoteUiState(canManage = true, pending = waiting.copy(isUploading = true)))
+    tag(VoiceNoteTestTags.CONFIRM_SEND).assertDoesNotExist()
   }
 
   /** Breaks if the delete dialog is shown without being asked for. */

@@ -12,4 +12,8 @@
     <string name="voice_note_delete_body">The volunteers on this task will no longer be able to hear it.</string>
     <string name="voice_note_keep">Keep it</string>
     <string name="voice_note_delete_confirm">Delete</string>
+    <string name="voice_note_send_title">Send this voice note?</string>
+    <string name="voice_note_send_body">The volunteers on this task will be able to listen to it.</string>
+    <string name="voice_note_send_confirm">Send</string>
+    <string name="voice_note_send_cancel">Cancel</string>
 </resources>
