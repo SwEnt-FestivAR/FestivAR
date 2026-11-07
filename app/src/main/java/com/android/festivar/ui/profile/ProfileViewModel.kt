@@ -94,8 +94,8 @@ data class ProfileUIState(
  *
  * Manages the UI state by fetching the [User] item through the [UsersRepository].
  *
- * @property dataRepository The repository giving access to the [UsersRepository], used to fetch
- *   and edit the [User] item, and to the [AuthRepository], used to sign the [User] out.
+ * @property dataRepository The repository giving access to the [UsersRepository], used to fetch and
+ *   edit the [User] item, and to the [AuthRepository], used to sign the [User] out.
  * @property uId The current [User] unique identifier.
  */
 class ProfileViewModel(
