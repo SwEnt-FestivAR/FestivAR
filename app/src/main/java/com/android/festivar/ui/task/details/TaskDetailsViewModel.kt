@@ -162,8 +162,9 @@ class TaskDetailsViewModel(
 
   /** Completes the task. Does nothing unless the task is yours. */
   fun markDone() = saveIf({ it.canMarkDone }) {
-    repository.editTask(taskId, it.complete())
-    it.complete()
+    val completedTask = it.complete()
+    repository.editTask(taskId, completedTask)
+    completedTask
   }
 
   /** Clears the error message. */
@@ -183,7 +184,6 @@ class TaskDetailsViewModel(
 
     viewModelScope.launch {
       try {
-
         val updated = save(task)
         _uiState.update {
           it.copy(
