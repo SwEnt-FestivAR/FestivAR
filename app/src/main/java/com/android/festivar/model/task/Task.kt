@@ -31,10 +31,8 @@ import java.time.ZonedDateTime
  * - [ownerId] is not blank.
  *
  * A [Task] holds at most one [VoiceNote]. Only its owner ([ownerId]) may attach or remove it:
- * [attachVoiceNote] and [removeVoiceNote] refuse any other user. These only change the [Task]: the
- * `TasksRepository` does not save [voiceNote] yet (that comes with the voice note storage). Until
- * then it stays in memory, which breaks nothing: it defaults to `null`, so reading and writing a
- * [Task] works as before.
+ * [attachVoiceNote] and [removeVoiceNote] refuse any other user. `TaskRepositoryFirebase` saves and
+ * reads [voiceNote]; tasks saved before have none and load with `null`.
  *
  * @property taskId Unique identifier of the [Task].
  * @property eventId Identifier of the [Event] the [Task] belongs to.

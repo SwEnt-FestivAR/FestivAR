@@ -7,6 +7,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.FirebaseEmulatorSetup
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepositoryFirebase
+import com.android.festivar.model.voicenote.VoiceNote
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.DocumentSnapshot
@@ -95,6 +96,44 @@ class TaskRepositoryFirebaseTest {
     assertNull(data["startTime"])
     assertNull(data["endTime"])
     assertNull(data["estimatedTime"])
+  }
+
+  @Test
+  fun toFirestoreData_serializesTheVoiceNote() {
+    val note = voiceNote()
+
+    assertEquals(note.toMap(), invokeToFirestoreData(task.copy(voiceNote = note))["voiceNote"])
+    assertNull(invokeToFirestoreData(task)["voiceNote"])
+  }
+
+  @Test
+  fun documentToTask_deserializesTheStoredVoiceNote() = runBlocking {
+    val withNote = task.copy(voiceNote = voiceNote())
+    val document = Firebase.firestore.collection(TASK_COLLECTION_PATH).document(task.taskId)
+    document.set(invokeToFirestoreData(withNote)).await()
+
+    assertEquals(withNote, invokeDocumentToTask(document.get().await()))
+  }
+
+  @Test
+  fun documentToTask_loadsATaskSavedBeforeVoiceNotes_withoutOne() = runBlocking {
+    val data = invokeToFirestoreData(task) - "voiceNote"
+    val document = Firebase.firestore.collection(TASK_COLLECTION_PATH).document(task.taskId)
+    document.set(data).await()
+
+    assertNull(invokeDocumentToTask(document.get().await()).voiceNote)
+  }
+
+  @Test
+  fun editTask_keepsTheVoiceNote_afterReadingTheTaskAgain() = runBlocking {
+    repository.addTask(task)
+    val withNote = task.copy(voiceNote = voiceNote())
+
+    repository.editTask(task.taskId, withNote)
+    assertEquals(withNote, repository.getTask(task.taskId))
+
+    repository.editTask(task.taskId, task)
+    assertNull(repository.getTask(task.taskId).voiceNote)
   }
 
   @Test
@@ -268,6 +307,14 @@ class TaskRepositoryFirebaseTest {
     assertEquals(1, results.count { it.isSuccess })
     assertTrue(results.single { it.isFailure }.exceptionOrNull() is NoSuchElementException)
   }
+
+  private fun voiceNote() =
+      VoiceNote(
+          id = "note-1",
+          audioUrl = "https://example.com/note-1.m4a",
+          duration = Duration.ofSeconds(14),
+          createdAt = ZonedDateTime.of(2026, 7, 1, 10, 0, 0, 0, ZoneId.of("Europe/Zurich")),
+      )
 
   private fun newTask(): Task =
       Task(
