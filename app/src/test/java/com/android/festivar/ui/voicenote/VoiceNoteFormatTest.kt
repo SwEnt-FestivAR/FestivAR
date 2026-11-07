@@ -1,7 +1,12 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.voicenote
 
+import com.android.festivar.ui.components.formatDate
+import com.android.festivar.ui.components.formatDateWithYear
 import java.time.Duration
+import java.time.LocalDate
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -35,5 +40,25 @@ class VoiceNoteFormatTest {
   @Test
   fun negativeCountsAsZero() {
     assertEquals("0:00", formatVoiceDuration(Duration.ofSeconds(-5)))
+  }
+
+  private val recorded = ZonedDateTime.of(2026, 10, 17, 9, 12, 0, 0, ZoneOffset.UTC)
+
+  /** Breaks if a note of this year shows its year, or loses the date or the time. */
+  @Test
+  fun recordedAtHasNoYearInTheCurrentYear() {
+    val today = LocalDate.of(2026, 11, 7)
+    assertEquals(
+        "${formatDate(recorded.toLocalDate())}, 09:12",
+        formatRecordedAt(recorded, today),
+    )
+  }
+
+  /** Breaks if a note of another year, before or after, does not show its year. */
+  @Test
+  fun recordedAtShowsTheYearInAnotherYear() {
+    val expected = "${formatDateWithYear(recorded.toLocalDate())}, 09:12"
+    assertEquals(expected, formatRecordedAt(recorded, LocalDate.of(2027, 1, 2)))
+    assertEquals(expected, formatRecordedAt(recorded, LocalDate.of(2025, 12, 31)))
   }
 }

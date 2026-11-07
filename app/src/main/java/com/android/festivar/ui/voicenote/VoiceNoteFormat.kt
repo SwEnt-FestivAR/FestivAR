@@ -1,7 +1,12 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.voicenote
 
+import com.android.festivar.ui.components.formatDate
+import com.android.festivar.ui.components.formatDateWithYear
+import com.android.festivar.ui.components.formatTime
 import java.time.Duration
+import java.time.LocalDate
+import java.time.ZonedDateTime
 import java.util.Locale
 
 /**
@@ -23,4 +28,15 @@ internal fun formatVoiceDuration(duration: Duration): String {
   } else {
     String.format(Locale.ROOT, "%d:%02d", minutes, seconds)
   }
+}
+
+/**
+ * The date and the time at which a note was recorded, like "Sat 17 Oct, 09:12". The year is only
+ * added when it is not the year of [today], like "Sat 17 Oct 2025, 09:12", since a note of this
+ * year does not need it.
+ */
+internal fun formatRecordedAt(createdAt: ZonedDateTime, today: LocalDate): String {
+  val date = createdAt.toLocalDate()
+  val day = if (date.year == today.year) formatDate(date) else formatDateWithYear(date)
+  return "$day, ${formatTime(createdAt.toLocalTime())}"
 }

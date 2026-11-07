@@ -28,10 +28,10 @@ import com.android.festivar.model.audio.PlayerState
 import com.android.festivar.model.voicenote.VoiceNote
 import com.android.festivar.ui.components.FestivarConfirmDialog
 import com.android.festivar.ui.components.SectionLabel
-import com.android.festivar.ui.components.formatDate
-import com.android.festivar.ui.components.formatTime
 import com.android.festivar.ui.theme.AppTheme
+import java.time.Clock
 import java.time.Duration
+import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 
@@ -62,6 +62,7 @@ object VoiceNoteTestTags {
  * @param ownerName Who is credited with the note when the current user is not its owner. The owner
  *   of a task is not always the organizer of the event, since every member can create a task, so
  *   the caller should give the name of the owner. It defaults to "Organizer".
+ * @param clock Tells the current year, which the date of the note only shows when it is another.
  */
 @Composable
 fun VoiceNoteSection(
@@ -69,13 +70,14 @@ fun VoiceNoteSection(
     callbacks: VoiceNoteCallbacks,
     modifier: Modifier = Modifier,
     ownerName: String = stringResource(R.string.voice_note_organizer),
+    clock: Clock = Clock.systemDefaultZone(),
 ) {
   if (!state.isVisible) return
   Column(modifier.fillMaxWidth()) {
     SectionLabel(stringResource(R.string.voice_note_label))
     val note = state.note
     if (note != null) {
-      VoiceNoteRow(note, state, callbacks, ownerName)
+      VoiceNoteRow(note, state, callbacks, ownerName, LocalDate.now(clock))
     } else {
       EmptyVoiceNote()
     }
@@ -95,19 +97,21 @@ fun VoiceNoteSection(
   }
 }
 
-/** The note: who and when (date and time), then the player and, for the owner, the trash. */
+/**
+ * The note: who and when (date, with the year if it is not this one, and time), then the player
+ * and, for the owner, the trash.
+ */
 @Composable
 private fun VoiceNoteRow(
     note: VoiceNote,
     state: VoiceNoteUiState,
     callbacks: VoiceNoteCallbacks,
     ownerName: String,
+    today: LocalDate,
 ) {
   Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
     // The date is there because a task can last several days
-    val date = formatDate(note.createdAt.toLocalDate())
-    val time = formatTime(note.createdAt.toLocalTime())
-    val recordedAt = "$date, $time"
+    val recordedAt = formatRecordedAt(note.createdAt, today)
     Text(
         if (state.canManage) stringResource(R.string.voice_note_author_you, recordedAt)
         else stringResource(R.string.voice_note_author_other, ownerName, recordedAt),

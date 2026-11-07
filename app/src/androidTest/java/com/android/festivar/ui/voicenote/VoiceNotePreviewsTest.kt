@@ -9,10 +9,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
-import com.android.festivar.ui.components.formatDate
-import com.android.festivar.ui.components.formatTime
 import java.time.LocalDate
-import java.time.LocalTime
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -28,9 +27,9 @@ class VoiceNotePreviewsTest {
   private fun text(id: Int, vararg args: Any) =
       ApplicationProvider.getApplicationContext<android.content.Context>().getString(id, *args)
 
-  /** The date and the time of the note of the previews, 17/10/2026 at 09:12. */
+  /** The date and the time of the note of the previews (17/10/2026 at 09:12) as they show it. */
   private val recordedAt =
-      "${formatDate(LocalDate.of(2026, 10, 17))}, ${formatTime(LocalTime.of(9, 12))}"
+      formatRecordedAt(ZonedDateTime.of(2026, 10, 17, 9, 12, 0, 0, ZoneOffset.UTC), LocalDate.now())
 
   /** Breaks if the owner preview no longer shows the note with its author line and the trash. */
   @Test

@@ -14,13 +14,14 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
 import com.android.festivar.model.audio.PlayerState
 import com.android.festivar.model.voicenote.VoiceNote
-import com.android.festivar.ui.components.formatDate
-import com.android.festivar.ui.components.formatTime
 import com.android.festivar.ui.theme.AppTheme
 import io.mockk.confirmVerified
 import io.mockk.mockk
 import io.mockk.verify
+import java.time.Clock
 import java.time.Duration
+import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import org.junit.Rule
@@ -69,15 +70,20 @@ class VoiceNoteContentTest {
   private fun assertNoOtherCall() =
       confirmVerified(onTogglePlay, onDelete, onConfirmDelete, onDismissDelete)
 
-  private fun show(state: VoiceNoteUiState) = composeTestRule.setContent {
-    AppTheme { VoiceNoteSection(state, callbacks) }
+  /** The fixed current day of the tests: 07/11/2026, the same year as the note. */
+  private fun clockOn(date: LocalDate) =
+      Clock.fixed(Instant.parse("${date}T12:00:00Z"), ZoneOffset.UTC)
+
+  private val thisYear = clockOn(LocalDate.of(2026, 11, 7))
+
+  private fun show(state: VoiceNoteUiState, clock: Clock = thisYear) = composeTestRule.setContent {
+    AppTheme { VoiceNoteSection(state, callbacks, clock = clock) }
   }
 
   private fun tag(tag: String) = composeTestRule.onNodeWithTag(tag)
 
-  /** The date and the time of the note as the author line shows them. */
-  private val recordedAt =
-      "${formatDate(note.createdAt.toLocalDate())}, ${formatTime(note.createdAt.toLocalTime())}"
+  /** The date and the time of the note as the author line shows them, in the year of the note. */
+  private val recordedAt = formatRecordedAt(note.createdAt, LocalDate.of(2026, 11, 7))
 
   /**
    * Breaks if the owner no longer sees the label, the author line with the date and the time, the
@@ -111,10 +117,31 @@ class VoiceNoteContentTest {
   @Test
   fun volunteerSeesTheNameOfTheOwner() {
     composeTestRule.setContent {
-      AppTheme { VoiceNoteSection(VoiceNoteUiState(note = note), callbacks, ownerName = "Alice") }
+      AppTheme {
+        VoiceNoteSection(
+            VoiceNoteUiState(note = note),
+            callbacks,
+            ownerName = "Alice",
+            clock = thisYear,
+        )
+      }
     }
     tag(VoiceNoteTestTags.VOICE_NOTE_AUTHOR)
         .assertTextContains(text(R.string.voice_note_author_other, "Alice", recordedAt))
+  }
+
+  /** Breaks if the year of a note recorded in another year is not shown in the author line. */
+  @Test
+  fun authorLineShowsTheYearOfAnOlderNote() {
+    show(VoiceNoteUiState(note = note, canManage = true), clockOn(LocalDate.of(2027, 1, 5)))
+    tag(VoiceNoteTestTags.VOICE_NOTE_AUTHOR)
+        .assertTextContains(
+            text(
+                R.string.voice_note_author_you,
+                formatRecordedAt(note.createdAt, LocalDate.of(2027, 1, 5)),
+            )
+        )
+    tag(VoiceNoteTestTags.VOICE_NOTE_AUTHOR).assertTextContains("2026", substring = true)
   }
 
   /**
