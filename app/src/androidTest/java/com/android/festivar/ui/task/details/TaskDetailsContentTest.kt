@@ -1,5 +1,6 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.ui.task.details
 
 import androidx.compose.ui.test.assertIsDisplayed
@@ -59,8 +60,20 @@ class TaskDetailsContentTest {
       onRetry: () -> Unit = {},
       onDismissError: () -> Unit = {},
       onBack: () -> Unit = {},
+      onEdit: (String) -> Unit = {},
+      onDeleteTask: () -> Unit = {},
   ) = composeTestRule.setContent {
-    TaskDetailsContent(state, onBack, onTake, onGiveBack, onMarkDone, onRetry, onDismissError)
+    TaskDetailsContent(
+        state,
+        onBack,
+        onTake,
+        onGiveBack,
+        onMarkDone,
+        onRetry,
+        onDismissError,
+        onEdit,
+        onDeleteTask,
+    )
   }
 
   @Test
@@ -165,5 +178,41 @@ class TaskDetailsContentTest {
     show(state(), onBack = { backs++ })
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.BACK_BUTTON).performClick()
     assertEquals(1, backs)
+  }
+
+  @Test
+  fun ownerMenuEditsTaskAndCanConfirmDeletion() {
+    val edited = mutableListOf<String>()
+    var deletes = 0
+    show(
+        state(task.copy(ownerId = sami.uid)),
+        onEdit = { edited += it },
+        onDeleteTask = { deletes++ },
+    )
+
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MORE_ACTIONS_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.EDIT_MENU_ITEM).performClick()
+    assertEquals(listOf(task.taskId), edited)
+
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MORE_ACTIONS_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.DELETE_MENU_ITEM).performClick()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.DELETE_DIALOG).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.DELETE_CONFIRM_BUTTON).performClick()
+
+    assertEquals(1, deletes)
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.DELETE_DIALOG).assertDoesNotExist()
+  }
+
+  @Test
+  fun deleteConfirmationCanBeDismissed() {
+    var deletes = 0
+    show(state(task.copy(ownerId = sami.uid)), onDeleteTask = { deletes++ })
+
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MORE_ACTIONS_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.DELETE_MENU_ITEM).performClick()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.DELETE_DISMISS_BUTTON).performClick()
+
+    assertEquals(0, deletes)
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.DELETE_DIALOG).assertDoesNotExist()
   }
 }

@@ -1,8 +1,10 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.ui.task.details
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,14 +17,19 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -30,6 +37,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -43,6 +53,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.R
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
+import com.android.festivar.ui.components.FestivarConfirmDialog
 import com.android.festivar.ui.components.PillStyle
 import com.android.festivar.ui.components.SectionLabel
 import com.android.festivar.ui.components.StatusPill
@@ -55,7 +66,12 @@ import java.time.ZonedDateTime
 /** Test tags named after the tags of the "Task details" frames in Figma. */
 object TaskDetailsScreenTestTags {
   const val BACK_BUTTON = "detailsBackButton"
-  const val EDIT_BUTTON = "detailsEditButton"
+  const val MORE_ACTIONS_BUTTON = "detailsMoreActionsButton"
+  const val EDIT_MENU_ITEM = "detailsEditMenuItem"
+  const val DELETE_MENU_ITEM = "detailsDeleteMenuItem"
+  const val DELETE_DIALOG = "detailsDeleteDialog"
+  const val DELETE_CONFIRM_BUTTON = "detailsDeleteConfirmButton"
+  const val DELETE_DISMISS_BUTTON = "detailsDeleteDismissButton"
   const val STATUS_BADGE = "detailsStatusBadge"
   const val TITLE = "detailsTitle"
   const val WHEN = "detailsWhen"
@@ -93,6 +109,7 @@ fun TaskDetailsScreen(
       onTake = viewModel::take,
       onGiveBack = viewModel::giveBack,
       onMarkDone = viewModel::markDone,
+      onDeleteTask = viewModel::deleteTask,
       onRetry = viewModel::load,
       onDismissError = viewModel::clearError,
       onEdit = onEdit,
@@ -111,7 +128,11 @@ fun TaskDetailsContent(
     onRetry: () -> Unit = {},
     onDismissError: () -> Unit = {},
     onEdit: (String) -> Unit = {},
+    onDeleteTask: () -> Unit = {},
 ) {
+  var menuExpanded by remember { mutableStateOf(false) }
+  var showDeleteConfirmation by remember { mutableStateOf(false) }
+
   Scaffold(
       topBar = {
         TopAppBar(
@@ -128,11 +149,56 @@ fun TaskDetailsContent(
               state.task
                   ?.takeIf { state.canEdit }
                   ?.let { task ->
-                    IconButton(
-                        onClick = { onEdit(task.taskId) },
-                        Modifier.testTag(TaskDetailsScreenTestTags.EDIT_BUTTON),
-                    ) {
-                      Icon(Icons.Rounded.Edit, stringResource(R.string.edit_task))
+                    Box {
+                      IconButton(
+                          onClick = { menuExpanded = true },
+                          modifier =
+                              Modifier.testTag(TaskDetailsScreenTestTags.MORE_ACTIONS_BUTTON),
+                      ) {
+                        Icon(
+                            Icons.Filled.MoreVert,
+                            contentDescription = stringResource(R.string.task_details_more_actions),
+                        )
+                      }
+                      DropdownMenu(
+                          expanded = menuExpanded,
+                          onDismissRequest = { menuExpanded = false },
+                      ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.edit_task)) },
+                            onClick = {
+                              menuExpanded = false
+                              onEdit(task.taskId)
+                            },
+                            leadingIcon = { Icon(Icons.Rounded.Edit, contentDescription = null) },
+                            modifier = Modifier.testTag(TaskDetailsScreenTestTags.EDIT_MENU_ITEM),
+                        )
+                        DropdownMenuItem(
+                            text = {
+                              Text(
+                                  stringResource(R.string.task_details_delete_task),
+                                  color = MaterialTheme.colorScheme.error,
+                              )
+                            },
+                            onClick = {
+                              menuExpanded = false
+                              showDeleteConfirmation = true
+                            },
+                            leadingIcon = {
+                              Icon(
+                                  Icons.Filled.Delete,
+                                  contentDescription = null,
+                                  tint = MaterialTheme.colorScheme.error,
+                              )
+                            },
+                            colors =
+                                MenuDefaults.itemColors(
+                                    textColor = MaterialTheme.colorScheme.error,
+                                    leadingIconColor = MaterialTheme.colorScheme.error,
+                                ),
+                            modifier = Modifier.testTag(TaskDetailsScreenTestTags.DELETE_MENU_ITEM),
+                        )
+                      }
                     }
                   }
             },
@@ -166,6 +232,24 @@ fun TaskDetailsContent(
       val task = state.task
       val status = state.status
       if (task != null && status != null) Body(task, status)
+    }
+  }
+  if (showDeleteConfirmation) {
+    state.task?.let { task ->
+      FestivarConfirmDialog(
+          title = stringResource(R.string.task_details_delete_confirmation_title),
+          message = stringResource(R.string.task_details_delete_confirmation_message, task.title),
+          confirmText = stringResource(R.string.task_details_delete_task),
+          dismissText = stringResource(R.string.task_details_keep_task),
+          onConfirm = {
+            showDeleteConfirmation = false
+            onDeleteTask()
+          },
+          onDismiss = { showDeleteConfirmation = false },
+          modifier = Modifier.testTag(TaskDetailsScreenTestTags.DELETE_DIALOG),
+          confirmModifier = Modifier.testTag(TaskDetailsScreenTestTags.DELETE_CONFIRM_BUTTON),
+          dismissModifier = Modifier.testTag(TaskDetailsScreenTestTags.DELETE_DISMISS_BUTTON),
+      )
     }
   }
 }
