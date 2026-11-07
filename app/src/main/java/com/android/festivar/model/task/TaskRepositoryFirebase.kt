@@ -130,7 +130,9 @@ class TaskRepositoryFirebase(
             document.get("voiceNote")?.let { value ->
               VoiceNote.fromMap(
                   value as? Map<*, *>
-                      ?: throw IllegalArgumentException("Invalid voice note data: $value")
+                      ?: throw IllegalArgumentException(
+                          "Invalid voice note data for task ${document.id}."
+                      )
               )
             },
     )

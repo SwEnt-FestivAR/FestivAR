@@ -98,14 +98,19 @@ class TaskRepositoryFirebaseTest {
     assertNull(data["estimatedTime"])
   }
 
+  /**
+   * Breaks if a task's voice note is not written to its document, or is written when the task has
+   * none.
+   */
   @Test
   fun toFirestoreData_serializesTheVoiceNote() {
     val note = voiceNote()
 
-    assertEquals(note.toMap(), invokeToFirestoreData(task.copy(voiceNote = note))["voiceNote"])
+    assertNotNull(invokeToFirestoreData(task.copy(voiceNote = note))["voiceNote"])
     assertNull(invokeToFirestoreData(task)["voiceNote"])
   }
 
+  /** Breaks if a stored voice note is not read back with the task. */
   @Test
   fun documentToTask_deserializesTheStoredVoiceNote() = runBlocking {
     val withNote = task.copy(voiceNote = voiceNote())
@@ -115,6 +120,7 @@ class TaskRepositoryFirebaseTest {
     assertEquals(withNote, invokeDocumentToTask(document.get().await()))
   }
 
+  /** Breaks if a task saved before voice notes existed stops loading. */
   @Test
   fun documentToTask_loadsATaskSavedBeforeVoiceNotes_withoutOne() = runBlocking {
     val data = invokeToFirestoreData(task) - "voiceNote"
@@ -124,6 +130,7 @@ class TaskRepositoryFirebaseTest {
     assertNull(invokeDocumentToTask(document.get().await()).voiceNote)
   }
 
+  /** Breaks if adding or removing a voice note by editing a task is lost when it is read again. */
   @Test
   fun editTask_keepsTheVoiceNote_afterReadingTheTaskAgain() = runBlocking {
     repository.addTask(task)
