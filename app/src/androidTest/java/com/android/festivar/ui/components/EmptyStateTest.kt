@@ -3,6 +3,9 @@ package com.android.festivar.ui.components
 
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
@@ -23,15 +26,25 @@ import org.junit.runner.RunWith
 class EmptyStateTest {
   @get:Rule val composeTestRule = createComposeRule()
 
-  /** Test that the title, the subtitle and the given actions are shown, and the actions work. */
+  /**
+   * Test that the title, the subtitle and the given actions are shown and work, and that without
+   * actions no button is left.
+   */
   @Test
-  fun showsTheTextsAndTheActions() {
+  fun showsTheTextsAndTheActionsOnlyWhenGiven() {
     var clicks = 0
+    var withActions by mutableStateOf(true)
     composeTestRule.setContent {
       AppTheme {
-        EmptyState(icon = R.drawable.ic_event, title = "No items yet", subtitle = "Add one.") {
-          Button(onClick = { clicks++ }) { Text(text = "Add") }
-        }
+        EmptyState(
+            icon = R.drawable.ic_event,
+            title = "No items yet",
+            subtitle = "Add one.",
+            actions =
+                if (withActions) {
+                  { Button(onClick = { clicks++ }) { Text(text = "Add") } }
+                } else null,
+        )
       }
     }
 
@@ -42,19 +55,9 @@ class EmptyStateTest {
     composeTestRule.onNodeWithText("Add one.").assertIsDisplayed()
     composeTestRule.onNodeWithText("Add").assertIsDisplayed().performClick()
     assertEquals(1, clicks)
-  }
 
-  /** Test that, without actions, only the title and the subtitle are shown, with no button. */
-  @Test
-  fun withoutActionsShowsOnlyTheTexts() {
-    composeTestRule.setContent {
-      AppTheme {
-        EmptyState(icon = R.drawable.ic_event, title = "No items yet", subtitle = "Add one.")
-      }
-    }
-
+    withActions = false
     composeTestRule.onNodeWithTag(EmptyStateTestTags.TITLE).assertIsDisplayed()
-    composeTestRule.onNodeWithText("Add one.").assertIsDisplayed()
     composeTestRule.onAllNodes(hasClickAction()).assertCountEquals(0)
   }
 }
