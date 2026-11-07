@@ -31,6 +31,7 @@ import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventRepositoryFirebase
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.EventsRepositoryProvider
+import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.event.joinCodeOf
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepositoryLocal
@@ -41,6 +42,7 @@ import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.model.user.UsersRepositoryProvider
 import com.android.festivar.navigation.AppScreens
 import com.android.festivar.ui.announcement.create.CreateAnnouncementScreenTestTags
+import com.android.festivar.ui.announcement.feed.AnnouncementFeedScreenTestTags
 import com.android.festivar.ui.authentication.login.LoginScreenTestTags
 import com.android.festivar.ui.authentication.signup.SignUpScreenTestTags
 import com.android.festivar.ui.components.AvatarTestTags
@@ -562,6 +564,45 @@ class MainActivityNavigationTest {
     }
 
     composeTestRule.onNodeWithTag(CreateAnnouncementScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  /** Turns red when the announcements row of the event details does not open that event's feed. */
+  @Test
+  fun announcementsRowOfTheEventDetailsOpensTheFeedOfTheEvent() {
+    val start = ZonedDateTime.now().plusDays(1)
+    val announcement =
+        Announcement(
+            announcementId = "a1",
+            title = "Stage B is closed",
+            authorId = "u0",
+            updatedAt = ZonedDateTime.now(),
+        )
+    val event =
+        Event(
+            eventId = "e1",
+            title = "Balelec",
+            startDate = start,
+            endDate = start.plusHours(2),
+            announcements = listOf(announcement),
+        )
+    EventsRepositoryProvider.repository = EventsRepositoryLocal(listOf(event))
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          dataRepository =
+              DataRepositoryFirebase(
+                  authRepository = FakeAuthRepository(currentUser = firebaseUser)
+              ),
+          startDestinationOverride = AppScreens.eventDetails(event.eventId),
+      )
+    }
+
+    waitUntilTagExists(EventDetailsScreenTestTags.ANNOUNCEMENTS_ROW)
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.ANNOUNCEMENTS_ROW).performClick()
+
+    waitUntilTagExists(AnnouncementFeedScreenTestTags.TITLE)
+    // The feed shows the announcements of the event whose details were open
+    waitUntilTagExists(AnnouncementFeedScreenTestTags.announcementRow(announcement))
   }
 
   @Test

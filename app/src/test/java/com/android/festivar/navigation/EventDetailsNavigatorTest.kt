@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.navigation
 
 import androidx.navigation.NavHostController
@@ -23,5 +24,12 @@ class EventDetailsNavigatorTest {
     navigator.onTasksButtonClicked("event-123")
 
     verify { navController.navigate(AppScreens.taskOverview("event-123")) }
+  }
+
+  @Test
+  fun announcementsRowNavigatesToTheAnnouncementFeedOfThatEvent() {
+    navigator.onAnnouncementsClicked("e1")
+
+    verify { navController.navigate("AnnouncementFeed/e1") }
   }
 }

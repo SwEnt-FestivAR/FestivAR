@@ -17,8 +17,10 @@ import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.EventsRepositoryProvider
+import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.navigation.announcement.announcementGraph
 import com.android.festivar.ui.announcement.create.CreateAnnouncementScreenTestTags as Tags
+import com.android.festivar.ui.announcement.feed.AnnouncementFeedScreenTestTags as FeedTags
 import com.google.firebase.auth.FirebaseUser
 import io.mockk.every
 import io.mockk.mockk
@@ -39,8 +41,8 @@ private const val PREVIOUS_SCREEN = "previous screen"
 private const val TAP_GAP_MILLIS = 100L
 
 /**
- * Opens the Create announcement route from another screen, as the app does, so that leaving it has
- * somewhere to go back to.
+ * Opens the Create announcement and the announcement feed routes from another screen, as the app
+ * does, so that leaving them has somewhere to go back to.
  */
 class AnnouncementNavGraphTest {
   @get:Rule val composeTestRule = createComposeRule()
@@ -70,8 +72,8 @@ class AnnouncementNavGraphTest {
     EventsRepositoryProvider.reset()
   }
 
-  /** Opens the route as [user]; null means that nobody is signed in. */
-  private fun openTheRouteAs(user: FirebaseUser?) {
+  /** Shows the announcement graph behind a previous screen, as [user]; null means signed out. */
+  private fun showTheGraphAs(user: FirebaseUser?) {
     composeTestRule.setContent {
       navController = rememberNavController()
       NavHost(navController = navController, startDestination = PREVIOUS_SCREEN) {
@@ -82,10 +84,22 @@ class AnnouncementNavGraphTest {
         )
       }
     }
+  }
+
+  /** Opens the route as [user]; null means that nobody is signed in. */
+  private fun openTheRouteAs(user: FirebaseUser?) {
+    showTheGraphAs(user)
     composeTestRule.runOnUiThread {
       navController.navigate(AppScreens.createAnnouncement(EVENT_ID))
     }
     composeTestRule.onNodeWithTag(Tags.TITLE).assertIsDisplayed()
+  }
+
+  /** Opens the feed of the event, from the previous screen. */
+  private fun openTheFeed() {
+    showTheGraphAs(signedInUser)
+    composeTestRule.runOnUiThread { navController.navigate(AppScreens.announcementFeed(EVENT_ID)) }
+    composeTestRule.onNodeWithTag(FeedTags.TITLE).assertIsDisplayed()
   }
 
   private fun fillTheForm() {
@@ -174,5 +188,56 @@ class AnnouncementNavGraphTest {
     assertThePreviousScreenIsAloneOnTheBackStack()
     val announcements = runBlocking { repository.getEvent(EVENT_ID).announcements }
     assertEquals(1, announcements.size)
+  }
+
+  // Breaks if the event id of the feed route does not reach its view model, which would then show
+  // the announcements of no event, or of another one.
+  @Test
+  fun feedShowsTheAnnouncementsOfTheEventOfTheRoute() {
+    val announcement =
+        Announcement(
+            announcementId = "a1",
+            title = "Stage B is closed",
+            authorId = USER_ID,
+            updatedAt = ZonedDateTime.now(),
+        )
+    runBlocking { repository.addAnnouncement(EVENT_ID, announcement) }
+
+    openTheFeed()
+
+    composeTestRule.onNodeWithTag(FeedTags.announcementRow(announcement)).assertIsDisplayed()
+  }
+
+  // Breaks if "Add announcement" does not open the Create announcement route of the same event,
+  // e.g. by replacing the feed instead of opening on top of it.
+  @Test
+  fun addOpensCreateAnnouncementForTheEventOnTopOfTheFeed() {
+    openTheFeed()
+
+    composeTestRule.onNodeWithTag(FeedTags.ADD_ANNOUNCEMENT_FAB).performClick()
+
+    composeTestRule.onNodeWithTag(Tags.TITLE).assertIsDisplayed()
+    composeTestRule.runOnIdle {
+      assertEquals(EVENT_ID, navController.currentBackStackEntry?.arguments?.getString("eventId"))
+      assertEquals(
+          "${AppScreens.AnnouncementFeed.name}/{eventId}",
+          navController.previousBackStackEntry?.destination?.route,
+      )
+    }
+  }
+
+  // Breaks if the feed's back arrow does not pop the feed, or pops again on a second tap during the
+  // exit transition, which empties the back stack here and leaves a blank screen.
+  @Test
+  fun twoTapsOnTheFeedsBackLeaveTheFeedOnlyOnce() {
+    openTheFeed()
+    composeTestRule.mainClock.autoAdvance = false
+    composeTestRule.onNodeWithTag(FeedTags.BACK_BUTTON).performClick()
+    composeTestRule.mainClock.advanceTimeBy(TAP_GAP_MILLIS)
+    composeTestRule.onNodeWithTag(FeedTags.BACK_BUTTON).performClick()
+    composeTestRule.mainClock.autoAdvance = true
+
+    assertThePreviousScreenIsAloneOnTheBackStack()
+    composeTestRule.onNodeWithTag(FeedTags.TITLE).assertDoesNotExist()
   }
 }

@@ -1,8 +1,11 @@
 package com.android.festivar.ui.event
 
 // Co-authored-by: Copilot App
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
@@ -32,6 +35,12 @@ class EventDetailsPreviewsTest {
     composeTestRule.onNodeWithText("Fête de l'Asso 2026").assertIsDisplayed()
     composeTestRule.onNodeWithText("Parc de Vidy, Lausanne").assertIsDisplayed()
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.SEE_TASKS_BUTTON).assertIsDisplayed()
+    composeTestRule
+        .onNode(
+            hasTestTag(EventDetailsScreenTestTags.ANNOUNCEMENTS_ROW)
+                .and(hasText("Bar shifts moved"))
+        )
+        .assertIsDisplayed()
   }
 
   @Test
