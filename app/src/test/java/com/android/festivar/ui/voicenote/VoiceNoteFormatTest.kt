@@ -10,6 +10,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
+import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -93,5 +94,22 @@ class VoiceNoteFormatTest {
     val lateUtc = ZonedDateTime.of(2026, 10, 17, 23, 30, 0, 0, ZoneOffset.UTC)
     val clock = clockOn(LocalDate.of(2026, 10, 18), ZoneId.of("Europe/Paris"))
     assertEquals("Today, 01:30", formatRecordedAt(lateUtc, clock, "Today"))
+  }
+
+  /** Breaks if the date format of the author line changes, e.g. loses the weekday or the time. */
+  @Test
+  fun recordedAtHasTheFormatOfTheDesign() {
+    val saved = Locale.getDefault()
+    Locale.setDefault(Locale.ENGLISH)
+    try {
+      val clock = clockOn(LocalDate.of(2026, 11, 7))
+      assertEquals("Sat 17 Oct, 09:12", formatRecordedAt(recorded, clock, "Today"))
+      assertEquals(
+          "Sat 17 Oct 2026, 09:12",
+          formatRecordedAt(recorded, clockOn(LocalDate.of(2027, 1, 2)), "Today"),
+      )
+    } finally {
+      Locale.setDefault(saved)
+    }
   }
 }

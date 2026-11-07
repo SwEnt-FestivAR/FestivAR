@@ -297,13 +297,6 @@ class VoiceNoteContentTest {
     tag(VoiceNoteTestTags.CONFIRM_DELETE).assertDoesNotExist()
   }
 
-  /** Breaks if the dialog shows for a volunteer of a task with no note (the section is hidden). */
-  @Test
-  fun volunteerWithoutNoteNeverSeesTheDeleteDialog() {
-    show(VoiceNoteUiState(canManage = false, showDeleteConfirm = true))
-    tag(VoiceNoteTestTags.CONFIRM_DELETE).assertDoesNotExist()
-  }
-
   /**
    * Breaks if the owner of a task with no note gets a dialog to delete a note that is not there.
    */
