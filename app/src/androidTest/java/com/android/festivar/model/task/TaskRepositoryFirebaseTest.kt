@@ -106,7 +106,15 @@ class TaskRepositoryFirebaseTest {
   fun toFirestoreData_serializesTheVoiceNote() {
     val note = voiceNote()
 
-    assertEquals(note.toMap(), invokeToFirestoreData(task.copy(voiceNote = note))["voiceNote"])
+    val stored =
+        mapOf(
+            "id" to "note-1",
+            "audioUrl" to "https://example.com/note-1.m4a",
+            "duration" to 14_000_000_000L,
+            "createdAt" to "2026-07-01T10:00+02:00[Europe/Zurich]",
+        )
+
+    assertEquals(stored, invokeToFirestoreData(task.copy(voiceNote = note))["voiceNote"])
     assertNull(invokeToFirestoreData(task)["voiceNote"])
   }
 
@@ -149,13 +157,11 @@ class TaskRepositoryFirebaseTest {
     val document = Firebase.firestore.collection(TASK_COLLECTION_PATH).document(task.taskId)
     document.set(invokeToFirestoreData(task) + ("voiceNote" to "text")).await()
 
-    var message: String? = null
-    try {
-      repository.getTask(task.taskId)
-    } catch (e: IllegalArgumentException) {
-      message = e.message
-    }
-    assertEquals("Invalid voice note data for task ${task.taskId}.", message)
+    val error =
+        assertThrows(IllegalArgumentException::class.java) {
+          runBlocking { repository.getTask(task.taskId) }
+        }
+    assertEquals("Invalid voice note data for task ${task.taskId}.", error.message)
   }
 
   @Test

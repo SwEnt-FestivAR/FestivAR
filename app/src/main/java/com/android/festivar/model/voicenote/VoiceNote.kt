@@ -58,6 +58,8 @@ data class VoiceNote(
       fun <T> field(name: String, value: T?): T =
           requireNotNull(value) { "Invalid voice note data: '$name' is missing or invalid." }
 
+      // Firestore returns whole numbers as Long. Any other number type is cut to a whole number of
+      // nanoseconds, which is accepted because the app never writes one.
       return VoiceNote(
           id = field("id", map["id"] as? String),
           audioUrl = field("audioUrl", map["audioUrl"] as? String),

@@ -126,17 +126,19 @@ class TaskRepositoryFirebase(
         // missing one is an error, not a case to handle.
         ownerId = document.getString("ownerId").required("ownerId", document.id),
         // Tasks saved before voice notes existed have no such field: they have no voice note.
-        voiceNote =
-            document.get("voiceNote")?.let { value ->
-              val invalid = "Invalid voice note data for task ${document.id}"
-              val map = value as? Map<*, *> ?: throw IllegalArgumentException("$invalid.")
-              try {
-                VoiceNote.fromMap(map)
-              } catch (e: IllegalArgumentException) {
-                throw IllegalArgumentException("$invalid: ${e.message}", e)
-              }
-            },
+        voiceNote = document.get("voiceNote")?.let { readVoiceNote(it, document.id) },
     )
+  }
+
+  /** Rebuilds the stored voice note of task [taskId], or fails with an error naming the task. */
+  private fun readVoiceNote(value: Any, taskId: String): VoiceNote {
+    val invalid = "Invalid voice note data for task $taskId"
+    val map = value as? Map<*, *> ?: throw IllegalArgumentException("$invalid.")
+    return try {
+      VoiceNote.fromMap(map)
+    } catch (e: IllegalArgumentException) {
+      throw IllegalArgumentException("$invalid: ${e.message}", e)
+    }
   }
 
   private fun String?.required(field: String, documentId: String): String {
