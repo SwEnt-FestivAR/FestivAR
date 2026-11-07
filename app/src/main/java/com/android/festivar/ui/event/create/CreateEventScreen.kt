@@ -305,7 +305,7 @@ private fun CreateEventTopBar(onBack: () -> Unit) {
 @SuppressLint("ViewModelConstructorInComposable")
 @Preview
 @Composable
-private fun CreateEventScreenPreview() {
+internal fun CreateEventScreenPreview() {
   val addDurationMillis = 3000
   class SlowEventsRepository : EventsRepository by EventsRepositoryLocal() {
     override suspend fun addEvent(event: Event): Unit = delay(addDurationMillis.milliseconds)
