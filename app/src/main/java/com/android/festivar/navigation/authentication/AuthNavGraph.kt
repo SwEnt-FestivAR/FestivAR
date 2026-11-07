@@ -24,7 +24,7 @@ fun NavGraphBuilder.authGraph(
   composable(route = AppScreens.SignUp.name) {
     val navigator = SignUpNavigator(navController)
     SignUpScreen(
-        viewModel = viewModel { SignUpViewModel(dataRepository.authRepository) },
+        viewModel = viewModel { SignUpViewModel(dataRepository) },
         onSignInClick = navigator.onSignInClick,
         onBackClick = navigator.onBackClick,
         onSignUpSuccess = navigator.onSignUpSuccess,
