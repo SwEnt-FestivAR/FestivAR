@@ -188,10 +188,10 @@ class AnnouncementFeedScreenTest {
       composeTestRule.onNodeWithTag(tag).getUnclippedBoundsInRoot().top.value
 
   // Breaks if a chip is missing, out of order (All first, then by priority), shows a wrong count,
-  // or if the selected filter is not the one marked selected.
+  // is not the one marked selected, or reports another filter than its own when tapped.
   @Test
-  fun chipsShowEachFilterWithItsCountAllFirst() {
-    setContent(figmaState)
+  fun chipsShowEachFilterAllFirstAndReportTheTappedOne() {
+    val callbacks = setContent(figmaState)
 
     val expected =
         listOf(
@@ -209,15 +209,12 @@ class AnnouncementFeedScreenTest {
       composeTestRule.onNodeWithTag(tag).getUnclippedBoundsInRoot().left.value
     }
     assertEquals(lefts.sorted(), lefts)
-    // ALL is selected by default
-    composeTestRule
-        .onNodeWithTag(AnnouncementFeedScreenTestTags.filterChip(AnnouncementFilter.ALL))
-        .assertIsSelected()
-    expected.drop(1).forEach { (filter, _) ->
-      composeTestRule
-          .onNodeWithTag(AnnouncementFeedScreenTestTags.filterChip(filter))
-          .assertIsNotSelected()
+    expected.forEach { (filter, _) ->
+      val chip = composeTestRule.onNodeWithTag(AnnouncementFeedScreenTestTags.filterChip(filter))
+      if (filter == AnnouncementFilter.ALL) chip.assertIsSelected() else chip.assertIsNotSelected()
+      chip.performClick()
     }
+    assertEquals(expected.map { it.first }, callbacks.filters)
   }
 
   // Breaks if the French chip labels get long again (e.g. "Avertissement"), so that the last chip
@@ -261,22 +258,11 @@ class AnnouncementFeedScreenTest {
     }
   }
 
-  // Breaks if a chip reports another filter than its own.
+  // Breaks if the pinned announcements are not on top under their header, if the days are not each
+  // under their own header, newest first, or if a row loses its priority, time, title or content. A
+  // pinned row shows its weekday (no date header is above it), a day's row only its time.
   @Test
-  fun tappingAChipSelectsItsFilter() {
-    val callbacks = setContent(figmaState)
-
-    AnnouncementFilter.entries.forEach {
-      composeTestRule.onNodeWithTag(AnnouncementFeedScreenTestTags.filterChip(it)).performClick()
-    }
-
-    assertEquals(AnnouncementFilter.entries, callbacks.filters)
-  }
-
-  // Breaks if the pinned announcements are not on top under their header, or if the days are not
-  // each under their own header, newest first, with their announcements in the given order.
-  @Test
-  fun pinnedComeFirstThenEachDayUnderItsHeaderNewestFirst() {
+  fun pinnedComeFirstThenEachDayUnderItsHeaderWithItsRows() {
     setContent(figmaState, tall = true)
 
     val tags = AnnouncementFeedScreenTestTags
@@ -299,84 +285,38 @@ class AnnouncementFeedScreenTest {
     composeTestRule
         .onNodeWithTag(tags.dateHeader(yesterday))
         .assertTextEquals("YESTERDAY · FRI 16 OCT")
+    assertEquals(listOf("Info", "Fri 09:00", pinned.title, pinned.content), rowTexts(pinned))
+    assertEquals(listOf("Urgent", "14:02", urgent.title, urgent.content), rowTexts(urgent))
+    assertEquals(listOf("Warning", "11:30", warning.title, warning.content), rowTexts(warning))
   }
 
-  // Breaks if a day before yesterday gets a "Today" or "Yesterday" prefix instead of its date only.
+  // Breaks if a day before yesterday gets a "Today" or "Yesterday" prefix instead of its date only,
+  // or if an announcement without content still shows an empty content line.
   @Test
-  fun olderDayHeaderShowsOnlyItsDate() {
+  fun olderDayShowsOnlyItsDateAndABlankContentIsHidden() {
     val older = today.minusDays(2)
+    val withoutContent = water.copy(content = "  ", updatedAt = at(older, 9))
     setContent(
         AnnouncementFeedUIState(
-            sections =
-                listOf(AnnouncementFeedSection(older, listOf(water.copy(updatedAt = at(older, 9)))))
+            sections = listOf(AnnouncementFeedSection(older, listOf(withoutContent)))
         )
     )
 
     composeTestRule
         .onNodeWithTag(AnnouncementFeedScreenTestTags.dateHeader(older))
         .assertTextEquals("THU 15 OCT")
+    assertEquals(listOf("Info", "09:00", water.title), rowTexts(withoutContent))
   }
 
-  // Breaks if a row loses its priority, time, title or content, if a pinned row stops showing its
-  // weekday (it has no date header above it), or if a day's row shows more than its time.
+  // Breaks if a tap on a row reports another announcement, or if the back arrow or the add button
+  // is not connected to its callback.
   @Test
-  fun rowsShowPriorityTimeTitleAndContent() {
-    setContent(figmaState, tall = true)
-
-    assertEquals(listOf("Info", "Fri 09:00", pinned.title, pinned.content), rowTexts(pinned))
-    assertEquals(listOf("Urgent", "14:02", urgent.title, urgent.content), rowTexts(urgent))
-    assertEquals(listOf("Warning", "11:30", warning.title, warning.content), rowTexts(warning))
-  }
-
-  // Breaks if an announcement without content still shows an empty or placeholder content line.
-  @Test
-  fun rowWithoutContentShowsOnlyItsHeaderAndTitle() {
-    val withoutContent = water.copy(content = "  ")
-    setContent(
-        AnnouncementFeedUIState(
-            sections = listOf(AnnouncementFeedSection(today, listOf(withoutContent)))
-        )
-    )
-
-    assertEquals(listOf("Info", "09:15", water.title), rowTexts(withoutContent))
-  }
-
-  // Breaks if the selected filter is ignored: the pinned header and a day without matching
-  // announcements must go away with their rows.
-  @Test
-  fun selectedFilterShowsOnlyItsAnnouncements() {
-    setContent(figmaState.copy(selectedFilter = AnnouncementFilter.WARNING))
-
-    val tags = AnnouncementFeedScreenTestTags
-    composeTestRule.onNodeWithTag(tags.announcementRow(warning)).assertIsDisplayed()
-    composeTestRule.onNodeWithTag(tags.dateHeader(today)).assertIsDisplayed()
-    listOf(
-            tags.PINNED_HEADER,
-            tags.announcementRow(pinned),
-            tags.announcementRow(urgent),
-            tags.announcementRow(water),
-            tags.dateHeader(yesterday),
-        )
-        .forEach { composeTestRule.onNodeWithTag(it).assertDoesNotExist() }
-  }
-
-  // Breaks if a tap on a row reports another announcement, or none.
-  @Test
-  fun tappingARowSelectsItsAnnouncement() {
+  fun rowBackAndAddCallTheirCallbacks() {
     val callbacks = setContent(figmaState)
 
     composeTestRule
         .onNodeWithTag(AnnouncementFeedScreenTestTags.announcementRow(urgent))
         .performClick()
-
-    assertEquals(listOf(urgent), callbacks.selected)
-  }
-
-  // Breaks if the back arrow or the add button is not connected to its callback.
-  @Test
-  fun backAndAddCallTheirCallbacks() {
-    val callbacks = setContent(figmaState)
-
     composeTestRule.onNodeWithTag(AnnouncementFeedScreenTestTags.BACK_BUTTON).performClick()
     composeTestRule
         .onNode(
@@ -389,6 +329,7 @@ class AnnouncementFeedScreenTest {
         .onNodeWithTag(AnnouncementFeedScreenTestTags.ADD_ANNOUNCEMENT_FAB)
         .performClick()
 
+    assertEquals(listOf(urgent), callbacks.selected)
     assertEquals(1, callbacks.backs)
     assertEquals(1, callbacks.adds)
   }
@@ -424,11 +365,23 @@ class AnnouncementFeedScreenTest {
     }
   }
 
-  // Breaks if the empty feed shows another empty state than its own, or offers buttons in it: only
-  // the add button, which follows canAddAnnouncement, may add an announcement.
+  // Breaks if the feed shows another empty state than its own or offers buttons in it (only the add
+  // button, which follows canAddAnnouncement, may add an announcement), if a filter without
+  // announcements does not show its message, or if the error is not worded from its string resource
+  // or its Retry does not refresh the feed.
   @Test
-  fun emptyFeedShowsItsEmptyStateWithoutButtons() {
-    setContent(AnnouncementFeedUIState(), canAddAnnouncement = false)
+  fun emptyFilterEmptyAndErrorStatesShowTheFeedsTexts() {
+    var uiState by mutableStateOf(AnnouncementFeedUIState())
+    var refreshes = 0
+    composeTestRule.setContent {
+      AppTheme {
+        AnnouncementFeedContent(
+            uiState = uiState,
+            canAddAnnouncement = false,
+            onRefresh = { refreshes++ },
+        )
+      }
+    }
 
     composeTestRule
         .onNodeWithTag(EmptyStateTestTags.TITLE)
@@ -439,34 +392,20 @@ class AnnouncementFeedScreenTest {
         .assertIsDisplayed()
     // The back arrow and the four chips
     composeTestRule.onAllNodes(hasClickAction()).assertCountEquals(5)
-  }
 
-  // Breaks if a filter without announcements shows the empty state of the feed instead of its own
-  // message.
-  @Test
-  fun filterWithoutAnnouncementsShowsTheFilterMessage() {
-    setContent(figmaState.copy(sections = emptyList(), selectedFilter = AnnouncementFilter.URGENT))
-
+    uiState = figmaState.copy(sections = emptyList(), selectedFilter = AnnouncementFilter.URGENT)
     composeTestRule
         .onNodeWithTag(RefreshableListTestTags.FILTER_EMPTY)
         .assertIsDisplayed()
         .assertTextEquals("Nothing here. Try another filter.")
-  }
 
-  // Breaks if the error of the state is not worded from its string resource, or if Retry does not
-  // refresh the feed.
-  @Test
-  fun errorShowsItsMessageAndRetryRefreshes() {
-    val callbacks =
-        setContent(AnnouncementFeedUIState(errorMsg = R.string.announcement_feed_load_failed))
-
+    uiState = AnnouncementFeedUIState(errorMsg = R.string.announcement_feed_load_failed)
     composeTestRule
         .onNodeWithTag(RefreshableListTestTags.ERROR_MESSAGE)
         .assertIsDisplayed()
         .assertTextEquals("Unable to load the announcements.")
     composeTestRule.onNodeWithTag(RefreshableListTestTags.RETRY).performClick()
-
-    assertEquals(1, callbacks.refreshes)
+    assertEquals(1, refreshes)
   }
 
   /**
@@ -530,20 +469,20 @@ class AnnouncementFeedScreenTest {
   }
 
   // Breaks if the screen does not fetch when it comes to the front, e.g. coming back from adding an
-  // announcement, fetches while behind another screen, or hides the progress of the first fetch.
+  // announcement, fetches while behind another screen, hides the progress of the first fetch, or if
+  // a chip does not reach the ViewModel, so the feed is never filtered.
   @Test
-  fun screenFetchesTheFeedEachTimeItComesToTheFront() {
+  fun screenFetchesEachTimeItComesToTheFrontAndFiltersWithTheChips() {
     val gate = CompletableDeferred<Unit>()
     val repository = CountingRepository(figmaEvent(), gate = gate)
     val lifecycleOwner = TestLifecycleOwner()
     composeTestRule.runOnUiThread { lifecycleOwner.registry.currentState = Lifecycle.State.RESUMED }
     setScreen(repository, lifecycleOwner)
+    val tags = AnnouncementFeedScreenTestTags
 
     composeTestRule.onNodeWithTag(RefreshableListTestTags.LOADING).assertIsDisplayed()
     gate.complete(Unit)
-    composeTestRule
-        .onNodeWithTag(AnnouncementFeedScreenTestTags.announcementRow(pinned))
-        .assertIsDisplayed()
+    composeTestRule.onNodeWithTag(tags.announcementRow(pinned)).assertIsDisplayed()
     assertEquals(1, repository.fetches.get())
 
     // Another screen comes to the front, where an urgent announcement is added
@@ -560,31 +499,18 @@ class AnnouncementFeedScreenTest {
 
     composeTestRule.runOnUiThread { lifecycleOwner.registry.currentState = Lifecycle.State.RESUMED }
 
-    composeTestRule
-        .onNode(
-            hasTestTag(AnnouncementFeedScreenTestTags.filterChip(AnnouncementFilter.URGENT))
-                .and(hasText("2"))
-        )
-        .assertIsDisplayed()
-    composeTestRule
-        .onNodeWithTag(AnnouncementFeedScreenTestTags.announcementRow(added))
-        .assertExists()
+    val urgentChip = tags.filterChip(AnnouncementFilter.URGENT)
+    composeTestRule.onNode(hasTestTag(urgentChip).and(hasText("2"))).assertIsDisplayed()
     assertEquals(2, repository.fetches.get())
-  }
 
-  // Breaks if a chip of the screen does not reach the ViewModel, so the feed is never filtered.
-  @Test
-  fun tappingAChipFiltersTheFeed() {
-    setScreen(CountingRepository(figmaEvent()))
-    val tags = AnnouncementFeedScreenTestTags
-    composeTestRule.onNodeWithTag(tags.announcementRow(pinned)).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(urgentChip).performClick()
 
-    composeTestRule.onNodeWithTag(tags.filterChip(AnnouncementFilter.URGENT)).performClick()
-
-    composeTestRule.onNodeWithTag(tags.filterChip(AnnouncementFilter.URGENT)).assertIsSelected()
+    composeTestRule.onNodeWithTag(urgentChip).assertIsSelected()
+    composeTestRule.onNodeWithTag(tags.announcementRow(added)).assertIsDisplayed()
     composeTestRule.onNodeWithTag(tags.announcementRow(urgent)).assertIsDisplayed()
-    composeTestRule.onNodeWithTag(tags.announcementRow(pinned)).assertDoesNotExist()
     composeTestRule.onNodeWithTag(tags.announcementRow(warning)).assertDoesNotExist()
     composeTestRule.onNodeWithTag(tags.PINNED_HEADER).assertDoesNotExist()
+    // Yesterday only has info announcements
+    composeTestRule.onNodeWithTag(tags.dateHeader(yesterday)).assertDoesNotExist()
   }
 }
