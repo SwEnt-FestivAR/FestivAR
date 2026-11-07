@@ -4,9 +4,9 @@ package com.android.festivar.ui.task.overview
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
-import com.android.festivar.model.task.TasksRepositoryProvider
 import java.time.Clock
 import java.time.Duration
 import java.time.LocalDate
@@ -108,9 +108,12 @@ data class TaskOverviewUiState(
 class TaskOverviewViewModel(
     private val eventId: String,
     private val userId: String,
-    private val repository: TasksRepository = TasksRepositoryProvider.repository,
+    private val dataRepository: DataRepository,
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
+
+    private val repository: TasksRepository = dataRepository.tasksRepository
+
   private val _uiState = MutableStateFlow(TaskOverviewUiState())
   val uiState: StateFlow<TaskOverviewUiState> = _uiState.asStateFlow()
 
