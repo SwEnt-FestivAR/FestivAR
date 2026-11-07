@@ -115,7 +115,7 @@ private fun VoiceNoteRow(
 }
 
 /**
- * What the owner sees when the task has no voice note: the compact "empty voice note" row of the S4
+ * What the owner sees when the task has no voice note: the compact "empty voice note" row of the S5
  * design, a microphone on a round disc, the title and a one-line hint.
  */
 @Composable
