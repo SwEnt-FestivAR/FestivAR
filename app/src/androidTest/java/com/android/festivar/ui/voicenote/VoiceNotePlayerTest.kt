@@ -18,6 +18,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.ui.theme.AppTheme
 import java.time.Duration
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -61,7 +62,7 @@ class VoiceNotePlayerTest {
     val trailing = tag(TRAILING).getBoundsInRoot()
     assertEquals(8f, (card.right - trailing.right).value, 0.5f)
     val duration = tag(VoiceNoteTestTags.VOICE_NOTE_DURATION).getBoundsInRoot()
-    assertEquals(true, trailing.left >= duration.right)
+    assertTrue(trailing.left >= duration.right)
   }
 
   /** Breaks if the card has the padding of the owner when there is no action. */
