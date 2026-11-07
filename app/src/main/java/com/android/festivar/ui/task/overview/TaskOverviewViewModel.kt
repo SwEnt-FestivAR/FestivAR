@@ -112,7 +112,7 @@ class TaskOverviewViewModel(
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
 
-    private val repository: TasksRepository = dataRepository.tasksRepository
+  private val repository: TasksRepository = dataRepository.tasksRepository
 
   private val _uiState = MutableStateFlow(TaskOverviewUiState())
   val uiState: StateFlow<TaskOverviewUiState> = _uiState.asStateFlow()
