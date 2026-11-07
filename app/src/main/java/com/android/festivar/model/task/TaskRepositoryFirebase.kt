@@ -128,12 +128,13 @@ class TaskRepositoryFirebase(
         // Tasks saved before voice notes existed have no such field: they have no voice note.
         voiceNote =
             document.get("voiceNote")?.let { value ->
-              VoiceNote.fromMap(
-                  value as? Map<*, *>
-                      ?: throw IllegalArgumentException(
-                          "Invalid voice note data for task ${document.id}."
-                      )
-              )
+              val invalid = "Invalid voice note data for task ${document.id}"
+              val map = value as? Map<*, *> ?: throw IllegalArgumentException("$invalid.")
+              try {
+                VoiceNote.fromMap(map)
+              } catch (e: IllegalArgumentException) {
+                throw IllegalArgumentException("$invalid: ${e.message}", e)
+              }
             },
     )
   }
