@@ -106,7 +106,7 @@ class TaskRepositoryFirebaseTest {
   fun toFirestoreData_serializesTheVoiceNote() {
     val note = voiceNote()
 
-    assertNotNull(invokeToFirestoreData(task.copy(voiceNote = note))["voiceNote"])
+    assertEquals(note.toMap(), invokeToFirestoreData(task.copy(voiceNote = note))["voiceNote"])
     assertNull(invokeToFirestoreData(task)["voiceNote"])
   }
 
@@ -141,6 +141,21 @@ class TaskRepositoryFirebaseTest {
 
     repository.editTask(task.taskId, task)
     assertNull(repository.getTask(task.taskId).voiceNote)
+  }
+
+  /** Breaks if a corrupt stored voice note no longer fails with an error naming its task. */
+  @Test
+  fun getTask_namesTheTask_whenTheStoredVoiceNoteIsInvalid() = runBlocking {
+    val document = Firebase.firestore.collection(TASK_COLLECTION_PATH).document(task.taskId)
+    document.set(invokeToFirestoreData(task) + ("voiceNote" to "text")).await()
+
+    var message: String? = null
+    try {
+      repository.getTask(task.taskId)
+    } catch (e: IllegalArgumentException) {
+      message = e.message
+    }
+    assertEquals("Invalid voice note data for task ${task.taskId}.", message)
   }
 
   @Test
