@@ -3,6 +3,7 @@ package com.android.festivar.ui.event
 // Co-authored-by: Copilot App
 
 import com.android.festivar.R
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
@@ -15,6 +16,7 @@ import com.android.festivar.ui.components.FieldError
 import com.android.festivar.ui.components.START_OF_DAY
 import com.android.festivar.ui.event.create.CreateEventUIState
 import com.android.festivar.ui.event.create.CreateEventViewModel
+import io.mockk.mockk
 import java.time.LocalDate
 import java.time.LocalTime
 import kotlin.time.Duration.Companion.milliseconds
@@ -35,6 +37,7 @@ import org.junit.Test
 class CreateEventViewModelTest {
   private lateinit var eventsRepository: EventsRepositoryLocal
   private lateinit var usersRepository: UsersRepositoryLocal
+  private lateinit var dataRepository: DataRepositoryLocal
   private val creator = User(uid = "creator-123", name = "Alice", surname = "AliceInWonderland")
 
   private lateinit var viewModel: CreateEventViewModel
@@ -48,7 +51,13 @@ class CreateEventViewModelTest {
   fun setUp() {
     eventsRepository = EventsRepositoryLocal()
     usersRepository = UsersRepositoryLocal(listOf(creator))
-    viewModel = CreateEventViewModel(eventsRepository, usersRepository, creator.uid)
+    dataRepository =
+        DataRepositoryLocal(
+            authRepository = mockk(),
+            eventsRepository = eventsRepository,
+            usersRepository = usersRepository,
+        )
+    viewModel = CreateEventViewModel(dataRepository, creator.uid)
   }
 
   /** Red if updating every event field does not persist the entered values. */
@@ -311,7 +320,13 @@ class CreateEventViewModelTest {
             localRepository.addEvent(event)
           }
         }
-    val gatedViewModel = CreateEventViewModel(gatedRepository, usersRepository, creator.uid)
+    dataRepository =
+        DataRepositoryLocal(
+            mockk(),
+            eventsRepository = gatedRepository,
+            usersRepository = usersRepository,
+        )
+    val gatedViewModel = CreateEventViewModel(dataRepository, creator.uid)
     gatedViewModel.updateName("Summer festival")
     gatedViewModel.updateStartDate(startDate)
     gatedViewModel.updateEndDate(endDate)
@@ -351,7 +366,13 @@ class CreateEventViewModelTest {
             error("offline")
           }
         }
-    val failingViewModel = CreateEventViewModel(failingRepository, usersRepository, creator.uid)
+    dataRepository =
+        DataRepositoryLocal(
+            mockk(),
+            eventsRepository = failingRepository,
+            usersRepository = usersRepository,
+        )
+    val failingViewModel = CreateEventViewModel(dataRepository, creator.uid)
     viewModel = failingViewModel
 
     fillAllFields()
@@ -375,7 +396,7 @@ class CreateEventViewModelTest {
   /** Red if a missing user ID does not fail before writing an event. */
   @Test
   fun createEventWithBlankUserIdShowsAnErrorAndDoesNotAddAnEvent() = runBlocking {
-    viewModel = CreateEventViewModel(eventsRepository, usersRepository, userId = "")
+    viewModel = CreateEventViewModel(dataRepository, userId = "")
     fillRequiredFields()
 
     viewModel.createEvent()
@@ -400,7 +421,13 @@ class CreateEventViewModelTest {
             error("offline")
           }
         }
-    val failingViewModel = CreateEventViewModel(failingRepository, usersRepository, creator.uid)
+    dataRepository =
+        DataRepositoryLocal(
+            mockk(),
+            eventsRepository = failingRepository,
+            usersRepository = usersRepository,
+        )
+    val failingViewModel = CreateEventViewModel(dataRepository, creator.uid)
     failingViewModel.updateName("Summer festival")
     failingViewModel.updateStartDate(startDate)
     failingViewModel.updateEndDate(endDate)
@@ -512,7 +539,13 @@ class CreateEventViewModelTest {
       eventsRepository: EventsRepository,
       usersRepository: UsersRepository,
   ) {
-    viewModel = CreateEventViewModel(eventsRepository, usersRepository, creator.uid)
+    dataRepository =
+        DataRepositoryLocal(
+            mockk(),
+            eventsRepository = eventsRepository,
+            usersRepository = usersRepository,
+        )
+    viewModel = CreateEventViewModel(dataRepository, creator.uid)
     fillRequiredFields()
     viewModel.createEvent()
   }
