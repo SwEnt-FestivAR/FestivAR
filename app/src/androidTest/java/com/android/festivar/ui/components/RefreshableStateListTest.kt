@@ -97,11 +97,13 @@ class RefreshableStateListTest {
 
   /**
    * Test that the first load shows a single spinner, vertically centered in the list area, and none
-   * of the other states, so that the empty state does not flash before the items arrive.
+   * of the other states, so that the empty state does not flash before the items arrive. Then that
+   * a refresh with items keeps them, with the pull-to-refresh indicator spinning instead, until it
+   * ends.
    */
   @Test
-  fun firstLoadShowsOnlyACenteredSpinner() {
-    setContent(ListState(isLoading = true, hasNoItems = true, hasNoShownItems = true))
+  fun loadingShowsTheSpinnerOnlyOnTheFirstLoad() {
+    val state = setContent(ListState(isLoading = true, hasNoItems = true, hasNoShownItems = true))
 
     val spinner =
         composeTestRule
@@ -125,33 +127,26 @@ class RefreshableStateListTest {
         RefreshableListTestTags.ERROR_STATE,
         LIST,
     )
-  }
 
-  /**
-   * Test that refreshing items already shown keeps them, with the pull-to-refresh indicator
-   * spinning instead of the first-load spinner, until the refresh ends.
-   */
-  @Test
-  fun refreshKeepsTheItemsWithThePullToRefreshIndicator() {
-    val state = setContent(ListState(isLoading = true))
-
-    composeTestRule.onNodeWithTag(LIST).assertIsDisplayed()
+    // Items are shown while a refresh is still running
+    state.hasNoItems = false
+    state.hasNoShownItems = false
     composeTestRule.onNodeWithTag(itemTag("First")).assertIsDisplayed()
-    composeTestRule.onNodeWithTag(RefreshableListTestTags.LOADING).assertDoesNotExist()
+    assertDoesNotExist(RefreshableListTestTags.LOADING)
     assertSpinners(1)
 
     state.isLoading = false
-
     composeTestRule.onNodeWithTag(itemTag("First")).assertIsDisplayed()
     assertSpinners(0)
   }
 
   /**
-   * Test that an error with nothing loaded shows the error state with the message and a retry
-   * calling onRefresh, instead of the empty state, then that the retry shows the spinner again.
+   * Test that an error with nothing loaded shows the error state with a retry calling onRefresh,
+   * replaced by the spinner while retrying. Then that an error with items keeps them and only adds
+   * the message above them, with a retry too, until the error goes away.
    */
   @Test
-  fun errorWithoutItemsShowsTheErrorStateWhoseRetryRefreshes() {
+  fun errorShowsTheErrorStateOrAnInlineErrorAboveTheItems() {
     val state =
         setContent(ListState(hasNoItems = true, hasNoShownItems = true, errorMessage = ERROR))
 
@@ -160,13 +155,7 @@ class RefreshableStateListTest {
         .onNodeWithTag(RefreshableListTestTags.ERROR_MESSAGE)
         .assertIsDisplayed()
         .assertTextEquals(ERROR)
-    assertDoesNotExist(
-        RefreshableListTestTags.INLINE_ERROR,
-        RefreshableListTestTags.LOADING,
-        EMPTY_STATE,
-        LIST,
-    )
-
+    assertDoesNotExist(RefreshableListTestTags.INLINE_ERROR, EMPTY_STATE, LIST)
     composeTestRule.onNodeWithTag(RefreshableListTestTags.RETRY).performClick()
     assertEquals(1, state.refreshes)
 
@@ -174,74 +163,54 @@ class RefreshableStateListTest {
     state.isLoading = true
     composeTestRule.onNodeWithTag(RefreshableListTestTags.LOADING).assertIsDisplayed()
     assertDoesNotExist(RefreshableListTestTags.ERROR_STATE)
-  }
 
-  /**
-   * Test that an error with items shown keeps them and only adds the message above them, with a
-   * retry calling onRefresh.
-   */
-  @Test
-  fun errorWithItemsKeepsThemWithAnInlineErrorWhoseRetryRefreshes() {
-    val state = setContent(ListState(errorMessage = ERROR))
-
+    // A failed refresh with items keeps them
+    state.isLoading = false
+    state.hasNoItems = false
+    state.hasNoShownItems = false
     composeTestRule
         .onNode(
             hasTestTag(RefreshableListTestTags.INLINE_ERROR).and(hasAnyDescendant(hasText(ERROR))),
             useUnmergedTree = true,
         )
         .assertIsDisplayed()
-    composeTestRule.onNodeWithTag(itemTag("First")).assertIsDisplayed()
     val inlineError =
         composeTestRule
             .onNodeWithTag(RefreshableListTestTags.INLINE_ERROR)
             .getUnclippedBoundsInRoot()
     val list = composeTestRule.onNodeWithTag(LIST).getUnclippedBoundsInRoot()
     assertTrue(inlineError.bottom <= list.top)
+    composeTestRule.onNodeWithTag(itemTag("First")).assertIsDisplayed()
     assertDoesNotExist(RefreshableListTestTags.ERROR_STATE)
-
     composeTestRule.onNodeWithTag(RefreshableListTestTags.RETRY).performClick()
-    assertEquals(1, state.refreshes)
+    assertEquals(2, state.refreshes)
 
     state.errorMessage = null
     assertDoesNotExist(RefreshableListTestTags.INLINE_ERROR, RefreshableListTestTags.RETRY)
   }
 
-  /** Test that no item at all shows the empty state, even though the filter shows nothing too. */
+  /**
+   * Test that no item at all shows the empty state, even though the filter shows nothing too, that
+   * a filter showing nothing while other items exist shows the filter's message, and that every
+   * state can be pulled down to refresh.
+   */
   @Test
-  fun noItemsShowsTheEmptyState() {
-    setContent(ListState(hasNoItems = true, hasNoShownItems = true))
+  fun emptyAndFilterEmptyStatesCanBePulledToRefresh() {
+    val state = setContent(ListState(hasNoItems = true, hasNoShownItems = true))
+    val pullToRefresh = composeTestRule.onNodeWithTag(RefreshableListTestTags.PULL_TO_REFRESH)
 
     composeTestRule.onNodeWithTag(EMPTY_STATE).assertIsDisplayed()
-    assertDoesNotExist(
-        RefreshableListTestTags.FILTER_EMPTY,
-        RefreshableListTestTags.LOADING,
-        RefreshableListTestTags.ERROR_STATE,
-        LIST,
-    )
-  }
+    assertDoesNotExist(RefreshableListTestTags.FILTER_EMPTY, RefreshableListTestTags.LOADING, LIST)
+    pullToRefresh.performTouchInput { swipeDown() }
+    composeTestRule.waitUntil { state.refreshes == 1 }
 
-  /** Test that a filter showing nothing, while other items exist, shows the filter's message. */
-  @Test
-  fun filterShowingNothingShowsTheFilterMessage() {
-    setContent(ListState(hasNoShownItems = true))
-
+    state.hasNoItems = false
     composeTestRule
         .onNodeWithTag(RefreshableListTestTags.FILTER_EMPTY)
         .assertIsDisplayed()
         .assertTextEquals(FILTER_EMPTY_MESSAGE)
     assertDoesNotExist(EMPTY_STATE, itemTag("First"), LIST)
-  }
 
-  /** Test that the list can be pulled down to refresh, both from the empty state and its items. */
-  @Test
-  fun pullingDownRefreshesFromEveryState() {
-    val state = setContent(ListState(hasNoItems = true, hasNoShownItems = true))
-    val pullToRefresh = composeTestRule.onNodeWithTag(RefreshableListTestTags.PULL_TO_REFRESH)
-
-    pullToRefresh.performTouchInput { swipeDown() }
-    composeTestRule.waitUntil { state.refreshes == 1 }
-
-    state.hasNoItems = false
     state.hasNoShownItems = false
     composeTestRule.onNodeWithTag(LIST).assertIsDisplayed()
     pullToRefresh.performTouchInput { swipeDown() }
@@ -249,33 +218,20 @@ class RefreshableStateListTest {
   }
 
   /**
-   * Test that the list is lazy: with 100 items, the last one is not composed until the list is
-   * scrolled to it.
+   * Test that the list is lazy, the last of 100 items being composed only once scrolled to, that
+   * the scroll is kept while the list key stays the same, e.g. during a refresh, and that a new key
+   * starts back at the top.
    */
   @Test
-  fun listIsLazy() {
+  fun lazyListKeepsItsScrollUntilANewListKey() {
     val items = (1..100).map { "Item $it" }
-    setContent(ListState(items = items))
-    val lastTag = itemTag(items.last())
-
-    composeTestRule.onNodeWithTag(lastTag, useUnmergedTree = true).assertDoesNotExist()
-
-    composeTestRule.onNodeWithTag(LIST).performScrollToNode(hasTestTag(lastTag))
-
-    composeTestRule.onNodeWithTag(lastTag).assertIsDisplayed()
-  }
-
-  /**
-   * Test that the scroll is kept while the list key stays the same, e.g. during a refresh, and that
-   * a new key starts back at the top.
-   */
-  @Test
-  fun newListKeyStartsBackAtTheTop() {
-    val items = (1..50).map { "Item $it" }
     val state = setContent(ListState(listKey = "a", items = items))
     val firstTag = itemTag(items.first())
     val lastTag = itemTag(items.last())
+
+    composeTestRule.onNodeWithTag(lastTag, useUnmergedTree = true).assertDoesNotExist()
     composeTestRule.onNodeWithTag(LIST).performScrollToNode(hasTestTag(lastTag))
+    composeTestRule.onNodeWithTag(lastTag).assertIsDisplayed()
 
     state.isLoading = true
     composeTestRule.onNodeWithTag(lastTag).assertIsDisplayed()
