@@ -25,6 +25,7 @@ import androidx.compose.ui.test.performTextReplacement
 import androidx.credentials.CredentialManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryFirebase
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventRepositoryFirebase
 import com.android.festivar.model.event.EventsRepositoryLocal
@@ -113,7 +114,7 @@ class MainActivityNavigationTest {
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          authRepository = authRepository,
+          dataRepository = DataRepositoryFirebase(authRepository = authRepository),
       )
     }
 
@@ -134,7 +135,8 @@ class MainActivityNavigationTest {
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          authRepository = FakeAuthRepository(currentUser = null),
+          dataRepository =
+              DataRepositoryFirebase(authRepository = FakeAuthRepository(currentUser = null)),
       )
     }
 
@@ -204,7 +206,8 @@ class MainActivityNavigationTest {
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          authRepository = FakeAuthRepository(currentUser = null),
+          dataRepository =
+              DataRepositoryFirebase(authRepository = FakeAuthRepository(currentUser = null)),
           startDestinationOverride = AppScreens.JoinEvent.name,
       )
     }
@@ -274,7 +277,8 @@ class MainActivityNavigationTest {
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          authRepository = FakeAuthRepository(currentUser = null),
+          dataRepository =
+              DataRepositoryFirebase(authRepository = FakeAuthRepository(currentUser = null)),
           startDestinationOverride = AppScreens.EventsOverview.name,
       )
     }
@@ -344,7 +348,10 @@ class MainActivityNavigationTest {
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          authRepository = FakeAuthRepository(currentUser = signedInUser),
+          dataRepository =
+              DataRepositoryFirebase(
+                  authRepository = FakeAuthRepository(currentUser = signedInUser)
+              ),
           startDestinationOverride = AppScreens.eventDetails("e1"),
       )
     }
@@ -382,7 +389,10 @@ class MainActivityNavigationTest {
       composeTestRule.setContent {
         FestivAR(
             credentialManager = mockk<CredentialManager>(relaxed = true),
-            authRepository = FakeAuthRepository(currentUser = signedInUser),
+            dataRepository =
+                DataRepositoryFirebase(
+                    authRepository = FakeAuthRepository(currentUser = signedInUser)
+                ),
             startDestinationOverride = AppScreens.eventDetails(event.eventId),
         )
       }
@@ -411,7 +421,10 @@ class MainActivityNavigationTest {
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          authRepository = FakeAuthRepository(currentUser = firebaseUser),
+          dataRepository =
+              DataRepositoryFirebase(
+                  authRepository = FakeAuthRepository(currentUser = firebaseUser)
+              ),
           startDestinationOverride = AppScreens.taskOverview("e1"),
       )
     }
@@ -425,7 +438,8 @@ class MainActivityNavigationTest {
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          authRepository = FakeAuthRepository(currentUser = null),
+          dataRepository =
+              DataRepositoryFirebase(authRepository = FakeAuthRepository(currentUser = null)),
           startDestinationOverride = AppScreens.taskOverview("e1"),
       )
     }
@@ -441,7 +455,8 @@ class MainActivityNavigationTest {
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          authRepository = FakeAuthRepository(currentUser = null),
+          dataRepository =
+              DataRepositoryFirebase(authRepository = FakeAuthRepository(currentUser = null)),
           startDestinationOverride = AppScreens.taskOverview(" "),
       )
     }
@@ -456,7 +471,10 @@ class MainActivityNavigationTest {
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          authRepository = FakeAuthRepository(currentUser = firebaseUser),
+          dataRepository =
+              DataRepositoryFirebase(
+                  authRepository = FakeAuthRepository(currentUser = firebaseUser)
+              ),
           startDestinationOverride = AppScreens.taskOverview("e1"),
       )
     }
@@ -486,7 +504,10 @@ class MainActivityNavigationTest {
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          authRepository = FakeAuthRepository(currentUser = signedInUser),
+          dataRepository =
+              DataRepositoryFirebase(
+                  authRepository = FakeAuthRepository(currentUser = signedInUser)
+              ),
           startDestinationOverride = AppScreens.CreateEvent.name,
       )
     }
@@ -499,7 +520,8 @@ class MainActivityNavigationTest {
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          authRepository = FakeAuthRepository(currentUser = null),
+          dataRepository =
+              DataRepositoryFirebase(authRepository = FakeAuthRepository(currentUser = null)),
           startDestinationOverride = AppScreens.CreateEvent.name,
       )
     }
@@ -513,7 +535,10 @@ class MainActivityNavigationTest {
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          authRepository = FakeAuthRepository(currentUser = firebaseUser),
+          dataRepository =
+              DataRepositoryFirebase(
+                  authRepository = FakeAuthRepository(currentUser = firebaseUser)
+              ),
           startDestinationOverride = "${AppScreens.CreateTask.name}/e1",
       )
     }
@@ -527,7 +552,10 @@ class MainActivityNavigationTest {
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          authRepository = FakeAuthRepository(currentUser = firebaseUser),
+          dataRepository =
+              DataRepositoryFirebase(
+                  authRepository = FakeAuthRepository(currentUser = firebaseUser)
+              ),
           startDestinationOverride = AppScreens.createAnnouncement("e1"),
       )
     }
@@ -542,7 +570,10 @@ class MainActivityNavigationTest {
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          authRepository = FakeAuthRepository(currentUser = firebaseUser),
+          dataRepository =
+              DataRepositoryFirebase(
+                  authRepository = FakeAuthRepository(currentUser = firebaseUser)
+              ),
           startDestinationOverride = AppScreens.taskDetails("t1"),
       )
     }
@@ -563,7 +594,10 @@ class MainActivityNavigationTest {
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          authRepository = FakeAuthRepository(currentUser = firebaseUser),
+          dataRepository =
+              DataRepositoryFirebase(
+                  authRepository = FakeAuthRepository(currentUser = firebaseUser)
+              ),
           startDestinationOverride = AppScreens.taskOverview("e1"),
       )
     }
@@ -589,7 +623,8 @@ class MainActivityNavigationTest {
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          authRepository = FakeAuthRepository(currentUser = null),
+          dataRepository =
+              DataRepositoryFirebase(authRepository = FakeAuthRepository(currentUser = null)),
           startDestinationOverride = AppScreens.taskDetails("t1"),
       )
     }
@@ -603,7 +638,8 @@ class MainActivityNavigationTest {
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          authRepository = FakeAuthRepository(currentUser = null),
+          dataRepository =
+              DataRepositoryFirebase(authRepository = FakeAuthRepository(currentUser = null)),
           startDestinationOverride = AppScreens.editTask("t1"),
       )
     }
@@ -650,7 +686,10 @@ class MainActivityNavigationTest {
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          authRepository = FakeAuthRepository(currentUser = firebaseUser),
+          dataRepository =
+              DataRepositoryFirebase(
+                  authRepository = FakeAuthRepository(currentUser = firebaseUser)
+              ),
           startDestinationOverride = AppScreens.taskDetails("t1"),
       )
     }
@@ -674,7 +713,10 @@ class MainActivityNavigationTest {
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          authRepository = FakeAuthRepository(currentUser = firebaseUser),
+          dataRepository =
+              DataRepositoryFirebase(
+                  authRepository = FakeAuthRepository(currentUser = firebaseUser)
+              ),
           startDestinationOverride = AppScreens.Profile.name,
       )
     }
@@ -689,7 +731,10 @@ class MainActivityNavigationTest {
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          authRepository = FakeAuthRepository(currentUser = firebaseUser),
+          dataRepository =
+              DataRepositoryFirebase(
+                  authRepository = FakeAuthRepository(currentUser = firebaseUser)
+              ),
           startDestinationOverride = AppScreens.Profile.name,
       )
     }
@@ -712,7 +757,8 @@ class MainActivityNavigationTest {
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          authRepository = FakeAuthRepository(currentUser = null),
+          dataRepository =
+              DataRepositoryFirebase(authRepository = FakeAuthRepository(currentUser = null)),
           startDestinationOverride = AppScreens.Profile.name,
       )
     }
@@ -741,7 +787,10 @@ class MainActivityNavigationTest {
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          authRepository = FakeAuthRepository(currentUser = signedInUser),
+          dataRepository =
+              DataRepositoryFirebase(
+                  authRepository = FakeAuthRepository(currentUser = signedInUser)
+              ),
       )
     }
   }
