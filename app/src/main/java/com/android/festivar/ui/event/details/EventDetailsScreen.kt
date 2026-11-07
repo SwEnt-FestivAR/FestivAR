@@ -2,22 +2,28 @@ package com.android.festivar.ui.event.details
 
 // Co-authored-by: Copilot App
 // Co-authored-by: Claude Sonnet 5.5
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 
 import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -39,6 +45,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -47,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import com.android.festivar.R
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.formatEventDate
@@ -65,12 +73,14 @@ object EventDetailsScreenTestTags {
   const val DATE_ROW = "dateRow"
   const val ADDRESS_ROW = "addressRow"
   const val SEE_TASKS_BUTTON = "seeTasksButton"
+  const val ANNOUNCEMENTS_ROW = "announcementsRow"
 }
 
 /** Callbacks handled by the Event Details screen. */
 class EventDetailsActions(
     val onBack: () -> Unit = {},
     val onTasksButtonClicked: () -> Unit = {},
+    val onAnnouncementsClicked: () -> Unit = {},
 )
 
 /**
@@ -82,6 +92,7 @@ class EventDetailsActions(
  * @param viewModel the ViewModel providing the event and loading error state.
  * @param onBack called when the back button is clicked.
  * @param onTasksButtonClicked called when the "See tasks" button is clicked.
+ * @param onAnnouncementsClicked called when the "Announcements" row is clicked.
  * @param modifier modifier applied to the event content.
  */
 @Composable
@@ -89,6 +100,7 @@ fun EventDetailsScreen(
     viewModel: EventDetailsViewModel,
     onBack: () -> Unit,
     onTasksButtonClicked: () -> Unit,
+    onAnnouncementsClicked: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
   val uiState by viewModel.uiState.collectAsState()
@@ -96,7 +108,12 @@ fun EventDetailsScreen(
 
   EventDetailsContent(
       state = uiState,
-      actions = EventDetailsActions(onBack = onBack, onTasksButtonClicked = onTasksButtonClicked),
+      actions =
+          EventDetailsActions(
+              onBack = onBack,
+              onTasksButtonClicked = onTasksButtonClicked,
+              onAnnouncementsClicked = onAnnouncementsClicked,
+          ),
       modifier = modifier,
   )
 }
@@ -122,6 +139,7 @@ private fun EventDetailsContent(
       event != null ->
           EventInfo(
               event = event,
+              onAnnouncementsClicked = actions.onAnnouncementsClicked,
               modifier = modifier.padding(paddingValues),
           )
       state.errorMsg != null ->
@@ -141,10 +159,14 @@ private fun EventDetailsContent(
   }
 }
 
-/** Displays the loaded event, including its task summary and identifying information. */
+/**
+ * Displays the loaded event, including its task summary, a row opening its announcements and its
+ * identifying information.
+ */
 @Composable
 private fun EventInfo(
     event: Event,
+    onAnnouncementsClicked: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
   val openTasks = event.tasks.count { !it.completed }
@@ -194,6 +216,11 @@ private fun EventInfo(
       }
     }
 
+    AnnouncementsRow(
+        latest = event.announcements.maxByOrNull { it.updatedAt.toInstant() },
+        onClick = onAnnouncementsClicked,
+    )
+
     Column(
         modifier =
             Modifier.fillMaxWidth()
@@ -223,6 +250,59 @@ private fun EventInfo(
           tag = EventDetailsScreenTestTags.ADDRESS_ROW,
       )
     }
+  }
+}
+
+/**
+ * Card row opening the event's announcements. Its subtitle is the title of the [latest] one, or
+ * says there is none yet.
+ */
+@Composable
+private fun AnnouncementsRow(latest: Announcement?, onClick: () -> Unit) {
+  Row(
+      modifier =
+          Modifier.fillMaxWidth()
+              .clip(RoundedCornerShape(12.dp))
+              .background(MaterialTheme.colorScheme.surfaceContainerLow)
+              .clickable(onClick = onClick)
+              .padding(14.dp)
+              .testTag(EventDetailsScreenTestTags.ANNOUNCEMENTS_ROW),
+      verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier =
+            Modifier.size(40.dp)
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape),
+    ) {
+      Icon(
+          painter = painterResource(R.drawable.ic_notifications),
+          contentDescription = null,
+          tint = MaterialTheme.colorScheme.onSurface,
+          modifier = Modifier.size(20.dp),
+      )
+    }
+    Spacer(modifier = Modifier.width(12.dp))
+    Column(modifier = Modifier.weight(1f)) {
+      Text(
+          text = stringResource(R.string.event_details_announcements),
+          color = MaterialTheme.colorScheme.onSurface,
+          style = MaterialTheme.typography.titleSmall,
+      )
+      Text(
+          text = latest?.title ?: stringResource(R.string.event_details_no_announcements),
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          style = MaterialTheme.typography.bodySmall,
+      )
+    }
+    Icon(
+        imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+        contentDescription = null,
+        tint = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.padding(start = 8.dp),
+    )
   }
 }
 
@@ -336,6 +416,15 @@ internal fun EventDetailsScreenPreview() {
           startDate = eventStartDate,
           endDate = eventEndDate,
           location = "Parc de Vidy, Lausanne",
+          announcements =
+              listOf(
+                  Announcement(
+                      announcementId = "a0",
+                      title = "Bar shifts moved",
+                      authorId = "user",
+                      updatedAt = eventStartDate,
+                  )
+              ),
           tasks =
               List(
                   size = 10,
@@ -355,6 +444,7 @@ internal fun EventDetailsScreenPreview() {
     EventDetailsScreen(
         viewModel = EventDetailsViewModel(EventsRepositoryLocal(listOf(event)), event.eventId),
         onTasksButtonClicked = {},
+        onAnnouncementsClicked = {},
         onBack = {},
     )
   }
@@ -368,6 +458,7 @@ internal fun FetchErrorPreview() {
     EventDetailsScreen(
         viewModel = EventDetailsViewModel(EventsRepositoryLocal(emptyList()), "missing"),
         onTasksButtonClicked = {},
+        onAnnouncementsClicked = {},
         onBack = {},
     )
   }

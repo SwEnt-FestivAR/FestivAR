@@ -11,6 +11,8 @@ import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.navigation.AppScreens
 import com.android.festivar.ui.announcement.create.CreateAnnouncementScreen
 import com.android.festivar.ui.announcement.create.CreateAnnouncementViewModel
+import com.android.festivar.ui.announcement.feed.AnnouncementFeedScreen
+import com.android.festivar.ui.announcement.feed.AnnouncementFeedViewModel
 
 /** The destinations of the announcement feature. */
 fun NavGraphBuilder.announcementGraph(
@@ -40,6 +42,27 @@ fun NavGraphBuilder.announcementGraph(
         viewModel = viewModel { CreateAnnouncementViewModel(eventId, currentUserId) },
         onBack = leave,
         onPublished = leave,
+    )
+  }
+  // Reached through AppScreens.announcementFeed(eventId). The route carries the id of the event
+  // whose announcements are shown.
+  composable(
+      route = "${AppScreens.AnnouncementFeed.name}/{eventId}",
+      arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
+  ) { backStackEntry ->
+    val eventId =
+        requireNotNull(backStackEntry.arguments?.getString("eventId")) {
+          "eventId argument is required"
+        }
+    val navigator = AnnouncementFeedNavigator(navController, backStackEntry)
+    AnnouncementFeedScreen(
+        viewModel = viewModel { AnnouncementFeedViewModel(eventId) },
+        // Events have no owner yet, so everyone may add an announcement for now
+        canAddAnnouncement = true,
+        onBack = navigator.onBack,
+        onAddAnnouncement = { navigator.onAddAnnouncement(eventId) },
+        // Will open the details of the announcement (#364)
+        onSelectAnnouncement = {},
     )
   }
 }
