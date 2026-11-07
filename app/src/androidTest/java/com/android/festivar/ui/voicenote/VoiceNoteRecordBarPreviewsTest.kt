@@ -57,6 +57,17 @@ class VoiceNoteRecordBarPreviewsTest {
     composeTestRule.onNodeWithText(text(R.string.voice_note_sending, "0:07")).assertIsDisplayed()
   }
 
+  /** Breaks if the failed recording preview no longer shows the snackbar with Dismiss. */
+  @Test
+  fun recordingFailedPreview_showsTheSnackbar() {
+    composeTestRule.setContent { VoiceNoteRecordBarRecordingFailedPreview() }
+
+    composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.RECORDING_ERROR).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(VoiceNoteRecordTestTags.RECORDING_ERROR_DISMISS)
+        .assertIsDisplayed()
+  }
+
   /** Breaks if the send failed preview no longer shows the snackbar with Retry. */
   @Test
   fun sendFailedPreview_showsTheSnackbar() {

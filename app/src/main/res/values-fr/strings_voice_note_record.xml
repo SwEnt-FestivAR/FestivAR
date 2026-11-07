@@ -10,4 +10,6 @@
     <string name="voice_note_mic_denied">Le microphone de FestivAR est désactivé. Activez-le dans les paramètres pour enregistrer une note.</string>
     <string name="voice_note_open_settings">Ouvrir les paramètres</string>
     <string name="voice_note_sending">Envoi de la note vocale · %s</string>
+    <string name="voice_note_recording_failed">Enregistrement impossible. Maintenez le bouton pour réessayer.</string>
+    <string name="voice_note_dismiss">Ignorer</string>
 </resources>

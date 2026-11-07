@@ -180,6 +180,16 @@ class VoiceNoteRecordBarTest {
     tag(VoiceNoteRecordTestTags.RECORDING_BAR).assertDoesNotExist()
   }
 
+  /** Breaks if a recording that failed shows no snackbar, or its Dismiss does nothing. */
+  @Test
+  fun recordingFailedShowsDismiss() {
+    show(VoiceNoteUiState(canManage = true, recorder = RecorderState.Failed))
+    tag(VoiceNoteRecordTestTags.RECORDING_ERROR).assertIsDisplayed()
+    composeTestRule.onNodeWithText(text(R.string.voice_note_recording_failed)).assertIsDisplayed()
+    tag(VoiceNoteRecordTestTags.RECORDING_ERROR_DISMISS).performClick()
+    assertEquals(listOf("dismissFailed"), events)
+  }
+
   /** Breaks if a failed send shows no snackbar, or its Retry does nothing. */
   @Test
   fun sendFailedShowsRetry() {
@@ -205,6 +215,7 @@ class VoiceNoteRecordBarTest {
     show(VoiceNoteUiState(note = note, canManage = true))
     tag(VoiceNoteRecordTestTags.PLAYBACK_ERROR).assertDoesNotExist()
     tag(VoiceNoteRecordTestTags.SEND_ERROR).assertDoesNotExist()
+    tag(VoiceNoteRecordTestTags.RECORDING_ERROR).assertDoesNotExist()
     tag(VoiceNoteRecordTestTags.MIC_DENIED).assertDoesNotExist()
   }
 }

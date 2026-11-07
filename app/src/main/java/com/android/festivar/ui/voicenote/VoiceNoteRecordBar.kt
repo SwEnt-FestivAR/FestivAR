@@ -58,6 +58,8 @@ object VoiceNoteRecordTestTags {
   const val VOICE_NOTE_RECORD = "voiceNoteRecord"
   const val SEND_ERROR = "voiceNoteSendError"
   const val SEND_RETRY = "voiceNoteSendRetry"
+  const val RECORDING_ERROR = "voiceNoteRecordingError"
+  const val RECORDING_ERROR_DISMISS = "voiceNoteRecordingErrorDismiss"
   const val MIC_DENIED = "voiceNoteMicDenied"
   const val OPEN_SETTINGS = "voiceNoteOpenSettings"
   const val PLAYBACK_ERROR = "voiceNotePlaybackError"
@@ -193,8 +195,9 @@ private fun RecordButton(enabled: Boolean, callbacks: VoiceNoteCallbacks) {
 }
 
 /**
- * The notices fixed just above the record bar: the failed playback and send (each with a Retry),
- * and the information that the microphone is off (with a button to the settings).
+ * The notices fixed just above the record bar: the failed playback, send or recording (each with an
+ * action: Retry, Retry, Dismiss), and the information that the microphone is off (with a button to
+ * the settings).
  */
 @Composable
 fun VoiceNoteNotices(
@@ -223,6 +226,15 @@ fun VoiceNoteNotices(
           callbacks.onRetry,
           VoiceNoteRecordTestTags.SEND_ERROR,
           VoiceNoteRecordTestTags.SEND_RETRY,
+      )
+    }
+    if (state.showRecordBar && state.recordingFailed) {
+      ErrorNotice(
+          R.string.voice_note_recording_failed,
+          R.string.voice_note_dismiss,
+          callbacks.onDismissRecordingFailed,
+          VoiceNoteRecordTestTags.RECORDING_ERROR,
+          VoiceNoteRecordTestTags.RECORDING_ERROR_DISMISS,
       )
     }
     if (state.showRecordBar && state.micDenied) {
@@ -316,6 +328,12 @@ internal fun VoiceNoteRecordBarSendingPreview() {
           pending = PendingRecording(Duration.ofSeconds(7), isUploading = true),
       )
   )
+}
+
+@Preview(showBackground = true)
+@Composable
+internal fun VoiceNoteRecordBarRecordingFailedPreview() {
+  VoiceNoteBarPreviewScreen(VoiceNoteUiState(canManage = true, recorder = RecorderState.Failed))
 }
 
 @Preview(showBackground = true)
