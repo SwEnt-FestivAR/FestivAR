@@ -39,11 +39,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.R
-import com.android.festivar.model.event.Event
-import com.android.festivar.model.event.EventsRepository
-import com.android.festivar.model.event.EventsRepositoryLocal
-import com.android.festivar.model.user.User
-import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.DateTimeRange
 import com.android.festivar.ui.components.FestivarDateTimePickerDialog
@@ -54,8 +49,6 @@ import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
 import java.time.LocalTime
-import kotlin.time.Duration.Companion.milliseconds
-import kotlinx.coroutines.delay
 
 object CreateEventScreenTestTags {
   const val NAVIGATION_BUTTON = "navigationButton"
@@ -301,24 +294,8 @@ private fun CreateEventTopBar(onBack: () -> Unit) {
   )
 }
 
-@SuppressLint("ViewModelConstructorInComposable")
 @Preview
 @Composable
-private fun CreateEventScreenPreview() {
-  val addDurationMillis = 3000
-  class SlowEventsRepository : EventsRepository by EventsRepositoryLocal() {
-    override suspend fun addEvent(event: Event): Unit = delay(addDurationMillis.milliseconds)
-  }
-
-  val creator = User("creator-123", "Alice", "AliceInWonderland")
-  AppTheme {
-    CreateEventScreen(
-        viewModel =
-            CreateEventViewModel(
-                SlowEventsRepository(),
-                UsersRepositoryLocal(listOf(creator)),
-                creator.uid,
-            )
-    )
-  }
+internal fun CreateEventScreenPreview() {
+  AppTheme { CreateEventContent(CreateEventUIState(), CreateEventActions()) }
 }
