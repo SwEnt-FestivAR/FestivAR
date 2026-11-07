@@ -69,8 +69,8 @@ data class JoinEventUIState(
  * Looks events up by their code as it is typed, and joins the chosen one as the signed-in person.
  *
  * @property userId The uid of the signed-in person who joins; their stored [User] is read by it.
- * @property eventsRepository The repository used to look the events up and to add the member.
- * @property usersRepository The repository holding the [User], whose joined events are updated.
+ * @property dataRepository The repository used to look the events up and to join one, keeping the
+ *   [Event] members and the [User] joined events consistent.
  */
 class JoinEventViewModel(
     private val userId: String,
@@ -127,9 +127,12 @@ class JoinEventViewModel(
       )
 
   /**
-   * Makes the signed-in person a member of the matched event [eventId], writing only what is still
-   * missing. Ignored unless [eventId] is among [JoinEventUIState.matches] and no join is running. A
-   * failure on a card the person already belongs to reads as a failed open, not a failed join.
+   * Makes the signed-in person a member of the matched event [eventId]. Ignored unless [eventId] is
+   * among [JoinEventUIState.matches] and no join is running. A failure on a card the person already
+   * belongs to reads as a failed open, not a failed join.
+   *
+   * The [Event] members are the source of truth: a member is not joined again, and a user side that
+   * disagrees with them is repaired, so a join that stopped halfway never blocks the person.
    */
   fun join(eventId: String) {
     val state = _uiState.value
@@ -144,19 +147,20 @@ class JoinEventViewModel(
 
     viewModelScope.launch {
       try {
-        // Both sides are read again and only the missing one is written, so a join that stopped
-        // halfway earlier is repaired instead of failing as "already joined" forever.
-
+        // Both sides are read again: joinEvent throws if either already holds the membership.
         val event = eventsRepository.getEvent(eventId)
         val user = usersRepository.getUser(userId)
         val isMember = event.members.any { it.uid == userId }
         val hasJoined = eventId in user.joinedEvents
 
+        // A member on both sides needs no write.
         if (!isMember && !hasJoined) {
           dataRepository.joinEvent(eventId, userId)
         } else if (isMember && !hasJoined) {
+          // A member for the event: only the user side is missing.
           usersRepository.editUser(userId, user.addJoinedEvent(eventId))
         } else if (!isMember && hasJoined) {
+          // Not a member for the event: the user side is stale, drop it and join normally.
           usersRepository.editUser(userId, user.removeJoinedEvent(eventId))
           dataRepository.joinEvent(eventId, userId)
         }
