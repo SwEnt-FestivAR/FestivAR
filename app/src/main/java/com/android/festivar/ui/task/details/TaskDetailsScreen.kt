@@ -80,8 +80,7 @@ object TaskDetailsScreenTestTags {
 fun TaskDetailsScreen(
     taskId: String,
     currentUser: User,
-    viewModel: TaskDetailsViewModel =
-        viewModel(key = "$taskId:${currentUser.uid}") { TaskDetailsViewModel(taskId, currentUser) },
+    viewModel: TaskDetailsViewModel,
     onBack: () -> Unit = {},
     onEdit: (String) -> Unit = {},
 ) {

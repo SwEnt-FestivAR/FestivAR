@@ -174,7 +174,7 @@ class TaskDetailsViewModel(
 
         save(task)
         val updated = repository.getTask(taskId)
-        
+
         _uiState.update {
           it.copy(
             task = updated,
