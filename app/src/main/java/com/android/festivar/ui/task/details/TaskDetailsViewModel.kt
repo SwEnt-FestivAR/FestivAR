@@ -176,7 +176,6 @@ class TaskDetailsViewModel(
       try {
         save(task)
         val updated = repository.getTask(taskId)
-
         _uiState.update {
           it.copy(
               task = updated,
@@ -184,7 +183,6 @@ class TaskDetailsViewModel(
           )
         }
       } catch (e: CancellationException) {
-
         _uiState.update { it.copy(isUpdating = false) }
         throw e
       } catch (e: Exception) {
