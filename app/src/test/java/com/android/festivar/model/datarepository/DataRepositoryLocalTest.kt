@@ -1,7 +1,6 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.datarepository
 
-import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
@@ -11,7 +10,6 @@ import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryLocal
-import io.mockk.mockk
 import java.io.IOException
 import java.time.ZonedDateTime
 import kotlinx.coroutines.runBlocking
