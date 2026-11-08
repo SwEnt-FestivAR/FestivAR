@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com> -->
+<resources>
+    <string name="map_no_venue_title">Pas encore de lieu</string>
+    <string name="map_no_venue_body">L’organisateur n’a pas encore placé le lieu sur la carte.</string>
+    <string name="map_load_failed">Impossible de charger la carte.</string>
+    <string name="map_venue">Lieu</string>
+    <plurals name="map_structures">
+        <item quantity="one">%d structure</item>
+        <item quantity="many">%d structures</item>
+        <item quantity="other">%d structures</item>
+    </plurals>
+    <string name="map_no_gps">Pas de signal GPS</string>
+    <string name="map_clear">Effacer</string>
+    <string name="map_dismiss_error">Fermer</string>
+    <string name="map_navigate_back">Retour</string>
+    <string name="map_structure_size">%1$s × %2$s m</string>
+</resources>

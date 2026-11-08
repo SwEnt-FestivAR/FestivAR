@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com> -->
+<resources>
+    <string name="map_no_venue_title">No venue yet</string>
+    <string name="map_no_venue_body">The organizer has not placed the venue on the map yet.</string>
+    <string name="map_load_failed">Unable to load the map.</string>
+    <string name="map_venue">Venue</string>
+    <plurals name="map_structures">
+        <item quantity="one">%d structure</item>
+        <item quantity="other">%d structures</item>
+    </plurals>
+    <string name="map_no_gps">No GPS fix</string>
+    <string name="map_clear">Clear</string>
+    <string name="map_dismiss_error">Dismiss</string>
+    <string name="map_navigate_back">Navigate back</string>
+    <string name="map_structure_size">%1$s × %2$s m</string>
+</resources>
