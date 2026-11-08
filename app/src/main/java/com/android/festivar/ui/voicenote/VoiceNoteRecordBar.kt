@@ -29,7 +29,10 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -62,10 +65,15 @@ object VoiceNoteRecordTestTags {
 /** How far to the left (in dp) the finger has to slide before releasing to cancel. */
 private const val CANCEL_DISTANCE_DP = 80
 
+/** The opacity of the record bar when the microphone is off. */
+private const val DISABLED_ALPHA = 0.5f
+
 /**
- * The record bar, fixed above the bottom of the screen. Only the owner of a task without a note
- * sees it: it is hidden otherwise. The owner holds the round button to record, releases it to stop
- * and slides left before releasing to cancel. Without the microphone permission it is greyed out.
+ * The bar fixed above the bottom of the screen: the notices (failed playback or send, microphone
+ * off) and, for the owner of a task without a note only, the record bar under them. The owner holds
+ * the round button to record, releases it to stop and slides left before releasing to cancel.
+ * Without the microphone permission the record bar is greyed out. It is hidden when there is
+ * nothing to show.
  */
 @Composable
 fun VoiceNoteRecordBar(
@@ -73,8 +81,11 @@ fun VoiceNoteRecordBar(
     callbacks: VoiceNoteCallbacks,
     modifier: Modifier = Modifier,
 ) {
-  if (!state.showRecordBar) return
-  FixedBottomBar(modifier) { RecordPill(state, callbacks) }
+  if (!state.hasNotices && !state.showRecordBar) return
+  FixedBottomBar(modifier) {
+    VoiceNoteNotices(state, callbacks)
+    if (state.showRecordBar) RecordPill(state, callbacks)
+  }
 }
 
 /**
@@ -87,7 +98,7 @@ private fun RecordPill(state: VoiceNoteUiState, callbacks: VoiceNoteCallbacks) {
   val shape = MaterialTheme.shapes.medium
   Row(
       Modifier.fillMaxWidth()
-          .alpha(if (state.recordEnabled) 1f else 0.5f)
+          .alpha(if (state.recordEnabled) 1f else DISABLED_ALPHA)
           // The tag is before the padding so that the node is the whole 56dp bar of the design
           // (a 48dp button with 4dp above and below), not only its content.
           .testTag(VoiceNoteRecordTestTags.RECORDING_BAR)
@@ -136,9 +147,11 @@ private fun RecordingIndicator(state: VoiceNoteUiState) {
 }
 
 /**
- * The round lime microphone button. It reacts to the press itself: pressing starts, releasing stops
- * and releasing after a slide to the left cancels. The same node stays in place while recording, so
- * the gesture is not interrupted when the bar changes.
+ * The round microphone button. It reacts to the press itself: pressing starts, releasing stops and
+ * releasing after a slide to the left cancels. The same node stays in place while recording, so the
+ * gesture is not interrupted when the bar changes. A gesture that is interrupted (the finger is
+ * lost, or the button stops listening because the microphone is turned off) cancels the recording
+ * instead of leaving the recorder on.
  */
 @Composable
 private fun RecordButton(enabled: Boolean, callbacks: VoiceNoteCallbacks) {
@@ -151,20 +164,34 @@ private fun RecordButton(enabled: Boolean, callbacks: VoiceNoteCallbacks) {
   Box(
       Modifier.size(48.dp)
           .background(colors.primary, CircleShape)
-          .semantics { contentDescription = label }
+          .semantics {
+            role = Role.Button
+            contentDescription = label
+            if (!enabled) disabled()
+          }
           .testTag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD)
           .pointerInput(enabled, cancelDistance) {
             if (!enabled) return@pointerInput
             awaitEachGesture {
               val down = awaitFirstDown()
               onStart()
-              var cancelled = false
-              while (true) {
-                val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
-                cancelled = change.position.x - down.position.x < -cancelDistance
-                if (!change.pressed) break
+              var finished = false
+              try {
+                var cancelled = false
+                while (true) {
+                  val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id }
+                  if (change == null) {
+                    cancelled = true
+                    break
+                  }
+                  cancelled = change.position.x - down.position.x < -cancelDistance
+                  if (!change.pressed) break
+                }
+                finished = true
+                if (cancelled) onCancel() else onRelease()
+              } finally {
+                if (!finished) onCancel()
               }
-              if (cancelled) onCancel() else onRelease()
             }
           },
       contentAlignment = Alignment.Center,
@@ -174,81 +201,64 @@ private fun RecordButton(enabled: Boolean, callbacks: VoiceNoteCallbacks) {
 }
 
 /**
- * The notices fixed just above the record bar: the failed playback and send (each with a Retry),
- * and the information that the microphone is off (with a button to the settings).
+ * The notices above the record bar, in the same [FixedBottomBar]: the failed playback and send
+ * (each with a Retry), and the information that the microphone is off (with a button to the
+ * settings).
  */
 @Composable
-fun VoiceNoteNotices(
-    state: VoiceNoteUiState,
-    callbacks: VoiceNoteCallbacks,
-    modifier: Modifier = Modifier,
-) {
-  if (!state.hasNotices) return
-  Column(
-      modifier.fillMaxWidth().padding(horizontal = 20.dp),
-      verticalArrangement = Arrangement.spacedBy(8.dp),
-  ) {
-    if (state.playbackFailed) {
-      ErrorNotice(
-          R.string.voice_note_playback_failed,
-          R.string.action_retry,
-          callbacks.onRetry,
-          VoiceNoteRecordTestTags.PLAYBACK_ERROR,
-          VoiceNoteRecordTestTags.PLAYBACK_RETRY,
-      )
-    }
-    if (state.showRecordBar && state.sendFailed) {
-      ErrorNotice(
-          R.string.voice_note_send_failed,
-          R.string.action_retry,
-          callbacks.onRetry,
-          VoiceNoteRecordTestTags.SEND_ERROR,
-          VoiceNoteRecordTestTags.SEND_RETRY,
-      )
-    }
-    if (state.showRecordBar && state.micDenied) {
-      InfoNote(
-          message = stringResource(R.string.voice_note_mic_denied),
-          modifier = Modifier.testTag(VoiceNoteRecordTestTags.MIC_DENIED),
-          action = {
-            InfoNoteButton(
-                stringResource(R.string.action_open_settings),
-                onClick = callbacks.onOpenSettings,
-                modifier = Modifier.testTag(VoiceNoteRecordTestTags.OPEN_SETTINGS),
-            )
-          },
-      )
-    }
+private fun VoiceNoteNotices(state: VoiceNoteUiState, callbacks: VoiceNoteCallbacks) {
+  if (state.playbackFailed) {
+    ErrorNotice(
+        R.string.voice_note_playback_failed,
+        callbacks.onRetry,
+        VoiceNoteRecordTestTags.PLAYBACK_ERROR,
+        VoiceNoteRecordTestTags.PLAYBACK_RETRY,
+    )
+  }
+  if (state.showRecordBar && state.sendFailed) {
+    ErrorNotice(
+        R.string.voice_note_send_failed,
+        callbacks.onRetry,
+        VoiceNoteRecordTestTags.SEND_ERROR,
+        VoiceNoteRecordTestTags.SEND_RETRY,
+    )
+  }
+  if (state.showRecordBar && state.micDenied) {
+    InfoNote(
+        message = stringResource(R.string.voice_note_mic_denied),
+        modifier = Modifier.testTag(VoiceNoteRecordTestTags.MIC_DENIED),
+        action = {
+          InfoNoteButton(
+              stringResource(R.string.action_open_settings),
+              onClick = callbacks.onOpenSettings,
+              modifier = Modifier.testTag(VoiceNoteRecordTestTags.OPEN_SETTINGS),
+          )
+        },
+    )
   }
 }
 
-/** An error of the voice note, shown with the shared snackbar and the one [action] that fits it. */
+/** An error of the voice note, shown with the shared snackbar and a Retry. */
 @Composable
 private fun ErrorNotice(
     @StringRes message: Int,
-    @StringRes action: Int,
-    onAction: () -> Unit,
+    onRetry: () -> Unit,
     tag: String,
     actionTag: String,
 ) {
   NoticeSnackbar(
       message = stringResource(message),
-      actionLabel = stringResource(action),
-      onAction = onAction,
+      actionLabel = stringResource(R.string.action_retry),
+      onAction = onRetry,
       modifier = Modifier.testTag(tag),
       actionModifier = Modifier.testTag(actionTag),
   )
 }
 
-/** The notices and the record bar fixed at the bottom of the screen, as on the screen. */
+/** The bar with its notices fixed at the bottom of the screen, as on the screen. */
 @Composable
 private fun VoiceNoteBarPreviewScreen(state: VoiceNoteUiState) {
-  AppTheme {
-    Column(Modifier.fillMaxWidth()) {
-      VoiceNoteNotices(state, previewCallbacks)
-      VoiceNoteRecordBar(state, previewCallbacks)
-    }
-  }
+  AppTheme { VoiceNoteRecordBar(state, previewCallbacks) }
 }
 
 @Preview(showBackground = true)
