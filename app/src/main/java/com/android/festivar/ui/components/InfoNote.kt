@@ -1,6 +1,7 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -63,21 +65,28 @@ fun InfoNote(
   }
 }
 
+/** The full width button that the design puts under an [InfoNote], to be passed as its action. */
+@Composable
+fun InfoNoteButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+  OutlinedButton(
+      onClick = onClick,
+      modifier = modifier.fillMaxWidth().height(52.dp),
+      shape = MaterialTheme.shapes.medium,
+      colors =
+          ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
+      border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+  ) {
+    Text(text)
+  }
+}
+
 @Preview(showBackground = true)
 @Composable
 internal fun InfoNotePreview() {
   AppTheme {
     InfoNote(
         stringResource(R.string.info_note_sample_message),
-        action = {
-          OutlinedButton(
-              onClick = {},
-              modifier = Modifier.fillMaxWidth().height(52.dp),
-              shape = MaterialTheme.shapes.medium,
-          ) {
-            Text(stringResource(R.string.action_open_settings))
-          }
-        },
+        action = { InfoNoteButton(stringResource(R.string.action_open_settings), onClick = {}) },
     )
   }
 }
