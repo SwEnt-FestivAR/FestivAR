@@ -16,4 +16,12 @@
     <string name="details_retry">Réessayer</string>
     <string name="details_location">Lieu : %s</string>
     <string name="details_time_range">De %1$s à %2$s</string>
+    <string name="details_on_this_task">Sur cette tâche</string>
+    <plurals name="details_people">
+        <item quantity="one">%d personne</item>
+        <item quantity="other">%d personnes</item>
+    </plurals>
+    <string name="details_people_sheet_subtitle">%1$s · %2$s</string>
+    <string name="details_took_it">Prise le %1$s à %2$s</string>
+    <string name="details_more_people">+%d</string>
 </resources>
