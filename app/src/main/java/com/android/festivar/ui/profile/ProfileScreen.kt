@@ -151,7 +151,13 @@ fun ProfileScreen(
           onSurnameChange = profileViewModel::updateSurname,
           onNameChange = profileViewModel::updateName,
           onSaveClick = profileViewModel::saveChanges,
-          onSignOutClick = { showSignOutWarning = true },
+          onSignOutClick = {
+            if (profileUIState.isUserAnonymous) {
+              showSignOutWarning = true
+            } else {
+              profileViewModel.signOut()
+            }
+          },
           onRetryClick = profileViewModel::getUserInformation,
           onUpgradeClick = { isUpgrading = true },
           modifier = Modifier.padding(padding),

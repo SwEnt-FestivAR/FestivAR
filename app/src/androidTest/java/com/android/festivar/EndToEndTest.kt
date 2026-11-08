@@ -241,13 +241,13 @@ class EndToEndTest {
     waitUntilTagExists(ProfileScreenTestTags.SIGN_OUT_BUTTON)
     composeTestRule.onNodeWithTag(ProfileScreenTestTags.EMAIL).assertTextEquals(email)
     composeTestRule.onNodeWithTag(ProfileScreenTestTags.SIGN_OUT_BUTTON).performClick()
-    composeTestRule
-        .onNodeWithText(
-            InstrumentationRegistry.getInstrumentation()
-                .targetContext
-                .getString(R.string.action_continue_anyway)
-        )
-        .performClick()
+    val continueText =
+        InstrumentationRegistry.getInstrumentation()
+            .targetContext
+            .getString(R.string.action_continue_anyway)
+    if (composeTestRule.onAllNodesWithText(continueText).fetchSemanticsNodes().isNotEmpty()) {
+      composeTestRule.onNodeWithText(continueText).performClick()
+    }
     waitUntilTagExists(LoginScreenTestTags.TITLE)
     composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
   }

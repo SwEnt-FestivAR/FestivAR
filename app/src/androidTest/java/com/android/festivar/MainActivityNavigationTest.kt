@@ -24,7 +24,6 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.credentials.CredentialManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
 import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.datarepository.DataRepositoryFirebase
 import com.android.festivar.model.datarepository.DataRepositoryLocal
@@ -751,13 +750,6 @@ class MainActivityNavigationTest {
           .isNotEmpty()
     }
     composeTestRule.onNodeWithTag(ProfileScreenTestTags.SIGN_OUT_BUTTON).performClick()
-    composeTestRule
-        .onNodeWithText(
-            InstrumentationRegistry.getInstrumentation()
-                .targetContext
-                .getString(R.string.action_continue_anyway)
-        )
-        .performClick()
     composeTestRule.waitForIdle()
 
     composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
