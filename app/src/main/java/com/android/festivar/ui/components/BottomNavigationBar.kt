@@ -129,13 +129,13 @@ private fun TasksBadge(modifier: Modifier = Modifier) {
 
 @Preview(showBackground = true)
 @Composable
-private fun BottomNavigationBarPreview() {
+internal fun BottomNavigationBarPreview() {
   AppTheme { BottomNavigationBar(selectedTab = NavigationTab.EVENTS, onTabSelected = {}) }
 }
 
 @Preview(showBackground = true)
 @Composable
-private fun BottomNavigationBarEventTasksPreview() {
+internal fun BottomNavigationBarEventTasksPreview() {
   AppTheme {
     BottomNavigationBar(
         selectedTab = NavigationTab.EVENTS,
