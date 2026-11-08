@@ -49,4 +49,8 @@
     <string name="map_save">Enregistrer</string>
     <string name="map_cancel">Annuler</string>
     <string name="map_save_failed">Impossible d’enregistrer le plan.</string>
+    <string name="map_undo">Annuler la dernière action</string>
+    <string name="map_delete_title">Supprimer %1$s ?</string>
+    <string name="map_delete_message">Les tâches épinglées dessus perdent leur emplacement sur la carte.</string>
+    <string name="map_delete">Supprimer</string>
 </resources>

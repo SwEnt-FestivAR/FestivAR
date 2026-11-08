@@ -95,6 +95,8 @@ class VenueMapScreenTest {
       onStartRename: () -> Unit = {},
       onRename: (String) -> Unit = {},
       onCancelRename: () -> Unit = {},
+      onDelete: () -> Unit = {},
+      onUndo: () -> Unit = {},
   ) {
     screen.value = state
     composeTestRule.setContent {
@@ -112,6 +114,8 @@ class VenueMapScreenTest {
             onStartRename = onStartRename,
             onRename = onRename,
             onCancelRename = onCancelRename,
+            onDelete = onDelete,
+            onUndo = onUndo,
             mapContent = { _, _ -> },
         )
       }
@@ -305,6 +309,7 @@ class VenueMapScreenTest {
     setContent(loaded.copy(isOrganizer = true))
 
     composeTestRule.onNodeWithTag(VenueMapScreenTestTags.EDITING_BADGE).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(VenueMapScreenTestTags.UNDO).assertIsDisplayed()
     composeTestRule.onNodeWithTag(VenueMapScreenTestTags.PALETTE_HINT).assertIsDisplayed()
     PaletteTool.entries.forEach {
       composeTestRule.onNodeWithTag(VenueMapScreenTestTags.palette(it)).assertIsDisplayed()
@@ -313,6 +318,8 @@ class VenueMapScreenTest {
     screen.value = loaded.copy(selectedStructureId = "s1")
 
     composeTestRule.onNodeWithTag(VenueMapScreenTestTags.EDITING_BADGE).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(VenueMapScreenTestTags.UNDO).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(VenueMapScreenTestTags.DELETE).assertDoesNotExist()
     composeTestRule.onNodeWithTag(VenueMapScreenTestTags.PALETTE_HINT).assertDoesNotExist()
     composeTestRule.onNodeWithTag(VenueMapScreenTestTags.RENAME).assertDoesNotExist()
     PaletteTool.entries.forEach {
@@ -373,5 +380,35 @@ class VenueMapScreenTest {
     composeTestRule.onNodeWithTag(VenueMapScreenTestTags.RENAME_CANCEL).performClick()
 
     assertEquals(1, cancels)
+  }
+
+  /** Red if Delete skips the confirmation, Cancel deletes, or Delete in the dialog does not. */
+  @Test
+  fun deleteAsksFirstThenConfirmCallsDeleteAndDismissDoesNot() {
+    var deletes = 0
+    setContent(editing, onDelete = { deletes++ })
+
+    composeTestRule.onNodeWithTag(VenueMapScreenTestTags.DELETE).performClick()
+    composeTestRule.onNodeWithText("Delete Main stage?").assertIsDisplayed()
+    composeTestRule.onNodeWithTag(VenueMapScreenTestTags.DELETE_DISMISS).performClick()
+    assertEquals(0, deletes)
+    composeTestRule.onNodeWithTag(VenueMapScreenTestTags.DELETE_CONFIRM).assertDoesNotExist()
+
+    composeTestRule.onNodeWithTag(VenueMapScreenTestTags.DELETE).performClick()
+    composeTestRule.onNodeWithTag(VenueMapScreenTestTags.DELETE_CONFIRM).performClick()
+    assertEquals(1, deletes)
+  }
+
+  /** Red if Undo does not call back, or stays enabled with nothing to undo. */
+  @Test
+  fun undoCallsBackAndIsDisabledWithoutAnythingToUndo() {
+    var undos = 0
+    setContent(editing.copy(canUndo = true), onUndo = { undos++ })
+
+    composeTestRule.onNodeWithTag(VenueMapScreenTestTags.UNDO).performClick()
+    assertEquals(1, undos)
+
+    screen.value = editing.copy(canUndo = false)
+    composeTestRule.onNodeWithTag(VenueMapScreenTestTags.UNDO).assertIsNotEnabled()
   }
 }

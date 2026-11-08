@@ -46,4 +46,8 @@
     <string name="map_save">Save</string>
     <string name="map_cancel">Cancel</string>
     <string name="map_save_failed">Unable to save the plan.</string>
+    <string name="map_undo">Undo the last change</string>
+    <string name="map_delete_title">Delete %1$s?</string>
+    <string name="map_delete_message">Tasks pinned on it lose their spot on the map.</string>
+    <string name="map_delete">Delete</string>
 </resources>

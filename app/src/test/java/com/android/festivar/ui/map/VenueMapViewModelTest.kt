@@ -567,6 +567,8 @@ class VenueMapViewModelTest {
     vm.resizeSelected(Corner.TOP_LEFT, venue.latitude, venue.longitude)
     vm.startRename()
     vm.rename("Mine now")
+    vm.deleteSelected()
+    vm.undo()
 
     assertNull(vm.uiState.value.tool)
     assertFalse(vm.uiState.value.renaming)
@@ -723,5 +725,82 @@ class VenueMapViewModelTest {
     assertEquals(stored(), state.structures)
     assertEquals(listOf(stage, bar), state.structures)
     assertFalse(state.isSaving)
+  }
+
+  /** Red if delete leaves the structure in the repository or keeps it selected. */
+  @Test
+  fun deleteRemovesAndDeselects() {
+    val vm = organizer()
+    vm.select("s2")
+
+    vm.deleteSelected()
+
+    assertEquals(listOf(stage), stored())
+    assertEquals(stored(), vm.uiState.value.structures)
+    assertNull(vm.uiState.value.selectedStructureId)
+  }
+
+  /** Red if undo forgets an edit kind, or only restores the state and not the repository. */
+  @Test
+  fun undoRestoresAfterEveryKindOfEdit() {
+    val vm = organizer()
+    val history = mutableListOf(stored())
+
+    vm.selectTool(PaletteTool.STAND)
+    vm.tapAt(20.0, 20.0)
+    history += stored()
+    pointAt(30.0, 30.0).let { vm.moveSelected(it.latitude, it.longitude) }
+    history += stored()
+    pointAt(40.0, 40.0).let { vm.resizeSelected(Corner.BOTTOM_RIGHT, it.latitude, it.longitude) }
+    history += stored()
+    vm.rename("Crêpes")
+    history += stored()
+    vm.deleteSelected()
+    // Each edit changed the repository, so every undo below has something to restore.
+    assertEquals(5, history.toSet().size)
+
+    history.asReversed().forEach { expected ->
+      assertTrue(vm.uiState.value.canUndo)
+      vm.undo()
+      assertEquals(expected.toSet(), stored().toSet())
+      assertEquals(stored().toSet(), vm.uiState.value.structures.toSet())
+    }
+    assertFalse(vm.uiState.value.canUndo)
+  }
+
+  /** Red if undo is offered with nothing to undo, or an empty stack writes anything. */
+  @Test
+  fun canUndoFollowsTheStack() {
+    val vm = organizer()
+    assertFalse(vm.uiState.value.canUndo)
+
+    vm.undo()
+    assertEquals(0, structures.writes)
+
+    vm.select("s1")
+    vm.rename("Main stage")
+    assertTrue(vm.uiState.value.canUndo)
+    vm.undo()
+    assertFalse(vm.uiState.value.canUndo)
+    assertEquals(listOf(stage, bar), stored())
+  }
+
+  /** Red if a failed undo leaves the screen on a plan the repository does not hold, or is lost. */
+  @Test
+  fun aFailingUndoReloadsTheRepositoryListAndKeepsTheUndo() {
+    val vm = organizer()
+    vm.select("s2")
+    vm.deleteSelected()
+    structures.writeFailure = IOException("offline")
+
+    vm.undo()
+
+    assertEquals(R.string.map_save_failed, vm.uiState.value.errorMsg)
+    assertEquals(stored(), vm.uiState.value.structures)
+    assertTrue(vm.uiState.value.canUndo)
+
+    structures.writeFailure = null
+    vm.undo()
+    assertEquals(listOf(stage, bar).toSet(), stored().toSet())
   }
 }

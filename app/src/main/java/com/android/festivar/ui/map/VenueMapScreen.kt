@@ -26,7 +26,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.DirectionsWalk
+import androidx.compose.material.icons.automirrored.rounded.Undo
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.AlertDialog
@@ -69,6 +71,7 @@ import com.android.festivar.model.event.Venue
 import com.android.festivar.model.location.LocationFix
 import com.android.festivar.model.structure.Structure
 import com.android.festivar.model.structure.StructureKind
+import com.android.festivar.ui.components.FestivarConfirmDialog
 import com.android.festivar.ui.components.FilterChip
 import com.android.festivar.ui.theme.AppTheme
 import com.google.android.gms.maps.model.BitmapDescriptor
@@ -134,6 +137,14 @@ object VenueMapScreenTestTags {
   const val RENAME_SAVE = "mapRenameSave"
   /** The Cancel button of the rename dialog. */
   const val RENAME_CANCEL = "mapRenameCancel"
+  /** The round undo button right of the search pill, shown to the organizer only. */
+  const val UNDO = "mapUndo"
+  /** The delete button of the sheet describing a structure. */
+  const val DELETE = "mapDelete"
+  /** The Delete button of the delete confirmation. */
+  const val DELETE_CONFIRM = "mapDeleteConfirm"
+  /** The Cancel button of the delete confirmation. */
+  const val DELETE_DISMISS = "mapDeleteDismiss"
 
   /**
    * The palette item placing [tool].
@@ -201,6 +212,8 @@ fun VenueMapScreen(
       onStartRename = viewModel::startRename,
       onRename = viewModel::rename,
       onCancelRename = viewModel::cancelRename,
+      onDelete = viewModel::deleteSelected,
+      onUndo = viewModel::undo,
   )
 }
 
@@ -223,6 +236,8 @@ fun VenueMapScreen(
  * @param onStartRename called when the rename pencil of the sheet is clicked.
  * @param onRename called with the typed name when the rename dialog is saved.
  * @param onCancelRename called when the rename dialog is cancelled.
+ * @param onDelete called once the organizer confirms deleting the selected structure.
+ * @param onUndo called when the undo button is clicked.
  * @param mapContent draws the map under the overlays; tests and previews swap the Google map out
  *   since it needs Play services.
  */
@@ -244,6 +259,8 @@ fun VenueMapContent(
     onStartRename: () -> Unit = {},
     onRename: (String) -> Unit = {},
     onCancelRename: () -> Unit = {},
+    onDelete: () -> Unit = {},
+    onUndo: () -> Unit = {},
     mapContent: @Composable BoxScope.(VenueMapUiState, (String?) -> Unit) -> Unit = { s, select ->
       VenueGoogleMap(s, select, onSelectTask, onPlace, onMove, onResize)
     },
@@ -260,7 +277,7 @@ fun VenueMapContent(
         state.venue == null -> NoVenue(Modifier.align(Alignment.Center))
         else -> {
           mapContent(state, onSelect)
-          TopOverlay(state, onFilter, onQuery, Modifier.align(Alignment.TopCenter))
+          TopOverlay(state, onFilter, onQuery, onUndo, Modifier.align(Alignment.TopCenter))
           if (state.errorMsg != null) {
             MapErrorCard(
                 state.errorMsg,
@@ -275,7 +292,7 @@ fun VenueMapContent(
           } else {
             Column(Modifier.align(Alignment.BottomCenter)) {
               if (state.isOrganizer) Palette(state.tool, onSelectTool)
-              MapSheet(state, onSelect, onStartRename)
+              MapSheet(state, onSelect, onStartRename, onDelete)
             }
           }
           val selected = state.selected
@@ -588,28 +605,36 @@ private fun TopOverlay(
     state: VenueMapUiState,
     onFilter: (PinFilter) -> Unit,
     onQuery: (String) -> Unit,
+    onUndo: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
   Column(
       modifier = modifier.fillMaxWidth().statusBarsPadding().padding(top = 8.dp, end = 16.dp),
       verticalArrangement = Arrangement.spacedBy(8.dp),
   ) {
-    Surface(
+    Row(
         modifier = Modifier.padding(start = 72.dp).fillMaxWidth(),
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 2.dp,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-      OutlinedTextField(
-          value = state.query,
-          onValueChange = onQuery,
-          modifier = Modifier.fillMaxWidth().testTag(VenueMapScreenTestTags.SEARCH),
-          placeholder = { Text(stringResource(R.string.map_search_hint)) },
-          leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
-          trailingIcon = if (state.isOrganizer) ({ EditingBadge() }) else null,
-          singleLine = true,
+      Surface(
+          modifier = Modifier.weight(1f),
           shape = CircleShape,
-      )
+          color = MaterialTheme.colorScheme.surface,
+          shadowElevation = 2.dp,
+      ) {
+        OutlinedTextField(
+            value = state.query,
+            onValueChange = onQuery,
+            modifier = Modifier.fillMaxWidth().testTag(VenueMapScreenTestTags.SEARCH),
+            placeholder = { Text(stringResource(R.string.map_search_hint)) },
+            leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+            trailingIcon = if (state.isOrganizer) ({ EditingBadge() }) else null,
+            singleLine = true,
+            shape = CircleShape,
+        )
+      }
+      if (state.isOrganizer) UndoDisc(state.canUndo, onUndo)
     }
     Row(
         modifier = Modifier.padding(start = 16.dp),
@@ -648,6 +673,28 @@ private fun TopOverlay(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
       }
+    }
+  }
+}
+
+/** The 44dp round undo button right of the search pill, enabled when [canUndo]. */
+@Composable
+private fun UndoDisc(canUndo: Boolean, onUndo: () -> Unit) {
+  Surface(
+      modifier = Modifier.size(44.dp),
+      shape = CircleShape,
+      color = MaterialTheme.colorScheme.surface,
+      shadowElevation = 2.dp,
+  ) {
+    IconButton(
+        onClick = onUndo,
+        enabled = canUndo,
+        modifier = Modifier.testTag(VenueMapScreenTestTags.UNDO),
+    ) {
+      Icon(
+          imageVector = Icons.AutoMirrored.Rounded.Undo,
+          contentDescription = stringResource(R.string.map_undo),
+      )
     }
   }
 }
@@ -780,15 +827,18 @@ private fun MapChip(label: String, selected: Boolean, onClick: () -> Unit, tag: 
 
 /**
  * The bottom sheet: the venue summary, or the selected structure with a button to clear it. The
- * organizer also sees how many tasks are pinned on the structure and a rename pencil.
+ * organizer also sees how many tasks are pinned on the structure, a rename pencil and a delete
+ * button that asks for confirmation first.
  */
 @Composable
 private fun MapSheet(
     state: VenueMapUiState,
     onSelect: (String?) -> Unit,
     onStartRename: () -> Unit,
+    onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+  var confirmDelete by remember { mutableStateOf(false) }
   val selected = state.selected
   Surface(
       modifier = modifier.fillMaxWidth().testTag(VenueMapScreenTestTags.SHEET),
@@ -850,6 +900,31 @@ private fun MapSheet(
               imageVector = Icons.Rounded.Edit,
               contentDescription = stringResource(R.string.map_rename_title),
               tint = MaterialTheme.colorScheme.onSurface,
+          )
+        }
+        IconButton(
+            onClick = { confirmDelete = true },
+            modifier = Modifier.testTag(VenueMapScreenTestTags.DELETE),
+        ) {
+          Icon(
+              imageVector = Icons.Rounded.Delete,
+              contentDescription = stringResource(R.string.map_delete),
+              tint = MaterialTheme.colorScheme.error,
+          )
+        }
+        if (confirmDelete) {
+          FestivarConfirmDialog(
+              title = stringResource(R.string.map_delete_title, selected.label),
+              message = stringResource(R.string.map_delete_message),
+              confirmText = stringResource(R.string.map_delete),
+              dismissText = stringResource(R.string.map_cancel),
+              onConfirm = {
+                confirmDelete = false
+                onDelete()
+              },
+              onDismiss = { confirmDelete = false },
+              confirmModifier = Modifier.testTag(VenueMapScreenTestTags.DELETE_CONFIRM),
+              dismissModifier = Modifier.testTag(VenueMapScreenTestTags.DELETE_DISMISS),
           )
         }
       }

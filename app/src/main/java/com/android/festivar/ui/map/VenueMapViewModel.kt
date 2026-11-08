@@ -184,6 +184,7 @@ private fun pinLabel(task: Task): String {
  * @property isOrganizer true when the current user is the first member of the event, the one the
  *   event details name as the organizer; only they may edit the plan.
  * @property tool what the next tap on the map places, or null.
+ * @property canUndo true when a saved change can be undone.
  * @property isSaving true while an edit of the plan is being written.
  * @property renaming true while the rename dialog of the selected structure is open.
  */
@@ -204,6 +205,7 @@ data class VenueMapUiState(
     val now: ZonedDateTime? = null,
     val isOrganizer: Boolean = false,
     val tool: PaletteTool? = null,
+    val canUndo: Boolean = false,
     val isSaving: Boolean = false,
     val renaming: Boolean = false,
 ) {
@@ -339,6 +341,9 @@ class VenueMapViewModel(
   // isLoading starts true, so it cannot tell a running load from the initial state.
   private var loadJob: Job? = null
   private var locationJob: Job? = null
+
+  /** The plan before each saved change, the latest last. */
+  private val undoStack = ArrayDeque<List<Structure>>()
 
   /**
    * Loads the event, then its structures, then its tasks. A failure sets [VenueMapUiState.errorMsg]
@@ -549,6 +554,51 @@ class VenueMapViewModel(
   /** Closes the rename dialog without renaming. */
   fun cancelRename() = _uiState.update { it.copy(renaming = false) }
 
+  /**
+   * Deletes the selected structure and clears the selection. Tasks pinned on it keep their spot,
+   * which the pins then skip. Organizer only.
+   */
+  fun deleteSelected() {
+    val state = _uiState.value
+    val selected = state.selected ?: return
+    if (!canEdit()) return
+    save(state.structures - selected, null) {
+      structuresRepository.deleteStructure(selected.structureId)
+    }
+  }
+
+  /**
+   * Restores the plan as it was before the last saved change: what is missing is added back, what
+   * changed is edited back and what is extra is deleted. Organizer only; does nothing when there is
+   * nothing to undo.
+   */
+  fun undo() {
+    if (!canEdit()) return
+    val previous = undoStack.removeLastOrNull() ?: return
+    val current = _uiState.value.structures
+    runWrite(onFailure = { undoStack.addLast(previous) }) {
+      val currentById = current.associateBy { it.structureId }
+      val previousIds = previous.map { it.structureId }.toSet()
+      previous.forEach { old ->
+        val now = currentById[old.structureId]
+        when {
+          now == null -> structuresRepository.addStructure(old)
+          now != old -> structuresRepository.editStructure(old.structureId, old)
+        }
+      }
+      current
+          .filter { it.structureId !in previousIds }
+          .forEach { structuresRepository.deleteStructure(it.structureId) }
+      _uiState.update { s ->
+        s.copy(
+            structures = previous,
+            selectedStructureId = s.selectedStructureId?.takeIf { it in previousIds },
+            canUndo = undoStack.isNotEmpty(),
+        )
+      }
+    }
+  }
+
   /** Where ([latitude], [longitude]) sits on the plan, or null without a venue. */
   private fun planPoint(latitude: Double, longitude: Double): Pair<Double, Double>? {
     val venue = _uiState.value.venue ?: return null
@@ -577,14 +627,17 @@ class VenueMapViewModel(
    * tool put down.
    */
   private fun save(next: List<Structure>, selectedId: String?, write: suspend () -> Unit) {
+    val previous = _uiState.value.structures
     runWrite {
       write()
+      undoStack.addLast(previous)
       _uiState.update {
         it.copy(
             structures = next,
             selectedStructureId = selectedId,
             selectedTaskId = if (selectedId != null) null else it.selectedTaskId,
             tool = null,
+            canUndo = true,
         )
       }
     }
