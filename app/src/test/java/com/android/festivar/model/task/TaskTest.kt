@@ -765,4 +765,27 @@ class TaskTest {
     assertEquals(users(2), task.assignees)
     assertTrue(task.takenAt.isEmpty())
   }
+
+  /** Breaks if a task gets a spot by default, so every task would show on the map. */
+  @Test
+  fun aTaskWithoutSpotHasNone() {
+    assertNull(taskWith(maxAssign = 1).spot)
+  }
+
+  /** Breaks if copy loses the spot or the spot is not stored. */
+  @Test
+  fun copyWithASpotKeepsIt() {
+    val spot = TaskSpot.at(2.5, -7.0)
+
+    assertEquals(spot, taskWith(maxAssign = 1).copy(spot = spot).spot)
+  }
+
+  /** Breaks if taking or completing a task drops its pin. */
+  @Test
+  fun addAssigneeAndCompleteKeepTheSpot() {
+    val task = taskWith(maxAssign = 1).copy(spot = TaskSpot.onStructure("stage"))
+
+    assertEquals(task.spot, task.addAssignee(outsider).spot)
+    assertEquals(task.spot, task.complete().spot)
+  }
 }
