@@ -7,6 +7,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
 import com.android.festivar.model.task.Priority
 import com.android.festivar.model.task.Task
+import com.android.festivar.model.task.TaskSpot
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.ui.components.DateTimeField
@@ -479,6 +480,17 @@ class CreateTaskViewModelTest {
     assertEquals(Duration.ofMinutes(90), saved.estimatedTime)
   }
 
+  // Breaks if toTask drops the spot chosen in the form, so the saved task has no pin.
+  @Test
+  fun createTask_savesTheChosenSpot() {
+    viewModel.updateTitle("Run power to stage")
+    viewModel.updateSpot(TaskSpot.at(2.5, 7.0))
+
+    viewModel.createTask()
+
+    assertEquals(TaskSpot.at(2.5, 7.0), savedTasks().single().spot)
+  }
+
   @Test
   fun createTask_withoutOptionalFields_usesTheDefaults() {
     viewModel.updateTitle("Run power to stage")
@@ -489,6 +501,7 @@ class CreateTaskViewModelTest {
     assertEquals(Priority.NONE, saved.priority)
     assertEquals(1, saved.maxAssign)
     assertNull(saved.estimatedTime)
+    assertNull(saved.spot)
   }
 
   @Test

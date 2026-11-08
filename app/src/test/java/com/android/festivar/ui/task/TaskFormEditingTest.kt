@@ -2,6 +2,7 @@
 package com.android.festivar.ui.task
 
 import com.android.festivar.model.task.Priority
+import com.android.festivar.model.task.TaskSpot
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.task.create.CreateTaskUiState
 import com.android.festivar.ui.task.create.MAX_ESTIMATED_DIGITS
@@ -11,6 +12,7 @@ import java.time.LocalTime
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -148,5 +150,20 @@ class TaskFormEditingTest {
     editing.showPicker(DateTimeField.START_DATE)
 
     assertOnly({ it.copy(openPicker = null) }) { editing.pickTime(nine) }
+  }
+
+  // Breaks if updateSpot writes another field, cannot clear the spot, or a chosen spot does not
+  // count as an edit, so going back would drop it without the discard dialog.
+  @Test
+  fun updateSpotSetsAndClearsTheSpotAndMarksTheFormEdited() {
+    val spot = TaskSpot.onStructure("s1")
+
+    assertOnly({ it.copy(spot = spot) }) { editing.updateSpot(spot) }
+    assertTrue(state.value.hasChanges)
+
+    editing.updateSpot(null)
+
+    assertNull(state.value.spot)
+    assertFalse(state.value.hasChanges)
   }
 }

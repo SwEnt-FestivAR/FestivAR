@@ -512,8 +512,8 @@ class EditTaskViewModelTest {
     assertFalse(state.needsDiscardConfirmation)
   }
 
-  // Breaks if a saved edit rebuilds the task from the form and drops its pin or the time each
-  // assignee took it.
+  // Breaks if the load does not put the stored pin in the form, so a saved edit drops it, or if
+  // the save rebuilds the task without the time each assignee took it.
   @Test
   fun savingKeepsTheSpotAndWhenEachAssigneeTookTheTask() {
     val takenAt = mapOf("me" to ZonedDateTime.of(day, LocalTime.of(7, 0), zone))
@@ -684,6 +684,43 @@ class EditTaskViewModelTest {
     viewModel.save()
 
     assertEquals(takenAt, stored().takenAt)
+  }
+
+  // Breaks if the load does not put the stored spot in the form, so the field shows "No spot".
+  @Test
+  fun theLoadedSpotFillsTheForm() {
+    runBlocking { local.editTask("task-1", seeded.copy(spot = TaskSpot.onStructure("s1"))) }
+
+    viewModel.load()
+
+    assertEquals(TaskSpot.onStructure("s1"), viewModel.uiState.value.form.spot)
+    assertFalse(viewModel.uiState.value.hasChanges)
+  }
+
+  // Breaks if a new spot is not a change, so Save stays disabled, or if the save ignores it.
+  @Test
+  fun changingTheSpotCountsAsAChangeAndIsSaved() {
+    viewModel.load()
+
+    viewModel.updateSpot(TaskSpot.at(2.5, 7.0))
+    assertTrue(viewModel.uiState.value.hasChanges)
+    assertTrue(viewModel.uiState.value.canSave)
+    viewModel.save()
+
+    assertEquals(TaskSpot.at(2.5, 7.0), stored().spot)
+  }
+
+  // Breaks if clearing the spot keeps the stored one, so a pin can never be removed.
+  @Test
+  fun clearingTheSpotSavesNoSpot() {
+    runBlocking { local.editTask("task-1", seeded.copy(spot = TaskSpot.onStructure("s1"))) }
+    viewModel.load()
+
+    viewModel.updateSpot(null)
+    assertTrue(viewModel.uiState.value.canSave)
+    viewModel.save()
+
+    assertNull(stored().spot)
   }
 }
 

@@ -68,8 +68,8 @@ data class EditTaskUiState(
         isOwner() && form.isValid && maxAssignError == null && hasChanges && !isSaving && !isSaved
 
   /**
-   * Builds the edited [Task]. What the form does not own (assignees, takenAt, spot, completion,
-   * voice note, owner, event) is kept from [task].
+   * Builds the edited [Task]. What the form does not own (assignees, takenAt, completion, voice
+   * note, owner, event) is kept from [task]; the spot is the form's, which the load fills.
    *
    * @throws IllegalArgumentException if no task is loaded, the form is not valid, or fewer people
    *   are needed than are assigned (the rules of [CreateTaskUiState.toTask] and [Task]).
@@ -83,7 +83,6 @@ data class EditTaskUiState(
             // since the load can be lost: https://github.com/SwEnt-FestivAR/FestivAR/issues/186
             assignees = original.assignees,
             takenAt = original.takenAt,
-            spot = original.spot,
             completed = original.completed,
             voiceNote = original.voiceNote,
         )
@@ -107,6 +106,7 @@ private fun Task.toForm(zone: ZoneId): CreateTaskUiState {
       priority = priority,
       maxAssign = maxAssign,
       estimatedMinutes = estimatedTime?.toMinutes()?.toString() ?: "",
+      spot = spot,
       zone = zone,
   )
 }

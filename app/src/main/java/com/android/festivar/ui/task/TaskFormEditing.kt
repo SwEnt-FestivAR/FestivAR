@@ -2,6 +2,7 @@
 package com.android.festivar.ui.task
 
 import com.android.festivar.model.task.Priority
+import com.android.festivar.model.task.TaskSpot
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.task.create.CreateTaskUiState
 import com.android.festivar.ui.task.create.MAX_ESTIMATED_DIGITS
@@ -22,6 +23,9 @@ interface TaskFormEditor {
 
   /** Sets the priority. */
   fun updatePriority(priority: Priority)
+
+  /** Sets where the task sits on the venue plan, or clears it when [spot] is `null`. */
+  fun updateSpot(spot: TaskSpot?)
 
   /** Adds one to the number of people the task needs. */
   fun incrementMaxAssign()
@@ -83,6 +87,8 @@ internal class TaskFormEditing : TaskFormEditor {
   override fun updateLocation(location: String) = applyEdit { it.copy(location = location) }
 
   override fun updatePriority(priority: Priority) = applyEdit { it.copy(priority = priority) }
+
+  override fun updateSpot(spot: TaskSpot?) = applyEdit { it.copy(spot = spot) }
 
   override fun incrementMaxAssign() = applyEdit { it.copy(maxAssign = it.maxAssign + 1) }
 

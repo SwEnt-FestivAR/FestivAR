@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
 import com.android.festivar.model.task.Priority
 import com.android.festivar.model.task.Task
+import com.android.festivar.model.task.TaskSpot
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryProvider
 import com.android.festivar.ui.components.DateTimeField
@@ -54,6 +55,8 @@ data class CreateTaskUiState(
     val maxAssign: Int = MIN_MAX_ASSIGN,
     // The estimated time is kept as typed (digits only) so that an empty field stays empty.
     val estimatedMinutes: String = "",
+    // Where the task sits on the venue plan, or null when it has no spot.
+    val spot: TaskSpot? = null,
     // The field whose picker dialog is open, or null when none is.
     val openPicker: DateTimeField? = null,
     val titleEdited: Boolean = false,
@@ -111,7 +114,8 @@ data class CreateTaskUiState(
             endTime != null ||
             priority != Priority.NONE ||
             maxAssign != MIN_MAX_ASSIGN ||
-            estimatedMinutes.isNotEmpty()
+            estimatedMinutes.isNotEmpty() ||
+            spot != null
 
   /** Whether going back must ask first: a created task has nothing left to lose. */
   val needsDiscardConfirmation: Boolean
@@ -154,6 +158,7 @@ data class CreateTaskUiState(
         priority = priority,
         maxAssign = maxAssign,
         ownerId = ownerId,
+        spot = spot,
     )
   }
 }
