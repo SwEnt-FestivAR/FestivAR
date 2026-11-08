@@ -17,6 +17,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.ui.theme.AppTheme
 
+/** The space on the left and on the right of the content of a [FixedBottomBar]. */
+val FixedBottomBarHorizontalPadding = 20.dp
+
 /**
  * A bar fixed to the bottom of a screen, above the system navigation bar, holding [content]. It
  * keeps the colour of the page, as the "composer (fixed)" frames of the S4 design do: 20dp on the
@@ -28,7 +31,12 @@ fun FixedBottomBar(modifier: Modifier = Modifier, content: @Composable ColumnSco
   Surface(modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.background) {
     Column(
         Modifier.navigationBarsPadding()
-            .padding(start = 20.dp, top = 8.dp, end = 20.dp, bottom = 24.dp),
+            .padding(
+                start = FixedBottomBarHorizontalPadding,
+                top = 8.dp,
+                end = FixedBottomBarHorizontalPadding,
+                bottom = 24.dp,
+            ),
         verticalArrangement = Arrangement.spacedBy(8.dp),
         content = content,
     )

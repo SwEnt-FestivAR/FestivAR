@@ -203,7 +203,7 @@ class VoiceNoteRecordBarTest {
     tag(VoiceNoteRecordTestTags.MIC_DENIED).assertDoesNotExist()
   }
 
-  /** Breaks if nothing is left on screen when there is no bar and no notice to show. */
+  /** Breaks if a volunteer without an error still sees a record bar or a notice. */
   @Test
   fun nothingIsShownForAVolunteerWithoutAnError() {
     show(VoiceNoteUiState(note = note, canManage = false))
@@ -211,13 +211,13 @@ class VoiceNoteRecordBarTest {
     tag(VoiceNoteRecordTestTags.PLAYBACK_ERROR).assertDoesNotExist()
   }
 
-  /** Breaks if the notices and the record bar are not in the same bar, with the notice above. */
+  /** Breaks if a notice is drawn over or under the record bar instead of above it. */
   @Test
   fun noticesAreAboveTheRecordBar() {
     show(VoiceNoteUiState(canManage = true, sendFailed = true))
     val noticeBottom = tag(VoiceNoteRecordTestTags.SEND_ERROR).getUnclippedBoundsInRoot().bottom
     val barTop = tag(VoiceNoteRecordTestTags.RECORDING_BAR).getUnclippedBoundsInRoot().top
-    assertTrue(noticeBottom <= barTop)
+    assertTrue("the notice must end above the record bar", noticeBottom <= barTop)
   }
 
   /** Breaks if turning the microphone off in the middle of a recording leaves the recorder on. */

@@ -39,6 +39,7 @@ import com.android.festivar.R
 import com.android.festivar.model.audio.PlayerState
 import com.android.festivar.model.audio.RecorderState
 import com.android.festivar.ui.components.FixedBottomBar
+import com.android.festivar.ui.components.FixedBottomBarHorizontalPadding
 import com.android.festivar.ui.components.InfoNote
 import com.android.festivar.ui.components.InfoNoteButton
 import com.android.festivar.ui.components.NoticeSnackbar
@@ -93,12 +94,21 @@ fun VoiceNotePlaybackNotice(
     modifier: Modifier = Modifier,
 ) {
   if (!state.playbackFailed) return
-  Box(modifier.fillMaxWidth().padding(start = 20.dp, top = 8.dp, end = 20.dp, bottom = 4.dp)) {
+  Box(
+      modifier
+          .fillMaxWidth()
+          .padding(
+              start = FixedBottomBarHorizontalPadding,
+              top = 8.dp,
+              end = FixedBottomBarHorizontalPadding,
+              bottom = 4.dp,
+          )
+  ) {
     ErrorNotice(
-        R.string.voice_note_playback_failed,
-        callbacks.onRetry,
-        VoiceNoteRecordTestTags.PLAYBACK_ERROR,
-        VoiceNoteRecordTestTags.PLAYBACK_RETRY,
+        message = R.string.voice_note_playback_failed,
+        onRetry = callbacks.onRetry,
+        tag = VoiceNoteRecordTestTags.PLAYBACK_ERROR,
+        actionTag = VoiceNoteRecordTestTags.PLAYBACK_RETRY,
     )
   }
 }
@@ -203,10 +213,10 @@ private fun RecordButton(enabled: Boolean, callbacks: VoiceNoteCallbacks) {
 private fun VoiceNoteOwnerNotices(state: VoiceNoteUiState, callbacks: VoiceNoteCallbacks) {
   if (state.sendFailed) {
     ErrorNotice(
-        R.string.voice_note_send_failed,
-        callbacks.onRetry,
-        VoiceNoteRecordTestTags.SEND_ERROR,
-        VoiceNoteRecordTestTags.SEND_RETRY,
+        message = R.string.voice_note_send_failed,
+        onRetry = callbacks.onRetry,
+        tag = VoiceNoteRecordTestTags.SEND_ERROR,
+        actionTag = VoiceNoteRecordTestTags.SEND_RETRY,
     )
   }
   if (state.micDenied) {
