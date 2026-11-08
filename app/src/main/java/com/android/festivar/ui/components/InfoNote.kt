@@ -1,6 +1,7 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -73,6 +74,7 @@ fun InfoNoteButton(text: String, onClick: () -> Unit, modifier: Modifier = Modif
       shape = MaterialTheme.shapes.medium,
       colors =
           ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
+      border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
   ) {
     Text(text)
   }

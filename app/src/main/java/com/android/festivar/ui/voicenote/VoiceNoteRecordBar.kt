@@ -270,7 +270,12 @@ private fun ErrorNotice(
 /** The bar with its notices fixed at the bottom of the screen, as on the screen. */
 @Composable
 private fun VoiceNoteBarPreviewScreen(state: VoiceNoteUiState) {
-  AppTheme { VoiceNoteRecordBar(state, previewCallbacks) }
+  AppTheme {
+    Column {
+      VoiceNotePlaybackNotice(state, previewCallbacks)
+      VoiceNoteRecordBar(state, previewCallbacks)
+    }
+  }
 }
 
 @Preview(showBackground = true)
