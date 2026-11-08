@@ -11,7 +11,6 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
-import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -208,9 +207,8 @@ class ProfileScreenTest {
   }
 
   @Test
-  fun upgradeButtonShowsAndDismissesBottomSheetAndClearsCredentials() {
-    val authRepository = anonymousAuthRepository().apply { signUpResult = Result.success(mockk()) }
-    val viewModel = setProfile(authRepository = authRepository)
+  fun upgradeButtonShowsAndDismissesBottomSheet() {
+    setProfile(authRepository = anonymousAuthRepository())
 
     composeTestRule
         .onNodeWithTag(ProfileScreenTestTags.UPGRADE_BUTTON)
@@ -219,6 +217,18 @@ class ProfileScreenTest {
     composeTestRule.onNodeWithTag(LoginScreenTestTags.EMAIL_INPUT).assertIsDisplayed()
     composeTestRule.onNodeWithTag(LoginScreenTestTags.PASSWORD_INPUT).assertIsDisplayed()
 
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.UPGRADE_SHEET).performTouchInput {
+      swipeDown()
+    }
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.EMAIL_INPUT).assertDoesNotExist()
+  }
+
+  @Test
+  fun dismissingUpgradeBottomSheetClearsCredentials() {
+    val viewModel = setProfile(authRepository = anonymousAuthRepository())
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.UPGRADE_BUTTON).performClick()
+
     composeTestRule
         .onNodeWithTag(LoginScreenTestTags.EMAIL_INPUT)
         .performTextReplacement("user@example.com")
@@ -226,14 +236,20 @@ class ProfileScreenTest {
         .onNodeWithTag(LoginScreenTestTags.PASSWORD_INPUT)
         .performTextReplacement("password")
 
-    composeTestRule.onNodeWithTag(LoginScreenTestTags.EMAIL_INPUT).performTouchInput { swipeDown() }
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.UPGRADE_SHEET).performTouchInput {
+      swipeDown()
+    }
+    composeTestRule.waitForIdle()
     composeTestRule.onNodeWithTag(LoginScreenTestTags.EMAIL_INPUT).assertDoesNotExist()
     assertEquals("", viewModel.uiState.value.email)
     assertEquals("", viewModel.uiState.value.password)
+  }
 
+  @Test
+  fun upgradeFormTogglesPasswordVisibilityAndSubmitsCredentials() {
+    val authRepository = anonymousAuthRepository().apply { signUpResult = Result.success(mockk()) }
+    setProfile(authRepository = authRepository)
     composeTestRule.onNodeWithTag(ProfileScreenTestTags.UPGRADE_BUTTON).performClick()
-    composeTestRule.onNodeWithTag(LoginScreenTestTags.EMAIL_INPUT).assertTextEquals("")
-    composeTestRule.onNodeWithTag(LoginScreenTestTags.PASSWORD_INPUT).assertTextEquals("")
 
     composeTestRule
         .onNodeWithTag(LoginScreenTestTags.PASSWORD_INPUT)

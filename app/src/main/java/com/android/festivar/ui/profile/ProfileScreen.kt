@@ -62,6 +62,7 @@ object ProfileScreenTestTags {
   const val EMAIL = "profileEmail"
   const val SAVE_BUTTON = "profileSaveButton"
   const val UPGRADE_BUTTON = "profileUpgradeButton"
+  const val UPGRADE_SHEET = "profileUpgradeSheet"
   const val SIGN_OUT_BUTTON = "profileSignOutButton"
   const val RETRY_BUTTON = "profileRetryButton"
   const val ERROR_MESSAGE = "profileErrorMessage"
