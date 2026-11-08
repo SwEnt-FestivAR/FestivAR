@@ -48,6 +48,7 @@ import com.android.festivar.ui.authentication.login.LoginScreenTestTags
 import com.android.festivar.ui.authentication.signup.SignUpScreenTestTags
 import com.android.festivar.ui.components.AvatarTestTags
 import com.android.festivar.ui.components.BottomNavigationBarTestTags
+import com.android.festivar.ui.components.NavigationSubScreen
 import com.android.festivar.ui.components.NavigationTab
 import com.android.festivar.ui.event.create.CreateEventScreenTestTags
 import com.android.festivar.ui.event.details.EventDetailsScreenTestTags
@@ -801,7 +802,7 @@ class MainActivityNavigationTest {
         .assertDoesNotExist()
   }
 
-  // Breaks if the overview loses its bar, selects another tab or shows the tasks badge.
+  // Breaks if the overview loses its bar, selects another tab or shows a sub-screen disc.
   @Test
   fun theEventsOverviewShowsTheBarWithEventsSelected() {
     seedNoEvents()
@@ -809,27 +810,39 @@ class MainActivityNavigationTest {
 
     waitUntilTagExists(BottomNavigationBarTestTags.BOTTOM_NAVIGATION_BAR)
     composeTestRule.onNodeWithTag(tabTag(NavigationTab.EVENTS)).assertIsSelected()
-    composeTestRule
-        .onNodeWithTag(BottomNavigationBarTestTags.TASKS_BADGE, useUnmergedTree = true)
-        .assertDoesNotExist()
+    NavigationSubScreen.entries.forEach { disc(it).assertDoesNotExist() }
   }
 
-  // Breaks if the tasks of an event lose the badge or highlight a tab.
+  // Breaks if the task board of an event loses the tasks disc on the Events tab or selects another
+  // tab.
   @Test
-  fun theTaskOverviewShowsTheTasksBadgeAndNoSelectedTab() {
+  fun theTaskOverviewNestsEventsUnderTheTaskBoard() {
     TasksRepositoryProvider.repository = TasksRepositoryLocal()
     setContentStartingOn(AppScreens.taskOverview("e1"))
 
     waitUntilTagExists(BottomNavigationBarTestTags.BOTTOM_NAVIGATION_BAR)
-    composeTestRule
-        .onNodeWithTag(BottomNavigationBarTestTags.TASKS_BADGE, useUnmergedTree = true)
-        .assertIsDisplayed()
-    NavigationTab.entries.forEach {
-      composeTestRule.onNodeWithTag(tabTag(it)).assertIsNotSelected()
-    }
+    disc(NavigationSubScreen.EVENT_TASKS).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(tabTag(NavigationTab.EVENTS)).assertIsSelected()
+    composeTestRule.onNodeWithTag(tabTag(NavigationTab.MY_TASKS)).assertIsNotSelected()
+    composeTestRule.onNodeWithTag(tabTag(NavigationTab.PROFILE)).assertIsNotSelected()
   }
 
-  // Breaks if a task opened from My tasks falls back to the Events tab.
+  // Breaks if tapping Events on the task board no longer returns to the events overview.
+  @Test
+  fun reselectingEventsOnTheTaskBoardReturnsToTheOverview() {
+    seedNoEvents()
+    TasksRepositoryProvider.repository = TasksRepositoryLocal()
+    setContentStartingOn(AppScreens.taskOverview("e1"))
+
+    waitUntilTagExists(BottomNavigationBarTestTags.BOTTOM_NAVIGATION_BAR)
+    composeTestRule.onNodeWithTag(tabTag(NavigationTab.EVENTS)).performClick()
+
+    waitUntilTagExists(EventsOverviewScreenTestTags.TITLE)
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.TITLE).assertIsDisplayed()
+    disc(NavigationSubScreen.EVENT_TASKS).assertDoesNotExist()
+  }
+
+  // Breaks if a task opened from My tasks falls back to the Events tab or loses the task disc.
   @Test
   fun aTaskOpenedFromMyTasksKeepsMyTasksSelected() {
     seedTask()
@@ -837,21 +850,18 @@ class MainActivityNavigationTest {
 
     waitUntilTagExists(BottomNavigationBarTestTags.BOTTOM_NAVIGATION_BAR)
     composeTestRule.onNodeWithTag(tabTag(NavigationTab.MY_TASKS)).assertIsSelected()
-    composeTestRule
-        .onNodeWithTag(BottomNavigationBarTestTags.TASKS_BADGE, useUnmergedTree = true)
-        .assertDoesNotExist()
+    disc(NavigationSubScreen.TASK_DETAILS).assertIsDisplayed()
   }
 
-  // Breaks if a task opened from an event loses the tasks badge.
+  // Breaks if a task opened from an event leaves the Events tab or loses the task disc.
   @Test
-  fun aTaskOpenedFromAnEventKeepsTheTasksBadge() {
+  fun aTaskOpenedFromAnEventNestsEventsUnderTheTask() {
     seedTask()
     setContentStartingOn(AppScreens.taskDetails("t1"))
 
     waitUntilTagExists(BottomNavigationBarTestTags.BOTTOM_NAVIGATION_BAR)
-    composeTestRule
-        .onNodeWithTag(BottomNavigationBarTestTags.TASKS_BADGE, useUnmergedTree = true)
-        .assertIsDisplayed()
+    disc(NavigationSubScreen.TASK_DETAILS).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(tabTag(NavigationTab.EVENTS)).assertIsSelected()
   }
 
   // Breaks if the bar shows over a form.
@@ -897,6 +907,12 @@ class MainActivityNavigationTest {
   }
 
   private fun tabTag(tab: NavigationTab) = BottomNavigationBarTestTags.getTestTagForTab(tab)
+
+  private fun disc(subScreen: NavigationSubScreen) =
+      composeTestRule.onNodeWithTag(
+          BottomNavigationBarTestTags.getTestTagForSubScreen(subScreen),
+          useUnmergedTree = true,
+      )
 
   /** Shows the app as [firebaseUser] on [route], reading the tasks from the provider. */
   private fun setContentStartingOn(route: String) {

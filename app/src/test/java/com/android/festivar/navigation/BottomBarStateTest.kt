@@ -1,6 +1,8 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 package com.android.festivar.navigation
 
+import com.android.festivar.ui.components.NavigationSubScreen
 import com.android.festivar.ui.components.NavigationTab
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -18,47 +20,47 @@ class BottomBarStateTest {
     )
   }
 
-  // Breaks if the event details stop keeping Events selected.
+  // Breaks if the event details stop nesting the Events tab under the details disc.
   @Test
-  fun theEventDetailsSelectEvents() {
+  fun theEventDetailsNestEventsUnderTheDetails() {
     assertEquals(
-        BottomBarState(NavigationTab.EVENTS),
+        BottomBarState(NavigationTab.EVENTS, NavigationSubScreen.EVENT_DETAILS),
         bottomBarStateFor("${AppScreens.EventDetails.name}/{eventId}", null),
     )
   }
 
-  // Breaks if the task overview of an event loses the tasks badge.
+  // Breaks if the task board of an event stops nesting the Events tab under the tasks disc.
   @Test
-  fun theTaskOverviewShowsEventsWithTheTasksBadge() {
+  fun theTaskOverviewNestsEventsUnderTheTaskBoard() {
     assertEquals(
-        BottomBarState(NavigationTab.EVENTS, inEventTasks = true),
+        BottomBarState(NavigationTab.EVENTS, NavigationSubScreen.EVENT_TASKS),
         bottomBarStateFor("${AppScreens.TaskOverview.name}/{eventId}", null),
     )
   }
 
-  // Breaks if a task opened from My tasks falls back to the Events tab.
+  // Breaks if a task opened from My tasks falls back to the Events tab or loses the task disc.
   @Test
-  fun taskDetailsFromMyTasksSelectMyTasks() {
+  fun taskDetailsFromMyTasksNestMyTasksUnderTheTask() {
     assertEquals(
-        BottomBarState(NavigationTab.MY_TASKS),
+        BottomBarState(NavigationTab.MY_TASKS, NavigationSubScreen.TASK_DETAILS),
         bottomBarStateFor(taskDetailsRoute, TaskOrigin.MY_TASKS.name),
     )
   }
 
-  // Breaks if a task opened from an event loses the tasks badge.
+  // Breaks if a task opened from an event leaves the Events tab or loses the task disc.
   @Test
-  fun taskDetailsFromAnEventShowEventsWithTheTasksBadge() {
+  fun taskDetailsFromAnEventNestEventsUnderTheTask() {
     assertEquals(
-        BottomBarState(NavigationTab.EVENTS, inEventTasks = true),
+        BottomBarState(NavigationTab.EVENTS, NavigationSubScreen.TASK_DETAILS),
         bottomBarStateFor(taskDetailsRoute, TaskOrigin.EVENT.name),
     )
   }
 
   // Breaks if a missing origin is not treated as the default event origin.
   @Test
-  fun taskDetailsWithoutAnOriginShowEventsWithTheTasksBadge() {
+  fun taskDetailsWithoutAnOriginNestEventsUnderTheTask() {
     assertEquals(
-        BottomBarState(NavigationTab.EVENTS, inEventTasks = true),
+        BottomBarState(NavigationTab.EVENTS, NavigationSubScreen.TASK_DETAILS),
         bottomBarStateFor(taskDetailsRoute, null),
     )
   }
