@@ -29,6 +29,7 @@ import com.android.festivar.model.user.UsersRepositoryProvider
 import com.android.festivar.ui.authentication.login.LoginScreenTestTags
 import com.android.festivar.ui.authentication.signup.SignUpScreenTestTags
 import com.android.festivar.ui.components.BottomNavigationBarTestTags
+import com.android.festivar.ui.components.NavigationSubScreen
 import com.android.festivar.ui.components.NavigationTab
 import com.android.festivar.ui.event.create.CreateEventScreenTestTags
 import com.android.festivar.ui.event.details.EventDetailsScreenTestTags
@@ -158,7 +159,7 @@ class EndToEndTest {
 
   /**
    * Walks the M2 path as a new member: sign up, join the seeded event, open its task board and
-   * check the bottom bar (tasks badge, no tab selected), add a task and open it, take it and see
+   * check the bottom bar (Events nested under the tasks disc), add a task and open it, take it and see
    * the "On this task" section, visit My tasks, come back, give the task back after keeping it
    * once, and sign out through the Profile tab. It proves the bar follows the member through the
    * board and the task, that taking and giving back are stored, and that the confirmation can be
@@ -185,7 +186,7 @@ class EndToEndTest {
           .assertTextEquals(event.title)
       // To add once the event details show it: check that the join code is visible
 
-      // The board: the bar has no tab selected and the Events tab carries the tasks badge
+      // The board: the bar nests the Events tab under the tasks disc
       composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.SEE_TASKS_BUTTON).performClick()
       waitUntilTagExists(TaskOverviewScreenTestTags.ADD_TASK)
       assertTheBoardBar()
@@ -206,9 +207,7 @@ class EndToEndTest {
 
       composeTestRule.onNodeWithText(M2_TASK_TITLE).performClick()
       waitUntilTagExists(TaskDetailsScreenTestTags.TAKE_BUTTON)
-      composeTestRule
-          .onNodeWithTag(BottomNavigationBarTestTags.TASKS_BADGE, useUnmergedTree = true)
-          .assertIsDisplayed()
+      assertTheBarNests(NavigationTab.EVENTS, NavigationSubScreen.TASK_DETAILS)
 
       // Taking the task shows who is on it
       composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.TAKE_BUTTON).performClick()
@@ -369,18 +368,25 @@ class EndToEndTest {
     waitUntilTagExists(EventsOverviewScreenTestTags.TITLE)
   }
 
-  /** On the board, the bar exists with the tasks badge and none of its three tabs selected. */
+  /** On the board, the bar nests the Events tab under the tasks disc. */
   private fun assertTheBoardBar() {
     composeTestRule
         .onNodeWithTag(BottomNavigationBarTestTags.BOTTOM_NAVIGATION_BAR)
         .assertIsDisplayed()
+    assertTheBarNests(NavigationTab.EVENTS, NavigationSubScreen.EVENT_TASKS)
+  }
+
+  /** The bar shows [subScreen]'s disc on [tab], which is the only selected tab. */
+  private fun assertTheBarNests(tab: NavigationTab, subScreen: NavigationSubScreen) {
     composeTestRule
-        .onNodeWithTag(BottomNavigationBarTestTags.TASKS_BADGE, useUnmergedTree = true)
+        .onNodeWithTag(
+            BottomNavigationBarTestTags.getTestTagForSubScreen(subScreen),
+            useUnmergedTree = true,
+        )
         .assertIsDisplayed()
-    for (tab in NavigationTab.entries) {
-      composeTestRule
-          .onNodeWithTag(BottomNavigationBarTestTags.getTestTagForTab(tab))
-          .assertIsNotSelected()
+    for (other in NavigationTab.entries) {
+      val node = composeTestRule.onNodeWithTag(BottomNavigationBarTestTags.getTestTagForTab(other))
+      if (other == tab) node.assertIsSelected() else node.assertIsNotSelected()
     }
   }
 
