@@ -176,6 +176,32 @@ class TaskRepositoryFirebaseTest {
     }
   }
 
+  // Breaks if a takenAt entry that is not a uid to ISO string pair loads silently instead of
+  // failing.
+  @Test
+  fun documentToTask_withABadTakenAtEntry_fails() = runBlocking {
+    val documentId = "task-${UUID.randomUUID()}"
+    val document = Firebase.firestore.collection(TASK_COLLECTION_PATH).document(documentId)
+    document
+        .set(
+            mapOf(
+                "eventId" to "event-2",
+                "title" to "Old task",
+                "assignees" to listOf("user-2"),
+                "takenAt" to mapOf("user-2" to 1234),
+                "ownerId" to "owner-1",
+            )
+        )
+        .await()
+
+    try {
+      val snapshot = document.get().await()
+      assertThrowsOfType<IllegalArgumentException> { invokeDocumentToTask(snapshot) }
+    } finally {
+      document.delete().await()
+    }
+  }
+
   @Test
   fun documentToTask_failsWhenTheOwnerIsMissing() = runBlocking {
     val documentId = "task-${UUID.randomUUID()}"
