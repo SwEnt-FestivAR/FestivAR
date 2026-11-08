@@ -24,7 +24,8 @@ enum class AppScreens {
   companion object {
     fun eventDetails(eventId: String) = "${EventDetails.name}/$eventId"
 
-    fun taskDetails(taskId: String) = "${TaskDetails.name}/$taskId"
+    fun taskDetails(taskId: String, from: TaskOrigin = TaskOrigin.EVENT) =
+        "${TaskDetails.name}/$taskId?from=${from.name}"
 
     fun taskOverview(eventId: String) = "${TaskOverview.name}/$eventId"
 
@@ -34,4 +35,10 @@ enum class AppScreens {
 
     fun createAnnouncement(eventId: String) = "${CreateAnnouncement.name}/$eventId"
   }
+}
+
+/** Where a task's details were opened from; it decides the selected tab of the bottom bar. */
+enum class TaskOrigin {
+  EVENT,
+  MY_TASKS,
 }

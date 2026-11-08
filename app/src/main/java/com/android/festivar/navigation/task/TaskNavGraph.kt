@@ -16,6 +16,7 @@ import androidx.navigation.navArgument
 import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.user.User
 import com.android.festivar.navigation.AppScreens
+import com.android.festivar.navigation.TaskOrigin
 import com.android.festivar.ui.task.create.CreateTaskScreen
 import com.android.festivar.ui.task.create.CreateTaskViewModel
 import com.android.festivar.ui.task.details.TaskDetailsScreen
@@ -76,8 +77,16 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, dataRepository: 
     )
   }
   composable(
-      route = "${AppScreens.TaskDetails.name}/{taskId}",
-      arguments = listOf(navArgument("taskId") { type = NavType.StringType }),
+      route = "${AppScreens.TaskDetails.name}/{taskId}?from={from}",
+      arguments =
+          listOf(
+              navArgument("taskId") { type = NavType.StringType },
+              // Where the details were opened from, read by the bottom bar only.
+              navArgument("from") {
+                type = NavType.StringType
+                defaultValue = TaskOrigin.EVENT.name
+              },
+          ),
   ) { backStackEntry ->
     val taskId = backStackEntry.arguments?.getString("taskId") ?: ""
     val firebaseUser = dataRepository.authRepository.currentUser

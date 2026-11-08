@@ -25,6 +25,7 @@ import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.task.TasksRepositoryProvider
 import com.android.festivar.navigation.task.taskGraph
 import com.android.festivar.ui.task.create.CreateTaskScreenTestTags
+import com.android.festivar.ui.task.details.TaskDetailsScreenTestTags
 import com.android.festivar.ui.theme.AppTheme
 import com.google.firebase.auth.FirebaseUser
 import io.mockk.every
@@ -174,6 +175,41 @@ class TaskNavGraphTest {
       navController.currentBackStackEntry?.destination?.route == "start"
     }
     assertEquals("New title", runBlocking { repository.getTask("t1") }.title)
+  }
+
+  // Breaks if the optional origin argument does not parse, so a task opened from My tasks has no
+  // destination.
+  @Test
+  fun taskDetailsRoute_fromMyTasks_opensTheDetailsAndKeepsTheOrigin() {
+    runBlocking { repository.addTask(Task("t1", "event-1", "Old title", ownerId = "owner-1")) }
+    val user = mockk<FirebaseUser>(relaxed = true) { every { uid } returns "owner-1" }
+    val authRepository = mockk<AuthRepository> { every { currentUser } returns user }
+    lateinit var navController: NavHostController
+    composeTestRule.setContent {
+      AppTheme {
+        navController = rememberNavController()
+        NavHost(
+            navController,
+            startDestination = AppScreens.taskDetails("t1", TaskOrigin.MY_TASKS),
+        ) {
+          taskGraph(
+              navController,
+              DataRepositoryLocal(authRepository, tasksRepository = repository),
+          )
+        }
+      }
+    }
+
+    composeTestRule.waitUntil(timeoutMillis = 5_000) {
+      composeTestRule
+          .onAllNodesWithTag(TaskDetailsScreenTestTags.TITLE)
+          .fetchSemanticsNodes()
+          .isNotEmpty()
+    }
+    assertEquals(
+        TaskOrigin.MY_TASKS.name,
+        navController.currentBackStackEntry?.arguments?.getString("from"),
+    )
   }
 
   // Breaks if back from an unchanged edit form does not pop the edit route.
