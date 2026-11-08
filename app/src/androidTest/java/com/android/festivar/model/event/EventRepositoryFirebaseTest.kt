@@ -1,5 +1,6 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.event
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -19,6 +20,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.BeforeClass
@@ -172,6 +174,34 @@ class EventRepositoryFirebaseTest {
     repository.editEvent(event.eventId, updatedEvent)
 
     assertEquals(updatedEvent, repository.getEvent(event.eventId))
+  }
+
+  @Test
+  fun addEvent_thenGetEvent_keepsTheVenue() = runBlocking {
+    val withVenue = event.copy(venue = Venue(46.5197, 6.6323, 12.5))
+
+    repository.addEvent(withVenue)
+
+    assertEquals(Venue(46.5197, 6.6323, 12.5), repository.getEvent(event.eventId).venue)
+  }
+
+  @Test
+  fun addEvent_withoutVenue_readsBackNull() = runBlocking {
+    repository.addEvent(event)
+
+    assertNull(repository.getEvent(event.eventId).venue)
+  }
+
+  @Test
+  fun editEvent_canSetThenClearTheVenue() = runBlocking {
+    repository.addEvent(event)
+    val venue = Venue(46.5197, 6.6323, 12.5)
+
+    repository.editEvent(event.eventId, event.copy(venue = venue))
+    assertEquals(venue, repository.getEvent(event.eventId).venue)
+
+    repository.editEvent(event.eventId, event.copy(venue = null))
+    assertNull(repository.getEvent(event.eventId).venue)
   }
 
   @Test
