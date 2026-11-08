@@ -26,6 +26,7 @@ import com.android.festivar.model.task.TasksRepositoryProvider
 import com.android.festivar.navigation.task.taskGraph
 import com.android.festivar.ui.task.create.CreateTaskScreenTestTags
 import com.android.festivar.ui.task.details.TaskDetailsScreenTestTags
+import com.android.festivar.ui.task.mytasks.MyTasksPlaceholderTestTags
 import com.android.festivar.ui.theme.AppTheme
 import com.google.firebase.auth.FirebaseUser
 import io.mockk.every
@@ -210,6 +211,21 @@ class TaskNavGraphTest {
         TaskOrigin.MY_TASKS.name,
         navController.currentBackStackEntry?.arguments?.getString("from"),
     )
+  }
+
+  // Breaks if the My tasks tab has no destination in the task graph.
+  @Test
+  fun myTasksRoute_showsThePlaceholder() {
+    composeTestRule.setContent {
+      AppTheme {
+        val navController = rememberNavController()
+        NavHost(navController, startDestination = AppScreens.MyTasks.name) {
+          taskGraph(navController, DataRepositoryLocal(mockk<AuthRepository>(relaxed = true)))
+        }
+      }
+    }
+
+    composeTestRule.onNodeWithTag(MyTasksPlaceholderTestTags.SCREEN).assertIsDisplayed()
   }
 
   // Breaks if back from an unchanged edit form does not pop the edit route.

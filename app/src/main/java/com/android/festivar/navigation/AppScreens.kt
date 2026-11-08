@@ -13,6 +13,7 @@ enum class AppScreens {
   TaskOverview,
   EventsOverview,
   Profile,
+  MyTasks,
   JoinEvent,
   EventDetails,
   CreateEvent,

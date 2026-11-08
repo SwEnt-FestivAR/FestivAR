@@ -23,6 +23,7 @@ import com.android.festivar.ui.task.details.TaskDetailsScreen
 import com.android.festivar.ui.task.details.TaskDetailsViewModel
 import com.android.festivar.ui.task.edit.EditTaskScreen
 import com.android.festivar.ui.task.edit.EditTaskViewModel
+import com.android.festivar.ui.task.mytasks.MyTasksPlaceholderScreen
 import com.android.festivar.ui.task.overview.TaskOverviewScreen
 import com.android.festivar.ui.task.overview.TaskOverviewViewModel
 
@@ -55,6 +56,8 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, dataRepository: 
         onAddTask = { navigator.onAddTask(eventId) },
     )
   }
+  // Until the My tasks screen of #397 lands, its tab opens a placeholder.
+  composable(route = AppScreens.MyTasks.name) { MyTasksPlaceholderScreen() }
   // The route carries the id of the event the new task belongs to.
   composable(
       route = "${AppScreens.CreateTask.name}/{eventId}",
