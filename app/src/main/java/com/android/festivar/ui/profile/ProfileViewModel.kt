@@ -33,7 +33,7 @@ private const val LOG_TAG = "ProfileViewModel"
  * @property isLoading Whether the [User] item is currently being fetched.
  * @property isSaving Whether the [User] item is being saved and updated with the new values.
  * @property signedOut Whether the [User] signs out, keeps the information to block any other
- *   operation when the disconnection is occured.
+ *   operation when the disconnection is occurred.
  * @property isSigningOut Whether the [User] is currently in the process of signing out, it blocks
  *   any other operation while trying to disconnect the [User].
  */
