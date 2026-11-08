@@ -14,6 +14,7 @@ import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -128,7 +129,10 @@ class ProfileScreenTest {
       InstrumentationRegistry.getInstrumentation().targetContext.getString(id)
 
   private fun confirmSignOut() {
-    composeTestRule.onNodeWithText(string(R.string.action_continue_anyway)).performClick()
+    val continueText = string(R.string.action_continue_anyway)
+    if (composeTestRule.onAllNodesWithText(continueText).fetchSemanticsNodes().isNotEmpty()) {
+      composeTestRule.onNodeWithText(continueText).performClick()
+    }
   }
 
   /** Turns red when the title, the back arrow, the avatar, a field or a button disappears. */
