@@ -97,7 +97,13 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, dataRepository:
       LaunchedEffect(Unit) { navigator.onSignedOut() }
     } else {
       VenueMapScreen(
-          viewModel = viewModel(key = eventId) { VenueMapViewModel(eventId) },
+          viewModel =
+              viewModel(key = eventId) {
+                VenueMapViewModel(
+                    eventId,
+                    dataRepository.authRepository.currentUser?.uid.orEmpty(),
+                )
+              },
           onBack = { navController.popBackStack() },
       )
     }

@@ -13,6 +13,11 @@ import com.android.festivar.model.structure.Structure
 import com.android.festivar.model.structure.StructureKind
 import com.android.festivar.model.structure.StructuresRepository
 import com.android.festivar.model.structure.StructuresRepositoryLocal
+import com.android.festivar.model.task.Task
+import com.android.festivar.model.task.TaskSpot
+import com.android.festivar.model.task.TasksRepository
+import com.android.festivar.model.task.TasksRepositoryLocal
+import com.android.festivar.model.user.User
 import java.io.IOException
 import java.time.ZonedDateTime
 import kotlinx.coroutines.CompletableDeferred
@@ -28,6 +33,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -63,6 +69,17 @@ private class ControlledStructures(val local: StructuresRepositoryLocal) :
   }
 }
 
+/** A [TasksRepository] serving [tasks], or throwing [failure] when it is not null. */
+private class ControlledTasks(var tasks: List<Task>) : TasksRepository by TasksRepositoryLocal() {
+  /** Thrown by [getAllTasks] when not null. */
+  var failure: Exception? = null
+
+  override suspend fun getAllTasks(eventId: String): List<Task> {
+    failure?.let { throw it }
+    return tasks.filter { it.eventId == eventId }
+  }
+}
+
 /** A [LocationSource] that counts how many times [updates] was collected from. */
 private class CountingLocationSource : LocationSource {
   val fixes = MutableSharedFlow<LocationFix>()
@@ -92,14 +109,70 @@ class VenueMapViewModelTest {
   private val bar = Structure("s2", "e1", StructureKind.STAND, "Bar", 8.0, 2.0, 3.0, 2.5)
   private val elsewhere = Structure("s3", "e2", StructureKind.TABLE, "Other", 0.0, 0.0, 2.0, 2.0)
 
+  private val me = User("me", "Ada", "Lovelace")
+  private val sami = User("u2", "Sami", "Kader")
+  // Mine, on the stage, whose centre is (0, -7); starts 40 minutes after the fixed clock.
+  private val power =
+      Task(
+          taskId = "t1",
+          eventId = "e1",
+          title = "Run power to stage",
+          location = "Stage, north corner",
+          startTime = start.plusMinutes(40),
+          maxAssign = 2,
+          assignees = listOf(me, sami),
+          spot = TaskSpot.onStructure("s1"),
+          ownerId = "o",
+      )
+  private val ice =
+      Task(
+          taskId = "t2",
+          eventId = "e1",
+          title = "Ice bags",
+          location = "Bar",
+          spot = TaskSpot.at(90.0, 120.0),
+          ownerId = "o",
+      )
+  private val gate =
+      Task(
+          taskId = "t3",
+          eventId = "e1",
+          title = "Gate",
+          assignees = listOf(sami),
+          spot = TaskSpot.at(1.0, 1.0),
+          ownerId = "o",
+      )
+  private val flyers =
+      Task(
+          taskId = "t4",
+          eventId = "e1",
+          title = "Flyers",
+          completed = true,
+          spot = TaskSpot.at(2.0, 2.0),
+          ownerId = "o",
+      )
+  private val unplaced = Task(taskId = "t5", eventId = "e1", title = "Unplaced", ownerId = "o")
+  private val ghost =
+      Task(
+          taskId = "t6",
+          eventId = "e1",
+          title = "Ghost",
+          assignees = listOf(me),
+          spot = TaskSpot.onStructure("gone"),
+          ownerId = "o",
+      )
+  private val allTasks = listOf(power, ice, gate, flyers, unplaced, ghost)
+
   private lateinit var events: ControlledEvents
   private lateinit var structures: ControlledStructures
+  private lateinit var tasks: ControlledTasks
 
   @Before
   fun setUp() {
     Dispatchers.setMain(UnconfinedTestDispatcher())
     events = ControlledEvents(EventsRepositoryLocal(listOf(event)))
     structures = ControlledStructures(StructuresRepositoryLocal(listOf(stage, bar, elsewhere)))
+    tasks = ControlledTasks(allTasks)
   }
 
   @After
@@ -108,7 +181,22 @@ class VenueMapViewModelTest {
   }
 
   private fun viewModel(source: LocationSource? = null) =
-      VenueMapViewModel("e1", events, structures, source)
+      VenueMapViewModel("e1", "me", events, structures, source, tasks, clock = { start })
+
+  /** A loaded state with every test task, the filter on ALL so every placed task is a pin. */
+  private fun allState() =
+      VenueMapUiState(
+          isLoading = false,
+          venue = venue,
+          structures = listOf(stage, bar),
+          tasks = allTasks,
+          filter = PinFilter.ALL,
+          currentUserId = "me",
+          now = start,
+      )
+
+  private fun pointAt(x: Double, y: Double) =
+      VenueGeometry.latLngFrom(venue.latitude, venue.longitude, venue.bearing, x, y)
 
   /** Red if load drops a field of the event or keeps structures of another event. */
   @Test
@@ -236,5 +324,178 @@ class VenueMapViewModelTest {
 
     assertEquals(1, events.calls)
     assertFalse(vm.uiState.value.isLoading)
+  }
+
+  /** Red if load skips the tasks or keeps tasks of another event. */
+  @Test
+  fun loadFillsTheTasksOfTheEvent() {
+    tasks.tasks = allTasks + ice.copy(taskId = "other", eventId = "e2")
+    val vm = viewModel().also { it.load() }
+
+    assertEquals(allTasks, vm.uiState.value.tasks)
+    assertEquals("me", vm.uiState.value.currentUserId)
+    assertEquals(start, vm.uiState.value.now)
+  }
+
+  /** Red if a failing tasks read throws away the venue and structures that did load. */
+  @Test
+  fun aFailingTasksRepositoryKeepsTheVenueAndSetsTheError() {
+    tasks.failure = IOException("offline")
+    val vm = viewModel().also { it.load() }
+
+    val state = vm.uiState.value
+    assertEquals(venue, state.venue)
+    assertEquals(listOf(stage, bar), state.structures)
+    assertEquals(R.string.map_load_failed, state.errorMsg)
+    assertFalse(state.isLoading)
+  }
+
+  /** Red if a task without spot, or a spot on a deleted structure, is drawn as a pin. */
+  @Test
+  fun tasksWithoutSpotOrOnAMissingStructureAreNotPins() {
+    val ids = allState().pins.map { it.taskId }
+
+    assertEquals(listOf("t1", "t2", "t3", "t4"), ids)
+  }
+
+  /** Red if a pin on a structure misses its centre or a free point is moved. */
+  @Test
+  fun aPinOnAStructureSitsAtItsCentreAndAFreePointAtItsPoint() {
+    val pins = allState().pins.associateBy { it.taskId }
+
+    val onStage = pins.getValue("t1").point
+    val expectedStage = pointAt(0.0, -7.0)
+    assertEquals(expectedStage.latitude, onStage.latitude, 1e-9)
+    assertEquals(expectedStage.longitude, onStage.longitude, 1e-9)
+    val free = pins.getValue("t2").point
+    val expectedFree = pointAt(90.0, 120.0)
+    assertEquals(expectedFree.latitude, free.latitude, 1e-9)
+    assertEquals(expectedFree.longitude, free.longitude, 1e-9)
+  }
+
+  /** Red if a filter keeps the wrong tasks. */
+  @Test
+  fun mineKeepsTheUsersTasksAllKeepsAllStructuresKeepsNone() {
+    val state = allState()
+
+    assertEquals(listOf("t1"), state.copy(filter = PinFilter.MINE).pins.map { it.taskId })
+    assertEquals(4, state.copy(filter = PinFilter.ALL).pins.size)
+    assertTrue(state.copy(filter = PinFilter.STRUCTURES).pins.isEmpty())
+  }
+
+  /** Red if the chip counts follow the filter or the query, or count unplaced tasks. */
+  @Test
+  fun countsAreThePlacedTasksWhateverTheFilterAndQuery() {
+    val state = allState().copy(filter = PinFilter.STRUCTURES, query = "nothing matches")
+
+    assertEquals(1, state.mineCount)
+    assertEquals(4, state.allCount)
+  }
+
+  /** Red if the search ignores the place, or is case sensitive. */
+  @Test
+  fun theQueryFiltersByTitleAndByPlaceIgnoringCase() {
+    val state = allState()
+
+    assertEquals(listOf("t2"), state.copy(query = "ICE").pins.map { it.taskId })
+    assertEquals(listOf("t1"), state.copy(query = "north CORNER").pins.map { it.taskId })
+    assertEquals(4, state.copy(query = "  ").pins.size)
+  }
+
+  /** Red if a pin is tinted by the wrong rule. */
+  @Test
+  fun statusFollowsTheTaskDetailsRule() {
+    val status = allState().pins.associate { it.taskId to it.status }
+
+    assertEquals(PinStatus.MINE, status["t1"])
+    assertEquals(PinStatus.OPEN, status["t2"])
+    assertEquals(PinStatus.TAKEN, status["t3"])
+    assertEquals(PinStatus.DONE, status["t4"])
+  }
+
+  /** Red if the label drops the time or does not cut a long title. */
+  @Test
+  fun theLabelIsTheTitleAndTimeCutAtEighteenCharacters() {
+    val long = ice.copy(taskId = "t7", title = "Unload the delivery truck", startTime = start)
+    val labels = allState().copy(tasks = allTasks + long).pins.associate { it.taskId to it.label }
+
+    // "Run power to stage" is exactly 18 characters, so it stays whole.
+    assertEquals("Run power to stage · 14:40", labels["t1"])
+    assertEquals("Ice bags", labels["t2"])
+    assertEquals("Unload the deliver… · 14:00", labels["t7"])
+  }
+
+  /** Red if the focused task misses its partner, time or distance. */
+  @Test
+  fun focusWithAFixGivesTheDistanceAndWalk() {
+    // Me at the venue centre, the pin at (90, 120): sqrt(90² + 120²) = 150 m, and
+    // 150 m / 1.2 m/s = 125 s, which rounds up to 3 minutes.
+    val state =
+        allState()
+            .copy(selectedTaskId = "t2", me = LocationFix(venue.latitude, venue.longitude, 5f))
+
+    val focus = state.focus!!
+    assertEquals("Ice bags", focus.title)
+    assertEquals("Bar", focus.place)
+    assertNull(focus.withName)
+    assertNull(focus.time)
+    assertNull(focus.minutesUntil)
+    assertEquals(150, focus.distanceMetres)
+    assertEquals(3, focus.walkMinutes)
+  }
+
+  /** Red if a missing fix invents a distance, or the time and partner are wrong. */
+  @Test
+  fun focusWithoutAFixHasNoDistanceAndCountsMinutesFromNow() {
+    val focus = allState().copy(selectedTaskId = "t1").focus!!
+
+    assertEquals("t1", focus.taskId)
+    assertEquals("Stage, north corner", focus.place)
+    assertEquals("Sami K.", focus.withName)
+    assertEquals("14:40", focus.time)
+    assertEquals(40L, focus.minutesUntil)
+    assertNull(focus.distanceMetres)
+    assertNull(focus.walkMinutes)
+  }
+
+  /** Red if the sheet keeps describing a task whose pin is filtered out, or none is selected. */
+  @Test
+  fun focusIsNullWithoutASelectionOrWhenThePinIsHidden() {
+    assertNull(allState().focus)
+    assertNull(allState().copy(selectedTaskId = "t2", filter = PinFilter.MINE).focus)
+  }
+
+  /** Red if a task and a structure can be selected at once. */
+  @Test
+  fun selectingATaskClearsTheStructureAndBack() {
+    val vm = viewModel().also { it.load() }
+
+    vm.select("s1")
+    vm.selectTask("t1")
+    assertNull(vm.uiState.value.selectedStructureId)
+    assertEquals("t1", vm.uiState.value.selectedTaskId)
+
+    vm.select("s2")
+    assertNull(vm.uiState.value.selectedTaskId)
+    assertEquals("s2", vm.uiState.value.selectedStructureId)
+  }
+
+  /** Red if setFilter or setQuery do not reach the state. */
+  @Test
+  fun setFilterAndSetQueryReachTheState() {
+    val vm = viewModel().also { it.load() }
+
+    vm.setFilter(PinFilter.ALL)
+    vm.setQuery("ice")
+
+    assertEquals(listOf("t2"), vm.uiState.value.pins.map { it.taskId })
+  }
+
+  /** Red if the short name drops the initial's dot or breaks on a blank surname. */
+  @Test
+  fun shortNameIsTheNameAndTheSurnameInitial() {
+    assertEquals("Sami K.", shortName(sami))
+    assertEquals("Sami", shortName(User("u3", "Sami", " ")))
+    assertEquals("", shortName(User("u4")))
   }
 }

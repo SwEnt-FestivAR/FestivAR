@@ -384,6 +384,7 @@ class MainActivityNavigationTest {
         )
     EventsRepositoryProvider.repository = EventsRepositoryLocal(listOf(event))
     StructuresRepositoryProvider.repository = StructuresRepositoryLocal()
+    TasksRepositoryProvider.repository = TasksRepositoryLocal()
 
     composeTestRule.setContent {
       FestivAR(
