@@ -22,6 +22,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
 import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.datarepository.DataRepositoryFirebase
+import com.android.festivar.model.location.FusedLocationSource
+import com.android.festivar.model.location.LocationSourceProvider
 import com.android.festivar.navigation.AppScreens
 import com.android.festivar.navigation.announcement.announcementGraph
 import com.android.festivar.navigation.authentication.authGraph
@@ -41,6 +43,12 @@ class MainActivity : ComponentActivity() {
     // Retrieved 2026-11-05, License - CC BY-SA 4.0
 
     this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
+
+    // The venue map reads the device position through the provider; a test that set a fake source
+    // before launching the activity keeps it.
+    if (LocationSourceProvider.source == null) {
+      LocationSourceProvider.source = FusedLocationSource(applicationContext)
+    }
 
     setContent { AppTheme { Surface(modifier = Modifier.fillMaxSize()) { FestivAR() } } }
   }
