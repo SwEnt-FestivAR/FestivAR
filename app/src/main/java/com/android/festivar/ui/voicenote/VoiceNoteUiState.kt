@@ -99,7 +99,9 @@ class VoiceNoteCallbacks(
     val onRecordStart: () -> Unit,
     /** The owner releases the button: the recording is sent. */
     val onRecordRelease: () -> Unit,
-    /** The owner slides left and releases: the recording is dropped. */
+    /**
+     * The recording is interrupted (the finger is lost, the microphone turns off): it is dropped.
+     */
     val onRecordCancel: () -> Unit,
     /** Tries again the last failed action (sending or playing). */
     val onRetry: () -> Unit,

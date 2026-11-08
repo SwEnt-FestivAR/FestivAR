@@ -26,7 +26,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -51,7 +50,6 @@ import java.time.Duration
  * notes" frames in Figma.
  */
 object VoiceNoteRecordTestTags {
-  const val RECORDING_HINT = "voiceNoteRecordingHint"
   const val RECORDING_BAR = "voiceNoteRecordingBar"
   const val VOICE_NOTE_RECORD = "voiceNoteRecord"
   const val SEND_ERROR = "voiceNoteSendError"
@@ -62,9 +60,6 @@ object VoiceNoteRecordTestTags {
   const val PLAYBACK_RETRY = "voiceNotePlaybackRetry"
 }
 
-/** How far to the left (in dp) the finger has to slide before releasing to cancel. */
-private const val CANCEL_DISTANCE_DP = 80
-
 /** The opacity of the record bar when the microphone is off. */
 private const val DISABLED_ALPHA = 0.5f
 
@@ -72,8 +67,7 @@ private const val DISABLED_ALPHA = 0.5f
  * The bar fixed above the bottom of the screen: the notices of the owner (failed send, microphone
  * off) and the record bar under them, in the same [FixedBottomBar]. Only the owner of a task
  * without a note sees it: it is hidden otherwise. The owner holds the round button to record,
- * releases it to stop and slides left before releasing to cancel. Without the microphone permission
- * the record bar is greyed out.
+ * releases it to stop. Without the microphone permission the record bar is greyed out.
  */
 @Composable
 fun VoiceNoteRecordBar(
@@ -144,7 +138,7 @@ private fun RecordPill(state: VoiceNoteUiState, callbacks: VoiceNoteCallbacks) {
   }
 }
 
-/** The red dot, the timer and the hint shown while recording. */
+/** The red dot and the timer shown while recording. */
 @Composable
 private fun RecordingIndicator(state: VoiceNoteUiState) {
   Row(
@@ -152,34 +146,24 @@ private fun RecordingIndicator(state: VoiceNoteUiState) {
       horizontalArrangement = Arrangement.spacedBy(12.dp),
   ) {
     Box(Modifier.size(10.dp).background(MaterialTheme.colorScheme.error, CircleShape))
-    Column {
-      Text(
-          stringResource(R.string.voice_note_recording, formatVoiceDuration(state.elapsed)),
-          style = MaterialTheme.typography.labelLarge,
-      )
-      Text(
-          stringResource(R.string.voice_note_recording_hint),
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-          modifier = Modifier.testTag(VoiceNoteRecordTestTags.RECORDING_HINT),
-      )
-    }
+    Text(
+        stringResource(R.string.voice_note_recording, formatVoiceDuration(state.elapsed)),
+        style = MaterialTheme.typography.labelLarge,
+    )
   }
 }
 
 /**
- * The round microphone button. It reacts to the press itself: pressing starts, releasing stops and
- * releasing after a slide to the left cancels. The same node stays in place while recording, so the
- * gesture is not interrupted when the bar changes. A gesture that is interrupted (the finger is
- * lost, or the button stops listening because the microphone is turned off) cancels the recording
- * instead of leaving the recorder on.
+ * The round microphone button. It reacts to the press itself: pressing starts and releasing stops.
+ * The same node stays in place while recording, so the gesture is not interrupted when the bar
+ * changes. A gesture that is interrupted (the finger is lost, or the button stops listening because
+ * the microphone is turned off) cancels the recording instead of leaving the recorder on.
  */
 @Composable
 private fun RecordButton(enabled: Boolean, callbacks: VoiceNoteCallbacks) {
   val onStart by rememberUpdatedState(callbacks.onRecordStart)
   val onRelease by rememberUpdatedState(callbacks.onRecordRelease)
   val onCancel by rememberUpdatedState(callbacks.onRecordCancel)
-  val cancelDistance = with(LocalDensity.current) { CANCEL_DISTANCE_DP.dp.toPx() }
   val label = stringResource(R.string.voice_note_record)
   val colors = MaterialTheme.colorScheme
   Box(
@@ -191,25 +175,27 @@ private fun RecordButton(enabled: Boolean, callbacks: VoiceNoteCallbacks) {
             if (!enabled) disabled()
           }
           .testTag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD)
-          .pointerInput(enabled, cancelDistance) {
+          .pointerInput(enabled) {
             if (!enabled) return@pointerInput
             awaitEachGesture {
               val down = awaitFirstDown()
               onStart()
               var finished = false
               try {
-                var cancelled: Boolean
+                var released: Boolean
                 while (true) {
                   val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id }
                   if (change == null) {
-                    cancelled = true
+                    released = false
                     break
                   }
-                  cancelled = change.position.x - down.position.x < -cancelDistance
-                  if (!change.pressed) break
+                  if (!change.pressed) {
+                    released = true
+                    break
+                  }
                 }
                 finished = true
-                if (cancelled) onCancel() else onRelease()
+                if (released) onRelease() else onCancel()
               } finally {
                 if (!finished) onCancel()
               }

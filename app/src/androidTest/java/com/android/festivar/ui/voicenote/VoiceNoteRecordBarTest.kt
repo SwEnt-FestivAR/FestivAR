@@ -10,7 +10,6 @@ import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.center
 import androidx.compose.ui.test.down
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
@@ -102,12 +101,11 @@ class VoiceNoteRecordBarTest {
     composeTestRule.onNodeWithText(text(R.string.voice_note_hold_to_record)).assertIsDisplayed()
     tag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).assertIsDisplayed()
     tag(VoiceNoteRecordTestTags.RECORDING_BAR).assertHeightIsEqualTo(56.dp)
-    tag(VoiceNoteRecordTestTags.RECORDING_HINT).assertDoesNotExist()
   }
 
-  /** Breaks if the timer or the hint is missing while recording. */
+  /** Breaks if the timer is missing while recording. */
   @Test
-  fun recordingShowsTimerAndHint() {
+  fun recordingShowsTheTimer() {
     show(
         VoiceNoteUiState(
             canManage = true,
@@ -115,8 +113,6 @@ class VoiceNoteRecordBarTest {
         )
     )
     composeTestRule.onNodeWithText(text(R.string.voice_note_recording, "0:03")).assertIsDisplayed()
-    tag(VoiceNoteRecordTestTags.RECORDING_HINT)
-        .assertTextContains(text(R.string.voice_note_recording_hint))
     tag(VoiceNoteRecordTestTags.RECORDING_BAR).assertIsDisplayed()
   }
 
@@ -131,16 +127,16 @@ class VoiceNoteRecordBarTest {
     assertEquals(listOf("start", "release"), events)
   }
 
-  /** Breaks if sliding left and releasing keeps the recording instead of dropping it. */
+  /** Breaks if sliding the finger before releasing drops the recording instead of ending it. */
   @Test
-  fun slideLeftThenReleaseCancels() {
+  fun slideLeftThenReleaseStillReleases() {
     show(VoiceNoteUiState(canManage = true))
     tag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).performTouchInput {
       down(center)
       moveBy(Offset(-400f, 0f))
       up()
     }
-    assertEquals(listOf("start", "cancel"), events)
+    assertEquals(listOf("start", "release"), events)
   }
 
   /** Breaks if the info note about the microphone is missing, or its text is not shown. */
@@ -223,21 +219,6 @@ class VoiceNoteRecordBarTest {
     val noticeBottom = tag(VoiceNoteRecordTestTags.SEND_ERROR).getUnclippedBoundsInRoot().bottom
     val barTop = tag(VoiceNoteRecordTestTags.RECORDING_BAR).getUnclippedBoundsInRoot().top
     assertTrue(noticeBottom <= barTop)
-  }
-
-  /**
-   * Breaks if sliding left and coming back before releasing cancels instead of keeping the note.
-   */
-  @Test
-  fun slideLeftThenBackThenReleaseKeepsTheRecording() {
-    show(VoiceNoteUiState(canManage = true))
-    tag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).performTouchInput {
-      down(center)
-      moveBy(Offset(-400f, 0f))
-      moveBy(Offset(400f, 0f))
-      up()
-    }
-    assertEquals(listOf("start", "release"), events)
   }
 
   /** Breaks if turning the microphone off in the middle of a recording leaves the recorder on. */

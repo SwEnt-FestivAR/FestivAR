@@ -32,13 +32,13 @@ class VoiceNoteRecordBarPreviewsTest {
     composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).assertIsDisplayed()
   }
 
-  /** Breaks if the recording preview no longer shows the timer and the hint. */
+  /** Breaks if the recording preview no longer shows the timer. */
   @Test
   fun recordingPreview_showsTheTimer() {
     composeTestRule.setContent { VoiceNoteRecordBarRecordingPreview() }
 
     composeTestRule.onNodeWithText(text(R.string.voice_note_recording, "0:03")).assertIsDisplayed()
-    composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.RECORDING_HINT).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.RECORDING_BAR).assertIsDisplayed()
   }
 
   /** Breaks if the send failed preview no longer shows the snackbar with Retry. */
