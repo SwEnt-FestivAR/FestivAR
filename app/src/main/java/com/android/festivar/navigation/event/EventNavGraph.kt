@@ -105,6 +105,7 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, dataRepository:
                 )
               },
           onBack = { navController.popBackStack() },
+          onOpenTask = { taskId -> navController.navigate(AppScreens.taskDetails(taskId)) },
       )
     }
   }

@@ -399,7 +399,7 @@ class MainActivityNavigationTest {
 
     waitUntilTagExists(EventDetailsScreenTestTags.MAP_BUTTON)
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.MAP_BUTTON).performClick()
-    waitUntilTagExists(VenueMapScreenTestTags.TITLE_PILL)
+    waitUntilTagExists(VenueMapScreenTestTags.SEARCH)
   }
 
   /** Turns red when back from the overview pops some other entry than the overview itself. */

@@ -14,4 +14,20 @@
     <string name="map_dismiss_error">Dismiss</string>
     <string name="map_navigate_back">Navigate back</string>
     <string name="map_structure_size">%1$s × %2$s m</string>
+    <string name="map_search_hint">Find a stand or a task</string>
+    <string name="map_chip_mine">My pins %d</string>
+    <string name="map_chip_all">All %d</string>
+    <string name="map_chip_structures">Structures</string>
+    <string name="map_place_with">%1$s · with %2$s</string>
+    <string name="map_started">Started</string>
+    <string name="map_in_minutes">in %d min</string>
+    <string name="map_in_hours">in %d h</string>
+    <plurals name="map_in_days">
+        <item quantity="one">in %d day</item>
+        <item quantity="other">in %d days</item>
+    </plurals>
+    <string name="map_distance">%1$d m, %2$d min</string>
+    <string name="map_distance_unknown">Distance unknown</string>
+    <string name="map_open_task">Open task</string>
+    <string name="map_empty">Nothing placed yet</string>
 </resources>

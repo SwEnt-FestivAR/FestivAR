@@ -20,11 +20,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.DirectionsWalk
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -37,10 +41,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -50,6 +54,7 @@ import com.android.festivar.model.event.Venue
 import com.android.festivar.model.location.LocationFix
 import com.android.festivar.model.structure.Structure
 import com.android.festivar.model.structure.StructureKind
+import com.android.festivar.ui.components.FilterChip
 import com.android.festivar.ui.theme.AppTheme
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
@@ -69,8 +74,18 @@ object VenueMapScreenTestTags {
   const val MAP = "mapMap"
   /** The round back button at the top left. */
   const val BACK = "mapBack"
-  /** The pill with the event title at the top centre. */
-  const val TITLE_PILL = "mapTitlePill"
+  /** The search field in the pill at the top. */
+  const val SEARCH = "mapSearch"
+  /** The "My pins" filter chip. */
+  const val CHIP_MINE = "mapChipMine"
+  /** The "All" filter chip. */
+  const val CHIP_ALL = "mapChipAll"
+  /** The "Structures" filter chip. */
+  const val CHIP_STRUCTURES = "mapChipStructures"
+  /** The "Open task" button of the sheet describing a task. */
+  const val OPEN_TASK = "mapOpenTask"
+  /** The line of the sheet shown when nothing is placed on the venue. */
+  const val EMPTY_PINS = "mapEmptyPins"
   /** The bottom sheet with the venue summary or the selected structure. */
   const val SHEET = "mapSheet"
   /** The pill shown while the device has no position fix. */
@@ -90,6 +105,9 @@ object VenueMapScreenTestTags {
 /** Zoom level the camera opens on: a festival site fills the screen. */
 private const val VENUE_ZOOM = 18f
 
+private const val MINUTES_PER_HOUR = 60L
+private const val MINUTES_PER_DAY = 24 * MINUTES_PER_HOUR
+
 /**
  * The read only venue map of an event, reached from its details: the venue on a satellite map, the
  * organizer's structures on it and the user's own position.
@@ -97,11 +115,16 @@ private const val VENUE_ZOOM = 18f
  * Asks for the fine location permission on first composition and starts following the position once
  * it is granted; on denial the "No GPS fix" pill simply stays.
  *
- * @param viewModel holds the event, its structures and the position.
+ * @param viewModel holds the event, its structures, its tasks and the position.
  * @param onBack called when the back button is clicked.
+ * @param onOpenTask called with a task id when the sheet's "Open task" button is clicked.
  */
 @Composable
-fun VenueMapScreen(viewModel: VenueMapViewModel, onBack: () -> Unit) {
+fun VenueMapScreen(
+    viewModel: VenueMapViewModel,
+    onBack: () -> Unit,
+    onOpenTask: (String) -> Unit,
+) {
   val state by viewModel.uiState.collectAsStateWithLifecycle()
   val context = LocalContext.current
   val launcher =
@@ -125,6 +148,10 @@ fun VenueMapScreen(viewModel: VenueMapViewModel, onBack: () -> Unit) {
       onSelect = viewModel::select,
       onRetry = viewModel::load,
       onDismissError = viewModel::clearError,
+      onSelectTask = viewModel::selectTask,
+      onFilter = viewModel::setFilter,
+      onQuery = viewModel::setQuery,
+      onOpenTask = onOpenTask,
   )
 }
 
@@ -136,6 +163,10 @@ fun VenueMapScreen(viewModel: VenueMapViewModel, onBack: () -> Unit) {
  * @param onSelect called with a structure id when its footprint is tapped, null to clear.
  * @param onRetry called when the retry button of a load error is clicked.
  * @param onDismissError called when the error shown over the map is dismissed.
+ * @param onSelectTask called with a task id when its pin is tapped, null to clear.
+ * @param onFilter called with the filter chip that is clicked.
+ * @param onQuery called with the search text as it is typed.
+ * @param onOpenTask called with the task id when the sheet's "Open task" button is clicked.
  * @param mapContent draws the map under the overlays; tests and previews swap the Google map out
  *   since it needs Play services.
  */
@@ -146,8 +177,12 @@ fun VenueMapContent(
     onSelect: (String?) -> Unit,
     onRetry: () -> Unit,
     onDismissError: () -> Unit,
+    onSelectTask: (String?) -> Unit = {},
+    onFilter: (PinFilter) -> Unit = {},
+    onQuery: (String) -> Unit = {},
+    onOpenTask: (String) -> Unit = {},
     mapContent: @Composable BoxScope.(VenueMapUiState, (String?) -> Unit) -> Unit = { s, select ->
-      VenueGoogleMap(s, select)
+      VenueGoogleMap(s, select, onSelectTask)
     },
 ) {
   Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
@@ -162,7 +197,7 @@ fun VenueMapContent(
         state.venue == null -> NoVenue(Modifier.align(Alignment.Center))
         else -> {
           mapContent(state, onSelect)
-          TopOverlay(state, Modifier.align(Alignment.TopCenter))
+          TopOverlay(state, onFilter, onQuery, Modifier.align(Alignment.TopCenter))
           if (state.errorMsg != null) {
             MapErrorCard(
                 state.errorMsg,
@@ -171,7 +206,12 @@ fun VenueMapContent(
                 Modifier.align(Alignment.Center).padding(20.dp),
             )
           }
-          MapSheet(state, onSelect, Modifier.align(Alignment.BottomCenter))
+          val focus = state.focus
+          if (focus != null) {
+            TaskSheet(focus, onOpenTask, Modifier.align(Alignment.BottomCenter))
+          } else {
+            MapSheet(state, onSelect, Modifier.align(Alignment.BottomCenter))
+          }
         }
       }
       BackDisc(onBack, Modifier.statusBarsPadding().padding(start = 16.dp, top = 8.dp))
@@ -181,13 +221,19 @@ fun VenueMapContent(
 
 /**
  * The satellite map centred on the venue, with each structure as a tappable footprint and label,
- * and the user's fix as an accuracy ring and dot. Draws nothing without a venue.
+ * the task pins as pennants with their label, and the user's fix as an accuracy ring and dot. Draws
+ * nothing without a venue. A tap on the bare map clears both selections.
  *
- * @param state the venue, structures, selection and fix to draw.
+ * @param state the venue, structures, pins, selection and fix to draw.
  * @param onSelect called with the id of a tapped structure.
+ * @param onSelectTask called with the id of a tapped task pin.
  */
 @Composable
-fun VenueGoogleMap(state: VenueMapUiState, onSelect: (String?) -> Unit) {
+fun VenueGoogleMap(
+    state: VenueMapUiState,
+    onSelect: (String?) -> Unit,
+    onSelectTask: (String?) -> Unit = {},
+) {
   val venue = state.venue ?: return
   val colors = MaterialTheme.colorScheme
   val cameraPositionState = rememberCameraPositionState {
@@ -209,6 +255,10 @@ fun VenueGoogleMap(state: VenueMapUiState, onSelect: (String?) -> Unit) {
       cameraPositionState = cameraPositionState,
       properties = properties,
       uiSettings = uiSettings,
+      onMapClick = {
+        onSelect(null)
+        onSelectTask(null)
+      },
   ) {
     state.structures.forEach { structure ->
       val corners =
@@ -252,6 +302,24 @@ fun VenueGoogleMap(state: VenueMapUiState, onSelect: (String?) -> Unit) {
         )
       }
     }
+    state.pins.forEach { pin ->
+      MarkerComposable(
+          pin.taskId,
+          pin.status,
+          pin.label,
+          state =
+              rememberUpdatedMarkerState(
+                  position = LatLng(pin.point.latitude, pin.point.longitude)
+              ),
+          anchor = Offset(0f, 1f),
+          onClick = {
+            onSelectTask(pin.taskId)
+            true
+          },
+      ) {
+        TaskPin(pin)
+      }
+    }
     state.me?.let { fix ->
       val centre = LatLng(fix.latitude, fix.longitude)
       Circle(
@@ -267,6 +335,50 @@ fun VenueGoogleMap(state: VenueMapUiState, onSelect: (String?) -> Unit) {
           fillColor = colors.onSurface,
           strokeColor = colors.surface,
           strokeWidth = 4f,
+      )
+    }
+  }
+}
+
+/** A task pin: the pennant tinted by its status, then a pill with its label. */
+@Composable
+private fun TaskPin(pin: MapPin) {
+  val colors = MaterialTheme.colorScheme
+  val (tint, description) =
+      when (pin.status) {
+        PinStatus.OPEN -> colors.onSurface to R.string.pin_open
+        PinStatus.MINE -> colors.primary to R.string.pin_mine
+        PinStatus.TAKEN -> colors.tertiary to R.string.pin_taken
+        PinStatus.DONE -> colors.onSurfaceVariant to R.string.pin_done
+      }
+  Row(
+      verticalAlignment = Alignment.Bottom,
+      horizontalArrangement = Arrangement.spacedBy(2.dp),
+  ) {
+    Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+      if (pin.status == PinStatus.MINE) {
+        // The ink outline: a full size ink pennant under a smaller primary one.
+        Icon(
+            painter = painterResource(R.drawable.ic_pennant),
+            contentDescription = null,
+            modifier = Modifier.size(24.dp),
+            tint = colors.onSurface,
+        )
+      }
+      Icon(
+          painter = painterResource(R.drawable.ic_pennant),
+          contentDescription = stringResource(description),
+          modifier = Modifier.size(if (pin.status == PinStatus.MINE) 20.dp else 24.dp),
+          tint = tint,
+      )
+    }
+    Surface(shape = CircleShape, color = colors.surface) {
+      Text(
+          text = pin.label,
+          modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+          style = MaterialTheme.typography.labelMedium,
+          color = colors.onSurface,
+          maxLines = 1,
       )
     }
   }
@@ -291,31 +403,58 @@ private fun BackDisc(onBack: () -> Unit, modifier: Modifier = Modifier) {
   }
 }
 
-/** The title pill and, while there is no fix, the "No GPS fix" pill under it on the right. */
+/**
+ * The search pill right of the back button, the filter chips under it and, while there is no fix,
+ * the "No GPS fix" pill on the right.
+ */
 @Composable
-private fun TopOverlay(state: VenueMapUiState, modifier: Modifier = Modifier) {
+private fun TopOverlay(
+    state: VenueMapUiState,
+    onFilter: (PinFilter) -> Unit,
+    onQuery: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
   Column(
-      modifier =
-          modifier
-              .fillMaxWidth()
-              .statusBarsPadding()
-              .padding(start = 72.dp, end = 72.dp, top = 12.dp),
-      horizontalAlignment = Alignment.CenterHorizontally,
+      modifier = modifier.fillMaxWidth().statusBarsPadding().padding(top = 8.dp, end = 16.dp),
       verticalArrangement = Arrangement.spacedBy(8.dp),
   ) {
     Surface(
-        modifier = Modifier.testTag(VenueMapScreenTestTags.TITLE_PILL),
+        modifier = Modifier.padding(start = 72.dp).fillMaxWidth(),
         shape = CircleShape,
         color = MaterialTheme.colorScheme.surface,
         shadowElevation = 2.dp,
     ) {
-      Text(
-          text = state.eventTitle,
-          modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-          style = MaterialTheme.typography.titleMedium,
-          color = MaterialTheme.colorScheme.onSurface,
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis,
+      OutlinedTextField(
+          value = state.query,
+          onValueChange = onQuery,
+          modifier = Modifier.fillMaxWidth().testTag(VenueMapScreenTestTags.SEARCH),
+          placeholder = { Text(stringResource(R.string.map_search_hint)) },
+          leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+          singleLine = true,
+          shape = CircleShape,
+      )
+    }
+    Row(
+        modifier = Modifier.padding(start = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+      MapChip(
+          stringResource(R.string.map_chip_mine, state.mineCount),
+          state.filter == PinFilter.MINE,
+          { onFilter(PinFilter.MINE) },
+          VenueMapScreenTestTags.CHIP_MINE,
+      )
+      MapChip(
+          stringResource(R.string.map_chip_all, state.allCount),
+          state.filter == PinFilter.ALL,
+          { onFilter(PinFilter.ALL) },
+          VenueMapScreenTestTags.CHIP_ALL,
+      )
+      MapChip(
+          stringResource(R.string.map_chip_structures),
+          state.filter == PinFilter.STRUCTURES,
+          { onFilter(PinFilter.STRUCTURES) },
+          VenueMapScreenTestTags.CHIP_STRUCTURES,
       )
     }
     if (state.me == null) {
@@ -333,6 +472,19 @@ private fun TopOverlay(state: VenueMapUiState, modifier: Modifier = Modifier) {
         )
       }
     }
+  }
+}
+
+/** A filter chip on a surface background, so it stays readable over the satellite map. */
+@Composable
+private fun MapChip(label: String, selected: Boolean, onClick: () -> Unit, tag: String) {
+  Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
+    FilterChip(
+        label = label,
+        selected = selected,
+        onClick = onClick,
+        modifier = Modifier.testTag(tag),
+    )
   }
 }
 
@@ -372,6 +524,14 @@ private fun MapSheet(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        if (selected == null && state.pins.isEmpty() && state.structures.isEmpty()) {
+          Text(
+              text = stringResource(R.string.map_empty),
+              modifier = Modifier.testTag(VenueMapScreenTestTags.EMPTY_PINS),
+              style = MaterialTheme.typography.bodyMedium,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+        }
       }
       if (selected != null) {
         TextButton(
@@ -385,13 +545,109 @@ private fun MapSheet(
   }
 }
 
-/** "3 structures · Parc de Vidy", or only the count when the event has no location text. */
+/**
+ * "Fête de Vidy · 3 structures · Parc de Vidy": the event title, the count and the location, the
+ * blank ones left out.
+ */
 @Composable
 private fun summaryLine(state: VenueMapUiState): String {
   val count =
       pluralStringResource(R.plurals.map_structures, state.structures.size, state.structures.size)
-  return if (state.eventLocation.isBlank()) count else "$count · ${state.eventLocation}"
+  return listOf(state.eventTitle, count, state.eventLocation)
+      .filter { it.isNotBlank() }
+      .joinToString(" · ")
 }
+
+/**
+ * The sheet describing a tapped task pin: title, place and partner, start time and how long until
+ * it, the walk from the user's position, and the button to open the task.
+ */
+@Composable
+private fun TaskSheet(focus: FocusTask, onOpenTask: (String) -> Unit, modifier: Modifier) {
+  val colors = MaterialTheme.colorScheme
+  Surface(
+      modifier = modifier.fillMaxWidth().testTag(VenueMapScreenTestTags.SHEET),
+      shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+      color = colors.surface,
+      shadowElevation = 4.dp,
+  ) {
+    Column(
+        modifier = Modifier.navigationBarsPadding().padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+      Row(verticalAlignment = Alignment.Top) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+          Text(
+              text = focus.title,
+              style = MaterialTheme.typography.titleLarge,
+              color = colors.onSurface,
+          )
+          Text(
+              text =
+                  focus.withName?.let { stringResource(R.string.map_place_with, focus.place, it) }
+                      ?: focus.place,
+              style = MaterialTheme.typography.bodyMedium,
+              color = colors.onSurfaceVariant,
+          )
+        }
+        if (focus.time != null) {
+          Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text = focus.time,
+                style = MaterialTheme.typography.titleMedium,
+                color = colors.onSurface,
+            )
+            focus.minutesUntil?.let {
+              Text(
+                  text = untilText(it),
+                  style = MaterialTheme.typography.labelMedium,
+                  color = colors.onSurfaceVariant,
+              )
+            }
+          }
+        }
+      }
+      Row(
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(6.dp),
+      ) {
+        Icon(
+            imageVector = Icons.AutoMirrored.Rounded.DirectionsWalk,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+            tint = colors.onSurfaceVariant,
+        )
+        Text(
+            text =
+                if (focus.distanceMetres != null && focus.walkMinutes != null)
+                    stringResource(R.string.map_distance, focus.distanceMetres, focus.walkMinutes)
+                else stringResource(R.string.map_distance_unknown),
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.onSurfaceVariant,
+        )
+      }
+      Button(
+          onClick = { onOpenTask(focus.taskId) },
+          modifier = Modifier.fillMaxWidth().testTag(VenueMapScreenTestTags.OPEN_TASK),
+      ) {
+        Text(stringResource(R.string.map_open_task))
+      }
+    }
+  }
+}
+
+/** "Started" once begun, else "in 40 min", "in 3 h" or "in 2 days". */
+@Composable
+private fun untilText(minutes: Long): String =
+    when {
+      minutes < 0 -> stringResource(R.string.map_started)
+      minutes < MINUTES_PER_HOUR -> stringResource(R.string.map_in_minutes, minutes)
+      minutes < MINUTES_PER_DAY -> stringResource(R.string.map_in_hours, minutes / MINUTES_PER_HOUR)
+      else -> {
+        val days = (minutes / MINUTES_PER_DAY).toInt()
+        pluralStringResource(R.plurals.map_in_days, days, days)
+      }
+    }
 
 /** The state of an event whose venue is not placed yet. */
 @Composable
