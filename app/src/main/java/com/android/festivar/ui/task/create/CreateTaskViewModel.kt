@@ -7,6 +7,7 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
+import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.task.Priority
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
@@ -190,7 +191,7 @@ class CreateTaskViewModel
 private constructor(
     private val eventId: String,
     private val currentUserId: () -> String,
-    private val tasksRepository: TasksRepository,
+    private  val dataRepository: DataRepository,
     private val saveTimeoutMs: Long,
     zone: ZoneId,
     private val formEditing: TaskFormEditing,
@@ -199,10 +200,12 @@ private constructor(
   constructor(
       eventId: String,
       currentUserId: () -> String,
-      tasksRepository: TasksRepository = TasksRepositoryProvider.repository,
+      dataRepository: DataRepository,
       saveTimeoutMs: Long = SAVE_TIMEOUT_MS,
       zone: ZoneId = ZoneId.systemDefault(),
-  ) : this(eventId, currentUserId, tasksRepository, saveTimeoutMs, zone, TaskFormEditing())
+  ) : this(eventId, currentUserId, dataRepository, saveTimeoutMs, zone, TaskFormEditing())
+
+    private val tasksRepository: TasksRepository = dataRepository.tasksRepository
 
   // The id of the task being created. It is kept across retries: if a save timed out or failed
   // after reaching the server, the retry targets the same task instead of creating a second one.
@@ -246,8 +249,12 @@ private constructor(
     _uiState.update { it.copy(isSaving = true, errorMsg = null) }
     viewModelScope.launch {
       try {
-        withTimeout(saveTimeoutMs) { tasksRepository.addTask(task) }
+
+        withTimeout(saveTimeoutMs) {
+            dataRepository.addTask(task)
+        }
         _uiState.update { it.copy(isSaving = false, isCreated = true) }
+
       } catch (e: TimeoutCancellationException) {
         onSaveFailed(task, e)
       } catch (e: CancellationException) {
