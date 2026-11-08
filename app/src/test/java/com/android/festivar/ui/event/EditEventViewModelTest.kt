@@ -1,11 +1,13 @@
 package com.android.festivar.ui.event
 
 // Co-authored-by: Copilot App
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 
 import com.android.festivar.R
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.model.event.Venue
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
@@ -311,6 +313,21 @@ class EditEventViewModelTest {
     assertEquals(initialEvent.eventId, viewModel.uiState.value.savedEventId)
     assertFalse(viewModel.uiState.value.isSaving)
     assertFalse(viewModel.uiState.value.hasChanges)
+  }
+
+  @Test
+  fun saveChangesKeepsTheStoredVenue() = runTest {
+    val venue = Venue(46.5197, 6.6323, 12.5)
+    eventsRepository.editEvent(initialEvent.eventId, initialEvent.copy(venue = venue))
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+    viewModel.updateName("Updated festival")
+
+    viewModel.saveChanges()
+    advanceUntilIdle()
+
+    assertEquals("Updated festival", eventsRepository.getEvent(initialEvent.eventId).title)
+    assertEquals(venue, eventsRepository.getEvent(initialEvent.eventId).venue)
   }
 
   @Test
