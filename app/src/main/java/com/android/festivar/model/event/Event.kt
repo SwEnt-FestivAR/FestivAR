@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.event
 
 import com.android.festivar.model.event.announcement.Announcement
@@ -40,6 +41,8 @@ const val MAX_ANNOUNCEMENTS_PER_EVENT = 100
  * @property startDate Starting date and time of the [Event].
  * @property endDate Ending date and time of the [Event].
  * @property location Where the [Event] takes place.
+ * @property venue The centre and bearing of the venue plan, or null until an organizer sets it on
+ *   the map.
  * @property tasks Tasks that are related, that belong to the [Event].
  * @property closed Whether the [Event] is still ongoing or not.
  * @property announcements Announcements shared with the members of the [Event].
@@ -52,6 +55,7 @@ data class Event(
     val startDate: ZonedDateTime,
     val endDate: ZonedDateTime,
     val location: String = "",
+    val venue: Venue? = null,
     val tasks: List<Task> = emptyList(),
     val closed: Boolean = false,
     val announcements: List<Announcement> = emptyList(),

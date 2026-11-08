@@ -9,6 +9,7 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertFalse
+import junit.framework.TestCase.assertNull
 import junit.framework.TestCase.assertTrue
 import org.junit.Assert.assertThrows
 import org.junit.Test
@@ -494,5 +495,22 @@ class EventTest {
 
     assertTrue(event.isPast(endInLondon))
     assertFalse(event.isPast(endInLondon.minusNanos(1)))
+  }
+
+  /** An event built without a venue has none, as every event stored before the venue existed. */
+  @Test
+  fun venue_isNull_byDefault() {
+    assertNull(event().venue)
+  }
+
+  /** A copy that sets the venue keeps it, and keeps it again through another modification. */
+  @Test
+  fun copy_withAVenue_keepsIt() {
+    val venue = Venue(46.5197, 6.6323, 12.5)
+
+    val withVenue = event().copy(venue = venue)
+
+    assertEquals(venue, withVenue.venue)
+    assertEquals(venue, withVenue.addMember(alice).close().venue)
   }
 }
