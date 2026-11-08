@@ -2,6 +2,7 @@ package com.android.festivar.ui.event.create
 
 // Co-authored-by: Copilot App
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 
 import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.Column
@@ -51,6 +52,7 @@ import com.android.festivar.ui.components.FestivarDateTimeRow
 import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.components.FestivarFieldWithError
 import com.android.festivar.ui.components.FestivarTextField
+import com.android.festivar.ui.components.LONG_TEXT_MAX_LENGTH
 import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
 import java.time.LocalTime
@@ -203,6 +205,8 @@ fun CreateEventContent(
           onValueChange = actions.onNotesChange,
           label = stringResource(R.string.create_event_field_notes),
           singleLine = false,
+          maxLength = LONG_TEXT_MAX_LENGTH,
+          showCounter = true,
           modifier = Modifier.testTag(CreateEventScreenTestTags.DESCRIPTION_FIELD),
       )
       Spacer(modifier = Modifier.height(14.dp))

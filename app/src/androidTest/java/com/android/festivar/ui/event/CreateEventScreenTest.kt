@@ -3,6 +3,7 @@ package com.android.festivar.ui.event
 // Co-authored-by: Copilot App
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
@@ -17,12 +18,15 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
+import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepositoryLocal
+import com.android.festivar.ui.components.LONG_TEXT_MAX_LENGTH
+import com.android.festivar.ui.components.checkTheOnlyCounterIsUnder
 import com.android.festivar.ui.components.formatDate
 import com.android.festivar.ui.components.formatTime
 import com.android.festivar.ui.event.create.CreateEventScreen
@@ -80,6 +84,18 @@ class CreateEventScreenTest {
         .forEach { tag -> composeTestRule.onNodeWithTag(tag).assertIsDisplayed() }
   }
 
+  /** Red if the notes lose their long limit and counter, or if another field gets a counter too. */
+  @Test
+  fun onlyTheNotesShowACharacterCounter() {
+    viewModel = CreateEventViewModel(EventsRepositoryLocal())
+    composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
+
+    composeTestRule.checkTheOnlyCounterIsUnder(
+        CreateEventScreenTestTags.DESCRIPTION_FIELD,
+        "0/$LONG_TEXT_MAX_LENGTH",
+    )
+  }
+
   /**
    * Red if the fields do not respond to input or if the button is not enabled after all required
    * fields are filled.
@@ -101,6 +117,9 @@ class CreateEventScreenTest {
         .onNodeWithTag(CreateEventScreenTestTags.DESCRIPTION_FIELD)
         .performTextInput("Bring the stage equipment")
 
+    // The keyboard pans the window to keep the notes, the last field, above it, which pushes the
+    // name off the top of a small screen. Hide it, as a user would to check the form.
+    Espresso.closeSoftKeyboard()
     composeTestRule.onNodeWithText("Summer festival").assertIsDisplayed()
     composeTestRule.onNodeWithText("Main square").assertIsDisplayed()
     composeTestRule.onNodeWithText("Bring the stage equipment").assertIsDisplayed()

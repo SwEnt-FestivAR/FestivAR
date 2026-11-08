@@ -52,6 +52,7 @@ import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.components.FestivarFieldWithError
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.components.FilterChip
+import com.android.festivar.ui.components.LONG_TEXT_MAX_LENGTH
 import com.android.festivar.ui.components.SectionLabel
 import com.android.festivar.ui.theme.AppTheme
 
@@ -212,6 +213,8 @@ fun CreateAnnouncementContent(
             label = stringResource(R.string.create_announcement_field_description),
             enabled = state.isEditable,
             singleLine = false,
+            maxLength = LONG_TEXT_MAX_LENGTH,
+            showCounter = true,
             isError = state.contentError != null,
             modifier =
                 Modifier.heightIn(min = 96.dp)
