@@ -1,5 +1,6 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.event
 
 import android.util.Log
@@ -8,6 +9,7 @@ import com.android.festivar.model.task.TaskRepositoryFirebase
 import com.android.festivar.model.user.UsersRepositoryFirebase
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.GeoPoint
 import java.time.ZonedDateTime
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
@@ -126,6 +128,8 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
         "startDate" to event.startDate.toString(),
         "endDate" to event.endDate.toString(),
         "location" to event.location,
+        "venue" to event.venue?.let { GeoPoint(it.latitude, it.longitude) },
+        "venueBearing" to event.venue?.bearing,
         "tasks" to event.tasks.map { it.taskId },
         "closed" to event.closed,
         // Stored so a join can be a single query instead of a download of the whole collection
@@ -160,6 +164,10 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
         startDate = ZonedDateTime.parse(document.getString("startDate")),
         endDate = ZonedDateTime.parse(document.getString("endDate")),
         location = document.getString("location") ?: "",
+        venue =
+            document.getGeoPoint("venue")?.let {
+              Venue(it.latitude, it.longitude, document.getDouble("venueBearing") ?: 0.0)
+            },
         tasks = tasks,
         closed = document.getBoolean("closed") ?: false,
     )
