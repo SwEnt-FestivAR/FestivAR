@@ -34,6 +34,6 @@ fun MyTasksPlaceholderScreen() {
 
 @Preview(showBackground = true)
 @Composable
-private fun MyTasksPlaceholderScreenPreview() {
+internal fun MyTasksPlaceholderScreenPreview() {
   AppTheme { MyTasksPlaceholderScreen() }
 }
