@@ -5,6 +5,7 @@
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 package com.android.festivar
 
+import android.Manifest
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assert
@@ -24,6 +25,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.credentials.CredentialManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.rule.GrantPermissionRule
 import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.datarepository.DataRepositoryFirebase
 import com.android.festivar.model.datarepository.DataRepositoryLocal
@@ -77,6 +79,11 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class MainActivityNavigationTest {
   @get:Rule val composeTestRule = createComposeRule()
+
+  // The venue map asks for the location on open; the system dialog would hide the Compose tree.
+  @get:Rule
+  val locationPermission: GrantPermissionRule =
+      GrantPermissionRule.grant(Manifest.permission.ACCESS_FINE_LOCATION)
 
   private val testUserId = "test-user-id"
 
