@@ -69,4 +69,8 @@
         <item quantity="one">%d member</item>
         <item quantity="other">%d members</item>
     </plurals>
+    <!-- Bottom navigation bar -->
+    <string name="nav_events">Events</string>
+    <string name="nav_my_tasks">My tasks</string>
+    <string name="nav_profile">Profile</string>
 </resources>

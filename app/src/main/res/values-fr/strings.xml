@@ -70,4 +70,8 @@
         <item quantity="other">%d membres</item>
         <item quantity="many">%d membres</item>
     </plurals>
+    <!-- Bottom navigation bar -->
+    <string name="nav_events">Événements</string>
+    <string name="nav_my_tasks">Mes tâches</string>
+    <string name="nav_profile">Profil</string>
 </resources>
