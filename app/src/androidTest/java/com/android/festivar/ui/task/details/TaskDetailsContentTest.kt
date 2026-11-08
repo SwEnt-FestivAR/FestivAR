@@ -2,6 +2,8 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.details
 
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
@@ -9,13 +11,19 @@ import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onChild
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
+import com.android.festivar.ui.components.UserListTestTags
+import com.android.festivar.ui.components.formatDate
+import com.android.festivar.ui.components.formatTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import org.junit.Assert.assertEquals
@@ -215,5 +223,142 @@ class TaskDetailsContentTest {
     show(state(), onBack = { backs++ })
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.BACK_BUTTON).performClick()
     assertEquals(1, backs)
+  }
+
+  private val tookItAt = ZonedDateTime.of(2026, 10, 17, 9, 12, 0, 0, ZoneId.of("Europe/Zurich"))
+
+  /** [sami] and [yasser] both took the task, at [tookItAt]. */
+  private val sharedTask =
+      task
+          .copy(assignees = emptyList(), takenAt = emptyMap())
+          .addAssignee(sami, tookItAt)
+          .addAssignee(yasser, tookItAt)
+
+  private fun openThePeopleSheet(task: Task) {
+    show(state(task))
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.ON_THIS_TASK_SECTION).performClick()
+    composeTestRule.waitForIdle()
+  }
+
+  private fun row(user: User) =
+      composeTestRule.onNodeWithTag(UserListTestTags.row(user.uid), useUnmergedTree = true)
+
+  // Breaks if the section shows for a task nobody took.
+  @Test
+  fun noAssigneesShowsNoOnThisTaskSection() {
+    show(state(task.removeAssignee(sami.uid)))
+    composeTestRule
+        .onNodeWithTag(TaskDetailsScreenTestTags.ON_THIS_TASK_SECTION)
+        .assertDoesNotExist()
+  }
+
+  // Breaks if one person is counted as "1 people".
+  @Test
+  fun onePersonShowsTheSingularCount() {
+    show(state())
+    composeTestRule
+        .onNode(
+            hasTestTag(TaskDetailsScreenTestTags.ON_THIS_TASK_COUNT).and(hasText("1 person")),
+            useUnmergedTree = true,
+        )
+        .performScrollTo()
+        .assertIsDisplayed()
+  }
+
+  // Breaks if the count does not follow the number of assignees.
+  @Test
+  fun twoPeopleShowThePluralCount() {
+    show(state(sharedTask))
+    composeTestRule
+        .onNode(
+            hasTestTag(TaskDetailsScreenTestTags.ON_THIS_TASK_COUNT).and(hasText("2 people")),
+            useUnmergedTree = true,
+        )
+        .performScrollTo()
+        .assertIsDisplayed()
+  }
+
+  // Breaks if more than two people hide the third behind a "+N" that does not count them.
+  @Test
+  fun moreThanTwoPeopleShowThePlusCount() {
+    val third = User("u3", "Marie", "Dupont")
+    show(state(sharedTask.copy(maxAssign = 3).addAssignee(third, tookItAt)))
+    composeTestRule.onNodeWithText("+1").assertIsDisplayed()
+  }
+
+  // Breaks if the tap does not open the sheet, or the sheet leaves someone out.
+  @Test
+  fun tappingTheSectionOpensTheSheetWithEveryAssignee() {
+    openThePeopleSheet(sharedTask)
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.ON_THIS_TASK_SHEET).assertExists()
+    row(sami).assertIsDisplayed()
+    row(yasser).assertIsDisplayed()
+  }
+
+  // Breaks if the time shown is not the one stored for that person, or loses its zone.
+  @Test
+  fun theSheetShowsWhenEachPersonTookTheTask() {
+    openThePeopleSheet(sharedTask)
+    val expected =
+        "Took it ${formatDate(tookItAt.toLocalDate())}, ${formatTime(tookItAt.toLocalTime())}"
+    composeTestRule
+        .onNode(
+            hasTestTag(UserListTestTags.row(sami.uid)).and(hasAnyDescendant(hasText(expected))),
+            useUnmergedTree = true,
+        )
+        .assertExists()
+  }
+
+  // Breaks if an older assignee, stored without a time, gets an invented one.
+  @Test
+  fun aPersonWithoutATimeHasNoTookItLine() {
+    openThePeopleSheet(sharedTask.copy(takenAt = mapOf(sami.uid to tookItAt)))
+    composeTestRule
+        .onNode(
+            hasTestTag(UserListTestTags.row(yasser.uid))
+                .and(hasAnyDescendant(hasText("Took it", substring = true))),
+            useUnmergedTree = true,
+        )
+        .assertDoesNotExist()
+    composeTestRule
+        .onNode(
+            hasTestTag(UserListTestTags.row(sami.uid))
+                .and(hasAnyDescendant(hasText("Took it", substring = true))),
+            useUnmergedTree = true,
+        )
+        .assertExists()
+  }
+
+  // Breaks if a finished task still tags its people as only taken.
+  @Test
+  fun aDoneTaskTagsPeopleDone() {
+    openThePeopleSheet(sharedTask.complete())
+    composeTestRule
+        .onNode(
+            hasTestTag(UserListTestTags.row(sami.uid)).and(hasAnyDescendant(hasText("Done"))),
+            useUnmergedTree = true,
+        )
+        .assertExists()
+  }
+
+  // Breaks if a task in progress tags its people as done.
+  @Test
+  fun aTakenTaskTagsPeopleTaken() {
+    openThePeopleSheet(sharedTask)
+    composeTestRule
+        .onNode(
+            hasTestTag(UserListTestTags.row(sami.uid)).and(hasAnyDescendant(hasText("Taken"))),
+            useUnmergedTree = true,
+        )
+        .assertExists()
+  }
+
+  // Breaks if the sheet lets anyone remove a person: its rows must do nothing when tapped.
+  @Test
+  fun nobodyCanRemoveAPerson() {
+    openThePeopleSheet(sharedTask)
+    row(sami).assertHasNoClickAction()
+    row(yasser).assertHasNoClickAction()
+    composeTestRule.onAllNodesWithText("Remove", useUnmergedTree = true).assertCountEquals(0)
   }
 }
