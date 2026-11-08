@@ -112,6 +112,7 @@ class VenuePickerViewModelTest {
     viewModel.search("Nowhere at all")
     val state = viewModel.uiState.value
     assertTrue(state.candidates.isEmpty())
+    assertTrue(state.searched)
     assertEquals(LatLngPoint(rolex.latitude, rolex.longitude), state.center)
     assertFalse(state.searchFailed)
   }

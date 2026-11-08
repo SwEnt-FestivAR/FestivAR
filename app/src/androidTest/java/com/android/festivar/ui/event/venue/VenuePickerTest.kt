@@ -128,8 +128,16 @@ class VenuePickerTest {
   /** Catches an empty search leaving the organizer without a hint. */
   @Test
   fun sheetShowsNoResults() {
-    setSheet(VenuePickerUiState())
+    setSheet(VenuePickerUiState(searched = true))
     composeTestRule.onNodeWithTag(VenuePickerTestTags.NO_RESULTS).assertIsDisplayed()
+  }
+
+  /** Catches the no match line flashing before the first lookup has run. */
+  @Test
+  fun sheetShowsNoHintBeforeTheFirstLookup() {
+    setSheet(VenuePickerUiState())
+    composeTestRule.onNodeWithTag(VenuePickerTestTags.NO_RESULTS).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(VenuePickerTestTags.SEARCHING).assertDoesNotExist()
   }
 
   /** Catches a failed lookup shown as no match or not at all. */

@@ -295,7 +295,8 @@ private fun StatusLine(state: VenuePickerUiState) {
       when {
         state.isSearching -> R.string.venue_searching to VenuePickerTestTags.SEARCHING
         state.searchFailed -> R.string.venue_search_error to VenuePickerTestTags.SEARCH_ERROR
-        state.candidates.isEmpty() -> R.string.venue_no_results to VenuePickerTestTags.NO_RESULTS
+        state.searched && state.candidates.isEmpty() ->
+            R.string.venue_no_results to VenuePickerTestTags.NO_RESULTS
         else -> return
       }
   Text(

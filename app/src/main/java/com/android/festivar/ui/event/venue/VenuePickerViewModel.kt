@@ -25,6 +25,8 @@ private const val LOG_TAG = "VenuePickerViewModel"
  * @property candidates The places the typed address may mean, best first.
  * @property isSearching True while the address is being looked up.
  * @property searchFailed True when the last lookup could not reach the geocoding backend.
+ * @property searched True once a lookup has finished, so an empty [candidates] means no match
+ *   rather than no search yet.
  * @property center Where the camera should go next; null until a search result or the initial venue
  *   gives one.
  * @property bearing The rotation of the plan, in whole degrees clockwise from north, in 0..359.
@@ -33,6 +35,7 @@ data class VenuePickerUiState(
     val candidates: List<GeocodingResult> = emptyList(),
     val isSearching: Boolean = false,
     val searchFailed: Boolean = false,
+    val searched: Boolean = false,
     val center: LatLngPoint? = null,
     val bearing: Int = 0,
 )
@@ -86,6 +89,7 @@ class VenuePickerViewModel(
           it.copy(
               candidates = results,
               isSearching = false,
+              searched = true,
               center =
                   if (keepCenter) it.center
                   else
@@ -98,7 +102,12 @@ class VenuePickerViewModel(
       } catch (e: IOException) {
         Log.e(LOG_TAG, "Could not look the address up", e)
         _uiState.update {
-          it.copy(candidates = emptyList(), isSearching = false, searchFailed = true)
+          it.copy(
+              candidates = emptyList(),
+              isSearching = false,
+              searchFailed = true,
+              searched = true,
+          )
         }
       }
     }
