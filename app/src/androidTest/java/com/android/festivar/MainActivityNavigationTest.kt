@@ -9,6 +9,8 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasTestTag
@@ -40,10 +42,13 @@ import com.android.festivar.model.user.UsersRepositoryFirebase
 import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.model.user.UsersRepositoryProvider
 import com.android.festivar.navigation.AppScreens
+import com.android.festivar.navigation.TaskOrigin
 import com.android.festivar.ui.announcement.create.CreateAnnouncementScreenTestTags
 import com.android.festivar.ui.authentication.login.LoginScreenTestTags
 import com.android.festivar.ui.authentication.signup.SignUpScreenTestTags
 import com.android.festivar.ui.components.AvatarTestTags
+import com.android.festivar.ui.components.BottomNavigationBarTestTags
+import com.android.festivar.ui.components.NavigationTab
 import com.android.festivar.ui.event.create.CreateEventScreenTestTags
 import com.android.festivar.ui.event.details.EventDetailsScreenTestTags
 import com.android.festivar.ui.event.join.JoinEventScreenTestTags
@@ -52,6 +57,7 @@ import com.android.festivar.ui.profile.ProfileScreenTestTags
 import com.android.festivar.ui.task.create.CreateTaskScreenTestTags
 import com.android.festivar.ui.task.details.TaskDetailsScreenTestTags
 import com.android.festivar.ui.task.edit.EditTaskScreenTestTags
+import com.android.festivar.ui.task.mytasks.MyTasksPlaceholderTestTags
 import com.android.festivar.ui.task.overview.TaskOverviewScreenTestTags
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseUser
@@ -776,6 +782,135 @@ class MainActivityNavigationTest {
    */
   private fun seedNoEvents() {
     EventsRepositoryProvider.repository = EventsRepositoryLocal()
+  }
+
+  // Breaks if the bar shows over the authentication screens.
+  @Test
+  fun theBarIsHiddenOnTheLogin() {
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          dataRepository =
+              DataRepositoryFirebase(authRepository = FakeAuthRepository(currentUser = null)),
+      )
+    }
+
+    waitUntilTagExists(LoginScreenTestTags.TITLE)
+    composeTestRule
+        .onNodeWithTag(BottomNavigationBarTestTags.BOTTOM_NAVIGATION_BAR)
+        .assertDoesNotExist()
+  }
+
+  // Breaks if the overview loses its bar, selects another tab or shows the tasks badge.
+  @Test
+  fun theEventsOverviewShowsTheBarWithEventsSelected() {
+    seedNoEvents()
+    setSignedInContent()
+
+    waitUntilTagExists(BottomNavigationBarTestTags.BOTTOM_NAVIGATION_BAR)
+    composeTestRule.onNodeWithTag(tabTag(NavigationTab.EVENTS)).assertIsSelected()
+    composeTestRule
+        .onNodeWithTag(BottomNavigationBarTestTags.TASKS_BADGE, useUnmergedTree = true)
+        .assertDoesNotExist()
+  }
+
+  // Breaks if the tasks of an event lose the badge or highlight a tab.
+  @Test
+  fun theTaskOverviewShowsTheTasksBadgeAndNoSelectedTab() {
+    TasksRepositoryProvider.repository = TasksRepositoryLocal()
+    setContentStartingOn(AppScreens.taskOverview("e1"))
+
+    waitUntilTagExists(BottomNavigationBarTestTags.BOTTOM_NAVIGATION_BAR)
+    composeTestRule
+        .onNodeWithTag(BottomNavigationBarTestTags.TASKS_BADGE, useUnmergedTree = true)
+        .assertIsDisplayed()
+    NavigationTab.entries.forEach {
+      composeTestRule.onNodeWithTag(tabTag(it)).assertIsNotSelected()
+    }
+  }
+
+  // Breaks if a task opened from My tasks falls back to the Events tab.
+  @Test
+  fun aTaskOpenedFromMyTasksKeepsMyTasksSelected() {
+    seedTask()
+    setContentStartingOn(AppScreens.taskDetails("t1", TaskOrigin.MY_TASKS))
+
+    waitUntilTagExists(BottomNavigationBarTestTags.BOTTOM_NAVIGATION_BAR)
+    composeTestRule.onNodeWithTag(tabTag(NavigationTab.MY_TASKS)).assertIsSelected()
+    composeTestRule
+        .onNodeWithTag(BottomNavigationBarTestTags.TASKS_BADGE, useUnmergedTree = true)
+        .assertDoesNotExist()
+  }
+
+  // Breaks if a task opened from an event loses the tasks badge.
+  @Test
+  fun aTaskOpenedFromAnEventKeepsTheTasksBadge() {
+    seedTask()
+    setContentStartingOn(AppScreens.taskDetails("t1"))
+
+    waitUntilTagExists(BottomNavigationBarTestTags.BOTTOM_NAVIGATION_BAR)
+    composeTestRule
+        .onNodeWithTag(BottomNavigationBarTestTags.TASKS_BADGE, useUnmergedTree = true)
+        .assertIsDisplayed()
+  }
+
+  // Breaks if the bar shows over a form.
+  @Test
+  fun theCreateTaskRouteHidesTheBar() {
+    TasksRepositoryProvider.repository = TasksRepositoryLocal()
+    setContentStartingOn(AppScreens.createTask("e1"))
+
+    waitUntilTagExists(CreateTaskScreenTestTags.TITLE)
+    composeTestRule
+        .onNodeWithTag(BottomNavigationBarTestTags.BOTTOM_NAVIGATION_BAR)
+        .assertDoesNotExist()
+  }
+
+  // Breaks if the My tasks tab has no destination or the Events tab does not return.
+  @Test
+  fun theMyTasksTabOpensThePlaceholderAndTheEventsTabReturns() {
+    seedNoEvents()
+    setSignedInContent()
+
+    waitUntilTagExists(BottomNavigationBarTestTags.BOTTOM_NAVIGATION_BAR)
+    composeTestRule.onNodeWithTag(tabTag(NavigationTab.MY_TASKS)).performClick()
+    waitUntilTagExists(MyTasksPlaceholderTestTags.SCREEN)
+    composeTestRule.onNodeWithTag(MyTasksPlaceholderTestTags.SCREEN).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(tabTag(NavigationTab.MY_TASKS)).assertIsSelected()
+
+    composeTestRule.onNodeWithTag(tabTag(NavigationTab.EVENTS)).performClick()
+    waitUntilTagExists(EventsOverviewScreenTestTags.TITLE)
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  // Breaks if the Profile tab does not open the profile.
+  @Test
+  fun theProfileTabOpensTheProfile() {
+    seedNoEvents()
+    setSignedInContent()
+
+    waitUntilTagExists(BottomNavigationBarTestTags.BOTTOM_NAVIGATION_BAR)
+    composeTestRule.onNodeWithTag(tabTag(NavigationTab.PROFILE)).performClick()
+
+    waitUntilTagExists(ProfileScreenTestTags.TITLE)
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  private fun tabTag(tab: NavigationTab) = BottomNavigationBarTestTags.getTestTagForTab(tab)
+
+  /** Shows the app as [firebaseUser] on [route], reading the tasks from the provider. */
+  private fun setContentStartingOn(route: String) {
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          dataRepository =
+              DataRepositoryLocal(
+                  authRepository = FakeAuthRepository(currentUser = firebaseUser),
+                  tasksRepository = TasksRepositoryProvider.repository,
+              ),
+          startDestinationOverride = route,
+      )
+    }
   }
 
   @After
