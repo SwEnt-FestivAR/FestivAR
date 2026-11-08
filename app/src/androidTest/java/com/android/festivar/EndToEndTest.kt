@@ -6,6 +6,8 @@ package com.android.festivar
 import android.util.Log
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -26,6 +28,8 @@ import com.android.festivar.model.user.UsersRepositoryFirebase
 import com.android.festivar.model.user.UsersRepositoryProvider
 import com.android.festivar.ui.authentication.login.LoginScreenTestTags
 import com.android.festivar.ui.authentication.signup.SignUpScreenTestTags
+import com.android.festivar.ui.components.BottomNavigationBarTestTags
+import com.android.festivar.ui.components.NavigationTab
 import com.android.festivar.ui.event.create.CreateEventScreenTestTags
 import com.android.festivar.ui.event.details.EventDetailsScreenTestTags
 import com.android.festivar.ui.event.join.JoinEventScreenTestTags
@@ -33,6 +37,7 @@ import com.android.festivar.ui.event.overview.EventsOverviewScreenTestTags
 import com.android.festivar.ui.profile.ProfileScreenTestTags
 import com.android.festivar.ui.task.create.CreateTaskScreenTestTags
 import com.android.festivar.ui.task.details.TaskDetailsScreenTestTags
+import com.android.festivar.ui.task.mytasks.MyTasksPlaceholderTestTags
 import com.android.festivar.ui.task.overview.TaskOverviewScreenTestTags
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
@@ -62,6 +67,9 @@ import org.junit.runner.RunWith
  * it. The rule launches the activity before any `@Before`, so the emulators are configured and the
  * event is seeded in the class level [seedTheEvent], and everything the journeys created is removed
  * in [cleanUp]. Each journey ends signed out so the next starts on the login screen.
+ *
+ * The M2 journey: a member joins the event, opens its task board with the bottom bar, takes a task,
+ * finds it in My tasks and gives it back after the confirmation.
  */
 @RunWith(AndroidJUnit4::class)
 class EndToEndTest {
@@ -142,6 +150,138 @@ class EndToEndTest {
         val tasks = TaskRepositoryFirebase(Firebase.firestore).getAllTasks(event.eventId)
         val task = tasks.single { it.title == TASK_TITLE }
         assertTrue("The task is not taken by the member", task.assignees.any { it.uid == uid })
+      }
+    } finally {
+      Firebase.auth.signOut()
+    }
+  }
+
+  /**
+   * Walks the M2 path as a new member: sign up, join the seeded event, open its task board and
+   * check the bottom bar (tasks badge, no tab selected), add a task and open it, take it and see
+   * the "On this task" section, visit My tasks, come back, give the task back after keeping it
+   * once, and sign out through the Profile tab. It proves the bar follows the member through the
+   * board and the task, that taking and giving back are stored, and that the confirmation can be
+   * declined. It turns red if a tag disappears, the bar highlights a tab inside the board, the
+   * section outlives the give back, or the assignee is still stored at the end.
+   */
+  @Test
+  fun aMemberWalksTheM2PathBoardTaskBottomBarTakeAndGiveBack() {
+    try {
+      signUp(M2_MEMBER_EMAIL)
+
+      waitUntilTagExists(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON)
+      composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON).performClick()
+      waitUntilTagExists(JoinEventScreenTestTags.TITLE)
+      composeTestRule
+          .onNodeWithTag(JoinEventScreenTestTags.CODE_INPUT)
+          .performTextInput(joinCodeOf(event))
+      waitUntilTagExists(JoinEventScreenTestTags.join(event.eventId))
+      composeTestRule.onNodeWithTag(JoinEventScreenTestTags.join(event.eventId)).performClick()
+
+      waitUntilTagExists(EventDetailsScreenTestTags.EVENT_NAME)
+      composeTestRule
+          .onNodeWithTag(EventDetailsScreenTestTags.EVENT_NAME)
+          .assertTextEquals(event.title)
+      // To add once the event details show it: check that the join code is visible
+
+      // The board: the bar has no tab selected and the Events tab carries the tasks badge
+      composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.SEE_TASKS_BUTTON).performClick()
+      waitUntilTagExists(TaskOverviewScreenTestTags.ADD_TASK)
+      assertTheBoardBar()
+
+      // The M1 journey may have left its own task here, so the board is not assumed empty
+      composeTestRule.onNodeWithTag(TaskOverviewScreenTestTags.ADD_TASK).performClick()
+      waitUntilTagExists(CreateTaskScreenTestTags.TITLE_FIELD)
+      composeTestRule
+          .onNodeWithTag(CreateTaskScreenTestTags.TITLE_FIELD)
+          .performTextInput(M2_TASK_TITLE)
+      Espresso.closeSoftKeyboard()
+      composeTestRule
+          .onNodeWithTag(CreateTaskScreenTestTags.CREATE_BUTTON)
+          .assertIsEnabled()
+          .performClick()
+      waitUntilTagExists(TaskOverviewScreenTestTags.TITLE)
+      waitUntilTextExists(M2_TASK_TITLE)
+
+      composeTestRule.onNodeWithText(M2_TASK_TITLE).performClick()
+      waitUntilTagExists(TaskDetailsScreenTestTags.TAKE_BUTTON)
+      composeTestRule
+          .onNodeWithTag(BottomNavigationBarTestTags.TASKS_BADGE, useUnmergedTree = true)
+          .assertIsDisplayed()
+
+      // Taking the task shows who is on it
+      composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.TAKE_BUTTON).performClick()
+      waitUntilTagExists(TaskDetailsScreenTestTags.GIVE_BACK_BUTTON)
+      composeTestRule
+          .onNodeWithTag(TaskDetailsScreenTestTags.ON_THIS_TASK_SECTION)
+          .performScrollTo()
+          .assertIsDisplayed()
+      composeTestRule
+          .onNodeWithTag(TaskDetailsScreenTestTags.ON_THIS_TASK_COUNT, useUnmergedTree = true)
+          .performScrollTo()
+          .assertTextEquals("1 person")
+
+      // My tasks is a placeholder until #397, with its tab selected
+      composeTestRule
+          .onNodeWithTag(BottomNavigationBarTestTags.getTestTagForTab(NavigationTab.MY_TASKS))
+          .performClick()
+      waitUntilTagExists(MyTasksPlaceholderTestTags.SCREEN)
+      composeTestRule
+          .onNodeWithTag(BottomNavigationBarTestTags.getTestTagForTab(NavigationTab.MY_TASKS))
+          .assertIsSelected()
+      // To add once My tasks lists tasks (#397): check that the taken task appears in the list
+
+      // Back from a tab returns to the events overview, then down to the task again
+      Espresso.pressBack()
+      waitUntilTagExists(EventsOverviewScreenTestTags.UPCOMING_CHIP)
+      composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.UPCOMING_CHIP).performClick()
+      waitUntilTagExists(EventsOverviewScreenTestTags.getTestTagForEventItem(event))
+      composeTestRule
+          .onNodeWithTag(EventsOverviewScreenTestTags.getTestTagForEventItem(event))
+          .performClick()
+      waitUntilTagExists(EventDetailsScreenTestTags.SEE_TASKS_BUTTON)
+      composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.SEE_TASKS_BUTTON).performClick()
+      // The board opens on the Open chip, and the task is now mine
+      waitUntilTagExists(TaskOverviewScreenTestTags.CHIP_MINE)
+      composeTestRule.onNodeWithTag(TaskOverviewScreenTestTags.CHIP_MINE).performClick()
+      waitUntilTextExists(M2_TASK_TITLE)
+      composeTestRule.onNodeWithText(M2_TASK_TITLE).performClick()
+      waitUntilTagExists(TaskDetailsScreenTestTags.GIVE_BACK_BUTTON)
+
+      // To add once the owner menu exists (#399, PR #440): as the organizer, delete a task after
+      // the confirmation
+
+      // Giving back asks first: keeping the task leaves it taken, confirming frees it
+      composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.GIVE_BACK_BUTTON).performClick()
+      waitUntilTagExists(TaskDetailsScreenTestTags.GIVE_BACK_DIALOG)
+      composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.GIVE_BACK_KEEP_BUTTON).performClick()
+      composeTestRule.waitUntil(timeoutMillis = TIMEOUT) {
+        composeTestRule
+            .onAllNodesWithTag(TaskDetailsScreenTestTags.GIVE_BACK_DIALOG)
+            .fetchSemanticsNodes()
+            .isEmpty()
+      }
+      composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.GIVE_BACK_BUTTON).assertIsDisplayed()
+      composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.GIVE_BACK_BUTTON).performClick()
+      waitUntilTagExists(TaskDetailsScreenTestTags.GIVE_BACK_CONFIRM_BUTTON)
+      composeTestRule
+          .onNodeWithTag(TaskDetailsScreenTestTags.GIVE_BACK_CONFIRM_BUTTON)
+          .performClick()
+      waitUntilTagExists(TaskDetailsScreenTestTags.TAKE_BUTTON)
+      composeTestRule
+          .onNodeWithTag(TaskDetailsScreenTestTags.ON_THIS_TASK_SECTION)
+          .assertDoesNotExist()
+
+      signOutFromTheProfile(M2_MEMBER_EMAIL)
+
+      // The task is free again and the member still lists the event
+      asTheUser(M2_MEMBER_EMAIL) { uid ->
+        val tasks = TaskRepositoryFirebase(Firebase.firestore).getAllTasks(event.eventId)
+        val task = tasks.single { it.title == M2_TASK_TITLE }
+        assertTrue("The task still has an assignee", task.assignees.isEmpty())
+        val user = UsersRepositoryFirebase(Firebase.firestore).getUser(uid)
+        assertTrue("The member does not list the joined event", event.eventId in user.joinedEvents)
       }
     } finally {
       Firebase.auth.signOut()
@@ -229,12 +369,29 @@ class EndToEndTest {
     waitUntilTagExists(EventsOverviewScreenTestTags.TITLE)
   }
 
+  /** On the board, the bar exists with the tasks badge and none of its three tabs selected. */
+  private fun assertTheBoardBar() {
+    composeTestRule
+        .onNodeWithTag(BottomNavigationBarTestTags.BOTTOM_NAVIGATION_BAR)
+        .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(BottomNavigationBarTestTags.TASKS_BADGE, useUnmergedTree = true)
+        .assertIsDisplayed()
+    for (tab in NavigationTab.entries) {
+      composeTestRule
+          .onNodeWithTag(BottomNavigationBarTestTags.getTestTagForTab(tab))
+          .assertIsNotSelected()
+    }
+  }
+
   /**
-   * Opens the profile of [email] from the overview's avatar and signs out, back to the login
-   * screen.
+   * Opens the profile of [email] from the Profile tab of the bottom bar and signs out, back to the
+   * login screen. Both journeys use the tab, which every screen with a bar offers.
    */
   private fun signOutFromTheProfile(email: String) {
-    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.USER_AVATAR).performClick()
+    composeTestRule
+        .onNodeWithTag(BottomNavigationBarTestTags.getTestTagForTab(NavigationTab.PROFILE))
+        .performClick()
     waitUntilTagExists(ProfileScreenTestTags.TITLE)
     // The sign out button only shows once the profile is loaded
     waitUntilTagExists(ProfileScreenTestTags.SIGN_OUT_BUTTON)
@@ -285,8 +442,10 @@ class EndToEndTest {
     private const val TIMEOUT = 15_000L
     private const val PASSWORD = "Password123!"
     private const val TASK_TITLE = "Hang the banner"
+    private const val M2_TASK_TITLE = "Stack the chairs"
     private const val CREATED_EVENT_TITLE = "Vidy Afterparty"
     private val MEMBER_EMAIL = "e2e-member-${UUID.randomUUID()}@festivar.test"
+    private val M2_MEMBER_EMAIL = "e2e-m2-member-${UUID.randomUUID()}@festivar.test"
     private val ORGANIZER_EMAIL = "e2e-organizer-${UUID.randomUUID()}@festivar.test"
 
     private val start = ZonedDateTime.now().plusDays(1)
@@ -354,7 +513,7 @@ class EndToEndTest {
           }
         }
       }
-      for (email in listOf(MEMBER_EMAIL, ORGANIZER_EMAIL)) {
+      for (email in listOf(MEMBER_EMAIL, M2_MEMBER_EMAIL, ORGANIZER_EMAIL)) {
         runCatching {
           asTheUser(email) { uid ->
             logged("delete leftover profile of $email") {
@@ -391,7 +550,7 @@ class EndToEndTest {
         }
       }
       // An Auth account can only be deleted by itself, so each member signs in once more
-      for (email in listOf(MEMBER_EMAIL, ORGANIZER_EMAIL)) {
+      for (email in listOf(MEMBER_EMAIL, M2_MEMBER_EMAIL, ORGANIZER_EMAIL)) {
         runCatching {
           asTheUser(email) { uid ->
             logged("delete the profile of $email") {
