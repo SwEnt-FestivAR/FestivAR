@@ -22,6 +22,8 @@ import com.android.festivar.ui.event.join.JoinEventScreen
 import com.android.festivar.ui.event.join.JoinEventViewModel
 import com.android.festivar.ui.event.overview.EventsOverviewScreen
 import com.android.festivar.ui.event.overview.EventsOverviewViewModel
+import com.android.festivar.ui.map.VenueMapScreen
+import com.android.festivar.ui.map.VenueMapViewModel
 
 /** The destinations of the event feature. */
 fun NavGraphBuilder.eventGraph(navController: NavHostController, dataRepository: DataRepository) {
@@ -80,7 +82,25 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, dataRepository:
         viewModel { EventDetailsViewModel(EventsRepositoryProvider.repository, eventId) },
         onBack = navigator.onBack,
         onTasksButtonClicked = { navigator.onTasksButtonClicked(eventId) },
+        onOpenMap = { navigator.onOpenMap(eventId) },
     )
+  }
+  // Reached through AppScreens.venueMap(eventId)
+  composable(
+      route = "${AppScreens.VenueMap.name}/{eventId}",
+      arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
+  ) { backStackEntry ->
+    val eventId = backStackEntry.arguments?.getString("eventId") ?: ""
+    require(eventId.isNotBlank()) { "eventId must not be blank" }
+    val navigator = EventDetailsNavigator(navController)
+    if (dataRepository.authRepository.currentUser == null) {
+      LaunchedEffect(Unit) { navigator.onSignedOut() }
+    } else {
+      VenueMapScreen(
+          viewModel = viewModel(key = eventId) { VenueMapViewModel(eventId) },
+          onBack = { navController.popBackStack() },
+      )
+    }
   }
   composable(route = AppScreens.JoinEvent.name) {
     val navigator = JoinEventNavigator(navController)

@@ -2,6 +2,7 @@ package com.android.festivar.ui.event.details
 
 // Co-authored-by: Copilot App
 // Co-authored-by: Claude Sonnet 5.5
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 
 import android.annotation.SuppressLint
 import androidx.compose.foundation.background
@@ -19,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.TaskAlt
+import androidx.compose.material.icons.rounded.Map
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -65,12 +67,14 @@ object EventDetailsScreenTestTags {
   const val DATE_ROW = "dateRow"
   const val ADDRESS_ROW = "addressRow"
   const val SEE_TASKS_BUTTON = "seeTasksButton"
+  const val MAP_BUTTON = "eventDetailsMapButton"
 }
 
 /** Callbacks handled by the Event Details screen. */
 class EventDetailsActions(
     val onBack: () -> Unit = {},
     val onTasksButtonClicked: () -> Unit = {},
+    val onOpenMap: () -> Unit = {},
 )
 
 /**
@@ -82,6 +86,7 @@ class EventDetailsActions(
  * @param viewModel the ViewModel providing the event and loading error state.
  * @param onBack called when the back button is clicked.
  * @param onTasksButtonClicked called when the "See tasks" button is clicked.
+ * @param onOpenMap called when the venue map button is clicked.
  * @param modifier modifier applied to the event content.
  */
 @Composable
@@ -89,6 +94,7 @@ fun EventDetailsScreen(
     viewModel: EventDetailsViewModel,
     onBack: () -> Unit,
     onTasksButtonClicked: () -> Unit,
+    onOpenMap: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
   val uiState by viewModel.uiState.collectAsState()
@@ -96,7 +102,12 @@ fun EventDetailsScreen(
 
   EventDetailsContent(
       state = uiState,
-      actions = EventDetailsActions(onBack = onBack, onTasksButtonClicked = onTasksButtonClicked),
+      actions =
+          EventDetailsActions(
+              onBack = onBack,
+              onTasksButtonClicked = onTasksButtonClicked,
+              onOpenMap = onOpenMap,
+          ),
       modifier = modifier,
   )
 }
@@ -111,7 +122,13 @@ private fun EventDetailsContent(
   val event = state.event
   Scaffold(
       containerColor = MaterialTheme.colorScheme.background,
-      topBar = { EventDetailsTopBar(onBack = actions.onBack) },
+      topBar = {
+        EventDetailsTopBar(
+            onBack = actions.onBack,
+            onOpenMap = actions.onOpenMap,
+            showMap = event != null,
+        )
+      },
       bottomBar = {
         if (event != null) {
           EventDetailsBottomBar(onTasksButtonClicked = actions.onTasksButtonClicked)
@@ -226,10 +243,13 @@ private fun EventInfo(
   }
 }
 
-/** Top app bar containing the navigation button for leaving the details screen. */
+/**
+ * Top app bar containing the navigation button for leaving the details screen and, once the event
+ * is loaded ([showMap]), the button that opens its venue map.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun EventDetailsTopBar(onBack: () -> Unit) {
+private fun EventDetailsTopBar(onBack: () -> Unit, onOpenMap: () -> Unit, showMap: Boolean) {
   TopAppBar(
       title = {},
       navigationIcon = {
@@ -246,6 +266,24 @@ private fun EventDetailsTopBar(onBack: () -> Unit) {
               contentDescription = stringResource(R.string.event_details_navigate_back),
               tint = MaterialTheme.colorScheme.onSurface,
           )
+        }
+      },
+      actions = {
+        if (showMap) {
+          IconButton(
+              onClick = onOpenMap,
+              modifier = Modifier.testTag(EventDetailsScreenTestTags.MAP_BUTTON),
+              colors =
+                  IconButtonDefaults.iconButtonColors(
+                      containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                  ),
+          ) {
+            Icon(
+                imageVector = Icons.Rounded.Map,
+                contentDescription = stringResource(R.string.event_details_open_map),
+                tint = MaterialTheme.colorScheme.onSurface,
+            )
+          }
         }
       },
       colors =

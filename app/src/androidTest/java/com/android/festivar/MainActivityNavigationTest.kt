@@ -31,7 +31,10 @@ import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventRepositoryFirebase
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.EventsRepositoryProvider
+import com.android.festivar.model.event.Venue
 import com.android.festivar.model.event.joinCodeOf
+import com.android.festivar.model.structure.StructuresRepositoryLocal
+import com.android.festivar.model.structure.StructuresRepositoryProvider
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.task.TasksRepositoryProvider
@@ -48,6 +51,7 @@ import com.android.festivar.ui.event.create.CreateEventScreenTestTags
 import com.android.festivar.ui.event.details.EventDetailsScreenTestTags
 import com.android.festivar.ui.event.join.JoinEventScreenTestTags
 import com.android.festivar.ui.event.overview.EventsOverviewScreenTestTags
+import com.android.festivar.ui.map.VenueMapScreenTestTags
 import com.android.festivar.ui.profile.ProfileScreenTestTags
 import com.android.festivar.ui.task.create.CreateTaskScreenTestTags
 import com.android.festivar.ui.task.details.TaskDetailsScreenTestTags
@@ -364,6 +368,37 @@ class MainActivityNavigationTest {
           .isNotEmpty()
     }
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.FETCH_ERROR).assertIsDisplayed()
+  }
+
+  /** Turns red when the map button of the event details does not reach the venue map. */
+  @Test
+  fun theMapButtonOnTheEventDetailsOpensTheVenueMap() {
+    val start = ZonedDateTime.now().plusDays(1)
+    val event =
+        Event(
+            eventId = "map-e1",
+            title = "Event With A Venue",
+            startDate = start,
+            endDate = start.plusHours(2),
+            venue = Venue(46.5170, 6.5990),
+        )
+    EventsRepositoryProvider.repository = EventsRepositoryLocal(listOf(event))
+    StructuresRepositoryProvider.repository = StructuresRepositoryLocal()
+
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          dataRepository =
+              DataRepositoryFirebase(
+                  authRepository = FakeAuthRepository(currentUser = signedInUser)
+              ),
+          startDestinationOverride = AppScreens.eventDetails(event.eventId),
+      )
+    }
+
+    waitUntilTagExists(EventDetailsScreenTestTags.MAP_BUTTON)
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.MAP_BUTTON).performClick()
+    waitUntilTagExists(VenueMapScreenTestTags.TITLE_PILL)
   }
 
   /** Turns red when back from the overview pops some other entry than the overview itself. */
@@ -783,6 +818,7 @@ class MainActivityNavigationTest {
     TasksRepositoryProvider.reset()
     UsersRepositoryProvider.reset()
     EventsRepositoryProvider.reset()
+    StructuresRepositoryProvider.reset()
   }
 
   /** Shows the app as [signedInUser], so it starts on the events overview. */

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Co-authored-by: Copilot App -->
+<!-- Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com> -->
 <resources>
     <string name="event_details_tasks_count">sur %1$d</string>
     <string name="event_details_tasks_still_open">tâches encore ouvertes</string>
@@ -10,4 +11,5 @@
     <string name="event_details_navigate_back">Retour</string>
     <string name="event_details_see_tasks">Voir les tâches</string>
     <string name="event_details_fetch_error">Une erreur est survenue lors du chargement de l’événement. Réessayez.</string>
+    <string name="event_details_open_map">Plan du lieu</string>
 </resources>

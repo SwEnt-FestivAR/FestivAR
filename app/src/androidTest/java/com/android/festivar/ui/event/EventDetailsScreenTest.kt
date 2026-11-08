@@ -1,6 +1,7 @@
 package com.android.festivar.ui.event
 
 // Co-authored-by: Copilot App
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 
 import android.annotation.SuppressLint
 import androidx.compose.ui.semantics.SemanticsActions
@@ -239,17 +240,48 @@ class EventDetailsScreenTest {
     verify(exactly = 1) { onBack() }
   }
 
+  /** Red if the map button does not invoke the supplied callback exactly once. */
+  @Test
+  fun clickingTheMapButtonCallsOnOpenMap() {
+    val onOpenMap = mockk<() -> Unit>(relaxed = true)
+
+    setContent(eventSameMonth, onOpenMap = onOpenMap)
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.MAP_BUTTON).performClick()
+
+    verify(exactly = 1) { onOpenMap() }
+  }
+
+  /** Red if the map button shows before there is an event to open the map of. */
+  @SuppressLint("ViewModelConstructorInComposable")
+  @Test
+  fun theMapButtonIsAbsentWhileTheEventIsNull() {
+    composeTestRule.setContent {
+      EventDetailsScreen(
+          viewModel = EventDetailsViewModel(EventsRepositoryLocal(emptyList()), "missing"),
+          onTasksButtonClicked = {},
+          onBack = {},
+      )
+    }
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.BACK_BUTTON).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.MAP_BUTTON).assertDoesNotExist()
+  }
+
   @SuppressLint("ViewModelConstructorInComposable")
   private fun setContent(
       event: Event,
       onTasksButtonClicked: () -> Unit = {},
       onBack: () -> Unit = {},
+      onOpenMap: () -> Unit = {},
   ) {
     composeTestRule.setContent {
       EventDetailsScreen(
           viewModel = EventDetailsViewModel(EventsRepositoryLocal(listOf(event)), event.eventId),
           onTasksButtonClicked = onTasksButtonClicked,
           onBack = onBack,
+          onOpenMap = onOpenMap,
       )
     }
     composeTestRule.waitForIdle()
