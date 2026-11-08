@@ -88,8 +88,8 @@ fun FestivAR(
         bar?.let {
           BottomNavigationBar(
               selectedTab = it.selectedTab,
-              onTabSelected = bottomBarNavigator::onTabSelected,
-              inEventTasks = it.inEventTasks,
+              onTabSelected = { tab -> bottomBarNavigator.onTabSelected(tab, it) },
+              subScreen = it.subScreen,
           )
         }
       },
