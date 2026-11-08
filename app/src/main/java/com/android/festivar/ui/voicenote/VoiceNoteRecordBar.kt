@@ -69,11 +69,11 @@ private const val CANCEL_DISTANCE_DP = 80
 private const val DISABLED_ALPHA = 0.5f
 
 /**
- * The bar fixed above the bottom of the screen: the notices (failed playback or send, microphone
- * off) and, for the owner of a task without a note only, the record bar under them. The owner holds
- * the round button to record, releases it to stop and slides left before releasing to cancel.
- * Without the microphone permission the record bar is greyed out. It is hidden when there is
- * nothing to show.
+ * The bar fixed above the bottom of the screen: the notices of the owner (failed send, microphone
+ * off) and the record bar under them, in the same [FixedBottomBar]. Only the owner of a task
+ * without a note sees it: it is hidden otherwise. The owner holds the round button to record,
+ * releases it to stop and slides left before releasing to cancel. Without the microphone permission
+ * the record bar is greyed out.
  */
 @Composable
 fun VoiceNoteRecordBar(
@@ -81,10 +81,31 @@ fun VoiceNoteRecordBar(
     callbacks: VoiceNoteCallbacks,
     modifier: Modifier = Modifier,
 ) {
-  if (!state.hasNotices && !state.showRecordBar) return
+  if (!state.showRecordBar) return
   FixedBottomBar(modifier) {
-    VoiceNoteNotices(state, callbacks)
-    if (state.showRecordBar) RecordPill(state, callbacks)
+    VoiceNoteOwnerNotices(state, callbacks)
+    RecordPill(state, callbacks)
+  }
+}
+
+/**
+ * The notice of a failed playback. It is not part of the record bar: a note exists, so the bar is
+ * hidden, and the design ("notice (fixed)") puts it just above the buttons of the task.
+ */
+@Composable
+fun VoiceNotePlaybackNotice(
+    state: VoiceNoteUiState,
+    callbacks: VoiceNoteCallbacks,
+    modifier: Modifier = Modifier,
+) {
+  if (!state.playbackFailed) return
+  Box(modifier.fillMaxWidth().padding(start = 20.dp, top = 8.dp, end = 20.dp, bottom = 4.dp)) {
+    ErrorNotice(
+        R.string.voice_note_playback_failed,
+        callbacks.onRetry,
+        VoiceNoteRecordTestTags.PLAYBACK_ERROR,
+        VoiceNoteRecordTestTags.PLAYBACK_RETRY,
+    )
   }
 }
 
@@ -128,7 +149,7 @@ private fun RecordPill(state: VoiceNoteUiState, callbacks: VoiceNoteCallbacks) {
 private fun RecordingIndicator(state: VoiceNoteUiState) {
   Row(
       verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(10.dp),
+      horizontalArrangement = Arrangement.spacedBy(12.dp),
   ) {
     Box(Modifier.size(10.dp).background(MaterialTheme.colorScheme.error, CircleShape))
     Column {
@@ -201,21 +222,12 @@ private fun RecordButton(enabled: Boolean, callbacks: VoiceNoteCallbacks) {
 }
 
 /**
- * The notices above the record bar, in the same [FixedBottomBar]: the failed playback and send
- * (each with a Retry), and the information that the microphone is off (with a button to the
- * settings).
+ * The notices above the record bar: the failed send (with a Retry), and the information that the
+ * microphone is off (with a button to the settings).
  */
 @Composable
-private fun VoiceNoteNotices(state: VoiceNoteUiState, callbacks: VoiceNoteCallbacks) {
-  if (state.playbackFailed) {
-    ErrorNotice(
-        R.string.voice_note_playback_failed,
-        callbacks.onRetry,
-        VoiceNoteRecordTestTags.PLAYBACK_ERROR,
-        VoiceNoteRecordTestTags.PLAYBACK_RETRY,
-    )
-  }
-  if (state.showRecordBar && state.sendFailed) {
+private fun VoiceNoteOwnerNotices(state: VoiceNoteUiState, callbacks: VoiceNoteCallbacks) {
+  if (state.sendFailed) {
     ErrorNotice(
         R.string.voice_note_send_failed,
         callbacks.onRetry,
@@ -223,7 +235,7 @@ private fun VoiceNoteNotices(state: VoiceNoteUiState, callbacks: VoiceNoteCallba
         VoiceNoteRecordTestTags.SEND_RETRY,
     )
   }
-  if (state.showRecordBar && state.micDenied) {
+  if (state.micDenied) {
     InfoNote(
         message = stringResource(R.string.voice_note_mic_denied),
         modifier = Modifier.testTag(VoiceNoteRecordTestTags.MIC_DENIED),

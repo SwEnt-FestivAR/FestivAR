@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -70,6 +71,8 @@ fun InfoNoteButton(text: String, onClick: () -> Unit, modifier: Modifier = Modif
       onClick = onClick,
       modifier = modifier.fillMaxWidth().height(52.dp),
       shape = MaterialTheme.shapes.medium,
+      colors =
+          ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
   ) {
     Text(text)
   }

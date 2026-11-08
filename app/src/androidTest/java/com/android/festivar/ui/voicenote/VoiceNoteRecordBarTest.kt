@@ -1,6 +1,7 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.voicenote
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -69,7 +70,12 @@ class VoiceNoteRecordBarTest {
       )
 
   private fun show(state: VoiceNoteUiState) = composeTestRule.setContent {
-    AppTheme { VoiceNoteRecordBar(state, callbacks) }
+    AppTheme {
+      Column {
+        VoiceNotePlaybackNotice(state, callbacks)
+        VoiceNoteRecordBar(state, callbacks)
+      }
+    }
   }
 
   private fun tag(tag: String) = composeTestRule.onNodeWithTag(tag)
