@@ -26,7 +26,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -43,7 +42,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
 import com.android.festivar.model.user.User
@@ -52,7 +50,6 @@ import com.android.festivar.ui.components.FestivarConfirmDialog
 import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.components.NoticeSnackbar
-import com.android.festivar.ui.theme.AppTheme
 
 /** Tags that the UI tests use to find the elements of the profile screen. */
 object ProfileScreenTestTags {
@@ -64,6 +61,7 @@ object ProfileScreenTestTags {
   const val NAME_FIELD = "profileNameField"
   const val EMAIL = "profileEmail"
   const val SAVE_BUTTON = "profileSaveButton"
+  const val UPGRADE_BUTTON = "profileUpgradeButton"
   const val SIGN_OUT_BUTTON = "profileSignOutButton"
   const val RETRY_BUTTON = "profileRetryButton"
   const val ERROR_MESSAGE = "profileErrorMessage"
@@ -316,7 +314,7 @@ internal fun ProfileScreenContent(
           enabled = true,
           shape = RoundedCornerShape(12.dp),
           modifier =
-              Modifier.fillMaxWidth().height(48.dp).testTag(ProfileScreenTestTags.SAVE_BUTTON),
+              Modifier.fillMaxWidth().height(48.dp).testTag(ProfileScreenTestTags.UPGRADE_BUTTON),
       ) {
         if (uiState.isSaving) {
           CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
@@ -374,71 +372,72 @@ private fun SignOutButton(onClick: () -> Unit, isSigningOut: Boolean, signedOut:
   }
 }
 
-@Preview(showBackground = true, heightDp = 700)
-@Composable
-internal fun ProfileScreenLoadedPreview() {
-  AppTheme {
-    ProfileScreenContent(
-        uiState =
-            ProfileUIState(
-                user =
-                    User(
-                        uid = "u1",
-                        name = "skibidi",
-                        surname = "toilet",
-                        email = "skibidi@toilet.ch",
-                    ),
-                name = "skibidi",
-                surname = "toilet",
-                isUserAnonymous = true,
-            ),
-        onSurnameChange = {},
-        onNameChange = {},
-        onSaveClick = {},
-        onSignOutClick = {},
-        onRetryClick = {},
-        onUpgradeClick = {},
-    )
-  }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Preview(showBackground = true, heightDp = 700)
-@Composable
-internal fun ProfileScreenBottomSheetPreview() {
-  AppTheme {
-    Box(modifier = Modifier.fillMaxSize()) {
-      ProfileScreenContent(
-          uiState =
-              ProfileUIState(
-                  user =
-                      User(
-                          uid = "u1",
-                          name = "skibidi",
-                          surname = "toilet",
-                          email = "skibidi@toilet.ch",
-                      ),
-                  name = "skibidi",
-                  surname = "toilet",
-                  isUserAnonymous = true,
-              ),
-          onSurnameChange = {},
-          onNameChange = {},
-          onSaveClick = {},
-          onSignOutClick = {},
-          onRetryClick = {},
-          onUpgradeClick = {},
-      )
-
-      Box(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
-        Surface(
-            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-            tonalElevation = 8.dp,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-          UpgradeBottomSheetPreview()
-        }
-      }
-    }
-  }
-}
+// @Preview(showBackground = true, heightDp = 700)
+// @Composable
+// internal fun ProfileScreenLoadedPreview() {
+//  AppTheme {
+//    ProfileScreenContent(
+//        uiState =
+//            ProfileUIState(
+//                user =
+//                    User(
+//                        uid = "u1",
+//                        name = "skibidi",
+//                        surname = "toilet",
+//                        email = "skibidi@toilet.ch",
+//                    ),
+//                name = "skibidi",
+//                surname = "toilet",
+//                isUserAnonymous = true,
+//            ),
+//        onSurnameChange = {},
+//        onNameChange = {},
+//        onSaveClick = {},
+//        onSignOutClick = {},
+//        onRetryClick = {},
+//        onUpgradeClick = {},
+//    )
+//  }
+// }
+//
+// @OptIn(ExperimentalMaterial3Api::class)
+// @Preview(showBackground = true, heightDp = 700)
+// @Composable
+// internal fun ProfileScreenBottomSheetPreview() {
+//  AppTheme {
+//    Box(modifier = Modifier.fillMaxSize()) {
+//      ProfileScreenContent(
+//          uiState =
+//              ProfileUIState(
+//                  user =
+//                      User(
+//                          uid = "u1",
+//                          name = "skibidi",
+//                          surname = "toilet",
+//                          email = "skibidi@toilet.ch",
+//                      ),
+//                  name = "skibidi",
+//                  surname = "toilet",
+//                  isUserAnonymous = true,
+//              ),
+//          onSurnameChange = {},
+//          onNameChange = {},
+//          onSaveClick = {},
+//          onSignOutClick = {},
+//          onRetryClick = {},
+//          onUpgradeClick = {},
+//      )
+//
+//      Box(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
+//        Surface(
+//            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+//            tonalElevation = 8.dp,
+//            modifier = Modifier.fillMaxWidth(),
+//        ) {
+//          UpgradeBottomSheetPreview()
+//        }
+//      }
+//    }
+//  }
+// }
+//
