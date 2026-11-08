@@ -21,6 +21,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextInputSelection
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.ui.theme.AppTheme
@@ -166,6 +168,34 @@ class FormFieldsTest {
     }
 
     composeTestRule.onNodeWithTag(fieldTag).performTextInput("abcdefgh")
+
+    assertEquals("abcde", typed)
+    composeTestRule.onNodeWithTag(fieldTag).assertTextContains("abcde")
+  }
+
+  // Typing in the middle of a full field must be refused: breaks if the letter goes in and the end
+  // of the text is cut off instead.
+  @Test
+  fun textField_whenFull_refusesTextAddedInTheMiddle() {
+    var typed = "abcde"
+    composeTestRule.setContent {
+      AppTheme {
+        var value by remember { mutableStateOf(typed) }
+        FestivarTextField(
+            value = value,
+            onValueChange = {
+              value = it
+              typed = it
+            },
+            label = "Title",
+            maxLength = 5,
+            modifier = Modifier.testTag(fieldTag),
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag(fieldTag).performTextInputSelection(TextRange(2))
+    composeTestRule.onNodeWithTag(fieldTag).performTextInput("X")
 
     assertEquals("abcde", typed)
     composeTestRule.onNodeWithTag(fieldTag).assertTextContains("abcde")

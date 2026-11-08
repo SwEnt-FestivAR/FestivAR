@@ -48,6 +48,25 @@ object FestivarTextFieldTestTags {
 }
 
 /**
+ * Fits the edit of a text field from [old] to [new] in [maxLength] characters by cutting only what
+ * was typed or pasted, so the text before and after the cursor is never lost. An [old] text already
+ * longer than [maxLength] (saved before the limit) is kept, but cannot grow.
+ *
+ * The typed or pasted part is what lies between the start and the end that [new] shares with [old].
+ * For example, with a limit of 5, typing "X" in the middle of "abcde" keeps "abcde", and pasting
+ * "0123456789" over the whole of "abc" gives "01234".
+ */
+internal fun limitEdit(old: String, new: String, maxLength: Int): String {
+  val limit = maxOf(maxLength, old.length)
+  if (new.length <= limit) return new
+  val start = new.commonPrefixWith(old).length
+  val end = minOf(new.commonSuffixWith(old).length, old.length - start)
+  val typed = new.substring(start, new.length - end)
+  val room = limit - start - end
+  return new.take(start) + typed.take(room) + new.takeLast(end)
+}
+
+/**
  * Colors of the fields. Material draws the focused border, label and cursor in `primary`, the lime
  * of the app, which is too flashy and hard to read on the light background. They use the dark green
  * of the theme instead; the other states keep the Material defaults.
@@ -75,7 +94,8 @@ private fun festivarFieldColors(): TextFieldColors {
  * @param visualTransformation How the text is displayed, e.g. [PasswordVisualTransformation] to
  *   hide it.
  * @param trailingIcon Content at the end of the field, e.g. a show/hide password button.
- * @param maxLength Maximum number of characters. Text typed or pasted past it is cut off.
+ * @param maxLength Maximum number of characters. Text typed or pasted past it is cut off, see
+ *   [limitEdit]. A longer text the field already holds is kept.
  * @param showCounter Whether to show a "length/maxLength" counter under the field.
  */
 @Composable
@@ -96,7 +116,7 @@ fun FestivarTextField(
 ) {
   OutlinedTextField(
       value = value,
-      onValueChange = { onValueChange(it.take(maxLength)) },
+      onValueChange = { onValueChange(limitEdit(value, it, maxLength)) },
       modifier = modifier.fillMaxWidth(),
       enabled = enabled,
       label = { Text(label) },
