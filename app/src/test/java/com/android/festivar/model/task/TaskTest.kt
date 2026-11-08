@@ -561,10 +561,14 @@ class TaskTest {
 
       for ((i, user) in users(maxAssign).withIndex()) {
         val previous = task
-        task = task.addAssignee(user)
+        val at = start.plusMinutes(i.toLong())
+        task = task.addAssignee(user, at)
 
         assertEquals(users(i + 1), task.assignees)
-        assertEquals(previous.copy(assignees = users(i + 1)), task)
+        assertEquals(
+            previous.copy(assignees = users(i + 1), takenAt = previous.takenAt + (user.uid to at)),
+            task,
+        )
         assertEquals(users(i), previous.assignees)
       }
       assertEquals(maxAssign, task.assignees.size)
@@ -707,5 +711,58 @@ class TaskTest {
 
     assertEquals(task.copy(assignees = listOf(User("user0"), User("user1"))), result)
     assertEquals(assignees, task.assignees) // The original task is not modified.
+  }
+
+  // ---------------------------------------------------------------------------------------- //
+  // takenAt: when each assignee took the task
+  // ---------------------------------------------------------------------------------------- //
+
+  /** Breaks if addAssignee forgets the time it is given, or files it under another uid. */
+  @Test
+  fun addAssigneeRecordsWhenTheUserTookIt() {
+    val taken =
+        taskWith(maxAssign = 2).addAssignee(sara, start).addAssignee(outsider, start.plusHours(1))
+
+    assertEquals(mapOf(sara.uid to start, outsider.uid to start.plusHours(1)), taken.takenAt)
+  }
+
+  /** Breaks if addAssignee records no time, or a fixed one, when none is given. */
+  @Test
+  fun addAssigneeDefaultsToNow() {
+    val before = ZonedDateTime.now()
+    val taken = taskWith(maxAssign = 1).addAssignee(outsider).takenAt.getValue(outsider.uid)
+    val after = ZonedDateTime.now()
+
+    assertFalse(taken.isBefore(before))
+    assertFalse(taken.isAfter(after))
+    assertTrue(Duration.between(taken, ZonedDateTime.now()).seconds < 5)
+  }
+
+  /** Breaks if removeAssignee keeps the time of a user who gave the task back. */
+  @Test
+  fun removeAssigneeForgetsWhenTheUserTookIt() {
+    val task = taskWith(maxAssign = 2).addAssignee(sara, start).addAssignee(outsider, start)
+
+    val result = task.removeAssignee(sara.uid)
+
+    assertEquals(mapOf(outsider.uid to start), result.takenAt)
+    assertEquals(setOf(sara.uid, outsider.uid), task.takenAt.keys) // The original is not modified.
+  }
+
+  /** Breaks if a task can say when someone took it who is not assigned to it. */
+  @Test
+  fun takenAtOfAnUnassignedUserIsRefused() {
+    assertInvalid("takenAt names a user who is not assigned.") {
+      taskWith(maxAssign = 1, assignees = listOf(sara)).copy(takenAt = mapOf(outsider.uid to start))
+    }
+  }
+
+  /** Breaks if assignees who took the task before takenAt existed make the task invalid. */
+  @Test
+  fun aTaskWithoutTakenAtIsStillValid() {
+    val task = taskWith(maxAssign = 2, assignees = users(2))
+
+    assertEquals(users(2), task.assignees)
+    assertTrue(task.takenAt.isEmpty())
   }
 }
