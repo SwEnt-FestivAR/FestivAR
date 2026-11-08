@@ -46,3 +46,15 @@ private fun capitalizeWord(word: String): String {
       .filter { part -> part.any(Char::isLetter) }
       .joinToString("-") { part -> part.lowercase().replaceFirstChar(Char::titlecase) }
 }
+
+/**
+ * Fills the name and surname of this [User] from its [User.email], keeping any value that is
+ * already set. A blank value or [UNKNOWN_NAME] counts as not set.
+ */
+fun User.withNamesFromEmail(): User {
+  val (generatedName, generatedSurname) = nameAndSurnameFromEmail(email)
+  return copy(
+      name = if (name.isBlank() || name == UNKNOWN_NAME) generatedName else name,
+      surname = if (surname.isBlank() || surname == UNKNOWN_NAME) generatedSurname else surname,
+  )
+}

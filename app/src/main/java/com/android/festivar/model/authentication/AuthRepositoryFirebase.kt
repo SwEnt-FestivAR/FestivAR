@@ -6,6 +6,7 @@ import androidx.credentials.Credential
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryProvider
+import com.android.festivar.model.user.withNamesFromEmail
 import com.google.firebase.Firebase
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
@@ -43,7 +44,10 @@ class AuthRepositoryFirebase(
         ensureUserExistsOrSignOut(user)
         if (isLink) {
           val existing = usersRepository.getUser(user.uid)
-          usersRepository.editUser(user.uid, existing.copy(email = user.email.orEmpty()))
+          usersRepository.editUser(
+              user.uid,
+              existing.copy(email = user.email.orEmpty()).withNamesFromEmail(),
+          )
         }
         Log.d(TAG, "Successfully signed in/linked user with Google: ${user.uid}")
         Result.success(user)
@@ -139,13 +143,13 @@ class AuthRepositoryFirebase(
             // Ensure profile exists and update email in Firestore for upgraded user
             ensureUserExistsOrSignOut(user)
             val existing = usersRepository.getUser(user.uid)
-            usersRepository.editUser(user.uid, existing.copy(email = user.email.orEmpty()))
+            usersRepository.editUser(
+                user.uid,
+                existing.copy(email = user.email.orEmpty()).withNamesFromEmail(),
+            )
           } else {
             usersRepository.addUser(
-                User(
-                    uid = user.uid,
-                    email = user.email.orEmpty(),
-                )
+                User(uid = user.uid, email = user.email.orEmpty()).withNamesFromEmail()
             )
           }
           Log.d(
@@ -182,7 +186,9 @@ class AuthRepositoryFirebase(
     try {
       usersRepository.getUser(firebaseUser.uid)
     } catch (_: NoSuchElementException) {
-      usersRepository.addUser(User(uid = firebaseUser.uid, email = firebaseUser.email.orEmpty()))
+      usersRepository.addUser(
+          User(uid = firebaseUser.uid, email = firebaseUser.email.orEmpty()).withNamesFromEmail()
+      )
     } catch (e: Exception) {
       if (e is CancellationException) throw e
       throw e
