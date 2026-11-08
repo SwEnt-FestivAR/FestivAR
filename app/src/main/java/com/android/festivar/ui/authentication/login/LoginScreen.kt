@@ -25,7 +25,6 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -62,6 +61,7 @@ import com.android.festivar.R
 import com.android.festivar.ui.components.FestivarConfirmDialog
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.components.NoticeSnackbar
+import com.android.festivar.ui.components.OrSeparator
 import com.android.festivar.ui.theme.AppTheme
 
 internal object LoginScreenTestTags {
@@ -224,7 +224,7 @@ private fun LoginScreenContent(
         enabled = !uiState.isLoading,
         showGoogle = true,
         text = stringResource(R.string.login_continue_with_google),
-        testTag = LoginScreenTestTags.GOOGLE_BUTTON,
+        modifier = Modifier.testTag(LoginScreenTestTags.GOOGLE_BUTTON),
     )
 
     // Anonymous
@@ -233,7 +233,7 @@ private fun LoginScreenContent(
         enabled = !uiState.isLoading,
         showGoogle = false,
         text = stringResource(R.string.login_no_account),
-        testTag = LoginScreenTestTags.ANONYMOUS_BUTTON,
+        modifier = Modifier.testTag(LoginScreenTestTags.ANONYMOUS_BUTTON),
     )
 
     Spacer(modifier = Modifier.weight(1f))
@@ -273,6 +273,7 @@ fun EmailLoginForm(
     onLoginClick: () -> Unit,
     onTogglePasswordVisibility: () -> Unit,
     modifier: Modifier = Modifier,
+    buttonText: String = stringResource(R.string.signup_sign_in),
 ) {
   Column(
       modifier = modifier,
@@ -336,7 +337,7 @@ fun EmailLoginForm(
         )
       } else {
         Text(
-            text = stringResource(R.string.signup_sign_in),
+            text = buttonText,
             color = MaterialTheme.colorScheme.onPrimary,
             style = MaterialTheme.typography.labelLarge,
         )
@@ -345,39 +346,13 @@ fun EmailLoginForm(
   }
 }
 
-/** Separator with "or" in the middle */
 @Composable
-private fun OrSeparator() {
-  Row(
-      verticalAlignment = Alignment.CenterVertically,
-      modifier = Modifier.fillMaxWidth(),
-  ) {
-    HorizontalDivider(
-        modifier = Modifier.weight(1f),
-        thickness = 1.dp,
-        color = MaterialTheme.colorScheme.outlineVariant,
-    )
-    Text(
-        text = stringResource(R.string.login_or),
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        style = MaterialTheme.typography.bodySmall,
-        modifier = Modifier.padding(horizontal = 10.dp),
-    )
-    HorizontalDivider(
-        modifier = Modifier.weight(1f),
-        thickness = 1.dp,
-        color = MaterialTheme.colorScheme.outlineVariant,
-    )
-  }
-}
-
-@Composable
-private fun SignInButton(
+fun SignInButton(
     onClick: () -> Unit,
     enabled: Boolean,
     showGoogle: Boolean,
     text: String,
-    testTag: String,
+    modifier: Modifier = Modifier,
 ) {
   Button(
       onClick = onClick,
@@ -390,7 +365,7 @@ private fun SignInButton(
               contentColor = MaterialTheme.colorScheme.onSurface,
           ),
       border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-      modifier = Modifier.fillMaxWidth().height(44.dp).testTag(testTag),
+      modifier = modifier.fillMaxWidth().height(44.dp),
   ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
       if (showGoogle) {

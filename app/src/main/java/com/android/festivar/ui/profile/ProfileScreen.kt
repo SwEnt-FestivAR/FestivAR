@@ -35,14 +35,15 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.credentials.CredentialManager
 import com.android.festivar.R
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.Avatar
@@ -97,10 +98,11 @@ fun ProfileScreen(
 ) {
 
   val profileUIState by profileViewModel.uiState.collectAsState()
+  val context = LocalContext.current
+  val credentialManager = remember { CredentialManager.create(context) }
   val snackbarHostState = remember { SnackbarHostState() }
   var isUpgrading by rememberSaveable { mutableStateOf(false) }
   val sheetState = rememberModalBottomSheetState()
-  val scope = rememberCoroutineScope()
   var showSignOutWarning by rememberSaveable { mutableStateOf(false) }
 
   // Shows each error once in the snackbar, then clears it so it does not come back.
@@ -163,17 +165,18 @@ fun ProfileScreen(
             profileViewModel.updateEmail("")
             profileViewModel.updatePassword("")
           },
-          scope = scope,
           sheetState = sheetState,
           uiState = profileUIState,
           onEmailChange = profileViewModel::updateEmail,
           onPasswordChange = profileViewModel::updatePassword,
           onLoginClick = profileViewModel::upgradeWithEmail,
           onTogglePasswordVisibility = profileViewModel::togglePasswordVisibility,
+          onGoogleUpgrade = { profileViewModel.upgradeWithGoogle(context, credentialManager) },
+          snackbarHostState = snackbarHostState,
       )
     }
 
-    if (showSignOutWarning) {
+    if (showSignOutWarning && profileUIState.isUserAnonymous) {
       FestivarConfirmDialog(
           title = stringResource(R.string.login_warning),
           message = stringResource(R.string.profile_anon_sign_out_warning),
@@ -188,16 +191,18 @@ fun ProfileScreen(
       )
     }
 
-    SnackbarHost(
-        hostState = snackbarHostState,
-        modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
-    ) { data ->
-      NoticeSnackbar(
-          message = data.visuals.message,
-          actionLabel = "",
-          onAction = {},
-          modifier = Modifier.testTag(ProfileScreenTestTags.ERROR_MESSAGE),
-      )
+    if (!isUpgrading) {
+      SnackbarHost(
+          hostState = snackbarHostState,
+          modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
+      ) { data ->
+        NoticeSnackbar(
+            message = data.visuals.message,
+            actionLabel = "",
+            onAction = {},
+            modifier = Modifier.testTag(ProfileScreenTestTags.ERROR_MESSAGE),
+        )
+      }
     }
   }
 }

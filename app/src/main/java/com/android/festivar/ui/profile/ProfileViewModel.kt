@@ -1,8 +1,11 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.profile
 
+import android.content.Context
 import android.util.Log
 import androidx.annotation.StringRes
+import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
@@ -10,6 +13,7 @@ import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -260,6 +264,43 @@ class ProfileViewModel(
         throw e
       } catch (e: Exception) {
         Log.e(LOG_TAG, "Error upgrading account with email", e)
+        _uiState.update {
+          it.copy(isLoading = false, errorMsg = R.string.profile_anon_upgrade_failed)
+        }
+      }
+    }
+  }
+
+  fun upgradeWithGoogle(context: Context, credentialManager: CredentialManager) {
+    val state = _uiState.value
+    if (state.isLoading || !state.isUserAnonymous) return
+
+    _uiState.update { it.copy(isLoading = true, errorMsg = null) }
+    viewModelScope.launch {
+      try {
+        val signInWithGoogleOption =
+            GetSignInWithGoogleOption.Builder(context.getString(R.string.default_web_client_id))
+                .build()
+        val request =
+            GetCredentialRequest.Builder().addCredentialOption(signInWithGoogleOption).build()
+        val credential = credentialManager.getCredential(context, request).credential
+        val result = authRepository.signInWithGoogle(credential)
+        result.fold(
+            onSuccess = {
+              _uiState.update { it.copy(isLoading = false) }
+              getUserInformation()
+            },
+            onFailure = { e ->
+              Log.e(LOG_TAG, "Error upgrading account with Google", e)
+              _uiState.update {
+                it.copy(isLoading = false, errorMsg = R.string.profile_anon_upgrade_failed)
+              }
+            },
+        )
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        Log.e(LOG_TAG, "Error upgrading account with Google", e)
         _uiState.update {
           it.copy(isLoading = false, errorMsg = R.string.profile_anon_upgrade_failed)
         }
