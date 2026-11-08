@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 package com.android.festivar.ui.task.edit
 
 import android.os.Looper
@@ -6,6 +7,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
 import com.android.festivar.model.task.Priority
 import com.android.festivar.model.task.Task
+import com.android.festivar.model.task.TaskSpot
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.user.User
@@ -653,6 +655,19 @@ class EditTaskViewModelTest {
 
     viewModel.showPicker(DateTimeField.START_DATE)
     assertNull(viewModel.uiState.value.form.openPicker)
+  }
+
+  // Breaks if a saved edit rebuilds the task from the form and drops its pin on the venue plan.
+  @Test
+  fun savingKeepsTheSpot() {
+    val pinned = seeded.copy(spot = TaskSpot.at(2.5, -7.0))
+    runBlocking { local.editTask("task-1", pinned) }
+    viewModel.load()
+    viewModel.updateTitle("Run power to the main stage")
+
+    viewModel.save()
+
+    assertEquals(TaskSpot.at(2.5, -7.0), stored().spot)
   }
 }
 
