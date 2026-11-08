@@ -88,7 +88,6 @@ class VoiceNoteUiStateTest {
             onDismissDelete = { calls += "dismiss" },
             onRecordStart = { calls += "start" },
             onRecordRelease = { calls += "release" },
-            onRecordCancel = { calls += "cancel" },
             onRetry = { calls += "retry" },
             onOpenSettings = { calls += "settings" },
         )
@@ -100,7 +99,6 @@ class VoiceNoteUiStateTest {
       onDismissDelete()
       onRecordStart()
       onRecordRelease()
-      onRecordCancel()
       onRetry()
       onOpenSettings()
     }
@@ -113,7 +111,6 @@ class VoiceNoteUiStateTest {
             "dismiss",
             "start",
             "release",
-            "cancel",
             "retry",
             "settings",
         ),
@@ -130,7 +127,6 @@ class VoiceNoteUiStateTest {
       onDismissDelete()
       onRecordStart()
       onRecordRelease()
-      onRecordCancel()
       onRetry()
       onOpenSettings()
     }

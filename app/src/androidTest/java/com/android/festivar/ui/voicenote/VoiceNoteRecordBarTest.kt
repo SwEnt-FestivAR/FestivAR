@@ -63,7 +63,6 @@ class VoiceNoteRecordBarTest {
           onDismissDelete = { events += "dismiss" },
           onRecordStart = { events += "start" },
           onRecordRelease = { events += "release" },
-          onRecordCancel = { events += "cancel" },
           onRetry = { events += "retry" },
           onOpenSettings = { events += "settings" },
       )
@@ -223,13 +222,13 @@ class VoiceNoteRecordBarTest {
 
   /** Breaks if turning the microphone off in the middle of a recording leaves the recorder on. */
   @Test
-  fun interruptedGestureCancelsTheRecording() {
+  fun interruptedGestureStillReleases() {
     var state by mutableStateOf(VoiceNoteUiState(canManage = true))
     composeTestRule.setContent { AppTheme { VoiceNoteRecordBar(state, callbacks) } }
     tag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).performTouchInput { down(center) }
     composeTestRule.runOnIdle { state = VoiceNoteUiState(canManage = true, micDenied = true) }
     composeTestRule.waitForIdle()
-    assertEquals(listOf("start", "cancel"), events)
+    assertEquals(listOf("start", "release"), events)
   }
 
   /** Breaks if the record button is not announced as a disabled button without the microphone. */

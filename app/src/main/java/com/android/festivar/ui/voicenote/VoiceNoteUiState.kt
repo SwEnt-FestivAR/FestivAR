@@ -97,12 +97,11 @@ class VoiceNoteCallbacks(
     val onDismissDelete: () -> Unit,
     /** The owner presses the record button. */
     val onRecordStart: () -> Unit,
-    /** The owner releases the button: the recording is sent. */
-    val onRecordRelease: () -> Unit,
     /**
-     * The recording is interrupted (the finger is lost, the microphone turns off): it is dropped.
+     * The owner releases the button, or the gesture is interrupted (the finger is lost, the
+     * microphone turns off): the recording stops.
      */
-    val onRecordCancel: () -> Unit,
+    val onRecordRelease: () -> Unit,
     /** Tries again the last failed action (sending or playing). */
     val onRetry: () -> Unit,
     /** Opens the settings of the app to turn the microphone on. */
@@ -118,7 +117,6 @@ class VoiceNoteCallbacks(
             onDismissDelete = {},
             onRecordStart = {},
             onRecordRelease = {},
-            onRecordCancel = {},
             onRetry = {},
             onOpenSettings = {},
         )

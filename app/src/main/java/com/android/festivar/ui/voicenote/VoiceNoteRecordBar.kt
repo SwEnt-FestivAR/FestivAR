@@ -157,13 +157,12 @@ private fun RecordingIndicator(state: VoiceNoteUiState) {
  * The round microphone button. It reacts to the press itself: pressing starts and releasing stops.
  * The same node stays in place while recording, so the gesture is not interrupted when the bar
  * changes. A gesture that is interrupted (the finger is lost, or the button stops listening because
- * the microphone is turned off) cancels the recording instead of leaving the recorder on.
+ * the microphone is turned off) is released too, so the recorder never stays on.
  */
 @Composable
 private fun RecordButton(enabled: Boolean, callbacks: VoiceNoteCallbacks) {
   val onStart by rememberUpdatedState(callbacks.onRecordStart)
   val onRelease by rememberUpdatedState(callbacks.onRecordRelease)
-  val onCancel by rememberUpdatedState(callbacks.onRecordCancel)
   val label = stringResource(R.string.voice_note_record)
   val colors = MaterialTheme.colorScheme
   Box(
@@ -180,24 +179,13 @@ private fun RecordButton(enabled: Boolean, callbacks: VoiceNoteCallbacks) {
             awaitEachGesture {
               val down = awaitFirstDown()
               onStart()
-              var finished = false
               try {
-                var released: Boolean
                 while (true) {
                   val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id }
-                  if (change == null) {
-                    released = false
-                    break
-                  }
-                  if (!change.pressed) {
-                    released = true
-                    break
-                  }
+                  if (change == null || !change.pressed) break
                 }
-                finished = true
-                if (released) onRelease() else onCancel()
               } finally {
-                if (!finished) onCancel()
+                onRelease()
               }
             }
           },
