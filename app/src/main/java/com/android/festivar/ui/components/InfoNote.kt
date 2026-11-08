@@ -63,21 +63,25 @@ fun InfoNote(
   }
 }
 
+/** The full width button that the design puts under an [InfoNote], to be passed as its action. */
+@Composable
+fun InfoNoteButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+  OutlinedButton(
+      onClick = onClick,
+      modifier = modifier.fillMaxWidth().height(52.dp),
+      shape = MaterialTheme.shapes.medium,
+  ) {
+    Text(text)
+  }
+}
+
 @Preview(showBackground = true)
 @Composable
 internal fun InfoNotePreview() {
   AppTheme {
     InfoNote(
         stringResource(R.string.info_note_sample_message),
-        action = {
-          OutlinedButton(
-              onClick = {},
-              modifier = Modifier.fillMaxWidth().height(52.dp),
-              shape = MaterialTheme.shapes.medium,
-          ) {
-            Text(stringResource(R.string.action_open_settings))
-          }
-        },
+        action = { InfoNoteButton(stringResource(R.string.action_open_settings), onClick = {}) },
     )
   }
 }

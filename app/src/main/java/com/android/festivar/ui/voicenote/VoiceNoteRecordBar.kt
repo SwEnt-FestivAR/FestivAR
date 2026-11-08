@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -19,7 +18,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -38,14 +36,12 @@ import androidx.compose.ui.unit.dp
 import com.android.festivar.R
 import com.android.festivar.model.audio.PlayerState
 import com.android.festivar.model.audio.RecorderState
-import com.android.festivar.model.voicenote.VoiceNote
 import com.android.festivar.ui.components.FixedBottomBar
 import com.android.festivar.ui.components.InfoNote
+import com.android.festivar.ui.components.InfoNoteButton
 import com.android.festivar.ui.components.NoticeSnackbar
 import com.android.festivar.ui.theme.AppTheme
 import java.time.Duration
-import java.time.ZoneOffset
-import java.time.ZonedDateTime
 
 /**
  * Test tags of the record bar and of the notices above it, named after the tags of the "Voice
@@ -195,7 +191,7 @@ fun VoiceNoteNotices(
     if (state.playbackFailed) {
       ErrorNotice(
           R.string.voice_note_playback_failed,
-          R.string.voice_note_retry,
+          R.string.action_retry,
           callbacks.onRetry,
           VoiceNoteRecordTestTags.PLAYBACK_ERROR,
           VoiceNoteRecordTestTags.PLAYBACK_RETRY,
@@ -204,7 +200,7 @@ fun VoiceNoteNotices(
     if (state.showRecordBar && state.sendFailed) {
       ErrorNotice(
           R.string.voice_note_send_failed,
-          R.string.voice_note_retry,
+          R.string.action_retry,
           callbacks.onRetry,
           VoiceNoteRecordTestTags.SEND_ERROR,
           VoiceNoteRecordTestTags.SEND_RETRY,
@@ -215,16 +211,11 @@ fun VoiceNoteNotices(
           message = stringResource(R.string.voice_note_mic_denied),
           modifier = Modifier.testTag(VoiceNoteRecordTestTags.MIC_DENIED),
           action = {
-            OutlinedButton(
+            InfoNoteButton(
+                stringResource(R.string.action_open_settings),
                 onClick = callbacks.onOpenSettings,
-                modifier =
-                    Modifier.fillMaxWidth()
-                        .height(52.dp)
-                        .testTag(VoiceNoteRecordTestTags.OPEN_SETTINGS),
-                shape = MaterialTheme.shapes.medium,
-            ) {
-              Text(stringResource(R.string.voice_note_open_settings))
-            }
+                modifier = Modifier.testTag(VoiceNoteRecordTestTags.OPEN_SETTINGS),
+            )
           },
       )
     }
@@ -249,23 +240,13 @@ private fun ErrorNotice(
   )
 }
 
-private val previewNote =
-    VoiceNote(
-        id = "n1",
-        audioUrl = "https://example.com/n1.m4a",
-        duration = Duration.ofSeconds(14),
-        createdAt = ZonedDateTime.of(2026, 10, 17, 9, 12, 0, 0, ZoneOffset.UTC),
-    )
-
-private val callbacks = VoiceNoteCallbacks.NoOp
-
 /** The notices and the record bar fixed at the bottom of the screen, as on the screen. */
 @Composable
 private fun VoiceNoteBarPreviewScreen(state: VoiceNoteUiState) {
   AppTheme {
     Column(Modifier.fillMaxWidth()) {
-      VoiceNoteNotices(state, callbacks)
-      VoiceNoteRecordBar(state, callbacks)
+      VoiceNoteNotices(state, previewCallbacks)
+      VoiceNoteRecordBar(state, previewCallbacks)
     }
   }
 }
