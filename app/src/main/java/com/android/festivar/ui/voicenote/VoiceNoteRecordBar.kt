@@ -198,7 +198,7 @@ private fun RecordButton(enabled: Boolean, callbacks: VoiceNoteCallbacks) {
               onStart()
               var finished = false
               try {
-                var cancelled = false
+                var cancelled: Boolean
                 while (true) {
                   val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id }
                   if (change == null) {
