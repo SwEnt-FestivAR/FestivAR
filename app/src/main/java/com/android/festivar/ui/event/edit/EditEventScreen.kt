@@ -35,11 +35,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
-import com.android.festivar.model.event.Event
-import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.DateTimeRange
 import com.android.festivar.ui.components.FestivarDateTimePickerDialog
@@ -48,11 +45,8 @@ import com.android.festivar.ui.components.FestivarDiscardDialog
 import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.components.FestivarFieldWithError
 import com.android.festivar.ui.components.FestivarTextField
-import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
 import java.time.LocalTime
-import java.time.ZoneId
-import java.time.ZonedDateTime
 
 object EditEventScreenTestTags {
   const val BACK_BUTTON = "editEventBackButton"
@@ -333,39 +327,39 @@ private fun EditEventTopBar(onBack: () -> Unit) {
   )
 }
 
-@Preview(showBackground = true)
-@Composable
-private fun EditEventScreenPreview() {
-  val zone = ZoneId.of("Europe/Zurich")
-  val startDate = LocalDate.now().plusDays(10)
-  val endDate = startDate.plusDays(2)
-  val event =
-      Event(
-          eventId = "preview",
-          title = "Fête de l'Asso 2026",
-          description = "Enter by the main gate.",
-          members = listOf(User(uid = "organizer", name = "Alice")),
-          startDate = ZonedDateTime.of(startDate, LocalTime.of(16, 0), zone),
-          endDate = ZonedDateTime.of(endDate, LocalTime.of(10, 0), zone),
-          location = "Parc de Vidy, Lausanne",
-      )
-
-  AppTheme {
-    EditEventContent(
-        state =
-            EditEventUIState(
-                event = event,
-                name = event.title,
-                startDate = startDate,
-                endDate = endDate,
-                startTime = LocalTime.of(16, 0),
-                endTime = LocalTime.of(10, 0),
-                venue = event.location,
-                notes = "Access by the lake side gate.",
-                zone = zone,
-                endZone = zone,
-            ),
-        actions = EditEventActions(),
-    )
-  }
-}
+// @Preview(showBackground = true)
+// @Composable
+// private fun EditEventScreenPreview() {
+//  val zone = ZoneId.of("Europe/Zurich")
+//  val startDate = LocalDate.now().plusDays(10)
+//  val endDate = startDate.plusDays(2)
+//  val event =
+//      Event(
+//          eventId = "preview",
+//          title = "Fête de l'Asso 2026",
+//          description = "Enter by the main gate.",
+//          members = listOf(User(uid = "organizer", name = "Alice")),
+//          startDate = ZonedDateTime.of(startDate, LocalTime.of(16, 0), zone),
+//          endDate = ZonedDateTime.of(endDate, LocalTime.of(10, 0), zone),
+//          location = "Parc de Vidy, Lausanne",
+//      )
+//
+//  AppTheme {
+//    EditEventContent(
+//        state =
+//            EditEventUIState(
+//                event = event,
+//                name = event.title,
+//                startDate = startDate,
+//                endDate = endDate,
+//                startTime = LocalTime.of(16, 0),
+//                endTime = LocalTime.of(10, 0),
+//                venue = event.location,
+//                notes = "Access by the lake side gate.",
+//                zone = zone,
+//                endZone = zone,
+//            ),
+//        actions = EditEventActions(),
+//    )
+//  }
+// }
