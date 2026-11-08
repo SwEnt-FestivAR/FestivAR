@@ -125,7 +125,6 @@ class TaskRepositoryFirebase(
         // Tasks saved before owners existed have no ownerId. They are deleted from Firestore, so a
         // missing one is an error, not a case to handle.
         ownerId = document.getString("ownerId").required("ownerId", document.id),
-        // Tasks saved before voice notes existed have no such field: they have no voice note.
         voiceNote = document.get("voiceNote")?.let { readVoiceNote(it, document.id) },
     )
   }

@@ -32,7 +32,7 @@ import java.time.ZonedDateTime
  *
  * A [Task] holds at most one [VoiceNote]. Only its owner ([ownerId]) may attach or remove it:
  * [attachVoiceNote] and [removeVoiceNote] refuse any other user. `TaskRepositoryFirebase` saves and
- * reads [voiceNote]; tasks saved before have none and load with `null`.
+ * reads [voiceNote].
  *
  * @property taskId Unique identifier of the [Task].
  * @property eventId Identifier of the [Event] the [Task] belongs to.

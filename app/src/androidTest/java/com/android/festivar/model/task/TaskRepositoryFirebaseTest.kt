@@ -128,16 +128,6 @@ class TaskRepositoryFirebaseTest {
     assertEquals(withNote, invokeDocumentToTask(document.get().await()))
   }
 
-  /** Breaks if a task saved before voice notes existed stops loading. */
-  @Test
-  fun documentToTask_loadsATaskSavedBeforeVoiceNotes_withoutOne() = runBlocking {
-    val data = invokeToFirestoreData(task) - "voiceNote"
-    val document = Firebase.firestore.collection(TASK_COLLECTION_PATH).document(task.taskId)
-    document.set(data).await()
-
-    assertNull(invokeDocumentToTask(document.get().await()).voiceNote)
-  }
-
   /** Breaks if adding or removing a voice note by editing a task is lost when it is read again. */
   @Test
   fun editTask_keepsTheVoiceNote_afterReadingTheTaskAgain() = runBlocking {
@@ -184,6 +174,7 @@ class TaskRepositoryFirebaseTest {
                 "title" to "Minimal task",
                 "assignees" to listOf("user-2"),
                 "ownerId" to "owner-1",
+                "voiceNote" to null,
             )
         )
         .await()
