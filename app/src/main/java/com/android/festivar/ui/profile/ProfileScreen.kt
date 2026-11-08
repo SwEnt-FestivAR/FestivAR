@@ -95,11 +95,11 @@ fun ProfileScreen(
     profileViewModel: ProfileViewModel,
     onBack: () -> Unit = {},
     onSignedOut: () -> Unit = {},
+    credentialManager: CredentialManager = CredentialManager.create(LocalContext.current),
 ) {
 
   val profileUIState by profileViewModel.uiState.collectAsState()
   val context = LocalContext.current
-  val credentialManager = remember { CredentialManager.create(context) }
   val snackbarHostState = remember { SnackbarHostState() }
   var isUpgrading by rememberSaveable { mutableStateOf(false) }
   val sheetState = rememberModalBottomSheetState()

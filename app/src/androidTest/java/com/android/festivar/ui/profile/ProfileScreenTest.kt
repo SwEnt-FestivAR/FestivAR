@@ -2,6 +2,7 @@
 package com.android.festivar.ui.profile
 
 import androidx.annotation.StringRes
+import androidx.compose.ui.Modifier.Companion.any
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -23,6 +24,10 @@ import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.unit.dp
+import androidx.credentials.Credential
+import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.GetCredentialResponse
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.android.festivar.R
@@ -34,6 +39,7 @@ import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.ui.authentication.login.LoginScreenTestTags
 import com.google.firebase.auth.FirebaseUser
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.awaitCancellation
@@ -99,6 +105,7 @@ class ProfileScreenTest {
       authRepository: AuthRepository = FakeAuthRepository(),
       onBack: () -> Unit = {},
       onSignedOut: () -> Unit = {},
+      credentialManager: CredentialManager = mockk(relaxed = true),
       waitForLoad: Boolean = true,
   ): ProfileViewModel {
     val viewModel =
@@ -111,7 +118,12 @@ class ProfileScreenTest {
             uId = ME,
         )
     composeTestRule.setContent {
-      ProfileScreen(profileViewModel = viewModel, onBack = onBack, onSignedOut = onSignedOut)
+      ProfileScreen(
+          profileViewModel = viewModel,
+          onBack = onBack,
+          onSignedOut = onSignedOut,
+          credentialManager = credentialManager,
+      )
     }
     if (waitForLoad) waitForTag(ProfileScreenTestTags.AVATAR)
     return viewModel
@@ -262,6 +274,30 @@ class ProfileScreenTest {
     composeTestRule.onNodeWithTag(LoginScreenTestTags.LOGIN_BUTTON).performClick()
     composeTestRule.waitUntil(5_000) { authRepository.signUpCallCount == 1 }
     assertEquals("user@example.com" to "password", authRepository.lastSignUpCredentials)
+  }
+
+  @Test
+  fun googleUpgradeButtonRequestsCredentialAndUpgradesAccount() {
+    val credentialManager = mockk<CredentialManager>()
+    val credential = mockk<Credential>()
+    val response = mockk<GetCredentialResponse>()
+    coEvery { credentialManager.getCredential(any(), any<GetCredentialRequest>()) } returns response
+    every { response.credential } returns credential
+    var googleUpgradeCalled = false
+    val authRepository =
+        object :
+            FakeAuthRepository(
+                currentUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+            ) {
+          override suspend fun signInWithGoogle(receivedCredential: Credential) =
+              Result.success(mockk<FirebaseUser>()).also { googleUpgradeCalled = true }
+        }
+    setProfile(authRepository = authRepository, credentialManager = credentialManager)
+
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.UPGRADE_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.GOOGLE_BUTTON).performClick()
+
+    composeTestRule.waitUntil(5_000) { googleUpgradeCalled }
   }
 
   /**
