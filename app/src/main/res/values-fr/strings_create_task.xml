@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The spot field of the task forms and its map picker. -->
+    <string name="task_spot_label">Emplacement sur le plan</string>
+    <string name="task_spot_none">Sans emplacement</string>
+    <string name="task_spot_on_structure">Sur %1$s</string>
+    <string name="task_spot_point">Point à %1$s m est, %2$s m sud</string>
+    <string name="task_spot_pick_point">Choisir un point sur la carte…</string>
+    <string name="task_spot_pick_hint">Touchez l’endroit de la tâche. Les épingles s’accrochent à la structure la plus proche.</string>
+    <string name="task_spot_cancel">Annuler</string>
+    <string name="task_spot_confirm">Utiliser cet emplacement</string>
+</resources>

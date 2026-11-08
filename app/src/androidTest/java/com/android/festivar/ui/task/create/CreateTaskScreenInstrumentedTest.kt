@@ -42,6 +42,7 @@ class CreateTaskScreenInstrumentedTest : CreateTaskTest() {
           CreateTaskScreenTestTags.TITLE_FIELD,
           CreateTaskScreenTestTags.DESCRIPTION_FIELD,
           CreateTaskScreenTestTags.LOCATION_FIELD,
+          CreateTaskScreenTestTags.SPOT_DROPDOWN,
           CreateTaskScreenTestTags.START_DATE_FIELD,
           CreateTaskScreenTestTags.START_TIME_FIELD,
           CreateTaskScreenTestTags.END_DATE_FIELD,

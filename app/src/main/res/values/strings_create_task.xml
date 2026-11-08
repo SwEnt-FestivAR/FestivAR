@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The spot field of the task forms and its map picker. -->
+    <string name="task_spot_label">Spot on the map</string>
+    <string name="task_spot_none">No spot</string>
+    <string name="task_spot_on_structure">On %1$s</string>
+    <string name="task_spot_point">Point at %1$s m east, %2$s m south</string>
+    <string name="task_spot_pick_point">Pick a point on the map…</string>
+    <string name="task_spot_pick_hint">Tap where the job is. Pins snap to the nearest structure.</string>
+    <string name="task_spot_cancel">Cancel</string>
+    <string name="task_spot_confirm">Use this spot</string>
+</resources>

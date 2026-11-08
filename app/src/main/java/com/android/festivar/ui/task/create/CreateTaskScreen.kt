@@ -32,7 +32,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
+import com.android.festivar.model.event.Venue
+import com.android.festivar.model.structure.Structure
+import com.android.festivar.model.structure.StructureKind
 import com.android.festivar.model.task.Priority
+import com.android.festivar.model.task.TaskSpot
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.DateTimeRange
 import com.android.festivar.ui.components.FestivarDateTimePickerDialog
@@ -47,6 +51,7 @@ import com.android.festivar.ui.task.DiscardTaskDialog
 import com.android.festivar.ui.task.TaskFormBackHandling
 import com.android.festivar.ui.task.TaskFormLabels
 import com.android.festivar.ui.task.TaskFormTopBar
+import com.android.festivar.ui.task.TaskSpotField
 import com.android.festivar.ui.task.taskFormActions
 import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
@@ -78,6 +83,23 @@ object CreateTaskScreenTestTags {
   const val DISCARD_DIALOG = "createTaskDiscardDialog"
   const val KEEP_EDITING_BUTTON = "createTaskKeepEditingButton"
   const val DISCARD_BUTTON = "createTaskDiscardButton"
+  /** The "Spot on the map" dropdown field. */
+  const val SPOT_DROPDOWN = "taskSpotDropdown"
+  /** The "No spot" item of the spot dropdown. */
+  const val SPOT_NONE = "taskSpotNone"
+  /** The "Pick a point on the map" item of the spot dropdown, shown once the venue is placed. */
+  const val SPOT_PICK_POINT = "taskSpotPickPoint"
+  /** The bottom sheet with the map to pick a spot on. */
+  const val SPOT_SHEET = "taskSpotSheet"
+  /** The description of the spot the last tap on the map picked. */
+  const val SPOT_PENDING = "taskSpotPending"
+  /** The Cancel button of the spot sheet. */
+  const val SPOT_CANCEL = "taskSpotCancel"
+  /** The "Use this spot" button of the spot sheet. */
+  const val SPOT_CONFIRM = "taskSpotConfirm"
+
+  /** The item of the spot dropdown for the structure [structureId]. */
+  fun spotStructure(structureId: String) = "taskSpotStructure_$structureId"
 }
 
 /** What the user can do on the Create task screen. Lets [CreateTaskContent] stay stateless. */
@@ -87,6 +109,7 @@ class CreateTaskActions(
     val onDescriptionChange: (String) -> Unit = {},
     val onLocationChange: (String) -> Unit = {},
     val onPriorityChange: (Priority) -> Unit = {},
+    val onSpotChange: (TaskSpot?) -> Unit = {},
     val onMaxAssignDecrease: () -> Unit = {},
     val onMaxAssignIncrease: () -> Unit = {},
     val onEstimatedMinutesChange: (String) -> Unit = {},
@@ -213,6 +236,12 @@ fun CreateTaskContent(
           label = stringResource(R.string.create_task_field_location),
           modifier = Modifier.testTag(CreateTaskScreenTestTags.LOCATION_FIELD),
       )
+      TaskSpotField(
+          spot = state.spot,
+          venue = state.venue,
+          structures = state.structures,
+          onSpotChange = actions.onSpotChange,
+      )
       FestivarDateTimeRow(
           dateLabel = stringResource(R.string.create_task_field_start_date),
           timeLabel = stringResource(R.string.create_task_field_start_time),
@@ -305,11 +334,22 @@ internal fun CreateTaskEmptyPreview() {
   AppTheme { CreateTaskContent(state = CreateTaskUiState(), actions = CreateTaskActions()) }
 }
 
-/** The priority, people needed and estimated time set. */
+/** The priority, people needed, estimated time and a spot on a structure set. */
 @Preview(showBackground = true, heightDp = 1000)
 @Composable
 internal fun CreateTaskFilledPreview() {
-  val state = previewForm.copy(priority = Priority.URGENT, maxAssign = 3, estimatedMinutes = "90")
+  val state =
+      previewForm.copy(
+          priority = Priority.URGENT,
+          maxAssign = 3,
+          estimatedMinutes = "90",
+          spot = TaskSpot.onStructure("s1"),
+          venue = Venue(latitude = 46.5170, longitude = 6.5990),
+          structures =
+              listOf(
+                  Structure("s1", "e1", StructureKind.STAGE, "Main stage", -6.0, -20.0, 12.0, 8.0)
+              ),
+      )
   AppTheme { CreateTaskContent(state = state, actions = CreateTaskActions()) }
 }
 

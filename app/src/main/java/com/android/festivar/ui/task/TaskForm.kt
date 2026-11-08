@@ -39,6 +39,7 @@ fun taskFormActions(
         onDescriptionChange = editor::updateDescription,
         onLocationChange = editor::updateLocation,
         onPriorityChange = editor::updatePriority,
+        onSpotChange = editor::updateSpot,
         onMaxAssignDecrease = editor::decrementMaxAssign,
         onMaxAssignIncrease = editor::incrementMaxAssign,
         onEstimatedMinutesChange = editor::updateEstimatedMinutes,
