@@ -1,0 +1,15 @@
+<!-- Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com> -->
+<resources>
+    <string name="venue_label">Venue on the map</string>
+    <string name="venue_not_placed">Not placed yet</string>
+    <string name="venue_place">Place on the map</string>
+    <string name="venue_summary">%1$s, %2$s · north at %3$d°</string>
+    <string name="venue_change">Change</string>
+    <string name="venue_remove">Remove</string>
+    <string name="venue_bearing">Plan rotation: %d° from north</string>
+    <string name="venue_searching">Searching…</string>
+    <string name="venue_no_results">No place found for this address, move the map by hand.</string>
+    <string name="venue_search_error">Could not look the address up, move the map by hand.</string>
+    <string name="venue_cancel">Cancel</string>
+    <string name="venue_confirm">Use this spot</string>
+</resources>

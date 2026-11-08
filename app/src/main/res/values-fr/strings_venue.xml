@@ -1,0 +1,15 @@
+<!-- Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com> -->
+<resources>
+    <string name="venue_label">Lieu sur la carte</string>
+    <string name="venue_not_placed">Pas encore placé</string>
+    <string name="venue_place">Placer sur la carte</string>
+    <string name="venue_summary">%1$s, %2$s · nord à %3$d°</string>
+    <string name="venue_change">Modifier</string>
+    <string name="venue_remove">Retirer</string>
+    <string name="venue_bearing">Rotation du plan : %d° depuis le nord</string>
+    <string name="venue_searching">Recherche…</string>
+    <string name="venue_no_results">Aucun lieu trouvé pour cette adresse, déplacez la carte à la main.</string>
+    <string name="venue_search_error">Impossible de chercher l’adresse, déplacez la carte à la main.</string>
+    <string name="venue_cancel">Annuler</string>
+    <string name="venue_confirm">Utiliser cet endroit</string>
+</resources>
