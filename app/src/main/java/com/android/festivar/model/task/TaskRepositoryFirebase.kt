@@ -1,3 +1,4 @@
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.model.task
@@ -92,6 +93,7 @@ class TaskRepositoryFirebase(
         "priority" to task.priority.name,
         "maxAssign" to task.maxAssign,
         "assignees" to task.assignees.map { user -> user.uid },
+        "takenAt" to task.takenAt.mapValues { it.value.toString() },
         "completed" to task.completed,
         "ownerId" to task.ownerId,
     )
@@ -107,6 +109,14 @@ class TaskRepositoryFirebase(
           userRepo.getUser(userId)
         }
 
+    // Tasks saved before takenAt existed have no such field: they load with an empty map.
+    val takenAt =
+        (document.get("takenAt") as? Map<*, *>).orEmpty().entries.associate { (uid, time) ->
+          if (uid !is String || time !is String)
+              throw IllegalArgumentException("Invalid takenAt data: $uid=$time")
+          uid to ZonedDateTime.parse(time)
+        }
+
     return Task(
         taskId = document.getString("taskId") ?: document.id,
         eventId = document.getString("eventId").required("eventId", document.id),
@@ -119,6 +129,7 @@ class TaskRepositoryFirebase(
         priority = document.getString("priority")?.let(Priority::valueOf) ?: Priority.NONE,
         maxAssign = document.getLong("maxAssign")?.toInt() ?: 1,
         assignees = ass,
+        takenAt = takenAt,
         completed = document.getBoolean("completed") ?: false,
         // Tasks saved before owners existed have no ownerId. They are deleted from Firestore, so a
         // missing one is an error, not a case to handle.

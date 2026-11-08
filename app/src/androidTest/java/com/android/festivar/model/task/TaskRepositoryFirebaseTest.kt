@@ -137,6 +137,45 @@ class TaskRepositoryFirebaseTest {
     }
   }
 
+  // Breaks if takenAt is not written, or comes back with another instant or zone.
+  @Test
+  fun takenAt_survivesTheRoundTrip() = runBlocking {
+    val at = ZonedDateTime.parse("2037-05-12T09:12:00+02:00[Europe/Zurich]")
+    val taken = task.copy(assignees = emptyList()).addAssignee(User("user-1"), at)
+    repository.addTask(taken)
+
+    val stored = repository.getTask(taken.taskId).takenAt.getValue("user-1")
+
+    assertEquals(at.toInstant(), stored.toInstant())
+    assertEquals(at.zone, stored.zone)
+    assertEquals(taken, repository.getTask(taken.taskId))
+  }
+
+  // Breaks if a task stored before takenAt existed no longer loads.
+  @Test
+  fun documentToTask_withoutTakenAt_loadsAnEmptyMap() = runBlocking {
+    val documentId = "task-${UUID.randomUUID()}"
+    val document = Firebase.firestore.collection(TASK_COLLECTION_PATH).document(documentId)
+    document
+        .set(
+            mapOf(
+                "eventId" to "event-2",
+                "title" to "Old task",
+                "assignees" to listOf("user-2"),
+                "ownerId" to "owner-1",
+            )
+        )
+        .await()
+
+    try {
+      val loaded = invokeDocumentToTask(document.get().await())
+      assertEquals(listOf(User("user-2")), loaded.assignees)
+      assertTrue(loaded.takenAt.isEmpty())
+    } finally {
+      document.delete().await()
+    }
+  }
+
   @Test
   fun documentToTask_failsWhenTheOwnerIsMissing() = runBlocking {
     val documentId = "task-${UUID.randomUUID()}"
