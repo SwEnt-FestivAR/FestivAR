@@ -74,4 +74,7 @@
     <string name="nav_events">Événements</string>
     <string name="nav_my_tasks">Mes tâches</string>
     <string name="nav_profile">Profil</string>
+    <string name="nav_event_details">Détails de l\'événement</string>
+    <string name="nav_event_tasks">Tâches de l\'événement</string>
+    <string name="nav_task_details">Détails de la tâche</string>
 </resources>
