@@ -16,6 +16,7 @@ import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -209,7 +210,8 @@ class ProfileScreenTest {
 
   @Test
   fun upgradeButtonShowsAndDismissesBottomSheetAndClearsCredentials() {
-    val viewModel = setProfile(authRepository = anonymousAuthRepository())
+    val authRepository = anonymousAuthRepository().apply { signUpResult = Result.success(mockk()) }
+    val viewModel = setProfile(authRepository = authRepository)
 
     composeTestRule
         .onNodeWithTag(ProfileScreenTestTags.UPGRADE_BUTTON)
@@ -233,6 +235,22 @@ class ProfileScreenTest {
     composeTestRule.onNodeWithTag(ProfileScreenTestTags.UPGRADE_BUTTON).performClick()
     composeTestRule.onNodeWithTag(LoginScreenTestTags.EMAIL_INPUT).assertTextEquals("")
     composeTestRule.onNodeWithTag(LoginScreenTestTags.PASSWORD_INPUT).assertTextEquals("")
+
+    composeTestRule
+        .onNodeWithTag(LoginScreenTestTags.PASSWORD_INPUT)
+        .performTextReplacement("password")
+    composeTestRule
+        .onNodeWithContentDescription(string(R.string.signup_show_password))
+        .performClick()
+    composeTestRule
+        .onNodeWithContentDescription(string(R.string.signup_hide_password))
+        .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(LoginScreenTestTags.EMAIL_INPUT)
+        .performTextReplacement("user@example.com")
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.LOGIN_BUTTON).performClick()
+    composeTestRule.waitUntil(5_000) { authRepository.signUpCallCount == 1 }
+    assertEquals("user@example.com" to "password", authRepository.lastSignUpCredentials)
   }
 
   /**
