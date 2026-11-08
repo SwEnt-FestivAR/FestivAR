@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.authentication
 
 import android.util.Log
@@ -178,7 +179,8 @@ class AuthRepositoryFirebase(
       }
 
   /**
-   * Creates the [User] document of [firebaseUser] in Firestore if it does not exist yet.
+   * Creates the [User] document of [firebaseUser] in Firestore if it does not exist yet. Its name
+   * and surname are generated from the email of [firebaseUser], see [withNamesFromEmail].
    *
    * @param firebaseUser The [firebaseUser] that has to have its equivalent as a [User].
    */
