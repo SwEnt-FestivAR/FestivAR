@@ -1,6 +1,8 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.event
 
+import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
@@ -158,8 +160,12 @@ class EventsOverviewViewModelTest {
   ): EventsOverviewViewModel {
     val viewModel =
         EventsOverviewViewModel(
-            eventsRepository = withRepository,
-            usersRepository = usersRepository,
+            dataRepository =
+                DataRepositoryLocal(
+                    FakeAuthRepository(),
+                    eventsRepository = withRepository,
+                    usersRepository = usersRepository,
+                ),
             uId = sara.uid,
             now = { now },
         )
@@ -735,8 +741,12 @@ class EventsOverviewViewModelTest {
     val repository = RecordingEventsRepository(listOf(lastYear, nextYear))
     val viewModel =
         EventsOverviewViewModel(
-            eventsRepository = repository,
-            usersRepository = RecordingUsersRepository(listOf(sara)),
+            dataRepository =
+                DataRepositoryLocal(
+                    FakeAuthRepository(),
+                    eventsRepository = repository,
+                    usersRepository = RecordingUsersRepository(listOf(sara)),
+                ),
             uId = sara.uid,
         )
     viewModel.refreshUIState()

@@ -4,6 +4,7 @@ package com.android.festivar.ui.event.overview
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.user.User
@@ -71,23 +72,25 @@ data class EventsOverviewUIState(
 /**
  * ViewModel of the Events Overview screen.
  *
- * Manages the UI state by fetching the signed-in [User] through the [UsersRepository] and its
- * [Event] items through the [EventsRepository]. Nothing is fetched until [refreshUIState] is
- * called: the screen calls it each time it is shown. Until the first fetch, the UI state is already
- * loading.
+ * Manages the UI state by fetching the signed-in [User] through the [UsersRepository] of
+ * [dataRepository] and its [Event] items through its [EventsRepository]. Nothing is fetched until
+ * [refreshUIState] is called: the screen calls it each time it is shown. Until the first fetch, the
+ * UI state is already loading.
  *
- * @property eventsRepository The repository used to fetch the [Event] items.
- * @property usersRepository The repository holding the [User] saved by the sign in or the sign up,
- *   with the name and surname shown in the avatar.
+ * @property dataRepository Gives the [EventsRepository] used to fetch the [Event] items and the
+ *   [UsersRepository] holding the [User] saved by the sign in or the sign up, with the name and
+ *   surname shown in the avatar.
  * @property uId The signed-in [User] unique identifier.
  * @property now Gives the current time, used to split ongoing, upcoming and past [Event] items.
  */
 class EventsOverviewViewModel(
-    private val eventsRepository: EventsRepository,
-    private val usersRepository: UsersRepository,
+    private val dataRepository: DataRepository,
     private val uId: String,
     private val now: () -> ZonedDateTime = ZonedDateTime::now,
 ) : ViewModel() {
+
+  private val eventsRepository: EventsRepository = dataRepository.eventsRepository
+  private val usersRepository: UsersRepository = dataRepository.usersRepository
 
   // Until the saved User is fetched, the avatar shows a person icon. Loading from the start:
   // nothing is fetched until the screen calls refreshUIState on resume, and until then the screen
