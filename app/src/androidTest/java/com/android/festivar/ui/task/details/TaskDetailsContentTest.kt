@@ -104,6 +104,7 @@ class TaskDetailsContentTest {
     var done = 0
     show(state(), onGiveBack = { givenBack++ }, onMarkDone = { done++ })
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.GIVE_BACK_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.GIVE_BACK_CONFIRM_BUTTON).performClick()
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MARK_DONE_BUTTON).performClick()
     assertEquals(1, givenBack)
     assertEquals(1, done)
