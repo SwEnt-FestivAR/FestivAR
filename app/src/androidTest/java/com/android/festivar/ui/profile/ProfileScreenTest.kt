@@ -25,6 +25,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.android.festivar.R
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryLocal
@@ -90,7 +91,15 @@ class ProfileScreenTest {
       onSignedOut: () -> Unit = {},
       waitForLoad: Boolean = true,
   ): ProfileViewModel {
-    val viewModel = ProfileViewModel(usersRepository, authRepository, ME)
+    val viewModel =
+        ProfileViewModel(
+            dataRepository =
+                DataRepositoryLocal(
+                    authRepository = authRepository,
+                    usersRepository = usersRepository,
+                ),
+            uId = ME,
+        )
     composeTestRule.setContent {
       ProfileScreen(profileViewModel = viewModel, onBack = onBack, onSignedOut = onSignedOut)
     }

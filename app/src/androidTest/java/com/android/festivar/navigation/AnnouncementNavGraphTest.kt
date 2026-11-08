@@ -13,6 +13,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.EventsRepositoryProvider
@@ -75,7 +76,10 @@ class AnnouncementNavGraphTest {
       navController = rememberNavController()
       NavHost(navController = navController, startDestination = PREVIOUS_SCREEN) {
         composable(PREVIOUS_SCREEN) { Text(PREVIOUS_SCREEN) }
-        announcementGraph(navController, FakeAuthRepository(currentUser = user))
+        announcementGraph(
+            navController,
+            DataRepositoryLocal(FakeAuthRepository(currentUser = user)),
+        )
       }
     }
     composeTestRule.runOnUiThread {

@@ -8,6 +8,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.credentials.CredentialManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryFirebase
 import com.android.festivar.ui.authentication.login.LoginScreenTestTags
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
@@ -29,7 +30,7 @@ class MainActivityTest {
     composeTestRule.activity.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
-          authRepository = authRepository,
+          dataRepository = DataRepositoryFirebase(authRepository = authRepository),
       )
     }
 

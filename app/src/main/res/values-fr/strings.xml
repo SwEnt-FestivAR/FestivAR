@@ -9,6 +9,8 @@
     <string name="action_cancel">Annuler</string>
     <string name="action_retry">Réessayer</string>
     <string name="action_open_settings">Ouvrir les paramètres</string>
+    <!-- User list -->
+    <string name="user_list_uncategorized">Inconnu</string>
     <!-- Samples shown in the previews of the shared components -->
     <string name="action_continue_anyway">Continuer</string>
     <string name="notice_snackbar_sample_message">Erreur dans le processus lancé.</string>

@@ -1,0 +1,17 @@
+<!-- Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com> -->
+<resources>
+    <string name="voice_note_label">Voice note</string>
+    <string name="voice_note_author_you">You · %s</string>
+    <string name="voice_note_organizer">Organizer</string>
+    <string name="voice_note_today">Today</string>
+    <string name="voice_note_author_other">%1$s · %2$s</string>
+    <string name="voice_note_play">Play the voice note</string>
+    <string name="voice_note_stop">Stop the voice note</string>
+    <string name="voice_note_delete">Delete the voice note</string>
+    <string name="voice_note_empty_title">No voice note yet</string>
+    <string name="voice_note_empty_body">Record a short explanation volunteers can listen to before they start.</string>
+    <string name="voice_note_delete_title">Delete this voice note?</string>
+    <string name="voice_note_delete_body">The volunteers on this task will no longer be able to hear it.</string>
+    <string name="voice_note_keep">Keep it</string>
+    <string name="voice_note_delete_confirm">Delete</string>
+</resources>
