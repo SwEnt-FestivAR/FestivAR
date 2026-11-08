@@ -50,4 +50,9 @@
     <string name="map_delete_title">Delete %1$s?</string>
     <string name="map_delete_message">Tasks pinned on it lose their spot on the map.</string>
     <string name="map_delete">Delete</string>
+    <string name="map_tool_custom">Custom</string>
+    <string name="map_custom_title">Custom element</string>
+    <string name="map_custom_label">Name</string>
+    <string name="map_custom_width">Width (m)</string>
+    <string name="map_custom_height">Height (m)</string>
 </resources>

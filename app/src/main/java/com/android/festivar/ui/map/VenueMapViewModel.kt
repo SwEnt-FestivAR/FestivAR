@@ -71,6 +71,27 @@ enum class PaletteTool(val kind: StructureKind, val width: Double, val height: D
   STAND(StructureKind.STAND, 3.0, 3.0),
   /** A 2 × 2 m table. */
   TABLE(StructureKind.TABLE, 2.0, 2.0),
+  /** An element of the organizer's own, its name and size asked first; 4 × 4 m by default. */
+  CUSTOM(StructureKind.CUSTOM, 4.0, 4.0),
+}
+
+/** The smallest and largest side a custom element may be given, in metres. */
+private val CUSTOM_SIDE = 0.5..200.0
+
+/**
+ * A custom element being defined: its name and size, before it is placed.
+ *
+ * @property label the name typed.
+ * @property width the width typed, in metres.
+ * @property height the height typed, in metres.
+ */
+data class CustomDraft(val label: String = "", val width: String = "4", val height: String = "4") {
+  /** True when the name is not blank and both sizes are numbers from 0.5 to 200 m. */
+  val isValid: Boolean
+    get() =
+        label.isNotBlank() &&
+            width.toDoubleOrNull()?.let { it in CUSTOM_SIDE } == true &&
+            height.toDoubleOrNull()?.let { it in CUSTOM_SIDE } == true
 }
 
 /** A corner of a structure's footprint on the plan, north up. */
@@ -187,6 +208,7 @@ private fun pinLabel(task: Task): String {
  * @property canUndo true when a saved change can be undone.
  * @property isSaving true while an edit of the plan is being written.
  * @property renaming true while the rename dialog of the selected structure is open.
+ * @property customDraft the custom element being defined while its dialog is open, or null.
  */
 data class VenueMapUiState(
     val isLoading: Boolean = true,
@@ -208,6 +230,7 @@ data class VenueMapUiState(
     val canUndo: Boolean = false,
     val isSaving: Boolean = false,
     val renaming: Boolean = false,
+    val customDraft: CustomDraft? = null,
 ) {
   /** The structure matching [selectedStructureId], or null when none is selected or it is gone. */
   val selected: Structure?
@@ -345,6 +368,9 @@ class VenueMapViewModel(
   /** The plan before each saved change, the latest last. */
   private val undoStack = ArrayDeque<List<Structure>>()
 
+  /** The confirmed custom element that [PaletteTool.CUSTOM] places. */
+  private var custom = CustomDraft()
+
   /**
    * Loads the event, then its structures, then its tasks. A failure sets [VenueMapUiState.errorMsg]
    * and keeps what already loaded; a success clears it. Does nothing while another load is running.
@@ -444,14 +470,46 @@ class VenueMapViewModel(
 
   /**
    * Picks what the next tap on the map places. Picking the selected tool again, or null, puts it
-   * down. Organizer only.
+   * down. Picking [PaletteTool.CUSTOM] first opens [VenueMapUiState.customDraft] to ask its name
+   * and size; the tool is picked once the draft is confirmed. Organizer only.
    *
    * @param tool the palette item, or null for none.
    */
   fun selectTool(tool: PaletteTool?) {
     if (!_uiState.value.isOrganizer) return
-    _uiState.update { it.copy(tool = if (tool == it.tool) null else tool) }
+    _uiState.update {
+      when {
+        tool == it.tool -> it.copy(tool = null)
+        tool == PaletteTool.CUSTOM -> it.copy(customDraft = CustomDraft())
+        else -> it.copy(tool = tool)
+      }
+    }
   }
+
+  /**
+   * Replaces the custom element being defined with what is typed.
+   *
+   * @param label the name typed.
+   * @param width the width typed, in metres.
+   * @param height the height typed, in metres.
+   */
+  fun updateCustomDraft(label: String, width: String, height: String) = _uiState.update {
+    if (it.customDraft == null) it else it.copy(customDraft = CustomDraft(label, width, height))
+  }
+
+  /**
+   * Closes the custom element dialog and picks [PaletteTool.CUSTOM] with its name and size, so the
+   * next tap places it. Does nothing while the draft is not valid.
+   */
+  fun confirmCustomDraft() {
+    val draft = _uiState.value.customDraft ?: return
+    if (!draft.isValid) return
+    custom = draft
+    _uiState.update { it.copy(customDraft = null, tool = PaletteTool.CUSTOM) }
+  }
+
+  /** Closes the custom element dialog without picking a tool. */
+  fun dismissCustomDraft() = _uiState.update { it.copy(customDraft = null) }
 
   /**
    * Places the selected tool's structure centred on the tapped point, snapped to the half metre
@@ -466,14 +524,15 @@ class VenueMapViewModel(
     val tool = state.tool ?: return
     if (!canEdit()) return
     val (cx, cy) = planPoint(latitude, longitude) ?: return
-    val width = tool.width
-    val height = tool.height
+    val draft = custom.takeIf { tool == PaletteTool.CUSTOM }
+    val width = draft?.let { VenueGeometry.snap(it.width.toDouble()) } ?: tool.width
+    val height = draft?.let { VenueGeometry.snap(it.height.toDouble()) } ?: tool.height
     val structure =
         Structure(
             structureId = structuresRepository.getNewUid(),
             eventId = eventId,
             kind = tool.kind,
-            label = defaultLabel(tool.kind, state.structures),
+            label = draft?.label?.trim() ?: defaultLabel(tool.kind, state.structures),
             x = VenueGeometry.snap(cx) - width / 2,
             y = VenueGeometry.snap(cy) - height / 2,
             width = width,

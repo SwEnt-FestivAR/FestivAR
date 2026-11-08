@@ -53,4 +53,9 @@
     <string name="map_delete_title">Supprimer %1$s ?</string>
     <string name="map_delete_message">Les tâches épinglées dessus perdent leur emplacement sur la carte.</string>
     <string name="map_delete">Supprimer</string>
+    <string name="map_tool_custom">Personnalisé</string>
+    <string name="map_custom_title">Élément personnalisé</string>
+    <string name="map_custom_label">Nom</string>
+    <string name="map_custom_width">Largeur (m)</string>
+    <string name="map_custom_height">Hauteur (m)</string>
 </resources>

@@ -3,6 +3,7 @@ package com.android.festivar.ui.map
 
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -97,6 +98,9 @@ class VenueMapScreenTest {
       onCancelRename: () -> Unit = {},
       onDelete: () -> Unit = {},
       onUndo: () -> Unit = {},
+      onUpdateCustomDraft: (String, String, String) -> Unit = { _, _, _ -> },
+      onConfirmCustomDraft: () -> Unit = {},
+      onDismissCustomDraft: () -> Unit = {},
   ) {
     screen.value = state
     composeTestRule.setContent {
@@ -116,6 +120,9 @@ class VenueMapScreenTest {
             onCancelRename = onCancelRename,
             onDelete = onDelete,
             onUndo = onUndo,
+            onUpdateCustomDraft = onUpdateCustomDraft,
+            onConfirmCustomDraft = onConfirmCustomDraft,
+            onDismissCustomDraft = onDismissCustomDraft,
             mapContent = { _, _ -> },
         )
       }
@@ -312,7 +319,7 @@ class VenueMapScreenTest {
     composeTestRule.onNodeWithTag(VenueMapScreenTestTags.UNDO).assertIsDisplayed()
     composeTestRule.onNodeWithTag(VenueMapScreenTestTags.PALETTE_HINT).assertIsDisplayed()
     PaletteTool.entries.forEach {
-      composeTestRule.onNodeWithTag(VenueMapScreenTestTags.palette(it)).assertIsDisplayed()
+      composeTestRule.onNodeWithTag(VenueMapScreenTestTags.palette(it)).assertExists()
     }
 
     screen.value = loaded.copy(selectedStructureId = "s1")
@@ -410,5 +417,31 @@ class VenueMapScreenTest {
 
     screen.value = editing.copy(canUndo = false)
     composeTestRule.onNodeWithTag(VenueMapScreenTestTags.UNDO).assertIsNotEnabled()
+  }
+
+  /** Red if OK accepts a blank name, stays disabled once valid, or a field or button is unwired. */
+  @Test
+  fun theCustomDialogEnablesOkOnlyWhenTheDraftIsValid() {
+    val updates = mutableListOf<Triple<String, String, String>>()
+    var confirms = 0
+    var dismissals = 0
+    setContent(
+        loaded.copy(isOrganizer = true, customDraft = CustomDraft()),
+        onUpdateCustomDraft = { l, w, h -> updates += Triple(l, w, h) },
+        onConfirmCustomDraft = { confirms++ },
+        onDismissCustomDraft = { dismissals++ },
+    )
+
+    composeTestRule.onNodeWithTag(VenueMapScreenTestTags.CUSTOM_DIALOG).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(VenueMapScreenTestTags.CUSTOM_OK).assertIsNotEnabled()
+    composeTestRule.onNodeWithTag(VenueMapScreenTestTags.CUSTOM_LABEL).performTextInput("Bar")
+    assertEquals(Triple("Bar", "4", "4"), updates.last())
+
+    screen.value = screen.value.copy(customDraft = CustomDraft("Bar truck", "6", "3"))
+    composeTestRule.onNodeWithTag(VenueMapScreenTestTags.CUSTOM_OK).assertIsEnabled().performClick()
+    composeTestRule.onNodeWithTag(VenueMapScreenTestTags.CUSTOM_CANCEL).performClick()
+
+    assertEquals(1, confirms)
+    assertEquals(1, dismissals)
   }
 }

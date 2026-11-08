@@ -803,4 +803,56 @@ class VenueMapViewModelTest {
     vm.undo()
     assertEquals(listOf(stage, bar).toSet(), stored().toSet())
   }
+
+  /** Red if a blank name, a non number or a size outside 0.5 to 200 m is accepted. */
+  @Test
+  fun customDraftValidity() {
+    assertTrue(CustomDraft("Bar truck", "6", "3").isValid)
+    assertTrue(CustomDraft("Edge", "0.5", "200").isValid)
+    assertFalse(CustomDraft().isValid)
+    assertFalse(CustomDraft("  ", "4", "4").isValid)
+    assertFalse(CustomDraft("Tiny", "0.4", "4").isValid)
+    assertFalse(CustomDraft("Huge", "4", "200.5").isValid)
+    assertFalse(CustomDraft("Words", "four", "4").isValid)
+  }
+
+  /** Red if picking Custom skips the dialog, or an invalid draft picks the tool. */
+  @Test
+  fun selectingCustomOpensTheDraftAndOnlyAValidOnePicksTheTool() {
+    val vm = organizer()
+
+    vm.selectTool(PaletteTool.CUSTOM)
+    assertEquals(CustomDraft(), vm.uiState.value.customDraft)
+    assertNull(vm.uiState.value.tool)
+
+    vm.confirmCustomDraft()
+    assertEquals(CustomDraft(), vm.uiState.value.customDraft)
+    assertNull(vm.uiState.value.tool)
+
+    vm.dismissCustomDraft()
+    assertNull(vm.uiState.value.customDraft)
+    assertNull(vm.uiState.value.tool)
+  }
+
+  /** Red if a placed custom element ignores the typed name or size. */
+  @Test
+  fun placingACustomElementUsesItsLabelAndSize() {
+    val vm = organizer()
+    vm.selectTool(PaletteTool.CUSTOM)
+    vm.updateCustomDraft(" Bar truck ", "6", "3")
+    vm.confirmCustomDraft()
+    assertNull(vm.uiState.value.customDraft)
+    assertEquals(PaletteTool.CUSTOM, vm.uiState.value.tool)
+
+    vm.tapAt(10.0, 10.0)
+
+    val placed = vm.uiState.value.selected!!
+    assertEquals(StructureKind.CUSTOM, placed.kind)
+    assertEquals("Bar truck", placed.label)
+    assertEquals(
+        listOf(7.0, 8.5, 6.0, 3.0),
+        listOf(placed.x, placed.y, placed.width, placed.height).rounded(),
+    )
+    assertTrue(placed in stored())
+  }
 }

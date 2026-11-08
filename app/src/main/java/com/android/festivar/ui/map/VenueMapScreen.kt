@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.DirectionsWalk
@@ -61,6 +62,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -145,6 +147,18 @@ object VenueMapScreenTestTags {
   const val DELETE_CONFIRM = "mapDeleteConfirm"
   /** The Cancel button of the delete confirmation. */
   const val DELETE_DISMISS = "mapDeleteDismiss"
+  /** The dialog asking the name and size of a custom element. */
+  const val CUSTOM_DIALOG = "mapCustomDialog"
+  /** The name field of the custom element dialog. */
+  const val CUSTOM_LABEL = "mapCustomLabel"
+  /** The width field of the custom element dialog. */
+  const val CUSTOM_WIDTH = "mapCustomWidth"
+  /** The height field of the custom element dialog. */
+  const val CUSTOM_HEIGHT = "mapCustomHeight"
+  /** The OK button of the custom element dialog. */
+  const val CUSTOM_OK = "mapCustomOk"
+  /** The Cancel button of the custom element dialog. */
+  const val CUSTOM_CANCEL = "mapCustomCancel"
 
   /**
    * The palette item placing [tool].
@@ -214,6 +228,9 @@ fun VenueMapScreen(
       onCancelRename = viewModel::cancelRename,
       onDelete = viewModel::deleteSelected,
       onUndo = viewModel::undo,
+      onUpdateCustomDraft = viewModel::updateCustomDraft,
+      onConfirmCustomDraft = viewModel::confirmCustomDraft,
+      onDismissCustomDraft = viewModel::dismissCustomDraft,
   )
 }
 
@@ -238,6 +255,9 @@ fun VenueMapScreen(
  * @param onCancelRename called when the rename dialog is cancelled.
  * @param onDelete called once the organizer confirms deleting the selected structure.
  * @param onUndo called when the undo button is clicked.
+ * @param onUpdateCustomDraft called with the name, width and height typed in the custom dialog.
+ * @param onConfirmCustomDraft called when the custom dialog is confirmed.
+ * @param onDismissCustomDraft called when the custom dialog is cancelled.
  * @param mapContent draws the map under the overlays; tests and previews swap the Google map out
  *   since it needs Play services.
  */
@@ -261,6 +281,9 @@ fun VenueMapContent(
     onCancelRename: () -> Unit = {},
     onDelete: () -> Unit = {},
     onUndo: () -> Unit = {},
+    onUpdateCustomDraft: (String, String, String) -> Unit = { _, _, _ -> },
+    onConfirmCustomDraft: () -> Unit = {},
+    onDismissCustomDraft: () -> Unit = {},
     mapContent: @Composable BoxScope.(VenueMapUiState, (String?) -> Unit) -> Unit = { s, select ->
       VenueGoogleMap(s, select, onSelectTask, onPlace, onMove, onResize)
     },
@@ -298,6 +321,10 @@ fun VenueMapContent(
           val selected = state.selected
           if (state.isOrganizer && state.renaming && selected != null) {
             RenameDialog(selected.label, onRename, onCancelRename)
+          }
+          val draft = state.customDraft
+          if (state.isOrganizer && draft != null) {
+            CustomDialog(draft, onUpdateCustomDraft, onConfirmCustomDraft, onDismissCustomDraft)
           }
         }
       }
@@ -723,6 +750,7 @@ private fun toolLabel(tool: PaletteTool): Int =
       PaletteTool.STAGE -> R.string.map_tool_stage
       PaletteTool.STAND -> R.string.map_tool_stand
       PaletteTool.TABLE -> R.string.map_tool_table
+      PaletteTool.CUSTOM -> R.string.map_tool_custom
     }
 
 /** The organizer's palette over the sheet, the picked tool outlined in primary, and its hint. */
@@ -805,6 +833,65 @@ private fun RenameDialog(current: String, onRename: (String) -> Unit, onCancel: 
         TextButton(
             onClick = onCancel,
             modifier = Modifier.testTag(VenueMapScreenTestTags.RENAME_CANCEL),
+        ) {
+          Text(stringResource(R.string.map_cancel))
+        }
+      },
+  )
+}
+
+/** The custom element dialog: a name and two sizes, OK enabled once [draft] is valid. */
+@Composable
+private fun CustomDialog(
+    draft: CustomDraft,
+    onUpdate: (String, String, String) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+  AlertDialog(
+      onDismissRequest = onDismiss,
+      modifier = Modifier.testTag(VenueMapScreenTestTags.CUSTOM_DIALOG),
+      title = { Text(stringResource(R.string.map_custom_title)) },
+      text = {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          OutlinedTextField(
+              value = draft.label,
+              onValueChange = { onUpdate(it, draft.width, draft.height) },
+              modifier = Modifier.testTag(VenueMapScreenTestTags.CUSTOM_LABEL),
+              label = { Text(stringResource(R.string.map_custom_label)) },
+              singleLine = true,
+          )
+          OutlinedTextField(
+              value = draft.width,
+              onValueChange = { onUpdate(draft.label, it, draft.height) },
+              modifier = Modifier.testTag(VenueMapScreenTestTags.CUSTOM_WIDTH),
+              label = { Text(stringResource(R.string.map_custom_width)) },
+              keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+              singleLine = true,
+          )
+          OutlinedTextField(
+              value = draft.height,
+              onValueChange = { onUpdate(draft.label, draft.width, it) },
+              modifier = Modifier.testTag(VenueMapScreenTestTags.CUSTOM_HEIGHT),
+              label = { Text(stringResource(R.string.map_custom_height)) },
+              keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+              singleLine = true,
+          )
+        }
+      },
+      confirmButton = {
+        TextButton(
+            onClick = onConfirm,
+            enabled = draft.isValid,
+            modifier = Modifier.testTag(VenueMapScreenTestTags.CUSTOM_OK),
+        ) {
+          Text(stringResource(android.R.string.ok))
+        }
+      },
+      dismissButton = {
+        TextButton(
+            onClick = onDismiss,
+            modifier = Modifier.testTag(VenueMapScreenTestTags.CUSTOM_CANCEL),
         ) {
           Text(stringResource(R.string.map_cancel))
         }
