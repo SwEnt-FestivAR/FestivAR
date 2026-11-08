@@ -22,14 +22,7 @@ fun bottomBarStateFor(route: String?, from: String?): BottomBarState? {
         else BottomBarState(NavigationTab.EVENTS, inEventTasks = true)
     AppScreens.MyTasks -> BottomBarState(NavigationTab.MY_TASKS)
     AppScreens.Profile -> BottomBarState(NavigationTab.PROFILE)
-    AppScreens.Login,
-    AppScreens.SignUp,
-    AppScreens.ForgotPassword,
-    AppScreens.JoinEvent,
-    AppScreens.CreateEvent,
-    AppScreens.CreateTask,
-    AppScreens.CreateAnnouncement,
-    AppScreens.EditTask,
-    null -> null
+    // Forms, authentication and any screen not listed above show no bar.
+    else -> null
   }
 }
