@@ -19,6 +19,7 @@ import com.android.festivar.navigation.AppScreens
 import com.android.festivar.ui.task.create.CreateTaskScreen
 import com.android.festivar.ui.task.create.CreateTaskViewModel
 import com.android.festivar.ui.task.details.TaskDetailsScreen
+import com.android.festivar.ui.task.details.TaskDetailsViewModel
 import com.android.festivar.ui.task.edit.EditTaskScreen
 import com.android.festivar.ui.task.edit.EditTaskViewModel
 import com.android.festivar.ui.task.overview.TaskOverviewScreen
@@ -97,8 +98,10 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, dataRepository: 
         }
 
     TaskDetailsScreen(
-        taskId = taskId,
-        currentUser = currentUser,
+        viewModel =
+            viewModel(key = "$taskId:${currentUser.uid}") {
+              TaskDetailsViewModel(taskId, currentUser, dataRepository)
+            },
         onBack = navigator.onBack,
         onEdit = navigator.onEdit,
     )

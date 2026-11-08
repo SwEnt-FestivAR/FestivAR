@@ -28,49 +28,45 @@ import com.android.festivar.model.audio.PlayerState
 import com.android.festivar.model.voicenote.VoiceNote
 import com.android.festivar.ui.components.FestivarConfirmDialog
 import com.android.festivar.ui.components.SectionLabel
-import com.android.festivar.ui.components.formatTime
 import com.android.festivar.ui.theme.AppTheme
+import java.time.Clock
 import java.time.Duration
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 
 /**
- * Test tags of the voice note section and of its player, named after the tags of the "Voice notes"
- * frames in Figma.
- */
-object VoiceNoteTestTags {
-  const val VOICE_NOTE_AUTHOR = "voiceNoteAuthor"
-  const val VOICE_NOTE_PLAY = "voiceNotePlay"
-  const val VOICE_NOTE_DURATION = "voiceNoteDuration"
-  const val VOICE_NOTE_DELETE = "voiceNoteDelete"
-  const val VOICE_NOTE_EMPTY = "voiceNoteEmpty"
-  const val CONFIRM_DELETE = "voiceNoteConfirmDelete"
-  const val KEEP_BUTTON = "voiceNoteKeep"
-  const val CONFIRM_DELETE_BUTTON = "voiceNoteConfirmDeleteButton"
-}
-
-/**
  * The voice note section of a task, for the owner and for the volunteers: the label, then the note
  * or the empty state, and the dialog to confirm the deletion of the note. It shows nothing to a
  * volunteer when the task has no note.
+ *
+ * It only draws the note and the empty state. The record bar and the notices about the recording or
+ * the playback (errors, missing microphone permission) are other composables, so they are not shown
+ * here.
+ *
+ * @param ownerName Who is credited with the note when the current user is not its owner. The owner
+ *   of a task is not always the organizer of the event, since every member can create a task, so
+ *   the caller must give the name of the owner.
+ * @param clock Tells the current year, which the date of the note only shows when it is another.
  */
 @Composable
 fun VoiceNoteSection(
     state: VoiceNoteUiState,
     callbacks: VoiceNoteCallbacks,
+    ownerName: String,
     modifier: Modifier = Modifier,
+    clock: Clock = Clock.systemDefaultZone(),
 ) {
   if (!state.isVisible) return
   Column(modifier.fillMaxWidth()) {
     SectionLabel(stringResource(R.string.voice_note_label))
     val note = state.note
     if (note != null) {
-      VoiceNoteRow(note, state, callbacks)
+      VoiceNoteRow(note, state, callbacks, ownerName, clock)
     } else {
       EmptyVoiceNote()
     }
   }
-  if (state.showDeleteConfirm) {
+  if (state.showDeleteDialog) {
     FestivarConfirmDialog(
         title = stringResource(R.string.voice_note_delete_title),
         message = stringResource(R.string.voice_note_delete_body),
@@ -85,17 +81,25 @@ fun VoiceNoteSection(
   }
 }
 
-/** The note: who and when, then the player and, for the owner, the trash. */
+/**
+ * The note: who and when (date, with the year if it is not this one, and time), then the player
+ * and, for the owner, the trash.
+ */
 @Composable
-private fun VoiceNoteRow(note: VoiceNote, state: VoiceNoteUiState, callbacks: VoiceNoteCallbacks) {
+private fun VoiceNoteRow(
+    note: VoiceNote,
+    state: VoiceNoteUiState,
+    callbacks: VoiceNoteCallbacks,
+    ownerName: String,
+    clock: Clock,
+) {
   Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-    val time = formatTime(note.createdAt.toLocalTime())
+    // The date is there because a task can last several days
+    val recordedAt =
+        formatRecordedAt(note.createdAt, clock, stringResource(R.string.voice_note_today))
     Text(
-        stringResource(
-            if (state.canManage) R.string.voice_note_author_you
-            else R.string.voice_note_author_organizer,
-            time,
-        ),
+        if (state.canManage) stringResource(R.string.voice_note_author_you, recordedAt)
+        else stringResource(R.string.voice_note_author_other, ownerName, recordedAt),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.testTag(VoiceNoteTestTags.VOICE_NOTE_AUTHOR),
@@ -111,7 +115,7 @@ private fun VoiceNoteRow(note: VoiceNote, state: VoiceNoteUiState, callbacks: Vo
 }
 
 /**
- * What the owner sees when the task has no voice note: the compact "empty voice note" row of the S4
+ * What the owner sees when the task has no voice note: the compact "empty voice note" row of the S5
  * design, a microphone on a round disc, the title and a one-line hint.
  */
 @Composable
@@ -160,14 +164,14 @@ private val previewNote =
         createdAt = ZonedDateTime.of(2026, 10, 17, 9, 12, 0, 0, ZoneOffset.UTC),
     )
 
-private val callbacks = VoiceNoteCallbacks.NoOp
+private val previewCallbacks = VoiceNoteCallbacks.NoOp
 
 /** The section as on the screen, in its scrolling column. */
 @Composable
 private fun VoiceNotePreviewScreen(state: VoiceNoteUiState) {
   AppTheme {
     Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
-      VoiceNoteSection(state, callbacks)
+      VoiceNoteSection(state, previewCallbacks, stringResource(R.string.voice_note_organizer))
     }
   }
 }

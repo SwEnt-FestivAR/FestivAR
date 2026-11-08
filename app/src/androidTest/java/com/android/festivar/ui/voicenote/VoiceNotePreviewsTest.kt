@@ -2,11 +2,14 @@
 package com.android.festivar.ui.voicenote
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.festivar.R
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -19,12 +22,15 @@ import org.junit.runner.RunWith
 class VoiceNotePreviewsTest {
   @get:Rule val composeTestRule = createComposeRule()
 
+  private fun text(id: Int, vararg args: Any) =
+      ApplicationProvider.getApplicationContext<android.content.Context>().getString(id, *args)
+
   /** Breaks if the owner preview no longer shows the note with its author line and the trash. */
   @Test
   fun ownerPreview_showsTheNoteWithTrash() {
     composeTestRule.setContent { VoiceNoteOwnerPreview() }
 
-    composeTestRule.onNodeWithText("You · 09:12").assertIsDisplayed()
+    composeTestRule.onNodeWithTag(VoiceNoteTestTags.VOICE_NOTE_AUTHOR).assertIsDisplayed()
     composeTestRule.onNodeWithTag(VoiceNoteTestTags.VOICE_NOTE_DELETE).assertIsDisplayed()
   }
 
@@ -33,7 +39,7 @@ class VoiceNotePreviewsTest {
   fun ownerPlayingPreview_showsTheStopButton() {
     composeTestRule.setContent { VoiceNoteOwnerPlayingPreview() }
 
-    composeTestRule.onNodeWithContentDescription("Stop the voice note").assertIsDisplayed()
+    composeTestRule.onNodeWithContentDescription(text(R.string.voice_note_stop)).assertIsDisplayed()
   }
 
   /** Breaks if the empty preview no longer shows the empty state. */
@@ -49,7 +55,7 @@ class VoiceNotePreviewsTest {
   fun deleteConfirmPreview_showsTheDialog() {
     composeTestRule.setContent { VoiceNoteDeleteConfirmPreview() }
 
-    composeTestRule.onNodeWithText("Delete this voice note?").assertIsDisplayed()
+    composeTestRule.onNodeWithText(text(R.string.voice_note_delete_title)).assertIsDisplayed()
   }
 
   /** Breaks if the volunteer preview no longer shows the note without the trash. */
@@ -57,7 +63,9 @@ class VoiceNotePreviewsTest {
   fun volunteerPreview_showsTheNoteWithoutTrash() {
     composeTestRule.setContent { VoiceNoteVolunteerPreview() }
 
-    composeTestRule.onNodeWithText("Organizer · 09:12").assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(VoiceNoteTestTags.VOICE_NOTE_AUTHOR)
+        .assertTextContains(text(R.string.voice_note_organizer), substring = true)
     composeTestRule.onNodeWithTag(VoiceNoteTestTags.VOICE_NOTE_DELETE).assertDoesNotExist()
   }
 
@@ -66,7 +74,7 @@ class VoiceNotePreviewsTest {
   fun playerPreview_showsThePlayButtonAndTheDuration() {
     composeTestRule.setContent { VoiceNotePlayerPreview() }
 
-    composeTestRule.onNodeWithContentDescription("Play the voice note").assertIsDisplayed()
+    composeTestRule.onNodeWithContentDescription(text(R.string.voice_note_play)).assertIsDisplayed()
     composeTestRule.onNodeWithText("0:14").assertIsDisplayed()
   }
 
@@ -75,7 +83,7 @@ class VoiceNotePreviewsTest {
   fun playerPlayingPreview_showsTheStopButton() {
     composeTestRule.setContent { VoiceNotePlayerPlayingPreview() }
 
-    composeTestRule.onNodeWithContentDescription("Stop the voice note").assertIsDisplayed()
+    composeTestRule.onNodeWithContentDescription(text(R.string.voice_note_stop)).assertIsDisplayed()
   }
 
   /** Breaks if the preview of the player with the trash no longer shows the trash. */

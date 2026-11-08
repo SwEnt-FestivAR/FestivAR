@@ -26,6 +26,7 @@ import androidx.credentials.CredentialManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.datarepository.DataRepositoryFirebase
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventRepositoryFirebase
 import com.android.festivar.model.event.EventsRepositoryLocal
@@ -570,9 +571,11 @@ class MainActivityNavigationTest {
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
+          // The task details read the task through the data repository, so it gets the seeded one.
           dataRepository =
-              DataRepositoryFirebase(
-                  authRepository = FakeAuthRepository(currentUser = firebaseUser)
+              DataRepositoryLocal(
+                  authRepository = FakeAuthRepository(currentUser = firebaseUser),
+                  tasksRepository = TasksRepositoryProvider.repository,
               ),
           startDestinationOverride = AppScreens.taskDetails("t1"),
       )
