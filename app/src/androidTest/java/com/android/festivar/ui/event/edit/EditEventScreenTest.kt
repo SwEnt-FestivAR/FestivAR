@@ -2,14 +2,21 @@ package com.android.festivar.ui.event.edit
 
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextClearance
+import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.festivar.R
 import com.android.festivar.model.event.Event
+import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
 import java.time.LocalTime
@@ -79,6 +86,173 @@ class EditEventScreenTest {
     composeTestRule.onNodeWithTag(EditEventScreenTestTags.DISCARD_KEEP_EDITING).performClick()
     assertEquals(0, confirmCount)
     assertEquals(1, cancelCount)
+  }
+
+  @Test
+  fun loadingAndFetchFailureStatesAreShown() {
+    val state = mutableStateOf(EditEventUIState(isLoading = true))
+    composeTestRule.setContent { AppTheme { EditEventContent(state.value, EditEventActions()) } }
+    composeTestRule.onNodeWithTag(EditEventScreenTestTags.SAVE_BUTTON).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(EditEventScreenTestTags.FETCH_ERROR).assertDoesNotExist()
+
+    state.value = EditEventUIState(errorFetchMsg = R.string.edit_event_error_fetch_failed)
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithTag(EditEventScreenTestTags.FETCH_ERROR).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(EditEventScreenTestTags.SAVE_BUTTON).assertDoesNotExist()
+
+    state.value = EditEventUIState()
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithTag(EditEventScreenTestTags.FETCH_ERROR).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(EditEventScreenTestTags.SAVE_BUTTON).assertDoesNotExist()
+  }
+
+  @Test
+  fun invalidAndSavingFormsShowErrorsAndDisableSave() {
+    val state =
+        mutableStateOf(
+            testState()
+                .copy(
+                    name = "",
+                    nameEdited = true,
+                    startDate = null,
+                    endDate = null,
+                    startTime = LocalTime.NOON,
+                    endTime = LocalTime.NOON,
+                    errorMsg = R.string.edit_event_error_save_failed,
+                )
+        )
+    composeTestRule.setContent { AppTheme { EditEventContent(state.value, EditEventActions()) } }
+
+    composeTestRule.onNodeWithTag(EditEventScreenTestTags.NAME_ERROR).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(EditEventScreenTestTags.START_DATE_ERROR).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(EditEventScreenTestTags.END_DATE_ERROR).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(EditEventScreenTestTags.SAVE_ERROR).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(EditEventScreenTestTags.SAVE_BUTTON).assertIsNotEnabled()
+
+    state.value = testState().copy(isSaving = true)
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithTag(EditEventScreenTestTags.SAVING_INDICATOR).assertIsDisplayed()
+  }
+
+  @Test
+  fun dateAndTimeFieldsDispatchPickerRequests() {
+    val requests = mutableListOf<DateTimeField?>()
+    composeTestRule.setContent {
+      AppTheme {
+        EditEventContent(
+            state = testState(),
+            actions = EditEventActions(onShowPicker = requests::add),
+        )
+      }
+    }
+
+    listOf(
+            EditEventScreenTestTags.START_DATE_FIELD to DateTimeField.START_DATE,
+            EditEventScreenTestTags.START_TIME_FIELD to DateTimeField.START_TIME,
+            EditEventScreenTestTags.END_DATE_FIELD to DateTimeField.END_DATE,
+            EditEventScreenTestTags.END_TIME_FIELD to DateTimeField.END_TIME,
+        )
+        .forEach { (tag, field) -> composeTestRule.onNodeWithTag(tag).performClick() }
+
+    assertEquals(
+        listOf(
+            DateTimeField.START_DATE,
+            DateTimeField.START_TIME,
+            DateTimeField.END_DATE,
+            DateTimeField.END_TIME,
+        ),
+        requests,
+    )
+  }
+
+  @Test
+  fun discardConfirmationCallsConfirmAction() {
+    var confirmCount = 0
+    composeTestRule.setContent {
+      AppTheme {
+        EditEventContent(
+            state = testState().copy(showDiscardConfirmation = true),
+            actions = EditEventActions(onConfirmDiscard = { confirmCount++ }),
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag(EditEventScreenTestTags.DISCARD_CONFIRM).performClick()
+    assertEquals(1, confirmCount)
+  }
+
+  @Test
+  fun defaultActionsAreSafeToInvoke() {
+    val actions = EditEventActions()
+
+    actions.onBack()
+    actions.onNameChange("Festival")
+    actions.onShowPicker(DateTimeField.START_DATE)
+    actions.onVenueChange("Venue")
+    actions.onNotesChange("Notes")
+    actions.onDatePicked(LocalDate.now())
+    actions.onTimePicked(LocalTime.NOON)
+    actions.onSave()
+    actions.onCancelDiscard()
+    actions.onConfirmDiscard()
+  }
+
+  @Test
+  fun screenCallsBackWhenDiscardIsConfirmed() {
+    val event = testState().event!!
+    val viewModel = EditEventViewModel(EventsRepositoryLocal(listOf(event)), { "user" })
+    var backCount = 0
+    composeTestRule.setContent {
+      AppTheme {
+        EditEventScreen(
+            eventId = event.eventId,
+            viewModel = viewModel,
+            onBack = { backCount++ },
+            onSaved = {},
+        )
+      }
+    }
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(EditEventScreenTestTags.BACK_BUTTON).performClick()
+    composeTestRule.waitForIdle()
+
+    assertEquals(1, backCount)
+  }
+
+  @Test
+  fun screenLoadsEventAndCallsSavedCallbackAfterSave() {
+    val event = testState().event!!
+    val viewModel = EditEventViewModel(EventsRepositoryLocal(listOf(event)), { "user" })
+    var savedCount = 0
+    var backCount = 0
+    composeTestRule.setContent {
+      AppTheme {
+        EditEventScreen(
+            eventId = event.eventId,
+            viewModel = viewModel,
+            onBack = { backCount++ },
+            onSaved = { savedCount++ },
+        )
+      }
+    }
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(EditEventScreenTestTags.NAME_FIELD).performTextClearance()
+    composeTestRule
+        .onNodeWithTag(EditEventScreenTestTags.NAME_FIELD)
+        .performTextInput("Updated festival")
+    composeTestRule
+        .onNodeWithTag(EditEventScreenTestTags.LOCATION_FIELD)
+        .performTextInput(" entrance")
+    composeTestRule
+        .onNodeWithTag(EditEventScreenTestTags.DESCRIPTION_FIELD)
+        .performTextInput(" details")
+    composeTestRule.onNodeWithTag(EditEventScreenTestTags.SAVE_BUTTON).performClick()
+    composeTestRule.waitForIdle()
+
+    assertEquals(1, savedCount)
+    assertEquals(0, backCount)
   }
 
   private fun testState(): EditEventUIState {
