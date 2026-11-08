@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.components
 
 import androidx.compose.material3.IconButton
@@ -141,6 +142,103 @@ class FormFieldsTest {
     composeTestRule.waitForIdle()
 
     assertEquals(1, clicks)
+  }
+
+  // Typing past maxLength must report only the first maxLength characters, so a form never holds
+  // more than its limit; the field then shows that cut-off text.
+  @Test
+  fun textField_cutsTypedTextAtMaxLength() {
+    var typed = ""
+    composeTestRule.setContent {
+      AppTheme {
+        var value by remember { mutableStateOf("") }
+        FestivarTextField(
+            value = value,
+            onValueChange = {
+              value = it
+              typed = it
+            },
+            label = "Title",
+            maxLength = 5,
+            modifier = Modifier.testTag(fieldTag),
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag(fieldTag).performTextInput("abcdefgh")
+
+    assertEquals("abcde", typed)
+    composeTestRule.onNodeWithTag(fieldTag).assertTextContains("abcde")
+  }
+
+  // Without a maxLength, a field must still stop at DEFAULT_MAX_LENGTH: breaks if the default limit
+  // is dropped or changed.
+  @Test
+  fun textField_byDefault_stopsAtTheDefaultMaxLength() {
+    var typed = ""
+    composeTestRule.setContent {
+      AppTheme {
+        var value by remember { mutableStateOf("") }
+        FestivarTextField(
+            value = value,
+            onValueChange = {
+              value = it
+              typed = it
+            },
+            label = "Title",
+            modifier = Modifier.testTag(fieldTag),
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag(fieldTag).performTextInput("a".repeat(DEFAULT_MAX_LENGTH + 5))
+
+    assertEquals(DEFAULT_MAX_LENGTH, typed.length)
+  }
+
+  // The counter must show "length/maxLength" and follow what is typed. It is a child of the field,
+  // which merges it, so it is looked up in the unmerged tree.
+  @Test
+  fun textField_withACounter_showsTheLengthAndUpdatesWhileTyping() {
+    composeTestRule.setContent {
+      AppTheme {
+        var value by remember { mutableStateOf("abc") }
+        FestivarTextField(
+            value = value,
+            onValueChange = { value = it },
+            label = "Description",
+            showCounter = true,
+            modifier = Modifier.testTag(fieldTag),
+        )
+      }
+    }
+    val counter =
+        composeTestRule.onNodeWithTag(FestivarTextFieldTestTags.COUNTER, useUnmergedTree = true)
+
+    counter.assertIsDisplayed().assertTextEquals("3/$DEFAULT_MAX_LENGTH")
+
+    composeTestRule.onNodeWithTag(fieldTag).performTextInput("de")
+
+    counter.assertTextEquals("5/$DEFAULT_MAX_LENGTH")
+  }
+
+  // Counterpart of the test above: a field with the default showCounter = false has no counter.
+  @Test
+  fun textField_byDefault_hasNoCounter() {
+    composeTestRule.setContent {
+      AppTheme {
+        FestivarTextField(
+            value = "abc",
+            onValueChange = {},
+            label = "Title",
+            modifier = Modifier.testTag(fieldTag),
+        )
+      }
+    }
+
+    composeTestRule
+        .onNodeWithTag(FestivarTextFieldTestTags.COUNTER, useUnmergedTree = true)
+        .assertDoesNotExist()
   }
 
   // The picker field displays the value it is given, e.g. the formatted date.

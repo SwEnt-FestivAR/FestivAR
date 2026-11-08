@@ -35,6 +35,18 @@ import com.android.festivar.ui.theme.AppTheme
 
 private val FieldShape = RoundedCornerShape(12.dp)
 
+/** Default maximum number of characters of a [FestivarTextField], enough for a title or a name. */
+const val DEFAULT_MAX_LENGTH = 80
+
+/** Maximum number of characters of a long, multi-line [FestivarTextField], e.g. a description. */
+const val LONG_TEXT_MAX_LENGTH = 500
+
+/** Test tags of [FestivarTextField]. */
+object FestivarTextFieldTestTags {
+  /** The "length/maxLength" counter under the field, shown when `showCounter` is true. */
+  const val COUNTER = "festivarTextFieldCounter"
+}
+
 /**
  * Colors of the fields. Material draws the focused border, label and cursor in `primary`, the lime
  * of the app, which is too flashy and hard to read on the light background. They use the dark green
@@ -63,6 +75,8 @@ private fun festivarFieldColors(): TextFieldColors {
  * @param visualTransformation How the text is displayed, e.g. [PasswordVisualTransformation] to
  *   hide it.
  * @param trailingIcon Content at the end of the field, e.g. a show/hide password button.
+ * @param maxLength Maximum number of characters. Text typed or pasted past it is cut off.
+ * @param showCounter Whether to show a "length/maxLength" counter under the field.
  */
 @Composable
 fun FestivarTextField(
@@ -77,10 +91,12 @@ fun FestivarTextField(
     keyboardActions: KeyboardActions = KeyboardActions.Default,
     visualTransformation: VisualTransformation = VisualTransformation.None,
     trailingIcon: (@Composable () -> Unit)? = null,
+    maxLength: Int = DEFAULT_MAX_LENGTH,
+    showCounter: Boolean = false,
 ) {
   OutlinedTextField(
       value = value,
-      onValueChange = onValueChange,
+      onValueChange = { onValueChange(it.take(maxLength)) },
       modifier = modifier.fillMaxWidth(),
       enabled = enabled,
       label = { Text(label) },
@@ -91,6 +107,16 @@ fun FestivarTextField(
       keyboardActions = keyboardActions,
       visualTransformation = visualTransformation,
       trailingIcon = trailingIcon,
+      supportingText =
+          if (showCounter) {
+            {
+              Text(
+                  text = "${value.length}/$maxLength",
+                  style = MaterialTheme.typography.bodySmall,
+                  modifier = Modifier.testTag(FestivarTextFieldTestTags.COUNTER),
+              )
+            }
+          } else null,
       colors = festivarFieldColors(),
       shape = FieldShape,
   )
@@ -226,6 +252,14 @@ internal fun FormFieldsPreview() {
           onValueChange = {},
           label = "Password",
           visualTransformation = PasswordVisualTransformation(),
+      )
+      FestivarTextField(
+          value = "Bring the cables from the storage room to the main stage.",
+          onValueChange = {},
+          label = "Description",
+          singleLine = false,
+          maxLength = LONG_TEXT_MAX_LENGTH,
+          showCounter = true,
       )
       Column {
         FestivarTextField(value = "", onValueChange = {}, label = "Title", isError = true)
