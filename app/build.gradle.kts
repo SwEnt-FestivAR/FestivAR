@@ -7,6 +7,7 @@ plugins {
   alias(libs.plugins.sonar)
   id("jacoco")
   alias(libs.plugins.gms)
+  alias(libs.plugins.secrets.gradle.plugin)
 }
 
 val ciKeystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
@@ -34,6 +35,10 @@ android {
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     vectorDrawables { useSupportLibrary = true }
+
+    // The secrets plugin fills MAPS_API_KEY on the app variants only; the unit test manifest
+    // merge reads this DSL value instead, so Robolectric gets the committed placeholder.
+    manifestPlaceholders["MAPS_API_KEY"] = "DEFAULT_API_KEY"
   }
 
   signingConfigs {
@@ -119,6 +124,11 @@ android {
   }
 }
 
+secrets {
+  propertiesFileName = "local.properties"
+  defaultPropertiesFileName = "local.defaults.properties"
+}
+
 // With AGP 9 the JVM target is set outside the android block.
 kotlin { compilerOptions { jvmTarget.set(JvmTarget.JVM_17) } }
 
@@ -158,6 +168,9 @@ fun DependencyHandlerScope.globalTestImplementation(dep: Any) {
 dependencies {
   implementation(platform(libs.firebase.bom))
   implementation(libs.androidx.navigation.compose)
+  implementation(libs.maps.compose)
+  implementation(libs.play.services.maps)
+  implementation(libs.play.services.location)
   implementation(libs.credentials)
   implementation(libs.credentials.play.services.auth)
   implementation(libs.firebase.firestore)
