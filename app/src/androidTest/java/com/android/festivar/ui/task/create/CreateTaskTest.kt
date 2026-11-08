@@ -22,6 +22,8 @@ import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.platform.app.InstrumentationRegistry
+import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.model.structure.StructuresRepositoryLocal
 import com.android.festivar.model.task.Priority
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
@@ -69,7 +71,14 @@ abstract class CreateTaskTest {
             repository.addTask(task)
           }
         }
-    viewModel = CreateTaskViewModel(EVENT_ID, { "owner-1" }, failable)
+    viewModel =
+        CreateTaskViewModel(
+            EVENT_ID,
+            { "owner-1" },
+            failable,
+            StructuresRepositoryLocal(),
+            EventsRepositoryLocal(),
+        )
     createdCount = 0
     backCount = 0
     addTaskFails = false

@@ -1,6 +1,11 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task
 
+import android.util.Log
+import com.android.festivar.model.event.EventsRepository
+import com.android.festivar.model.event.Venue
+import com.android.festivar.model.structure.Structure
+import com.android.festivar.model.structure.StructuresRepository
 import com.android.festivar.model.task.Priority
 import com.android.festivar.model.task.TaskSpot
 import com.android.festivar.ui.components.DateTimeField
@@ -9,6 +14,7 @@ import com.android.festivar.ui.task.create.MAX_ESTIMATED_DIGITS
 import com.android.festivar.ui.task.create.MIN_MAX_ASSIGN
 import java.time.LocalDate
 import java.time.LocalTime
+import kotlinx.coroutines.CancellationException
 
 /** The setters a task form screen needs, shared by the create and edit ViewModels. */
 interface TaskFormEditor {
@@ -128,3 +134,24 @@ internal class TaskFormEditing : TaskFormEditor {
     showPicker(null)
   }
 }
+
+/**
+ * Reads the venue of the event [eventId] and its structures, for the spot field of the task forms.
+ * A failure of either read is not an error of the form: it gives no venue and no structures, so the
+ * field offers only "No spot".
+ *
+ * @return The venue, null when the event has none or a read failed, and the structures.
+ */
+internal suspend fun loadVenueAndStructures(
+    eventId: String,
+    eventsRepository: EventsRepository,
+    structuresRepository: StructuresRepository,
+): Pair<Venue?, List<Structure>> =
+    try {
+      eventsRepository.getEvent(eventId).venue to structuresRepository.getAllStructures(eventId)
+    } catch (e: CancellationException) {
+      throw e
+    } catch (e: Exception) {
+      Log.w("TaskFormEditing", "The venue of event $eventId could not be loaded", e)
+      null to emptyList()
+    }

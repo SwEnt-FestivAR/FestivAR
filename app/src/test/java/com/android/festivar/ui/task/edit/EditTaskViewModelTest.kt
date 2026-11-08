@@ -5,6 +5,14 @@ package com.android.festivar.ui.task.edit
 import android.os.Looper
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
+import com.android.festivar.model.event.Event
+import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.model.event.EventsRepositoryProvider
+import com.android.festivar.model.event.Venue
+import com.android.festivar.model.structure.Structure
+import com.android.festivar.model.structure.StructureKind
+import com.android.festivar.model.structure.StructuresRepositoryLocal
+import com.android.festivar.model.structure.StructuresRepositoryProvider
 import com.android.festivar.model.task.Priority
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TaskSpot
@@ -27,6 +35,7 @@ import java.time.ZonedDateTime
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -79,6 +88,31 @@ private class ScriptedRepository(val local: TasksRepositoryLocal) : TasksReposit
 /** Tests of [EditTaskViewModel] against a fake repository holding one task. */
 @RunWith(AndroidJUnit4::class)
 class EditTaskViewModelTest {
+  init {
+    // The ViewModels read the venue through the providers by default, and Firebase is not set up
+    // under Robolectric: in-memory ones stand in. Set before the fields below build a ViewModel.
+    StructuresRepositoryProvider.repository = StructuresRepositoryLocal()
+    EventsRepositoryProvider.repository = EventsRepositoryLocal()
+  }
+
+  @After
+  fun resetProviders() {
+    StructuresRepositoryProvider.reset()
+    EventsRepositoryProvider.reset()
+  }
+
+  private val venue = Venue(latitude = 46.5170, longitude = 6.5990)
+  private val marquee =
+      Structure("s2", "event-1", StructureKind.MARQUEE, "Marquee A", -18.0, 0.0, 12.0, 8.0)
+  private val event =
+      Event(
+          eventId = "event-1",
+          title = "Fete de Vidy",
+          startDate = ZonedDateTime.of(2037, 10, 17, 8, 0, 0, 0, ZoneOffset.UTC),
+          endDate = ZonedDateTime.of(2037, 10, 18, 8, 0, 0, 0, ZoneOffset.UTC),
+          venue = venue,
+      )
+
   private val zone = ZoneId.of("Europe/Zurich")
   // Tomorrow, like the picker tests of #371: the form refuses an end in the past.
   private val day = LocalDate.now(zone).plusDays(1)
@@ -114,7 +148,14 @@ class EditTaskViewModelTest {
   private fun idle() = shadowOf(Looper.getMainLooper()).idle()
 
   private fun loadedViewModel(saveTimeoutMs: Long = 15_000L): EditTaskViewModel =
-      EditTaskViewModel("task-1", { "owner-1" }, repository, saveTimeoutMs, zone).apply { load() }
+      EditTaskViewModel(
+              "task-1",
+              { "owner-1" },
+              repository,
+              saveTimeoutMs = saveTimeoutMs,
+              zone = zone,
+          )
+          .apply { load() }
 
   // Breaks if the ViewModel loads in init or reports loading before being asked.
   @Test
@@ -721,6 +762,29 @@ class EditTaskViewModelTest {
     viewModel.save()
 
     assertNull(stored().spot)
+  }
+
+  // Breaks if the load does not read the venue of the task's event, so the field has no map, or if
+  // the venue and structures count as a change, so Save is enabled on an untouched form.
+  @Test
+  fun theVenueAndStructuresOfTheEventLoadWithoutCountingAsAChange() {
+    val vm =
+        EditTaskViewModel(
+            "task-1",
+            { "owner-1" },
+            repository,
+            StructuresRepositoryLocal(listOf(marquee)),
+            EventsRepositoryLocal(listOf(event)),
+            zone = zone,
+        )
+
+    vm.load()
+    idle()
+
+    assertEquals(venue, vm.uiState.value.form.venue)
+    assertEquals(listOf(marquee), vm.uiState.value.form.structures)
+    assertFalse(vm.uiState.value.hasChanges)
+    assertFalse(vm.uiState.value.canSave)
   }
 }
 

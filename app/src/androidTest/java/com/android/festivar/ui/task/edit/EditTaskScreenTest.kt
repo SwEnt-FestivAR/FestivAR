@@ -14,6 +14,8 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
+import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.model.structure.StructuresRepositoryLocal
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
@@ -77,7 +79,14 @@ class EditTaskScreenTest {
       composeTestRule.onAllNodes(hasTestTag(tag)).fetchSemanticsNodes().isNotEmpty()
 
   private fun showScreen(userId: String = "owner-1") {
-    val viewModel = EditTaskViewModel(task.taskId, { userId }, repository)
+    val viewModel =
+        EditTaskViewModel(
+            task.taskId,
+            { userId },
+            repository,
+            StructuresRepositoryLocal(),
+            EventsRepositoryLocal(),
+        )
     composeTestRule.setContent {
       AppTheme {
         EditTaskScreen(
@@ -120,7 +129,16 @@ class EditTaskScreenTest {
   // Breaks if a state that has not been loaded yet shows the load error instead of the spinner.
   @Test
   fun beforeTheLoadRunsTheScreenShowsTheSpinnerNotTheLoadError() {
-    val notLoaded = EditTaskViewModel(task.taskId, { "owner-1" }, repository).uiState.value
+    val notLoaded =
+        EditTaskViewModel(
+                task.taskId,
+                { "owner-1" },
+                repository,
+                StructuresRepositoryLocal(),
+                EventsRepositoryLocal(),
+            )
+            .uiState
+            .value
     composeTestRule.setContent {
       AppTheme {
         EditTaskContent(

@@ -7,6 +7,10 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
+import com.android.festivar.model.event.EventsRepository
+import com.android.festivar.model.event.EventsRepositoryProvider
+import com.android.festivar.model.structure.StructuresRepository
+import com.android.festivar.model.structure.StructuresRepositoryProvider
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryProvider
@@ -14,6 +18,7 @@ import com.android.festivar.ui.components.FieldError
 import com.android.festivar.ui.task.TaskFormEditing
 import com.android.festivar.ui.task.TaskFormEditor
 import com.android.festivar.ui.task.create.CreateTaskUiState
+import com.android.festivar.ui.task.loadVenueAndStructures
 import java.time.ZoneId
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -112,7 +117,8 @@ private fun Task.toForm(zone: ZoneId): CreateTaskUiState {
 }
 
 // What the user cannot see in the form: the picker, the edited flag, flags of the create screen,
-// and spaces around the texts, which the save trims anyway.
+// the venue and structures the spot field offers, and spaces around the texts, which the save
+// trims anyway.
 private fun CreateTaskUiState.normalised(): CreateTaskUiState =
     copy(
         title = title.trim(),
@@ -123,6 +129,8 @@ private fun CreateTaskUiState.normalised(): CreateTaskUiState =
         isSaving = false,
         isCreated = false,
         errorMsg = null,
+        venue = null,
+        structures = emptyList(),
     )
 
 private const val TAG = "EditTaskViewModel"
@@ -136,6 +144,9 @@ private const val SAVE_TIMEOUT_MS = 15_000L
  * @param taskId The task to edit. It cannot be blank.
  * @param currentUserId Gives the uid of the signed-in user; only the owner of the task can save.
  * @param repository Where the task is read and saved. The app's one by default.
+ * @param structuresRepository Where the structures of the task's event are read, for the spot
+ *   field.
+ * @param eventsRepository Where the venue of the task's event is read, for the spot field.
  * @param saveTimeoutMs How long a save may last before it is reported as failed. A failed save is
  *   followed by a read under the same timeout.
  * @param zone The time zone the form shows the times in. The device's one by default.
@@ -145,6 +156,8 @@ private constructor(
     private val taskId: String,
     private val currentUserId: () -> String,
     private val repository: TasksRepository,
+    private val structuresRepository: StructuresRepository,
+    private val eventsRepository: EventsRepository,
     private val saveTimeoutMs: Long,
     private val zone: ZoneId,
     private val formEditing: TaskFormEditing,
@@ -154,9 +167,20 @@ private constructor(
       taskId: String,
       currentUserId: () -> String,
       repository: TasksRepository = TasksRepositoryProvider.repository,
+      structuresRepository: StructuresRepository = StructuresRepositoryProvider.repository,
+      eventsRepository: EventsRepository = EventsRepositoryProvider.repository,
       saveTimeoutMs: Long = SAVE_TIMEOUT_MS,
       zone: ZoneId = ZoneId.systemDefault(),
-  ) : this(taskId, currentUserId, repository, saveTimeoutMs, zone, TaskFormEditing())
+  ) : this(
+      taskId,
+      currentUserId,
+      repository,
+      structuresRepository,
+      eventsRepository,
+      saveTimeoutMs,
+      zone,
+      TaskFormEditing(),
+  )
 
   private val _uiState = MutableStateFlow(EditTaskUiState(form = CreateTaskUiState(zone = zone)))
 
@@ -166,8 +190,9 @@ private constructor(
   private var loadJob: Job? = null
 
   /**
-   * Loads the task once; a running load is not started twice, and a resume never wipes unsaved
-   * edits. After a failed load it can be called again.
+   * Loads the task once, then the venue and structures of its event for the spot field; a running
+   * load is not started twice, and a resume never wipes unsaved edits. After a failed load it can
+   * be called again. A venue that cannot be read is not an error: the field offers only "No spot".
    */
   fun load() {
     if (loadJob?.isActive == true || _uiState.value.task != null) return
@@ -184,6 +209,9 @@ private constructor(
               errorMsg = null,
           )
         }
+        val (venue, structures) =
+            loadVenueAndStructures(task.eventId, eventsRepository, structuresRepository)
+        _uiState.update { it.copy(form = it.form.copy(venue = venue, structures = structures)) }
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {

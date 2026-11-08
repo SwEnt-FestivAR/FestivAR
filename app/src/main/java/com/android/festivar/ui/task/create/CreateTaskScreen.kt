@@ -111,6 +111,7 @@ fun CreateTaskScreen(
     modifier: Modifier = Modifier,
 ) {
   val state by viewModel.uiState.collectAsState()
+  LaunchedEffect(Unit) { viewModel.loadVenue() }
 
   // The latest callback is called, even if the caller passed a new one during the save.
   val currentOnTaskCreated by rememberUpdatedState(onTaskCreated)

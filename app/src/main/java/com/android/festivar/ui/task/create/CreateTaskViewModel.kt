@@ -7,6 +7,12 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
+import com.android.festivar.model.event.EventsRepository
+import com.android.festivar.model.event.EventsRepositoryProvider
+import com.android.festivar.model.event.Venue
+import com.android.festivar.model.structure.Structure
+import com.android.festivar.model.structure.StructuresRepository
+import com.android.festivar.model.structure.StructuresRepositoryProvider
 import com.android.festivar.model.task.Priority
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TaskSpot
@@ -21,12 +27,14 @@ import com.android.festivar.ui.components.endDateError
 import com.android.festivar.ui.components.startDateError
 import com.android.festivar.ui.task.TaskFormEditing
 import com.android.festivar.ui.task.TaskFormEditor
+import com.android.festivar.ui.task.loadVenueAndStructures
 import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -57,6 +65,10 @@ data class CreateTaskUiState(
     val estimatedMinutes: String = "",
     // Where the task sits on the venue plan, or null when it has no spot.
     val spot: TaskSpot? = null,
+    // The venue of the event and its structures, which the spot field offers. Not part of the task:
+    // a null venue (not placed, or not loaded) only hides the map option.
+    val venue: Venue? = null,
+    val structures: List<Structure> = emptyList(),
     // The field whose picker dialog is open, or null when none is.
     val openPicker: DateTimeField? = null,
     val titleEdited: Boolean = false,
@@ -186,6 +198,8 @@ private const val SAVE_TIMEOUT_MS = 15_000L
  *   a blank uid saves nothing and shows the save error.
  * @param tasksRepository Where the task is saved. It is the app's repository by default; the tests
  *   give an in-memory one.
+ * @param structuresRepository Where the structures of the event are read, for the spot field.
+ * @param eventsRepository Where the venue of the event is read, for the spot field.
  * @param saveTimeoutMs How long a save may last before it is reported as failed, so that the form
  *   never stays stuck in the saving state. A failed save is followed by a read of the task under
  *   the same timeout, so the saving state lasts at most twice this long.
@@ -196,6 +210,8 @@ private constructor(
     private val eventId: String,
     private val currentUserId: () -> String,
     private val tasksRepository: TasksRepository,
+    private val structuresRepository: StructuresRepository,
+    private val eventsRepository: EventsRepository,
     private val saveTimeoutMs: Long,
     zone: ZoneId,
     private val formEditing: TaskFormEditing,
@@ -205,9 +221,20 @@ private constructor(
       eventId: String,
       currentUserId: () -> String,
       tasksRepository: TasksRepository = TasksRepositoryProvider.repository,
+      structuresRepository: StructuresRepository = StructuresRepositoryProvider.repository,
+      eventsRepository: EventsRepository = EventsRepositoryProvider.repository,
       saveTimeoutMs: Long = SAVE_TIMEOUT_MS,
       zone: ZoneId = ZoneId.systemDefault(),
-  ) : this(eventId, currentUserId, tasksRepository, saveTimeoutMs, zone, TaskFormEditing())
+  ) : this(
+      eventId,
+      currentUserId,
+      tasksRepository,
+      structuresRepository,
+      eventsRepository,
+      saveTimeoutMs,
+      zone,
+      TaskFormEditing(),
+  )
 
   // The id of the task being created. It is kept across retries: if a save timed out or failed
   // after reaching the server, the retry targets the same task instead of creating a second one.
@@ -228,6 +255,21 @@ private constructor(
     // The form setters come from TaskFormEditing. Pickers follow the same guard as the fields.
     formEditing.applyEdit = ::edit
     formEditing.current = { _uiState.value }
+  }
+
+  private var venueJob: Job? = null
+
+  /**
+   * Loads the venue and the structures of the event once, for the spot field. A failure is not an
+   * error of the form: the field then offers only "No spot".
+   */
+  fun loadVenue() {
+    if (venueJob != null) return
+    venueJob = viewModelScope.launch {
+      val (venue, structures) =
+          loadVenueAndStructures(eventId, eventsRepository, structuresRepository)
+      _uiState.update { it.copy(venue = venue, structures = structures) }
+    }
   }
 
   /** Saves the task if the form is valid. Does nothing while a save is running. */

@@ -5,6 +5,15 @@ package com.android.festivar.ui.task.create
 import android.os.Looper
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
+import com.android.festivar.model.event.Event
+import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.model.event.EventsRepositoryProvider
+import com.android.festivar.model.event.Venue
+import com.android.festivar.model.structure.Structure
+import com.android.festivar.model.structure.StructureKind
+import com.android.festivar.model.structure.StructuresRepository
+import com.android.festivar.model.structure.StructuresRepositoryLocal
+import com.android.festivar.model.structure.StructuresRepositoryProvider
 import com.android.festivar.model.task.Priority
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TaskSpot
@@ -16,9 +25,12 @@ import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -30,6 +42,31 @@ import org.robolectric.Shadows.shadowOf
 
 @RunWith(AndroidJUnit4::class)
 class CreateTaskViewModelTest {
+  init {
+    // The ViewModels read the venue through the providers by default, and Firebase is not set up
+    // under Robolectric: in-memory ones stand in. Set before the fields below build a ViewModel.
+    StructuresRepositoryProvider.repository = StructuresRepositoryLocal()
+    EventsRepositoryProvider.repository = EventsRepositoryLocal()
+  }
+
+  @After
+  fun resetProviders() {
+    StructuresRepositoryProvider.reset()
+    EventsRepositoryProvider.reset()
+  }
+
+  private val venue = Venue(latitude = 46.5170, longitude = 6.5990)
+  private val marquee =
+      Structure("s2", "event-1", StructureKind.MARQUEE, "Marquee A", -18.0, 0.0, 12.0, 8.0)
+  private val event =
+      Event(
+          eventId = "event-1",
+          title = "Fete de Vidy",
+          startDate = ZonedDateTime.of(2037, 10, 17, 8, 0, 0, 0, ZoneOffset.UTC),
+          endDate = ZonedDateTime.of(2037, 10, 18, 8, 0, 0, 0, ZoneOffset.UTC),
+          venue = venue,
+      )
+
   // FAKE: a real, working repository that keeps the tasks in memory instead of Firebase. The tests
   // read the saved tasks back from it. There is no mock in this file: nothing checks that a method
   // was called, the tests check the state and what was stored.
@@ -626,6 +663,53 @@ class CreateTaskViewModelTest {
 
     viewModel.showPicker(DateTimeField.START_DATE)
     assertNull(viewModel.uiState.value.openPicker)
+  }
+
+  // Breaks if loadVenue does not put the event's venue and structures in the state, so the spot
+  // field offers no structure and no map, or if they count as an edit of the form.
+  @Test
+  fun loadVenue_putsTheVenueAndStructuresInTheState() {
+    val vm =
+        CreateTaskViewModel(
+            "event-1",
+            { "owner-1" },
+            repository,
+            StructuresRepositoryLocal(listOf(marquee)),
+            EventsRepositoryLocal(listOf(event)),
+        )
+
+    vm.loadVenue()
+    shadowOf(Looper.getMainLooper()).idle()
+
+    assertEquals(venue, vm.uiState.value.venue)
+    assertEquals(listOf(marquee), vm.uiState.value.structures)
+    assertFalse(vm.uiState.value.hasChanges)
+  }
+
+  // Breaks if a failed read of the structures shows an error on the form or keeps a half loaded
+  // venue, which would offer the map without the structures to snap to.
+  @Test
+  fun loadVenue_withFailingStructures_leavesThemEmptyAndSetsNoError() {
+    val failing =
+        object : StructuresRepository by StructuresRepositoryLocal() {
+          override suspend fun getAllStructures(eventId: String): List<Structure> =
+              throw IllegalStateException("offline")
+        }
+    val vm =
+        CreateTaskViewModel(
+            "event-1",
+            { "owner-1" },
+            repository,
+            failing,
+            EventsRepositoryLocal(listOf(event)),
+        )
+
+    vm.loadVenue()
+    shadowOf(Looper.getMainLooper()).idle()
+
+    assertNull(vm.uiState.value.venue)
+    assertTrue(vm.uiState.value.structures.isEmpty())
+    assertNull(vm.uiState.value.errorMsg)
   }
 }
 
