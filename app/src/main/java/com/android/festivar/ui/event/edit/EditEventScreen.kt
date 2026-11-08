@@ -48,8 +48,6 @@ import com.android.festivar.ui.components.FestivarDiscardDialog
 import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.components.FestivarFieldWithError
 import com.android.festivar.ui.components.FestivarTextField
-import com.android.festivar.ui.event.EditEventUIState
-import com.android.festivar.ui.event.EditEventViewModel
 import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
 import java.time.LocalTime
