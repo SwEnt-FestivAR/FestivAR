@@ -137,6 +137,87 @@ class TaskRepositoryFirebaseTest {
     }
   }
 
+  // Breaks if takenAt is not written, or comes back with another instant or zone.
+  @Test
+  fun takenAt_survivesTheRoundTrip() = runBlocking {
+    val at = ZonedDateTime.parse("2037-05-12T09:12:00+02:00[Europe/Zurich]")
+    val taken = task.copy(assignees = emptyList()).addAssignee(User("user-1"), at)
+    repository.addTask(taken)
+
+    val stored = repository.getTask(taken.taskId).takenAt.getValue("user-1")
+
+    assertEquals(at.toInstant(), stored.toInstant())
+    assertEquals(at.zone, stored.zone)
+    assertEquals(taken, repository.getTask(taken.taskId))
+  }
+
+  // Breaks if a task stored before takenAt existed no longer loads.
+  @Test
+  fun documentToTask_withoutTakenAt_loadsAnEmptyMap() = runBlocking {
+    val documentId = "task-${UUID.randomUUID()}"
+    val document = Firebase.firestore.collection(TASK_COLLECTION_PATH).document(documentId)
+    document
+        .set(
+            mapOf(
+                "eventId" to "event-2",
+                "title" to "Old task",
+                "assignees" to listOf("user-2"),
+                "ownerId" to "owner-1",
+            )
+        )
+        .await()
+
+    try {
+      val loaded = invokeDocumentToTask(document.get().await())
+      assertEquals(listOf(User("user-2")), loaded.assignees)
+      assertTrue(loaded.takenAt.isEmpty())
+    } finally {
+      document.delete().await()
+    }
+  }
+
+  // Breaks if the structure of a spot is not written, or comes back changed.
+  @Test
+  fun spotOnAStructure_survivesTheRoundTrip() = runBlocking {
+    val pinned = task.copy(spot = TaskSpot.onStructure("stage"))
+    repository.addTask(pinned)
+
+    assertEquals(pinned, repository.getTask(pinned.taskId))
+  }
+
+  // Breaks if the coordinates of a free point are not written, or lose their sign or decimals.
+  @Test
+  fun spotAtAFreePoint_survivesTheRoundTrip() = runBlocking {
+    val pinned = task.copy(spot = TaskSpot.at(2.5, -7.0))
+    repository.addTask(pinned)
+
+    assertEquals(TaskSpot.at(2.5, -7.0), repository.getTask(pinned.taskId).spot)
+  }
+
+  // Breaks if a task without a pin comes back with one.
+  @Test
+  fun taskWithoutSpot_readsBackNull() = runBlocking {
+    repository.addTask(task)
+
+    assertNull(repository.getTask(task.taskId).spot)
+  }
+
+  // Breaks if a task stored before spots existed no longer loads.
+  @Test
+  fun documentToTask_withoutSpot_loadsNull() = runBlocking {
+    val documentId = "task-${UUID.randomUUID()}"
+    val document = Firebase.firestore.collection(TASK_COLLECTION_PATH).document(documentId)
+    document
+        .set(mapOf("eventId" to "event-2", "title" to "Old task", "ownerId" to "owner-1"))
+        .await()
+
+    try {
+      assertNull(invokeDocumentToTask(document.get().await()).spot)
+    } finally {
+      document.delete().await()
+    }
+  }
+
   @Test
   fun documentToTask_failsWhenTheOwnerIsMissing() = runBlocking {
     val documentId = "task-${UUID.randomUUID()}"

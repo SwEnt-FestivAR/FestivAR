@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.edit
 
 import android.util.Log
@@ -67,8 +68,8 @@ data class EditTaskUiState(
         isOwner() && form.isValid && maxAssignError == null && hasChanges && !isSaving && !isSaved
 
   /**
-   * Builds the edited [Task]. What the form does not own (assignees, completion, voice note, owner,
-   * event) is kept from [task].
+   * Builds the edited [Task]. What the form does not own (assignees, takenAt, spot, completion,
+   * voice note, owner, event) is kept from [task].
    *
    * @throws IllegalArgumentException if no task is loaded, the form is not valid, or fewer people
    *   are needed than are assigned (the rules of [CreateTaskUiState.toTask] and [Task]).
@@ -81,6 +82,8 @@ data class EditTaskUiState(
             // editTask overwrites the whole task, so a take or a completion saved by someone else
             // since the load can be lost: https://github.com/SwEnt-FestivAR/FestivAR/issues/186
             assignees = original.assignees,
+            takenAt = original.takenAt,
+            spot = original.spot,
             completed = original.completed,
             voiceNote = original.voiceNote,
         )
