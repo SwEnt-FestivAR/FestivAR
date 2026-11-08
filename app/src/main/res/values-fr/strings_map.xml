@@ -32,4 +32,21 @@
     <string name="map_distance_unknown">Distance inconnue</string>
     <string name="map_open_task">Ouvrir la tâche</string>
     <string name="map_empty">Rien de placé pour l’instant</string>
+    <string name="map_editing">Modification</string>
+    <string name="map_tool_marquee">Chapiteau</string>
+    <string name="map_tool_stage">Scène</string>
+    <string name="map_tool_stand">Stand</string>
+    <string name="map_tool_table">Table</string>
+    <string name="map_palette_hint">Touchez la carte pour placer, tirez un coin pour redimensionner. Un appui long déplace.</string>
+    <string name="map_structure_summary">%1$s × %2$s m · %3$s</string>
+    <plurals name="map_tasks">
+        <item quantity="one">%d tâche</item>
+        <item quantity="many">%d tâches</item>
+        <item quantity="other">%d tâches</item>
+    </plurals>
+    <string name="map_rename_title">Renommer la structure</string>
+    <string name="map_rename_label">Nom</string>
+    <string name="map_save">Enregistrer</string>
+    <string name="map_cancel">Annuler</string>
+    <string name="map_save_failed">Impossible d’enregistrer le plan.</string>
 </resources>

@@ -1,12 +1,16 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.map
 
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
 import com.android.festivar.model.event.Venue
@@ -73,6 +77,12 @@ class VenueMapScreenTest {
       )
   private val withTasks = loaded.copy(tasks = tasks, currentUserId = "me", now = start)
 
+  /** The organizer's view with the stage selected; one task is pinned on it. */
+  private val editing = withTasks.copy(isOrganizer = true, selectedStructureId = "s1")
+
+  /** What the screen shows; a test may change it after [setContent] to follow a callback. */
+  private val screen = mutableStateOf(VenueMapUiState())
+
   private fun setContent(
       state: VenueMapUiState,
       onBack: () -> Unit = {},
@@ -81,11 +91,16 @@ class VenueMapScreenTest {
       onFilter: (PinFilter) -> Unit = {},
       onQuery: (String) -> Unit = {},
       onOpenTask: (String) -> Unit = {},
+      onSelectTool: (PaletteTool?) -> Unit = {},
+      onStartRename: () -> Unit = {},
+      onRename: (String) -> Unit = {},
+      onCancelRename: () -> Unit = {},
   ) {
+    screen.value = state
     composeTestRule.setContent {
       AppTheme {
         VenueMapContent(
-            state = state,
+            state = screen.value,
             onBack = onBack,
             onSelect = onSelect,
             onRetry = onRetry,
@@ -93,6 +108,10 @@ class VenueMapScreenTest {
             onFilter = onFilter,
             onQuery = onQuery,
             onOpenTask = onOpenTask,
+            onSelectTool = onSelectTool,
+            onStartRename = onStartRename,
+            onRename = onRename,
+            onCancelRename = onCancelRename,
             mapContent = { _, _ -> },
         )
       }
@@ -259,5 +278,100 @@ class VenueMapScreenTest {
     }
 
     composeTestRule.onNodeWithTag(VenueMapScreenTestTags.MAP).assertExists()
+  }
+
+  /** Red if the real Google map crashes with the organizer's corner handles on it. */
+  @Test
+  fun theGoogleMapComposesWithCornerHandlesForTheOrganizer() {
+    composeTestRule.setContent {
+      AppTheme {
+        VenueGoogleMap(
+            state = editing.copy(tool = PaletteTool.STAND),
+            onSelect = {},
+            onSelectTask = {},
+            onPlace = { _, _ -> },
+            onMove = { _, _ -> },
+            onResize = { _, _, _ -> },
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag(VenueMapScreenTestTags.MAP).assertExists()
+  }
+
+  /** Red if the organizer misses the badge or the palette, or a volunteer sees them. */
+  @Test
+  fun theOrganizerSeesTheEditingToolsAndAVolunteerDoesNot() {
+    setContent(loaded.copy(isOrganizer = true))
+
+    composeTestRule.onNodeWithTag(VenueMapScreenTestTags.EDITING_BADGE).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(VenueMapScreenTestTags.PALETTE_HINT).assertIsDisplayed()
+    PaletteTool.entries.forEach {
+      composeTestRule.onNodeWithTag(VenueMapScreenTestTags.palette(it)).assertIsDisplayed()
+    }
+
+    screen.value = loaded.copy(selectedStructureId = "s1")
+
+    composeTestRule.onNodeWithTag(VenueMapScreenTestTags.EDITING_BADGE).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(VenueMapScreenTestTags.PALETTE_HINT).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(VenueMapScreenTestTags.RENAME).assertDoesNotExist()
+    PaletteTool.entries.forEach {
+      composeTestRule.onNodeWithTag(VenueMapScreenTestTags.palette(it)).assertDoesNotExist()
+    }
+  }
+
+  /** Red if a palette item does not call selectTool with its tool. */
+  @Test
+  fun tappingAPaletteItemCallsSelectTool() {
+    val tools = mutableListOf<PaletteTool?>()
+    setContent(loaded.copy(isOrganizer = true), onSelectTool = { tools += it })
+
+    composeTestRule.onNodeWithTag(VenueMapScreenTestTags.palette(PaletteTool.STAND)).performClick()
+    composeTestRule.onNodeWithTag(VenueMapScreenTestTags.palette(PaletteTool.STAGE)).performClick()
+
+    assertEquals(listOf<PaletteTool?>(PaletteTool.STAND, PaletteTool.STAGE), tools)
+  }
+
+  /** Red if the organizer's sheet misses the label, the size or the pinned task count. */
+  @Test
+  fun theSelectedStructureSheetShowsItsLabelAndSummary() {
+    setContent(editing)
+
+    composeTestRule
+        .onNodeWithTag(VenueMapScreenTestTags.SELECTED_LABEL)
+        .assertTextEquals("Main stage")
+    composeTestRule.onNodeWithText("12 × 8 m · 1 task").assertIsDisplayed()
+  }
+
+  /** Red if the pencil does not open the dialog, or Save does not pass the typed name. */
+  @Test
+  fun renameOpensTheDialogAndSaveCallsRenameWithTheText() {
+    val names = mutableListOf<String>()
+    setContent(
+        editing,
+        onStartRename = { screen.value = screen.value.copy(renaming = true) },
+        onRename = { names += it },
+    )
+
+    composeTestRule.onNodeWithTag(VenueMapScreenTestTags.RENAME).performClick()
+    composeTestRule
+        .onNodeWithTag(VenueMapScreenTestTags.RENAME_FIELD)
+        .performTextReplacement("Big top")
+    composeTestRule.onNodeWithTag(VenueMapScreenTestTags.RENAME_SAVE).performClick()
+
+    assertEquals(listOf("Big top"), names)
+  }
+
+  /** Red if Cancel does not call cancelRename, or a blank name can be saved. */
+  @Test
+  fun renameCancelCallsBackAndABlankNameCannotBeSaved() {
+    var cancels = 0
+    setContent(editing.copy(renaming = true), onCancelRename = { cancels++ })
+
+    composeTestRule.onNodeWithTag(VenueMapScreenTestTags.RENAME_FIELD).performTextReplacement(" ")
+    composeTestRule.onNodeWithTag(VenueMapScreenTestTags.RENAME_SAVE).assertIsNotEnabled()
+    composeTestRule.onNodeWithTag(VenueMapScreenTestTags.RENAME_CANCEL).performClick()
+
+    assertEquals(1, cancels)
   }
 }

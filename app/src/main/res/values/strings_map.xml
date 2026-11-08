@@ -30,4 +30,20 @@
     <string name="map_distance_unknown">Distance unknown</string>
     <string name="map_open_task">Open task</string>
     <string name="map_empty">Nothing placed yet</string>
+    <string name="map_editing">Editing</string>
+    <string name="map_tool_marquee">Marquee</string>
+    <string name="map_tool_stage">Stage</string>
+    <string name="map_tool_stand">Stand</string>
+    <string name="map_tool_table">Table</string>
+    <string name="map_palette_hint">Tap the map to place, drag a corner to resize. Long press moves.</string>
+    <string name="map_structure_summary">%1$s × %2$s m · %3$s</string>
+    <plurals name="map_tasks">
+        <item quantity="one">%d task</item>
+        <item quantity="other">%d tasks</item>
+    </plurals>
+    <string name="map_rename_title">Rename the structure</string>
+    <string name="map_rename_label">Name</string>
+    <string name="map_save">Save</string>
+    <string name="map_cancel">Cancel</string>
+    <string name="map_save_failed">Unable to save the plan.</string>
 </resources>

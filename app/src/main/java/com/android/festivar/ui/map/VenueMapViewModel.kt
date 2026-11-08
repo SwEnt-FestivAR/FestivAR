@@ -13,6 +13,7 @@ import com.android.festivar.model.location.LocationFix
 import com.android.festivar.model.location.LocationSource
 import com.android.festivar.model.location.LocationSourceProvider
 import com.android.festivar.model.structure.Structure
+import com.android.festivar.model.structure.StructureKind
 import com.android.festivar.model.structure.StructuresRepository
 import com.android.festivar.model.structure.StructuresRepositoryProvider
 import com.android.festivar.model.task.Task
@@ -59,6 +60,33 @@ enum class PinStatus {
   /** The task is completed. */
   DONE,
 }
+
+/** What the organizer's palette places on the next tap, with the footprint size in metres. */
+enum class PaletteTool(val kind: StructureKind, val width: Double, val height: Double) {
+  /** A 12 × 8 m marquee. */
+  MARQUEE(StructureKind.MARQUEE, 12.0, 8.0),
+  /** A 10 × 6 m stage. */
+  STAGE(StructureKind.STAGE, 10.0, 6.0),
+  /** A 3 × 3 m stand. */
+  STAND(StructureKind.STAND, 3.0, 3.0),
+  /** A 2 × 2 m table. */
+  TABLE(StructureKind.TABLE, 2.0, 2.0),
+}
+
+/** A corner of a structure's footprint on the plan, north up. */
+enum class Corner {
+  /** North west. */
+  TOP_LEFT,
+  /** North east. */
+  TOP_RIGHT,
+  /** South west. */
+  BOTTOM_LEFT,
+  /** South east. */
+  BOTTOM_RIGHT,
+}
+
+/** The smallest side of a footprint, in metres: one step of the snap grid. */
+private const val MIN_SIDE = 0.5
 
 /**
  * A task drawn on the map.
@@ -114,6 +142,20 @@ fun shortName(user: User): String {
   return if (surname.isEmpty()) name else "$name ${surname.first()}.".trim()
 }
 
+/**
+ * The name a new structure of [kind] gets: "Stand", then "Stand 2" when [existing] already holds a
+ * stand, "Stand 3" with two, and so on.
+ *
+ * @param kind what is placed.
+ * @param existing the structures already on the plan.
+ * @return the default label.
+ */
+fun defaultLabel(kind: StructureKind, existing: List<Structure>): String {
+  val name = kind.name.lowercase().replaceFirstChar { it.uppercase() }
+  val count = existing.count { it.kind == kind }
+  return if (count == 0) name else "$name ${count + 1}"
+}
+
 /** "Run power" stays whole, a title over 18 characters is cut there with an ellipsis. */
 private fun pinLabel(task: Task): String {
   val title =
@@ -139,6 +181,11 @@ private fun pinLabel(task: Task): String {
  * @property selectedTaskId the task the sheet describes, or null.
  * @property currentUserId the uid of the signed-in user, to tell which tasks are theirs.
  * @property now the time the "in 40 min" line counts from, or null when unknown.
+ * @property isOrganizer true when the current user is the first member of the event, the one the
+ *   event details name as the organizer; only they may edit the plan.
+ * @property tool what the next tap on the map places, or null.
+ * @property isSaving true while an edit of the plan is being written.
+ * @property renaming true while the rename dialog of the selected structure is open.
  */
 data class VenueMapUiState(
     val isLoading: Boolean = true,
@@ -155,6 +202,10 @@ data class VenueMapUiState(
     val selectedTaskId: String? = null,
     val currentUserId: String = "",
     val now: ZonedDateTime? = null,
+    val isOrganizer: Boolean = false,
+    val tool: PaletteTool? = null,
+    val isSaving: Boolean = false,
+    val renaming: Boolean = false,
 ) {
   /** The structure matching [selectedStructureId], or null when none is selected or it is gone. */
   val selected: Structure?
@@ -300,7 +351,12 @@ class VenueMapViewModel(
       try {
         val event = eventsRepository.getEvent(eventId)
         _uiState.update {
-          it.copy(eventTitle = event.title, eventLocation = event.location, venue = event.venue)
+          it.copy(
+              eventTitle = event.title,
+              eventLocation = event.location,
+              venue = event.venue,
+              isOrganizer = event.members.firstOrNull()?.uid == it.currentUserId,
+          )
         }
         val structures = structuresRepository.getAllStructures(eventId)
         _uiState.update { it.copy(structures = structures) }
@@ -377,4 +433,199 @@ class VenueMapViewModel(
 
   /** Clears the error message. */
   fun clearError() = _uiState.update { it.copy(errorMsg = null) }
+
+  /** True when the current user may change the plan now: the organizer, with no write running. */
+  private fun canEdit(): Boolean = _uiState.value.isOrganizer && !_uiState.value.isSaving
+
+  /**
+   * Picks what the next tap on the map places. Picking the selected tool again, or null, puts it
+   * down. Organizer only.
+   *
+   * @param tool the palette item, or null for none.
+   */
+  fun selectTool(tool: PaletteTool?) {
+    if (!_uiState.value.isOrganizer) return
+    _uiState.update { it.copy(tool = if (tool == it.tool) null else tool) }
+  }
+
+  /**
+   * Places the selected tool's structure centred on the tapped point, snapped to the half metre
+   * grid, then selects it and puts the tool down. Organizer only; does nothing without a tool or a
+   * venue.
+   *
+   * @param latitude where the map was tapped.
+   * @param longitude where the map was tapped.
+   */
+  fun placeAt(latitude: Double, longitude: Double) {
+    val state = _uiState.value
+    val tool = state.tool ?: return
+    if (!canEdit()) return
+    val (cx, cy) = planPoint(latitude, longitude) ?: return
+    val width = tool.width
+    val height = tool.height
+    val structure =
+        Structure(
+            structureId = structuresRepository.getNewUid(),
+            eventId = eventId,
+            kind = tool.kind,
+            label = defaultLabel(tool.kind, state.structures),
+            x = VenueGeometry.snap(cx) - width / 2,
+            y = VenueGeometry.snap(cy) - height / 2,
+            width = width,
+            height = height,
+        )
+    save(state.structures + structure, structure.structureId) {
+      structuresRepository.addStructure(structure)
+    }
+  }
+
+  /**
+   * Moves the selected structure so its centre sits on the pressed point, snapped; its size is
+   * kept. Organizer only.
+   *
+   * @param latitude where the map was long pressed.
+   * @param longitude where the map was long pressed.
+   */
+  fun moveSelected(latitude: Double, longitude: Double) {
+    val selected = _uiState.value.selected ?: return
+    if (!canEdit()) return
+    val (cx, cy) = planPoint(latitude, longitude) ?: return
+    replace(
+        selected.copy(
+            x = VenueGeometry.snap(cx) - selected.width / 2,
+            y = VenueGeometry.snap(cy) - selected.height / 2,
+        )
+    )
+  }
+
+  /**
+   * Moves one corner of the selected structure to the dropped point while the opposite corner
+   * stays; each side is snapped and kept at 0.5 m at least. Organizer only.
+   *
+   * @param corner the corner that was dragged.
+   * @param latitude where the corner was dropped.
+   * @param longitude where the corner was dropped.
+   */
+  fun resizeSelected(corner: Corner, latitude: Double, longitude: Double) {
+    val s = _uiState.value.selected ?: return
+    if (!canEdit()) return
+    val (px, py) = planPoint(latitude, longitude) ?: return
+    val right = s.x + s.width
+    val bottom = s.y + s.height
+    val west = corner == Corner.TOP_LEFT || corner == Corner.BOTTOM_LEFT
+    val north = corner == Corner.TOP_LEFT || corner == Corner.TOP_RIGHT
+    val width = VenueGeometry.snap(if (west) right - px else px - s.x).coerceAtLeast(MIN_SIDE)
+    val height = VenueGeometry.snap(if (north) bottom - py else py - s.y).coerceAtLeast(MIN_SIDE)
+    replace(
+        s.copy(
+            x = if (west) right - width else s.x,
+            y = if (north) bottom - height else s.y,
+            width = width,
+            height = height,
+        )
+    )
+  }
+
+  /** Opens the rename dialog of the selected structure. Organizer only. */
+  fun startRename() {
+    if (!_uiState.value.isOrganizer || _uiState.value.selected == null) return
+    _uiState.update { it.copy(renaming = true) }
+  }
+
+  /**
+   * Renames the selected structure and closes the dialog. A blank label is refused and the dialog
+   * stays open. Organizer only.
+   *
+   * @param label the new name, trimmed.
+   */
+  fun rename(label: String) {
+    val selected = _uiState.value.selected ?: return
+    val trimmed = label.trim()
+    if (!canEdit() || trimmed.isEmpty()) return
+    _uiState.update { it.copy(renaming = false) }
+    replace(selected.copy(label = trimmed))
+  }
+
+  /** Closes the rename dialog without renaming. */
+  fun cancelRename() = _uiState.update { it.copy(renaming = false) }
+
+  /** Where ([latitude], [longitude]) sits on the plan, or null without a venue. */
+  private fun planPoint(latitude: Double, longitude: Double): Pair<Double, Double>? {
+    val venue = _uiState.value.venue ?: return null
+    return VenueGeometry.metresFrom(
+        venue.latitude,
+        venue.longitude,
+        venue.bearing,
+        latitude,
+        longitude,
+    )
+  }
+
+  /** Writes [changed] over the structure with its id, keeping the selection. */
+  private fun replace(changed: Structure) {
+    val structures = _uiState.value.structures
+    save(
+        structures.map { if (it.structureId == changed.structureId) changed else it },
+        changed.structureId,
+    ) {
+      structuresRepository.editStructure(changed.structureId, changed)
+    }
+  }
+
+  /**
+   * Runs [write] against the repository; on success shows [next] with [selectedId] selected and the
+   * tool put down.
+   */
+  private fun save(next: List<Structure>, selectedId: String?, write: suspend () -> Unit) {
+    runWrite {
+      write()
+      _uiState.update {
+        it.copy(
+            structures = next,
+            selectedStructureId = selectedId,
+            selectedTaskId = if (selectedId != null) null else it.selectedTaskId,
+            tool = null,
+        )
+      }
+    }
+  }
+
+  /**
+   * Runs [block] with [VenueMapUiState.isSaving] set. A failure is logged, sets `map_save_failed`,
+   * calls [onFailure], and reloads the structures so the screen shows what the repository holds,
+   * whatever part of the write went through.
+   */
+  private fun runWrite(onFailure: () -> Unit = {}, block: suspend () -> Unit) {
+    _uiState.update { it.copy(isSaving = true) }
+    viewModelScope.launch {
+      try {
+        block()
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        Log.e(LOG_TAG, "Error saving the venue plan of event $eventId", e)
+        onFailure()
+        val stored =
+            try {
+              structuresRepository.getAllStructures(eventId)
+            } catch (c: CancellationException) {
+              throw c
+            } catch (reload: Exception) {
+              Log.e(LOG_TAG, "Error reloading the venue plan of event $eventId", reload)
+              null
+            }
+        _uiState.update { s ->
+          val structures = stored ?: s.structures
+          s.copy(
+              structures = structures,
+              selectedStructureId =
+                  s.selectedStructureId?.takeIf { id -> structures.any { it.structureId == id } },
+              errorMsg = R.string.map_save_failed,
+          )
+        }
+      } finally {
+        _uiState.update { it.copy(isSaving = false) }
+      }
+    }
+  }
 }

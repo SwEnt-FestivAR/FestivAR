@@ -25,6 +25,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -57,15 +58,42 @@ private class ControlledEvents(val local: EventsRepositoryLocal) : EventsReposit
   }
 }
 
-/** A [StructuresRepositoryLocal] whose [getAllStructures] can be made to fail. */
+/**
+ * A [StructuresRepositoryLocal] whose reads and writes can be made to fail, counting the writes
+ * that reach it.
+ */
 private class ControlledStructures(val local: StructuresRepositoryLocal) :
     StructuresRepository by local {
   /** Thrown by [getAllStructures] when not null. */
   var failure: Exception? = null
 
+  /** Thrown by every write when not null, before it reaches [local]. */
+  var writeFailure: Exception? = null
+
+  /** How many add, edit and delete calls were made, failed ones included. */
+  var writes = 0
+
   override suspend fun getAllStructures(eventId: String): List<Structure> {
     failure?.let { throw it }
     return local.getAllStructures(eventId)
+  }
+
+  override suspend fun addStructure(structure: Structure) {
+    writes++
+    writeFailure?.let { throw it }
+    local.addStructure(structure)
+  }
+
+  override suspend fun editStructure(structureId: String, newValue: Structure) {
+    writes++
+    writeFailure?.let { throw it }
+    local.editStructure(structureId, newValue)
+  }
+
+  override suspend fun deleteStructure(structureId: String) {
+    writes++
+    writeFailure?.let { throw it }
+    local.deleteStructure(structureId)
   }
 }
 
@@ -197,6 +225,26 @@ class VenueMapViewModelTest {
 
   private fun pointAt(x: Double, y: Double) =
       VenueGeometry.latLngFrom(venue.latitude, venue.longitude, venue.bearing, x, y)
+
+  /** A loaded view model where the current user is the first member, the organizer. */
+  private fun organizer(): VenueMapViewModel {
+    events = ControlledEvents(EventsRepositoryLocal(listOf(event.copy(members = listOf(me, sami)))))
+    return viewModel().also { it.load() }
+  }
+
+  /** A loaded view model where the current user is a member but not the first one. */
+  private fun volunteer(): VenueMapViewModel {
+    events = ControlledEvents(EventsRepositoryLocal(listOf(event.copy(members = listOf(sami, me)))))
+    return viewModel().also { it.load() }
+  }
+
+  /** What the repository holds for the event, to compare with the state. */
+  private fun stored(): List<Structure> = runBlocking { structures.getAllStructures("e1") }
+
+  private fun VenueMapViewModel.tapAt(x: Double, y: Double) =
+      pointAt(x, y).let { placeAt(it.latitude, it.longitude) }
+
+  private fun List<Double>.rounded() = map { Math.round(it * 1000) / 1000.0 }
 
   /** Red if load drops a field of the event or keeps structures of another event. */
   @Test
@@ -497,5 +545,183 @@ class VenueMapViewModelTest {
     assertEquals("Sami K.", shortName(sami))
     assertEquals("Sami", shortName(User("u3", "Sami", " ")))
     assertEquals("", shortName(User("u4")))
+  }
+
+  /** Red if the organizer is not the first member, or anyone else may edit. */
+  @Test
+  fun isOrganizerIsTrueOnlyForTheFirstMember() {
+    assertTrue(organizer().uiState.value.isOrganizer)
+    assertFalse(volunteer().uiState.value.isOrganizer)
+    assertFalse(viewModel().also { it.load() }.uiState.value.isOrganizer)
+  }
+
+  /** Red if a volunteer can pick a tool or change the plan through any edit call. */
+  @Test
+  fun aVolunteerCannotPickAToolNorWriteAnything() {
+    val vm = volunteer()
+
+    vm.selectTool(PaletteTool.STAND)
+    vm.tapAt(10.0, 10.0)
+    vm.select("s1")
+    vm.moveSelected(venue.latitude, venue.longitude)
+    vm.resizeSelected(Corner.TOP_LEFT, venue.latitude, venue.longitude)
+    vm.startRename()
+    vm.rename("Mine now")
+
+    assertNull(vm.uiState.value.tool)
+    assertFalse(vm.uiState.value.renaming)
+    assertEquals(0, structures.writes)
+    assertEquals(listOf(stage, bar), vm.uiState.value.structures)
+  }
+
+  /** Red if selecting the picked tool again does not put it down. */
+  @Test
+  fun selectToolToggles() {
+    val vm = organizer()
+
+    vm.selectTool(PaletteTool.STAGE)
+    assertEquals(PaletteTool.STAGE, vm.uiState.value.tool)
+    vm.selectTool(PaletteTool.STAGE)
+    assertNull(vm.uiState.value.tool)
+  }
+
+  /** Red if a placed structure is not centred on the snapped tap, not saved, or not selected. */
+  @Test
+  fun placeAtCentresASnappedFootprintOnTheTapAndSavesIt() {
+    val vm = organizer()
+
+    vm.selectTool(PaletteTool.STAND)
+    // (10.2, 20.3) snaps to the centre (10, 20.5); a 3 × 3 m stand then starts at (8.5, 19).
+    vm.tapAt(10.2, 20.3)
+
+    val state = vm.uiState.value
+    val placed = state.selected!!
+    assertEquals(StructureKind.STAND, placed.kind)
+    assertEquals(
+        listOf(8.5, 19.0, 3.0, 3.0),
+        listOf(placed.x, placed.y, placed.width, placed.height).rounded(),
+    )
+    assertNull(state.tool)
+    assertFalse(state.isSaving)
+    assertEquals(stored(), state.structures)
+    assertTrue(placed in stored())
+  }
+
+  /** Red if a tap without a tool places something. */
+  @Test
+  fun placeAtWithoutAToolDoesNothing() {
+    val vm = organizer()
+
+    vm.tapAt(10.0, 10.0)
+
+    assertEquals(0, structures.writes)
+  }
+
+  /** Red if a second structure of a kind gets the same name as the first. */
+  @Test
+  fun defaultLabelsNumberRepeats() {
+    assertEquals("Stand", defaultLabel(StructureKind.STAND, emptyList()))
+    assertEquals("Stand 2", defaultLabel(StructureKind.STAND, listOf(bar)))
+    val vm = organizer()
+
+    vm.selectTool(PaletteTool.TABLE)
+    vm.tapAt(20.0, 20.0)
+    vm.selectTool(PaletteTool.TABLE)
+    vm.tapAt(30.0, 30.0)
+
+    val tables = stored().filter { it.kind == StructureKind.TABLE }.map { it.label }
+    assertEquals(listOf("Table", "Table 2"), tables)
+  }
+
+  /** Red if a move changes the size, lands off the grid, or is not saved. */
+  @Test
+  fun moveSelectedKeepsTheSizeAndSnaps() {
+    val vm = organizer()
+    vm.select("s1")
+
+    // (20.2, 30.9) snaps to the centre (20, 31); the 10 × 6 m stage then starts at (15, 28).
+    pointAt(20.2, 30.9).let { vm.moveSelected(it.latitude, it.longitude) }
+
+    val moved = stored().first { it.structureId == "s1" }
+    assertEquals(
+        listOf(15.0, 28.0, 10.0, 6.0),
+        listOf(moved.x, moved.y, moved.width, moved.height).rounded(),
+    )
+    assertEquals(stored(), vm.uiState.value.structures)
+    assertEquals("s1", vm.uiState.value.selectedStructureId)
+  }
+
+  /** Red if a resize moves the opposite corner, skips the snap, or shrinks below half a metre. */
+  @Test
+  fun resizeSelectedMovesOneCornerKeepsTheOppositeAndSnaps() {
+    val vm = organizer()
+    vm.select("s1")
+    // The stage spans x -5 to 5 and y -10 to -4.
+
+    pointAt(8.2, -1.1).let { vm.resizeSelected(Corner.BOTTOM_RIGHT, it.latitude, it.longitude) }
+    var s = vm.uiState.value.selected!!
+    assertEquals(listOf(-5.0, -10.0, 13.0, 9.0), listOf(s.x, s.y, s.width, s.height).rounded())
+
+    // Now x -5 to 8, y -10 to -1. The top left goes to (-7.3, -12.6).
+    pointAt(-7.3, -12.6).let { vm.resizeSelected(Corner.TOP_LEFT, it.latitude, it.longitude) }
+    s = vm.uiState.value.selected!!
+    assertEquals(listOf(-7.5, -12.5, 15.5, 11.5), listOf(s.x, s.y, s.width, s.height).rounded())
+
+    // Dragged past the opposite corner (8, -1): half a metre, the opposite corner kept.
+    pointAt(30.0, 30.0).let { vm.resizeSelected(Corner.TOP_LEFT, it.latitude, it.longitude) }
+    s = vm.uiState.value.selected!!
+    assertEquals(listOf(7.5, -1.5, 0.5, 0.5), listOf(s.x, s.y, s.width, s.height).rounded())
+    assertEquals(stored(), vm.uiState.value.structures)
+  }
+
+  /** Red if a blank name is saved, or a good one leaves the dialog open. */
+  @Test
+  fun renameRefusesBlankAndSavesATrimmedName() {
+    val vm = organizer()
+    vm.select("s1")
+    vm.startRename()
+    assertTrue(vm.uiState.value.renaming)
+
+    vm.rename("   ")
+    assertTrue(vm.uiState.value.renaming)
+    assertEquals(0, structures.writes)
+
+    vm.rename("  Main stage ")
+    assertFalse(vm.uiState.value.renaming)
+    assertEquals("Main stage", stored().first { it.structureId == "s1" }.label)
+    assertEquals("Main stage", vm.uiState.value.selected!!.label)
+  }
+
+  /** Red if cancelling the rename leaves the dialog open or writes. */
+  @Test
+  fun cancelRenameClosesTheDialog() {
+    val vm = organizer()
+    vm.select("s1")
+    vm.startRename()
+
+    vm.cancelRename()
+
+    assertFalse(vm.uiState.value.renaming)
+    assertEquals(0, structures.writes)
+  }
+
+  /**
+   * Red if a failed save is silent, or the screen then shows a plan the repository does not hold.
+   */
+  @Test
+  fun aFailingSaveSetsTheErrorAndKeepsTheRepositoryList() {
+    val vm = organizer()
+    structures.writeFailure = IOException("offline")
+
+    vm.selectTool(PaletteTool.STAND)
+    vm.tapAt(10.0, 10.0)
+    vm.select("s1")
+    vm.moveSelected(venue.latitude, venue.longitude)
+
+    val state = vm.uiState.value
+    assertEquals(R.string.map_save_failed, state.errorMsg)
+    assertEquals(stored(), state.structures)
+    assertEquals(listOf(stage, bar), state.structures)
+    assertFalse(state.isSaving)
   }
 }

@@ -3,8 +3,12 @@ package com.android.festivar.ui.map
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Paint
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -16,13 +20,16 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.DirectionsWalk
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -35,15 +42,23 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -56,14 +71,19 @@ import com.android.festivar.model.structure.Structure
 import com.android.festivar.model.structure.StructureKind
 import com.android.festivar.ui.components.FilterChip
 import com.android.festivar.ui.theme.AppTheme
+import com.google.android.gms.maps.model.BitmapDescriptor
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.Circle
 import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.GoogleMapComposable
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapType
 import com.google.maps.android.compose.MapUiSettings
+import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerComposable
+import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.Polygon
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberUpdatedMarkerState
@@ -100,6 +120,28 @@ object VenueMapScreenTestTags {
   const val RETRY = "mapRetry"
   /** The button of the sheet that clears the selected structure. */
   const val CLEAR_SELECTION = "mapClearSelection"
+  /** The "Editing" badge in the search row, shown to the organizer only. */
+  const val EDITING_BADGE = "mapEditingBadge"
+  /** The hint line under the organizer's palette. */
+  const val PALETTE_HINT = "mapPaletteHint"
+  /** The label of the selected structure in the sheet. */
+  const val SELECTED_LABEL = "mapSelectedLabel"
+  /** The pencil of the sheet that opens the rename dialog. */
+  const val RENAME = "mapRename"
+  /** The text field of the rename dialog. */
+  const val RENAME_FIELD = "mapRenameField"
+  /** The Save button of the rename dialog. */
+  const val RENAME_SAVE = "mapRenameSave"
+  /** The Cancel button of the rename dialog. */
+  const val RENAME_CANCEL = "mapRenameCancel"
+
+  /**
+   * The palette item placing [tool].
+   *
+   * @param tool what the item places.
+   * @return its test tag.
+   */
+  fun palette(tool: PaletteTool): String = "mapPalette_${tool.name}"
 }
 
 /** Zoom level the camera opens on: a festival site fills the screen. */
@@ -152,6 +194,13 @@ fun VenueMapScreen(
       onFilter = viewModel::setFilter,
       onQuery = viewModel::setQuery,
       onOpenTask = onOpenTask,
+      onSelectTool = viewModel::selectTool,
+      onPlace = viewModel::placeAt,
+      onMove = viewModel::moveSelected,
+      onResize = viewModel::resizeSelected,
+      onStartRename = viewModel::startRename,
+      onRename = viewModel::rename,
+      onCancelRename = viewModel::cancelRename,
   )
 }
 
@@ -167,6 +216,13 @@ fun VenueMapScreen(
  * @param onFilter called with the filter chip that is clicked.
  * @param onQuery called with the search text as it is typed.
  * @param onOpenTask called with the task id when the sheet's "Open task" button is clicked.
+ * @param onSelectTool called with the palette item the organizer taps.
+ * @param onPlace called with the point the organizer taps on the bare map while a tool is picked.
+ * @param onMove called with the point the organizer long presses while a structure is selected.
+ * @param onResize called with the corner the organizer dragged and where it was dropped.
+ * @param onStartRename called when the rename pencil of the sheet is clicked.
+ * @param onRename called with the typed name when the rename dialog is saved.
+ * @param onCancelRename called when the rename dialog is cancelled.
  * @param mapContent draws the map under the overlays; tests and previews swap the Google map out
  *   since it needs Play services.
  */
@@ -181,8 +237,15 @@ fun VenueMapContent(
     onFilter: (PinFilter) -> Unit = {},
     onQuery: (String) -> Unit = {},
     onOpenTask: (String) -> Unit = {},
+    onSelectTool: (PaletteTool?) -> Unit = {},
+    onPlace: (Double, Double) -> Unit = { _, _ -> },
+    onMove: (Double, Double) -> Unit = { _, _ -> },
+    onResize: (Corner, Double, Double) -> Unit = { _, _, _ -> },
+    onStartRename: () -> Unit = {},
+    onRename: (String) -> Unit = {},
+    onCancelRename: () -> Unit = {},
     mapContent: @Composable BoxScope.(VenueMapUiState, (String?) -> Unit) -> Unit = { s, select ->
-      VenueGoogleMap(s, select, onSelectTask)
+      VenueGoogleMap(s, select, onSelectTask, onPlace, onMove, onResize)
     },
 ) {
   Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
@@ -210,7 +273,14 @@ fun VenueMapContent(
           if (focus != null) {
             TaskSheet(focus, onOpenTask, Modifier.align(Alignment.BottomCenter))
           } else {
-            MapSheet(state, onSelect, Modifier.align(Alignment.BottomCenter))
+            Column(Modifier.align(Alignment.BottomCenter)) {
+              if (state.isOrganizer) Palette(state.tool, onSelectTool)
+              MapSheet(state, onSelect, onStartRename)
+            }
+          }
+          val selected = state.selected
+          if (state.isOrganizer && state.renaming && selected != null) {
+            RenameDialog(selected.label, onRename, onCancelRename)
           }
         }
       }
@@ -224,15 +294,24 @@ fun VenueMapContent(
  * the task pins as pennants with their label, and the user's fix as an accuracy ring and dot. Draws
  * nothing without a venue. A tap on the bare map clears both selections.
  *
+ * For the organizer, a tap on the bare map with a tool picked places it instead, a long press moves
+ * the selected structure there, and the selected structure gets a draggable handle on each corner.
+ *
  * @param state the venue, structures, pins, selection and fix to draw.
  * @param onSelect called with the id of a tapped structure.
  * @param onSelectTask called with the id of a tapped task pin.
+ * @param onPlace called with the tapped point while the organizer has a tool picked.
+ * @param onMove called with the long pressed point while the organizer has a structure selected.
+ * @param onResize called with a corner handle and where it was dropped.
  */
 @Composable
 fun VenueGoogleMap(
     state: VenueMapUiState,
     onSelect: (String?) -> Unit,
     onSelectTask: (String?) -> Unit = {},
+    onPlace: (Double, Double) -> Unit = { _, _ -> },
+    onMove: (Double, Double) -> Unit = { _, _ -> },
+    onResize: (Corner, Double, Double) -> Unit = { _, _, _ -> },
 ) {
   val venue = state.venue ?: return
   val colors = MaterialTheme.colorScheme
@@ -256,10 +335,21 @@ fun VenueGoogleMap(
       properties = properties,
       uiSettings = uiSettings,
       onMapClick = {
-        onSelect(null)
-        onSelectTask(null)
+        if (state.isOrganizer && state.tool != null) {
+          onPlace(it.latitude, it.longitude)
+        } else {
+          onSelect(null)
+          onSelectTask(null)
+        }
+      },
+      onMapLongClick = {
+        if (state.isOrganizer && state.selected != null) onMove(it.latitude, it.longitude)
       },
   ) {
+    val selected = state.selected
+    if (state.isOrganizer && selected != null) {
+      CornerHandles(venue, selected, onResize)
+    }
     state.structures.forEach { structure ->
       val corners =
           VenueGeometry.corners(
@@ -337,6 +427,92 @@ fun VenueGoogleMap(
           strokeWidth = 4f,
       )
     }
+  }
+}
+
+/** The corners of [VenueGeometry.corners], in its order: clockwise from the top left. */
+private val CORNER_ORDER =
+    listOf(Corner.TOP_LEFT, Corner.TOP_RIGHT, Corner.BOTTOM_RIGHT, Corner.BOTTOM_LEFT)
+
+/** Side of a corner handle, in pixels. */
+private const val HANDLE_PX = 24
+
+/** Width of the ink border of a corner handle, in pixels. */
+private const val HANDLE_BORDER_PX = 3f
+
+/** A draggable handle on each corner of [structure]; dropping one calls [onResize]. */
+@Composable
+@GoogleMapComposable
+private fun CornerHandles(
+    venue: Venue,
+    structure: Structure,
+    onResize: (Corner, Double, Double) -> Unit,
+) {
+  val icon = rememberHandleIcon()
+  val points =
+      VenueGeometry.corners(
+          venue.latitude,
+          venue.longitude,
+          venue.bearing,
+          structure.x,
+          structure.y,
+          structure.width,
+          structure.height,
+      )
+  CORNER_ORDER.zip(points).forEach { (corner, point) ->
+    key(structure.structureId, corner) {
+      CornerHandle(corner, LatLng(point.latitude, point.longitude), icon, onResize)
+    }
+  }
+}
+
+/**
+ * One corner handle at [point]. Once a drag ends away from [point], calls [onResize] with the drop
+ * and puts the handle back; a saved resize then redraws it at the new corner.
+ */
+@Composable
+@GoogleMapComposable
+private fun CornerHandle(
+    corner: Corner,
+    point: LatLng,
+    icon: BitmapDescriptor,
+    onResize: (Corner, Double, Double) -> Unit,
+) {
+  val markerState = remember(point) { MarkerState(point) }
+  val resize by rememberUpdatedState(onResize)
+  LaunchedEffect(markerState) {
+    snapshotFlow { markerState.isDragging to markerState.position }
+        .collect { (dragging, position) ->
+          if (!dragging && position != point) {
+            resize(corner, position.latitude, position.longitude)
+            markerState.position = point
+          }
+        }
+  }
+  Marker(state = markerState, icon = icon, anchor = Offset(0.5f, 0.5f), draggable = true)
+}
+
+/** The corner handle icon, drawn once per theme: a 24 px primary square with an ink border. */
+@Composable
+private fun rememberHandleIcon(): BitmapDescriptor {
+  val fill = MaterialTheme.colorScheme.primary.toArgb()
+  val ink = MaterialTheme.colorScheme.onSurface.toArgb()
+  return remember(fill, ink) {
+    val bitmap = Bitmap.createBitmap(HANDLE_PX, HANDLE_PX, Bitmap.Config.ARGB_8888)
+    val canvas = android.graphics.Canvas(bitmap)
+    val paint = Paint()
+    val side = HANDLE_PX.toFloat()
+    paint.color = ink
+    canvas.drawRect(0f, 0f, side, side, paint)
+    paint.color = fill
+    canvas.drawRect(
+        HANDLE_BORDER_PX,
+        HANDLE_BORDER_PX,
+        side - HANDLE_BORDER_PX,
+        side - HANDLE_BORDER_PX,
+        paint,
+    )
+    BitmapDescriptorFactory.fromBitmap(bitmap)
   }
 }
 
@@ -430,6 +606,7 @@ private fun TopOverlay(
           modifier = Modifier.fillMaxWidth().testTag(VenueMapScreenTestTags.SEARCH),
           placeholder = { Text(stringResource(R.string.map_search_hint)) },
           leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+          trailingIcon = if (state.isOrganizer) ({ EditingBadge() }) else null,
           singleLine = true,
           shape = CircleShape,
       )
@@ -475,6 +652,119 @@ private fun TopOverlay(
   }
 }
 
+/** The "Editing" pill telling the organizer that taps change the plan. */
+@Composable
+private fun EditingBadge() {
+  Surface(
+      modifier = Modifier.padding(end = 8.dp).testTag(VenueMapScreenTestTags.EDITING_BADGE),
+      shape = CircleShape,
+      color = MaterialTheme.colorScheme.primary,
+  ) {
+    Text(
+        text = stringResource(R.string.map_editing),
+        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onPrimary,
+    )
+  }
+}
+
+/** The label of each palette item. */
+private fun toolLabel(tool: PaletteTool): Int =
+    when (tool) {
+      PaletteTool.MARQUEE -> R.string.map_tool_marquee
+      PaletteTool.STAGE -> R.string.map_tool_stage
+      PaletteTool.STAND -> R.string.map_tool_stand
+      PaletteTool.TABLE -> R.string.map_tool_table
+    }
+
+/** The organizer's palette over the sheet, the picked tool outlined in primary, and its hint. */
+@Composable
+private fun Palette(tool: PaletteTool?, onSelectTool: (PaletteTool?) -> Unit) {
+  val colors = MaterialTheme.colorScheme
+  Column(
+      modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+      verticalArrangement = Arrangement.spacedBy(6.dp),
+  ) {
+    Row(
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+      PaletteTool.entries.forEach { item ->
+        val picked = item == tool
+        Surface(
+            onClick = { onSelectTool(item) },
+            modifier =
+                Modifier.testTag(VenueMapScreenTestTags.palette(item)).semantics {
+                  selected = picked
+                },
+            shape = RoundedCornerShape(12.dp),
+            color = colors.surface,
+            border =
+                if (picked) BorderStroke(2.dp, colors.primary)
+                else BorderStroke(1.dp, colors.outline),
+            shadowElevation = 2.dp,
+        ) {
+          Text(
+              text = stringResource(toolLabel(item)),
+              modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+              style = MaterialTheme.typography.labelLarge,
+              color = colors.onSurface,
+          )
+        }
+      }
+    }
+    Surface(shape = CircleShape, color = colors.surface) {
+      Text(
+          text = stringResource(R.string.map_palette_hint),
+          modifier =
+              Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                  .testTag(VenueMapScreenTestTags.PALETTE_HINT),
+          style = MaterialTheme.typography.labelMedium,
+          color = colors.onSurfaceVariant,
+      )
+    }
+  }
+}
+
+/**
+ * The rename dialog, its field starting on [current]; Save is enabled once the name is not blank.
+ */
+@Composable
+private fun RenameDialog(current: String, onRename: (String) -> Unit, onCancel: () -> Unit) {
+  var text by remember { mutableStateOf(current) }
+  AlertDialog(
+      onDismissRequest = onCancel,
+      title = { Text(stringResource(R.string.map_rename_title)) },
+      text = {
+        OutlinedTextField(
+            value = text,
+            onValueChange = { text = it },
+            modifier = Modifier.testTag(VenueMapScreenTestTags.RENAME_FIELD),
+            label = { Text(stringResource(R.string.map_rename_label)) },
+            singleLine = true,
+        )
+      },
+      confirmButton = {
+        TextButton(
+            onClick = { onRename(text) },
+            enabled = text.isNotBlank(),
+            modifier = Modifier.testTag(VenueMapScreenTestTags.RENAME_SAVE),
+        ) {
+          Text(stringResource(R.string.map_save))
+        }
+      },
+      dismissButton = {
+        TextButton(
+            onClick = onCancel,
+            modifier = Modifier.testTag(VenueMapScreenTestTags.RENAME_CANCEL),
+        ) {
+          Text(stringResource(R.string.map_cancel))
+        }
+      },
+  )
+}
+
 /** A filter chip on a surface background, so it stays readable over the satellite map. */
 @Composable
 private fun MapChip(label: String, selected: Boolean, onClick: () -> Unit, tag: String) {
@@ -488,11 +778,15 @@ private fun MapChip(label: String, selected: Boolean, onClick: () -> Unit, tag: 
   }
 }
 
-/** The bottom sheet: the venue summary, or the selected structure with a button to clear it. */
+/**
+ * The bottom sheet: the venue summary, or the selected structure with a button to clear it. The
+ * organizer also sees how many tasks are pinned on the structure and a rename pencil.
+ */
 @Composable
 private fun MapSheet(
     state: VenueMapUiState,
     onSelect: (String?) -> Unit,
+    onStartRename: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
   val selected = state.selected
@@ -509,18 +803,32 @@ private fun MapSheet(
       Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
             text = selected?.label ?: stringResource(R.string.map_venue),
+            modifier =
+                if (selected != null) Modifier.testTag(VenueMapScreenTestTags.SELECTED_LABEL)
+                else Modifier,
             style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.onSurface,
         )
         Text(
             text =
-                if (selected != null)
+                when {
+                  selected == null -> summaryLine(state)
+                  state.isOrganizer -> {
+                    val pinned = state.tasks.count { it.spot?.structureId == selected.structureId }
                     stringResource(
-                        R.string.map_structure_size,
+                        R.string.map_structure_summary,
                         VenueGeometry.metresText(selected.width),
                         VenueGeometry.metresText(selected.height),
+                        pluralStringResource(R.plurals.map_tasks, pinned, pinned),
                     )
-                else summaryLine(state),
+                  }
+                  else ->
+                      stringResource(
+                          R.string.map_structure_size,
+                          VenueGeometry.metresText(selected.width),
+                          VenueGeometry.metresText(selected.height),
+                      )
+                },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -530,6 +838,18 @@ private fun MapSheet(
               modifier = Modifier.testTag(VenueMapScreenTestTags.EMPTY_PINS),
               style = MaterialTheme.typography.bodyMedium,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+        }
+      }
+      if (selected != null && state.isOrganizer) {
+        IconButton(
+            onClick = onStartRename,
+            modifier = Modifier.testTag(VenueMapScreenTestTags.RENAME),
+        ) {
+          Icon(
+              imageVector = Icons.Rounded.Edit,
+              contentDescription = stringResource(R.string.map_rename_title),
+              tint = MaterialTheme.colorScheme.onSurface,
           )
         }
       }
