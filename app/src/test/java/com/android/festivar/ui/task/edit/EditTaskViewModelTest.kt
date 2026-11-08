@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.edit
 
 import android.os.Looper
@@ -6,6 +7,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
 import com.android.festivar.model.task.Priority
 import com.android.festivar.model.task.Task
+import com.android.festivar.model.task.TaskSpot
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.user.User
@@ -508,6 +510,22 @@ class EditTaskViewModelTest {
     assertFalse(state.isSaving)
     assertEquals(saved, state.task)
     assertFalse(state.needsDiscardConfirmation)
+  }
+
+  // Breaks if a saved edit rebuilds the task from the form and drops its pin or the time each
+  // assignee took it.
+  @Test
+  fun savingKeepsTheSpotAndWhenEachAssigneeTookTheTask() {
+    val takenAt = mapOf("me" to ZonedDateTime.of(day, LocalTime.of(7, 0), zone))
+    val pinned = seeded.copy(takenAt = takenAt, spot = TaskSpot.at(2.5, -7.0))
+    runBlocking { local.editTask("task-1", pinned) }
+    viewModel.load()
+    viewModel.updateTitle("Run power to the main stage")
+
+    viewModel.save()
+
+    assertEquals(TaskSpot.at(2.5, -7.0), stored().spot)
+    assertEquals(takenAt, stored().takenAt)
   }
 
   // Breaks if save() does not set isSaving before the write, so a second tap writes twice.
