@@ -90,11 +90,15 @@ class ProfileViewModelTest {
 
   private fun createViewModel(
       repository: UsersRepository = RecordingUsersRepository(listOf(sara)),
+      authRepository: FakeAuthRepository = this.authRepository,
       uId: String = sara.uid,
   ): ProfileViewModel =
       ProfileViewModel(
           dataRepository =
-              DataRepositoryLocal(authRepository = authRepository, usersRepository = repository),
+              DataRepositoryLocal(
+                  authRepository = authRepository,
+                  usersRepository = repository,
+              ),
           uId = uId,
       )
 
@@ -612,7 +616,11 @@ class ProfileViewModelTest {
         object : FakeAuthRepository() {
           override val currentUser = firebaseUser
         }
-    val viewModel = ProfileViewModel(RecordingUsersRepository(listOf(sara)), authRepo, sara.uid)
+    val viewModel =
+        createViewModel(
+            repository = RecordingUsersRepository(listOf(sara)),
+            authRepository = authRepo,
+        )
     advanceUntilIdle()
 
     viewModel.updateEmail("")
@@ -629,7 +637,11 @@ class ProfileViewModelTest {
           override val currentUser = firebaseUser
         }
     authRepo.signUpResult = Result.success(firebaseUser)
-    val viewModel = ProfileViewModel(RecordingUsersRepository(listOf(sara)), authRepo, sara.uid)
+    val viewModel =
+        createViewModel(
+            repository = RecordingUsersRepository(listOf(sara)),
+            authRepository = authRepo,
+        )
     advanceUntilIdle()
 
     viewModel.updateEmail("sara@epfl.ch")
@@ -649,7 +661,11 @@ class ProfileViewModelTest {
           override val currentUser = firebaseUser
         }
     authRepo.signUpResult = Result.failure(RuntimeException("Invalid credentials"))
-    val viewModel = ProfileViewModel(RecordingUsersRepository(listOf(sara)), authRepo, sara.uid)
+    val viewModel =
+        createViewModel(
+            repository = RecordingUsersRepository(listOf(sara)),
+            authRepository = authRepo,
+        )
     advanceUntilIdle()
 
     viewModel.updateEmail("sara@epfl.ch")
@@ -675,7 +691,11 @@ class ProfileViewModelTest {
             throw RuntimeException("Network down")
           }
         }
-    val viewModel = ProfileViewModel(RecordingUsersRepository(listOf(sara)), authRepo, sara.uid)
+    val viewModel =
+        createViewModel(
+            repository = RecordingUsersRepository(listOf(sara)),
+            authRepository = authRepo,
+        )
     advanceUntilIdle()
 
     viewModel.updateEmail("sara@epfl.ch")
@@ -694,7 +714,11 @@ class ProfileViewModelTest {
         object : FakeAuthRepository() {
           override val currentUser = firebaseUser
         }
-    val viewModel = ProfileViewModel(RecordingUsersRepository(listOf(sara)), authRepo, sara.uid)
+    val viewModel =
+        createViewModel(
+            repository = RecordingUsersRepository(listOf(sara)),
+            authRepository = authRepo,
+        )
     advanceUntilIdle()
 
     viewModel.updateEmail("sara@epfl.ch")
