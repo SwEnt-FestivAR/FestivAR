@@ -656,12 +656,14 @@ private fun TopOverlay(
             modifier = Modifier.fillMaxWidth().testTag(VenueMapScreenTestTags.SEARCH),
             placeholder = { Text(stringResource(R.string.map_search_hint)) },
             leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
-            trailingIcon = if (state.isOrganizer) ({ EditingBadge() }) else null,
             singleLine = true,
             shape = CircleShape,
         )
       }
-      if (state.isOrganizer) UndoDisc(state.canUndo, onUndo)
+      if (state.isOrganizer) {
+        EditingBadge()
+        UndoDisc(state.canUndo, onUndo)
+      }
     }
     Row(
         modifier = Modifier.padding(start = 16.dp),
@@ -726,11 +728,11 @@ private fun UndoDisc(canUndo: Boolean, onUndo: () -> Unit) {
   }
 }
 
-/** The "Editing" pill telling the organizer that taps change the plan. */
+/** The "Editing" pill beside the search field, telling the organizer that taps change the plan. */
 @Composable
 private fun EditingBadge() {
   Surface(
-      modifier = Modifier.padding(end = 8.dp).testTag(VenueMapScreenTestTags.EDITING_BADGE),
+      modifier = Modifier.testTag(VenueMapScreenTestTags.EDITING_BADGE),
       shape = CircleShape,
       color = MaterialTheme.colorScheme.primary,
   ) {
