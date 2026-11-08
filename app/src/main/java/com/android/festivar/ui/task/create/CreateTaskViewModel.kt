@@ -172,14 +172,18 @@ private const val SAVE_TIMEOUT_MS = 15_000L
 @StringRes private val SAVE_FAILED_MESSAGE = R.string.create_task_error_save_failed
 
 /**
- * Holds the state of the Create task screen and saves the new task in [tasksRepository].
+ * Holds the state of the Create task screen and saves the new task through [dataRepository], which
+ * also adds it to its event and to the tasks assigned to its owner.
+ *
+ * [DataRepository.addTask] does not check that the owner is a member of the event: it stays the job
+ * of this view model and of the screens that open it.
  *
  * @param eventId The event the created task belongs to. It cannot be blank.
  * @param currentUserId Gives the uid of the signed-in user, who becomes the owner of the task. It
  *   is asked when the user taps "Create task", not when the screen opens, so a sign-out or an
  *   account change in between is taken into account. A task always has an owner when it is created:
  *   a blank uid saves nothing and shows the save error.
- * @param tasksRepository Where the task is saved. It is the app's repository by default; the tests
+ * @param dataRepository Saves the task and keeps its event and its owner in sync with it. The tests
  *   give an in-memory one.
  * @param saveTimeoutMs How long a save may last before it is reported as failed, so that the form
  *   never stays stuck in the saving state. A failed save is followed by a read of the task under
@@ -204,6 +208,7 @@ private constructor(
       zone: ZoneId = ZoneId.systemDefault(),
   ) : this(eventId, currentUserId, dataRepository, saveTimeoutMs, zone, TaskFormEditing())
 
+  // Gives the new task id, and reads or edits the task after a failed save (see onSaveFailed).
   private val tasksRepository: TasksRepository = dataRepository.tasksRepository
 
   // The id of the task being created. It is kept across retries: if a save timed out or failed
@@ -248,7 +253,6 @@ private constructor(
     _uiState.update { it.copy(isSaving = true, errorMsg = null) }
     viewModelScope.launch {
       try {
-
         withTimeout(saveTimeoutMs) { dataRepository.addTask(task) }
         _uiState.update { it.copy(isSaving = false, isCreated = true) }
       } catch (e: TimeoutCancellationException) {
