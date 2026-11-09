@@ -109,32 +109,3 @@ fun UpgradeBottomSheetContent(
     )
   }
 }
-
-// @Preview(showBackground = true)
-// @Composable
-// fun UpgradeBottomSheetPreview() {
-//  AppTheme {
-//    Surface {
-//      UpgradeBottomSheetContent(
-//          uiState =
-//              ProfileUIState(
-//                  user =
-//                      User(
-//                          uid = "u1",
-//                          name = "skibidi",
-//                          surname = "toilet",
-//                          email = "skibidi@toilet.ch",
-//                      ),
-//                  name = "skibidi",
-//                  surname = "toilet",
-//                  isUserAnonymous = true,
-//              ),
-//          onEmailChange = {},
-//          onPasswordChange = {},
-//          onLoginClick = {},
-//          onTogglePasswordVisibility = {},
-//          onGoogleUpgrade = {},
-//      )
-//    }
-//  }
-// }
