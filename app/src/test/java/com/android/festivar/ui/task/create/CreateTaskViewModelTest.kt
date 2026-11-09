@@ -491,6 +491,16 @@ class CreateTaskViewModelTest {
     }
   }
 
+  // FAKE whose every save stores the task, then reports a failure, as when the answer is lost.
+  // Unlike StoredThenFailed, its reads work, so the check right after the failure finds the task.
+  private class AnswerLost(val local: TasksRepositoryLocal = TasksRepositoryLocal()) :
+      TasksRepository by local {
+    override suspend fun addTask(task: Task) {
+      local.addTask(task)
+      throw IllegalStateException("lost the answer")
+    }
+  }
+
   @Test
   fun createTask_retryAfterAStoredButFailedSave_reusesTheTaskId() {
     val repo = StoredThenFailed()
@@ -545,21 +555,13 @@ class CreateTaskViewModelTest {
   // Same, but the check right after the failure works: the task is completed at once, no retry.
   @Test
   fun createTask_storedButFailedSave_linksTheTaskWithoutARetry() {
-    val local = TasksRepositoryLocal()
-    // FAKE that stores the task, then reports a failure, as when the answer is lost.
-    val answerLost =
-        object : TasksRepository by local {
-          override suspend fun addTask(task: Task) {
-            local.addTask(task)
-            throw IllegalStateException("lost the answer")
-          }
-        }
-    val vm = CreateTaskViewModel("event-1", { "owner-1" }, dataRepository(answerLost))
+    val repo = AnswerLost()
+    val vm = CreateTaskViewModel("event-1", { "owner-1" }, dataRepository(repo))
     vm.updateTitle("Run power to stage")
 
     vm.createTask()
 
-    val taskId = runBlocking { local.getAllTasks("event-1") }.single().taskId
+    val taskId = runBlocking { repo.local.getAllTasks("event-1") }.single().taskId
     val event = runBlocking { eventsRepository.getEvent("event-1") }
     assertEquals(listOf(taskId), event.tasks.map { it.taskId })
     assertEquals(listOf(taskId), runBlocking { usersRepository.getUser("owner-1") }.tasksAssigned)
@@ -570,15 +572,7 @@ class CreateTaskViewModelTest {
   // shown, and the retry completes only what is missing, so the owner lists the task once.
   @Test
   fun createTask_whenTheRepairFailsHalfway_showsTheErrorAndTheRetryCompletesIt() {
-    val local = TasksRepositoryLocal()
-    // FAKE that stores the task, then reports a failure, as when the answer is lost.
-    val answerLost =
-        object : TasksRepository by local {
-          override suspend fun addTask(task: Task) {
-            local.addTask(task)
-            throw IllegalStateException("lost the answer")
-          }
-        }
+    val repo = AnswerLost()
     var userWriteFails = true
     // FAKE whose user writes fail while userWriteFails is true, as when the app goes offline.
     val flakyUsers =
@@ -591,7 +585,7 @@ class CreateTaskViewModelTest {
     val data =
         DataRepositoryLocal(
             authRepository = FakeAuthRepository(),
-            tasksRepository = answerLost,
+            tasksRepository = repo,
             eventsRepository = eventsRepository,
             usersRepository = flakyUsers,
         )
@@ -600,7 +594,7 @@ class CreateTaskViewModelTest {
 
     vm.createTask()
 
-    val taskId = runBlocking { local.getAllTasks("event-1") }.single().taskId
+    val taskId = runBlocking { repo.local.getAllTasks("event-1") }.single().taskId
     assertEquals(R.string.create_task_error_save_failed, vm.uiState.value.errorMsg)
     assertFalse(vm.uiState.value.isCreated)
     // The repair linked the event before the owner's write failed.
