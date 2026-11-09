@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.authentication.forgotpassword
 
 import androidx.lifecycle.ViewModel
@@ -25,7 +26,13 @@ enum class ForgotPasswordError {
   REQUEST_FAILED,
 }
 
-/** Handles password reset requests. */
+/**
+ * Handles password reset requests for the forgot-password screen.
+ *
+ * Validates the entered email, then asks for a reset email to be sent to its trimmed value.
+ *
+ * @property dataRepository Gives the [AuthRepository] used to send the password reset email.
+ */
 class ForgotPasswordViewModel(
     private val dataRepository: DataRepository,
 ) : ViewModel() {
