@@ -161,13 +161,7 @@ data class Event(
    *   [MAX_ANNOUNCEMENTS_PER_EVENT] announcements.
    */
   fun addAnnouncement(announcement: Announcement): Event {
-    require(announcements.none { it.announcementId == announcement.announcementId }) {
-      "This announcement is already in the event."
-    }
-    require(announcements.size < MAX_ANNOUNCEMENTS_PER_EVENT) {
-      "An event cannot have more than $MAX_ANNOUNCEMENTS_PER_EVENT announcements."
-    }
-    return copy(announcements = announcements + announcement)
+    return copy(announcements = announcements.withAnnouncement(announcement))
   }
 
   /**
@@ -182,15 +176,7 @@ data class Event(
    *   [Announcement.announcementId] as [announcement].
    */
   fun editAnnouncement(announcement: Announcement): Event {
-    require(announcements.any { it.announcementId == announcement.announcementId }) {
-      "This announcement is not in the event."
-    }
-    return copy(
-        announcements =
-            announcements.map {
-              if (it.announcementId == announcement.announcementId) announcement else it
-            }
-    )
+    return copy(announcements = announcements.withEditedAnnouncement(announcement))
   }
 
   /**
@@ -203,9 +189,50 @@ data class Event(
    * @throws IllegalArgumentException If [announcementId]'s [Announcement] is not in the event.
    */
   fun removeAnnouncement(announcementId: String): Event {
-    require(announcements.any { it.announcementId == announcementId }) {
-      "This announcement is not in the event."
-    }
-    return copy(announcements = announcements.filterNot { it.announcementId == announcementId })
+    return copy(announcements = announcements.withoutAnnouncement(announcementId))
   }
+}
+
+// The announcement rules live on the list, so that a repository that only reads the announcements
+// of an event (see EventRepositoryFirebase) applies exactly the same rules as [Event].
+
+/**
+ * Returns the list with [announcement] added at its end.
+ *
+ * @throws IllegalArgumentException If an [Announcement] with the same [Announcement.announcementId]
+ *   is already in the list, or if the list already has [MAX_ANNOUNCEMENTS_PER_EVENT] items.
+ */
+internal fun List<Announcement>.withAnnouncement(announcement: Announcement): List<Announcement> {
+  require(none { it.announcementId == announcement.announcementId }) {
+    "This announcement is already in the event."
+  }
+  require(size < MAX_ANNOUNCEMENTS_PER_EVENT) {
+    "An event cannot have more than $MAX_ANNOUNCEMENTS_PER_EVENT announcements."
+  }
+  return this + announcement
+}
+
+/**
+ * Returns the list with the [Announcement] that has the same [Announcement.announcementId] as
+ * [announcement] replaced by it, at the same position.
+ *
+ * @throws IllegalArgumentException If no [Announcement] of the list has that identifier.
+ */
+internal fun List<Announcement>.withEditedAnnouncement(
+    announcement: Announcement
+): List<Announcement> {
+  require(any { it.announcementId == announcement.announcementId }) {
+    "This announcement is not in the event."
+  }
+  return map { if (it.announcementId == announcement.announcementId) announcement else it }
+}
+
+/**
+ * Returns the list without the [Announcement] of [announcementId].
+ *
+ * @throws IllegalArgumentException If no [Announcement] of the list has that identifier.
+ */
+internal fun List<Announcement>.withoutAnnouncement(announcementId: String): List<Announcement> {
+  require(any { it.announcementId == announcementId }) { "This announcement is not in the event." }
+  return filterNot { it.announcementId == announcementId }
 }

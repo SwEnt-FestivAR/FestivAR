@@ -15,7 +15,7 @@ import kotlinx.coroutines.tasks.await
 
 private const val EVENT_COLLECTION_PATH = "events"
 private const val TAG = "EventRepositoryFirebase"
-private const val ANNOUNCEMENTS_NOT_STORED = "Announcements are not stored in Firestore yet."
+private const val ANNOUNCEMENTS_FIELD = "announcements"
 
 class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsRepository {
 
@@ -99,22 +99,60 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
         .await()
   }
 
-  // Announcements are not stored in Firestore yet: going through editEvent would silently drop
-  // them, so these throw instead.
+  // Announcements are embedded in the event document, capped by MAX_ANNOUNCEMENTS_PER_EVENT so the
+  // document stays far below Firestore's size limit. Each change below rewrites only that field.
 
-  /** @throws UnsupportedOperationException always, until announcements are stored in Firestore. */
   override suspend fun addAnnouncement(eventId: String, announcement: Announcement) {
-    throw UnsupportedOperationException(ANNOUNCEMENTS_NOT_STORED)
+    updateAnnouncements(eventId) { it.withAnnouncement(announcement) }
   }
 
-  /** @throws UnsupportedOperationException always, until announcements are stored in Firestore. */
   override suspend fun editAnnouncement(eventId: String, announcement: Announcement) {
-    throw UnsupportedOperationException(ANNOUNCEMENTS_NOT_STORED)
+    updateAnnouncements(eventId) { it.withEditedAnnouncement(announcement) }
   }
 
-  /** @throws UnsupportedOperationException always, until announcements are stored in Firestore. */
   override suspend fun deleteAnnouncement(eventId: String, announcementId: String) {
-    throw UnsupportedOperationException(ANNOUNCEMENTS_NOT_STORED)
+    updateAnnouncements(eventId) { it.withoutAnnouncement(announcementId) }
+  }
+
+  /**
+   * Reads the announcements of event [eventId], applies [change] to them and writes the result
+   * back, in one transaction so that two concurrent changes cannot overwrite each other.
+   *
+   * @throws NoSuchElementException if the event does not exist.
+   */
+  private suspend fun updateAnnouncements(
+      eventId: String,
+      change: (List<Announcement>) -> List<Announcement>,
+  ) {
+    val document = eventCollection.document(eventId)
+    db.runTransaction { transaction ->
+          val snapshot = transaction.get(document)
+          if (!snapshot.exists()) {
+            throw NoSuchElementException("Event '$eventId' does not exist.")
+          }
+          val announcements = change(readAnnouncements(snapshot))
+          transaction.update(document, ANNOUNCEMENTS_FIELD, announcements.map { it.toMap() })
+        }
+        .await()
+  }
+
+  /**
+   * Rebuilds the announcements stored in [document], in their stored order. An event written before
+   * announcements were stored has none. Any other non-list value is refused, so that a transaction
+   * never overwrites stored data it could not read.
+   */
+  private fun readAnnouncements(document: DocumentSnapshot): List<Announcement> {
+    val invalid = "Invalid announcement data for event ${document.id}"
+    val stored = document.get(ANNOUNCEMENTS_FIELD) ?: return emptyList()
+    val list = stored as? List<*> ?: throw IllegalArgumentException("$invalid.")
+    return list.map { value ->
+      val map = value as? Map<*, *> ?: throw IllegalArgumentException("$invalid.")
+      try {
+        Announcement.fromMap(map)
+      } catch (e: IllegalArgumentException) {
+        throw IllegalArgumentException("$invalid: ${e.message}", e)
+      }
+    }
   }
 
   private fun toFirestoreData(event: Event): Map<String, Any?> {
@@ -130,6 +168,7 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
         "closed" to event.closed,
         // Stored so a join can be a single query instead of a download of the whole collection
         "joinCode" to joinCodeOf(event),
+        ANNOUNCEMENTS_FIELD to event.announcements.map { it.toMap() },
     )
   }
 
@@ -162,6 +201,7 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
         location = document.getString("location") ?: "",
         tasks = tasks,
         closed = document.getBoolean("closed") ?: false,
+        announcements = readAnnouncements(document),
     )
   }
 }
