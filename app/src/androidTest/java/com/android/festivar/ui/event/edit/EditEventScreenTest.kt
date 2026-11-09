@@ -34,6 +34,13 @@ class EditEventScreenTest {
   @get:Rule val composeTestRule = createAndroidComposeRule<ComponentActivity>()
 
   @Test
+  fun previewShowsTheFilledForm() {
+    composeTestRule.setContent { EditEventScreenPreview() }
+
+    composeTestRule.onNodeWithTag(EditEventScreenTestTags.NAME_FIELD).assertIsDisplayed()
+  }
+
+  @Test
   fun changedEventRendersFormAndSavesOnButtonClick() {
     var saveCount = 0
     composeTestRule.setContent {

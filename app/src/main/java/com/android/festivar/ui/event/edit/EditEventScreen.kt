@@ -36,16 +36,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
+import com.android.festivar.model.event.Event
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.DateTimeRange
 import com.android.festivar.ui.components.FestivarDiscardDialog
 import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.event.EventFields
 import com.android.festivar.ui.event.EventFieldsTestTags
+import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
 
 object EditEventScreenTestTags {
   const val SCREEN = "editEventScreen"
@@ -308,4 +313,23 @@ private fun EditEventTopBar(onBack: () -> Unit) {
       colors =
           TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
   )
+}
+
+@Preview(showBackground = true)
+@Composable
+internal fun EditEventScreenPreview() {
+  val zone = ZoneId.of("Europe/Zurich")
+  val event =
+      Event(
+          eventId = "preview-event",
+          title = "Balelec",
+          description = "Annual music festival by the lake.",
+          startDate = ZonedDateTime.of(2037, 10, 17, 16, 0, 0, 0, zone),
+          endDate = ZonedDateTime.of(2037, 10, 18, 2, 0, 0, 0, zone),
+          location = "Parc de Vidy",
+      )
+
+  AppTheme {
+    EditEventContent(state = EditEventUIState().load(event), actions = EditEventActions())
+  }
 }
