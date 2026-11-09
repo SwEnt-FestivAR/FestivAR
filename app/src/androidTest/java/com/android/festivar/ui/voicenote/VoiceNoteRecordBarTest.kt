@@ -6,10 +6,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.cancel
 import androidx.compose.ui.test.center
 import androidx.compose.ui.test.down
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
@@ -28,10 +34,13 @@ import com.android.festivar.model.audio.PlayerState
 import com.android.festivar.model.audio.RecorderState
 import com.android.festivar.model.voicenote.VoiceNote
 import com.android.festivar.ui.theme.AppTheme
+import io.mockk.confirmVerified
+import io.mockk.mockk
+import io.mockk.verify
+import io.mockk.verifySequence
 import java.time.Duration
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -53,19 +62,30 @@ class VoiceNoteRecordBarTest {
   private fun text(id: Int, vararg args: Any) =
       ApplicationProvider.getApplicationContext<android.content.Context>().getString(id, *args)
 
-  private val events = mutableListOf<String>()
+  // JUnit creates a new instance of the class for every test, so these mocks start every test
+  // without any call
+  private val onRecordStart = mockk<() -> Unit>(relaxed = true)
+  private val onRecordRelease = mockk<() -> Unit>(relaxed = true)
+  private val onRetry = mockk<() -> Unit>(relaxed = true)
+  private val onOpenSettings = mockk<() -> Unit>(relaxed = true)
 
   private val callbacks =
-      VoiceNoteCallbacks(
-          onTogglePlay = { events += "toggle" },
-          onDelete = { events += "delete" },
-          onConfirmDelete = { events += "confirm" },
-          onDismissDelete = { events += "dismiss" },
-          onRecordStart = { events += "start" },
-          onRecordRelease = { events += "release" },
-          onRetry = { events += "retry" },
-          onOpenSettings = { events += "settings" },
-      )
+      VoiceNoteCallbacks.NoOp.let {
+        VoiceNoteCallbacks(
+            onTogglePlay = it.onTogglePlay,
+            onDelete = it.onDelete,
+            onConfirmDelete = it.onConfirmDelete,
+            onDismissDelete = it.onDismissDelete,
+            onRecordStart = onRecordStart,
+            onRecordRelease = onRecordRelease,
+            onRetry = onRetry,
+            onOpenSettings = onOpenSettings,
+        )
+      }
+
+  /** Fails if a callback was called that the test did not verify, so a stray call is caught. */
+  private fun assertNoOtherCall() =
+      confirmVerified(onRecordStart, onRecordRelease, onRetry, onOpenSettings)
 
   private fun show(state: VoiceNoteUiState) = composeTestRule.setContent {
     AppTheme {
@@ -102,9 +122,16 @@ class VoiceNoteRecordBarTest {
     tag(VoiceNoteRecordTestTags.RECORDING_BAR).assertHeightIsEqualTo(56.dp)
   }
 
-  /** Breaks if the timer is missing while recording. */
+  /** Breaks if the idle bar shows the red recording dot. */
   @Test
-  fun recordingShowsTheTimer() {
+  fun idleBarHasNoRecordingDot() {
+    show(VoiceNoteUiState(canManage = true))
+    tag(VoiceNoteRecordTestTags.RECORDING_DOT).assertDoesNotExist()
+  }
+
+  /** Breaks if the timer or the red dot is missing while recording, or the hint stays. */
+  @Test
+  fun recordingReplacesTheHintWithTheDotAndTheTimer() {
     show(
         VoiceNoteUiState(
             canManage = true,
@@ -112,6 +139,8 @@ class VoiceNoteRecordBarTest {
         )
     )
     composeTestRule.onNodeWithText(text(R.string.voice_note_recording, "0:03")).assertIsDisplayed()
+    tag(VoiceNoteRecordTestTags.RECORDING_DOT).assertIsDisplayed()
+    composeTestRule.onNodeWithText(text(R.string.voice_note_hold_to_record)).assertDoesNotExist()
     tag(VoiceNoteRecordTestTags.RECORDING_BAR).assertIsDisplayed()
   }
 
@@ -123,19 +152,57 @@ class VoiceNoteRecordBarTest {
       down(center)
       up()
     }
-    assertEquals(listOf("start", "release"), events)
+    verifySequence {
+      onRecordStart()
+      onRecordRelease()
+    }
   }
 
-  /** Breaks if sliding the finger before releasing drops the recording instead of ending it. */
+  /** Breaks if a second press does not record, or if a press calls release more than once. */
   @Test
-  fun slideLeftThenReleaseStillReleases() {
+  fun eachPressCallsStartAndReleaseOnce() {
+    show(VoiceNoteUiState(canManage = true))
+    repeat(2) {
+      tag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).performTouchInput {
+        down(center)
+        up()
+      }
+    }
+    verifySequence {
+      onRecordStart()
+      onRecordRelease()
+      onRecordStart()
+      onRecordRelease()
+    }
+  }
+
+  /** Breaks if the system taking the gesture away leaves the recorder on. */
+  @Test
+  fun cancelledGestureStillReleases() {
+    show(VoiceNoteUiState(canManage = true))
+    tag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).performTouchInput {
+      down(center)
+      cancel()
+    }
+    verifySequence {
+      onRecordStart()
+      onRecordRelease()
+    }
+  }
+
+  /** Breaks if the finger sliding off the button leaves the recorder on until the finger lifts. */
+  @Test
+  fun slidingOffTheButtonReleases() {
     show(VoiceNoteUiState(canManage = true))
     tag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).performTouchInput {
       down(center)
       moveBy(Offset(-400f, 0f))
       up()
     }
-    assertEquals(listOf("start", "release"), events)
+    verifySequence {
+      onRecordStart()
+      onRecordRelease()
+    }
   }
 
   /** Breaks if the info note about the microphone is missing, or its text is not shown. */
@@ -152,7 +219,8 @@ class VoiceNoteRecordBarTest {
   fun deniedMicrophoneButtonOpensTheSettings() {
     show(VoiceNoteUiState(canManage = true, micDenied = true))
     tag(VoiceNoteRecordTestTags.OPEN_SETTINGS).performClick()
-    assertEquals(listOf("settings"), events)
+    verify(exactly = 1) { onOpenSettings() }
+    assertNoOtherCall()
   }
 
   /** Breaks if the record button still records without the microphone permission. */
@@ -163,7 +231,8 @@ class VoiceNoteRecordBarTest {
       down(center)
       up()
     }
-    assertEquals(emptyList<String>(), events)
+    verify(exactly = 0) { onRecordStart() }
+    assertNoOtherCall()
   }
 
   /** Breaks if a failed send shows no snackbar, or its Retry does nothing. */
@@ -173,7 +242,8 @@ class VoiceNoteRecordBarTest {
     tag(VoiceNoteRecordTestTags.SEND_ERROR).assertIsDisplayed()
     composeTestRule.onNodeWithText(text(R.string.voice_note_send_failed)).assertIsDisplayed()
     tag(VoiceNoteRecordTestTags.SEND_RETRY).performClick()
-    assertEquals(listOf("retry"), events)
+    verify(exactly = 1) { onRetry() }
+    assertNoOtherCall()
   }
 
   /** Breaks if a failed playback shows no snackbar to a volunteer, or its Retry does nothing. */
@@ -182,7 +252,8 @@ class VoiceNoteRecordBarTest {
     show(VoiceNoteUiState(note = note, player = PlayerState.Failed(note.audioUrl)))
     tag(VoiceNoteRecordTestTags.PLAYBACK_ERROR).assertIsDisplayed()
     tag(VoiceNoteRecordTestTags.PLAYBACK_RETRY).performClick()
-    assertEquals(listOf("retry"), events)
+    verify(exactly = 1) { onRetry() }
+    assertNoOtherCall()
   }
 
   /** Breaks if the send or microphone notice shows although nothing failed and the mic is on. */
@@ -220,6 +291,25 @@ class VoiceNoteRecordBarTest {
     assertTrue("the notice must end above the record bar", noticeBottom <= barTop)
   }
 
+  /**
+   * Breaks if one of the two notices hides the other, or if they are not stacked as in the design:
+   * the failed send, then the microphone, then the bar.
+   */
+  @Test
+  fun bothNoticesAreShownAboveTheBarInOrder() {
+    show(VoiceNoteUiState(canManage = true, sendFailed = true, micDenied = true))
+    composeTestRule.onNodeWithText(text(R.string.voice_note_send_failed)).assertIsDisplayed()
+    composeTestRule.onNodeWithText(text(R.string.voice_note_mic_denied)).assertIsDisplayed()
+    tag(VoiceNoteRecordTestTags.SEND_RETRY).assertIsDisplayed()
+    tag(VoiceNoteRecordTestTags.OPEN_SETTINGS).assertIsDisplayed()
+
+    val sendBottom = tag(VoiceNoteRecordTestTags.SEND_ERROR).getUnclippedBoundsInRoot().bottom
+    val micBounds = tag(VoiceNoteRecordTestTags.MIC_DENIED).getUnclippedBoundsInRoot()
+    val barTop = tag(VoiceNoteRecordTestTags.RECORDING_BAR).getUnclippedBoundsInRoot().top
+    assertTrue("the send notice must end above the microphone notice", sendBottom <= micBounds.top)
+    assertTrue("the microphone notice must end above the record bar", micBounds.bottom <= barTop)
+  }
+
   /** Breaks if turning the microphone off in the middle of a recording leaves the recorder on. */
   @Test
   fun interruptedGestureStillReleases() {
@@ -228,20 +318,29 @@ class VoiceNoteRecordBarTest {
     tag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).performTouchInput { down(center) }
     composeTestRule.runOnIdle { state = VoiceNoteUiState(canManage = true, micDenied = true) }
     composeTestRule.waitForIdle()
-    assertEquals(listOf("start", "release"), events)
+    verifySequence {
+      onRecordStart()
+      onRecordRelease()
+    }
   }
 
-  /** Breaks if the record button is not announced as a disabled button without the microphone. */
+  /** Breaks if the record button is not announced as an enabled, labelled button. */
   @Test
-  fun recordButtonIsDisabledWithoutTheMicrophone() {
-    show(VoiceNoteUiState(canManage = true, micDenied = true))
-    tag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).assertIsNotEnabled()
-  }
-
-  /** Breaks if the record button is not an enabled button when the microphone is on. */
-  @Test
-  fun recordButtonIsEnabledWithTheMicrophone() {
+  fun recordButtonIsAnEnabledLabelledButtonWithTheMicrophone() {
     show(VoiceNoteUiState(canManage = true))
-    tag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).assertIsEnabled()
+    tag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD)
+        .assertIsEnabled()
+        .assertContentDescriptionEquals(text(R.string.voice_note_record))
+        .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+  }
+
+  /** Breaks if the record button is not announced as a disabled, labelled button without it. */
+  @Test
+  fun recordButtonIsADisabledLabelledButtonWithoutTheMicrophone() {
+    show(VoiceNoteUiState(canManage = true, micDenied = true))
+    tag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD)
+        .assertIsNotEnabled()
+        .assertContentDescriptionEquals(text(R.string.voice_note_record))
+        .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
   }
 }

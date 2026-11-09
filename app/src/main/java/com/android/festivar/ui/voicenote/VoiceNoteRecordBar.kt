@@ -4,8 +4,7 @@ package com.android.festivar.ui.voicenote
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -53,6 +52,7 @@ import java.time.Duration
 object VoiceNoteRecordTestTags {
   const val RECORDING_BAR = "voiceNoteRecordingBar"
   const val VOICE_NOTE_RECORD = "voiceNoteRecord"
+  const val RECORDING_DOT = "voiceNoteRecordingDot"
   const val SEND_ERROR = "voiceNoteSendError"
   const val SEND_RETRY = "voiceNoteSendRetry"
   const val MIC_DENIED = "voiceNoteMicDenied"
@@ -84,8 +84,59 @@ fun VoiceNoteRecordBar(
 }
 
 /**
+ * The notices above the record bar: the failed send (with a Retry), and the information that the
+ * microphone is off (with a button to the settings).
+ */
+@Composable
+private fun VoiceNoteOwnerNotices(state: VoiceNoteUiState, callbacks: VoiceNoteCallbacks) {
+  if (state.sendFailed) {
+    ErrorNotice(
+        message = R.string.voice_note_send_failed,
+        onRetry = callbacks.onRetry,
+        tag = VoiceNoteRecordTestTags.SEND_ERROR,
+        actionTag = VoiceNoteRecordTestTags.SEND_RETRY,
+    )
+  }
+  if (state.micDenied) {
+    InfoNote(
+        message = stringResource(R.string.voice_note_mic_denied),
+        modifier = Modifier.testTag(VoiceNoteRecordTestTags.MIC_DENIED),
+        action = {
+          InfoNoteButton(
+              stringResource(R.string.action_open_settings),
+              onClick = callbacks.onOpenSettings,
+              modifier = Modifier.testTag(VoiceNoteRecordTestTags.OPEN_SETTINGS),
+          )
+        },
+    )
+  }
+}
+
+/**
+ * An error of the voice note, shown with the shared snackbar and a Retry. The [modifier] is applied
+ * before the tag, so the tagged node is the snackbar alone, without the space around it.
+ */
+@Composable
+private fun ErrorNotice(
+    @StringRes message: Int,
+    onRetry: () -> Unit,
+    tag: String,
+    actionTag: String,
+    modifier: Modifier = Modifier,
+) {
+  NoticeSnackbar(
+      message = stringResource(message),
+      actionLabel = stringResource(R.string.action_retry),
+      onAction = onRetry,
+      modifier = modifier.testTag(tag),
+      actionModifier = Modifier.testTag(actionTag),
+  )
+}
+
+/**
  * The notice of a failed playback. It is not part of the record bar: a note exists, so the bar is
- * hidden, and the design ("notice (fixed)") puts it just above the buttons of the task.
+ * hidden, and everybody can listen, so everybody must see it. The design ("notice (fixed)") puts it
+ * just above the buttons of the task.
  */
 @Composable
 fun VoiceNotePlaybackNotice(
@@ -94,23 +145,19 @@ fun VoiceNotePlaybackNotice(
     modifier: Modifier = Modifier,
 ) {
   if (!state.playbackFailed) return
-  Box(
-      modifier
-          .fillMaxWidth()
-          .padding(
+  ErrorNotice(
+      message = R.string.voice_note_playback_failed,
+      onRetry = callbacks.onRetry,
+      tag = VoiceNoteRecordTestTags.PLAYBACK_ERROR,
+      actionTag = VoiceNoteRecordTestTags.PLAYBACK_RETRY,
+      modifier =
+          modifier.padding(
               start = FixedBottomBarHorizontalPadding,
               top = 8.dp,
               end = FixedBottomBarHorizontalPadding,
               bottom = 4.dp,
-          )
-  ) {
-    ErrorNotice(
-        message = R.string.voice_note_playback_failed,
-        onRetry = callbacks.onRetry,
-        tag = VoiceNoteRecordTestTags.PLAYBACK_ERROR,
-        actionTag = VoiceNoteRecordTestTags.PLAYBACK_RETRY,
-    )
-  }
+          ),
+  )
 }
 
 /**
@@ -155,7 +202,11 @@ private fun RecordingIndicator(state: VoiceNoteUiState) {
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(12.dp),
   ) {
-    Box(Modifier.size(10.dp).background(MaterialTheme.colorScheme.error, CircleShape))
+    Box(
+        Modifier.size(10.dp)
+            .background(MaterialTheme.colorScheme.error, CircleShape)
+            .testTag(VoiceNoteRecordTestTags.RECORDING_DOT)
+    )
     Text(
         stringResource(R.string.voice_note_recording, formatVoiceDuration(state.elapsed)),
         style = MaterialTheme.typography.labelLarge,
@@ -164,13 +215,15 @@ private fun RecordingIndicator(state: VoiceNoteUiState) {
 }
 
 /**
- * The round microphone button. It reacts to the press itself: pressing starts and releasing stops.
- * The same node stays in place while recording, so the gesture is not interrupted when the bar
- * changes. A gesture that is interrupted (the finger is lost, or the button stops listening because
- * the microphone is turned off) is released too, so the recorder never stays on.
+ * The round microphone button. Pressing starts the recording and releasing stops it. A press that
+ * ends in any other way (the finger slides off the button, the system takes the gesture, or the
+ * button stops listening because the microphone is turned off) is released too, so the recorder
+ * never stays on.
  */
 @Composable
 private fun RecordButton(enabled: Boolean, callbacks: VoiceNoteCallbacks) {
+  // The gesture below lives as long as `enabled`, so it reads the callbacks of the latest
+  // composition instead of the ones it started with.
   val onStart by rememberUpdatedState(callbacks.onRecordStart)
   val onRelease by rememberUpdatedState(callbacks.onRecordRelease)
   val label = stringResource(R.string.voice_note_record)
@@ -186,69 +239,22 @@ private fun RecordButton(enabled: Boolean, callbacks: VoiceNoteCallbacks) {
           .testTag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD)
           .pointerInput(enabled) {
             if (!enabled) return@pointerInput
-            awaitEachGesture {
-              val down = awaitFirstDown()
-              onStart()
-              try {
-                while (true) {
-                  val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id }
-                  if (change == null || !change.pressed) break
+            detectTapGestures(
+                onPress = {
+                  onStart()
+                  try {
+                    // Returns when the finger lifts, and also when the press is cancelled.
+                    tryAwaitRelease()
+                  } finally {
+                    onRelease()
+                  }
                 }
-              } finally {
-                onRelease()
-              }
-            }
+            )
           },
       contentAlignment = Alignment.Center,
   ) {
     Icon(Icons.Filled.Mic, contentDescription = null, tint = colors.onPrimary)
   }
-}
-
-/**
- * The notices above the record bar: the failed send (with a Retry), and the information that the
- * microphone is off (with a button to the settings).
- */
-@Composable
-private fun VoiceNoteOwnerNotices(state: VoiceNoteUiState, callbacks: VoiceNoteCallbacks) {
-  if (state.sendFailed) {
-    ErrorNotice(
-        message = R.string.voice_note_send_failed,
-        onRetry = callbacks.onRetry,
-        tag = VoiceNoteRecordTestTags.SEND_ERROR,
-        actionTag = VoiceNoteRecordTestTags.SEND_RETRY,
-    )
-  }
-  if (state.micDenied) {
-    InfoNote(
-        message = stringResource(R.string.voice_note_mic_denied),
-        modifier = Modifier.testTag(VoiceNoteRecordTestTags.MIC_DENIED),
-        action = {
-          InfoNoteButton(
-              stringResource(R.string.action_open_settings),
-              onClick = callbacks.onOpenSettings,
-              modifier = Modifier.testTag(VoiceNoteRecordTestTags.OPEN_SETTINGS),
-          )
-        },
-    )
-  }
-}
-
-/** An error of the voice note, shown with the shared snackbar and a Retry. */
-@Composable
-private fun ErrorNotice(
-    @StringRes message: Int,
-    onRetry: () -> Unit,
-    tag: String,
-    actionTag: String,
-) {
-  NoticeSnackbar(
-      message = stringResource(message),
-      actionLabel = stringResource(R.string.action_retry),
-      onAction = onRetry,
-      modifier = Modifier.testTag(tag),
-      actionModifier = Modifier.testTag(actionTag),
-  )
 }
 
 /** The bar with its notices fixed at the bottom of the screen, as on the screen. */
