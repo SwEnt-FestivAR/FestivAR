@@ -82,7 +82,7 @@ internal object LoginScreenTestTags {
 @Composable
 fun LoginScreen(
     modifier: Modifier = Modifier,
-    viewModel: LoginViewModel = viewModel(),
+    viewModel: LoginViewModel,
     onSignUpClick: () -> Unit,
     onForgotPasswordClick: () -> Unit = {},
     onSignedIn: () -> Unit = {},

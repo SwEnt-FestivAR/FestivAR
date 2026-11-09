@@ -40,7 +40,7 @@ class LoginViewModel(
     private val dataRepository: DataRepository,
 ) : ViewModel() {
 
-    private val authRepository: AuthRepository = dataRepository.authRepository
+  private val authRepository: AuthRepository = dataRepository.authRepository
   private val _uiState = MutableStateFlow(LoginUIState())
 
   /** Observable state for the login screen. */
