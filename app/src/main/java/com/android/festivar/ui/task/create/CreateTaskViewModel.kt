@@ -309,7 +309,8 @@ private constructor(
 
   /**
    * Adds a stored [task] to its event and to the tasks assigned to its owner, wherever it is
-   * missing. A failed save may have stored the task but stopped before these writes.
+   * missing. A failed save may have stored the task but stopped before these writes. If everything
+   * is correctly synchronized, nothing changes.
    *
    * Only what is missing is written, so a fully linked task writes nothing, and a failure halfway
    * is completed by the next retry. Trying to repair the [task] itself is not done as the function
