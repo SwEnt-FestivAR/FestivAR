@@ -3,7 +3,6 @@ package com.android.festivar.ui.event.edit
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -35,18 +34,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
+import com.android.festivar.model.event.Event
+import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.DateTimeRange
-import com.android.festivar.ui.components.FestivarDateTimePickerDialog
-import com.android.festivar.ui.components.FestivarDateTimeRow
 import com.android.festivar.ui.components.FestivarDiscardDialog
 import com.android.festivar.ui.components.FestivarFieldError
-import com.android.festivar.ui.components.FestivarFieldWithError
-import com.android.festivar.ui.components.FestivarTextField
+import com.android.festivar.ui.event.EventFields
+import com.android.festivar.ui.event.EventFieldsTestTags
+import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
 
 object EditEventScreenTestTags {
   const val BACK_BUTTON = "editEventBackButton"
@@ -68,6 +71,20 @@ object EditEventScreenTestTags {
   const val DISCARD_CONFIRM = "editEventDiscardConfirm"
   const val DISCARD_KEEP_EDITING = "editEventDiscardKeepEditing"
 }
+
+private val editEventFieldTags =
+    EventFieldsTestTags(
+        name = EditEventScreenTestTags.NAME_FIELD,
+        startDate = EditEventScreenTestTags.START_DATE_FIELD,
+        startTime = EditEventScreenTestTags.START_TIME_FIELD,
+        endDate = EditEventScreenTestTags.END_DATE_FIELD,
+        endTime = EditEventScreenTestTags.END_TIME_FIELD,
+        venue = EditEventScreenTestTags.LOCATION_FIELD,
+        notes = EditEventScreenTestTags.DESCRIPTION_FIELD,
+        nameError = EditEventScreenTestTags.NAME_ERROR,
+        startDateError = EditEventScreenTestTags.START_DATE_ERROR,
+        endDateError = EditEventScreenTestTags.END_DATE_ERROR,
+    )
 
 /** Callbacks handled by the Edit event screen. */
 class EditEventActions(
@@ -149,61 +166,29 @@ fun EditEventContent(
                       .verticalScroll(rememberScrollState())
                       .padding(horizontal = 12.dp),
           ) {
-            FestivarFieldWithError(state.nameError, EditEventScreenTestTags.NAME_ERROR) {
-              FestivarTextField(
-                  value = state.name,
-                  onValueChange = actions.onNameChange,
-                  label = stringResource(R.string.create_event_field_name),
-                  isError = state.nameError != null,
-                  modifier = Modifier.testTag(EditEventScreenTestTags.NAME_FIELD),
-              )
-            }
-            Spacer(modifier = Modifier.height(14.dp))
-
-            FestivarDateTimeRow(
-                dateLabel = stringResource(R.string.create_event_field_start_date),
-                timeLabel = stringResource(R.string.create_event_field_start_time),
-                date = state.startDate,
-                time = state.startTime,
-                dateError = state.startDateError,
-                onDateClick = { actions.onShowPicker(DateTimeField.START_DATE) },
-                onTimeClick = { actions.onShowPicker(DateTimeField.START_TIME) },
-                dateTag = EditEventScreenTestTags.START_DATE_FIELD,
-                dateErrorTag = EditEventScreenTestTags.START_DATE_ERROR,
-                timeTag = EditEventScreenTestTags.START_TIME_FIELD,
+            EventFields(
+                name = state.name,
+                nameError = state.nameError,
+                dateTimeRange =
+                    DateTimeRange(
+                        startDate = state.startDate,
+                        endDate = state.endDate,
+                        startTime = state.startTime,
+                        endTime = state.endTime,
+                    ),
+                startDateError = state.startDateError,
+                endDateError = state.endDateError,
+                venue = state.venue,
+                notes = state.notes,
+                openPicker = state.openPicker,
+                testTags = editEventFieldTags,
+                onNameChange = actions.onNameChange,
+                onShowPicker = actions.onShowPicker,
+                onVenueChange = actions.onVenueChange,
+                onNotesChange = actions.onNotesChange,
+                onDatePicked = actions.onDatePicked,
+                onTimePicked = actions.onTimePicked,
             )
-            Spacer(modifier = Modifier.height(14.dp))
-
-            FestivarDateTimeRow(
-                dateLabel = stringResource(R.string.create_event_field_end_date),
-                timeLabel = stringResource(R.string.create_event_field_end_time),
-                date = state.endDate,
-                time = state.endTime,
-                dateError = state.endDateError,
-                onDateClick = { actions.onShowPicker(DateTimeField.END_DATE) },
-                onTimeClick = { actions.onShowPicker(DateTimeField.END_TIME) },
-                dateTag = EditEventScreenTestTags.END_DATE_FIELD,
-                dateErrorTag = EditEventScreenTestTags.END_DATE_ERROR,
-                timeTag = EditEventScreenTestTags.END_TIME_FIELD,
-            )
-            Spacer(modifier = Modifier.height(14.dp))
-
-            FestivarTextField(
-                value = state.venue,
-                onValueChange = actions.onVenueChange,
-                label = stringResource(R.string.create_event_field_venue),
-                modifier = Modifier.testTag(EditEventScreenTestTags.LOCATION_FIELD),
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            FestivarTextField(
-                value = state.notes,
-                onValueChange = actions.onNotesChange,
-                label = stringResource(R.string.create_event_field_notes),
-                singleLine = false,
-                modifier = Modifier.testTag(EditEventScreenTestTags.DESCRIPTION_FIELD),
-            )
-            Spacer(modifier = Modifier.height(14.dp))
           }
       state.isLoading ->
           androidx.compose.foundation.layout.Box(
@@ -227,20 +212,6 @@ fun EditEventContent(
           }
     }
   }
-
-  FestivarDateTimePickerDialog(
-      field = state.openPicker,
-      range =
-          DateTimeRange(
-              startDate = state.startDate,
-              endDate = state.endDate,
-              startTime = state.startTime,
-              endTime = state.endTime,
-          ),
-      onDatePicked = actions.onDatePicked,
-      onTimePicked = actions.onTimePicked,
-      onDismiss = { actions.onShowPicker(null) },
-  )
 
   if (state.showDiscardConfirmation) {
     FestivarDiscardDialog(
@@ -327,39 +298,39 @@ private fun EditEventTopBar(onBack: () -> Unit) {
   )
 }
 
-// @Preview(showBackground = true)
-// @Composable
-// private fun EditEventScreenPreview() {
-//  val zone = ZoneId.of("Europe/Zurich")
-//  val startDate = LocalDate.now().plusDays(10)
-//  val endDate = startDate.plusDays(2)
-//  val event =
-//      Event(
-//          eventId = "preview",
-//          title = "Fête de l'Asso 2026",
-//          description = "Enter by the main gate.",
-//          members = listOf(User(uid = "organizer", name = "Alice")),
-//          startDate = ZonedDateTime.of(startDate, LocalTime.of(16, 0), zone),
-//          endDate = ZonedDateTime.of(endDate, LocalTime.of(10, 0), zone),
-//          location = "Parc de Vidy, Lausanne",
-//      )
-//
-//  AppTheme {
-//    EditEventContent(
-//        state =
-//            EditEventUIState(
-//                event = event,
-//                name = event.title,
-//                startDate = startDate,
-//                endDate = endDate,
-//                startTime = LocalTime.of(16, 0),
-//                endTime = LocalTime.of(10, 0),
-//                venue = event.location,
-//                notes = "Access by the lake side gate.",
-//                zone = zone,
-//                endZone = zone,
-//            ),
-//        actions = EditEventActions(),
-//    )
-//  }
-// }
+@Preview(showBackground = true)
+@Composable
+private fun EditEventScreenPreview() {
+  val zone = ZoneId.of("Europe/Zurich")
+  val startDate = LocalDate.now().plusDays(10)
+  val endDate = startDate.plusDays(2)
+  val event =
+      Event(
+          eventId = "preview",
+          title = "Fête de l'Asso 2026",
+          description = "Enter by the main gate.",
+          members = listOf(User(uid = "organizer", name = "Alice")),
+          startDate = ZonedDateTime.of(startDate, LocalTime.of(16, 0), zone),
+          endDate = ZonedDateTime.of(endDate, LocalTime.of(10, 0), zone),
+          location = "Parc de Vidy, Lausanne",
+      )
+
+  AppTheme {
+    EditEventContent(
+        state =
+            EditEventUIState(
+                event = event,
+                name = event.title,
+                startDate = startDate,
+                endDate = endDate,
+                startTime = LocalTime.of(16, 0),
+                endTime = LocalTime.of(10, 0),
+                venue = event.location,
+                notes = "Access by the lake side gate.",
+                zone = zone,
+                endZone = zone,
+            ),
+        actions = EditEventActions(),
+    )
+  }
+}
