@@ -131,15 +131,4 @@ class VoiceNoteUiStateTest {
       onOpenSettings()
     }
   }
-
-  @Test
-  fun noticesFollowTheFlagsAndTheRole() {
-    assertFalse(VoiceNoteUiState(canManage = true).hasNotices)
-    assertTrue(VoiceNoteUiState(canManage = true, sendFailed = true).hasNotices)
-    assertTrue(VoiceNoteUiState(canManage = true, micDenied = true).hasNotices)
-    // Send and microphone notices only matter while the record bar is there.
-    assertFalse(VoiceNoteUiState(note = note, canManage = true, sendFailed = true).hasNotices)
-    assertFalse(VoiceNoteUiState(canManage = false, micDenied = true).hasNotices)
-    assertTrue(VoiceNoteUiState(note = note, player = PlayerState.Failed(note.audioUrl)).hasNotices)
-  }
 }

@@ -73,10 +73,6 @@ data class VoiceNoteUiState(
   /** Whether the note of the task could not be played. */
   val playbackFailed: Boolean
     get() = note != null && (player as? PlayerState.Failed)?.audioUrl == note.audioUrl
-
-  /** Whether a notice (error or information) has to be shown above the record bar. */
-  val hasNotices: Boolean
-    get() = playbackFailed || (showRecordBar && (sendFailed || micDenied))
 }
 
 /**
