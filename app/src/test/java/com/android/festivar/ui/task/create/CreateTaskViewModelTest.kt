@@ -15,6 +15,7 @@ import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.user.User
+import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.FieldError
@@ -563,6 +564,58 @@ class CreateTaskViewModelTest {
     assertEquals(listOf(taskId), event.tasks.map { it.taskId })
     assertEquals(listOf(taskId), runBlocking { usersRepository.getUser("owner-1") }.tasksAssigned)
     assertTrue(vm.uiState.value.isCreated)
+  }
+
+  // The repair itself fails halfway: the event is linked, but the owner's write fails. The error is
+  // shown, and the retry completes only what is missing, so the owner lists the task once.
+  @Test
+  fun createTask_whenTheRepairFailsHalfway_showsTheErrorAndTheRetryCompletesIt() {
+    val local = TasksRepositoryLocal()
+    // FAKE that stores the task, then reports a failure, as when the answer is lost.
+    val answerLost =
+        object : TasksRepository by local {
+          override suspend fun addTask(task: Task) {
+            local.addTask(task)
+            throw IllegalStateException("lost the answer")
+          }
+        }
+    var userWriteFails = true
+    // FAKE whose user writes fail while userWriteFails is true, as when the app goes offline.
+    val flakyUsers =
+        object : UsersRepository by usersRepository {
+          override suspend fun editUser(uId: String, newValue: User) {
+            if (userWriteFails) throw IllegalStateException("offline")
+            usersRepository.editUser(uId, newValue)
+          }
+        }
+    val data =
+        DataRepositoryLocal(
+            authRepository = FakeAuthRepository(),
+            tasksRepository = answerLost,
+            eventsRepository = eventsRepository,
+            usersRepository = flakyUsers,
+        )
+    val vm = CreateTaskViewModel("event-1", { "owner-1" }, data)
+    vm.updateTitle("Run power to stage")
+
+    vm.createTask()
+
+    val taskId = runBlocking { local.getAllTasks("event-1") }.single().taskId
+    assertEquals(R.string.create_task_error_save_failed, vm.uiState.value.errorMsg)
+    assertFalse(vm.uiState.value.isCreated)
+    // The repair linked the event before the owner's write failed.
+    val event = runBlocking { eventsRepository.getEvent("event-1") }
+    assertEquals(listOf(taskId), event.tasks.map { it.taskId })
+    assertTrue(runBlocking { usersRepository.getUser("owner-1") }.tasksAssigned.isEmpty())
+
+    userWriteFails = false
+    vm.createTask()
+
+    assertTrue(vm.uiState.value.isCreated)
+    assertNull(vm.uiState.value.errorMsg)
+    val eventAfter = runBlocking { eventsRepository.getEvent("event-1") }
+    assertEquals(listOf(taskId), eventAfter.tasks.map { it.taskId })
+    assertEquals(listOf(taskId), runBlocking { usersRepository.getUser("owner-1") }.tasksAssigned)
   }
 
   @Test

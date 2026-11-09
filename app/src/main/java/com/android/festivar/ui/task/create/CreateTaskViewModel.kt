@@ -313,12 +313,8 @@ private constructor(
    * is correctly synchronized, nothing changes.
    *
    * Only what is missing is written, so a fully linked task writes nothing, and a failure halfway
-   * is completed by the next retry. Trying to repair the [task] itself is not done as the function
-   * is called only if succeeds:
-   * ```
-   * val stored = tasksRepository.getTask(task.taskId)
-   * if (stored != task) tasksRepository.editTask(task.taskId, task)
-   * ```
+   * is completed by the next retry. It does not repair the task itself: [onSaveFailed] calls it
+   * only after it found the task and updated it if needed.
    *
    * Call it only once the task is known to be stored: an event listing a task that does not exist
    * can no longer be read.
