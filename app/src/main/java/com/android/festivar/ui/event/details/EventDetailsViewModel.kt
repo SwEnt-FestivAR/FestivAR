@@ -6,6 +6,7 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
+import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import kotlin.coroutines.cancellation.CancellationException
@@ -36,9 +37,11 @@ data class EventDetailsUIState(
  * @param eventId identifier of the event to load.
  */
 class EventDetailsViewModel(
-    private val eventsRepository: EventsRepository,
+    private val dataRepository: DataRepository,
     private val eventId: String,
 ) : ViewModel() {
+
+    private val eventsRepository: EventsRepository = dataRepository.eventsRepository
 
   private val _uiState = MutableStateFlow(EventDetailsUIState())
   val uiState: StateFlow<EventDetailsUIState> = _uiState.asStateFlow()
