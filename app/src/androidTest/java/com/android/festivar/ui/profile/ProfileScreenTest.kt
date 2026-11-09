@@ -393,6 +393,45 @@ class ProfileScreenTest {
     composeTestRule.onNodeWithTag(ProfileScreenTestTags.RETRY_BUTTON).assertDoesNotExist()
   }
 
+  @Test
+  fun anonymousSignOutShowsConfirmationBeforeSigningOut() {
+    var signedOut = false
+    setProfile(authRepository = anonymousAuthRepository(), onSignedOut = { signedOut = true })
+
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.SIGN_OUT_BUTTON).performClick()
+
+    composeTestRule.onNodeWithText(string(R.string.login_warning)).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(string(R.string.profile_anon_sign_out_warning))
+        .assertIsDisplayed()
+    assertFalse(signedOut)
+  }
+
+  @Test
+  fun cancellingAnonymousSignOutClosesConfirmationWithoutSigningOut() {
+    var signedOut = false
+    setProfile(authRepository = anonymousAuthRepository(), onSignedOut = { signedOut = true })
+
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.SIGN_OUT_BUTTON).performClick()
+    composeTestRule.onNodeWithText(string(R.string.action_cancel)).performClick()
+
+    composeTestRule.onNodeWithText(string(R.string.login_warning)).assertDoesNotExist()
+    assertFalse(signedOut)
+  }
+
+  @Test
+  fun confirmingAnonymousSignOutSignsOut() {
+    var signedOut = false
+    val viewModel =
+        setProfile(authRepository = anonymousAuthRepository(), onSignedOut = { signedOut = true })
+
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.SIGN_OUT_BUTTON).performClick()
+    composeTestRule.onNodeWithText(string(R.string.action_continue_anyway)).performClick()
+
+    composeTestRule.waitUntil(5_000) { signedOut }
+    assertTrue(viewModel.uiState.value.signedOut)
+  }
+
   /** Turns red when Sign out stops reaching the auth repository or stops calling onSignedOut. */
   @Test
   fun signOutSignsOutAndCallsOnSignedOut() {

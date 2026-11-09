@@ -14,22 +14,18 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
-import com.android.festivar.model.user.User
 import com.android.festivar.ui.authentication.login.EmailLoginForm
 import com.android.festivar.ui.authentication.login.LoginScreenTestTags
 import com.android.festivar.ui.authentication.login.SignInButton
 import com.android.festivar.ui.components.NoticeSnackbar
 import com.android.festivar.ui.components.OrSeparator
-import com.android.festivar.ui.theme.AppTheme
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -114,31 +110,31 @@ fun UpgradeBottomSheetContent(
   }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun UpgradeBottomSheetPreview() {
-  AppTheme {
-    Surface {
-      UpgradeBottomSheetContent(
-          uiState =
-              ProfileUIState(
-                  user =
-                      User(
-                          uid = "u1",
-                          name = "skibidi",
-                          surname = "toilet",
-                          email = "skibidi@toilet.ch",
-                      ),
-                  name = "skibidi",
-                  surname = "toilet",
-                  isUserAnonymous = true,
-              ),
-          onEmailChange = {},
-          onPasswordChange = {},
-          onLoginClick = {},
-          onTogglePasswordVisibility = {},
-          onGoogleUpgrade = {},
-      )
-    }
-  }
-}
+// @Preview(showBackground = true)
+// @Composable
+// fun UpgradeBottomSheetPreview() {
+//  AppTheme {
+//    Surface {
+//      UpgradeBottomSheetContent(
+//          uiState =
+//              ProfileUIState(
+//                  user =
+//                      User(
+//                          uid = "u1",
+//                          name = "skibidi",
+//                          surname = "toilet",
+//                          email = "skibidi@toilet.ch",
+//                      ),
+//                  name = "skibidi",
+//                  surname = "toilet",
+//                  isUserAnonymous = true,
+//              ),
+//          onEmailChange = {},
+//          onPasswordChange = {},
+//          onLoginClick = {},
+//          onTogglePasswordVisibility = {},
+//          onGoogleUpgrade = {},
+//      )
+//    }
+//  }
+// }
