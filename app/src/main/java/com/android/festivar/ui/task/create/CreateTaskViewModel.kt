@@ -266,10 +266,18 @@ private constructor(
     }
   }
 
-  // A failed save may still have reached the server (for example a timeout). If the task exists,
-  // it is created: it is updated if the form changed since that save, and added to its event and
-  // to its owner if that save stopped before doing it. Otherwise the error is shown and the user
-  // can retry with the same task id.
+  /**
+   * Decides what a failed save means, since it may still have reached the server (for example
+   * after a timeout).
+   *
+   * If [task] is stored, it is created: it is updated if the form changed since that save, and
+   * added to its event and to its owner if that save stopped before doing it (see [linkTask]).
+   * Otherwise, or if this check fails or times out too, the save error is shown and the user can
+   * retry with the same task id.
+   *
+   * @param task The task that could not be saved, as built from the form at the last tap.
+   * @param e The failure of the save, logged as a warning.
+   */
   private suspend fun onSaveFailed(task: Task, e: Exception) {
     // Not an error yet: the task may have been stored anyway, which is checked below.
     Log.w(TAG, "Adding the task failed, checking whether it was stored", e)
@@ -299,11 +307,19 @@ private constructor(
     }
   }
 
-  // Adds the stored task to its event and to its owner where it is missing: a failed save may have
-  // stored the task but stopped before these writes. Only what is missing is written, so a fully
-  // linked task writes nothing, and a failure halfway is completed by the next retry.
-  // Call it only once the task is known to be stored: an event listing a task that does not exist
-  // can no longer be read.
+  /**
+   * Adds a stored [task] to its event and to the tasks assigned to its owner, wherever it is
+   * missing. A failed save may have stored the task but stopped before these writes.
+   *
+   * Only what is missing is written, so a fully linked task writes nothing, and a failure halfway
+   * is completed by the next retry.
+   *
+   * Call it only once the task is known to be stored: an event listing a task that does not exist
+   * can no longer be read.
+   *
+   * @param task The stored task. Its event and its owner must exist.
+   * @throws NoSuchElementException If the event or the owner does not exist.
+   */
   private suspend fun linkTask(task: Task) {
     val eventsRepository = dataRepository.eventsRepository
     val usersRepository = dataRepository.usersRepository
