@@ -105,8 +105,9 @@ private const val TAG = "CreateEventViewModel"
  * Holds the create event form, validates it and saves the event with the signed-in user as its
  * first member.
  *
- * @property dataRepository where the event is written and where the creator's profile is read and
- *   its joined events updated.
+ * @property dataRepository The general repository handling the interactions/synchronization/updates
+ *   between the different repositories. It coordinates the creation of the event and the update of
+ *   its members.
  * @property userId the uid of the signed-in user, blank when nobody is.
  */
 class CreateEventViewModel(
