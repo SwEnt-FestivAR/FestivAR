@@ -99,9 +99,6 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
         .await()
   }
 
-  // Announcements are embedded in the event document, capped by MAX_ANNOUNCEMENTS_PER_EVENT so the
-  // document stays far below Firestore's size limit. Each change below rewrites only that field.
-
   override suspend fun addAnnouncement(eventId: String, announcement: Announcement) {
     updateAnnouncements(eventId) { it.withAnnouncement(announcement) }
   }
@@ -114,12 +111,7 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
     updateAnnouncements(eventId) { it.withoutAnnouncement(announcementId) }
   }
 
-  /**
-   * Reads the announcements of event [eventId], applies [change] to them and writes the result
-   * back, in one transaction so that two concurrent changes cannot overwrite each other.
-   *
-   * @throws NoSuchElementException if the event does not exist.
-   */
+  /** In one transaction, so that two concurrent changes cannot overwrite each other. */
   private suspend fun updateAnnouncements(
       eventId: String,
       change: (List<Announcement>) -> List<Announcement>,
@@ -137,9 +129,8 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
   }
 
   /**
-   * Rebuilds the announcements stored in [document], in their stored order. An event written before
-   * announcements were stored has none. Any other non-list value is refused, so that a transaction
-   * never overwrites stored data it could not read.
+   * An event saved before announcements were stored has none. Any other non-list value is refused,
+   * so that a transaction never overwrites data it could not read.
    */
   private fun readAnnouncements(document: DocumentSnapshot): List<Announcement> {
     val invalid = "Invalid announcement data for event ${document.id}"

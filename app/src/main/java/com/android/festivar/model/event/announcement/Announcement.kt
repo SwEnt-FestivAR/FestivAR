@@ -2,7 +2,6 @@
 package com.android.festivar.model.event.announcement
 
 import java.time.ZonedDateTime
-import java.time.format.DateTimeParseException
 
 /**
  * Represents an [Announcement] in the FestivAR application. An [Announcement] is something, in the
@@ -179,19 +178,26 @@ data class Announcement(
 
   companion object {
     /**
-     * Rebuilds an announcement from a [map] written by [toMap]. A missing `content`, `links` or
-     * `pinned` takes its default value; a value of the wrong type is refused.
+     * Rebuilds an announcement from a [map] written by [toMap]. Only an absent or null `content`,
+     * `links` or `pinned` takes its default value.
      *
-     * @throws IllegalArgumentException if a required field is missing, if a field has the wrong
-     *   type, or if the values break a rule of [Announcement].
+     * @throws IllegalArgumentException if a field is missing, has the wrong type or breaks a rule.
      */
     fun fromMap(map: Map<*, *>): Announcement {
       fun <T> field(name: String, value: T?): T =
           requireNotNull(value) { "Invalid announcement data: '$name' is missing or invalid." }
 
-      // An optional field falls back to [default] only when it is absent, not when it is invalid.
       fun <T> optionalField(name: String, default: T, read: (Any) -> T?): T =
           map[name]?.let { field(name, read(it)) } ?: default
+
+      fun <T> parsed(name: String, parse: (String) -> T): T =
+          field(name, map[name] as? String).let {
+            try {
+              parse(it)
+            } catch (e: RuntimeException) {
+              throw IllegalArgumentException("Invalid announcement data: bad $name '$it'.", e)
+            }
+          }
 
       val links =
           optionalField("links", emptyList()) { value ->
@@ -203,28 +209,8 @@ data class Announcement(
           title = field("title", map["title"] as? String),
           authorId = field("authorId", map["authorId"] as? String),
           content = optionalField("content", "") { it as? String },
-          priority =
-              field("priority", map["priority"] as? String).let {
-                try {
-                  AnnouncementPriority.valueOf(it)
-                } catch (e: IllegalArgumentException) {
-                  throw IllegalArgumentException(
-                      "Invalid announcement data: bad priority '$it'.",
-                      e,
-                  )
-                }
-              },
-          updatedAt =
-              field("updatedAt", map["updatedAt"] as? String).let {
-                try {
-                  ZonedDateTime.parse(it)
-                } catch (e: DateTimeParseException) {
-                  throw IllegalArgumentException(
-                      "Invalid announcement data: bad updatedAt '$it'.",
-                      e,
-                  )
-                }
-              },
+          priority = parsed("priority", AnnouncementPriority::valueOf),
+          updatedAt = parsed("updatedAt", ZonedDateTime::parse),
           links = links,
           pinned = optionalField("pinned", false) { it as? Boolean },
       )

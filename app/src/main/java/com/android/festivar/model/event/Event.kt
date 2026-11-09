@@ -193,15 +193,7 @@ data class Event(
   }
 }
 
-// The announcement rules live on the list, so that a repository that only reads the announcements
-// of an event (see EventRepositoryFirebase) applies exactly the same rules as [Event].
-
-/**
- * Returns the list with [announcement] added at its end.
- *
- * @throws IllegalArgumentException If an [Announcement] with the same [Announcement.announcementId]
- *   is already in the list, or if the list already has [MAX_ANNOUNCEMENTS_PER_EVENT] items.
- */
+/** [Event.addAnnouncement] on the list alone, also used by EventRepositoryFirebase. */
 internal fun List<Announcement>.withAnnouncement(announcement: Announcement): List<Announcement> {
   require(none { it.announcementId == announcement.announcementId }) {
     "This announcement is already in the event."
@@ -212,12 +204,7 @@ internal fun List<Announcement>.withAnnouncement(announcement: Announcement): Li
   return this + announcement
 }
 
-/**
- * Returns the list with the [Announcement] that has the same [Announcement.announcementId] as
- * [announcement] replaced by it, at the same position.
- *
- * @throws IllegalArgumentException If no [Announcement] of the list has that identifier.
- */
+/** [Event.editAnnouncement] on the list alone, also used by EventRepositoryFirebase. */
 internal fun List<Announcement>.withEditedAnnouncement(
     announcement: Announcement
 ): List<Announcement> {
@@ -227,11 +214,7 @@ internal fun List<Announcement>.withEditedAnnouncement(
   return map { if (it.announcementId == announcement.announcementId) announcement else it }
 }
 
-/**
- * Returns the list without the [Announcement] of [announcementId].
- *
- * @throws IllegalArgumentException If no [Announcement] of the list has that identifier.
- */
+/** [Event.removeAnnouncement] on the list alone, also used by EventRepositoryFirebase. */
 internal fun List<Announcement>.withoutAnnouncement(announcementId: String): List<Announcement> {
   require(any { it.announcementId == announcementId }) { "This announcement is not in the event." }
   return filterNot { it.announcementId == announcementId }
