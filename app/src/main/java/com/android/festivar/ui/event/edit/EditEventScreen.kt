@@ -24,6 +24,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -64,6 +65,7 @@ object EditEventScreenTestTags {
   const val SAVE_BUTTON = "editEventSaveButton"
   const val SAVING_INDICATOR = "editEventSaving"
   const val FETCH_ERROR = "editEventFetchError"
+  const val FETCH_RETRY = "editEventFetchRetry"
   const val SAVE_ERROR = "editEventSaveError"
   const val DISCARD_CONFIRM = "editEventDiscardConfirm"
   const val DISCARD_KEEP_EDITING = "editEventDiscardKeepEditing"
@@ -86,6 +88,7 @@ private val editEventFieldTags =
 /** Callbacks handled by the Edit event screen. */
 class EditEventActions(
     val onBack: () -> Unit = {},
+    val onRetry: () -> Unit = {},
     val onNameChange: (String) -> Unit = {},
     val onShowPicker: (DateTimeField?) -> Unit = {},
     val onVenueChange: (String) -> Unit = {},
@@ -118,6 +121,7 @@ fun EditEventScreen(
       actions =
           EditEventActions(
               onBack = viewModel::requestDiscard,
+              onRetry = { viewModel.fetchEvent(eventId) },
               onNameChange = viewModel::updateName,
               onShowPicker = viewModel::showPicker,
               onVenueChange = viewModel::updateVenue,
@@ -202,13 +206,21 @@ fun EditEventContent(
               modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
               contentAlignment = Alignment.Center,
           ) {
-            Text(
-                text = stringResource(state.errorFetchMsg),
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.testTag(EditEventScreenTestTags.FETCH_ERROR),
-            )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+              Text(
+                  text = stringResource(state.errorFetchMsg),
+                  color = MaterialTheme.colorScheme.error,
+                  style = MaterialTheme.typography.bodyMedium,
+                  textAlign = TextAlign.Center,
+                  modifier = Modifier.testTag(EditEventScreenTestTags.FETCH_ERROR),
+              )
+              TextButton(
+                  onClick = actions.onRetry,
+                  modifier = Modifier.testTag(EditEventScreenTestTags.FETCH_RETRY),
+              ) {
+                Text(stringResource(R.string.action_retry))
+              }
+            }
           }
     }
   }

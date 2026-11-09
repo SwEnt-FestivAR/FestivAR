@@ -92,7 +92,10 @@ class EditEventScreenTest {
   @Test
   fun loadingAndFetchFailureStatesAreShown() {
     val state = mutableStateOf(EditEventUIState(isLoading = true))
-    composeTestRule.setContent { AppTheme { EditEventContent(state.value, EditEventActions()) } }
+    var retryCount = 0
+    composeTestRule.setContent {
+      AppTheme { EditEventContent(state.value, EditEventActions(onRetry = { retryCount++ })) }
+    }
     composeTestRule.onNodeWithTag(EditEventScreenTestTags.SCREEN).assertIsDisplayed()
     composeTestRule.onNodeWithTag(EditEventScreenTestTags.LOADING).assertIsDisplayed()
     composeTestRule.onNodeWithTag(EditEventScreenTestTags.SAVE_BUTTON).assertDoesNotExist()
@@ -101,11 +104,17 @@ class EditEventScreenTest {
     state.value = EditEventUIState(errorFetchMsg = R.string.edit_event_error_fetch_failed)
     composeTestRule.waitForIdle()
     composeTestRule.onNodeWithTag(EditEventScreenTestTags.FETCH_ERROR).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(EditEventScreenTestTags.FETCH_RETRY)
+        .assertIsDisplayed()
+        .performClick()
+    assertEquals(1, retryCount)
     composeTestRule.onNodeWithTag(EditEventScreenTestTags.SAVE_BUTTON).assertDoesNotExist()
 
     state.value = EditEventUIState()
     composeTestRule.waitForIdle()
     composeTestRule.onNodeWithTag(EditEventScreenTestTags.FETCH_ERROR).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(EditEventScreenTestTags.FETCH_RETRY).assertDoesNotExist()
     composeTestRule.onNodeWithTag(EditEventScreenTestTags.SAVE_BUTTON).assertDoesNotExist()
   }
 
