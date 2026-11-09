@@ -45,9 +45,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.credentials.Credential
 import com.android.festivar.R
-import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.model.authentication.AuthRepositoryFirebase
 import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
@@ -56,7 +55,6 @@ import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.formatEventDate
 import com.android.festivar.ui.theme.AppTheme
 import com.android.festivar.ui.theme.NumeralLarge
-import com.google.firebase.auth.FirebaseUser
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
@@ -361,7 +359,7 @@ internal fun EventDetailsScreenPreview() {
         viewModel =
             EventDetailsViewModel(
                 DataRepositoryLocal(
-                    authRepository = PreviewAuthRepository,
+                    authRepository = AuthRepositoryFirebase(),
                     eventsRepository = EventsRepositoryLocal(listOf(event)),
                 ),
                 event.eventId,
@@ -381,7 +379,7 @@ internal fun FetchErrorPreview() {
         viewModel =
             EventDetailsViewModel(
                 DataRepositoryLocal(
-                    authRepository = PreviewAuthRepository,
+                    authRepository = AuthRepositoryFirebase(),
                     eventsRepository = EventsRepositoryLocal(emptyList()),
                 ),
                 "missing",
@@ -390,33 +388,4 @@ internal fun FetchErrorPreview() {
         onBack = {},
     )
   }
-}
-
-/**
- * Authentication stub for the previews: the Event Details screen never authenticates, and the
- * Firebase implementation cannot run in a preview.
- */
-private object PreviewAuthRepository : AuthRepository {
-  private const val UNUSED = "Authentication is not used by the Event Details previews"
-
-  override val currentUser: FirebaseUser? = null
-
-  override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> =
-      error(UNUSED)
-
-  override suspend fun signOut(): Result<Unit> = error(UNUSED)
-
-  override suspend fun signInWithEmailAndPassword(
-      email: String,
-      password: String,
-  ): Result<FirebaseUser> = error(UNUSED)
-
-  override suspend fun signUpWithEmailAndPassword(
-      email: String,
-      password: String,
-  ): Result<FirebaseUser> = error(UNUSED)
-
-  override suspend fun forgotPassword(email: String): Result<Unit> = error(UNUSED)
-
-  override suspend fun signInAnonymous(): Result<FirebaseUser> = error(UNUSED)
 }
