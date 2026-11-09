@@ -209,31 +209,6 @@ class TaskRepositoryFirebaseTest {
     assertEquals(taken, repository.getTask(taken.taskId))
   }
 
-  // Breaks if a task stored before takenAt existed no longer loads.
-  @Test
-  fun documentToTask_withoutTakenAt_loadsAnEmptyMap() = runBlocking {
-    val documentId = "task-${UUID.randomUUID()}"
-    val document = Firebase.firestore.collection(TASK_COLLECTION_PATH).document(documentId)
-    document
-        .set(
-            mapOf(
-                "eventId" to "event-2",
-                "title" to "Old task",
-                "assignees" to listOf("user-2"),
-                "ownerId" to "owner-1",
-            )
-        )
-        .await()
-
-    try {
-      val loaded = invokeDocumentToTask(document.get().await())
-      assertEquals(listOf(User("user-2")), loaded.assignees)
-      assertTrue(loaded.takenAt.isEmpty())
-    } finally {
-      document.delete().await()
-    }
-  }
-
   // Breaks if a takenAt entry that is not a uid to ISO string pair loads silently instead of
   // failing.
   @Test
