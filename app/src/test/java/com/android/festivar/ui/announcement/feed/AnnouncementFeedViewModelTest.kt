@@ -3,6 +3,8 @@
 package com.android.festivar.ui.announcement.feed
 
 import com.android.festivar.R
+import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
@@ -155,7 +157,12 @@ class AnnouncementFeedViewModelTest {
             throw IllegalStateException("fetch failed")
           }
         }
-    val viewModel = AnnouncementFeedViewModel(EVENT_ID, repository, clock = clock)
+    val viewModel =
+        AnnouncementFeedViewModel(
+            EVENT_ID,
+            DataRepositoryLocal(FakeAuthRepository(), eventsRepository = repository),
+            clock = clock,
+        )
 
     viewModel.refreshUIState()
     assertEquals(R.string.announcement_feed_load_failed, viewModel.uiState.value.errorMsg)
@@ -392,7 +399,12 @@ class AnnouncementFeedViewModelTest {
 
   private fun feedViewModel(
       repository: EventsRepository = EventsRepositoryLocal(listOf(figmaEvent))
-  ) = AnnouncementFeedViewModel(EVENT_ID, repository, clock = clock)
+  ) =
+      AnnouncementFeedViewModel(
+          EVENT_ID,
+          DataRepositoryLocal(FakeAuthRepository(), eventsRepository = repository),
+          clock = clock,
+      )
 
   private fun loadedState(vararg announcements: Announcement): AnnouncementFeedUIState {
     val viewModel = feedViewModel(EventsRepositoryLocal(listOf(event(*announcements))))
