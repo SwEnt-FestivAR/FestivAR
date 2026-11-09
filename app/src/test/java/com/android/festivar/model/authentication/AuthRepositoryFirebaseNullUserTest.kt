@@ -5,6 +5,7 @@ package com.android.festivar.model.authentication
 
 import android.os.Bundle
 import androidx.credentials.CustomCredential
+import com.android.festivar.model.user.UNKNOWN_NAME
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryLocal
@@ -233,7 +234,7 @@ class AuthRepositoryFirebaseNullUserTest {
 
     assertTrue(result.isSuccess)
     assertEquals(firebaseUser, result.getOrNull())
-    coVerify { usersRepository.editUser(UID, User(uid = UID, email = EMAIL)) }
+    coVerify { usersRepository.editUser(UID, profileFrom(EMAIL)) }
   }
 
   @Test
@@ -268,6 +269,43 @@ class AuthRepositoryFirebaseNullUserTest {
 
     assertTrue(result.isSuccess)
     assertEquals(firebaseUser, result.getOrNull())
+    coVerify { usersRepository.addUser(profileFrom(EMAIL)) }
+  }
+
+  @Test
+  fun signInWithGoogle_anonymousUpgradeKeepsTypedNames() = runBlocking {
+    val anonUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+    val firebaseUser =
+        mockk<FirebaseUser> {
+          every { uid } returns UID
+          every { email } returns NAMED_EMAIL
+        }
+    val authResult = mockk<AuthResult> { every { user } returns firebaseUser }
+    val auth =
+        mockk<FirebaseAuth> {
+          every { currentUser } returns anonUser
+          every { anonUser.linkWithCredential(any()) } returns Tasks.forResult(authResult)
+        }
+    val googleSignInHelper =
+        mockk<GoogleSignInHelper> { every { getFirebaseCredential(any()) } returns mockk() }
+    val usersRepository =
+        UsersRepositoryLocal(listOf(User(uid = UID, name = "Grace", surname = "Hopper")))
+    val repository =
+        AuthRepositoryFirebase(
+            googleSignInHelper = googleSignInHelper,
+            firebaseAuth = auth,
+            usersRepository = usersRepository,
+        )
+    val credential =
+        CustomCredential(GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL, Bundle())
+
+    val result = repository.signInWithGoogle(credential)
+
+    assertTrue(result.isSuccess)
+    assertEquals(
+        User(uid = UID, name = "Grace", surname = "Hopper", email = NAMED_EMAIL),
+        usersRepository.getUser(UID),
+    )
   }
 
   @Test
@@ -298,8 +336,145 @@ class AuthRepositoryFirebaseNullUserTest {
 
         assertTrue(result.isSuccess)
         assertEquals(linkedUser, result.getOrNull())
-        coVerify { usersRepository.editUser(UID, User(uid = UID, email = EMAIL)) }
+        coVerify { usersRepository.editUser(UID, profileFrom(EMAIL)) }
       }
+
+  @Test
+  fun signUpWithEmailAndPassword_anonymousUpgradeReplacesUnknownNames() = runBlocking {
+    val anonUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+    val linkedUser =
+        mockk<FirebaseUser> {
+          every { uid } returns UID
+          every { email } returns NAMED_EMAIL
+        }
+    val authResult = mockk<AuthResult> { every { user } returns linkedUser }
+    val auth =
+        mockk<FirebaseAuth> {
+          every { currentUser } returns anonUser
+          every { anonUser.linkWithCredential(any()) } returns Tasks.forResult(authResult)
+        }
+    // An anonymous profile has no email, so its names were generated as Unknown.
+    val usersRepository =
+        UsersRepositoryLocal(
+            listOf(
+                User(
+                    uid = UID,
+                    name = UNKNOWN_NAME,
+                    surname = UNKNOWN_NAME,
+                    joinedEvents = listOf("event-1"),
+                )
+            )
+        )
+    val repository = AuthRepositoryFirebase(firebaseAuth = auth, usersRepository = usersRepository)
+
+    val result = repository.signUpWithEmailAndPassword(NAMED_EMAIL, PASSWORD)
+
+    assertTrue(result.isSuccess)
+    assertEquals(
+        User(
+            uid = UID,
+            name = "Ada",
+            surname = "Lovelace",
+            email = NAMED_EMAIL,
+            joinedEvents = listOf("event-1"),
+        ),
+        usersRepository.getUser(UID),
+    )
+  }
+
+  @Test
+  fun signUpWithEmailAndPassword_anonymousUpgradeKeepsTypedNames() = runBlocking {
+    val anonUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+    val linkedUser =
+        mockk<FirebaseUser> {
+          every { uid } returns UID
+          every { email } returns NAMED_EMAIL
+        }
+    val authResult = mockk<AuthResult> { every { user } returns linkedUser }
+    val auth =
+        mockk<FirebaseAuth> {
+          every { currentUser } returns anonUser
+          every { anonUser.linkWithCredential(any()) } returns Tasks.forResult(authResult)
+        }
+    val usersRepository =
+        UsersRepositoryLocal(listOf(User(uid = UID, name = "Grace", surname = "Hopper")))
+    val repository = AuthRepositoryFirebase(firebaseAuth = auth, usersRepository = usersRepository)
+
+    val result = repository.signUpWithEmailAndPassword(NAMED_EMAIL, PASSWORD)
+
+    assertTrue(result.isSuccess)
+    assertEquals(
+        User(uid = UID, name = "Grace", surname = "Hopper", email = NAMED_EMAIL),
+        usersRepository.getUser(UID),
+    )
+  }
+
+  @Test
+  fun signUpWithEmailAndPassword_newAccountAddsProfileWithNamesFromEmail() = runBlocking {
+    val firebaseUser =
+        mockk<FirebaseUser> {
+          every { uid } returns UID
+          every { email } returns NAMED_EMAIL
+        }
+    val authResult = mockk<AuthResult> { every { user } returns firebaseUser }
+    val auth = mockk<FirebaseAuth>()
+    every { auth.createUserWithEmailAndPassword(NAMED_EMAIL, PASSWORD) } returns
+        Tasks.forResult(authResult)
+    val usersRepository = UsersRepositoryLocal()
+    val repository = newRepository(auth, usersRepository)
+
+    val result = repository.signUpWithEmailAndPassword(NAMED_EMAIL, PASSWORD)
+
+    assertTrue(result.isSuccess)
+    assertEquals(
+        User(uid = UID, name = "Ada", surname = "Lovelace", email = NAMED_EMAIL),
+        usersRepository.getUser(UID),
+    )
+  }
+
+  @Test
+  fun signInWithEmailAndPassword_keepsExistingProfileNames() = runBlocking {
+    val firebaseUser =
+        mockk<FirebaseUser> {
+          every { uid } returns UID
+          every { email } returns NAMED_EMAIL
+        }
+    val authResult = mockk<AuthResult> { every { user } returns firebaseUser }
+    val auth = mockk<FirebaseAuth>()
+    every { auth.signInWithEmailAndPassword(NAMED_EMAIL, PASSWORD) } returns
+        Tasks.forResult(authResult)
+    val profile = User(uid = UID, email = NAMED_EMAIL)
+    val usersRepository = UsersRepositoryLocal(listOf(profile))
+    val repository = newRepository(auth, usersRepository)
+
+    val result = repository.signInWithEmailAndPassword(NAMED_EMAIL, PASSWORD)
+
+    assertTrue(result.isSuccess)
+    // Signing in only creates missing profiles: an existing one is left as it is.
+    assertEquals(profile, usersRepository.getUser(UID))
+  }
+
+  @Test
+  fun signInAnonymous_addsProfileWithUnknownNames() = runBlocking {
+    val firebaseUser =
+        mockk<FirebaseUser> {
+          every { uid } returns UID
+          every { email } returns null
+        }
+    val authResult = mockk<AuthResult> { every { user } returns firebaseUser }
+    val auth = mockk<FirebaseAuth>()
+    every { auth.signInAnonymously() } returns Tasks.forResult(authResult)
+    val usersRepository = UsersRepositoryLocal()
+    val repository = newRepository(auth, usersRepository)
+
+    val result = repository.signInAnonymous()
+
+    assertTrue(result.isSuccess)
+    assertEquals(
+        User(uid = UID, name = UNKNOWN_NAME, surname = UNKNOWN_NAME),
+        usersRepository.getUser(UID),
+    )
+  }
 
   @Test
   fun signUpWithEmailAndPassword_anonymousUpgradeReturnsFailureWhenEditUserFails() = runBlocking {
@@ -542,6 +717,10 @@ class AuthRepositoryFirebaseNullUserTest {
 
   private fun noUserResult(): AuthResult = mockk { every { user } returns null }
 
+  /** The profile created for [email]: `auth-repository@...` gives `Auth-Repository` / Unknown. */
+  private fun profileFrom(email: String) =
+      User(uid = UID, name = "Auth-Repository", surname = UNKNOWN_NAME, email = email)
+
   private fun assertNoUserFailure(result: Result<*>) {
     assertTrue(result.isFailure)
     assertEquals("Firebase sign-in returned no user", result.exceptionOrNull()?.message)
@@ -550,6 +729,7 @@ class AuthRepositoryFirebaseNullUserTest {
   private companion object {
     const val UID = "auth-repository-uid"
     const val EMAIL = "auth-repository@example.com"
+    const val NAMED_EMAIL = "ada.lovelace@example.com"
     const val PASSWORD = "Password123!"
   }
 }

@@ -6,9 +6,11 @@ import android.os.Bundle
 import androidx.credentials.CustomCredential
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.FirebaseEmulatorSetup
+import com.android.festivar.model.user.UNKNOWN_NAME
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryFirebase
+import com.android.festivar.model.user.withNamesFromEmail
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
@@ -51,7 +53,19 @@ class AuthRepositoryFirebaseTest {
     assertEquals(email, user.email)
     assertNotNull(repository.currentUser)
     assertEquals(user.uid, repository.currentUser?.uid)
-    assertEquals(User(uid = user.uid, email = email), usersRepository.getUser(user.uid))
+    assertEquals(profileFor(user.uid, email), usersRepository.getUser(user.uid))
+  }
+
+  @Test
+  fun signUpWithEmailAndPassword_generatesNameAndSurnameFromEmail() = runBlocking {
+    // The +tag keeps the address unique without changing the generated names.
+    val email = "ada.lovelace+${UUID.randomUUID()}@example.com"
+
+    val user = signUp(email, PASSWORD)
+
+    val profile = usersRepository.getUser(user.uid)
+    assertEquals("Ada", profile.name)
+    assertEquals("Lovelace", profile.surname)
   }
 
   @Test
@@ -75,7 +89,7 @@ class AuthRepositoryFirebaseTest {
 
     assertEquals(email, user.email)
     assertEquals(user.uid, repository.currentUser?.uid)
-    assertEquals(User(uid = user.uid, email = email), usersRepository.getUser(user.uid))
+    assertEquals(profileFor(user.uid, email), usersRepository.getUser(user.uid))
   }
 
   @Test
@@ -148,7 +162,7 @@ class AuthRepositoryFirebaseTest {
 
     assertEquals(email, user.email)
     assertEquals(user.uid, repository.currentUser?.uid)
-    assertEquals(User(uid = user.uid, email = email), usersRepository.getUser(user.uid))
+    assertEquals(profileFor(user.uid, email), usersRepository.getUser(user.uid))
   }
 
   @Test
@@ -170,8 +184,9 @@ class AuthRepositoryFirebaseTest {
         user.uid,
         repository.currentUser?.uid,
     )
+    // An anonymous account has no email, so both names are Unknown until it is upgraded.
     assertEquals(
-        User(uid = user.uid, email = ""),
+        User(uid = user.uid, name = UNKNOWN_NAME, surname = UNKNOWN_NAME, email = ""),
         usersRepository.getUser(user.uid),
     )
   }
@@ -188,7 +203,7 @@ class AuthRepositoryFirebaseTest {
     assertEquals(anonUid, upgradedUser.uid)
     assertEquals(email, upgradedUser.email)
     assertFalse(upgradedUser.isAnonymous)
-    assertEquals(User(uid = anonUid, email = email), usersRepository.getUser(anonUid))
+    assertEquals(profileFor(anonUid, email), usersRepository.getUser(anonUid))
   }
 
   @Test
@@ -207,7 +222,7 @@ class AuthRepositoryFirebaseTest {
     assertEquals(anonUid, upgradedUser.uid)
     assertEquals(email, upgradedUser.email)
     assertFalse(upgradedUser.isAnonymous)
-    assertEquals(User(uid = anonUid, email = email), usersRepository.getUser(anonUid))
+    assertEquals(profileFor(anonUid, email), usersRepository.getUser(anonUid))
   }
 
   @After
@@ -231,6 +246,10 @@ class AuthRepositoryFirebaseTest {
   }
 
   private fun newEmail() = "auth-repository-${UUID.randomUUID()}@example.com"
+
+  /** The profile the repository creates for a new account: names are generated from the email. */
+  private fun profileFor(uid: String, email: String) =
+      User(uid = uid, email = email).withNamesFromEmail()
 
   private suspend fun signUp(email: String, password: String) =
       repository.signUpWithEmailAndPassword(email, password).getOrThrow().also {

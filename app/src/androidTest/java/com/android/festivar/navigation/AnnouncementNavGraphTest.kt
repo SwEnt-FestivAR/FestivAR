@@ -16,7 +16,6 @@ import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
-import com.android.festivar.model.event.EventsRepositoryProvider
 import com.android.festivar.navigation.announcement.announcementGraph
 import com.android.festivar.ui.announcement.create.CreateAnnouncementScreenTestTags as Tags
 import com.google.firebase.auth.FirebaseUser
@@ -24,10 +23,8 @@ import io.mockk.every
 import io.mockk.mockk
 import java.time.ZonedDateTime
 import kotlinx.coroutines.runBlocking
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
-import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
@@ -60,16 +57,6 @@ class AnnouncementNavGraphTest {
   private val signedInUser = mockk<FirebaseUser> { every { uid } returns USER_ID }
   private lateinit var navController: NavHostController
 
-  @Before
-  fun setUp() {
-    EventsRepositoryProvider.repository = repository
-  }
-
-  @After
-  fun tearDown() {
-    EventsRepositoryProvider.reset()
-  }
-
   /** Opens the route as [user]; null means that nobody is signed in. */
   private fun openTheRouteAs(user: FirebaseUser?) {
     composeTestRule.setContent {
@@ -78,7 +65,10 @@ class AnnouncementNavGraphTest {
         composable(PREVIOUS_SCREEN) { Text(PREVIOUS_SCREEN) }
         announcementGraph(
             navController,
-            DataRepositoryLocal(FakeAuthRepository(currentUser = user)),
+            DataRepositoryLocal(
+                FakeAuthRepository(currentUser = user),
+                eventsRepository = repository,
+            ),
         )
       }
     }

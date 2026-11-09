@@ -5,10 +5,18 @@ package com.android.festivar.ui.task.create
 import android.os.Looper
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
+import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
+import com.android.festivar.model.event.Event
+import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.task.Priority
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
+import com.android.festivar.model.user.User
+import com.android.festivar.model.user.UsersRepository
+import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.FieldError
 import java.time.Duration
@@ -34,9 +42,37 @@ class CreateTaskViewModelTest {
   // was called, the tests check the state and what was stored.
   private val repository = TasksRepositoryLocal()
   private val zone = ZoneId.of("Europe/Zurich")
-  private val viewModel = CreateTaskViewModel("event-1", { "owner-1" }, repository, zone = zone)
   // Tomorrow, so that no end is in the past (OUTDATED) when that is not what a test checks.
   private val day = LocalDate.now(zone).plusDays(1)
+
+  // The data repository also adds the task to its event and to its owner, so both must exist.
+  private val owner1 = User("owner-1", joinedEvents = listOf("event-1"))
+  private val owner2 = User("owner-2", joinedEvents = listOf("event-1"))
+  private val eventsRepository =
+      EventsRepositoryLocal(
+          listOf(
+              Event(
+                  eventId = "event-1",
+                  title = "Summer festival",
+                  members = listOf(owner1, owner2),
+                  startDate = day.atStartOfDay(zone),
+                  endDate = day.plusDays(2).atStartOfDay(zone),
+              )
+          )
+      )
+  private val usersRepository = UsersRepositoryLocal(listOf(owner1, owner2))
+
+  /** A data repository storing the tasks in [tasks], and the event and the owners above. */
+  private fun dataRepository(tasks: TasksRepository): DataRepository =
+      DataRepositoryLocal(
+          authRepository = FakeAuthRepository(),
+          tasksRepository = tasks,
+          eventsRepository = eventsRepository,
+          usersRepository = usersRepository,
+      )
+
+  private val viewModel =
+      CreateTaskViewModel("event-1", { "owner-1" }, dataRepository(repository), zone = zone)
 
   private fun savedTasks(): List<Task> = runBlocking { repository.getAllTasks("event-1") }
 
@@ -145,10 +181,38 @@ class CreateTaskViewModelTest {
     assertTrue(viewModel.uiState.value.isCreated)
   }
 
+  // The task goes through the data repository, so its event and its owner list it too.
+  @Test
+  fun createTask_addsTheTaskToTheEventAndToTheOwner() {
+    viewModel.updateTitle("Run power to stage")
+
+    viewModel.createTask()
+
+    val taskId = savedTasks().single().taskId
+    val event = runBlocking { eventsRepository.getEvent("event-1") }
+    assertEquals(listOf(taskId), event.tasks.map { it.taskId })
+    assertEquals(listOf(taskId), runBlocking { usersRepository.getUser("owner-1") }.tasksAssigned)
+    // Only the owner gets the task: the other member of the event is not touched.
+    assertTrue(runBlocking { usersRepository.getUser("owner-2") }.tasksAssigned.isEmpty())
+  }
+
+  // The data repository needs the event: without it nothing is saved and the error is shown.
+  @Test
+  fun createTask_inAnEventThatDoesNotExist_savesNothingAndShowsTheSaveError() {
+    val vm = CreateTaskViewModel("unknown-event", { "owner-1" }, dataRepository(repository))
+    vm.updateTitle("Run power to stage")
+
+    vm.createTask()
+
+    assertTrue(runBlocking { repository.getAllTasks("unknown-event") }.isEmpty())
+    assertFalse(vm.uiState.value.isCreated)
+    assertEquals(R.string.create_task_error_save_failed, vm.uiState.value.errorMsg)
+  }
+
   @Test
   fun createTask_makesTheUserAtTheTimeOfTheTapTheOwner() {
     var user = "owner-1"
-    val vm = CreateTaskViewModel("event-1", { user }, repository)
+    val vm = CreateTaskViewModel("event-1", { user }, dataRepository(repository))
     vm.updateTitle("Run power to stage")
     user = "owner-2"
 
@@ -159,7 +223,7 @@ class CreateTaskViewModelTest {
 
   @Test
   fun createTask_withBlankOwner_savesNothingAndShowsTheSaveError() {
-    val vm = CreateTaskViewModel("event-1", { "  " }, repository)
+    val vm = CreateTaskViewModel("event-1", { "  " }, dataRepository(repository))
     vm.updateTitle("Run power to stage")
 
     vm.createTask()
@@ -172,7 +236,7 @@ class CreateTaskViewModelTest {
   @Test
   fun createTask_afterABlankOwner_worksOnceTheOwnerIsGiven() {
     var user = ""
-    val vm = CreateTaskViewModel("event-1", { user }, repository)
+    val vm = CreateTaskViewModel("event-1", { user }, dataRepository(repository))
     vm.updateTitle("Run power to stage")
     vm.createTask()
 
@@ -200,7 +264,7 @@ class CreateTaskViewModelTest {
   @Test
   fun createTask_retryAfterAFailedSave_keepsTheOwner() {
     val repo = StoredThenFailed()
-    val vm = CreateTaskViewModel("event-1", { "owner-1" }, repo)
+    val vm = CreateTaskViewModel("event-1", { "owner-1" }, dataRepository(repo))
     vm.updateTitle("Run power to stage")
 
     vm.createTask()
@@ -283,7 +347,7 @@ class CreateTaskViewModelTest {
         object : TasksRepository by TasksRepositoryLocal() {
           override suspend fun addTask(task: Task) = throw IllegalStateException("offline")
         }
-    val vm = CreateTaskViewModel("event-1", { "owner-1" }, failing)
+    val vm = CreateTaskViewModel("event-1", { "owner-1" }, dataRepository(failing))
     vm.updateTitle("Run power to stage")
 
     vm.createTask()
@@ -312,7 +376,7 @@ class CreateTaskViewModelTest {
             local.addTask(task)
           }
         }
-    val vm = CreateTaskViewModel("event-1", { "owner-1" }, slow)
+    val vm = CreateTaskViewModel("event-1", { "owner-1" }, dataRepository(slow))
     vm.updateTitle("Run power to stage")
 
     vm.createTask()
@@ -341,7 +405,7 @@ class CreateTaskViewModelTest {
             local.addTask(task)
           }
         }
-    val vm = CreateTaskViewModel("event-1", { "owner-1" }, slow)
+    val vm = CreateTaskViewModel("event-1", { "owner-1" }, dataRepository(slow))
     vm.updateTitle("Run power to stage")
 
     vm.createTask()
@@ -367,7 +431,7 @@ class CreateTaskViewModelTest {
             local.addTask(task)
           }
         }
-    val vm = CreateTaskViewModel("event-1", { "owner-1" }, flaky)
+    val vm = CreateTaskViewModel("event-1", { "owner-1" }, dataRepository(flaky))
     vm.updateTitle("Run power to stage")
 
     vm.createTask()
@@ -392,7 +456,7 @@ class CreateTaskViewModelTest {
         object : TasksRepository by TasksRepositoryLocal() {
           override suspend fun addTask(task: Task) = throw CancellationException("cancelled")
         }
-    val vm = CreateTaskViewModel("event-1", { "owner-1" }, cancelled)
+    val vm = CreateTaskViewModel("event-1", { "owner-1" }, dataRepository(cancelled))
     vm.updateTitle("Run power to stage")
 
     vm.createTask()
@@ -427,10 +491,20 @@ class CreateTaskViewModelTest {
     }
   }
 
+  // FAKE whose every save stores the task, then reports a failure, as when the answer is lost.
+  // Unlike StoredThenFailed, its reads work, so the check right after the failure finds the task.
+  private class AnswerLost(val local: TasksRepositoryLocal = TasksRepositoryLocal()) :
+      TasksRepository by local {
+    override suspend fun addTask(task: Task) {
+      local.addTask(task)
+      throw IllegalStateException("lost the answer")
+    }
+  }
+
   @Test
   fun createTask_retryAfterAStoredButFailedSave_reusesTheTaskId() {
     val repo = StoredThenFailed()
-    val vm = CreateTaskViewModel("event-1", { "owner-1" }, repo)
+    val vm = CreateTaskViewModel("event-1", { "owner-1" }, dataRepository(repo))
     vm.updateTitle("Run power to stage")
 
     vm.createTask()
@@ -445,7 +519,7 @@ class CreateTaskViewModelTest {
   @Test
   fun createTask_retryAfterEditingTheForm_updatesTheStoredTask() {
     val repo = StoredThenFailed()
-    val vm = CreateTaskViewModel("event-1", { "owner-1" }, repo)
+    val vm = CreateTaskViewModel("event-1", { "owner-1" }, dataRepository(repo))
     vm.updateTitle("Run power to stage")
     vm.createTask()
 
@@ -457,10 +531,91 @@ class CreateTaskViewModelTest {
     assertTrue(vm.uiState.value.isCreated)
   }
 
+  // The first save stored the task then failed, before the event and the owner were written. The
+  // retry finds the task and must complete them, so that the event and the owner list it.
+  @Test
+  fun createTask_retryAfterAStoredButFailedSave_linksTheTaskToTheEventAndTheOwner() {
+    val repo = StoredThenFailed()
+    val vm = CreateTaskViewModel("event-1", { "owner-1" }, dataRepository(repo))
+    vm.updateTitle("Run power to stage")
+    vm.createTask()
+    val taskId = runBlocking { repo.local.getAllTasks("event-1") }.single().taskId
+    // The failed save stopped after the task: neither the event nor the owner list it yet.
+    assertTrue(runBlocking { eventsRepository.getEvent("event-1") }.tasks.isEmpty())
+
+    vm.createTask()
+
+    val event = runBlocking { eventsRepository.getEvent("event-1") }
+    assertEquals(listOf(taskId), event.tasks.map { it.taskId })
+    assertEquals(listOf(taskId), runBlocking { usersRepository.getUser("owner-1") }.tasksAssigned)
+    assertTrue(vm.uiState.value.isCreated)
+    assertNull(vm.uiState.value.errorMsg)
+  }
+
+  // Same, but the check right after the failure works: the task is completed at once, no retry.
+  @Test
+  fun createTask_storedButFailedSave_linksTheTaskWithoutARetry() {
+    val repo = AnswerLost()
+    val vm = CreateTaskViewModel("event-1", { "owner-1" }, dataRepository(repo))
+    vm.updateTitle("Run power to stage")
+
+    vm.createTask()
+
+    val taskId = runBlocking { repo.local.getAllTasks("event-1") }.single().taskId
+    val event = runBlocking { eventsRepository.getEvent("event-1") }
+    assertEquals(listOf(taskId), event.tasks.map { it.taskId })
+    assertEquals(listOf(taskId), runBlocking { usersRepository.getUser("owner-1") }.tasksAssigned)
+    assertTrue(vm.uiState.value.isCreated)
+  }
+
+  // The repair itself fails halfway: the event is linked, but the owner's write fails. The error is
+  // shown, and the retry completes only what is missing, so the owner lists the task once.
+  @Test
+  fun createTask_whenTheRepairFailsHalfway_showsTheErrorAndTheRetryCompletesIt() {
+    val repo = AnswerLost()
+    var userWriteFails = true
+    // FAKE whose user writes fail while userWriteFails is true, as when the app goes offline.
+    val flakyUsers =
+        object : UsersRepository by usersRepository {
+          override suspend fun editUser(uId: String, newValue: User) {
+            if (userWriteFails) throw IllegalStateException("offline")
+            usersRepository.editUser(uId, newValue)
+          }
+        }
+    val data =
+        DataRepositoryLocal(
+            authRepository = FakeAuthRepository(),
+            tasksRepository = repo,
+            eventsRepository = eventsRepository,
+            usersRepository = flakyUsers,
+        )
+    val vm = CreateTaskViewModel("event-1", { "owner-1" }, data)
+    vm.updateTitle("Run power to stage")
+
+    vm.createTask()
+
+    val taskId = runBlocking { repo.local.getAllTasks("event-1") }.single().taskId
+    assertEquals(R.string.create_task_error_save_failed, vm.uiState.value.errorMsg)
+    assertFalse(vm.uiState.value.isCreated)
+    // The repair linked the event before the owner's write failed.
+    val event = runBlocking { eventsRepository.getEvent("event-1") }
+    assertEquals(listOf(taskId), event.tasks.map { it.taskId })
+    assertTrue(runBlocking { usersRepository.getUser("owner-1") }.tasksAssigned.isEmpty())
+
+    userWriteFails = false
+    vm.createTask()
+
+    assertTrue(vm.uiState.value.isCreated)
+    assertNull(vm.uiState.value.errorMsg)
+    val eventAfter = runBlocking { eventsRepository.getEvent("event-1") }
+    assertEquals(listOf(taskId), eventAfter.tasks.map { it.taskId })
+    assertEquals(listOf(taskId), runBlocking { usersRepository.getUser("owner-1") }.tasksAssigned)
+  }
+
   @Test
   fun blankEventId_isRefused() {
     assertThrows(IllegalArgumentException::class.java) {
-      CreateTaskViewModel(" ", { "owner-1" }, repository)
+      CreateTaskViewModel(" ", { "owner-1" }, dataRepository(repository))
     }
   }
 
@@ -572,7 +727,13 @@ class CreateTaskViewModelTest {
         object : TasksRepository by TasksRepositoryLocal() {
           override suspend fun addTask(task: Task) = never.await()
         }
-    val vm = CreateTaskViewModel("event-1", { "owner-1" }, hanging, saveTimeoutMs = 1_000)
+    val vm =
+        CreateTaskViewModel(
+            "event-1",
+            { "owner-1" },
+            dataRepository(hanging),
+            saveTimeoutMs = 1_000,
+        )
     vm.updateTitle("Run power to stage")
 
     vm.createTask()
