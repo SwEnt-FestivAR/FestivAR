@@ -2,6 +2,7 @@ package com.android.festivar.ui.event.details
 
 // Co-authored-by: Copilot App
 // Co-authored-by: Claude Sonnet 5.5
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 
 import android.annotation.SuppressLint
 import androidx.compose.foundation.background
