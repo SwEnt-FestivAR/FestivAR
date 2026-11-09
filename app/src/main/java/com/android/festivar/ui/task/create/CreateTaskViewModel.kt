@@ -271,7 +271,7 @@ private constructor(
    * after a timeout).
    *
    * If [task] is stored, it is created: it is updated if the form changed since that save, and
-   * added to its event and to its owner if that save stopped before doing it (see [linkTask]).
+   * added to its event and to its owner if that save stopped before doing it (see [repairTaskSync]).
    * Otherwise, or if this check fails or times out too, the save error is shown and the user can
    * retry with the same task id.
    *
@@ -288,7 +288,7 @@ private constructor(
             // exist: linking it would leave its event pointing to a missing task.
             val stored = tasksRepository.getTask(task.taskId)
             if (stored != task) tasksRepository.editTask(task.taskId, task)
-            linkTask(task)
+              repairTaskSync(task)
           }
           Log.i(TAG, "The task was stored despite the failure")
           true
@@ -320,7 +320,7 @@ private constructor(
    * @param task The stored task. Its event and its owner must exist.
    * @throws NoSuchElementException If the event or the owner does not exist.
    */
-  private suspend fun linkTask(task: Task) {
+  private suspend fun repairTaskSync(task: Task) {
     val eventsRepository = dataRepository.eventsRepository
     val usersRepository = dataRepository.usersRepository
 
