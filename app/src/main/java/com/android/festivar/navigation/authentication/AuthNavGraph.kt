@@ -34,7 +34,7 @@ fun NavGraphBuilder.authGraph(
     val navigator = LoginNavigator(navController)
     LoginScreen(
         credentialManager = credentialManager,
-        viewModel = viewModel { LoginViewModel(dataRepository.authRepository) },
+        viewModel = viewModel { LoginViewModel(dataRepository) },
         onSignUpClick = navigator.onSignUpClick,
         onForgotPasswordClick = navigator.onForgotPasswordClick,
         onSignedIn = navigator.onSignedIn,
