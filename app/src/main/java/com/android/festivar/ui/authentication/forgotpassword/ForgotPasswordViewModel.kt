@@ -4,7 +4,6 @@ package com.android.festivar.ui.authentication.forgotpassword
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.model.authentication.AuthRepository
-import com.android.festivar.model.authentication.AuthRepositoryFirebase
 import com.android.festivar.model.datarepository.DataRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,7 +29,7 @@ enum class ForgotPasswordError {
 class ForgotPasswordViewModel(
     private val dataRepository: DataRepository,
 ) : ViewModel() {
-    private val authRepository: AuthRepository = dataRepository.authRepository
+  private val authRepository: AuthRepository = dataRepository.authRepository
   private val _uiState = MutableStateFlow(ForgotPasswordUIState())
 
   /** Observable state for the forgot-password screen. */
