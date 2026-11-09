@@ -111,11 +111,9 @@ class TaskRepositoryFirebase(
           userRepo.getUser(userId)
         }
 
-    // Tasks saved before takenAt existed have no such field: they load with an empty map.
     val takenAt =
         (document.get("takenAt") as? Map<*, *>).orEmpty().entries.associate { (uid, time) ->
-          if (uid !is String || time !is String)
-              throw IllegalArgumentException("Invalid takenAt data: $uid=$time")
+          require(uid is String && time is String) { "Invalid takenAt data: $uid=$time" }
           uid to ZonedDateTime.parse(time)
         }
 
