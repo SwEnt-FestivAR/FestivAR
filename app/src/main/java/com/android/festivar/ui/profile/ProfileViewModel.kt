@@ -245,30 +245,7 @@ class ProfileViewModel(
     val password = state.password
 
     _uiState.update { it.copy(isLoading = true, errorMsg = null) }
-    viewModelScope.launch {
-      try {
-        val result = authRepository.signUpWithEmailAndPassword(email, password)
-        result.fold(
-            onSuccess = {
-              _uiState.update { it.copy(isLoading = false) }
-              getUserInformation()
-            },
-            onFailure = { e ->
-              Log.e(LOG_TAG, "Error upgrading account with email", e)
-              _uiState.update {
-                it.copy(isLoading = false, errorMsg = R.string.profile_anon_upgrade_failed)
-              }
-            },
-        )
-      } catch (e: CancellationException) {
-        throw e
-      } catch (e: Exception) {
-        Log.e(LOG_TAG, "Error upgrading account with email", e)
-        _uiState.update {
-          it.copy(isLoading = false, errorMsg = R.string.profile_anon_upgrade_failed)
-        }
-      }
-    }
+    upgradeAccount("email") { authRepository.signUpWithEmailAndPassword(email, password) }
   }
 
   fun upgradeWithGoogle(context: Context, credentialManager: CredentialManager) {
@@ -276,31 +253,40 @@ class ProfileViewModel(
     if (state.isLoading || !state.isUserAnonymous) return
 
     _uiState.update { it.copy(isLoading = true, errorMsg = null) }
+    upgradeAccount("Google") {
+      val signInWithGoogleOption =
+          GetSignInWithGoogleOption.Builder(context.getString(R.string.default_web_client_id))
+              .build()
+      val request =
+          GetCredentialRequest.Builder().addCredentialOption(signInWithGoogleOption).build()
+      val credential = credentialManager.getCredential(context, request).credential
+      authRepository.signInWithGoogle(credential)
+    }
+  }
+
+  private fun upgradeAccount(
+      method: String,
+      operation: suspend () -> Result<*>,
+  ) {
     viewModelScope.launch {
       try {
-        val signInWithGoogleOption =
-            GetSignInWithGoogleOption.Builder(context.getString(R.string.default_web_client_id))
-                .build()
-        val request =
-            GetCredentialRequest.Builder().addCredentialOption(signInWithGoogleOption).build()
-        val credential = credentialManager.getCredential(context, request).credential
-        val result = authRepository.signInWithGoogle(credential)
-        result.fold(
-            onSuccess = {
-              _uiState.update { it.copy(isLoading = false) }
-              getUserInformation()
-            },
-            onFailure = { e ->
-              Log.e(LOG_TAG, "Error upgrading account with Google", e)
-              _uiState.update {
-                it.copy(isLoading = false, errorMsg = R.string.profile_anon_upgrade_failed)
-              }
-            },
-        )
+        operation()
+            .fold(
+                onSuccess = {
+                  _uiState.update { it.copy(isLoading = false) }
+                  getUserInformation()
+                },
+                onFailure = { e ->
+                  Log.e(LOG_TAG, "Error upgrading account with $method", e)
+                  _uiState.update {
+                    it.copy(isLoading = false, errorMsg = R.string.profile_anon_upgrade_failed)
+                  }
+                },
+            )
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
-        Log.e(LOG_TAG, "Error upgrading account with Google", e)
+        Log.e(LOG_TAG, "Error upgrading account with $method", e)
         _uiState.update {
           it.copy(isLoading = false, errorMsg = R.string.profile_anon_upgrade_failed)
         }
