@@ -267,13 +267,13 @@ private constructor(
   }
 
   /**
-   * Decides what a failed save means, since it may still have reached the server (for example
-   * after a timeout).
+   * Decides what a failed save means, since it may still have reached the server (for example after
+   * a timeout).
    *
    * If [task] is stored, it is created: it is updated if the form changed since that save, and
-   * added to its event and to its owner if that save stopped before doing it (see [repairTaskSync]).
-   * Otherwise, or if this check fails or times out too, the save error is shown and the user can
-   * retry with the same task id.
+   * added to its event and to its owner if that save stopped before doing it (see
+   * [repairTaskSync]). Otherwise, or if this check fails or times out too, the save error is shown
+   * and the user can retry with the same task id.
    *
    * @param task The task that could not be saved, as built from the form at the last tap.
    * @param e The failure of the save, logged as a warning.
@@ -288,7 +288,7 @@ private constructor(
             // exist: linking it would leave its event pointing to a missing task.
             val stored = tasksRepository.getTask(task.taskId)
             if (stored != task) tasksRepository.editTask(task.taskId, task)
-              repairTaskSync(task)
+            repairTaskSync(task)
           }
           Log.i(TAG, "The task was stored despite the failure")
           true
@@ -312,8 +312,8 @@ private constructor(
    * missing. A failed save may have stored the task but stopped before these writes.
    *
    * Only what is missing is written, so a fully linked task writes nothing, and a failure halfway
-   * is completed by the next retry. Trying to repair the [task] itself is not done as the
-   * function is called only if succeeds:
+   * is completed by the next retry. Trying to repair the [task] itself is not done as the function
+   * is called only if succeeds:
    * ```
    * val stored = tasksRepository.getTask(task.taskId)
    * if (stored != task) tasksRepository.editTask(task.taskId, task)
@@ -329,13 +329,13 @@ private constructor(
     val eventsRepository = dataRepository.eventsRepository
     val usersRepository = dataRepository.usersRepository
 
-      // Checks the synchronization with the event the task is part of and repairs it if needed.
+    // Checks the synchronization with the event the task is part of and repairs it if needed.
     val event = eventsRepository.getEvent(task.eventId)
     if (event.tasks.none { it.taskId == task.taskId }) {
       eventsRepository.editEvent(event.eventId, event.addTask(task))
     }
 
-      // Checks the synchronization with the user the task is created by and repairs it if needed.
+    // Checks the synchronization with the user the task is created by and repairs it if needed.
     val owner = usersRepository.getUser(task.ownerId)
     if (task.taskId !in owner.tasksAssigned) {
       usersRepository.editUser(owner.uid, owner.addAssignedTask(task.taskId))
