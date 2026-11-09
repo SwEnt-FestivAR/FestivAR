@@ -6,19 +6,19 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
-import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.navigation.AppScreens
 import com.android.festivar.ui.profile.ProfileScreen
 import com.android.festivar.ui.profile.ProfileViewModel
 
 /** The destinations of the profile feature. */
-fun NavGraphBuilder.profileGraph(navController: NavHostController, authRepository: AuthRepository) {
+fun NavGraphBuilder.profileGraph(navController: NavHostController, dataRepository: DataRepository) {
   composable(route = AppScreens.Profile.name) {
     val navigator = ProfileNavigator(navController)
 
     // If the uid is null, then no one is connected and consequently you should be at the
     // login screen.
-    val uid = authRepository.currentUser?.uid
+    val uid = dataRepository.authRepository.currentUser?.uid
     if (uid == null) {
       LaunchedEffect(Unit) { navigator.onSignedOut() }
       return@composable
@@ -28,7 +28,7 @@ fun NavGraphBuilder.profileGraph(navController: NavHostController, authRepositor
         profileViewModel =
             viewModel {
               ProfileViewModel(
-                  authRepository = authRepository,
+                  dataRepository = dataRepository,
                   uId = uid,
               )
             },

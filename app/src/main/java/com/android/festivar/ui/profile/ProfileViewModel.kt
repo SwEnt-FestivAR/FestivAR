@@ -7,9 +7,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
 import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
-import com.android.festivar.model.user.UsersRepositoryProvider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -94,15 +94,17 @@ data class ProfileUIState(
  *
  * Manages the UI state by fetching the [User] item through the [UsersRepository].
  *
- * @property repository The repository used to fetch the [User] item.
- * @property authRepository The repository used to fetch the [User] account or sign him out.
+ * @property dataRepository The repository giving access to the [UsersRepository], used to fetch and
+ *   edit the [User] item, and to the [AuthRepository], used to sign the [User] out.
  * @property uId The current [User] unique identifier.
  */
 class ProfileViewModel(
-    private val repository: UsersRepository = UsersRepositoryProvider.repository,
-    private val authRepository: AuthRepository,
+    private val dataRepository: DataRepository,
     private val uId: String,
 ) : ViewModel() {
+
+  private val repository: UsersRepository = dataRepository.usersRepository
+  private val authRepository: AuthRepository = dataRepository.authRepository
 
   private val _uiState = MutableStateFlow(ProfileUIState())
   val uiState: StateFlow<ProfileUIState> = _uiState.asStateFlow()

@@ -49,7 +49,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.R
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
@@ -86,18 +85,17 @@ object TaskDetailsScreenTestTags {
 }
 
 /**
- * The details of the task [taskId], where [currentUser] can take it, give it back or finish it. The
- * task is loaded each time the screen comes to the front, the first time included, so an edit shows
- * on return.
+ * The details of a task, where the current user can take it, give it back or finish it. The task is
+ * loaded each time the screen comes to the front, the first time included, so an edit shows on
+ * return.
  *
+ * @param viewModel holds the task to show and the signed-in user, and applies the actions.
+ * @param onBack Called when the user taps the back button.
  * @param onEdit Called with the task id when its owner taps the edit button.
  */
 @Composable
 fun TaskDetailsScreen(
-    taskId: String,
-    currentUser: User,
-    viewModel: TaskDetailsViewModel =
-        viewModel(key = "$taskId:${currentUser.uid}") { TaskDetailsViewModel(taskId, currentUser) },
+    viewModel: TaskDetailsViewModel,
     onBack: () -> Unit = {},
     onEdit: (String) -> Unit = {},
 ) {

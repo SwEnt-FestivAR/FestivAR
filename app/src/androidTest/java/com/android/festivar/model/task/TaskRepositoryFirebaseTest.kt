@@ -7,6 +7,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.FirebaseEmulatorSetup
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepositoryFirebase
+import com.android.festivar.model.voicenote.VoiceNote
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.DocumentSnapshot
@@ -97,6 +98,62 @@ class TaskRepositoryFirebaseTest {
     assertNull(data["estimatedTime"])
   }
 
+  /**
+   * Breaks if a task's voice note is not written to its document, or is written when the task has
+   * none.
+   */
+  @Test
+  fun toFirestoreData_serializesTheVoiceNote() {
+    val note = voiceNote()
+
+    val stored =
+        mapOf(
+            "id" to "note-1",
+            "audioUrl" to "https://example.com/note-1.m4a",
+            "duration" to 14_000_000_000L,
+            "createdAt" to "2026-07-01T10:00+02:00[Europe/Zurich]",
+        )
+
+    assertEquals(stored, invokeToFirestoreData(task.copy(voiceNote = note))["voiceNote"])
+    assertNull(invokeToFirestoreData(task)["voiceNote"])
+  }
+
+  /** Breaks if a stored voice note is not read back with the task. */
+  @Test
+  fun documentToTask_deserializesTheStoredVoiceNote() = runBlocking {
+    val withNote = task.copy(voiceNote = voiceNote())
+    val document = Firebase.firestore.collection(TASK_COLLECTION_PATH).document(task.taskId)
+    document.set(invokeToFirestoreData(withNote)).await()
+
+    assertEquals(withNote, invokeDocumentToTask(document.get().await()))
+  }
+
+  /** Breaks if adding or removing a voice note by editing a task is lost when it is read again. */
+  @Test
+  fun editTask_keepsTheVoiceNote_afterReadingTheTaskAgain() = runBlocking {
+    repository.addTask(task)
+    val withNote = task.copy(voiceNote = voiceNote())
+
+    repository.editTask(task.taskId, withNote)
+    assertEquals(withNote, repository.getTask(task.taskId))
+
+    repository.editTask(task.taskId, task)
+    assertNull(repository.getTask(task.taskId).voiceNote)
+  }
+
+  /** Breaks if a corrupt stored voice note no longer fails with an error naming its task. */
+  @Test
+  fun getTask_namesTheTask_whenTheStoredVoiceNoteIsInvalid() = runBlocking {
+    val document = Firebase.firestore.collection(TASK_COLLECTION_PATH).document(task.taskId)
+    document.set(invokeToFirestoreData(task) + ("voiceNote" to "text")).await()
+
+    val error =
+        assertThrows(IllegalArgumentException::class.java) {
+          runBlocking { repository.getTask(task.taskId) }
+        }
+    assertEquals("Invalid voice note data for task ${task.taskId}.", error.message)
+  }
+
   @Test
   fun documentToTask_deserializesStoredTask() = runBlocking {
     val data = invokeToFirestoreData(task)
@@ -117,6 +174,7 @@ class TaskRepositoryFirebaseTest {
                 "title" to "Minimal task",
                 "assignees" to listOf("user-2"),
                 "ownerId" to "owner-1",
+                "voiceNote" to null,
             )
         )
         .await()
@@ -268,6 +326,14 @@ class TaskRepositoryFirebaseTest {
     assertEquals(1, results.count { it.isSuccess })
     assertTrue(results.single { it.isFailure }.exceptionOrNull() is NoSuchElementException)
   }
+
+  private fun voiceNote() =
+      VoiceNote(
+          id = "note-1",
+          audioUrl = "https://example.com/note-1.m4a",
+          duration = Duration.ofSeconds(14),
+          createdAt = ZonedDateTime.of(2026, 7, 1, 10, 0, 0, 0, ZoneId.of("Europe/Zurich")),
+      )
 
   private fun newTask(): Task =
       Task(

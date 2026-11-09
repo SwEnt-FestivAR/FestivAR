@@ -1,0 +1,12 @@
+<!-- Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com> -->
+<resources>
+    <string name="login_catchphrase">Chaque table à sa place.</string>
+    <string name="login_description">Créez des événements et des tâches, et gardez tout au même endroit.</string>
+    <string name="login_forgot_password">Mot de passe oublié ?</string>
+    <string name="login_or">ou</string>
+    <string name="login_continue_with_google">Continuer avec Google</string>
+    <string name="login_new_here">Nouveau ici ? </string>
+    <string name="login_no_account">Utiliser sans compte</string>
+    <string name="login_warning">Attention</string>
+    <string name="login_warning_msg">Ce compte temporaire disparaîtra si vous vous déconnectez ou désinstallez l\'application.</string>
+</resources>

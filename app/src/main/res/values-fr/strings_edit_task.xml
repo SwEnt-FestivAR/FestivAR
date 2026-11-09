@@ -1,0 +1,9 @@
+<!-- Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com> -->
+<resources>
+    <string name="edit_task">Modifier la tâche</string>
+    <string name="edit_task_save">Enregistrer les modifications</string>
+    <string name="edit_task_discard_title">Abandonner vos modifications ?</string>
+    <string name="edit_task_error_load_failed">Impossible de charger la tâche.</string>
+    <string name="edit_task_error_save_failed">Impossible d’enregistrer la tâche.</string>
+    <string name="edit_task_not_owner">Seule la personne ayant créé cette tâche peut la modifier.</string>
+</resources>

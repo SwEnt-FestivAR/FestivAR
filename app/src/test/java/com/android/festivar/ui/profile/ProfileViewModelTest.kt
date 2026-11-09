@@ -3,6 +3,7 @@ package com.android.festivar.ui.profile
 
 import com.android.festivar.R
 import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryLocal
@@ -86,7 +87,12 @@ class ProfileViewModelTest {
   private fun createViewModel(
       repository: UsersRepository = RecordingUsersRepository(listOf(sara)),
       uId: String = sara.uid,
-  ): ProfileViewModel = ProfileViewModel(repository, authRepository, uId)
+  ): ProfileViewModel =
+      ProfileViewModel(
+          dataRepository =
+              DataRepositoryLocal(authRepository = authRepository, usersRepository = repository),
+          uId = uId,
+      )
 
   /** Test that the UI state is loading until the user is fetched, then fills the fields. */
   @Test
