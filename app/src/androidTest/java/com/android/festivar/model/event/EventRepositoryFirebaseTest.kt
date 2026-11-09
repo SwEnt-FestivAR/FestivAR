@@ -267,6 +267,7 @@ class EventRepositoryFirebaseTest {
     assertTrue(result.members.isEmpty())
     assertTrue(result.tasks.isEmpty())
     assertFalse(result.closed)
+    assertTrue(result.announcements.isEmpty())
   }
 
   private suspend fun assertThrows(block: suspend () -> Unit) {
