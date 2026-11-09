@@ -1,5 +1,7 @@
 package com.android.festivar.ui.event
 
+// Co-authored-by: Copilot App
+
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
