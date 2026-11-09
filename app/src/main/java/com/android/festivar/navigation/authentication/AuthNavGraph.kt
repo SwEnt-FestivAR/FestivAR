@@ -43,7 +43,7 @@ fun NavGraphBuilder.authGraph(
   composable(route = AppScreens.ForgotPassword.name) {
     val navigator = LoginNavigator(navController)
     ForgotPasswordScreen(
-        viewModel = viewModel { ForgotPasswordViewModel(dataRepository.authRepository) },
+        viewModel = viewModel { ForgotPasswordViewModel(dataRepository) },
         onReturnToLogin = navigator.onReturnToLogin,
     )
   }

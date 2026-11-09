@@ -49,7 +49,7 @@ internal object ForgotPasswordScreenTestTags {
 fun ForgotPasswordScreen(
     onReturnToLogin: () -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: ForgotPasswordViewModel = viewModel(),
+    viewModel: ForgotPasswordViewModel,
 ) {
   val uiState by viewModel.uiState.collectAsState()
 
