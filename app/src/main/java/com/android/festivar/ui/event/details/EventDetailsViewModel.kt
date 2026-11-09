@@ -41,7 +41,7 @@ class EventDetailsViewModel(
     private val eventId: String,
 ) : ViewModel() {
 
-    private val eventsRepository: EventsRepository = dataRepository.eventsRepository
+  private val eventsRepository: EventsRepository = dataRepository.eventsRepository
 
   private val _uiState = MutableStateFlow(EventDetailsUIState())
   val uiState: StateFlow<EventDetailsUIState> = _uiState.asStateFlow()
