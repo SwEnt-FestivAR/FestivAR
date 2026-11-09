@@ -1,3 +1,4 @@
+// Co-authored by Copilot
 package com.android.festivar.ui.profile
 
 import androidx.compose.foundation.background

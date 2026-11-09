@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored by Copilot
 package com.android.festivar.ui.profile
 
 import androidx.annotation.StringRes
