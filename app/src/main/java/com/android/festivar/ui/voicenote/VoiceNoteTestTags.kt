@@ -6,7 +6,12 @@ package com.android.festivar.ui.voicenote
  * frames in Figma.
  */
 object VoiceNoteTestTags {
+  const val VOICE_NOTE_AUTHOR = "voiceNoteAuthor"
   const val VOICE_NOTE_PLAY = "voiceNotePlay"
   const val VOICE_NOTE_DURATION = "voiceNoteDuration"
   const val VOICE_NOTE_DELETE = "voiceNoteDelete"
+  const val VOICE_NOTE_EMPTY = "voiceNoteEmpty"
+  const val CONFIRM_DELETE = "voiceNoteConfirmDelete"
+  const val KEEP_BUTTON = "voiceNoteKeep"
+  const val CONFIRM_DELETE_BUTTON = "voiceNoteConfirmDeleteButton"
 }

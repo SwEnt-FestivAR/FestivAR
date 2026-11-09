@@ -70,7 +70,7 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, dataRepository: 
     val leave: () -> Unit = { navController.popBackStack() }
     // No key needed: the view model is scoped to this back stack entry, which has its own eventId.
     CreateTaskScreen(
-        viewModel = viewModel { CreateTaskViewModel(eventId, currentUserId) },
+        viewModel = viewModel { CreateTaskViewModel(eventId, currentUserId, dataRepository) },
         onBack = leave,
         onTaskCreated = leave,
     )

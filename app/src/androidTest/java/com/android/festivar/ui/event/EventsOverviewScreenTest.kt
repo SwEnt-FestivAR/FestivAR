@@ -25,6 +25,8 @@ import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
@@ -144,8 +146,12 @@ class EventsOverviewScreenTest {
 
   private fun createViewModel(withRepository: EventsRepository): EventsOverviewViewModel {
     return EventsOverviewViewModel(
-        eventsRepository = withRepository,
-        usersRepository = UsersRepositoryLocal(listOf(sara)),
+        dataRepository =
+            DataRepositoryLocal(
+                FakeAuthRepository(),
+                eventsRepository = withRepository,
+                usersRepository = UsersRepositoryLocal(listOf(sara)),
+            ),
         uId = sara.uid,
         now = { now },
     )

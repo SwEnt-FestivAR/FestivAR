@@ -19,6 +19,8 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.platform.app.InstrumentationRegistry
 import com.android.festivar.R
+import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
@@ -74,7 +76,12 @@ class CreateAnnouncementScreenTest {
             local.addAnnouncement(eventId, announcement)
           }
         }
-    val viewModel = CreateAnnouncementViewModel(EVENT_ID, { "owner-1" }, scripted)
+    val viewModel =
+        CreateAnnouncementViewModel(
+            EVENT_ID,
+            { "owner-1" },
+            DataRepositoryLocal(FakeAuthRepository(), eventsRepository = scripted),
+        )
     composeTestRule.setContent {
       AppTheme {
         CreateAnnouncementScreen(
