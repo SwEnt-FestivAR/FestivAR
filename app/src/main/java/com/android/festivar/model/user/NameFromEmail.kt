@@ -8,16 +8,8 @@ const val UNKNOWN_NAME = "Unknown"
  * Guesses a name (first name) and a surname (family name) from the local part of [email], the part
  * before the `@`.
  *
- * The local part is split on `.` and `_`: the first piece becomes the name and the remaining
- * pieces, joined with spaces, become the surname. A `+tag` suffix is dropped, and so is every
- * character the Profile screen refuses in a name (anything other than letters, `-`, `'` and `’`),
- * digits included. Each word is capitalized, and so is each part of a hyphenated word.
- *
  * Neither value is ever blank: a missing name or surname is replaced by [UNKNOWN_NAME], so the
  * result always passes the Profile screen checks.
- *
- * For example, `salim.chaoui@x.com` gives `Salim` and `Chaoui`, `jean-luc.de_la.fontaine42@x.com`
- * gives `Jean-Luc` and `De La Fontaine`, and `ada@x.com` gives `Ada` and `Unknown`.
  *
  * @param email The email address to read the names from. It may be empty or have no `@`.
  * @return The name and the surname, in this order.
