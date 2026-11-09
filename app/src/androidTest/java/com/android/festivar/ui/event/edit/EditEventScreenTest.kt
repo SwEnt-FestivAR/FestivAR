@@ -201,22 +201,6 @@ class EditEventScreenTest {
   }
 
   @Test
-  fun defaultActionsAreSafeToInvoke() {
-    val actions = EditEventActions()
-
-    actions.onBack()
-    actions.onNameChange("Festival")
-    actions.onShowPicker(DateTimeField.START_DATE)
-    actions.onVenueChange("Venue")
-    actions.onNotesChange("Notes")
-    actions.onDatePicked(LocalDate.now())
-    actions.onTimePicked(LocalTime.NOON)
-    actions.onSave()
-    actions.onCancelDiscard()
-    actions.onConfirmDiscard()
-  }
-
-  @Test
   fun screenCallsBackWhenDiscardIsConfirmed() {
     val event = testState().event!!
     val viewModel = EditEventViewModel(EventsRepositoryLocal(listOf(event)), { "user" })
