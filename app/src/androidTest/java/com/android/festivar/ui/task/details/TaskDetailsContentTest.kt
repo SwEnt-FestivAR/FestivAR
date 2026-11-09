@@ -8,6 +8,7 @@ import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onChild
 import androidx.compose.ui.test.onNodeWithTag
@@ -133,6 +134,16 @@ class TaskDetailsContentTest {
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.GIVE_BACK_CONFIRM_BUTTON).performClick()
     assertEquals(1, givenBack)
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.GIVE_BACK_DIALOG).assertDoesNotExist()
+  }
+
+  // Breaks if the dialog flag goes back to remember, so recreating the screen drops the dialog.
+  @Test
+  fun confirmationSurvivesRecreation() {
+    val restorationTester = StateRestorationTester(composeTestRule)
+    restorationTester.setContent { TaskDetailsContent(state(), {}, {}, {}, {}, {}, {}) }
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.GIVE_BACK_BUTTON).performClick()
+    restorationTester.emulateSavedInstanceStateRestore()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.GIVE_BACK_DIALOG).assertIsDisplayed()
   }
 
   // Breaks if Keep it gives the task back anyway, or leaves the dialog open.
