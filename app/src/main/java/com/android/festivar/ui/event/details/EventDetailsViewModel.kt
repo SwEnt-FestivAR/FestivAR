@@ -33,7 +33,8 @@ data class EventDetailsUIState(
  * Loading starts when the screen calls [fetchEvent]. A failed reload clears the currently displayed
  * event and exposes [EventDetailsUIState.errorMsg] so the screen can show an error.
  *
- * @param eventsRepository repository used to retrieve the event.
+ * @param dataRepository repository giving access to the events repository used to retrieve the
+ *   event.
  * @param eventId identifier of the event to load.
  */
 class EventDetailsViewModel(
