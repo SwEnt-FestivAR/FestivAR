@@ -21,6 +21,11 @@ import com.android.festivar.ui.components.FieldError
 import java.time.LocalDate
 import java.time.LocalTime
 
+/**
+ * Identifies the event fields and validation messages rendered by [EventFields].
+ *
+ * Each screen supplies tags unique to its own form.
+ */
 data class EventFieldsTestTags(
     val name: String,
     val startDate: String,
@@ -34,6 +39,13 @@ data class EventFieldsTestTags(
     val endDateError: String,
 )
 
+/**
+ * Renders the shared title, start and end date/time, venue, and notes fields with a date/time
+ * picker.
+ *
+ * The caller owns the form state, supplies screen-specific [testTags], and handles the callbacks.
+ * [openPicker] selects which date/time picker is visible.
+ */
 @Composable
 fun EventFields(
     name: String,
