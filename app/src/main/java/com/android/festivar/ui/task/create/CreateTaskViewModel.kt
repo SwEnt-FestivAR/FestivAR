@@ -312,7 +312,12 @@ private constructor(
    * missing. A failed save may have stored the task but stopped before these writes.
    *
    * Only what is missing is written, so a fully linked task writes nothing, and a failure halfway
-   * is completed by the next retry.
+   * is completed by the next retry. Trying to repair the [task] itself is not done as the
+   * function is called only if succeeds:
+   * ```
+   * val stored = tasksRepository.getTask(task.taskId)
+   * if (stored != task) tasksRepository.editTask(task.taskId, task)
+   * ```
    *
    * Call it only once the task is known to be stored: an event listing a task that does not exist
    * can no longer be read.
@@ -324,11 +329,13 @@ private constructor(
     val eventsRepository = dataRepository.eventsRepository
     val usersRepository = dataRepository.usersRepository
 
+      // Checks the synchronization with the event the task is part of and repairs it if needed.
     val event = eventsRepository.getEvent(task.eventId)
     if (event.tasks.none { it.taskId == task.taskId }) {
       eventsRepository.editEvent(event.eventId, event.addTask(task))
     }
 
+      // Checks the synchronization with the user the task is created by and repairs it if needed.
     val owner = usersRepository.getUser(task.ownerId)
     if (task.taskId !in owner.tasksAssigned) {
       usersRepository.editUser(owner.uid, owner.addAssignedTask(task.taskId))
