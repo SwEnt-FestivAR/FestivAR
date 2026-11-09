@@ -6,8 +6,8 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
+import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.event.EventsRepository
-import com.android.festivar.model.event.EventsRepositoryProvider
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.event.announcement.AnnouncementPriority
 import com.android.festivar.ui.components.FieldError
@@ -127,14 +127,13 @@ private const val SAVE_TIMEOUT_MS = 15_000L
 
 /**
  * Holds the state of the Create announcement screen and adds the new announcement to the event in
- * [eventsRepository].
+ * the [EventsRepository] of [dataRepository].
  *
  * @param eventId The event the announcement is published in. It cannot be blank.
  * @param currentUserId Gives the uid of the signed-in user, who becomes the author. It is asked
  *   when the user taps "Publish", not when the screen opens, so a sign-out or an account change in
  *   between is taken into account. A blank uid saves nothing and shows the save error.
- * @param eventsRepository Where the announcement is saved. It is the app's repository by default;
- *   the tests give an in-memory one.
+ * @param dataRepository Gives the [EventsRepository] where the announcement is saved.
  * @param clock Gives the publication time. The device's clock by default.
  * @param saveTimeoutMs How long a save may last before it is reported as failed, so that the form
  *   never stays stuck in the saving state. A failed save is followed by a read of the event under
@@ -143,10 +142,13 @@ private const val SAVE_TIMEOUT_MS = 15_000L
 class CreateAnnouncementViewModel(
     private val eventId: String,
     private val currentUserId: () -> String,
-    private val eventsRepository: EventsRepository = EventsRepositoryProvider.repository,
+    private val dataRepository: DataRepository,
     private val clock: Clock = Clock.systemDefaultZone(),
     private val saveTimeoutMs: Long = SAVE_TIMEOUT_MS,
 ) : ViewModel() {
+
+  private val eventsRepository: EventsRepository = dataRepository.eventsRepository
+
   // The id and time of the announcement being published. They are kept across retries: if a save
   // timed out or failed after reaching the server, the retry targets the same announcement.
   private var pendingId: String? = null

@@ -22,10 +22,16 @@ import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.platform.app.InstrumentationRegistry
+import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
+import com.android.festivar.model.event.Event
+import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.task.Priority
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
+import com.android.festivar.model.user.User
+import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.ui.components.FieldError
 import com.android.festivar.ui.components.fieldErrorMessageRes
 import com.android.festivar.ui.components.hasDayOfMonth
@@ -33,6 +39,7 @@ import com.android.festivar.ui.components.priorityLabelRes
 import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZonedDateTime
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
 
@@ -69,7 +76,25 @@ abstract class CreateTaskTest {
             repository.addTask(task)
           }
         }
-    viewModel = CreateTaskViewModel(EVENT_ID, { "owner-1" }, failable)
+    // The data repository also adds the task to its event and to its owner, so both must exist.
+    val owner = User("owner-1", joinedEvents = listOf(EVENT_ID))
+    val start = ZonedDateTime.now().plusDays(1)
+    val event =
+        Event(
+            eventId = EVENT_ID,
+            title = "Summer festival",
+            members = listOf(owner),
+            startDate = start,
+            endDate = start.plusDays(2),
+        )
+    val dataRepository =
+        DataRepositoryLocal(
+            authRepository = FakeAuthRepository(),
+            tasksRepository = failable,
+            eventsRepository = EventsRepositoryLocal(listOf(event)),
+            usersRepository = UsersRepositoryLocal(listOf(owner)),
+        )
+    viewModel = CreateTaskViewModel(EVENT_ID, { "owner-1" }, dataRepository)
     createdCount = 0
     backCount = 0
     addTaskFails = false

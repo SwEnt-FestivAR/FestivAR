@@ -37,7 +37,8 @@ fun NavGraphBuilder.announcementGraph(
     }
     // No key needed: the view model is scoped to this back stack entry, which has its own eventId.
     CreateAnnouncementScreen(
-        viewModel = viewModel { CreateAnnouncementViewModel(eventId, currentUserId) },
+        viewModel =
+            viewModel { CreateAnnouncementViewModel(eventId, currentUserId, dataRepository) },
         onBack = leave,
         onPublished = leave,
     )
