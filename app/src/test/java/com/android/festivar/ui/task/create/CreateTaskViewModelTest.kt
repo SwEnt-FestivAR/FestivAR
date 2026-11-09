@@ -520,6 +520,51 @@ class CreateTaskViewModelTest {
     assertTrue(vm.uiState.value.isCreated)
   }
 
+  // The first save stored the task then failed, before the event and the owner were written. The
+  // retry finds the task and must complete them, so that the event and the owner list it.
+  @Test
+  fun createTask_retryAfterAStoredButFailedSave_linksTheTaskToTheEventAndTheOwner() {
+    val repo = StoredThenFailed()
+    val vm = CreateTaskViewModel("event-1", { "owner-1" }, dataRepository(repo))
+    vm.updateTitle("Run power to stage")
+    vm.createTask()
+    val taskId = runBlocking { repo.local.getAllTasks("event-1") }.single().taskId
+    // The failed save stopped after the task: neither the event nor the owner list it yet.
+    assertTrue(runBlocking { eventsRepository.getEvent("event-1") }.tasks.isEmpty())
+
+    vm.createTask()
+
+    val event = runBlocking { eventsRepository.getEvent("event-1") }
+    assertEquals(listOf(taskId), event.tasks.map { it.taskId })
+    assertEquals(listOf(taskId), runBlocking { usersRepository.getUser("owner-1") }.tasksAssigned)
+    assertTrue(vm.uiState.value.isCreated)
+    assertNull(vm.uiState.value.errorMsg)
+  }
+
+  // Same, but the check right after the failure works: the task is completed at once, no retry.
+  @Test
+  fun createTask_storedButFailedSave_linksTheTaskWithoutARetry() {
+    val local = TasksRepositoryLocal()
+    // FAKE that stores the task, then reports a failure, as when the answer is lost.
+    val answerLost =
+        object : TasksRepository by local {
+          override suspend fun addTask(task: Task) {
+            local.addTask(task)
+            throw IllegalStateException("lost the answer")
+          }
+        }
+    val vm = CreateTaskViewModel("event-1", { "owner-1" }, dataRepository(answerLost))
+    vm.updateTitle("Run power to stage")
+
+    vm.createTask()
+
+    val taskId = runBlocking { local.getAllTasks("event-1") }.single().taskId
+    val event = runBlocking { eventsRepository.getEvent("event-1") }
+    assertEquals(listOf(taskId), event.tasks.map { it.taskId })
+    assertEquals(listOf(taskId), runBlocking { usersRepository.getUser("owner-1") }.tasksAssigned)
+    assertTrue(vm.uiState.value.isCreated)
+  }
+
   @Test
   fun blankEventId_isRefused() {
     assertThrows(IllegalArgumentException::class.java) {

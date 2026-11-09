@@ -267,16 +267,20 @@ private constructor(
   }
 
   // A failed save may still have reached the server (for example a timeout). If the task exists,
-  // it is created, and updated if the form changed since that save; otherwise the error is shown
-  // and the user can retry with the same task id.
+  // it is created: it is updated if the form changed since that save, and added to its event and
+  // to its owner if that save stopped before doing it. Otherwise the error is shown and the user
+  // can retry with the same task id.
   private suspend fun onSaveFailed(task: Task, e: Exception) {
     // Not an error yet: the task may have been stored anyway, which is checked below.
     Log.w(TAG, "Adding the task failed, checking whether it was stored", e)
     val alreadySaved =
         try {
           withTimeout(saveTimeoutMs) {
+            // Throws if the task is not stored, so nothing below runs for a task that does not
+            // exist: linking it would leave its event pointing to a missing task.
             val stored = tasksRepository.getTask(task.taskId)
             if (stored != task) tasksRepository.editTask(task.taskId, task)
+            linkTask(task)
           }
           Log.i(TAG, "The task was stored despite the failure")
           true
@@ -292,6 +296,26 @@ private constructor(
     _uiState.update {
       if (alreadySaved) it.copy(isSaving = false, isCreated = true)
       else it.copy(isSaving = false, errorMsg = SAVE_FAILED_MESSAGE)
+    }
+  }
+
+  // Adds the stored task to its event and to its owner where it is missing: a failed save may have
+  // stored the task but stopped before these writes. Only what is missing is written, so a fully
+  // linked task writes nothing, and a failure halfway is completed by the next retry.
+  // Call it only once the task is known to be stored: an event listing a task that does not exist
+  // can no longer be read.
+  private suspend fun linkTask(task: Task) {
+    val eventsRepository = dataRepository.eventsRepository
+    val usersRepository = dataRepository.usersRepository
+
+    val event = eventsRepository.getEvent(task.eventId)
+    if (event.tasks.none { it.taskId == task.taskId }) {
+      eventsRepository.editEvent(event.eventId, event.addTask(task))
+    }
+
+    val owner = usersRepository.getUser(task.ownerId)
+    if (task.taskId !in owner.tasksAssigned) {
+      usersRepository.editUser(owner.uid, owner.addAssignedTask(task.taskId))
     }
   }
 }
