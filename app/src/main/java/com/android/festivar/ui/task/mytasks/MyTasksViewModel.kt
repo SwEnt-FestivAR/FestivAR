@@ -46,7 +46,7 @@ data class MyTaskRowUi(
 )
 
 /**
- * The rows of one day, sorted by start time then title, done and to do mixed. [day] is null only
+ * The rows of one day, sorted by start time then title, done and to do are mixed. [day] is null only
  * for the tasks without a start, which come last.
  */
 data class MyTasksDaySection(
@@ -123,7 +123,7 @@ data class MyTasksUiState(
  * My tasks: every task the signed-in user has taken, across all their events, filtered and grouped
  * by day.
  *
- * Nothing loads until [refresh] is called: the screen calls it on every resume, the first one
+ * Nothing loads until [refresh] is called: the screen calls it on every refreshing, the first one
  * included, so a load at construction would fetch the tasks twice on open.
  *
  * @param userId the signed-in user, whose tasks are shown.
@@ -255,7 +255,7 @@ class MyTasksViewModel(
 
   /**
    * Reloads the user's tasks and the titles of their events; on failure the last sections stay and
-   * [MyTasksUiState.errorMsg] is set. A load still running is cancelled first, so the newest call
+   * [MyTasksUiState.errorMsg] is set. A load still running is canceled first, so the newest call
    * is the only one that can touch the state. The filters are kept, except the checked events that
    * no longer hold any task, which are unchecked.
    */
