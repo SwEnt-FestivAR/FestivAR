@@ -30,9 +30,9 @@ enum class MyTaskStatus {
 }
 
 /**
- * One row of My tasks as data; the screen turns it into words. A tap on the row opens the task
- * details of [task], through its [Task.taskId].
+ * One row of My tasks as data; the screen turns it into words.
  *
+ * @property task the task shown; a tap on the row opens its details through its [Task.taskId].
  * @property eventTitle the title of the task's event, or null when that event could not be found.
  * @property startTime when the task starts, in the time zone of the phone; null when it has none.
  * @property minutesUntilStart how many minutes are left before an unfinished task starts within the
@@ -55,7 +55,12 @@ data class MyTasksDaySection(
 )
 
 /**
- * One line of the events filter. [count] is how many tasks of this event pass the other filters.
+ * One line of the events filter.
+ *
+ * @property eventId the event this line checks or unchecks.
+ * @property title the title of the event, or null when that event could not be found.
+ * @property count how many tasks of this event pass the other filters and the search.
+ * @property selected whether the event is checked.
  */
 data class EventFilterOption(
     val eventId: String,
@@ -71,6 +76,11 @@ data class EventFilterOption(
  * selected value of every group, and an empty group lets every task through. The search applies on
  * top of them.
  *
+ * @property statuses the selected status chips.
+ * @property priorities the selected priority chips.
+ * @property eventIds the ids of the checked events.
+ * @property searchOpen whether the search field is shown.
+ * @property query the search text; a blank one hides nothing.
  * @property statusCounts how many tasks each status chip would hold, given the other filters.
  * @property priorityCounts how many tasks each priority chip would hold, given the other filters.
  * @property events the events of the user's tasks, sorted by title, for the events filter.
@@ -117,8 +127,7 @@ data class MyTasksUiState(
  * included, so a load at construction would fetch the tasks twice on open.
  *
  * @param userId the signed-in user, whose tasks are shown.
- * @param dataRepository where the user, their tasks and the events are read: the app's one unless a
- *   test passes its own.
+ * @param dataRepository where the user, their tasks and the events are read; tests pass a fake one.
  * @param clock decides what "now" is and the time zone of the times and days shown.
  */
 class MyTasksViewModel(
@@ -133,37 +142,32 @@ class MyTasksViewModel(
   private var eventTitles: Map<String, String?> = emptyMap()
   private var load: Job? = null
 
-    /**********************************************************************************
-     *                   Filters helping functions & objects
-     **********************************************************************************/
+  // ---- Filter rules ----
 
-    /** The filter group a value belongs to, so a chip's count can leave its own group out. */
-    private enum class Group {
-        STATUS,
-        PRIORITY,
-        EVENT,
-    }
+  /** The filter group a value belongs to, so a chip's count can leave its own group out. */
+  private enum class Group {
+    STATUS,
+    PRIORITY,
+    EVENT,
+  }
 
+  /** The status chip [task] falls under. */
+  private fun statusOf(task: Task): MyTaskStatus =
+      if (task.completed) MyTaskStatus.DONE else MyTaskStatus.TODO
 
-    private fun statusOf(task: Task): MyTaskStatus =
-        if (task.completed) MyTaskStatus.DONE else MyTaskStatus.TODO
+  /**
+   * Whether [task] passes the filters and the search of [state], leaving out the group [ignore]: a
+   * chip's count must not depend on the other chips of its own group.
+   */
+  private fun passes(task: Task, state: MyTasksUiState, ignore: Group? = null): Boolean =
+      (ignore == Group.STATUS || state.statuses.isEmpty() || statusOf(task) in state.statuses) &&
+          (ignore == Group.PRIORITY ||
+              state.priorities.isEmpty() ||
+              task.priority in state.priorities) &&
+          (ignore == Group.EVENT || state.eventIds.isEmpty() || task.eventId in state.eventIds) &&
+          task.matchesQuery(state.query)
 
-    /**
-     * Whether [task] passes the filters and the search of [state], leaving out the group [ignore]: a
-     * chip's count must not depend on the other chips of its own group.
-     */
-    private fun passes(task: Task, state: MyTasksUiState, ignore: Group? = null): Boolean =
-        (ignore == Group.STATUS || state.statuses.isEmpty() || statusOf(task) in state.statuses) &&
-                (ignore == Group.PRIORITY || state.priorities.isEmpty() || task.priority in state.priorities) &&
-                (ignore == Group.EVENT || state.eventIds.isEmpty() || task.eventId in state.eventIds) &&
-                task.matchesQuery(state.query)
-
-
-
-
-    /**********************************************************************************
-     *                          UIstate modifications
-     **********************************************************************************/
+  // ---- User actions: each one changes the filters or the search, then rebuilds the screen ----
 
   /** Selects or unselects a status chip; several can be selected at once. */
   fun toggleStatus(status: MyTaskStatus) {
@@ -209,9 +213,7 @@ class MyTasksViewModel(
     _uiState.update { it.copy(errorMsg = null) }
   }
 
-    /**********************************************************************************
-     *                          Loading data
-     **********************************************************************************/
+  // ---- Loading from the repositories ----
 
   /**
    * The tasks listed in the user's [com.android.festivar.model.user.User.tasksAssigned] in which
@@ -223,7 +225,8 @@ class MyTasksViewModel(
     taskIds
         .map { id -> async { dataRepository.tasksRepository.getTask(id) } }
         .awaitAll()
-        .filter { task -> task.assignees.any { it.uid == userId } } // Removes tasks where the user is the owner and not an assignee
+        // Drops the tasks the user created without taking them.
+        .filter { task -> task.assignees.any { it.uid == userId } }
   }
 
   /**
@@ -248,45 +251,39 @@ class MyTasksViewModel(
             .toMap()
       }
 
+  // ---- Refresh, and building what the screen shows ----
 
-
-
-    /**********************************************************************************
-     *                 Refresh & convert elements to UI-exploitable ones
-     **********************************************************************************/
-
-
-    /**
-     * Reloads the user's tasks and the titles of their events; on failure the last sections stay and
-     * [MyTasksUiState.errorMsg] is set. A load still running is canceled first, so the newest call
-     * is the only one that can touch the state. Selected events that no longer hold any task are
-     * dropped from the filter.
-     */
-    fun refresh() {
-        load?.cancel()
-        load = viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            try {
-                val loaded = loadAssignedTasks()
-                val titles = loadEventTitles(loaded.map { it.eventId }.distinct())
-                tasks = loaded
-                eventTitles = titles
-                _uiState.update {
-                    derive(
-                        it.copy(
-                            eventIds = it.eventIds.intersect(titles.keys),
-                            isLoading = false,
-                            errorMsg = null,
-                        )
-                    )
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, errorMsg = e.message ?: e.toString()) }
-            }
+  /**
+   * Reloads the user's tasks and the titles of their events; on failure the last sections stay and
+   * [MyTasksUiState.errorMsg] is set. A load still running is cancelled first, so the newest call
+   * is the only one that can touch the state. The filters are kept, except the checked events that
+   * no longer hold any task, which are unchecked.
+   */
+  fun refresh() {
+    load?.cancel()
+    load = viewModelScope.launch {
+      _uiState.update { it.copy(isLoading = true) }
+      try {
+        val loaded = loadAssignedTasks()
+        val titles = loadEventTitles(loaded.map { it.eventId }.distinct())
+        tasks = loaded
+        eventTitles = titles
+        _uiState.update {
+          derive(
+              it.copy(
+                  eventIds = it.eventIds.intersect(titles.keys),
+                  isLoading = false,
+                  errorMsg = null,
+              )
+          )
         }
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        _uiState.update { it.copy(isLoading = false, errorMsg = e.message ?: e.toString()) }
+      }
     }
+  }
 
   /**
    * Rebuilds what the screen shows from [tasks] and the filters, search and clock in [state]: the
@@ -296,7 +293,7 @@ class MyTasksViewModel(
   private fun derive(state: MyTasksUiState): MyTasksUiState {
     val now = ZonedDateTime.now(clock)
 
-      // We will give to the UIstate the filtered Tasks organized into sections of rows.
+    // The tasks that pass every filter, one section per day, each sorted by start time.
     val sections =
         tasks
             .filter { passes(it, state) }
@@ -313,19 +310,19 @@ class MyTasksViewModel(
               )
             }
 
-      // We will give the UIstate the counts of each tasks present in the status filter.
+    // The number on each status chip: the tasks of that status that pass the other filters.
     val statusCounts =
         MyTaskStatus.entries.associateWith { status ->
           tasks.count { passes(it, state, Group.STATUS) && statusOf(it) == status }
         }
 
-      // We will give the UIstate the counts of each tasks present in the priority filter.
+    // The number on each priority chip: the tasks of that priority that pass the other filters.
     val priorityCounts =
         Priority.entries.associateWith { priority ->
           tasks.count { passes(it, state, Group.PRIORITY) && it.priority == priority }
         }
 
-      // We will give the UIstate all the event filters options here and the counts of each tasks present in the event filter.
+    // One line per event of the user's tasks, with its number and whether it is checked.
     val events =
         eventTitles
             .map { (eventId, title) ->
@@ -351,8 +348,8 @@ class MyTasksViewModel(
   }
 
   /**
-   * Flattens [task] into the data one row shows, with its time in the phone's time zone.
-   * Is a convertor of a [Task] into a [MyTaskRowUi] that may be used by the screen.
+   * Turns [task] into the data its row shows, with its start in the time zone of the phone and,
+   * when it starts within the hour, the minutes left from [now].
    */
   private fun row(task: Task, now: ZonedDateTime): MyTaskRowUi {
     val start = task.startTime?.withZoneSameInstant(clock.zone)
@@ -368,8 +365,5 @@ class MyTasksViewModel(
   }
 }
 
-/**
- * A utility function that allows to simply remove or add elements from a set.
- * This set with [value] added, or removed when it was already there.
- */
+/** This set with [value] added, or with it removed when it was already there. */
 private fun <T> Set<T>.toggle(value: T): Set<T> = if (value in this) this - value else this + value
