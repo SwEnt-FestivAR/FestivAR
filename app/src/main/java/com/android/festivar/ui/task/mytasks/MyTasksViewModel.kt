@@ -46,8 +46,8 @@ data class MyTaskRowUi(
 )
 
 /**
- * The rows of one day, sorted by start time then title, done and to do are mixed. [day] is null only
- * for the tasks without a start, which come last.
+ * The rows of one day, sorted by start time then title, done and to do are mixed. [day] is null
+ * only for the tasks without a start, which come last.
  */
 data class MyTasksDaySection(
     val day: LocalDate?,
@@ -72,13 +72,13 @@ data class EventFilterOption(
 /**
  * UI state of My tasks.
  *
- * The filters form three groups: [statuses], [priorities] and [eventIds]. A task must match one
- * selected value of every group, and an empty group lets every task through. The search applies on
- * top of them.
+ * The filters form three groups: [statusesSelected], [prioritiesSelected] and [eventIdsSelected]. A
+ * task must match one selected value of every group, and an empty group lets every task through.
+ * The search applies on top of them.
  *
- * @property statuses the selected status chips.
- * @property priorities the selected priority chips.
- * @property eventIds the ids of the checked events.
+ * @property statusesSelected the selected status chips.
+ * @property prioritiesSelected the selected priority chips.
+ * @property eventIdsSelected the ids of the checked events.
  * @property searchOpen whether the search field is shown.
  * @property query the search text; a blank one hides nothing.
  * @property statusCounts how many tasks each status chip would hold, given the other filters.
@@ -91,9 +91,9 @@ data class EventFilterOption(
  * @property errorMsg why the last load failed, for the snackbar; null when it did not fail.
  */
 data class MyTasksUiState(
-    val statuses: Set<MyTaskStatus> = emptySet(),
-    val priorities: Set<Priority> = emptySet(),
-    val eventIds: Set<String> = emptySet(),
+    val statusesSelected: Set<MyTaskStatus> = emptySet(),
+    val prioritiesSelected: Set<Priority> = emptySet(),
+    val eventIdsSelected: Set<String> = emptySet(),
     val searchOpen: Boolean = false,
     val query: String = "",
     val statusCounts: Map<MyTaskStatus, Int> = emptyMap(),
@@ -108,7 +108,7 @@ data class MyTasksUiState(
    * The number shown on the "Filters" chip; the events have their own selector and are not in it.
    */
   val activeFilterCount: Int
-    get() = statuses.size + priorities.size
+    get() = statusesSelected.size + prioritiesSelected.size
 
   /** The user has taken no task at all: the "No tasks yet" state. */
   val hasNoTasks: Boolean
@@ -160,40 +160,49 @@ class MyTasksViewModel(
    * chip's count must not depend on the other chips of its own group.
    */
   private fun passes(task: Task, state: MyTasksUiState, ignore: Group? = null): Boolean =
-      (ignore == Group.STATUS || state.statuses.isEmpty() || statusOf(task) in state.statuses) &&
+      (ignore == Group.STATUS ||
+          state.statusesSelected.isEmpty() ||
+          statusOf(task) in state.statusesSelected) &&
           (ignore == Group.PRIORITY ||
-              state.priorities.isEmpty() ||
-              task.priority in state.priorities) &&
-          (ignore == Group.EVENT || state.eventIds.isEmpty() || task.eventId in state.eventIds) &&
+              state.prioritiesSelected.isEmpty() ||
+              task.priority in state.prioritiesSelected) &&
+          (ignore == Group.EVENT ||
+              state.eventIdsSelected.isEmpty() ||
+              task.eventId in state.eventIdsSelected) &&
           task.matchesQuery(state.query)
 
   // ---- User actions: each one changes the filters or the search, then rebuilds the screen ----
 
   /** Selects or unselects a status chip; several can be selected at once. */
   fun toggleStatus(status: MyTaskStatus) {
-    _uiState.update { derive(it.copy(statuses = it.statuses.toggle(status))) }
+    _uiState.update { derive(it.copy(statusesSelected = it.statusesSelected.toggle(status))) }
   }
 
   /** Selects or unselects a priority chip; several can be selected at once. */
   fun togglePriority(priority: Priority) {
-    _uiState.update { derive(it.copy(priorities = it.priorities.toggle(priority))) }
+    _uiState.update { derive(it.copy(prioritiesSelected = it.prioritiesSelected.toggle(priority))) }
   }
 
   /** Checks or unchecks an event in the events filter; several can be checked at once. */
   fun toggleEvent(eventId: String) {
-    _uiState.update { derive(it.copy(eventIds = it.eventIds.toggle(eventId))) }
+    _uiState.update { derive(it.copy(eventIdsSelected = it.eventIdsSelected.toggle(eventId))) }
   }
 
   /** Unchecks every event, so the tasks of all events show again. */
   fun clearEvents() {
-    _uiState.update { derive(it.copy(eventIds = emptySet())) }
+    _uiState.update { derive(it.copy(eventIdsSelected = emptySet())) }
   }
 
   /** Drops every filter and the search query, so every task shows again. */
   fun clearFilters() {
     _uiState.update {
       derive(
-          it.copy(statuses = emptySet(), priorities = emptySet(), eventIds = emptySet(), query = "")
+          it.copy(
+              statusesSelected = emptySet(),
+              prioritiesSelected = emptySet(),
+              eventIdsSelected = emptySet(),
+              query = "",
+          )
       )
     }
   }
@@ -255,9 +264,9 @@ class MyTasksViewModel(
 
   /**
    * Reloads the user's tasks and the titles of their events; on failure the last sections stay and
-   * [MyTasksUiState.errorMsg] is set. A load still running is canceled first, so the newest call
-   * is the only one that can touch the state. The filters are kept, except the checked events that
-   * no longer hold any task, which are unchecked.
+   * [MyTasksUiState.errorMsg] is set. A load still running is canceled first, so the newest call is
+   * the only one that can touch the state. The filters are kept, except the checked events that no
+   * longer hold any task, which are unchecked.
    */
   fun refresh() {
     load?.cancel()
@@ -271,7 +280,7 @@ class MyTasksViewModel(
         _uiState.update {
           derive(
               it.copy(
-                  eventIds = it.eventIds.intersect(titles.keys),
+                  eventIdsSelected = it.eventIdsSelected.intersect(titles.keys),
                   isLoading = false,
                   errorMsg = null,
               )
@@ -330,7 +339,7 @@ class MyTasksViewModel(
                   eventId = eventId,
                   title = title,
                   count = tasks.count { passes(it, state, Group.EVENT) && it.eventId == eventId },
-                  selected = eventId in state.eventIds,
+                  selected = eventId in state.eventIdsSelected,
               )
             }
             .sortedWith(
