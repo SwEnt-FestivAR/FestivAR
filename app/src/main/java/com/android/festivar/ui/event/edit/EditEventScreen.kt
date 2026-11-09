@@ -2,6 +2,7 @@ package com.android.festivar.ui.event.edit
 
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -108,6 +109,7 @@ fun EditEventScreen(
   LaunchedEffect(eventId) { viewModel.fetchEvent(eventId) }
   LaunchedEffect(uiState.isDiscarded) { if (uiState.isDiscarded) onBack() }
   LaunchedEffect(uiState.savedEventId) { if (uiState.savedEventId != null) onSaved() }
+  BackHandler(onBack = viewModel::requestDiscard)
 
   EditEventContent(
       state = uiState,

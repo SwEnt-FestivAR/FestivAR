@@ -2,11 +2,12 @@ package com.android.festivar.ui.event.edit
 
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 
+import androidx.activity.ComponentActivity
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -30,7 +31,7 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class EditEventScreenTest {
 
-  @get:Rule val composeTestRule = createComposeRule()
+  @get:Rule val composeTestRule = createAndroidComposeRule<ComponentActivity>()
 
   @Test
   fun changedEventRendersFormAndSavesOnButtonClick() {
@@ -214,7 +215,17 @@ class EditEventScreenTest {
     }
     composeTestRule.waitForIdle()
 
-    composeTestRule.onNodeWithTag(EditEventScreenTestTags.BACK_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(EditEventScreenTestTags.NAME_FIELD).performTextClearance()
+    composeTestRule
+        .onNodeWithTag(EditEventScreenTestTags.NAME_FIELD)
+        .performTextInput("Changed festival")
+    composeTestRule.runOnUiThread {
+      composeTestRule.activity.onBackPressedDispatcher.onBackPressed()
+    }
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithTag(EditEventScreenTestTags.DISCARD_CONFIRM).assertIsDisplayed()
+
+    composeTestRule.onNodeWithTag(EditEventScreenTestTags.DISCARD_CONFIRM).performClick()
     composeTestRule.waitForIdle()
 
     assertEquals(1, backCount)
