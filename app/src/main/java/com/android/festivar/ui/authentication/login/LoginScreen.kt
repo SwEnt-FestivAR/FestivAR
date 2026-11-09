@@ -25,7 +25,6 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -62,6 +61,7 @@ import com.android.festivar.R
 import com.android.festivar.ui.components.FestivarConfirmDialog
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.components.NoticeSnackbar
+import com.android.festivar.ui.components.OrSeparator
 import com.android.festivar.ui.theme.AppTheme
 
 internal object LoginScreenTestTags {
@@ -195,50 +195,15 @@ private fun LoginScreenContent(
 
     Spacer(modifier = Modifier.height(20.dp))
 
-    FestivarTextField(
-        value = uiState.email,
-        onValueChange = onEmailChange,
-        label = stringResource(R.string.signup_email),
-        modifier = Modifier.fillMaxWidth().testTag(LoginScreenTestTags.EMAIL_INPUT),
-        keyboardOptions =
-            KeyboardOptions(
-                capitalization = KeyboardCapitalization.None,
-                keyboardType = KeyboardType.Email,
-                imeAction = ImeAction.Next,
-            ),
-    )
-    FestivarTextField(
-        value = uiState.password,
-        onValueChange = onPasswordChange,
-        label = stringResource(R.string.signup_password),
-        modifier = Modifier.fillMaxWidth().testTag(LoginScreenTestTags.PASSWORD_INPUT),
-        keyboardOptions =
-            KeyboardOptions(
-                capitalization = KeyboardCapitalization.None,
-                keyboardType = KeyboardType.Password,
-                imeAction = ImeAction.Done,
-            ),
-        keyboardActions = KeyboardActions(onDone = { onLoginClick() }),
-        singleLine = true,
-        visualTransformation =
-            if (uiState.isPasswordVisible) {
-              VisualTransformation.None
-            } else {
-              PasswordVisualTransformation()
-            },
-        trailingIcon = {
-          IconButton(onClick = onTogglePasswordVisibility) {
-            Icon(
-                imageVector =
-                    if (uiState.isPasswordVisible) Icons.Default.Visibility
-                    else Icons.Default.VisibilityOff,
-                contentDescription =
-                    if (uiState.isPasswordVisible) stringResource(R.string.signup_hide_password)
-                    else stringResource(R.string.signup_show_password),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-          }
-        },
+    EmailLoginForm(
+        email = uiState.email,
+        password = uiState.password,
+        isLoading = uiState.isLoading,
+        isPasswordVisible = uiState.isPasswordVisible,
+        onEmailChange = onEmailChange,
+        onPasswordChange = onPasswordChange,
+        onLoginClick = onLoginClick,
+        onTogglePasswordVisibility = onTogglePasswordVisibility,
     )
 
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -251,29 +216,6 @@ private fun LoginScreenContent(
       }
     }
 
-    Button(
-        onClick = onLoginClick,
-        enabled = !uiState.isLoading,
-        shape = RoundedCornerShape(16.dp),
-        contentPadding = PaddingValues(0.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-        modifier = Modifier.fillMaxWidth().height(44.dp).testTag(LoginScreenTestTags.LOGIN_BUTTON),
-    ) {
-      if (uiState.isLoading) {
-        CircularProgressIndicator(
-            modifier = Modifier.size(16.dp),
-            color = MaterialTheme.colorScheme.onPrimary,
-            strokeWidth = 2.dp,
-        )
-      } else {
-        Text(
-            text = stringResource(R.string.signup_sign_in),
-            color = MaterialTheme.colorScheme.onPrimary,
-            style = MaterialTheme.typography.labelLarge,
-        )
-      }
-    }
-
     OrSeparator()
 
     // Google
@@ -282,7 +224,7 @@ private fun LoginScreenContent(
         enabled = !uiState.isLoading,
         showGoogle = true,
         text = stringResource(R.string.login_continue_with_google),
-        testTag = LoginScreenTestTags.GOOGLE_BUTTON,
+        modifier = Modifier.testTag(LoginScreenTestTags.GOOGLE_BUTTON),
     )
 
     // Anonymous
@@ -291,7 +233,7 @@ private fun LoginScreenContent(
         enabled = !uiState.isLoading,
         showGoogle = false,
         text = stringResource(R.string.login_no_account),
-        testTag = LoginScreenTestTags.ANONYMOUS_BUTTON,
+        modifier = Modifier.testTag(LoginScreenTestTags.ANONYMOUS_BUTTON),
     )
 
     Spacer(modifier = Modifier.weight(1f))
@@ -320,39 +262,97 @@ private fun LoginScreenContent(
   }
 }
 
-/** Separator with "or" in the middle */
 @Composable
-private fun OrSeparator() {
-  Row(
-      verticalAlignment = Alignment.CenterVertically,
-      modifier = Modifier.fillMaxWidth(),
+fun EmailLoginForm(
+    email: String,
+    password: String,
+    isLoading: Boolean,
+    isPasswordVisible: Boolean,
+    onEmailChange: (String) -> Unit,
+    onPasswordChange: (String) -> Unit,
+    onLoginClick: () -> Unit,
+    onTogglePasswordVisibility: () -> Unit,
+    modifier: Modifier = Modifier,
+    buttonText: String = stringResource(R.string.signup_sign_in),
+) {
+  Column(
+      modifier = modifier,
+      verticalArrangement = Arrangement.spacedBy(12.dp),
   ) {
-    HorizontalDivider(
-        modifier = Modifier.weight(1f),
-        thickness = 1.dp,
-        color = MaterialTheme.colorScheme.outlineVariant,
+    FestivarTextField(
+        value = email,
+        onValueChange = onEmailChange,
+        label = stringResource(R.string.signup_email),
+        modifier = Modifier.fillMaxWidth().testTag(LoginScreenTestTags.EMAIL_INPUT),
+        keyboardOptions =
+            KeyboardOptions(
+                capitalization = KeyboardCapitalization.None,
+                keyboardType = KeyboardType.Email,
+                imeAction = ImeAction.Next,
+            ),
     )
-    Text(
-        text = stringResource(R.string.login_or),
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        style = MaterialTheme.typography.bodySmall,
-        modifier = Modifier.padding(horizontal = 10.dp),
+    FestivarTextField(
+        value = password,
+        onValueChange = onPasswordChange,
+        label = stringResource(R.string.signup_password),
+        modifier = Modifier.fillMaxWidth().testTag(LoginScreenTestTags.PASSWORD_INPUT),
+        keyboardOptions =
+            KeyboardOptions(
+                capitalization = KeyboardCapitalization.None,
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Done,
+            ),
+        keyboardActions = KeyboardActions(onDone = { onLoginClick() }),
+        singleLine = true,
+        visualTransformation =
+            if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+        trailingIcon = {
+          IconButton(onClick = onTogglePasswordVisibility) {
+            Icon(
+                imageVector =
+                    if (isPasswordVisible) Icons.Default.Visibility
+                    else Icons.Default.VisibilityOff,
+                contentDescription =
+                    if (isPasswordVisible) stringResource(R.string.signup_hide_password)
+                    else stringResource(R.string.signup_show_password),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+          }
+        },
     )
-    HorizontalDivider(
-        modifier = Modifier.weight(1f),
-        thickness = 1.dp,
-        color = MaterialTheme.colorScheme.outlineVariant,
-    )
+
+    Button(
+        onClick = onLoginClick,
+        enabled = !isLoading,
+        shape = RoundedCornerShape(16.dp),
+        contentPadding = PaddingValues(vertical = 12.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+        modifier = Modifier.fillMaxWidth().height(44.dp).testTag(LoginScreenTestTags.LOGIN_BUTTON),
+    ) {
+      if (isLoading) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(16.dp),
+            color = MaterialTheme.colorScheme.onPrimary,
+            strokeWidth = 2.dp,
+        )
+      } else {
+        Text(
+            text = buttonText,
+            color = MaterialTheme.colorScheme.onPrimary,
+            style = MaterialTheme.typography.labelLarge,
+        )
+      }
+    }
   }
 }
 
 @Composable
-private fun SignInButton(
+fun SignInButton(
     onClick: () -> Unit,
     enabled: Boolean,
     showGoogle: Boolean,
     text: String,
-    testTag: String,
+    modifier: Modifier = Modifier,
 ) {
   Button(
       onClick = onClick,
@@ -365,7 +365,7 @@ private fun SignInButton(
               contentColor = MaterialTheme.colorScheme.onSurface,
           ),
       border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-      modifier = Modifier.fillMaxWidth().height(44.dp).testTag(testTag),
+      modifier = modifier.fillMaxWidth().height(44.dp),
   ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
       if (showGoogle) {
