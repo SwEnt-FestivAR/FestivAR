@@ -4,9 +4,11 @@ package com.android.festivar.ui.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -21,16 +23,21 @@ import com.android.festivar.ui.theme.AppTheme
 val FixedBottomBarHorizontalPadding = 20.dp
 
 /**
- * A bar fixed to the bottom of a screen, above the system navigation bar, holding [content]. It
- * keeps the colour of the page, as the "composer (fixed)" frames of the S4 design do: 20dp on the
- * sides, 8dp above and 24dp below the content, which is stacked with 8dp between its items (for
- * example the record bar and the notices above it).
+ * A bar fixed to the bottom of a screen, above the system navigation bar, holding [content]. The
+ * space of [windowInsets] (the navigation bar by default) is kept free below the content. It keeps
+ * the colour of the page, as the "composer (fixed)" frames of the S4 design do: 20dp on the sides,
+ * 8dp above and 24dp below the content, which is stacked with 8dp between its items (for example
+ * the record bar and the notices above it).
  */
 @Composable
-fun FixedBottomBar(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+fun FixedBottomBar(
+    modifier: Modifier = Modifier,
+    windowInsets: WindowInsets = WindowInsets.navigationBars,
+    content: @Composable ColumnScope.() -> Unit,
+) {
   Surface(modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.background) {
     Column(
-        Modifier.navigationBarsPadding()
+        Modifier.windowInsetsPadding(windowInsets)
             .padding(
                 start = FixedBottomBarHorizontalPadding,
                 top = 8.dp,
