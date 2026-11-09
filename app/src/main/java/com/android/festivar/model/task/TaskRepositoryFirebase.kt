@@ -4,6 +4,7 @@
 package com.android.festivar.model.task
 
 import com.android.festivar.model.user.UsersRepositoryFirebase
+import com.android.festivar.model.voicenote.VoiceNote
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import java.time.Duration
@@ -96,6 +97,7 @@ class TaskRepositoryFirebase(
         "takenAt" to task.takenAt.mapValues { it.value.toString() },
         "completed" to task.completed,
         "ownerId" to task.ownerId,
+        "voiceNote" to task.voiceNote?.toMap(),
     )
   }
 
@@ -134,7 +136,19 @@ class TaskRepositoryFirebase(
         // Tasks saved before owners existed have no ownerId. They are deleted from Firestore, so a
         // missing one is an error, not a case to handle.
         ownerId = document.getString("ownerId").required("ownerId", document.id),
+        voiceNote = document.get("voiceNote")?.let { readVoiceNote(it, document.id) },
     )
+  }
+
+  /** Rebuilds the stored voice note of task [taskId], or fails with an error naming the task. */
+  private fun readVoiceNote(value: Any, taskId: String): VoiceNote {
+    val invalid = "Invalid voice note data for task $taskId"
+    val map = value as? Map<*, *> ?: throw IllegalArgumentException("$invalid.")
+    return try {
+      VoiceNote.fromMap(map)
+    } catch (e: IllegalArgumentException) {
+      throw IllegalArgumentException("$invalid: ${e.message}", e)
+    }
   }
 
   private fun String?.required(field: String, documentId: String): String {

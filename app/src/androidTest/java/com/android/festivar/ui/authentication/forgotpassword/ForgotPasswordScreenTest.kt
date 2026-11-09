@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.authentication.forgotpassword
 
 import androidx.compose.ui.test.assertIsDisplayed
@@ -11,6 +12,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -29,7 +31,7 @@ class ForgotPasswordScreenTest {
   @Before
   fun setUp() {
     authRepository = FakeAuthRepository()
-    viewModel = ForgotPasswordViewModel(authRepository)
+    viewModel = ForgotPasswordViewModel(DataRepositoryLocal(authRepository))
   }
 
   @Test
