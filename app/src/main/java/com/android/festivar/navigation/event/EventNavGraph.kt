@@ -36,8 +36,7 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, dataRepository:
           eventsOverviewViewModel =
               viewModel {
                 EventsOverviewViewModel(
-                    EventsRepositoryProvider.repository,
-                    UsersRepositoryProvider.repository,
+                    dataRepository,
                     firebaseUser.uid,
                 )
               },

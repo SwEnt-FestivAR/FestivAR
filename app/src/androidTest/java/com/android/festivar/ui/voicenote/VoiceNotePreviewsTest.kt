@@ -2,6 +2,7 @@
 package com.android.festivar.ui.voicenote
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -14,7 +15,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Renders the previews of the voice note player, so that a preview that no longer compiles or
+ * Renders the previews of the voice note section, so that a preview that no longer compiles or
  * crashes when drawn is caught by the tests and not only in Android Studio.
  */
 @RunWith(AndroidJUnit4::class)
@@ -23,6 +24,50 @@ class VoiceNotePreviewsTest {
 
   private fun text(id: Int, vararg args: Any) =
       ApplicationProvider.getApplicationContext<android.content.Context>().getString(id, *args)
+
+  /** Breaks if the owner preview no longer shows the note with its author line and the trash. */
+  @Test
+  fun ownerPreview_showsTheNoteWithTrash() {
+    composeTestRule.setContent { VoiceNoteOwnerPreview() }
+
+    composeTestRule.onNodeWithTag(VoiceNoteTestTags.VOICE_NOTE_AUTHOR).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(VoiceNoteTestTags.VOICE_NOTE_DELETE).assertIsDisplayed()
+  }
+
+  /** Breaks if the playing preview no longer offers to stop the note. */
+  @Test
+  fun ownerPlayingPreview_showsTheStopButton() {
+    composeTestRule.setContent { VoiceNoteOwnerPlayingPreview() }
+
+    composeTestRule.onNodeWithContentDescription(text(R.string.voice_note_stop)).assertIsDisplayed()
+  }
+
+  /** Breaks if the empty preview no longer shows the empty state. */
+  @Test
+  fun emptyPreview_showsTheEmptyState() {
+    composeTestRule.setContent { VoiceNoteEmptyPreview() }
+
+    composeTestRule.onNodeWithTag(VoiceNoteTestTags.VOICE_NOTE_EMPTY).assertIsDisplayed()
+  }
+
+  /** Breaks if the delete preview no longer shows the confirmation dialog. */
+  @Test
+  fun deleteConfirmPreview_showsTheDialog() {
+    composeTestRule.setContent { VoiceNoteDeleteConfirmPreview() }
+
+    composeTestRule.onNodeWithText(text(R.string.voice_note_delete_title)).assertIsDisplayed()
+  }
+
+  /** Breaks if the volunteer preview no longer shows the note without the trash. */
+  @Test
+  fun volunteerPreview_showsTheNoteWithoutTrash() {
+    composeTestRule.setContent { VoiceNoteVolunteerPreview() }
+
+    composeTestRule
+        .onNodeWithTag(VoiceNoteTestTags.VOICE_NOTE_AUTHOR)
+        .assertTextContains(text(R.string.voice_note_organizer), substring = true)
+    composeTestRule.onNodeWithTag(VoiceNoteTestTags.VOICE_NOTE_DELETE).assertDoesNotExist()
+  }
 
   /** Breaks if the player preview no longer shows the play button and the duration. */
   @Test
