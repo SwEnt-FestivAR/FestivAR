@@ -47,6 +47,8 @@ import java.time.LocalDate
 import java.time.LocalTime
 
 object EditEventScreenTestTags {
+  const val SCREEN = "editEventScreen"
+  const val LOADING = "editEventLoading"
   const val BACK_BUTTON = "editEventBackButton"
   const val TITLE = "editEventTitle"
   const val NAME_FIELD = "editEventNameField"
@@ -139,7 +141,7 @@ fun EditEventContent(
     modifier: Modifier = Modifier,
 ) {
   Scaffold(
-      modifier = modifier.imePadding(),
+      modifier = modifier.testTag(EditEventScreenTestTags.SCREEN).imePadding(),
       containerColor = MaterialTheme.colorScheme.background,
       topBar = { EditEventTopBar(onBack = actions.onBack) },
       bottomBar = {
@@ -191,7 +193,9 @@ fun EditEventContent(
               modifier = Modifier.fillMaxSize().padding(padding),
               contentAlignment = Alignment.Center,
           ) {
-            CircularProgressIndicator()
+            CircularProgressIndicator(
+                modifier = Modifier.testTag(EditEventScreenTestTags.LOADING),
+            )
           }
       state.errorFetchMsg != null ->
           androidx.compose.foundation.layout.Box(

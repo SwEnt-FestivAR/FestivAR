@@ -93,6 +93,8 @@ class EditEventScreenTest {
   fun loadingAndFetchFailureStatesAreShown() {
     val state = mutableStateOf(EditEventUIState(isLoading = true))
     composeTestRule.setContent { AppTheme { EditEventContent(state.value, EditEventActions()) } }
+    composeTestRule.onNodeWithTag(EditEventScreenTestTags.SCREEN).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(EditEventScreenTestTags.LOADING).assertIsDisplayed()
     composeTestRule.onNodeWithTag(EditEventScreenTestTags.SAVE_BUTTON).assertDoesNotExist()
     composeTestRule.onNodeWithTag(EditEventScreenTestTags.FETCH_ERROR).assertDoesNotExist()
 
