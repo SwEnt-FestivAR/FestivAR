@@ -94,7 +94,8 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, dataRepository:
             viewModel {
               JoinEventViewModel(
                   firebaseUser.uid,
-                  dataRepository,
+                  EventsRepositoryProvider.repository,
+                  UsersRepositoryProvider.repository,
               )
             },
         onBack = navigator.onBack,
