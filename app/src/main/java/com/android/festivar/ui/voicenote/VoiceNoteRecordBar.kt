@@ -43,13 +43,13 @@ import java.time.Duration
 private const val DISABLED_ALPHA = 0.5f
 
 /**
- * The record bar of the voice note: the notices of the owner (failed send, microphone off) and the
- * record bar under them. It draws no bar of its own: the screen puts it in the [FixedBottomBar] it
- * shares with the other things fixed at the bottom (the playback notice, the buttons of the task).
- * Only the owner of a task without a note sees it: it is hidden otherwise. The owner holds the
- * round button to record, releases it to stop. Without the microphone permission, and while the
- * recording is sent, the record bar is greyed out. While the recording waits for the owner to send
- * it, the bar shows it as a note that cannot be played yet.
+ * The record bar of the voice note: the notices of the owner (failed send, failed recording,
+ * microphone off) and the record bar under them. It draws no bar of its own: the screen puts it in
+ * the [FixedBottomBar] it shares with the other things fixed at the bottom (the playback notice,
+ * the buttons of the task). Only the owner of a task without a note sees it: it is hidden
+ * otherwise. The owner holds the round button to record, releases it to stop. Without the
+ * microphone permission, and while the recording is sent, the record bar is greyed out. While the
+ * recording waits for the owner to send it, the bar shows it as a note that cannot be played yet.
  */
 @Composable
 fun ColumnScope.VoiceNoteRecordBar(state: VoiceNoteUiState, callbacks: VoiceNoteCallbacks) {
@@ -232,6 +232,12 @@ internal fun VoiceNoteRecordBarSendingPreview() {
 @Composable
 internal fun VoiceNoteRecordBarSendFailedPreview() {
   VoiceNoteBarPreviewScreen(VoiceNoteUiState(canManage = true, sendFailed = true))
+}
+
+@Preview(showBackground = true)
+@Composable
+internal fun VoiceNoteRecordBarRecordingFailedPreview() {
+  VoiceNoteBarPreviewScreen(VoiceNoteUiState(canManage = true, recorder = RecorderState.Failed))
 }
 
 @Preview(showBackground = true)

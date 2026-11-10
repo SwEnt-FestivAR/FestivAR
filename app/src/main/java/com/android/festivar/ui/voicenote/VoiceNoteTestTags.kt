@@ -31,6 +31,8 @@ object VoiceNoteRecordTestTags {
   const val RECORDING_DOT = "voiceNoteRecordingDot"
   const val SEND_ERROR = "voiceNoteSendError"
   const val SEND_RETRY = "voiceNoteSendRetry"
+  const val RECORDING_ERROR = "voiceNoteRecordingError"
+  const val RECORDING_ERROR_DISMISS = "voiceNoteRecordingErrorDismiss"
   const val MIC_DENIED = "voiceNoteMicDenied"
   const val OPEN_SETTINGS = "voiceNoteOpenSettings"
   const val PLAYBACK_ERROR = "voiceNotePlaybackError"
