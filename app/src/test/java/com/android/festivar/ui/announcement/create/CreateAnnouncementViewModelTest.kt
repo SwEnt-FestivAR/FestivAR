@@ -5,6 +5,8 @@ import android.os.Looper
 import androidx.lifecycle.viewModelScope
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
+import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
@@ -43,12 +45,13 @@ class CreateAnnouncementViewModelTest {
   // FAKE: a real repository that keeps the event in memory. The tests read the stored
   // announcements back from it; nothing checks that a configured mock was called.
   private val repo = ScriptedRepository(EventsRepositoryLocal(listOf(event)))
+  private val dataRepository = DataRepositoryLocal(FakeAuthRepository(), eventsRepository = repo)
 
   private fun viewModel(
       userId: () -> String = { "owner-1" },
       clock: Clock = this.clock,
       saveTimeoutMs: Long = 15_000L,
-  ) = CreateAnnouncementViewModel("event-1", userId, repo, clock, saveTimeoutMs)
+  ) = CreateAnnouncementViewModel("event-1", userId, dataRepository, clock, saveTimeoutMs)
 
   private fun stored(): List<Announcement> = runBlocking {
     repo.local.getEvent("event-1").announcements
@@ -534,7 +537,7 @@ class CreateAnnouncementViewModelTest {
   @Test
   fun aBlankEventIdFailsFast() {
     assertThrows(IllegalArgumentException::class.java) {
-      CreateAnnouncementViewModel(" ", { "owner-1" }, repo, clock)
+      CreateAnnouncementViewModel(" ", { "owner-1" }, dataRepository, clock)
     }
   }
 }

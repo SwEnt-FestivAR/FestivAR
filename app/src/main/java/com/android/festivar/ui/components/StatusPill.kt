@@ -31,6 +31,8 @@ enum class PillStyle {
   MUTED,
   /** Amber, e.g. "Taken". */
   AMBER,
+  /** Error red, e.g. "Urgent". */
+  ERROR,
 }
 
 /** Status pill of the design, showing [label] with the given [style]. */
@@ -44,6 +46,7 @@ fun StatusPill(label: String, style: PillStyle, modifier: Modifier = Modifier) {
         PillStyle.INK -> colors.secondaryContainer to colors.onSecondaryContainer
         PillStyle.MUTED -> colors.surfaceContainerHigh to colors.onSurface
         PillStyle.AMBER -> colors.tertiaryContainer to colors.onTertiaryContainer
+        PillStyle.ERROR -> colors.errorContainer to colors.onErrorContainer
       }
   Box(
       contentAlignment = Alignment.Center,
@@ -77,6 +80,7 @@ private fun StatusPillPreview() {
       StatusPill(label = "Ongoing", style = PillStyle.INK)
       StatusPill(label = "Open", style = PillStyle.MUTED)
       StatusPill(label = "Taken", style = PillStyle.AMBER)
+      StatusPill(label = "Urgent", style = PillStyle.ERROR)
     }
   }
 }

@@ -35,4 +35,7 @@
 
     <string name="task_details_load_failed">Unable to load the task.</string>
     <string name="task_details_save_failed">Unable to save the change.</string>
+
+    <string name="mytasks_load_failed">Unable to load your tasks.</string>
+    <string name="mytasks_refresh_failed">Unable to refresh your tasks.</string>
 </resources>
