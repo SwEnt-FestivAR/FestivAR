@@ -1,7 +1,9 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored by Copilot
 package com.android.festivar.ui.profile
 
 import androidx.annotation.StringRes
+import androidx.compose.ui.Modifier.Companion.any
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -14,12 +16,19 @@ import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.unit.dp
+import androidx.credentials.Credential
+import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.GetCredentialResponse
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.android.festivar.R
@@ -29,6 +38,11 @@ import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryLocal
+import com.android.festivar.ui.authentication.login.LoginScreenTestTags
+import com.google.firebase.auth.FirebaseUser
+import io.mockk.coEvery
+import io.mockk.every
+import io.mockk.mockk
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -80,6 +94,9 @@ class ProfileScreenTest {
   /** An [AuthRepository] whose sign out never ends, so the profile stays signing out. */
   private fun neverSigningOut() = FakeAuthRepository(signOutBehavior = { awaitCancellation() })
 
+  private fun anonymousAuthRepository() =
+      FakeAuthRepository(currentUser = mockk<FirebaseUser> { every { isAnonymous } returns true })
+
   /**
    * Shows the profile of [ME] on [usersRepository], and waits until it is loaded unless
    * [waitForLoad] is false. Returns the ViewModel, so the tests can read its state.
@@ -90,6 +107,7 @@ class ProfileScreenTest {
       onBack: () -> Unit = {},
       onSignedOut: () -> Unit = {},
       onSettingsClick: () -> Unit = {},
+      credentialManager: CredentialManager = mockk(relaxed = true),
       waitForLoad: Boolean = true,
   ): ProfileViewModel {
     val viewModel =
@@ -106,6 +124,7 @@ class ProfileScreenTest {
           profileViewModel = viewModel,
           onBack = onBack,
           onSignedOut = onSignedOut,
+          credentialManager = credentialManager,
           onSettingsClick = onSettingsClick,
       )
     }
@@ -208,6 +227,92 @@ class ProfileScreenTest {
     saveButton().assertIsNotEnabled()
   }
 
+  @Test
+  fun upgradeButtonShowsAndDismissesBottomSheet() {
+    setProfile(authRepository = anonymousAuthRepository())
+
+    composeTestRule
+        .onNodeWithTag(ProfileScreenTestTags.UPGRADE_BUTTON)
+        .assertIsDisplayed()
+        .performClick()
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.EMAIL_INPUT).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.PASSWORD_INPUT).assertIsDisplayed()
+
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.UPGRADE_SHEET).performTouchInput {
+      swipeDown()
+    }
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.EMAIL_INPUT).assertDoesNotExist()
+  }
+
+  @Test
+  fun dismissingUpgradeBottomSheetClearsCredentials() {
+    val viewModel = setProfile(authRepository = anonymousAuthRepository())
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.UPGRADE_BUTTON).performClick()
+
+    composeTestRule
+        .onNodeWithTag(LoginScreenTestTags.EMAIL_INPUT)
+        .performTextReplacement("user@example.com")
+    composeTestRule
+        .onNodeWithTag(LoginScreenTestTags.PASSWORD_INPUT)
+        .performTextReplacement("password")
+
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.UPGRADE_SHEET).performTouchInput {
+      swipeDown()
+    }
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.EMAIL_INPUT).assertDoesNotExist()
+    assertEquals("", viewModel.uiState.value.email)
+    assertEquals("", viewModel.uiState.value.password)
+  }
+
+  @Test
+  fun upgradeFormTogglesPasswordVisibilityAndSubmitsCredentials() {
+    val authRepository = anonymousAuthRepository().apply { signUpResult = Result.success(mockk()) }
+    setProfile(authRepository = authRepository)
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.UPGRADE_BUTTON).performClick()
+
+    composeTestRule
+        .onNodeWithTag(LoginScreenTestTags.PASSWORD_INPUT)
+        .performTextReplacement("password")
+    composeTestRule
+        .onNodeWithContentDescription(string(R.string.signup_show_password))
+        .performClick()
+    composeTestRule
+        .onNodeWithContentDescription(string(R.string.signup_hide_password))
+        .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(LoginScreenTestTags.EMAIL_INPUT)
+        .performTextReplacement("user@example.com")
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.LOGIN_BUTTON).performClick()
+    composeTestRule.waitUntil(5_000) { authRepository.signUpCallCount == 1 }
+    assertEquals("user@example.com" to "password", authRepository.lastSignUpCredentials)
+  }
+
+  @Test
+  fun googleUpgradeButtonRequestsCredentialAndUpgradesAccount() {
+    val credentialManager = mockk<CredentialManager>()
+    val credential = mockk<Credential>()
+    val response = mockk<GetCredentialResponse>()
+    coEvery { credentialManager.getCredential(any(), any<GetCredentialRequest>()) } returns response
+    every { response.credential } returns credential
+    var googleUpgradeCalled = false
+    val authRepository =
+        object :
+            FakeAuthRepository(
+                currentUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+            ) {
+          override suspend fun signInWithGoogle(receivedCredential: Credential) =
+              Result.success(mockk<FirebaseUser>()).also { googleUpgradeCalled = true }
+        }
+    setProfile(authRepository = authRepository, credentialManager = credentialManager)
+
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.UPGRADE_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.GOOGLE_BUTTON).performClick()
+
+    composeTestRule.waitUntil(5_000) { googleUpgradeCalled }
+  }
+
   /**
    * Turns red when a field with invalid characters stops showing as an error with its message, or
    * Save stays enabled, or the error stays once the field is fixed.
@@ -299,6 +404,45 @@ class ProfileScreenTest {
     waitForTag(ProfileScreenTestTags.AVATAR)
     composeTestRule.onNodeWithTag(ProfileScreenTestTags.NAME_FIELD).assertTextContains(yasser.name)
     composeTestRule.onNodeWithTag(ProfileScreenTestTags.RETRY_BUTTON).assertDoesNotExist()
+  }
+
+  @Test
+  fun anonymousSignOutShowsConfirmationBeforeSigningOut() {
+    var signedOut = false
+    setProfile(authRepository = anonymousAuthRepository(), onSignedOut = { signedOut = true })
+
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.SIGN_OUT_BUTTON).performClick()
+
+    composeTestRule.onNodeWithText(string(R.string.login_warning)).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(string(R.string.profile_anon_sign_out_warning))
+        .assertIsDisplayed()
+    assertFalse(signedOut)
+  }
+
+  @Test
+  fun cancellingAnonymousSignOutClosesConfirmationWithoutSigningOut() {
+    var signedOut = false
+    setProfile(authRepository = anonymousAuthRepository(), onSignedOut = { signedOut = true })
+
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.SIGN_OUT_BUTTON).performClick()
+    composeTestRule.onNodeWithText(string(R.string.action_cancel)).performClick()
+
+    composeTestRule.onNodeWithText(string(R.string.login_warning)).assertDoesNotExist()
+    assertFalse(signedOut)
+  }
+
+  @Test
+  fun confirmingAnonymousSignOutSignsOut() {
+    var signedOut = false
+    val viewModel =
+        setProfile(authRepository = anonymousAuthRepository(), onSignedOut = { signedOut = true })
+
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.SIGN_OUT_BUTTON).performClick()
+    composeTestRule.onNodeWithText(string(R.string.action_continue_anyway)).performClick()
+
+    composeTestRule.waitUntil(5_000) { signedOut }
+    assertTrue(viewModel.uiState.value.signedOut)
   }
 
   /** Turns red when Sign out stops reaching the auth repository or stops calling onSignedOut. */

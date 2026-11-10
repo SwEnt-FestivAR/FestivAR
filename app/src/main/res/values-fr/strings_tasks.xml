@@ -40,5 +40,8 @@
     <string name="task_details_load_failed">Échec du chargement de la tâche</string>
     <string name="task_details_save_failed">Échec de la sauvegarde</string>
 
+    <string name="mytasks_load_failed">Impossible de charger vos tâches.</string>
+    <string name="mytasks_refresh_failed">Impossible d’actualiser vos tâches.</string>
+
 
 </resources>
