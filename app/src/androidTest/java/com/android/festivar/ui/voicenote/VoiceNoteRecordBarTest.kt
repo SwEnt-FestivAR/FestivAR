@@ -101,7 +101,7 @@ class VoiceNoteRecordBarTest {
   fun barIsHiddenWhenANoteExists() {
     show(VoiceNoteUiState(note = note, canManage = true))
     tag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).assertDoesNotExist()
-    tag(VoiceNoteRecordTestTags.RECORDING_BAR).assertDoesNotExist()
+    tag(VoiceNoteRecordTestTags.RECORD_BAR).assertDoesNotExist()
   }
 
   /** Breaks if a volunteer can see the record bar. */
@@ -117,7 +117,7 @@ class VoiceNoteRecordBarTest {
     show(VoiceNoteUiState(canManage = true))
     composeTestRule.onNodeWithText(text(R.string.voice_note_hold_to_record)).assertIsDisplayed()
     tag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).assertIsDisplayed()
-    tag(VoiceNoteRecordTestTags.RECORDING_BAR).assertIsDisplayed()
+    tag(VoiceNoteRecordTestTags.RECORD_BAR).assertIsDisplayed()
   }
 
   /** Breaks if the idle bar shows the red recording dot. */
@@ -139,7 +139,7 @@ class VoiceNoteRecordBarTest {
     composeTestRule.onNodeWithText(text(R.string.voice_note_recording, "0:03")).assertIsDisplayed()
     tag(VoiceNoteRecordTestTags.RECORDING_DOT).assertIsDisplayed()
     composeTestRule.onNodeWithText(text(R.string.voice_note_hold_to_record)).assertDoesNotExist()
-    tag(VoiceNoteRecordTestTags.RECORDING_BAR).assertIsDisplayed()
+    tag(VoiceNoteRecordTestTags.RECORD_BAR).assertIsDisplayed()
   }
 
   /** Breaks if releasing the button does not call the release callback. */
@@ -280,15 +280,6 @@ class VoiceNoteRecordBarTest {
     tag(VoiceNoteRecordTestTags.PLAYBACK_ERROR).assertDoesNotExist()
   }
 
-  /** Breaks if a notice is drawn over or under the record bar instead of above it. */
-  @Test
-  fun noticesAreAboveTheRecordBar() {
-    show(VoiceNoteUiState(canManage = true, sendFailed = true))
-    val noticeBottom = tag(VoiceNoteRecordTestTags.SEND_ERROR).getUnclippedBoundsInRoot().bottom
-    val barTop = tag(VoiceNoteRecordTestTags.RECORDING_BAR).getUnclippedBoundsInRoot().top
-    assertTrue("the notice must end above the record bar", noticeBottom <= barTop)
-  }
-
   /**
    * Breaks if one of the two notices hides the other, or if they are not stacked as in the design:
    * the failed send, then the microphone, then the bar.
@@ -303,7 +294,7 @@ class VoiceNoteRecordBarTest {
 
     val sendBottom = tag(VoiceNoteRecordTestTags.SEND_ERROR).getUnclippedBoundsInRoot().bottom
     val micBounds = tag(VoiceNoteRecordTestTags.MIC_DENIED).getUnclippedBoundsInRoot()
-    val barTop = tag(VoiceNoteRecordTestTags.RECORDING_BAR).getUnclippedBoundsInRoot().top
+    val barTop = tag(VoiceNoteRecordTestTags.RECORD_BAR).getUnclippedBoundsInRoot().top
     assertTrue("the send notice must end above the microphone notice", sendBottom <= micBounds.top)
     assertTrue("the microphone notice must end above the record bar", micBounds.bottom <= barTop)
   }

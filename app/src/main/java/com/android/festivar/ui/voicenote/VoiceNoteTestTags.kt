@@ -18,10 +18,11 @@ object VoiceNoteTestTags {
 
 /**
  * Test tags of the record bar and of the notices above it, named after the tags of the "Voice
- * notes" frames in Figma.
+ * notes" frames in Figma. [RECORD_BAR] is the one exception (RECORDING_BAR in Figma): the bar is
+ * there while idle too, not only while recording.
  */
 object VoiceNoteRecordTestTags {
-  const val RECORDING_BAR = "voiceNoteRecordingBar"
+  const val RECORD_BAR = "voiceNoteRecordBar"
   const val VOICE_NOTE_RECORD = "voiceNoteRecord"
   const val RECORDING_DOT = "voiceNoteRecordingDot"
   const val SEND_ERROR = "voiceNoteSendError"

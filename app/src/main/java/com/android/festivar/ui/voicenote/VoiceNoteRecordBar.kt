@@ -70,7 +70,7 @@ private fun RecordPill(state: VoiceNoteUiState, callbacks: VoiceNoteCallbacks) {
           .alpha(if (state.recordEnabled) 1f else DISABLED_ALPHA)
           // The tag is before the padding so that the node is the whole 56dp bar of the design
           // (a 48dp button with 4dp above and below), not only its content.
-          .testTag(VoiceNoteRecordTestTags.RECORDING_BAR)
+          .testTag(VoiceNoteRecordTestTags.RECORD_BAR)
           .background(colors.surfaceContainerLowest, shape)
           .border(1.dp, colors.outline, shape)
           .padding(start = 16.dp, top = 4.dp, end = 8.dp, bottom = 4.dp),
