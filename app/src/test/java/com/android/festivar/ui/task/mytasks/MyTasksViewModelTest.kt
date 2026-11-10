@@ -144,10 +144,29 @@ class MyTasksViewModelTest {
     assertEquals(LocalTime.of(10, 30), powerRow.startTime)
     assertEquals(30, powerRow.minutesUntilStart)
     assertNull(rows.getValue("amps").minutesUntilStart)
-    assertNull(rows.getValue("bar").minutesUntilStart)
+    assertNull(rows.getValue("tables").minutesUntilStart)
     assertNull(rows.getValue("tents").minutesUntilStart)
     assertNull(rows.getValue("litter").eventTitle)
     assertNull(rows.getValue("litter").startTime)
+  }
+
+  /**
+   * Turns red when the hour stops including its last minute: power, at 10:30, counts down from
+   * 09:30 and not from 09:29.
+   */
+  @Test
+  fun theCountdownStartsExactlyOneHourBefore() {
+    fun powerCountdownAt(hour: Int, minute: Int) =
+        myTasks(viewerClock = Clock.fixed(at(hour, minute).toInstant(), ZONE))
+            .uiState
+            .value
+            .sections
+            .flatMap { it.rows }
+            .single { it.task.taskId == "power" }
+            .minutesUntilStart
+
+    assertEquals(60, powerCountdownAt(9, 30))
+    assertNull(powerCountdownAt(9, 29))
   }
 
   /** Turns red when a task is grouped or shown in the zone it was saved in, not the viewer's. */
