@@ -107,6 +107,32 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
     updateAnnouncements(eventId) { it.withEditedAnnouncement(announcement) }
   }
 
+  override suspend fun setAnnouncementPinned(
+      eventId: String,
+      announcementId: String,
+      pinned: Boolean,
+  ): Announcement {
+    val document = eventCollection.document(eventId)
+    return db.runTransaction { transaction ->
+          val snapshot = transaction.get(document)
+          if (!snapshot.exists()) {
+            throw NoSuchElementException("Event '$eventId' does not exist.")
+          }
+          val announcements = readAnnouncements(snapshot)
+          val current =
+              announcements.firstOrNull { it.announcementId == announcementId }
+                  ?: throw IllegalArgumentException("This announcement is not in the event.")
+          val updated = current.copy(pinned = pinned)
+          transaction.update(
+              document,
+              ANNOUNCEMENTS_FIELD,
+              announcements.withEditedAnnouncement(updated).map { it.toMap() },
+          )
+          updated
+        }
+        .await()
+  }
+
   override suspend fun deleteAnnouncement(eventId: String, announcementId: String) {
     updateAnnouncements(eventId) { it.withoutAnnouncement(announcementId) }
   }

@@ -115,11 +115,11 @@ class AnnouncementDetailsViewModel(
       if (it.canTogglePin) it.copy(isUpdating = true, errorMsg = null) else it
     }
     val announcement = before.announcement?.takeIf { before.canTogglePin } ?: return
-    val updated = announcement.togglePin()
+    val pinned = !announcement.pinned
 
     viewModelScope.launch {
       try {
-        eventsRepository.editAnnouncement(eventId, updated)
+        val updated = eventsRepository.setAnnouncementPinned(eventId, announcementId, pinned)
         _uiState.update { it.copy(announcement = updated, isUpdating = false) }
       } catch (e: CancellationException) {
         _uiState.update { it.copy(isUpdating = false) }

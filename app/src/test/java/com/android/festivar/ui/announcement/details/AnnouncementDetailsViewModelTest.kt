@@ -127,6 +127,19 @@ class AnnouncementDetailsViewModelTest {
   }
 
   @Test
+  fun togglePinPreservesConcurrentAnnouncementEdits() {
+    val vm = viewModel().also { it.load() }
+    val concurrentEdit = announcement.copy(title = "Updated elsewhere", content = "New details")
+    events.beforeEdit = { localEvents.editAnnouncement("event-1", concurrentEdit) }
+
+    vm.togglePin()
+
+    val stored = runBlocking { localEvents.getEvent("event-1").announcements.single() }
+    assertEquals(concurrentEdit.copy(pinned = true), stored)
+    assertEquals(stored, vm.uiState.value.announcement)
+  }
+
+  @Test
   fun failedPinUpdateKeepsTheAnnouncementAndShowsError() {
     events.editFailure = IOException("offline")
     val vm = viewModel().also { it.load() }
@@ -162,11 +175,15 @@ class AnnouncementDetailsViewModelTest {
       return local.getEvent(eventId)
     }
 
-    override suspend fun editAnnouncement(eventId: String, announcement: Announcement) {
+    override suspend fun setAnnouncementPinned(
+        eventId: String,
+        announcementId: String,
+        pinned: Boolean,
+    ): Announcement {
       editCalls++
       beforeEdit()
       editFailure?.let { throw it }
-      local.editAnnouncement(eventId, announcement)
+      return local.setAnnouncementPinned(eventId, announcementId, pinned)
     }
   }
 }
