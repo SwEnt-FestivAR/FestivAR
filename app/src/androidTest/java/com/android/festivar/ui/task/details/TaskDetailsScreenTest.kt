@@ -132,6 +132,20 @@ class TaskDetailsScreenTest {
     assertEquals(listOf(sami.uid), saved.assignees.map { it.uid })
   }
 
+  // Breaks if confirming does not reach the ViewModel, so the stored task keeps its assignee.
+  @Test
+  fun confirmingGiveBackThroughTheViewModelFreesTheStoredTask() {
+    showScreen()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.TAKE_BUTTON).performClick()
+    composeTestRule.waitUntil(5_000) { exists(TaskDetailsScreenTestTags.GIVE_BACK_BUTTON) }
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.GIVE_BACK_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.GIVE_BACK_CONFIRM_BUTTON).performClick()
+    composeTestRule.waitUntil(5_000) { exists(TaskDetailsScreenTestTags.TAKE_BUTTON) }
+    assertBadge("Open")
+    val saved = runBlocking { repository.getTask(task.taskId) }
+    assertEquals(emptyList<String>(), saved.assignees.map { it.uid })
+  }
+
   @Test
   fun backIsForwarded() {
     var backs = 0
