@@ -1,0 +1,15 @@
+<!-- Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com> -->
+<resources>
+    <string name="announcement_details_load_failed">Unable to load the announcement.</string>
+    <string name="announcement_details_save_failed">Unable to update the announcement.</string>
+    <string name="announcement_details_back">Back</string>
+    <string name="announcement_details_posted_at">%1$s, %2$s</string>
+    <string name="announcement_details_until">Until %1$s, %2$s</string>
+    <string name="announcement_details_posted_by">Posted by %1$s</string>
+    <string name="announcement_details_description">Description</string>
+    <string name="announcement_details_links">Links</string>
+    <string name="announcement_details_open_link">Open link</string>
+    <string name="announcement_details_pin_to_top">Pin to top</string>
+    <string name="announcement_details_unpin_from_top">Unpin from top</string>
+    <string name="announcement_details_retry">Retry</string>
+</resources>
