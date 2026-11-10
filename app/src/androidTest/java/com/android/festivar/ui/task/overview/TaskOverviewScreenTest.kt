@@ -13,6 +13,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
@@ -68,7 +70,12 @@ class TaskOverviewScreenTest {
       onOpenTask: (String) -> Unit = {},
       onAddTask: () -> Unit = {},
   ) {
-    val viewModel = TaskOverviewViewModel(EVENT, ME, counting)
+    val viewModel =
+        TaskOverviewViewModel(
+            EVENT,
+            ME,
+            DataRepositoryLocal(authRepository = FakeAuthRepository(), tasksRepository = counting),
+        )
     composeTestRule.setContent {
       TaskOverviewScreen(
           viewModel,

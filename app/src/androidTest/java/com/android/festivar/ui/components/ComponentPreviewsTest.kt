@@ -97,6 +97,25 @@ class ComponentPreviewsTest {
     composeTestRule.onNodeWithText(string(R.string.action_retry)).assertIsDisplayed()
   }
 
+  // The refreshable list preview renders without crashing and shows its items under an error.
+  @Test
+  fun refreshableStateListPreview_showsTheItemsAndTheError() {
+    composeTestRule.setContent { RefreshableStateListPreview() }
+
+    composeTestRule.onNodeWithText("First item").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Failed to load: no connection").assertIsDisplayed()
+    composeTestRule.onNodeWithText(string(R.string.action_retry)).assertIsDisplayed()
+  }
+
+  // The empty state preview renders without crashing and shows its title and its action.
+  @Test
+  fun emptyStatePreview_showsTheTitleAndTheAction() {
+    composeTestRule.setContent { EmptyStatePreview() }
+
+    composeTestRule.onNodeWithText("No events yet").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Create").assertIsDisplayed()
+  }
+
   // The texts come from the shared strings file, so changing the wording there changes the test
   // too.
   private fun string(id: Int): String =
