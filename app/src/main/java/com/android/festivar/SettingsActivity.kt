@@ -2,7 +2,7 @@ package com.android.festivar
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
-import com.android.festivar.ui.settings.MySettingsFragment
+import com.android.festivar.ui.settings.SettingsFragment
 
 class MySettingsActivity : AppCompatActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -12,7 +12,7 @@ class MySettingsActivity : AppCompatActivity() {
 
     supportFragmentManager
         .beginTransaction()
-        .replace(R.id.settings_container, MySettingsFragment())
+        .replace(R.id.settings_container, SettingsFragment())
         .commit()
   }
 
