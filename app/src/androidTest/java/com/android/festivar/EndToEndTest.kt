@@ -159,8 +159,8 @@ class EndToEndTest {
 
   /**
    * Walks the M2 path as a new member: sign up, join the seeded event, open its task board and
-   * check the bottom bar (Events nested under the tasks disc), add a task and open it, take it and see
-   * the "On this task" section, visit My tasks, come back, give the task back after keeping it
+   * check the bottom bar (Events nested under the tasks disc), add a task and open it, take it and
+   * see the "On this task" section, visit My tasks, come back, give the task back after keeping it
    * once, and sign out through the Profile tab. It proves the bar follows the member through the
    * board and the task, that taking and giving back are stored, and that the confirmation can be
    * declined. It turns red if a tag disappears, the bar highlights a tab inside the board, the
