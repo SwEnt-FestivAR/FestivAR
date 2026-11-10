@@ -1,6 +1,7 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.voicenote
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,8 +37,8 @@ import java.time.ZonedDateTime
 
 /**
  * The voice note section of a task, for the owner and for the volunteers: the label, then the note
- * or the empty state, and the dialog to confirm the deletion of the note. It shows nothing to a
- * volunteer when the task has no note.
+ * or the empty state, and the dialogs to confirm the deletion of the note and the sending of a
+ * recording. It shows nothing to a volunteer when the task has no note.
  *
  * It only draws the note and the empty state. The record bar and the notices about the recording or
  * the playback (errors, missing microphone permission) are other composables, so they are not shown
@@ -67,18 +68,73 @@ fun VoiceNoteSection(
     }
   }
   if (state.showDeleteDialog) {
-    FestivarConfirmDialog(
-        title = stringResource(R.string.voice_note_delete_title),
-        message = stringResource(R.string.voice_note_delete_body),
-        confirmText = stringResource(R.string.voice_note_delete_confirm),
-        dismissText = stringResource(R.string.voice_note_keep),
-        onConfirm = callbacks.onConfirmDelete,
-        onDismiss = callbacks.onDismissDelete,
-        modifier = Modifier.testTag(VoiceNoteTestTags.CONFIRM_DELETE),
-        confirmModifier = Modifier.testTag(VoiceNoteTestTags.CONFIRM_DELETE_BUTTON),
-        dismissModifier = Modifier.testTag(VoiceNoteTestTags.KEEP_BUTTON),
-    )
+    VoiceNoteConfirmDialog(DeleteDialog, callbacks.onConfirmDelete, callbacks.onDismissDelete)
   }
+  if (state.showSendDialog) {
+    VoiceNoteConfirmDialog(SendDialog, callbacks.onConfirmSend, callbacks.onCancelSend)
+  }
+}
+
+/**
+ * What tells one confirmation dialog of the section from the other: its texts, its test tags and
+ * whether confirming is destructive (the confirm button is then drawn in the error color).
+ */
+private class ConfirmDialogSpec(
+    @param:StringRes val title: Int,
+    @param:StringRes val body: Int,
+    @param:StringRes val confirm: Int,
+    @param:StringRes val dismiss: Int,
+    val dialogTag: String,
+    val confirmTag: String,
+    val dismissTag: String,
+    val destructive: Boolean,
+)
+
+/** The dialog that asks to confirm the deletion of the note. */
+private val DeleteDialog =
+    ConfirmDialogSpec(
+        title = R.string.voice_note_delete_title,
+        body = R.string.voice_note_delete_body,
+        confirm = R.string.voice_note_delete_confirm,
+        dismiss = R.string.voice_note_keep,
+        dialogTag = VoiceNoteTestTags.CONFIRM_DELETE,
+        confirmTag = VoiceNoteTestTags.CONFIRM_DELETE_BUTTON,
+        dismissTag = VoiceNoteTestTags.KEEP_BUTTON,
+        destructive = true,
+    )
+
+/** The dialog that asks to send or cancel the recording. */
+private val SendDialog =
+    ConfirmDialogSpec(
+        title = R.string.voice_note_send_title,
+        body = R.string.voice_note_send_body,
+        confirm = R.string.voice_note_send_confirm,
+        dismiss = R.string.action_cancel,
+        dialogTag = VoiceNoteTestTags.CONFIRM_SEND,
+        confirmTag = VoiceNoteTestTags.CONFIRM_SEND_BUTTON,
+        dismissTag = VoiceNoteTestTags.CANCEL_SEND_BUTTON,
+        destructive = false,
+    )
+
+/** The shared confirmation dialog, filled with the texts and the tags of [spec]. */
+@Composable
+private fun VoiceNoteConfirmDialog(
+    spec: ConfirmDialogSpec,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+  FestivarConfirmDialog(
+      title = stringResource(spec.title),
+      message = stringResource(spec.body),
+      confirmText = stringResource(spec.confirm),
+      dismissText = stringResource(spec.dismiss),
+      onConfirm = onConfirm,
+      onDismiss = onDismiss,
+      modifier = Modifier.testTag(spec.dialogTag),
+      confirmModifier = Modifier.testTag(spec.confirmTag),
+      dismissModifier = Modifier.testTag(spec.dismissTag),
+      destructive = spec.destructive,
+  )
 }
 
 /**
@@ -205,6 +261,14 @@ internal fun VoiceNoteEmptyPreview() {
 internal fun VoiceNoteDeleteConfirmPreview() {
   VoiceNotePreviewScreen(
       VoiceNoteUiState(note = previewNote, canManage = true, showDeleteConfirm = true)
+  )
+}
+
+@Preview(showBackground = true)
+@Composable
+internal fun VoiceNoteSendConfirmPreview() {
+  VoiceNotePreviewScreen(
+      VoiceNoteUiState(canManage = true, pending = PendingRecording.Waiting(Duration.ofSeconds(7)))
   )
 }
 

@@ -14,6 +14,9 @@ object VoiceNoteTestTags {
   const val CONFIRM_DELETE = "voiceNoteConfirmDelete"
   const val KEEP_BUTTON = "voiceNoteKeep"
   const val CONFIRM_DELETE_BUTTON = "voiceNoteConfirmDeleteButton"
+  const val CONFIRM_SEND = "voiceNoteConfirmSend"
+  const val CANCEL_SEND_BUTTON = "voiceNoteCancelSendButton"
+  const val CONFIRM_SEND_BUTTON = "voiceNoteConfirmSendButton"
 }
 
 /**
