@@ -1,13 +1,11 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.voicenote
 
-import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -35,13 +33,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
-import com.android.festivar.model.audio.PlayerState
 import com.android.festivar.model.audio.RecorderState
 import com.android.festivar.ui.components.FixedBottomBar
-import com.android.festivar.ui.components.FixedBottomBarHorizontalPadding
-import com.android.festivar.ui.components.InfoNote
-import com.android.festivar.ui.components.InfoNoteButton
-import com.android.festivar.ui.components.NoticeSnackbar
 import com.android.festivar.ui.theme.AppTheme
 import java.time.Duration
 
@@ -65,83 +58,6 @@ fun VoiceNoteRecordBar(
     VoiceNoteOwnerNotices(state, callbacks)
     RecordPill(state, callbacks)
   }
-}
-
-/**
- * The notices above the record bar: the failed send (with a Retry), and the information that the
- * microphone is off (with a button to the settings).
- */
-@Composable
-private fun VoiceNoteOwnerNotices(state: VoiceNoteUiState, callbacks: VoiceNoteCallbacks) {
-  if (state.sendFailed) {
-    ErrorNotice(
-        message = R.string.voice_note_send_failed,
-        onRetry = callbacks.onRetry,
-        tag = VoiceNoteRecordTestTags.SEND_ERROR,
-        actionTag = VoiceNoteRecordTestTags.SEND_RETRY,
-    )
-  }
-  if (state.micDenied) {
-    InfoNote(
-        message = stringResource(R.string.voice_note_mic_denied),
-        modifier = Modifier.testTag(VoiceNoteRecordTestTags.MIC_DENIED),
-        action = {
-          InfoNoteButton(
-              stringResource(R.string.action_open_settings),
-              onClick = callbacks.onOpenSettings,
-              modifier = Modifier.testTag(VoiceNoteRecordTestTags.OPEN_SETTINGS),
-          )
-        },
-    )
-  }
-}
-
-/**
- * An error of the voice note, shown with the shared snackbar and a Retry. The [modifier] is applied
- * before the tag, so the tagged node is the snackbar alone, without the space around it.
- */
-@Composable
-private fun ErrorNotice(
-    @StringRes message: Int,
-    onRetry: () -> Unit,
-    tag: String,
-    actionTag: String,
-    modifier: Modifier = Modifier,
-) {
-  NoticeSnackbar(
-      message = stringResource(message),
-      actionLabel = stringResource(R.string.action_retry),
-      onAction = onRetry,
-      modifier = modifier.testTag(tag),
-      actionModifier = Modifier.testTag(actionTag),
-  )
-}
-
-/**
- * The notice of a failed playback. It is not part of the record bar: a note exists, so the bar is
- * hidden, and everybody can listen, so everybody must see it. The design ("notice (fixed)") puts it
- * just above the buttons of the task.
- */
-@Composable
-fun VoiceNotePlaybackNotice(
-    state: VoiceNoteUiState,
-    callbacks: VoiceNoteCallbacks,
-    modifier: Modifier = Modifier,
-) {
-  if (!state.playbackFailed) return
-  ErrorNotice(
-      message = R.string.voice_note_playback_failed,
-      onRetry = callbacks.onRetry,
-      tag = VoiceNoteRecordTestTags.PLAYBACK_ERROR,
-      actionTag = VoiceNoteRecordTestTags.PLAYBACK_RETRY,
-      modifier =
-          modifier.padding(
-              start = FixedBottomBarHorizontalPadding,
-              top = 8.dp,
-              end = FixedBottomBarHorizontalPadding,
-              bottom = 4.dp,
-          ),
-  )
 }
 
 /**
@@ -244,12 +160,7 @@ private fun RecordButton(enabled: Boolean, callbacks: VoiceNoteCallbacks) {
 /** The bar with its notices fixed at the bottom of the screen, as on the screen. */
 @Composable
 private fun VoiceNoteBarPreviewScreen(state: VoiceNoteUiState) {
-  AppTheme {
-    Column {
-      VoiceNotePlaybackNotice(state, previewCallbacks)
-      VoiceNoteRecordBar(state, previewCallbacks)
-    }
-  }
+  AppTheme { VoiceNoteRecordBar(state, previewCallbacks) }
 }
 
 @Preview(showBackground = true)
@@ -276,12 +187,4 @@ internal fun VoiceNoteRecordBarSendFailedPreview() {
 @Composable
 internal fun VoiceNoteRecordBarMicDeniedPreview() {
   VoiceNoteBarPreviewScreen(VoiceNoteUiState(canManage = true, micDenied = true))
-}
-
-@Preview(showBackground = true)
-@Composable
-internal fun VoiceNotePlaybackFailedPreview() {
-  VoiceNoteBarPreviewScreen(
-      VoiceNoteUiState(note = previewNote, player = PlayerState.Failed(previewNote.audioUrl))
-  )
 }
