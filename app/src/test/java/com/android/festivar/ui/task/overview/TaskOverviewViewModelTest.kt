@@ -5,10 +5,13 @@ package com.android.festivar.ui.task.overview
 
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.datarepository.DataRepositoryLocal
+import com.android.festivar.model.event.Event
+import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.user.User
+import com.android.festivar.model.user.UsersRepositoryLocal
 import io.mockk.mockk
 import java.time.Clock
 import java.time.Duration
@@ -124,12 +127,36 @@ class TaskOverviewViewModelTest {
   private fun overview(userId: String = me.uid, repo: TasksRepository = repository) =
       TaskOverviewViewModel(EVENT, userId, dataOf(repo), clock).also { it.refresh() }
 
-  /**
-   * The app's data with [tasks] as its tasks repository; the overview only reads tasks, so the
-   * other repositories are the local defaults and the auth is never called.
-   */
-  private fun dataOf(tasks: TasksRepository) =
-      DataRepositoryLocal(authRepository = mockk<AuthRepository>(), tasksRepository = tasks)
+  /** Gives the app's local repositories a consistent task, event and user fixture. */
+  private fun dataOf(tasks: TasksRepository): DataRepositoryLocal {
+    val eventTasks = listOf(power, tables, bar, bunting, sound, gate, litter)
+    val owner =
+        User(
+            uid = "owner-1",
+            joinedEvents = listOf(EVENT),
+            tasksAssigned = eventTasks.map { it.taskId },
+        )
+    val signedInUser = me.copy(joinedEvents = listOf(EVENT), tasksAssigned = listOf(power.taskId))
+    val otherUser = ana.copy(joinedEvents = listOf(EVENT), tasksAssigned = listOf(sound.taskId))
+    return DataRepositoryLocal(
+        authRepository = mockk<AuthRepository>(),
+        tasksRepository = tasks,
+        eventsRepository =
+            EventsRepositoryLocal(
+                listOf(
+                    Event(
+                        eventId = EVENT,
+                        title = "Festival",
+                        members = listOf(owner, signedInUser, otherUser),
+                        startDate = at(0, 0),
+                        endDate = at(23, 59),
+                        tasks = eventTasks,
+                    )
+                )
+            ),
+        usersRepository = UsersRepositoryLocal(listOf(owner, signedInUser, otherUser)),
+    )
+  }
 
   /** The ids of every visible row, in section then row order. */
   private fun TaskOverviewUiState.visibleIds() = sections.flatMap { section ->
@@ -641,7 +668,8 @@ class TaskOverviewViewModelTest {
   /** Turns red when a successful delete leaves the task in its rows or chip counts. */
   @Test
   fun deletingATaskRemovesItAndUpdatesCounts() {
-    val viewModel = overview()
+    val data = dataOf(repository)
+    val viewModel = TaskOverviewViewModel(EVENT, me.uid, data, clock).also { it.refresh() }
     viewModel.selectFilter(OverviewFilter.ALL)
 
     viewModel.deleteTask("power")
@@ -649,7 +677,12 @@ class TaskOverviewViewModelTest {
     assertFalse("power" in viewModel.uiState.value.visibleIds())
     assertEquals(6, viewModel.uiState.value.counts[OverviewFilter.ALL])
     assertEquals(4, viewModel.uiState.value.counts[OverviewFilter.OPEN])
-    assertFalse(runBlocking { repository.getAllTasks(EVENT).any { it.taskId == "power" } })
+    runBlocking {
+      assertFalse(repository.getAllTasks(EVENT).any { it.taskId == "power" })
+      assertFalse(data.eventsRepository.getEvent(EVENT).tasks.any { it.taskId == "power" })
+      assertFalse(data.usersRepository.getUser("owner-1").tasksAssigned.contains("power"))
+      assertFalse(data.usersRepository.getUser(me.uid).tasksAssigned.contains("power"))
+    }
   }
 
   /** Turns red when a failed delete hides the task or fails to expose its error. */

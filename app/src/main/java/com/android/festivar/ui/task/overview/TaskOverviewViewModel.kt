@@ -173,7 +173,7 @@ class TaskOverviewViewModel(
     if (!deletingTaskIds.add(taskId)) return
     viewModelScope.launch {
       try {
-        repository.deleteTask(taskId)
+        dataRepository.deleteTask(taskId)
         tasks = tasks.filterNot { it.taskId == taskId }
         _uiState.update { derive(it.copy(errorMsg = null)) }
         tasksChanged.trySend(Unit)
