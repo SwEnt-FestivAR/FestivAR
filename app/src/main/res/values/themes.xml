@@ -1,3 +1,4 @@
+<!-- Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com> -->
 <resources>
     <!-- Window, status bar and navigation bar before and around Compose. Screens are styled by AppTheme. -->
     <style name="Theme.AppTheme" parent="android:Theme.Material.Light.NoActionBar">
@@ -6,6 +7,19 @@
         <item name="android:navigationBarColor">@color/background_light</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowLightNavigationBar">true</item>
+    </style>
+
+    <style name="Theme.App.Settings" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowBackground">@color/background_light</item>
+        <item name="android:statusBarColor">@color/background_light</item>
+        <item name="android:navigationBarColor">@color/background_light</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="colorPrimary">@color/settings_primary_light</item>
+        <item name="colorAccent">@color/settings_primary_light</item>
+        <item name="android:colorAccent">@color/settings_primary_light</item>
+        <item name="android:textColorPrimary">@color/settings_on_background_light</item>
+        <item name="android:textColorSecondary">@color/settings_on_surface_light</item>
     </style>
 
     <!-- System start screen, the app's only splash: the burst and the wordmark on the background,

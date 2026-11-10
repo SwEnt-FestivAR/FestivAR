@@ -1,9 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com> -->
+<!-- Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com> -->
 <resources>
     <!-- Copies of backgroundLight and backgroundDark in ui/theme/Color.kt -->
     <color name="background_light">#FFFBFBF7</color>
     <color name="background_dark">#FF121410</color>
+    <color name="settings_primary_light">#FFD9FF3D</color>
+    <color name="settings_on_background_light">#FF17180F</color>
+    <color name="settings_on_surface_light">#FF17180F</color>
 
     <!-- Splash icon colours, overridden in values-night. Copies of onBackgroundLight and
          onPrimaryContainerLight in ui/theme/Color.kt, since the system draws the splash before

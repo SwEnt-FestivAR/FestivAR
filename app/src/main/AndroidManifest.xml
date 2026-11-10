@@ -25,6 +25,7 @@
             android:label="@string/title_activity_second" />
         <activity android:name=".MySettingsActivity"
             android:exported="true"
+            android:theme="@style/Theme.App.Settings"
             android:label="@string/title_activity_settings" />
         <activity
             android:name=".MainActivity"
