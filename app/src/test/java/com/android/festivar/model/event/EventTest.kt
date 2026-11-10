@@ -158,6 +158,13 @@ class EventTest {
     assertInvalid(titleMessage) { event(title = " \t\n") }
   }
 
+  /** Red if the ownerId is blank. */
+  @Test
+  fun init_fails_whenOwnerIdIsBlank() {
+    assertInvalid(eventIdMessage) { event(ownerId = "") }
+    assertInvalid(eventIdMessage) { event(ownerId = " \t\n") }
+  }
+
   /** Two tasks with the same taskId are refused, even if their other fields are different. */
   @Test
   fun init_fails_whenATaskIdIsDuplicated() {
