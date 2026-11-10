@@ -9,6 +9,7 @@ import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -75,6 +76,35 @@ class VoiceNoteUiStateTest {
     val state = VoiceNoteUiState(recorder = RecorderState.Recording(Duration.ofSeconds(3)))
     assertTrue(state.isRecording)
     assertEquals(Duration.ofSeconds(3), state.elapsed)
+  }
+
+  private val waiting = PendingRecording.Waiting(Duration.ofSeconds(7))
+  private val uploading = PendingRecording.Sending(Duration.ofSeconds(7))
+
+  /** Breaks if the owner can record while the recording is sent, or loses the button before. */
+  @Test
+  fun recordingIsDisabledWhileSending() {
+    assertTrue(VoiceNoteUiState(canManage = true, pending = waiting).recordEnabled)
+    assertFalse(VoiceNoteUiState(canManage = true, pending = uploading).recordEnabled)
+    assertEquals(uploading, VoiceNoteUiState(pending = uploading).sending)
+    assertNull(VoiceNoteUiState(pending = waiting).sending)
+    assertNull(VoiceNoteUiState(canManage = true).sending)
+  }
+
+  /** Breaks if the send dialog shows to somebody else than the owner, or at the wrong moment. */
+  @Test
+  fun sendDialogShowsWhileTheRecordingWaitsForTheOwner() {
+    assertTrue(VoiceNoteUiState(canManage = true, pending = waiting).showSendDialog)
+    assertFalse(VoiceNoteUiState(canManage = true, pending = uploading).showSendDialog)
+    assertFalse(VoiceNoteUiState(canManage = true).showSendDialog)
+    assertFalse(VoiceNoteUiState(canManage = false, pending = waiting).showSendDialog)
+  }
+
+  /** Breaks if a recorder that failed by itself is not reported as a failed recording. */
+  @Test
+  fun recordingFailedOnlyForAFailedRecorder() {
+    assertTrue(VoiceNoteUiState(recorder = RecorderState.Failed).recordingFailed)
+    assertFalse(VoiceNoteUiState(recorder = RecorderState.Idle).recordingFailed)
   }
 
   @Test
