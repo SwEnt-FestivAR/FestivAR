@@ -101,7 +101,7 @@ fun ProfileScreen(
   val context = LocalContext.current
   val snackbarHostState = remember { SnackbarHostState() }
   // SheetState is Compose UI state, so it stays local; visibility belongs in ProfileUIState.
-  val sheetState = rememberModalBottomSheetState()
+  val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
   // Shows each error once in the snackbar, then clears it so it does not come back.
   val errorMsg = profileUIState.errorMsg?.let { stringResource(it) }
