@@ -163,13 +163,7 @@ data class Event(
    *   [MAX_ANNOUNCEMENTS_PER_EVENT] announcements.
    */
   fun addAnnouncement(announcement: Announcement): Event {
-    require(announcements.none { it.announcementId == announcement.announcementId }) {
-      "This announcement is already in the event."
-    }
-    require(announcements.size < MAX_ANNOUNCEMENTS_PER_EVENT) {
-      "An event cannot have more than $MAX_ANNOUNCEMENTS_PER_EVENT announcements."
-    }
-    return copy(announcements = announcements + announcement)
+    return copy(announcements = announcements.withAnnouncement(announcement))
   }
 
   /**
@@ -184,15 +178,7 @@ data class Event(
    *   [Announcement.announcementId] as [announcement].
    */
   fun editAnnouncement(announcement: Announcement): Event {
-    require(announcements.any { it.announcementId == announcement.announcementId }) {
-      "This announcement is not in the event."
-    }
-    return copy(
-        announcements =
-            announcements.map {
-              if (it.announcementId == announcement.announcementId) announcement else it
-            }
-    )
+    return copy(announcements = announcements.withEditedAnnouncement(announcement))
   }
 
   /**
@@ -205,9 +191,33 @@ data class Event(
    * @throws IllegalArgumentException If [announcementId]'s [Announcement] is not in the event.
    */
   fun removeAnnouncement(announcementId: String): Event {
-    require(announcements.any { it.announcementId == announcementId }) {
-      "This announcement is not in the event."
-    }
-    return copy(announcements = announcements.filterNot { it.announcementId == announcementId })
+    return copy(announcements = announcements.withoutAnnouncement(announcementId))
   }
+}
+
+/** [Event.addAnnouncement] on the list alone, also used by EventRepositoryFirebase. */
+internal fun List<Announcement>.withAnnouncement(announcement: Announcement): List<Announcement> {
+  require(none { it.announcementId == announcement.announcementId }) {
+    "This announcement is already in the event."
+  }
+  require(size < MAX_ANNOUNCEMENTS_PER_EVENT) {
+    "An event cannot have more than $MAX_ANNOUNCEMENTS_PER_EVENT announcements."
+  }
+  return this + announcement
+}
+
+/** [Event.editAnnouncement] on the list alone, also used by EventRepositoryFirebase. */
+internal fun List<Announcement>.withEditedAnnouncement(
+    announcement: Announcement
+): List<Announcement> {
+  require(any { it.announcementId == announcement.announcementId }) {
+    "This announcement is not in the event."
+  }
+  return map { if (it.announcementId == announcement.announcementId) announcement else it }
+}
+
+/** [Event.removeAnnouncement] on the list alone, also used by EventRepositoryFirebase. */
+internal fun List<Announcement>.withoutAnnouncement(announcementId: String): List<Announcement> {
+  require(any { it.announcementId == announcementId }) { "This announcement is not in the event." }
+  return filterNot { it.announcementId == announcementId }
 }

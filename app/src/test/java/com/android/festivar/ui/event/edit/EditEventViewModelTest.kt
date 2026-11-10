@@ -1,4 +1,4 @@
-package com.android.festivar.ui.event
+package com.android.festivar.ui.event.edit
 
 // Co-authored-by: Copilot App
 

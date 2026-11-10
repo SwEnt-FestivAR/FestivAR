@@ -4,7 +4,6 @@ package com.android.festivar.ui.event.create
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -40,11 +39,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.R
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.DateTimeRange
-import com.android.festivar.ui.components.FestivarDateTimePickerDialog
-import com.android.festivar.ui.components.FestivarDateTimeRow
 import com.android.festivar.ui.components.FestivarFieldError
-import com.android.festivar.ui.components.FestivarFieldWithError
-import com.android.festivar.ui.components.FestivarTextField
+import com.android.festivar.ui.event.EventFields
+import com.android.festivar.ui.event.EventFieldsTestTags
 import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
 import java.time.LocalTime
@@ -66,6 +63,20 @@ object CreateEventScreenTestTags {
   const val SAVING_INDICATOR = "createEventSaving"
   const val SAVE_ERROR = "createEventSaveError"
 }
+
+private val createEventFieldTags =
+    EventFieldsTestTags(
+        name = CreateEventScreenTestTags.NAME_FIELD,
+        startDate = CreateEventScreenTestTags.START_DATE_FIELD,
+        startTime = CreateEventScreenTestTags.START_TIME_FIELD,
+        endDate = CreateEventScreenTestTags.END_DATE_FIELD,
+        endTime = CreateEventScreenTestTags.END_TIME_FIELD,
+        venue = CreateEventScreenTestTags.LOCATION_FIELD,
+        notes = CreateEventScreenTestTags.DESCRIPTION_FIELD,
+        nameError = CreateEventScreenTestTags.NAME_ERROR,
+        startDateError = CreateEventScreenTestTags.START_DATE_ERROR,
+        endDateError = CreateEventScreenTestTags.END_DATE_ERROR,
+    )
 
 /** What the user can do on the Create event screen. Lets [CreateEventContent] stay stateless. */
 class CreateEventActions(
@@ -143,77 +154,31 @@ fun CreateEventContent(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 12.dp),
     ) {
-      FestivarFieldWithError(state.nameError, CreateEventScreenTestTags.NAME_ERROR) {
-        FestivarTextField(
-            value = state.name,
-            onValueChange = actions.onNameChange,
-            label = stringResource(R.string.create_event_field_name),
-            isError = state.nameError != null,
-            modifier = Modifier.testTag(CreateEventScreenTestTags.NAME_FIELD),
-        )
-      }
-      Spacer(modifier = Modifier.height(14.dp))
-
-      FestivarDateTimeRow(
-          dateLabel = stringResource(R.string.create_event_field_start_date),
-          timeLabel = stringResource(R.string.create_event_field_start_time),
-          date = state.startDate,
-          time = state.startTime,
-          dateError = state.startDateError,
-          onDateClick = { actions.onShowPicker(DateTimeField.START_DATE) },
-          onTimeClick = { actions.onShowPicker(DateTimeField.START_TIME) },
-          dateTag = CreateEventScreenTestTags.START_DATE_FIELD,
-          dateErrorTag = CreateEventScreenTestTags.START_DATE_ERROR,
-          timeTag = CreateEventScreenTestTags.START_TIME_FIELD,
+      EventFields(
+          name = state.name,
+          nameError = state.nameError,
+          dateTimeRange =
+              DateTimeRange(
+                  startDate = state.startDate,
+                  endDate = state.endDate,
+                  startTime = state.startTime,
+                  endTime = state.endTime,
+              ),
+          startDateError = state.startDateError,
+          endDateError = state.endDateError,
+          venue = state.venue,
+          notes = state.notes,
+          openPicker = state.openPicker,
+          testTags = createEventFieldTags,
+          onNameChange = actions.onNameChange,
+          onShowPicker = actions.onShowPicker,
+          onVenueChange = actions.onVenueChange,
+          onNotesChange = actions.onNotesChange,
+          onDatePicked = actions.onDatePicked,
+          onTimePicked = actions.onTimePicked,
       )
-      Spacer(modifier = Modifier.height(14.dp))
-
-      FestivarDateTimeRow(
-          dateLabel = stringResource(R.string.create_event_field_end_date),
-          timeLabel = stringResource(R.string.create_event_field_end_time),
-          date = state.endDate,
-          time = state.endTime,
-          dateError = state.endDateError,
-          onDateClick = { actions.onShowPicker(DateTimeField.END_DATE) },
-          onTimeClick = { actions.onShowPicker(DateTimeField.END_TIME) },
-          dateTag = CreateEventScreenTestTags.END_DATE_FIELD,
-          dateErrorTag = CreateEventScreenTestTags.END_DATE_ERROR,
-          timeTag = CreateEventScreenTestTags.END_TIME_FIELD,
-      )
-      Spacer(modifier = Modifier.height(14.dp))
-
-      FestivarTextField(
-          value = state.venue,
-          onValueChange = actions.onVenueChange,
-          label = stringResource(R.string.create_event_field_venue),
-          modifier = Modifier.testTag(CreateEventScreenTestTags.LOCATION_FIELD),
-      )
-      Spacer(modifier = Modifier.height(8.dp))
-
-      FestivarTextField(
-          value = state.notes,
-          onValueChange = actions.onNotesChange,
-          label = stringResource(R.string.create_event_field_notes),
-          singleLine = false,
-          modifier = Modifier.testTag(CreateEventScreenTestTags.DESCRIPTION_FIELD),
-      )
-      Spacer(modifier = Modifier.height(14.dp))
     }
   }
-
-  FestivarDateTimePickerDialog(
-      field = state.openPicker,
-      range =
-          DateTimeRange(
-              startDate = state.startDate,
-              endDate = state.endDate,
-              startTime = state.startTime,
-              endTime = state.endTime,
-          ),
-      onDatePicked = actions.onDatePicked,
-      onTimePicked = actions.onTimePicked,
-      onDismiss = { actions.onShowPicker(null) },
-  )
 }
 
 /**
