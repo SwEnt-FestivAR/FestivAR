@@ -156,7 +156,7 @@ private fun EmptyVoiceNote() {
   }
 }
 
-private val previewNote =
+internal val previewNote =
     VoiceNote(
         id = "n1",
         audioUrl = "https://example.com/n1.m4a",
@@ -164,7 +164,7 @@ private val previewNote =
         createdAt = ZonedDateTime.of(2026, 10, 17, 9, 12, 0, 0, ZoneOffset.UTC),
     )
 
-private val previewCallbacks = VoiceNoteCallbacks.NoOp
+internal val previewCallbacks = VoiceNoteCallbacks.NoOp
 
 /** The section as on the screen, in its scrolling column. */
 @Composable
