@@ -12,7 +12,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.event.EventsRepositoryProvider
-import com.android.festivar.model.user.UsersRepositoryProvider
 import com.android.festivar.navigation.AppScreens
 import com.android.festivar.ui.event.create.CreateEventScreen
 import com.android.festivar.ui.event.create.CreateEventViewModel
