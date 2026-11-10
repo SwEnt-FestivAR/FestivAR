@@ -2,6 +2,7 @@
 package com.android.festivar.ui.task.mytasks
 
 import com.android.festivar.R
+import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
@@ -12,7 +13,6 @@ import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryLocal
-import io.mockk.mockk
 import java.time.Clock
 import java.time.LocalDate
 import java.time.LocalTime
@@ -95,7 +95,7 @@ class MyTasksViewModelTest {
   ) =
       MyTasksViewModel(
               userId,
-              DataRepositoryLocal(mockk(), tasks, eventsRepo, usersRepo),
+              DataRepositoryLocal(FakeAuthRepository(), tasks, eventsRepo, usersRepo),
               viewerClock,
           )
           .also { it.refresh() }
@@ -390,7 +390,11 @@ class MyTasksViewModelTest {
   fun theNewestRefreshWinsOverAnOlderLoadThatAnswersLate() {
     val slow = SlowUsers()
     val viewModel =
-        MyTasksViewModel(me.uid, DataRepositoryLocal(mockk(), tasks, events, slow), clock)
+        MyTasksViewModel(
+            me.uid,
+            DataRepositoryLocal(FakeAuthRepository(), tasks, events, slow),
+            clock,
+        )
     assertTrue(slow.calls.isEmpty())
 
     viewModel.refresh()
