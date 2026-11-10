@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -28,6 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -57,7 +60,8 @@ object RefreshableListTestTags {
  *
  * @param isLoading Whether the items are being loaded.
  * @param hasNoItems Whether there is no item at all, whatever the filter.
- * @param hasNoShownItems Whether the selected filter shows no item.
+ * @param hasNoShownItems Whether the selected filter shows no item. Ignored when [hasNoItems] is
+ *   true, since no item is shown then either.
  * @param errorMessage The error to show, worded by the screen; null if there is none.
  * @param onRefresh Called when the user pulls the list down or clicks on "Retry".
  * @param filterEmptyMessage The text shown when the selected filter shows no item.
@@ -66,6 +70,9 @@ object RefreshableListTestTags {
  * @param listKey A new scroll state is used for each key, e.g. so that a new filter starts at the
  *   top.
  * @param listTestTag The test tag of the list, applied only when it shows items.
+ * @param contentPadding The padding around the items. By default, the bottom leaves room for the
+ *   last item to scroll above a floating button. The states without items keep only its start and
+ *   end, so that they stay centered in the list.
  * @param content The items of the list.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -81,6 +88,7 @@ fun RefreshableStateList(
     modifier: Modifier = Modifier,
     listKey: Any? = null,
     listTestTag: String? = null,
+    contentPadding: PaddingValues = PaddingValues(start = 20.dp, end = 20.dp, bottom = 88.dp),
     content: LazyListScope.() -> Unit,
 ) {
   Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = modifier) {
@@ -97,14 +105,19 @@ fun RefreshableStateList(
     ) {
       val listState = key(listKey) { rememberLazyListState() }
       val showsItems = !hasNoItems && !hasNoShownItems
+      val layoutDirection = LocalLayoutDirection.current
       // Only a list of items gets the tag: the loading, error and empty states are not a list for
       // the user
       LazyColumn(
           state = listState,
           verticalArrangement = Arrangement.spacedBy(16.dp),
-          // Bottom padding so that the last item can scroll above a floating button
           contentPadding =
-              PaddingValues(start = 20.dp, end = 20.dp, bottom = if (showsItems) 88.dp else 0.dp),
+              if (showsItems) contentPadding
+              else
+                  PaddingValues(
+                      start = contentPadding.calculateStartPadding(layoutDirection),
+                      end = contentPadding.calculateEndPadding(layoutDirection),
+                  ),
           modifier =
               Modifier.fillMaxSize()
                   .then(
