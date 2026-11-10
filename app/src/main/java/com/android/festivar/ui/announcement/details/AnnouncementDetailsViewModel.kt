@@ -92,10 +92,7 @@ class AnnouncementDetailsViewModel(
               authorName = authorName,
               eventEndTime = event.endDate,
               isLoading = false,
-              errorMsg =
-                  it.errorMsg.takeUnless { error ->
-                    error == R.string.announcement_details_load_failed
-                  },
+              errorMsg = null,
           )
         }
       } catch (e: CancellationException) {

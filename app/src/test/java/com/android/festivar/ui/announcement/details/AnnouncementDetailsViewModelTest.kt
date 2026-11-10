@@ -149,6 +149,10 @@ class AnnouncementDetailsViewModelTest {
     assertEquals(announcement, vm.uiState.value.announcement)
     assertFalse(vm.uiState.value.isUpdating)
     assertEquals(R.string.announcement_details_save_failed, vm.uiState.value.errorMsg)
+
+    vm.load()
+
+    assertNull(vm.uiState.value.errorMsg)
   }
 
   @Test
