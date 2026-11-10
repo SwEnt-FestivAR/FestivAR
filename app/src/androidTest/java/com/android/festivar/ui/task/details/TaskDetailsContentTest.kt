@@ -306,6 +306,17 @@ class TaskDetailsContentTest {
     row(yasser).assertIsDisplayed()
   }
 
+  // Breaks if the sheet flag goes back to remember, so recreating the screen closes the sheet.
+  @Test
+  fun thePeopleSheetSurvivesRecreation() {
+    val restorationTester = StateRestorationTester(composeTestRule)
+    restorationTester.setContent { TaskDetailsContent(state(sharedTask), {}, {}, {}, {}, {}, {}) }
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.ON_THIS_TASK_SECTION).performClick()
+    composeTestRule.waitForIdle()
+    restorationTester.emulateSavedInstanceStateRestore()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.ON_THIS_TASK_SHEET).assertExists()
+  }
+
   // Breaks if the time shown is not the one stored for that person, or loses its zone.
   @Test
   fun theSheetShowsWhenEachPersonTookTheTask() {
