@@ -227,19 +227,20 @@ class MyTasksViewModel(
   /**
    * The tasks listed in the user's [com.android.festivar.model.user.User.tasksAssigned] in which
    * they are an assignee: that list also holds the tasks they created without taking them. The
-   * tasks are read in parallel.
+   * tasks are read in parallel. A task that no longer exists is skipped, so one stale id does not
+   * hide every task.
    */
   private suspend fun loadAssignedTasks(): List<Task> = coroutineScope {
     val taskIds = dataRepository.usersRepository.getUser(userId).tasksAssigned
     taskIds
         .map { id ->
-            async {
-                try {
-                    dataRepository.tasksRepository.getTask(id)
-                } catch (_: NoSuchElementException) {
-                    null
-                }
+          async {
+            try {
+              dataRepository.tasksRepository.getTask(id)
+            } catch (_: NoSuchElementException) {
+              null
             }
+          }
         }
         .awaitAll()
         .filterNotNull()

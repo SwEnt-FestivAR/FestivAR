@@ -338,6 +338,23 @@ class MyTasksViewModelTest {
     assertEquals("Network down", myTasks(eventsRepo = broken).uiState.value.errorMsg)
   }
 
+  /**
+   * Turns red when a task still listed in tasksAssigned but deleted fails the load, which would
+   * hide the tasks that do exist behind an error no refresh can clear.
+   */
+  @Test
+  fun aTaskThatNoLongerExistsIsSkipped() {
+    runBlocking {
+      val assigned = users.getUser(me.uid).tasksAssigned + "deleted"
+      users.editUser(me.uid, me.copy(tasksAssigned = assigned))
+    }
+
+    val state = myTasks().uiState.value
+
+    assertNull(state.errorMsg)
+    assertEquals(6, state.totalTasks)
+  }
+
   /** Turns red when the ViewModel swallows a cancellation and reports it as an error. */
   @Test
   fun aCancelledLoadIsNotReportedAsAnError() {
