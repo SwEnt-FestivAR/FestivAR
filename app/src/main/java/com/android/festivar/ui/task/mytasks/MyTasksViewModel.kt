@@ -232,8 +232,17 @@ class MyTasksViewModel(
   private suspend fun loadAssignedTasks(): List<Task> = coroutineScope {
     val taskIds = dataRepository.usersRepository.getUser(userId).tasksAssigned
     taskIds
-        .map { id -> async { dataRepository.tasksRepository.getTask(id) } }
+        .map { id ->
+            async {
+                try {
+                    dataRepository.tasksRepository.getTask(id)
+                } catch (_: NoSuchElementException) {
+                    null
+                }
+            }
+        }
         .awaitAll()
+        .filterNotNull()
         // Drops the tasks the user created without taking them.
         .filter { task -> task.assignees.any { it.uid == userId } }
   }
