@@ -8,6 +8,9 @@
     <color name="settings_primary_light">#FFD9FF3D</color>
     <color name="settings_on_background_light">#FF17180F</color>
     <color name="settings_on_surface_light">#FF17180F</color>
+    <color name="settings_primary_dark">#FFD9FF3D</color>
+    <color name="settings_on_background_dark">#FFF2F4EC</color>
+    <color name="settings_on_surface_dark">#FFF2F4EC</color>
 
     <!-- Splash icon colours, overridden in values-night. Copies of onBackgroundLight and
          onPrimaryContainerLight in ui/theme/Color.kt, since the system draws the splash before
