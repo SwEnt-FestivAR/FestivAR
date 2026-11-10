@@ -1,8 +1,11 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.mytasks
 
+import android.util.Log
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.android.festivar.R
 import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.task.Priority
 import com.android.festivar.model.task.Task
@@ -22,6 +25,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+private const val LOG_TAG = "MyTasksViewModel"
 
 /** Whether a task is still to do or done; the status chips of My tasks. */
 enum class MyTaskStatus {
@@ -88,7 +93,9 @@ data class EventFilterOption(
  * @property totalTasks how many tasks the user has taken, before any filter.
  * @property isLoading true until the first load lands, and again while every
  *   [MyTasksViewModel.refresh] runs.
- * @property errorMsg why the last load failed, for the snackbar; null when it did not fail.
+ * @property errorMsg the string resource of the snackbar when the last load failed:
+ *   [R.string.mytasks_load_failed] when no task was ever loaded, [R.string.mytasks_refresh_failed]
+ *   when the last loaded tasks are still shown; null when it did not fail.
  */
 data class MyTasksUiState(
     val statusesSelected: Set<MyTaskStatus> = emptySet(),
@@ -102,7 +109,7 @@ data class MyTasksUiState(
     val sections: List<MyTasksDaySection> = emptyList(),
     val totalTasks: Int = 0,
     val isLoading: Boolean = true,
-    val errorMsg: String? = null,
+    @StringRes val errorMsg: Int? = null,
 ) {
   /**
    * The number shown on the "Filters" chip; the events have their own selector and are not in it.
@@ -273,10 +280,10 @@ class MyTasksViewModel(
   // ---- Refresh, and building what the screen shows ----
 
   /**
-   * Reloads the user's tasks and the titles of their events; on failure the last sections stay and
-   * [MyTasksUiState.errorMsg] is set. A load still running is canceled first, so the newest call is
-   * the only one that can touch the state. The filters are kept, except the checked events that no
-   * longer hold any task, which are unchecked.
+   * Reloads the user's tasks and the titles of their events; on failure the last sections stay, the
+   * exception is logged and [MyTasksUiState.errorMsg] is set. A load still running is canceled
+   * first, so the newest call is the only one that can touch the state. The filters are kept,
+   * except the checked events that no longer hold any task, which are unchecked.
    */
   fun refresh() {
     load?.cancel()
@@ -299,7 +306,10 @@ class MyTasksViewModel(
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
-        _uiState.update { it.copy(isLoading = false, errorMsg = e.message ?: e.toString()) }
+        Log.e(LOG_TAG, "Error loading the tasks of $userId", e)
+        val message =
+            if (tasks.isEmpty()) R.string.mytasks_load_failed else R.string.mytasks_refresh_failed
+        _uiState.update { it.copy(isLoading = false, errorMsg = message) }
       }
     }
   }

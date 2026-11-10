@@ -1,6 +1,7 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.mytasks
 
+import com.android.festivar.R
 import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
@@ -296,9 +297,10 @@ class MyTasksViewModelTest {
   }
 
   /**
-   * Turns red when a failed load keeps loading, hides its error, claims the user has no tasks or
-   * drops the rows of the last load, or when the error does not go once a load succeeds or the
-   * snackbar is dismissed.
+   * Turns red when a failed load keeps loading, shows the exception text instead of a fixed
+   * message, tells a failed first load and a failed refresh apart wrongly, claims the user has no
+   * tasks or drops the rows of the last load, or when the error does not go once a load succeeds or
+   * the snackbar is dismissed.
    */
   @Test
   fun aFailedLoadSetsTheErrorAndKeepsTheLastRows() {
@@ -307,7 +309,7 @@ class MyTasksViewModelTest {
     val viewModel = myTasks(usersRepo = flaky)
     var state = viewModel.uiState.value
     assertFalse(state.isLoading)
-    assertEquals("Network down", state.errorMsg)
+    assertEquals(R.string.mytasks_load_failed, state.errorMsg)
     assertFalse(state.hasNoTasks)
 
     flaky.failing = false
@@ -318,7 +320,7 @@ class MyTasksViewModelTest {
     flaky.failing = true
     viewModel.refresh()
     state = viewModel.uiState.value
-    assertEquals("Network down", state.errorMsg)
+    assertEquals(R.string.mytasks_refresh_failed, state.errorMsg)
     assertEquals(loaded, state.sections)
 
     viewModel.dismissError()
@@ -335,7 +337,7 @@ class MyTasksViewModelTest {
               throw IllegalStateException("Network down")
         }
 
-    assertEquals("Network down", myTasks(eventsRepo = broken).uiState.value.errorMsg)
+    assertEquals(R.string.mytasks_load_failed, myTasks(eventsRepo = broken).uiState.value.errorMsg)
   }
 
   /**
