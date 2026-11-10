@@ -1,13 +1,18 @@
+<!-- Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com> -->
 <PreferenceScreen
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
+    <ListPreference
+        app:key="theme"
+        app:title="@string/settings_theme"
+        app:entries="@array/theme_entries"
+        app:entryValues="@array/theme_values"
+        app:defaultValue="system"
+        app:useSimpleSummaryProvider="true"/>
+
     <SwitchPreferenceCompat
         app:key="notifications"
-        app:title="Enable message notifications"/>
+        app:title="@string/settings_switch_example"/>
 
-    <Preference
-        app:key="feedback"
-        app:title="Send feedback"
-        app:summary="Report technical issues or suggest new features"/>
 
 </PreferenceScreen>
