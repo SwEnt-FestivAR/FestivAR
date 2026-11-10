@@ -72,4 +72,5 @@
         <item quantity="many">%d membres</item>
     </plurals>
     <string name="action_continue">Continuer</string>
+    <string name="title_activity_settings">Paramètres</string>
 </resources>

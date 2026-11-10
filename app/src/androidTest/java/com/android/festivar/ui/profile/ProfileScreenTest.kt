@@ -89,6 +89,7 @@ class ProfileScreenTest {
       authRepository: AuthRepository = FakeAuthRepository(),
       onBack: () -> Unit = {},
       onSignedOut: () -> Unit = {},
+      onSettingsClick: () -> Unit = {},
       waitForLoad: Boolean = true,
   ): ProfileViewModel {
     val viewModel =
@@ -101,7 +102,12 @@ class ProfileScreenTest {
             uId = ME,
         )
     composeTestRule.setContent {
-      ProfileScreen(profileViewModel = viewModel, onBack = onBack, onSignedOut = onSignedOut)
+      ProfileScreen(
+          profileViewModel = viewModel,
+          onBack = onBack,
+          onSignedOut = onSignedOut,
+          onSettingsClick = onSettingsClick,
+      )
     }
     if (waitForLoad) waitForTag(ProfileScreenTestTags.AVATAR)
     return viewModel
@@ -133,6 +139,16 @@ class ProfileScreenTest {
             ProfileScreenTestTags.SIGN_OUT_BUTTON,
         )
         .forEach { tag -> composeTestRule.onNodeWithTag(tag).assertIsDisplayed() }
+  }
+
+  @Test
+  fun settingsButtonIsDisplayedAndCallsClickHandler() {
+    var settingsClicked = false
+    setProfile(onSettingsClick = { settingsClicked = true })
+
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.SETTINGS).assertIsDisplayed().performClick()
+
+    assertTrue(settingsClicked)
   }
 
   /** Turns red when the avatar stops being shown at its large size of 96.dp. */

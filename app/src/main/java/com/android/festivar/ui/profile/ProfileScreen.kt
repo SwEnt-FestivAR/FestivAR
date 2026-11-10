@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -49,6 +50,7 @@ import com.android.festivar.ui.components.NoticeSnackbar
 object ProfileScreenTestTags {
   const val TITLE = "profileTitle"
   const val BACK = "profileBack"
+  const val SETTINGS = "profileSettings"
   const val LOADING = "profileLoading"
   const val AVATAR = "profileAvatar"
   const val SURNAME_FIELD = "profileSurnameField"
@@ -86,6 +88,7 @@ fun ProfileScreen(
     profileViewModel: ProfileViewModel,
     onBack: () -> Unit = {},
     onSignedOut: () -> Unit = {},
+    onSettingsClick: () -> Unit = {},
 ) {
 
   val profileUIState by profileViewModel.uiState.collectAsState()
@@ -118,6 +121,17 @@ fun ProfileScreen(
                 Icon(
                     Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = stringResource(R.string.profile_back),
+                )
+              }
+            },
+            actions = {
+              IconButton(
+                  onClick = onSettingsClick,
+                  Modifier.testTag(ProfileScreenTestTags.SETTINGS),
+              ) {
+                Icon(
+                    Icons.Default.Settings,
+                    contentDescription = stringResource(R.string.title_activity_settings),
                 )
               }
             },

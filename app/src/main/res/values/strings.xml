@@ -4,6 +4,7 @@
     <string name="app_name" translatable="false">FestivAR</string>
     <string name="title_activity_main" translatable="false">FestivAR</string>
     <string name="title_activity_second" translatable="false">FestivAR</string>
+    <string name="title_activity_settings">Settings</string>
     <!-- Common actions -->
     <string name="action_ok" translatable="false">OK</string>
     <string name="action_cancel">Cancel</string>

@@ -1,7 +1,9 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.navigation.profile
 
+import android.content.Intent
 import androidx.navigation.NavHostController
+import com.android.festivar.MySettingsActivity
 import com.android.festivar.navigation.AppScreens
 
 /** The navigation actions of the profile screen. */
@@ -13,5 +15,11 @@ class ProfileNavigator(private val navController: NavHostController) {
     navController.navigate(AppScreens.Login.name) {
       popUpTo(navController.graph.id) { inclusive = true }
     }
+  }
+
+  val onSettingsClick: () -> Unit = {
+    navController.context.startActivity(
+        Intent(navController.context, MySettingsActivity::class.java)
+    )
   }
 }
