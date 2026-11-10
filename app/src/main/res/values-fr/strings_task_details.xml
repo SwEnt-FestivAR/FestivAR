@@ -19,6 +19,7 @@
     <string name="details_on_this_task">Sur cette tâche</string>
     <plurals name="details_people">
         <item quantity="one">%d personne</item>
+        <item quantity="many">%d personnes</item>
         <item quantity="other">%d personnes</item>
     </plurals>
     <string name="details_people_sheet_subtitle">%1$s · %2$s</string>
