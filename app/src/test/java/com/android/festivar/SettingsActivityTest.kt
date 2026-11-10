@@ -21,4 +21,12 @@ class SettingsActivityTest {
             is SettingsFragment
     )
   }
+
+  @Test
+  fun settingsActivityNavigateUpFinishesActivity() {
+    val activity = Robolectric.buildActivity(MySettingsActivity::class.java).setup().get()
+
+    assertTrue(activity.onSupportNavigateUp())
+    assertTrue(activity.isFinishing)
+  }
 }
