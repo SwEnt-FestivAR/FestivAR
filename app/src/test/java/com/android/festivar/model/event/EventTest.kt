@@ -17,6 +17,7 @@ class EventTest {
 
   // Messages of the `init` block of Event, in the order in which the rules are checked.
   private val eventIdMessage = "The eventId cannot be empty."
+  private val ownerIdMessage = "The ownerId cannot be empty."
   private val titleMessage = "The title cannot be empty."
   private val duplicateTaskMessage = "A task is duplicated."
   private val duplicateMemberMessage = "A user is registered twice."
@@ -151,18 +152,18 @@ class EventTest {
     assertInvalid(eventIdMessage) { event(eventId = " \t\n") }
   }
 
+  /** Red if the ownerId is blank. */
+  @Test
+  fun init_fails_whenOwnerIdIsBlank() {
+    assertInvalid(ownerIdMessage) { event(ownerId = "") }
+    assertInvalid(ownerIdMessage) { event(ownerId = " \t\n") }
+  }
+
   /** A blank title is refused. */
   @Test
   fun init_fails_whenTitleIsBlank() {
     assertInvalid(titleMessage) { event(title = "") }
     assertInvalid(titleMessage) { event(title = " \t\n") }
-  }
-
-  /** Red if the ownerId is blank. */
-  @Test
-  fun init_fails_whenOwnerIdIsBlank() {
-    assertInvalid(eventIdMessage) { event(ownerId = "") }
-    assertInvalid(eventIdMessage) { event(ownerId = " \t\n") }
   }
 
   /** Two tasks with the same taskId are refused, even if their other fields are different. */
