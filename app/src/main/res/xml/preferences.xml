@@ -1,26 +1,44 @@
 <!-- Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com> -->
-<PreferenceScreen
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <DropDownPreference
-        app:key="theme"
-        app:title="@string/settings_theme"
-        app:entries="@array/theme_entries"
-        app:entryValues="@array/theme_values"
-        app:defaultValue="system"
-        app:useSimpleSummaryProvider="true"/>
+    <PreferenceCategory
+        android:layout_width="match_parent"
+        app:key="app_category"
+        app:title="@string/settings_cat_app" >
 
-    <DropDownPreference
-        app:key="language"
-        app:title="@string/settings_language"
-        app:entries="@array/language_entries"
-        app:entryValues="@array/language_values"
-        app:defaultValue="system"
-        app:useSimpleSummaryProvider="true"/>
+        <DropDownPreference
+            app:key="theme"
+            app:title="@string/settings_theme"
+            app:entries="@array/theme_entries"
+            app:entryValues="@array/theme_values"
+            app:defaultValue="system"
+            app:useSimpleSummaryProvider="true"/>
 
-    <SwitchPreferenceCompat
-        app:key="notifications"
-        app:title="@string/settings_switch_example"/>
+        <DropDownPreference
+            app:key="language"
+            app:title="@string/settings_language"
+            app:entries="@array/language_entries"
+            app:entryValues="@array/language_values"
+            app:defaultValue="system"
+            app:useSimpleSummaryProvider="true"/>
+    </PreferenceCategory>
 
+
+    <PreferenceCategory
+        android:layout_width="match_parent"
+        app:key="app_category"
+        app:title="@string/settings_cat_acc">
+
+        <!-- doesn't do anything yet -->
+        <Preference
+            app:title="@string/settings_delete_acc"
+            app:key="del_acc"
+            />
+
+        <SwitchPreferenceCompat
+            app:key="notifications"
+            app:title="@string/settings_switch_example" />
+    </PreferenceCategory>
 
 </PreferenceScreen>
