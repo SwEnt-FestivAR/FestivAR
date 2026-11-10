@@ -57,7 +57,8 @@ object RefreshableListTestTags {
  *
  * @param isLoading Whether the items are being loaded.
  * @param hasNoItems Whether there is no item at all, whatever the filter.
- * @param hasNoShownItems Whether the selected filter shows no item.
+ * @param hasNoShownItems Whether the selected filter shows no item. Ignored when [hasNoItems] is
+ *   true, since no item is shown then either.
  * @param errorMessage The error to show, worded by the screen; null if there is none.
  * @param onRefresh Called when the user pulls the list down or clicks on "Retry".
  * @param filterEmptyMessage The text shown when the selected filter shows no item.
