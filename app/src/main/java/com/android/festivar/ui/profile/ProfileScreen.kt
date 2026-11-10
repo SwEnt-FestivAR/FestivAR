@@ -34,9 +34,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -102,9 +100,8 @@ fun ProfileScreen(
   val profileUIState by profileViewModel.uiState.collectAsState()
   val context = LocalContext.current
   val snackbarHostState = remember { SnackbarHostState() }
-  var isUpgrading by rememberSaveable { mutableStateOf(false) }
+  // SheetState is Compose UI state, so it stays local; visibility belongs in ProfileUIState.
   val sheetState = rememberModalBottomSheetState()
-  var showSignOutWarning by rememberSaveable { mutableStateOf(false) }
 
   // Shows each error once in the snackbar, then clears it so it does not come back.
   val errorMsg = profileUIState.errorMsg?.let { stringResource(it) }
@@ -120,8 +117,8 @@ fun ProfileScreen(
 
   // Closes bottom sheet once upgrade/linking succeeded.
   LaunchedEffect(profileUIState.isUserAnonymous) {
-    if (!profileUIState.isUserAnonymous && isUpgrading) {
-      isUpgrading = false
+    if (!profileUIState.isUserAnonymous && profileUIState.isUpgrading) {
+      profileViewModel.hideUpgradeSheet()
     }
   }
 
@@ -154,24 +151,20 @@ fun ProfileScreen(
           onSaveClick = profileViewModel::saveChanges,
           onSignOutClick = {
             if (profileUIState.isUserAnonymous) {
-              showSignOutWarning = true
+              profileViewModel.showSignOutWarning()
             } else {
               profileViewModel.signOut()
             }
           },
           onRetryClick = profileViewModel::getUserInformation,
-          onUpgradeClick = { isUpgrading = true },
+          onUpgradeClick = profileViewModel::showUpgradeSheet,
           modifier = Modifier.padding(padding),
       )
     }
 
-    if (isUpgrading) {
+    if (profileUIState.isUpgrading) {
       UpgradeBottomSheet(
-          onUpgradeCancel = {
-            isUpgrading = false
-            profileViewModel.updateEmail("")
-            profileViewModel.updatePassword("")
-          },
+          onUpgradeCancel = profileViewModel::hideUpgradeSheet,
           sheetState = sheetState,
           uiState = profileUIState,
           onEmailChange = profileViewModel::updateEmail,
@@ -183,22 +176,22 @@ fun ProfileScreen(
       )
     }
 
-    if (showSignOutWarning && profileUIState.isUserAnonymous) {
+    if (profileUIState.showSignOutWarning && profileUIState.isUserAnonymous) {
       FestivarConfirmDialog(
           title = stringResource(R.string.login_warning),
           message = stringResource(R.string.profile_anon_sign_out_warning),
           confirmText = stringResource(R.string.action_continue_anyway),
           dismissText = stringResource(R.string.action_cancel),
           onConfirm = {
-            showSignOutWarning = false
+            profileViewModel.hideSignOutWarning()
             profileViewModel.signOut()
           },
-          onDismiss = { showSignOutWarning = false },
+          onDismiss = profileViewModel::hideSignOutWarning,
           destructive = true,
       )
     }
 
-    if (!isUpgrading) {
+    if (!profileUIState.isUpgrading) {
       SnackbarHost(
           hostState = snackbarHostState,
           modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),

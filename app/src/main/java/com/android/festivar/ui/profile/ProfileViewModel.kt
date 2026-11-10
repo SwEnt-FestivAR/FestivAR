@@ -41,6 +41,8 @@ private const val LOG_TAG = "ProfileViewModel"
  *   operation when the disconnection is occurred.
  * @property isSigningOut Whether the [User] is currently in the process of signing out, it blocks
  *   any other operation while trying to disconnect the [User].
+ * @property isUpgrading Whether the account upgrade bottom sheet is visible.
+ * @property showSignOutWarning Whether the anonymous-account sign-out warning is visible.
  */
 data class ProfileUIState(
     val user: User? = null,
@@ -55,6 +57,8 @@ data class ProfileUIState(
     val email: String = "",
     val password: String = "",
     val isPasswordVisible: Boolean = false,
+    val isUpgrading: Boolean = false,
+    val showSignOutWarning: Boolean = false,
 ) {
   /**
    * Whether the Save changes button can be pressed: the profile is loaded, no save is running, no
@@ -231,6 +235,26 @@ class ProfileViewModel(
   /** Toggles whether the password is displayed in plain text. */
   fun togglePasswordVisibility() {
     _uiState.update { it.copy(isPasswordVisible = !it.isPasswordVisible) }
+  }
+
+  /** Shows the account upgrade bottom sheet. */
+  fun showUpgradeSheet() {
+    _uiState.update { it.copy(isUpgrading = true) }
+  }
+
+  /** Hides the account upgrade bottom sheet and clears its credentials. */
+  fun hideUpgradeSheet() {
+    _uiState.update { it.copy(isUpgrading = false, email = "", password = "") }
+  }
+
+  /** Shows the warning displayed before an anonymous account signs out. */
+  fun showSignOutWarning() {
+    _uiState.update { it.copy(showSignOutWarning = true) }
+  }
+
+  /** Hides the anonymous-account sign-out warning. */
+  fun hideSignOutWarning() {
+    _uiState.update { it.copy(showSignOutWarning = false) }
   }
 
   /** Upgrades the anonymous account with email and password. */

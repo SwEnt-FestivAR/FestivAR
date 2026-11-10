@@ -610,6 +610,34 @@ class ProfileViewModelTest {
   }
 
   @Test
+  fun upgradeSheetStateIncludesVisibilityAndCredentialReset() = runTest {
+    val viewModel = createViewModel()
+    advanceUntilIdle()
+
+    viewModel.updateEmail("test@example.com")
+    viewModel.updatePassword("password")
+    viewModel.showUpgradeSheet()
+    assertTrue(viewModel.uiState.value.isUpgrading)
+
+    viewModel.hideUpgradeSheet()
+    assertFalse(viewModel.uiState.value.isUpgrading)
+    assertEquals("", viewModel.uiState.value.email)
+    assertEquals("", viewModel.uiState.value.password)
+  }
+
+  @Test
+  fun signOutWarningStateToggles() = runTest {
+    val viewModel = createViewModel()
+    advanceUntilIdle()
+
+    viewModel.showSignOutWarning()
+    assertTrue(viewModel.uiState.value.showSignOutWarning)
+
+    viewModel.hideSignOutWarning()
+    assertFalse(viewModel.uiState.value.showSignOutWarning)
+  }
+
+  @Test
   fun upgradeWithEmailWithBlankFieldsShowsError() = runTest {
     val firebaseUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
     val authRepo =
