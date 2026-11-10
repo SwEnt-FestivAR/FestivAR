@@ -200,6 +200,13 @@ class MyTasksViewModel(
     _uiState.update { derive(it.copy(eventIdsSelected = emptySet())) }
   }
 
+  /** Unselects every status and priority chip of the Filters zone; the events and search stay. */
+  fun clearChips() {
+    _uiState.update {
+      derive(it.copy(statusesSelected = emptySet(), prioritiesSelected = emptySet()))
+    }
+  }
+
   /** Drops every filter and the search query, so every task shows again. */
   fun clearFilters() {
     _uiState.update {

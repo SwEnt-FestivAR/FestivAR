@@ -235,9 +235,12 @@ class MyTasksViewModelTest {
     assertEquals(6, viewModel.uiState.value.visibleIds().size)
   }
 
-  /** Turns red when clearing the events touches the other filters, or clearing all misses one. */
+  /**
+   * Turns red when clearing the events or the chips touches the other filters, or when clearing all
+   * misses one.
+   */
   @Test
-  fun clearEventsKeepsTheOtherFiltersAndClearFiltersDropsThemAll() {
+  fun eachClearDropsOnlyWhatItNames() {
     val viewModel = myTasks()
     viewModel.togglePriority(Priority.URGENT)
     viewModel.toggleStatus(MyTaskStatus.DONE)
@@ -251,6 +254,16 @@ class MyTasksViewModelTest {
     assertEquals(setOf(Priority.URGENT), state.prioritiesSelected)
     assertEquals(listOf("bar"), state.visibleIds())
 
+    viewModel.toggleEvent(FETE)
+    viewModel.clearChips()
+    state = viewModel.uiState.value
+    assertTrue(state.statusesSelected.isEmpty())
+    assertTrue(state.prioritiesSelected.isEmpty())
+    assertEquals(setOf(FETE), state.eventIdsSelected)
+    assertEquals("bar", state.query)
+    assertEquals(0, state.activeFilterCount)
+
+    viewModel.toggleStatus(MyTaskStatus.TODO)
     viewModel.clearFilters()
     state = viewModel.uiState.value
     assertTrue(state.statusesSelected.isEmpty())
