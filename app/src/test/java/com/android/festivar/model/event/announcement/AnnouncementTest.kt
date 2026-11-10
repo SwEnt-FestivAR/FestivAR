@@ -3,6 +3,7 @@ package com.android.festivar.model.event.announcement
 
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import java.time.format.DateTimeParseException
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertFalse
 import junit.framework.TestCase.assertTrue
@@ -301,5 +302,75 @@ class AnnouncementTest {
     assertEquals(announcement.copy(pinned = true), pinned)
     assertEquals(announcement, pinned.togglePin())
     assertFalse(announcement.pinned)
+  }
+
+  // ---------------------------------------------------------------------------------------- //
+  // toMap / fromMap, the format stored in Firestore
+  // ---------------------------------------------------------------------------------------- //
+
+  /** Red if a field is renamed or changes type, or if reading back loses a field or the zone. */
+  @Test
+  fun toMapKeepsEveryFieldAndFromMapReadsItBack() {
+    val full = announcementWith().togglePin()
+
+    assertEquals(
+        mapOf(
+            "announcementId" to "a1",
+            "title" to "Announcement",
+            "authorId" to "author-1",
+            "content" to "Content",
+            "priority" to "URGENT",
+            "updatedAt" to "2026-07-01T14:00+02:00[Europe/Zurich]",
+            "links" to listOf(link1, link2),
+            "pinned" to true,
+        ),
+        full.toMap(),
+    )
+    listOf(full, announcement()).forEach { assertEquals(it, Announcement.fromMap(it.toMap())) }
+  }
+
+  /** Red if an announcement saved without content, links or pin state can no longer be read. */
+  @Test
+  fun fromMapGivesTheDefaultsToAnAbsentOrNullOptionalField() {
+    val optional = listOf("content", "links", "pinned")
+    val stored = announcementWith().togglePin().toMap()
+    val expected = announcementWith(links = emptyList()).copy(content = "")
+
+    assertEquals(expected, Announcement.fromMap(stored - optional.toSet()))
+    assertEquals(expected, Announcement.fromMap(stored + optional.associateWith { null }))
+  }
+
+  /** Red if invalid stored data is read with a made-up value instead of refused clearly. */
+  @Test
+  fun fromMapRefusesInvalidData() {
+    val stored = announcementWith().toMap()
+    fun missing(name: String) = "Invalid announcement data: '$name' is missing or invalid."
+    val required = listOf("announcementId", "title", "authorId", "priority", "updatedAt")
+    // A number is the wrong type for every field: they are strings, a list or a boolean.
+    val wrongType = (required + listOf("content", "links", "pinned")).map { it to 42 }
+    val cases: List<Pair<Map<String, Any?>, String>> =
+        required.flatMap {
+          listOf(stored - it to missing(it), stored + (it to null) to missing(it))
+        } +
+            wrongType.map { stored + it to missing(it.first) } +
+            listOf(
+                stored + ("links" to listOf(link1, 3)) to missing("links"),
+                // Priorities are stored by their exact enum name, so another case is unknown too.
+                stored + ("priority" to "LOW") to "Invalid announcement data: bad priority 'LOW'.",
+                stored + ("priority" to "urgent") to
+                    "Invalid announcement data: bad priority 'urgent'.",
+                stored + ("updatedAt" to "yesterday") to
+                    "Invalid announcement data: bad updatedAt 'yesterday'.",
+                // Values that break the rules of an announcement.
+                stored + ("title" to " ") to titleMessage,
+                stored + ("links" to listOf(link1, link1)) to duplicateLinkMessage,
+            )
+
+    cases.forEach { (map, message) -> assertInvalid(message) { Announcement.fromMap(map) } }
+    // The parse errors are kept as the cause.
+    fun causeOf(map: Map<String, Any>) =
+        assertThrows(IllegalArgumentException::class.java) { Announcement.fromMap(map) }.cause
+    assertTrue(causeOf(stored + ("priority" to "LOW")) is IllegalArgumentException)
+    assertTrue(causeOf(stored + ("updatedAt" to "yesterday")) is DateTimeParseException)
   }
 }
