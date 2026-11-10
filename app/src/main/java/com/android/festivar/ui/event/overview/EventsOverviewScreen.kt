@@ -22,17 +22,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
@@ -43,13 +38,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -59,7 +51,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -68,7 +59,9 @@ import com.android.festivar.R
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.Avatar
+import com.android.festivar.ui.components.EmptyState
 import com.android.festivar.ui.components.FilterChip
+import com.android.festivar.ui.components.RefreshableStateList
 import com.android.festivar.ui.components.floatingShadow
 import com.android.festivar.ui.components.formatEventDate
 import com.android.festivar.ui.theme.AppTheme
@@ -82,17 +75,9 @@ object EventsOverviewScreenTestTags {
   const val UPCOMING_CHIP = "upcomingEventsChip"
   const val PAST_CHIP = "pastEventsChip"
   const val EVENT_LIST = "eventList"
-  const val EMPTY_TITLE = "eventsOverviewEmptyTitle"
-  const val EMPTY_EVENT_LIST_MSG = "emptyEventList"
-  const val LOADING_INDICATOR = "eventsLoadingIndicator"
   const val EVENT_ACTIONS_BUTTON = "eventActionsFab"
   const val JOIN_EVENT_BUTTON = "joinEventFab"
   const val CREATE_EVENT_BUTTON = "createEventFab"
-  const val ERROR_STATE = "eventsOverviewErrorState"
-  const val ERROR_MESSAGE = "eventsOverviewErrorMessage"
-  const val INLINE_ERROR = "eventsOverviewInlineError"
-  const val RETRY = "eventsOverviewRetry"
-  const val PULL_TO_REFRESH = "eventsOverviewPullToRefresh"
 
   fun getTestTagForEventItem(event: Event): String = "eventItem${event.eventId}"
 }
@@ -225,79 +210,28 @@ fun EventsOverviewContent(
         )
       }
 
-      // With events shown, a failed refresh keeps them and only adds a line above them
-      if (uiState.hasError && !uiState.hasNoEvents) {
-        InlineError(message = errorMessage(uiState), onRetry = onRefresh)
-      }
-
-      PullToRefreshBox(
-          // With no events, the loading state below already shows a progress indicator
-          isRefreshing = uiState.isLoading && !uiState.hasNoEvents,
+      RefreshableStateList(
+          isLoading = uiState.isLoading,
+          hasNoItems = uiState.hasNoEvents,
+          hasNoShownItems = uiState.shownEvents.isEmpty(),
+          errorMessage = if (uiState.hasError) errorMessage(uiState) else null,
           onRefresh = onRefresh,
-          modifier = Modifier.fillMaxSize().testTag(EventsOverviewScreenTestTags.PULL_TO_REFRESH),
-      ) {
-        // A new list state for each filter, so that switching filter starts back at the top
-        val listState = key(uiState.selectedFilter) { rememberLazyListState() }
-        val showsEvents = !uiState.hasNoEvents && uiState.shownEvents.isNotEmpty()
-        // Every state is in a list, so that the user can pull it down to refresh. Only a list of
-        // events gets the tag: the loading, error and empty states are not a list for the user.
-        LazyColumn(
-            state = listState,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            // Bottom padding so that the last card can scroll above the floating button
-            contentPadding =
-                PaddingValues(
-                    start = 20.dp,
-                    end = 20.dp,
-                    bottom = if (showsEvents) 88.dp else 0.dp,
-                ),
-            modifier =
-                Modifier.fillMaxSize()
-                    .then(
-                        if (showsEvents) Modifier.testTag(EventsOverviewScreenTestTags.EVENT_LIST)
-                        else Modifier
-                    ),
-        ) {
-          when {
-            // Only on the first load: a later refresh keeps the current list instead of a spinner
-            uiState.isLoading && uiState.hasNoEvents ->
-                item {
-                  Box(
-                      contentAlignment = Alignment.Center,
-                      modifier = Modifier.fillParentMaxSize(),
-                  ) {
-                    CircularProgressIndicator(
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.testTag(EventsOverviewScreenTestTags.LOADING_INDICATOR),
-                    )
+          filterEmptyMessage =
+              stringResource(
+                  when (uiState.selectedFilter) {
+                    EventsFilter.ONGOING -> R.string.events_overview_no_ongoing
+                    EventsFilter.UPCOMING -> R.string.events_overview_no_upcoming
+                    EventsFilter.PAST -> R.string.events_overview_no_past
                   }
-                }
-            uiState.hasError && uiState.hasNoEvents ->
-                item { ErrorState(message = errorMessage(uiState), onRetry = onRefresh) }
-            uiState.hasNoEvents ->
-                item { EmptyEventsState(onJoinEvent = onJoinEvent, onAddEvent = onAddEvent) }
-            uiState.shownEvents.isEmpty() ->
-                item {
-                  Text(
-                      text =
-                          stringResource(
-                              when (uiState.selectedFilter) {
-                                EventsFilter.ONGOING -> R.string.events_overview_no_ongoing
-                                EventsFilter.UPCOMING -> R.string.events_overview_no_upcoming
-                                EventsFilter.PAST -> R.string.events_overview_no_past
-                              }
-                          ),
-                      style = MaterialTheme.typography.bodySmall,
-                      color = MaterialTheme.colorScheme.onSurfaceVariant,
-                      modifier =
-                          Modifier.testTag(EventsOverviewScreenTestTags.EMPTY_EVENT_LIST_MSG),
-                  )
-                }
-            else ->
-                items(uiState.shownEvents, key = { it.eventId }) { event ->
-                  EventItem(event = event, onClick = { onSelectEvent(event) })
-                }
-          }
+              ),
+          emptyState = { EmptyEventsState(onJoinEvent = onJoinEvent, onAddEvent = onAddEvent) },
+          modifier = Modifier.fillMaxSize(),
+          // A new list state for each filter, so that switching filter starts back at the top
+          listKey = uiState.selectedFilter,
+          listTestTag = EventsOverviewScreenTestTags.EVENT_LIST,
+      ) {
+        items(uiState.shownEvents, key = { it.eventId }) { event ->
+          EventItem(event = event, onClick = { onSelectEvent(event) })
         }
       }
     }
@@ -310,154 +244,63 @@ private fun errorMessage(uiState: EventsOverviewUIState): String =
     uiState.errorMsg?.let { stringResource(R.string.events_overview_error, it) }
         ?: stringResource(R.string.events_overview_error_no_cause)
 
-/** The load error in the theme's error colour, with a retry beside it, shown above the events. */
-@Composable
-private fun InlineError(message: String, onRetry: () -> Unit) {
-  Row(
-      verticalAlignment = Alignment.CenterVertically,
-      modifier =
-          Modifier.fillMaxWidth()
-              .padding(horizontal = 20.dp)
-              .testTag(EventsOverviewScreenTestTags.INLINE_ERROR),
-  ) {
-    Text(
-        text = message,
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.error,
-        modifier = Modifier.weight(1f),
-    )
-    TextButton(
-        onClick = onRetry,
-        colors =
-            ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
-        modifier = Modifier.testTag(EventsOverviewScreenTestTags.RETRY),
-    ) {
-      Text(text = stringResource(R.string.events_overview_retry))
-    }
-  }
-}
-
-/**
- * Error state of the [EventsOverviewScreen], shown instead of the empty state when the [Event]
- * items could not be fetched and none is shown. It offers to retry.
- */
-@Composable
-private fun LazyItemScope.ErrorState(message: String, onRetry: () -> Unit) {
-  Column(
-      verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
-      horizontalAlignment = Alignment.CenterHorizontally,
-      modifier =
-          Modifier.fillParentMaxSize()
-              .padding(horizontal = 24.dp)
-              .testTag(EventsOverviewScreenTestTags.ERROR_STATE),
-  ) {
-    Text(
-        text = message,
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.error,
-        textAlign = TextAlign.Center,
-        modifier = Modifier.testTag(EventsOverviewScreenTestTags.ERROR_MESSAGE),
-    )
-    OutlinedButton(
-        onClick = onRetry,
-        shape = RoundedCornerShape(12.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-        colors =
-            ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
-        modifier = Modifier.testTag(EventsOverviewScreenTestTags.RETRY),
-    ) {
-      Text(
-          text = stringResource(R.string.events_overview_retry),
-          style = MaterialTheme.typography.labelLarge,
-      )
-    }
-  }
-}
-
 /**
  * Empty state of the [EventsOverviewScreen], shown when the user has no [Event] at all. It offers
- * to join or to create one.
+ * to join or to create one, both buttons sharing the width equally.
  */
 @Composable
-private fun LazyItemScope.EmptyEventsState(onJoinEvent: () -> Unit, onAddEvent: () -> Unit) {
+private fun EmptyEventsState(onJoinEvent: () -> Unit, onAddEvent: () -> Unit) {
   val buttonShape = RoundedCornerShape(12.dp)
   val buttonPadding = PaddingValues(horizontal = 12.dp)
-  Column(
-      verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
-      horizontalAlignment = Alignment.CenterHorizontally,
-      // The list already has a 20dp side padding
-      modifier = Modifier.fillParentMaxSize().padding(horizontal = 24.dp),
+  EmptyState(
+      icon = R.drawable.ic_event,
+      title = stringResource(R.string.events_overview_empty_title),
+      subtitle = stringResource(R.string.events_overview_empty_subtitle),
   ) {
-    Icon(
-        painter = painterResource(R.drawable.ic_event),
-        contentDescription = null,
-        tint = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.size(56.dp),
-    )
-    Text(
-        text = stringResource(R.string.events_overview_empty_title),
-        style = MaterialTheme.typography.headlineSmall,
-        color = MaterialTheme.colorScheme.onSurface,
-        textAlign = TextAlign.Center,
-        modifier = Modifier.testTag(EventsOverviewScreenTestTags.EMPTY_TITLE),
-    )
-    Text(
-        text = stringResource(R.string.events_overview_empty_subtitle),
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        textAlign = TextAlign.Center,
-    )
-    Spacer(modifier = Modifier.height(8.dp))
-    // Both buttons share the width equally
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier.fillMaxWidth(),
+    OutlinedButton(
+        onClick = onJoinEvent,
+        shape = buttonShape,
+        colors =
+            ButtonDefaults.outlinedButtonColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        contentPadding = buttonPadding,
+        modifier =
+            Modifier.weight(1f)
+                .height(52.dp)
+                .testTag(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON),
     ) {
-      OutlinedButton(
-          onClick = onJoinEvent,
-          shape = buttonShape,
-          colors =
-              ButtonDefaults.outlinedButtonColors(
-                  containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-                  contentColor = MaterialTheme.colorScheme.onSurface,
-              ),
-          border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-          contentPadding = buttonPadding,
-          modifier =
-              Modifier.weight(1f)
-                  .height(52.dp)
-                  .testTag(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON),
-      ) {
-        Icon(painter = painterResource(R.drawable.ic_groups), contentDescription = null)
-        Spacer(modifier = Modifier.width(10.dp))
-        Text(
-            text = stringResource(R.string.events_overview_join),
-            style = MaterialTheme.typography.labelLarge,
-            maxLines = 1,
-        )
-      }
-      Button(
-          onClick = onAddEvent,
-          shape = buttonShape,
-          colors =
-              ButtonDefaults.buttonColors(
-                  containerColor = MaterialTheme.colorScheme.primary,
-                  contentColor = MaterialTheme.colorScheme.onPrimary,
-              ),
-          contentPadding = buttonPadding,
-          modifier =
-              Modifier.weight(1f)
-                  .height(52.dp)
-                  .testTag(EventsOverviewScreenTestTags.CREATE_EVENT_BUTTON),
-      ) {
-        Icon(painter = painterResource(R.drawable.ic_add), contentDescription = null)
-        Spacer(modifier = Modifier.width(10.dp))
-        Text(
-            text = stringResource(R.string.events_overview_create),
-            style = MaterialTheme.typography.labelLarge,
-            maxLines = 1,
-        )
-      }
+      Icon(painter = painterResource(R.drawable.ic_groups), contentDescription = null)
+      Spacer(modifier = Modifier.width(10.dp))
+      Text(
+          text = stringResource(R.string.events_overview_join),
+          style = MaterialTheme.typography.labelLarge,
+          maxLines = 1,
+      )
+    }
+    Button(
+        onClick = onAddEvent,
+        shape = buttonShape,
+        colors =
+            ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+            ),
+        contentPadding = buttonPadding,
+        modifier =
+            Modifier.weight(1f)
+                .height(52.dp)
+                .testTag(EventsOverviewScreenTestTags.CREATE_EVENT_BUTTON),
+    ) {
+      Icon(painter = painterResource(R.drawable.ic_add), contentDescription = null)
+      Spacer(modifier = Modifier.width(10.dp))
+      Text(
+          text = stringResource(R.string.events_overview_create),
+          style = MaterialTheme.typography.labelLarge,
+          maxLines = 1,
+      )
     }
   }
 }

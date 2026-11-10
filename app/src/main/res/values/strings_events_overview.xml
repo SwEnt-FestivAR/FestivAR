@@ -17,5 +17,4 @@
     <string name="events_overview_dates_location" translatable="false">%1$s · %2$s</string>
     <string name="events_overview_error">Failed to load events: %1$s</string>
     <string name="events_overview_error_no_cause">Failed to load events.</string>
-    <string name="events_overview_retry">Retry</string>
 </resources>

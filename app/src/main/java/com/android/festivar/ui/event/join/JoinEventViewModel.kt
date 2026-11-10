@@ -7,6 +7,7 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
+import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.JOIN_CODE_LENGTH
@@ -68,14 +69,16 @@ data class JoinEventUIState(
  * Looks events up by their code as it is typed, and joins the chosen one as the signed-in person.
  *
  * @property userId The uid of the signed-in person who joins; their stored [User] is read by it.
- * @property eventsRepository The repository used to look the events up and to add the member.
- * @property usersRepository The repository holding the [User], whose joined events are updated.
+ * @property dataRepository The repository used to look the events up and to join one, keeping the
+ *   [Event] members and the [User] joined events consistent.
  */
 class JoinEventViewModel(
     private val userId: String,
-    private val eventsRepository: EventsRepository,
-    private val usersRepository: UsersRepository,
+    private val dataRepository: DataRepository,
 ) : ViewModel() {
+
+  private val eventsRepository: EventsRepository = dataRepository.eventsRepository
+  private val usersRepository: UsersRepository = dataRepository.usersRepository
   private val _uiState = MutableStateFlow(JoinEventUIState())
   val uiState: StateFlow<JoinEventUIState> = _uiState.asStateFlow()
 
@@ -124,28 +127,47 @@ class JoinEventViewModel(
       )
 
   /**
-   * Makes the signed-in person a member of the matched event [eventId], writing only what is still
-   * missing. Ignored unless [eventId] is among [JoinEventUIState.matches] and no join is running. A
-   * failure on a card the person already belongs to reads as a failed open, not a failed join.
+   * Makes the signed-in person a member of the matched event [eventId]. Ignored unless [eventId] is
+   * among [JoinEventUIState.matches] and no join is running. A failure on a card the person already
+   * belongs to reads as a failed open, not a failed join.
+   *
+   * The [Event] members are the source of truth: a member is not joined again, and a user side that
+   * disagrees with them is repaired, so a join that stopped halfway never blocks the person.
    */
   fun join(eventId: String) {
     val state = _uiState.value
     val match = state.matches.firstOrNull { it.id == eventId }
+
     if (state.isJoining || match == null) return
+
     val failure =
         if (match.isMember) R.string.join_event_open_failed else R.string.join_event_join_failed
+
     _uiState.update { it.copy(isJoining = true, errorRes = null) }
+
     viewModelScope.launch {
       try {
-        // Both sides are read again and only the missing one is written, so a join that stopped
-        // halfway earlier is repaired instead of failing as "already joined" forever.
-        val stored = usersRepository.getUser(userId)
+        // Both sides are read again: joinEvent throws if either already holds the membership.
         val event = eventsRepository.getEvent(eventId)
-        if (event.members.none { it.uid == stored.uid }) {
-          eventsRepository.editEvent(event.eventId, event.addMember(stored))
-        }
-        if (event.eventId !in stored.joinedEvents) {
-          usersRepository.editUser(stored.uid, stored.addJoinedEvent(event.eventId))
+        val user = usersRepository.getUser(userId)
+        val isMember = event.members.any { it.uid == userId }
+        val hasJoined = eventId in user.joinedEvents
+
+        when {
+          // Neither side: a normal join.
+          !isMember && !hasJoined -> dataRepository.joinEvent(eventId, userId)
+
+          // A member for the event: only the user side is missing.
+          isMember && !hasJoined -> usersRepository.editUser(userId, user.addJoinedEvent(eventId))
+
+          // Not a member for the event: the user side is stale, drop it and join normally.
+          !isMember && hasJoined -> {
+            usersRepository.editUser(userId, user.removeJoinedEvent(eventId))
+            dataRepository.joinEvent(eventId, userId)
+          }
+
+          // A member on both sides needs no write.
+          else -> Unit
         }
         _uiState.update { it.copy(isJoining = false, joinedEventId = eventId) }
       } catch (e: CancellationException) {
