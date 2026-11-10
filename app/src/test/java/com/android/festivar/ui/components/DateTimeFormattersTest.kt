@@ -35,6 +35,7 @@ class DateTimeFormattersTest {
         formatEventDate(
             Event(
                 eventId = "same-day",
+                ownerId = "owner",
                 title = "Event",
                 startDate = start,
                 endDate = sameDayEnd,
@@ -46,6 +47,7 @@ class DateTimeFormattersTest {
         formatEventDate(
             Event(
                 eventId = "same-month",
+                ownerId = "owner",
                 title = "Event",
                 startDate = start,
                 endDate = sameMonthEnd,
@@ -57,6 +59,7 @@ class DateTimeFormattersTest {
         formatEventDate(
             Event(
                 eventId = "same-year-different-month",
+                ownerId = "owner",
                 title = "Event",
                 startDate = start,
                 endDate = sameYearDifferentMonthEnd,
@@ -68,6 +71,7 @@ class DateTimeFormattersTest {
         formatEventDate(
             Event(
                 eventId = "different-year",
+                ownerId = "owner",
                 title = "Event",
                 startDate = start,
                 endDate = differentYearEnd,

@@ -173,7 +173,7 @@ class CreateEventViewModelTest {
   @Test
   fun toEventThrowsWhenFormIsInvalid() {
     assertThrows(IllegalArgumentException::class.java) {
-      viewModel.uiState.value.toEvent("event-123", emptyList())
+      viewModel.uiState.value.toEvent("event-123", "", emptyList())
     }
   }
 
@@ -183,7 +183,7 @@ class CreateEventViewModelTest {
     fillAllFields()
     val members = listOf(creator)
 
-    val event = viewModel.uiState.value.toEvent("event-123", members)
+    val event = viewModel.uiState.value.toEvent("event-123", creator.uid, members)
 
     assertEquals("event-123", event.eventId)
     assertEquals("Summer festival", event.title)

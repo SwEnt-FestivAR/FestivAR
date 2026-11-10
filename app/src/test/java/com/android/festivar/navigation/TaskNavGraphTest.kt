@@ -70,6 +70,7 @@ class TaskNavGraphTest {
     val event =
         Event(
             eventId = "event-1",
+            ownerId = owner.uid,
             title = "Summer festival",
             members = listOf(owner),
             startDate = start,

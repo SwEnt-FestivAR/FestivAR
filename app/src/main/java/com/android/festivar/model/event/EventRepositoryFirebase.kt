@@ -120,6 +120,7 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
   private fun toFirestoreData(event: Event): Map<String, Any?> {
     return mapOf(
         "eventId" to event.eventId,
+        "ownerId" to event.ownerId,
         "title" to event.title,
         "description" to event.description,
         "members" to event.members.map { it.uid },
@@ -152,6 +153,9 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
 
     return Event(
         eventId = document.getString("eventId") ?: document.id,
+        ownerId =
+            document.getString("ownerId")
+                ?: throw IllegalArgumentException("Event '${document.id}' has no owner"),
         title =
             document.getString("title")
                 ?: throw IllegalArgumentException("Event '${document.id}' has missing title"),

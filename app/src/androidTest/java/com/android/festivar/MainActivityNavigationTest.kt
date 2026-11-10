@@ -225,6 +225,7 @@ class MainActivityNavigationTest {
     val event =
         Event(
             eventId = "join-${UUID.randomUUID()}",
+            ownerId = "owner",
             title = "Joinable Event",
             startDate = start,
             endDate = start.plusHours(2),
@@ -310,6 +311,7 @@ class MainActivityNavigationTest {
     val event =
         Event(
             eventId = "event-${UUID.randomUUID()}",
+            ownerId = "owner",
             title = "Fête de l'Asso",
             members = listOf(storedUser),
             startDate = now.minusHours(1),
@@ -376,6 +378,7 @@ class MainActivityNavigationTest {
     val event =
         Event(
             eventId = "back-${UUID.randomUUID()}",
+            ownerId = "owner",
             title = "Event With Tasks",
             startDate = start,
             endDate = start.plusHours(2),
@@ -477,6 +480,7 @@ class MainActivityNavigationTest {
     val event =
         Event(
             eventId = "e1",
+            ownerId = owner.uid,
             title = "Summer festival",
             members = listOf(owner),
             startDate = start,

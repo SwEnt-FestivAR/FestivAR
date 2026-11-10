@@ -46,6 +46,7 @@ const val MAX_ANNOUNCEMENTS_PER_EVENT = 100
  */
 data class Event(
     val eventId: String,
+    val ownerId: String,
     val title: String,
     val description: String = "",
     val members: List<User> = emptyList(),
@@ -59,6 +60,7 @@ data class Event(
 
   init {
     require(eventId.isNotBlank()) { "The eventId cannot be empty." }
+    require(ownerId.isNotBlank()) { "The ownerId cannot be empty." }
     require(title.isNotBlank()) { "The title cannot be empty." }
     require(tasks.map { it.taskId }.distinct().size == tasks.size) { "A task is duplicated." }
     require(members.distinctBy { it.uid }.size == members.size) { "A user is registered twice." }

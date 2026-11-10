@@ -52,6 +52,7 @@ class TaskDetailsScreenTest {
     val event =
         Event(
             eventId = task.eventId,
+            ownerId = "owner",
             title = "Summer festival",
             tasks = listOf(task),
             startDate = start,

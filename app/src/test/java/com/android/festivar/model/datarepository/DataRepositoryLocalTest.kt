@@ -63,6 +63,7 @@ class DataRepositoryLocalTest {
   private val e1 =
       Event(
           eventId = "e1",
+          ownerId = alice.uid,
           title = "Summer festival",
           members = listOf(alice, bob),
           tasks = listOf(t1),
@@ -72,6 +73,7 @@ class DataRepositoryLocalTest {
   private val e2 =
       Event(
           eventId = "e2",
+          ownerId = bob.uid,
           title = "Jazz night",
           members = listOf(bob),
           tasks = listOf(t2),
@@ -93,6 +95,7 @@ class DataRepositoryLocalTest {
   private val e3 =
       Event(
           eventId = "e3",
+          ownerId = alice.uid,
           title = "Closing party",
           members = listOf(alice, carla),
           startDate = start,

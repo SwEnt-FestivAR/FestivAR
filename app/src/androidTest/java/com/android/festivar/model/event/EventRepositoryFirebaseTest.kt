@@ -44,6 +44,7 @@ class EventRepositoryFirebaseTest {
     event =
         Event(
             eventId = "event-${UUID.randomUUID()}",
+            ownerId = "user-1",
             title = "Fête de l'Asso",
             description = "Description",
             members = listOf(User("user-1")),
@@ -235,6 +236,7 @@ class EventRepositoryFirebaseTest {
         .set(
             mapOf(
                 "eventId" to event.eventId,
+                "ownerId" to event.ownerId,
                 "title" to event.title,
                 "members" to listOf("user-2"),
                 "startDate" to event.startDate.toString(),
@@ -252,6 +254,7 @@ class EventRepositoryFirebaseTest {
     document
         .set(
             mapOf(
+                "ownerId" to event.ownerId,
                 "title" to event.title,
                 "startDate" to event.startDate.toString(),
                 "endDate" to event.endDate.toString(),

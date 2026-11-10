@@ -41,6 +41,7 @@ class JoinEventViewModelTest {
   private val fete =
       Event(
           eventId = "fete2026",
+          ownerId = sami.uid,
           title = "Fete de l'Asso 2026",
           members = listOf(sami),
           startDate = start,
@@ -49,6 +50,7 @@ class JoinEventViewModelTest {
   private val noel =
       Event(
           eventId = "noel-12",
+          ownerId = "owner",
           title = "Noel",
           startDate = start.plusDays(60),
           endDate = start.plusDays(60).plusHours(3),

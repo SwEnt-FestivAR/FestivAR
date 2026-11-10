@@ -48,6 +48,7 @@ class AnnouncementNavGraphTest {
           listOf(
               Event(
                   eventId = EVENT_ID,
+                  ownerId = "owner",
                   title = "Balelec",
                   startDate = ZonedDateTime.now().plusDays(1),
                   endDate = ZonedDateTime.now().plusDays(2),

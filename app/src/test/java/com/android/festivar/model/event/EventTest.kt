@@ -48,14 +48,16 @@ class EventTest {
   /** Builds an event with valid default values, so that only the given fields matter. */
   private fun event(
       eventId: String = "e1",
+      ownerId: String = "owner-1",
       title: String = "Festival",
-      members: List<User> = emptyList(),
+      members: List<User> = listOf(User("owner-1")),
       tasks: List<Task> = emptyList(),
       startDate: ZonedDateTime = start,
       endDate: ZonedDateTime = start.plusDays(2),
   ): Event =
       Event(
           eventId = eventId,
+          ownerId = ownerId,
           title = title,
           members = members,
           tasks = tasks,
@@ -84,6 +86,7 @@ class EventTest {
   ): Event =
       Event(
           eventId = "e1",
+          ownerId = "owner-1",
           title = "Festival",
           description = "Description",
           members = members,
@@ -108,7 +111,13 @@ class EventTest {
   @Test
   fun init_succeeds_withOnlyRequiredFields() {
     val event =
-        Event(eventId = "e1", title = "Festival", startDate = start, endDate = start.plusDays(2))
+        Event(
+            eventId = "e1",
+            ownerId = "owner-1",
+            title = "Festival",
+            startDate = start,
+            endDate = start.plusDays(2),
+        )
 
     assertEquals("e1", event.eventId)
     assertEquals("Festival", event.title)

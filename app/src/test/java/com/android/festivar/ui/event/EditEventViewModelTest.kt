@@ -586,6 +586,7 @@ class EditEventViewModelTest {
     val start = ZonedDateTime.now(ZoneId.of("Europe/Zurich")).plusDays(2)
     return Event(
         eventId = "event-1",
+        ownerId = "member-1",
         title = "Festival",
         description = "Bring supplies",
         members = listOf(User(uid = "member-1")),

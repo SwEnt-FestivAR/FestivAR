@@ -293,6 +293,7 @@ class EndToEndTest {
     private val event =
         Event(
             eventId = "e2e-${UUID.randomUUID()}",
+            ownerId = "e2e-owner",
             title = "Vidy Festival",
             startDate = start,
             endDate = start.plusHours(5),

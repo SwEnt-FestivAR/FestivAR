@@ -331,6 +331,7 @@ internal fun EventDetailsScreenPreview() {
   val event =
       Event(
           eventId = "0",
+          ownerId = "user",
           title = "Fête de l'Asso 2026",
           members = listOf(User(uid = "user", name = "Sami K.")),
           startDate = eventStartDate,
