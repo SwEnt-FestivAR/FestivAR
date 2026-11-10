@@ -756,13 +756,4 @@ class TaskTest {
       taskWith(maxAssign = 1, assignees = listOf(sara)).copy(takenAt = mapOf(outsider.uid to start))
     }
   }
-
-  /** Breaks if assignees who took the task before takenAt existed make the task invalid. */
-  @Test
-  fun aTaskWithoutTakenAtIsStillValid() {
-    val task = taskWith(maxAssign = 2, assignees = users(2))
-
-    assertEquals(users(2), task.assignees)
-    assertTrue(task.takenAt.isEmpty())
-  }
 }

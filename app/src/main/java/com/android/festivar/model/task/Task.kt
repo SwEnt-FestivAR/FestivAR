@@ -32,10 +32,8 @@ import java.time.ZonedDateTime
  * - [ownerId] is not blank.
  *
  * A [Task] holds at most one [VoiceNote]. Only its owner ([ownerId]) may attach or remove it:
- * [attachVoiceNote] and [removeVoiceNote] refuse any other user. These only change the [Task]: the
- * `TasksRepository` does not save [voiceNote] yet (that comes with the voice note storage). Until
- * then it stays in memory, which breaks nothing: it defaults to `null`, so reading and writing a
- * [Task] works as before.
+ * [attachVoiceNote] and [removeVoiceNote] refuse any other user. `TaskRepositoryFirebase` saves and
+ * reads [voiceNote].
  *
  * @property taskId Unique identifier of the [Task].
  * @property eventId Identifier of the [Event] the [Task] belongs to.
@@ -49,8 +47,7 @@ import java.time.ZonedDateTime
  * @property priority How urgent the [Task] is.
  * @property maxAssign Maximum number of people who can join or be assigned to the [Task].
  * @property assignees People who joined or were assigned the [Task].
- * @property takenAt When each assignee took the [Task], by [User.uid]. A uid missing here took it
- *   before this field existed.
+ * @property takenAt When each assignee took the [Task], by [User.uid].
  * @property completed Whether the [Task] has been completed.
  * @property voiceNote The voice note of the [Task], or `null` if it has none.
  * @property ownerId The [User.uid] of the task owner (the user who created it). Every task has one.
@@ -68,10 +65,6 @@ data class Task(
     val priority: Priority = Priority.NONE,
     val maxAssign: Int = 1,
     val assignees: List<User> = emptyList(),
-    /**
-     * When each assignee took the task, by [User.uid]. A uid missing here took it before this field
-     * existed.
-     */
     val takenAt: Map<String, ZonedDateTime> = emptyMap(),
     val completed: Boolean = false,
     val voiceNote: VoiceNote? = null,

@@ -1,3 +1,4 @@
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.event.announcement
 
 import java.time.ZonedDateTime
@@ -157,6 +158,63 @@ data class Announcement(
    */
   fun togglePin(): Announcement {
     return copy(pinned = !pinned)
+  }
+
+  /**
+   * The announcement as the map stored in the database. [priority] is kept as its name and
+   * [updatedAt] as ISO text, the same way an event stores its dates.
+   */
+  fun toMap(): Map<String, Any> =
+      mapOf(
+          "announcementId" to announcementId,
+          "title" to title,
+          "authorId" to authorId,
+          "content" to content,
+          "priority" to priority.name,
+          "updatedAt" to updatedAt.toString(),
+          "links" to links,
+          "pinned" to pinned,
+      )
+
+  companion object {
+    /**
+     * Rebuilds an announcement from a [map] written by [toMap]. Only an absent or null `content`,
+     * `links` or `pinned` takes its default value.
+     *
+     * @throws IllegalArgumentException if a field is missing, has the wrong type or breaks a rule.
+     */
+    fun fromMap(map: Map<*, *>): Announcement {
+      fun <T> field(name: String, value: T?): T =
+          requireNotNull(value) { "Invalid announcement data: '$name' is missing or invalid." }
+
+      fun <T> optionalField(name: String, default: T, read: (Any) -> T?): T =
+          map[name]?.let { field(name, read(it)) } ?: default
+
+      fun <T> parsed(name: String, parse: (String) -> T): T =
+          field(name, map[name] as? String).let {
+            try {
+              parse(it)
+            } catch (e: RuntimeException) {
+              throw IllegalArgumentException("Invalid announcement data: bad $name '$it'.", e)
+            }
+          }
+
+      val links =
+          optionalField("links", emptyList()) { value ->
+            (value as? List<*>)?.map { field("links", it as? String) }
+          }
+
+      return Announcement(
+          announcementId = field("announcementId", map["announcementId"] as? String),
+          title = field("title", map["title"] as? String),
+          authorId = field("authorId", map["authorId"] as? String),
+          content = optionalField("content", "") { it as? String },
+          priority = parsed("priority", AnnouncementPriority::valueOf),
+          updatedAt = parsed("updatedAt", ZonedDateTime::parse),
+          links = links,
+          pinned = optionalField("pinned", false) { it as? Boolean },
+      )
+    }
   }
 }
 
