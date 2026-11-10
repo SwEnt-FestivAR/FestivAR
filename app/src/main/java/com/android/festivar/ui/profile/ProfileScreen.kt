@@ -103,7 +103,7 @@ fun ProfileScreen(
   val context = LocalContext.current
   val snackbarHostState = remember { SnackbarHostState() }
   var isUpgrading by rememberSaveable { mutableStateOf(false) }
-  val sheetState = rememberModalBottomSheetState()
+  val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
   var showSignOutWarning by rememberSaveable { mutableStateOf(false) }
 
   // Shows each error once in the snackbar, then clears it so it does not come back.
