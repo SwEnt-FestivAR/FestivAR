@@ -76,6 +76,9 @@ class VoiceNoteRecordBarTest {
             onDismissDelete = it.onDismissDelete,
             onRecordStart = onRecordStart,
             onRecordRelease = onRecordRelease,
+            onConfirmSend = it.onConfirmSend,
+            onCancelSend = it.onCancelSend,
+            onDismissRecordingFailed = it.onDismissRecordingFailed,
             onRetry = onRetry,
             onOpenSettings = onOpenSettings,
         )
