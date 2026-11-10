@@ -2,11 +2,19 @@
 <PreferenceScreen
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <ListPreference
+    <DropDownPreference
         app:key="theme"
         app:title="@string/settings_theme"
         app:entries="@array/theme_entries"
         app:entryValues="@array/theme_values"
+        app:defaultValue="system"
+        app:useSimpleSummaryProvider="true"/>
+
+    <DropDownPreference
+        app:key="language"
+        app:title="@string/settings_language"
+        app:entries="@array/language_entries"
+        app:entryValues="@array/language_values"
         app:defaultValue="system"
         app:useSimpleSummaryProvider="true"/>
 

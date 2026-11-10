@@ -3,8 +3,9 @@
 <resources>
     <string name="title_activity_settings">Paramètres</string>
     <string name="settings_theme">Thème</string>
-    <string name="settings_theme_system">Système</string>
+    <string name="settings_default_system">Système</string>
     <string name="settings_theme_light">Clair</string>
     <string name="settings_theme_dark">Sombre</string>
     <string name="settings_switch_example">Exemple</string>
+    <string name="settings_language">Langue</string>
 </resources>
