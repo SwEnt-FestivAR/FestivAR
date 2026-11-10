@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.dp
 import com.android.festivar.ui.theme.AppTheme
 
 /** The space on the left and on the right of the content of a [FixedBottomBar]. */
-val FixedBottomBarHorizontalPadding = 20.dp
+private val FixedBottomBarHorizontalPadding = 20.dp
 
 /**
  * A bar fixed to the bottom of a screen, above the system navigation bar, holding [content]. The

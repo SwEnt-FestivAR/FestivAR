@@ -2,16 +2,14 @@
 package com.android.festivar.ui.voicenote
 
 import androidx.annotation.StringRes
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import com.android.festivar.R
 import com.android.festivar.model.audio.PlayerState
-import com.android.festivar.ui.components.FixedBottomBarHorizontalPadding
+import com.android.festivar.ui.components.FixedBottomBar
 import com.android.festivar.ui.components.InfoNote
 import com.android.festivar.ui.components.InfoNoteButton
 import com.android.festivar.ui.components.NoticeSnackbar
@@ -70,7 +68,8 @@ internal fun VoiceNoteOwnerNotices(state: VoiceNoteUiState, callbacks: VoiceNote
 /**
  * The notice of a failed playback. It is not part of the record bar: a note exists, so the bar is
  * hidden, and everybody can listen, so everybody must see it. The design ("notice (fixed)") puts it
- * just above the buttons of the task.
+ * just above the buttons of the task. Like [VoiceNoteOwnerNotices] it has no bar and no padding of
+ * its own: the screen puts it in the [FixedBottomBar] it shares with those buttons.
  */
 @Composable
 fun VoiceNotePlaybackNotice(
@@ -84,13 +83,7 @@ fun VoiceNotePlaybackNotice(
       onRetry = callbacks.onRetry,
       tag = VoiceNoteRecordTestTags.PLAYBACK_ERROR,
       actionTag = VoiceNoteRecordTestTags.PLAYBACK_RETRY,
-      modifier =
-          modifier.padding(
-              start = FixedBottomBarHorizontalPadding,
-              top = 8.dp,
-              end = FixedBottomBarHorizontalPadding,
-              bottom = 4.dp,
-          ),
+      modifier = modifier,
   )
 }
 
@@ -98,9 +91,11 @@ fun VoiceNotePlaybackNotice(
 @Composable
 internal fun VoiceNotePlaybackFailedPreview() {
   AppTheme {
-    VoiceNotePlaybackNotice(
-        VoiceNoteUiState(note = previewNote, player = PlayerState.Failed(previewNote.audioUrl)),
-        previewCallbacks,
-    )
+    FixedBottomBar {
+      VoiceNotePlaybackNotice(
+          VoiceNoteUiState(note = previewNote, player = PlayerState.Failed(previewNote.audioUrl)),
+          previewCallbacks,
+      )
+    }
   }
 }
