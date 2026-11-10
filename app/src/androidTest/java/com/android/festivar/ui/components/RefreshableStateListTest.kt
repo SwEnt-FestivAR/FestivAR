@@ -1,6 +1,7 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.components
 
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
@@ -23,6 +24,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeDown
+import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.ui.theme.AppTheme
 import org.junit.Assert.assertEquals
@@ -239,5 +241,53 @@ class RefreshableStateListTest {
     state.listKey = "b"
     composeTestRule.onNodeWithTag(firstTag).assertIsDisplayed()
     composeTestRule.onNodeWithTag(lastTag).assertDoesNotExist()
+  }
+
+  /**
+   * Test that the items follow the given content padding, and that the states without items keep
+   * only its start and end, so that they stay centered in the list.
+   */
+  @Test
+  fun contentPaddingAppliesToTheItemsOnly() {
+    var showsItems by mutableStateOf(true)
+    composeTestRule.setContent {
+      AppTheme {
+        RefreshableStateList(
+            isLoading = false,
+            hasNoItems = !showsItems,
+            hasNoShownItems = !showsItems,
+            errorMessage = null,
+            onRefresh = {},
+            filterEmptyMessage = FILTER_EMPTY_MESSAGE,
+            emptyState = { Text(text = "No items yet", modifier = Modifier.testTag(EMPTY_STATE)) },
+            listTestTag = LIST,
+            contentPadding = PaddingValues(start = 40.dp, top = 30.dp, bottom = 200.dp),
+        ) {
+          items(listOf("First")) { Text(text = it, modifier = Modifier.testTag(itemTag(it))) }
+        }
+      }
+    }
+
+    val list = composeTestRule.onNodeWithTag(LIST).getUnclippedBoundsInRoot()
+    val item = composeTestRule.onNodeWithTag(itemTag("First")).getUnclippedBoundsInRoot()
+    assertEquals(40f, (item.left - list.left).value, 1f)
+    assertEquals(30f, (item.top - list.top).value, 1f)
+
+    showsItems = false
+    val listArea =
+        composeTestRule
+            .onNodeWithTag(RefreshableListTestTags.PULL_TO_REFRESH)
+            .getUnclippedBoundsInRoot()
+    val emptyState = composeTestRule.onNodeWithTag(EMPTY_STATE).getUnclippedBoundsInRoot()
+    assertEquals(
+        ((listArea.left + 40.dp + listArea.right) / 2).value,
+        ((emptyState.left + emptyState.right) / 2).value,
+        1f,
+    )
+    assertEquals(
+        ((listArea.top + listArea.bottom) / 2).value,
+        ((emptyState.top + emptyState.bottom) / 2).value,
+        1f,
+    )
   }
 }
