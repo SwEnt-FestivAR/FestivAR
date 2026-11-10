@@ -39,6 +39,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -78,6 +79,9 @@ object TaskDetailsScreenTestTags {
   const val DESCRIPTION = "detailsDescription"
   const val TAKE_BUTTON = "detailsTakeButton"
   const val GIVE_BACK_BUTTON = "detailsGiveBackButton"
+  const val GIVE_BACK_DIALOG = "detailsGiveBackDialog"
+  const val GIVE_BACK_CONFIRM_BUTTON = "detailsGiveBackConfirmButton"
+  const val GIVE_BACK_KEEP_BUTTON = "detailsGiveBackKeepButton"
   const val MARK_DONE_BUTTON = "detailsMarkDoneButton"
   const val LOADING = "detailsLoading"
   const val ERROR_MESSAGE = "detailsError"
@@ -85,9 +89,9 @@ object TaskDetailsScreenTestTags {
 }
 
 /**
- * The details of a task, where the current user can take it, give it back or finish it. The task is
- * loaded each time the screen comes to the front, the first time included, so an edit shows on
- * return.
+ * The details of a task, where the current user can take it, give it back (after a confirmation) or
+ * finish it. The task is loaded each time the screen comes to the front, the first time included,
+ * so an edit shows on return.
  *
  * @param viewModel holds the task to show and the signed-in user, and applies the actions.
  * @param onBack Called when the user taps the back button.
@@ -116,7 +120,10 @@ fun TaskDetailsScreen(
   )
 }
 
-/** The stateless details screen: everything it shows comes from [state]. */
+/**
+ * The stateless details screen: everything it shows comes from [state]. Giving the task back first
+ * asks for a confirmation; [onGiveBack] is called only once the user confirms.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaskDetailsContent(
@@ -133,6 +140,7 @@ fun TaskDetailsContent(
   var menuExpanded by remember { mutableStateOf(false) }
   var showDeleteConfirmation by remember { mutableStateOf(false) }
 
+  var showGiveBackConfirmation by rememberSaveable { mutableStateOf(false) }
   Scaffold(
       topBar = {
         TopAppBar(
@@ -204,7 +212,10 @@ fun TaskDetailsContent(
             },
         )
       },
-      bottomBar = { if (state.hasActions) Actions(state, onTake, onGiveBack, onMarkDone) },
+      bottomBar = {
+        if (state.hasActions)
+            Actions(state, onTake, { showGiveBackConfirmation = true }, onMarkDone)
+      },
   ) { padding ->
     Column(
         Modifier.fillMaxSize()
@@ -251,6 +262,22 @@ fun TaskDetailsContent(
           dismissModifier = Modifier.testTag(TaskDetailsScreenTestTags.DELETE_DISMISS_BUTTON),
       )
     }
+  val taskToGiveBack = state.task
+  if (showGiveBackConfirmation && taskToGiveBack != null) {
+    FestivarConfirmDialog(
+        title = stringResource(R.string.details_give_back_title),
+        message = stringResource(R.string.details_give_back_message, taskToGiveBack.title),
+        confirmText = stringResource(R.string.details_give_back),
+        dismissText = stringResource(R.string.details_give_back_keep),
+        onConfirm = {
+          showGiveBackConfirmation = false
+          onGiveBack()
+        },
+        onDismiss = { showGiveBackConfirmation = false },
+        modifier = Modifier.testTag(TaskDetailsScreenTestTags.GIVE_BACK_DIALOG),
+        confirmModifier = Modifier.testTag(TaskDetailsScreenTestTags.GIVE_BACK_CONFIRM_BUTTON),
+        dismissModifier = Modifier.testTag(TaskDetailsScreenTestTags.GIVE_BACK_KEEP_BUTTON),
+    )
   }
 }
 
@@ -300,7 +327,7 @@ private fun SubtitleText(text: String, tag: String) {
 private fun Actions(
     state: TaskDetailsUiState,
     onTake: () -> Unit,
-    onGiveBack: () -> Unit,
+    onGiveBackRequested: () -> Unit,
     onMarkDone: () -> Unit,
 ) {
   Row(
@@ -319,7 +346,7 @@ private fun Actions(
       }
     } else {
       OutlinedButton(
-          onClick = onGiveBack,
+          onClick = onGiveBackRequested,
           enabled = state.canGiveBack,
           shape = MaterialTheme.shapes.medium,
           colors =

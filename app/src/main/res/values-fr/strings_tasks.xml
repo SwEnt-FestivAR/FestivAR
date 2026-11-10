@@ -46,4 +46,8 @@
     <string name="task_details_delete_confirmation_message">« %1$s » sera supprimée et ses bénévoles seront avertis. Cette action est irréversible.</string>
     <string name="task_details_keep_task">Garder la tâche</string>
 
+    <string name="mytasks_load_failed">Impossible de charger vos tâches.</string>
+    <string name="mytasks_refresh_failed">Impossible d’actualiser vos tâches.</string>
+
+
 </resources>

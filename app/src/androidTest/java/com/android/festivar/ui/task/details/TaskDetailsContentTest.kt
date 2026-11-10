@@ -6,6 +6,10 @@ package com.android.festivar.ui.task.details
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onChild
 import androidx.compose.ui.test.onNodeWithTag
@@ -117,10 +121,67 @@ class TaskDetailsContentTest {
     var done = 0
     show(state(), onGiveBack = { givenBack++ }, onMarkDone = { done++ })
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.GIVE_BACK_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.GIVE_BACK_CONFIRM_BUTTON).performClick()
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MARK_DONE_BUTTON).performClick()
     assertEquals(1, givenBack)
     assertEquals(1, done)
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.TAKE_BUTTON).assertDoesNotExist()
+  }
+
+  // Breaks if tapping Give it back changes the task before the user has confirmed.
+  @Test
+  fun giveBackOpensTheConfirmationWithoutGivingBack() {
+    var givenBack = 0
+    show(state(), onGiveBack = { givenBack++ })
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.GIVE_BACK_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.GIVE_BACK_DIALOG).assertIsDisplayed()
+    assertEquals(0, givenBack)
+  }
+
+  // Breaks if confirming does not give the task back exactly once, or leaves the dialog open.
+  @Test
+  fun confirmingGivesTheTaskBackAndClosesTheDialog() {
+    var givenBack = 0
+    show(state(), onGiveBack = { givenBack++ })
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.GIVE_BACK_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.GIVE_BACK_CONFIRM_BUTTON).performClick()
+    assertEquals(1, givenBack)
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.GIVE_BACK_DIALOG).assertDoesNotExist()
+  }
+
+  // Breaks if the dialog flag goes back to remember, so recreating the screen drops the dialog.
+  @Test
+  fun confirmationSurvivesRecreation() {
+    val restorationTester = StateRestorationTester(composeTestRule)
+    restorationTester.setContent { TaskDetailsContent(state(), {}, {}, {}, {}, {}, {}) }
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.GIVE_BACK_BUTTON).performClick()
+    restorationTester.emulateSavedInstanceStateRestore()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.GIVE_BACK_DIALOG).assertIsDisplayed()
+  }
+
+  // Breaks if Keep it gives the task back anyway, or leaves the dialog open.
+  @Test
+  fun keepingItClosesTheDialogAndChangesNothing() {
+    var givenBack = 0
+    show(state(), onGiveBack = { givenBack++ })
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.GIVE_BACK_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.GIVE_BACK_KEEP_BUTTON).performClick()
+    assertEquals(0, givenBack)
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.GIVE_BACK_DIALOG).assertDoesNotExist()
+  }
+
+  // Breaks if the dialog does not say which task is given back.
+  @Test
+  fun theDialogNamesTheTask() {
+    show(state())
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.GIVE_BACK_BUTTON).performClick()
+    composeTestRule
+        .onNode(
+            hasTestTag(TaskDetailsScreenTestTags.GIVE_BACK_DIALOG)
+                .and(hasAnyDescendant(hasText(task.title, substring = true))),
+            useUnmergedTree = true,
+        )
+        .assertExists()
   }
 
   @Test
