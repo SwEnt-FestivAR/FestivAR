@@ -47,7 +47,7 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, dataRepository: 
     TaskOverviewScreen(
         viewModel =
             viewModel(key = "$eventId:${firebaseUser.uid}") {
-              TaskOverviewViewModel(eventId, firebaseUser.uid)
+              TaskOverviewViewModel(eventId, firebaseUser.uid, dataRepository)
             },
         onBack = navigator.onBack,
         onOpenTask = navigator.onOpenTask,
