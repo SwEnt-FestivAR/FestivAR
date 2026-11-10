@@ -22,6 +22,7 @@ class VoiceNoteUiStateTest {
           ZonedDateTime.of(2026, 10, 17, 9, 12, 0, 0, ZoneOffset.UTC),
       )
 
+  /** Breaks if the record bar shows to a volunteer, or to the owner of a task that has a note. */
   @Test
   fun recordBarOnlyForTheOwnerWithoutNote() {
     assertTrue(VoiceNoteUiState(canManage = true).showRecordBar)
@@ -30,6 +31,7 @@ class VoiceNoteUiStateTest {
     assertFalse(VoiceNoteUiState(note = note, canManage = false).showRecordBar)
   }
 
+  /** Breaks if the delete dialog opens for a volunteer, for a task without a note, or unasked. */
   @Test
   fun deleteDialogOnlyForTheOwnerOfANote() {
     assertTrue(
@@ -40,12 +42,14 @@ class VoiceNoteUiStateTest {
     assertFalse(VoiceNoteUiState(canManage = true, showDeleteConfirm = true).showDeleteDialog)
   }
 
+  /** Breaks if the owner can press the record button while the microphone is refused. */
   @Test
   fun recordIsDisabledWithoutTheMicrophonePermission() {
     assertTrue(VoiceNoteUiState(canManage = true).recordEnabled)
     assertFalse(VoiceNoteUiState(canManage = true, micDenied = true).recordEnabled)
   }
 
+  /** Breaks if a volunteer sees an empty section, or somebody loses the section of a note. */
   @Test
   fun sectionIsHiddenForAVolunteerWithoutNote() {
     assertFalse(VoiceNoteUiState().isVisible)
@@ -53,6 +57,7 @@ class VoiceNoteUiStateTest {
     assertTrue(VoiceNoteUiState(canManage = true).isVisible)
   }
 
+  /** Breaks if a note looks playing while the player plays another note or nothing. */
   @Test
   fun isPlayingOnlyForTheNoteOfTheTask() {
     assertTrue(VoiceNoteUiState(note = note, player = PlayerState.Playing(note.audioUrl)).isPlaying)
@@ -61,6 +66,7 @@ class VoiceNoteUiStateTest {
     assertFalse(VoiceNoteUiState(player = PlayerState.Playing(note.audioUrl)).isPlaying)
   }
 
+  /** Breaks if the playback failure of another note is shown on this note. */
   @Test
   fun playbackFailedOnlyForTheNoteOfTheTask() {
     assertTrue(
@@ -70,6 +76,7 @@ class VoiceNoteUiStateTest {
     assertFalse(VoiceNoteUiState(note = note).playbackFailed)
   }
 
+  /** Breaks if the timer does not follow the recorder, or does not start at zero. */
   @Test
   fun elapsedFollowsTheRecorder() {
     assertEquals(Duration.ZERO, VoiceNoteUiState().elapsed)
@@ -86,6 +93,11 @@ class VoiceNoteUiStateTest {
   fun recordingIsDisabledWhileSending() {
     assertTrue(VoiceNoteUiState(canManage = true, pending = waiting).recordEnabled)
     assertFalse(VoiceNoteUiState(canManage = true, pending = uploading).recordEnabled)
+  }
+
+  /** Breaks if a recording that waits is taken for one that is sent, or the other way round. */
+  @Test
+  fun sendingOnlyForARecordingThatIsUploaded() {
     assertEquals(uploading, VoiceNoteUiState(pending = uploading).sending)
     assertNull(VoiceNoteUiState(pending = waiting).sending)
     assertNull(VoiceNoteUiState(canManage = true).sending)
@@ -100,6 +112,12 @@ class VoiceNoteUiStateTest {
     assertFalse(VoiceNoteUiState(canManage = false, pending = waiting).showSendDialog)
   }
 
+  /** Breaks if the send dialog opens over a task that already has a voice note. */
+  @Test
+  fun noSendDialogForATaskThatHasANote() {
+    assertFalse(VoiceNoteUiState(note = note, canManage = true, pending = waiting).showSendDialog)
+  }
+
   /** Breaks if a recorder that failed by itself is not reported as a failed recording. */
   @Test
   fun recordingFailedOnlyForAFailedRecorder() {
@@ -107,6 +125,7 @@ class VoiceNoteUiStateTest {
     assertFalse(VoiceNoteUiState(recorder = RecorderState.Idle).recordingFailed)
   }
 
+  /** Breaks if a callback is wired to another action than the one the caller gave. */
   @Test
   fun everyCallbackIsGivenByTheCaller() {
     val calls = mutableListOf<String>()
@@ -157,6 +176,7 @@ class VoiceNoteUiStateTest {
     )
   }
 
+  /** Breaks if a NoOp callback throws when it is called. */
   @Test
   fun noOpCallbacksDoNothing() {
     with(VoiceNoteCallbacks.NoOp) {
