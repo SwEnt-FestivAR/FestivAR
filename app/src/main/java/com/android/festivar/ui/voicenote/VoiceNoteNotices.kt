@@ -2,6 +2,7 @@
 package com.android.festivar.ui.voicenote
 
 import androidx.annotation.StringRes
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -15,23 +16,19 @@ import com.android.festivar.ui.components.InfoNoteButton
 import com.android.festivar.ui.components.NoticeSnackbar
 import com.android.festivar.ui.theme.AppTheme
 
-/**
- * An error of the voice note, shown with the shared snackbar and a Retry. The [modifier] is applied
- * before the tag, so the tagged node is the snackbar alone, without the space around it.
- */
+/** An error of the voice note, shown with the shared snackbar and a Retry. */
 @Composable
 internal fun ErrorNotice(
     @StringRes message: Int,
     onRetry: () -> Unit,
     tag: String,
     actionTag: String,
-    modifier: Modifier = Modifier,
 ) {
   NoticeSnackbar(
       message = stringResource(message),
       actionLabel = stringResource(R.string.action_retry),
       onAction = onRetry,
-      modifier = modifier.testTag(tag),
+      modifier = Modifier.testTag(tag),
       actionModifier = Modifier.testTag(actionTag),
   )
 }
@@ -41,7 +38,10 @@ internal fun ErrorNotice(
  * microphone is off (with a button to the settings).
  */
 @Composable
-internal fun VoiceNoteOwnerNotices(state: VoiceNoteUiState, callbacks: VoiceNoteCallbacks) {
+internal fun ColumnScope.VoiceNoteOwnerNotices(
+    state: VoiceNoteUiState,
+    callbacks: VoiceNoteCallbacks,
+) {
   if (state.sendFailed) {
     ErrorNotice(
         message = R.string.voice_note_send_failed,
@@ -72,18 +72,13 @@ internal fun VoiceNoteOwnerNotices(state: VoiceNoteUiState, callbacks: VoiceNote
  * its own: the screen puts it in the [FixedBottomBar] it shares with those buttons.
  */
 @Composable
-fun VoiceNotePlaybackNotice(
-    state: VoiceNoteUiState,
-    callbacks: VoiceNoteCallbacks,
-    modifier: Modifier = Modifier,
-) {
+fun ColumnScope.VoiceNotePlaybackNotice(state: VoiceNoteUiState, callbacks: VoiceNoteCallbacks) {
   if (!state.playbackFailed) return
   ErrorNotice(
       message = R.string.voice_note_playback_failed,
       onRetry = callbacks.onRetry,
       tag = VoiceNoteRecordTestTags.PLAYBACK_ERROR,
       actionTag = VoiceNoteRecordTestTags.PLAYBACK_RETRY,
-      modifier = modifier,
   )
 }
 

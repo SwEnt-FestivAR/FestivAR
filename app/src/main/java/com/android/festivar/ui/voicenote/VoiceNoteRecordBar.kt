@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -42,22 +43,18 @@ import java.time.Duration
 private const val DISABLED_ALPHA = 0.5f
 
 /**
- * The bar fixed above the bottom of the screen: the notices of the owner (failed send, microphone
- * off) and the record bar under them, in the same [FixedBottomBar]. Only the owner of a task
- * without a note sees it: it is hidden otherwise. The owner holds the round button to record,
- * releases it to stop. Without the microphone permission the record bar is greyed out.
+ * The record bar of the voice note: the notices of the owner (failed send, microphone off) and the
+ * record bar under them. It draws no bar of its own: the screen puts it in the [FixedBottomBar] it
+ * shares with the other things fixed at the bottom (the playback notice, the buttons of the task).
+ * Only the owner of a task without a note sees it: it is hidden otherwise. The owner holds the
+ * round button to record, releases it to stop. Without the microphone permission the record bar is
+ * greyed out.
  */
 @Composable
-fun VoiceNoteRecordBar(
-    state: VoiceNoteUiState,
-    callbacks: VoiceNoteCallbacks,
-    modifier: Modifier = Modifier,
-) {
+fun ColumnScope.VoiceNoteRecordBar(state: VoiceNoteUiState, callbacks: VoiceNoteCallbacks) {
   if (!state.showRecordBar) return
-  FixedBottomBar(modifier) {
-    VoiceNoteOwnerNotices(state, callbacks)
-    RecordPill(state, callbacks)
-  }
+  VoiceNoteOwnerNotices(state, callbacks)
+  RecordPill(state, callbacks)
 }
 
 /**
@@ -160,7 +157,7 @@ private fun RecordButton(enabled: Boolean, callbacks: VoiceNoteCallbacks) {
 /** The bar with its notices fixed at the bottom of the screen, as on the screen. */
 @Composable
 private fun VoiceNoteBarPreviewScreen(state: VoiceNoteUiState) {
-  AppTheme { VoiceNoteRecordBar(state, previewCallbacks) }
+  AppTheme { FixedBottomBar { VoiceNoteRecordBar(state, previewCallbacks) } }
 }
 
 @Preview(showBackground = true)

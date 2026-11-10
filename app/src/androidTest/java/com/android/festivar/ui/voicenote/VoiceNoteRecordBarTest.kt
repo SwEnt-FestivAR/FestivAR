@@ -1,7 +1,6 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.voicenote
 
-import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -31,6 +30,7 @@ import com.android.festivar.R
 import com.android.festivar.model.audio.PlayerState
 import com.android.festivar.model.audio.RecorderState
 import com.android.festivar.model.voicenote.VoiceNote
+import com.android.festivar.ui.components.FixedBottomBar
 import com.android.festivar.ui.theme.AppTheme
 import io.mockk.confirmVerified
 import io.mockk.mockk
@@ -87,7 +87,7 @@ class VoiceNoteRecordBarTest {
 
   private fun show(state: VoiceNoteUiState) = composeTestRule.setContent {
     AppTheme {
-      Column {
+      FixedBottomBar {
         VoiceNotePlaybackNotice(state, callbacks)
         VoiceNoteRecordBar(state, callbacks)
       }
@@ -312,7 +312,9 @@ class VoiceNoteRecordBarTest {
   @Test
   fun interruptedGestureStillReleases() {
     var state by mutableStateOf(VoiceNoteUiState(canManage = true))
-    composeTestRule.setContent { AppTheme { VoiceNoteRecordBar(state, callbacks) } }
+    composeTestRule.setContent {
+      AppTheme { FixedBottomBar { VoiceNoteRecordBar(state, callbacks) } }
+    }
     tag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).performTouchInput { down(center) }
     composeTestRule.runOnIdle { state = VoiceNoteUiState(canManage = true, micDenied = true) }
     composeTestRule.waitForIdle()
