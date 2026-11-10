@@ -17,5 +17,4 @@
 
     <string name="events_overview_error">Impossible de charger les événements : %1$s</string>
     <string name="events_overview_error_no_cause">Impossible de charger les événements.</string>
-    <string name="events_overview_retry">Réessayer</string>
 </resources>

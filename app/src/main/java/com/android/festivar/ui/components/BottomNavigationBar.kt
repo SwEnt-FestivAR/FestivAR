@@ -109,6 +109,7 @@ fun BottomNavigationBar(
     subScreen: NavigationSubScreen? = null,
 ) {
   val edge = MaterialTheme.colorScheme.outlineVariant
+  val barShadow = MaterialTheme.colorScheme.onSurface.copy(alpha = BarShadowAlpha)
   Row(
       modifier =
           modifier
@@ -116,8 +117,8 @@ fun BottomNavigationBar(
               .shadow(
                   elevation = 6.dp,
                   shape = BarShape,
-                  ambientColor = ShadowInk,
-                  spotColor = ShadowInk,
+                  ambientColor = barShadow,
+                  spotColor = barShadow,
               )
               .background(MaterialTheme.colorScheme.surface, BarShape)
               .drawBehind { drawTopEdge(edge) }
@@ -205,6 +206,7 @@ private fun RootIcon(tab: NavigationTab, selected: Boolean) {
 /** The greyed tab icon with the lime sub-screen disc overlapping its right side. */
 @Composable
 private fun NestedIcons(tab: NavigationTab, subScreen: NavigationSubScreen) {
+  val discShadow = MaterialTheme.colorScheme.scrim.copy(alpha = DiscShadowAlpha)
   Row(verticalAlignment = Alignment.CenterVertically) {
     Box(
         modifier =
@@ -227,8 +229,8 @@ private fun NestedIcons(tab: NavigationTab, subScreen: NavigationSubScreen) {
                 .shadow(
                     elevation = 4.dp,
                     shape = CircleShape,
-                    ambientColor = ShadowBlack,
-                    spotColor = ShadowBlack,
+                    ambientColor = discShadow,
+                    spotColor = discShadow,
                 )
                 .background(MaterialTheme.colorScheme.primary, CircleShape)
                 .border(3.dp, MaterialTheme.colorScheme.surface, CircleShape)
@@ -245,11 +247,11 @@ private fun NestedIcons(tab: NavigationTab, subScreen: NavigationSubScreen) {
   }
 }
 
-/**
- * Shadow colours of the design: ink at 6 percent under the bar, black at 12 percent under the disc.
- */
-private val ShadowInk = Color(0x0F1A1C14)
-private val ShadowBlack = Color(0x1F000000)
+/** Shadow strength of the design: the theme's onSurface at 6 percent under the bar. */
+private const val BarShadowAlpha = 0.06f
+
+/** Shadow strength of the design: the theme's scrim at 12 percent under the disc. */
+private const val DiscShadowAlpha = 0.12f
 
 /** The hairline along the top of the bar, following its rounded corners and nothing else. */
 private fun DrawScope.drawTopEdge(color: Color) {

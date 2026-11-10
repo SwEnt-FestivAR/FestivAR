@@ -20,9 +20,13 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.datarepository.DataRepositoryLocal
+import com.android.festivar.model.event.Event
+import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.task.TasksRepositoryProvider
+import com.android.festivar.model.user.User
+import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.navigation.task.taskGraph
 import com.android.festivar.ui.task.create.CreateTaskScreenTestTags
 import com.android.festivar.ui.task.details.TaskDetailsScreenTestTags
@@ -31,6 +35,7 @@ import com.android.festivar.ui.theme.AppTheme
 import com.google.firebase.auth.FirebaseUser
 import io.mockk.every
 import io.mockk.mockk
+import java.time.ZonedDateTime
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -59,12 +64,33 @@ class TaskNavGraphTest {
     TasksRepositoryProvider.reset()
   }
 
+  // The create route saves through the data repository, which also adds the task to its event and
+  // to its owner: both must exist, and the task lands in the same [repository] as the edit route.
+  private fun dataRepository(authRepository: AuthRepository): DataRepositoryLocal {
+    val owner = User("owner-1", joinedEvents = listOf("event-1"))
+    val start = ZonedDateTime.now().plusDays(1)
+    val event =
+        Event(
+            eventId = "event-1",
+            title = "Summer festival",
+            members = listOf(owner),
+            startDate = start,
+            endDate = start.plusDays(2),
+        )
+    return DataRepositoryLocal(
+        authRepository = authRepository,
+        tasksRepository = repository,
+        eventsRepository = EventsRepositoryLocal(listOf(event)),
+        usersRepository = UsersRepositoryLocal(listOf(owner)),
+    )
+  }
+
   private fun openCreateTaskRoute(authRepository: AuthRepository) {
     composeTestRule.setContent {
       AppTheme {
         val navController = rememberNavController()
         NavHost(navController, startDestination = AppScreens.createTask("event-1")) {
-          taskGraph(navController, DataRepositoryLocal(authRepository))
+          taskGraph(navController, dataRepository(authRepository))
         }
       }
     }
@@ -110,7 +136,7 @@ class TaskNavGraphTest {
         navController = rememberNavController()
         NavHost(navController, startDestination = "start") {
           composable("start") {}
-          taskGraph(navController, DataRepositoryLocal(authRepository))
+          taskGraph(navController, dataRepository(authRepository))
         }
       }
     }

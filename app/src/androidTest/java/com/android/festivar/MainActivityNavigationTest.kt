@@ -15,7 +15,7 @@ import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
@@ -475,13 +475,29 @@ class MainActivityNavigationTest {
 
   @Test
   fun addTaskOnTheOverviewOpensCreateTaskAndTheNewTaskShowsOnReturn() {
-    TasksRepositoryProvider.repository = TasksRepositoryLocal()
+    val tasks = TasksRepositoryLocal()
+    TasksRepositoryProvider.repository = tasks
+    // The create screen saves through the data repository, which also adds the task to its event
+    // and to its owner: both must exist. The overview reads the same local tasks.
+    val owner = User(testUserId, joinedEvents = listOf("e1"))
+    val start = ZonedDateTime.now().plusDays(1)
+    val event =
+        Event(
+            eventId = "e1",
+            title = "Summer festival",
+            members = listOf(owner),
+            startDate = start,
+            endDate = start.plusDays(2),
+        )
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
           dataRepository =
-              DataRepositoryFirebase(
-                  authRepository = FakeAuthRepository(currentUser = firebaseUser)
+              DataRepositoryLocal(
+                  authRepository = FakeAuthRepository(currentUser = firebaseUser),
+                  tasksRepository = tasks,
+                  eventsRepository = EventsRepositoryLocal(listOf(event)),
+                  usersRepository = UsersRepositoryLocal(listOf(owner)),
               ),
           startDestinationOverride = AppScreens.taskOverview("e1"),
       )

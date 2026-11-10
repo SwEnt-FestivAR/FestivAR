@@ -9,6 +9,8 @@
     <string name="action_cancel">Cancel</string>
     <string name="action_retry">Retry</string>
     <string name="action_open_settings">Open settings</string>
+    <string name="action_continue">Continue</string>
+    <string name="action_continue_anyway">Continue anyway</string>
     <!-- User list -->
     <string name="user_list_uncategorized">Unknown</string>
     <!-- Samples shown in the previews of the shared components -->

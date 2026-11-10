@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.authentication
 
 import android.util.Log
@@ -6,6 +7,7 @@ import androidx.credentials.Credential
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryProvider
+import com.android.festivar.model.user.withNamesFromEmail
 import com.google.firebase.Firebase
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
@@ -43,7 +45,10 @@ class AuthRepositoryFirebase(
         ensureUserExistsOrSignOut(user)
         if (isLink) {
           val existing = usersRepository.getUser(user.uid)
-          usersRepository.editUser(user.uid, existing.copy(email = user.email.orEmpty()))
+          usersRepository.editUser(
+              user.uid,
+              existing.copy(email = user.email.orEmpty()).withNamesFromEmail(),
+          )
         }
         Log.d(TAG, "Successfully signed in/linked user with Google: ${user.uid}")
         Result.success(user)
@@ -139,13 +144,13 @@ class AuthRepositoryFirebase(
             // Ensure profile exists and update email in Firestore for upgraded user
             ensureUserExistsOrSignOut(user)
             val existing = usersRepository.getUser(user.uid)
-            usersRepository.editUser(user.uid, existing.copy(email = user.email.orEmpty()))
+            usersRepository.editUser(
+                user.uid,
+                existing.copy(email = user.email.orEmpty()).withNamesFromEmail(),
+            )
           } else {
             usersRepository.addUser(
-                User(
-                    uid = user.uid,
-                    email = user.email.orEmpty(),
-                )
+                User(uid = user.uid, email = user.email.orEmpty()).withNamesFromEmail()
             )
           }
           Log.d(
@@ -174,7 +179,8 @@ class AuthRepositoryFirebase(
       }
 
   /**
-   * Creates the [User] document of [firebaseUser] in Firestore if it does not exist yet.
+   * Creates the [User] document of [firebaseUser] in Firestore if it does not exist yet. Its name
+   * and surname are generated from the email of [firebaseUser], see [withNamesFromEmail].
    *
    * @param firebaseUser The [firebaseUser] that has to have its equivalent as a [User].
    */
@@ -182,7 +188,9 @@ class AuthRepositoryFirebase(
     try {
       usersRepository.getUser(firebaseUser.uid)
     } catch (_: NoSuchElementException) {
-      usersRepository.addUser(User(uid = firebaseUser.uid, email = firebaseUser.email.orEmpty()))
+      usersRepository.addUser(
+          User(uid = firebaseUser.uid, email = firebaseUser.email.orEmpty()).withNamesFromEmail()
+      )
     } catch (e: Exception) {
       if (e is CancellationException) throw e
       throw e

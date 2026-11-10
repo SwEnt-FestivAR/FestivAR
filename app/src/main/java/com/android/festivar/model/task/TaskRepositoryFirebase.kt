@@ -1,8 +1,10 @@
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.model.task
 
 import com.android.festivar.model.user.UsersRepositoryFirebase
+import com.android.festivar.model.voicenote.VoiceNote
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import java.time.Duration
@@ -92,8 +94,10 @@ class TaskRepositoryFirebase(
         "priority" to task.priority.name,
         "maxAssign" to task.maxAssign,
         "assignees" to task.assignees.map { user -> user.uid },
+        "takenAt" to task.takenAt.mapValues { it.value.toString() },
         "completed" to task.completed,
         "ownerId" to task.ownerId,
+        "voiceNote" to task.voiceNote?.toMap(),
     )
   }
 
@@ -105,6 +109,12 @@ class TaskRepositoryFirebase(
           val userId =
               value as? String ?: throw IllegalArgumentException("Invalid member data: $value")
           userRepo.getUser(userId)
+        }
+
+    val takenAt =
+        (document.get("takenAt") as? Map<*, *>).orEmpty().entries.associate { (uid, time) ->
+          require(uid is String && time is String) { "Invalid takenAt data: $uid=$time" }
+          uid to ZonedDateTime.parse(time)
         }
 
     return Task(
@@ -119,11 +129,24 @@ class TaskRepositoryFirebase(
         priority = document.getString("priority")?.let(Priority::valueOf) ?: Priority.NONE,
         maxAssign = document.getLong("maxAssign")?.toInt() ?: 1,
         assignees = ass,
+        takenAt = takenAt,
         completed = document.getBoolean("completed") ?: false,
         // Tasks saved before owners existed have no ownerId. They are deleted from Firestore, so a
         // missing one is an error, not a case to handle.
         ownerId = document.getString("ownerId").required("ownerId", document.id),
+        voiceNote = document.get("voiceNote")?.let { readVoiceNote(it, document.id) },
     )
+  }
+
+  /** Rebuilds the stored voice note of task [taskId], or fails with an error naming the task. */
+  private fun readVoiceNote(value: Any, taskId: String): VoiceNote {
+    val invalid = "Invalid voice note data for task $taskId"
+    val map = value as? Map<*, *> ?: throw IllegalArgumentException("$invalid.")
+    return try {
+      VoiceNote.fromMap(map)
+    } catch (e: IllegalArgumentException) {
+      throw IllegalArgumentException("$invalid: ${e.message}", e)
+    }
   }
 
   private fun String?.required(field: String, documentId: String): String {
