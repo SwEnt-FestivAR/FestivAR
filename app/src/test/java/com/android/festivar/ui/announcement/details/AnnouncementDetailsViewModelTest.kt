@@ -11,6 +11,7 @@ import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepositoryLocal
 import java.io.IOException
 import java.time.ZonedDateTime
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -106,6 +107,66 @@ class AnnouncementDetailsViewModelTest {
   }
 
   @Test
+  fun loadIgnoresRepeatedCallsAndToggleBeforeAnnouncementLoads() {
+    val gate = CompletableDeferred<Unit>()
+    events.beforeGet = { gate.await() }
+    val vm = viewModel()
+
+    vm.togglePin()
+    vm.load()
+    vm.load()
+
+    assertEquals(1, events.getCalls)
+    assertEquals(0, events.editCalls)
+    assertTrue(vm.uiState.value.isLoading)
+
+    gate.complete(Unit)
+
+    assertEquals(announcement, vm.uiState.value.announcement)
+  }
+
+  @Test
+  fun loadReportsMissingAnnouncement() {
+    val repository =
+        object : EventsRepository by localEvents {
+          override suspend fun getEvent(eventId: String) = event.copy(announcements = emptyList())
+        }
+    val vm = AnnouncementDetailsViewModel("event-1", "announcement-1", repository, users)
+
+    vm.load()
+
+    assertNull(vm.uiState.value.announcement)
+    assertEquals(R.string.announcement_details_load_failed, vm.uiState.value.errorMsg)
+    assertFalse(vm.uiState.value.isLoading)
+  }
+
+  @Test
+  fun loadDoesNotConvertCancellationIntoAnErrorAndCanRetry() {
+    events.getFailure = CancellationException("fetch cancelled")
+    val vm = viewModel()
+
+    vm.load()
+
+    assertNull(vm.uiState.value.errorMsg)
+
+    events.getFailure = null
+    vm.load()
+
+    assertEquals(announcement, vm.uiState.value.announcement)
+    assertNull(vm.uiState.value.errorMsg)
+  }
+
+  @Test
+  fun loadJoinsOnlyNonBlankAuthorNameParts() {
+    val blankSurnameUsers = UsersRepositoryLocal(listOf(User(uid = "author-1", name = "Marie")))
+    val vm = AnnouncementDetailsViewModel("event-1", "announcement-1", events, blankSurnameUsers)
+
+    vm.load()
+
+    assertEquals("Marie", vm.uiState.value.authorName)
+  }
+
+  @Test
   fun togglePinPersistsAndBlocksConcurrentTaps() {
     val gate = CompletableDeferred<Unit>()
     events.beforeEdit = { gate.await() }
@@ -115,8 +176,10 @@ class AnnouncementDetailsViewModelTest {
 
     assertTrue(vm.uiState.value.isUpdating)
     assertFalse(vm.uiState.value.canTogglePin)
+    vm.load()
     vm.togglePin()
     assertEquals(1, events.editCalls)
+    assertEquals(1, events.getCalls)
 
     gate.complete(Unit)
 
@@ -149,6 +212,24 @@ class AnnouncementDetailsViewModelTest {
     assertEquals(announcement, vm.uiState.value.announcement)
     assertFalse(vm.uiState.value.isUpdating)
     assertEquals(R.string.announcement_details_save_failed, vm.uiState.value.errorMsg)
+
+    events.editFailure = null
+    vm.togglePin()
+
+    assertTrue(vm.uiState.value.announcement!!.pinned)
+    assertFalse(vm.uiState.value.isUpdating)
+    assertNull(vm.uiState.value.errorMsg)
+  }
+
+  @Test
+  fun cancelledPinUpdateClearsUpdatingWithoutShowingAnError() {
+    events.editFailure = CancellationException("update cancelled")
+    val vm = viewModel().also { it.load() }
+
+    vm.togglePin()
+
+    assertFalse(vm.uiState.value.isUpdating)
+    assertNull(vm.uiState.value.errorMsg)
   }
 
   @Test
@@ -165,12 +246,14 @@ class AnnouncementDetailsViewModelTest {
       EventsRepository by local {
     var getFailure: Exception? = null
     var editFailure: Exception? = null
+    var beforeGet: suspend () -> Unit = {}
     var beforeEdit: suspend () -> Unit = {}
     var getCalls = 0
     var editCalls = 0
 
     override suspend fun getEvent(eventId: String): Event {
       getCalls++
+      beforeGet()
       getFailure?.let { throw it }
       return local.getEvent(eventId)
     }
