@@ -1,8 +1,10 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.authentication.forgotpassword
 
 import android.os.Looper
 import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -20,7 +22,7 @@ import org.robolectric.Shadows.shadowOf
 @RunWith(RobolectricTestRunner::class)
 class ForgotPasswordViewModelTest {
   private val authRepository = mockk<AuthRepository>()
-  private val viewModel = ForgotPasswordViewModel(authRepository)
+  private val viewModel = ForgotPasswordViewModel(DataRepositoryLocal(authRepository))
 
   @Test
   fun initiallyHasEmptyState() {

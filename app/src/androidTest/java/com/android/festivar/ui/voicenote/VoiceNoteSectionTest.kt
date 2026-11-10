@@ -62,7 +62,6 @@ class VoiceNoteSectionTest {
             onDismissDelete = onDismissDelete,
             onRecordStart = it.onRecordStart,
             onRecordRelease = it.onRecordRelease,
-            onRecordCancel = it.onRecordCancel,
             onRetry = it.onRetry,
             onOpenSettings = it.onOpenSettings,
         )

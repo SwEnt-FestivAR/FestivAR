@@ -1,3 +1,4 @@
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.model.task
@@ -93,6 +94,7 @@ class TaskRepositoryFirebase(
         "priority" to task.priority.name,
         "maxAssign" to task.maxAssign,
         "assignees" to task.assignees.map { user -> user.uid },
+        "takenAt" to task.takenAt.mapValues { it.value.toString() },
         "spot" to
             task.spot?.let { mapOf("structureId" to it.structureId, "x" to it.x, "y" to it.y) },
         "completed" to task.completed,
@@ -111,7 +113,13 @@ class TaskRepositoryFirebase(
           userRepo.getUser(userId)
         }
 
-    // Tasks saved before spots existed have no such field: they load without a spot.
+    val takenAt =
+        (document.get("takenAt") as? Map<*, *>).orEmpty().entries.associate { (uid, time) ->
+          require(uid is String && time is String) { "Invalid takenAt data: $uid=$time" }
+          uid to ZonedDateTime.parse(time)
+        }
+
+    // A task without a pin has no spot field.
     val spot =
         (document.get("spot") as? Map<*, *>)?.let {
           TaskSpot(
@@ -133,6 +141,7 @@ class TaskRepositoryFirebase(
         priority = document.getString("priority")?.let(Priority::valueOf) ?: Priority.NONE,
         maxAssign = document.getLong("maxAssign")?.toInt() ?: 1,
         assignees = ass,
+        takenAt = takenAt,
         spot = spot,
         completed = document.getBoolean("completed") ?: false,
         // Tasks saved before owners existed have no ownerId. They are deleted from Firestore, so a

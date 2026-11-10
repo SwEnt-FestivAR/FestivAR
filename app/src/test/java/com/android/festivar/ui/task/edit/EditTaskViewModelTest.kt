@@ -657,6 +657,19 @@ class EditTaskViewModelTest {
     assertNull(viewModel.uiState.value.form.openPicker)
   }
 
+  // Breaks if a saved edit rebuilds the task from the form and drops when each assignee took it.
+  @Test
+  fun savingKeepsWhenEachAssigneeTookTheTask() {
+    val takenAt = mapOf("me" to ZonedDateTime.of(day, LocalTime.of(7, 0), zone))
+    runBlocking { local.editTask("task-1", seeded.copy(takenAt = takenAt)) }
+    viewModel.load()
+    viewModel.updateTitle("Run power to the main stage")
+
+    viewModel.save()
+
+    assertEquals(takenAt, stored().takenAt)
+  }
+
   // Breaks if a saved edit rebuilds the task from the form and drops its pin on the venue plan.
   @Test
   fun savingKeepsTheSpot() {
