@@ -436,6 +436,7 @@ class EventRepositoryFirebaseTest {
         .set(
             mapOf(
                 "eventId" to event.eventId,
+                "ownerId" to event.ownerId,
                 "title" to event.title,
                 "startDate" to event.startDate.toString(),
                 "endDate" to event.endDate.toString(),
