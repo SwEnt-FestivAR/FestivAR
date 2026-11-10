@@ -93,8 +93,10 @@ data class EventFilterOption(
  * @property totalTasks how many tasks the user has taken, before any filter.
  * @property isLoading true until the first load lands, and again while every
  *   [MyTasksViewModel.refresh] runs.
+ * @property hasLoaded whether a load has ever succeeded, so the user's tasks were read at least
+ *   once; until then nothing is known about them.
  * @property errorMsg the string resource of the snackbar when the last load failed:
- *   [R.string.mytasks_load_failed] when no task was ever loaded, [R.string.mytasks_refresh_failed]
+ *   [R.string.mytasks_load_failed] when no load ever succeeded, [R.string.mytasks_refresh_failed]
  *   when the last loaded tasks are still shown; null when it did not fail.
  */
 data class MyTasksUiState(
@@ -109,6 +111,7 @@ data class MyTasksUiState(
     val sections: List<MyTasksDaySection> = emptyList(),
     val totalTasks: Int = 0,
     val isLoading: Boolean = true,
+    val hasLoaded: Boolean = false,
     @StringRes val errorMsg: Int? = null,
 ) {
   /**
@@ -117,9 +120,13 @@ data class MyTasksUiState(
   val activeFilterCount: Int
     get() = statusesSelected.size + prioritiesSelected.size
 
-  /** The user has taken no task at all: the "No tasks yet" state. */
+  /**
+   * The last successful load found no task the user has taken: the "No tasks yet" state. False
+   * while no load has succeeded, so a failed first load never reads as an empty list, even once its
+   * error is dismissed.
+   */
   val hasNoTasks: Boolean
-    get() = !isLoading && errorMsg == null && totalTasks == 0
+    get() = hasLoaded && !isLoading && totalTasks == 0
 
   /** The user has tasks, but the filters and the search hide all of them. */
   val nothingMatches: Boolean
@@ -306,6 +313,7 @@ class MyTasksViewModel(
               it.copy(
                   eventIdsSelected = it.eventIdsSelected.intersect(titles.keys),
                   isLoading = false,
+                  hasLoaded = true,
                   errorMsg = null,
               )
           )
@@ -314,9 +322,11 @@ class MyTasksViewModel(
         throw e
       } catch (e: Exception) {
         Log.e(LOG_TAG, "Error loading the tasks of $userId", e)
-        val message =
-            if (tasks.isEmpty()) R.string.mytasks_load_failed else R.string.mytasks_refresh_failed
-        _uiState.update { it.copy(isLoading = false, errorMsg = message) }
+        _uiState.update {
+          val message =
+              if (it.hasLoaded) R.string.mytasks_refresh_failed else R.string.mytasks_load_failed
+          it.copy(isLoading = false, errorMsg = message)
+        }
       }
     }
   }

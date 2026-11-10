@@ -100,10 +100,11 @@ class MyTasksViewModelTest {
           )
           .also { it.refresh() }
 
+  /** Every visible row, in section then row order. */
+  private fun MyTasksUiState.rows() = sections.flatMap { it.rows }
+
   /** The ids of every visible row, in section then row order. */
-  private fun MyTasksUiState.visibleIds() = sections.flatMap { section ->
-    section.rows.map { it.task.taskId }
-  }
+  private fun MyTasksUiState.visibleIds() = rows().map { it.task.taskId }
 
   /** Turns red when a task the user created without taking it shows, or the load reports one. */
   @Test
@@ -137,7 +138,7 @@ class MyTasksViewModelTest {
    */
   @Test
   fun aRowCarriesItsEventStartAndCountdown() {
-    val rows = myTasks().uiState.value.sections.flatMap { it.rows }.associateBy { it.task.taskId }
+    val rows = myTasks().uiState.value.rows().associateBy { it.task.taskId }
 
     val powerRow = rows.getValue("power")
     assertEquals("Summer fest", powerRow.eventTitle)
@@ -160,8 +161,7 @@ class MyTasksViewModelTest {
         myTasks(viewerClock = Clock.fixed(at(hour, minute).toInstant(), ZONE))
             .uiState
             .value
-            .sections
-            .flatMap { it.rows }
+            .rows()
             .single { it.task.taskId == "power" }
             .minutesUntilStart
 
@@ -291,13 +291,24 @@ class MyTasksViewModelTest {
     assertEquals(6, state.visibleIds().size)
   }
 
-  /** Turns red when "no tasks yet" and "nothing matches" are mixed up. */
+  /**
+   * Turns red when "no tasks yet" and "nothing matches" are mixed up, or when a failed refresh
+   * after an empty load stops saying "no tasks yet", the last thing known, or calls itself a failed
+   * first load.
+   */
   @Test
   fun noTasksAtAllAndNothingMatchingAreTwoStates() {
     runBlocking { users.addUser(User("newcomer")) }
-    val newcomer = myTasks(userId = "newcomer").uiState.value
+    val flaky = FlakyUsers()
+    val newcomerViewModel = myTasks(usersRepo = flaky, userId = "newcomer")
+    val newcomer = newcomerViewModel.uiState.value
     assertTrue(newcomer.hasNoTasks)
     assertFalse(newcomer.nothingMatches)
+
+    flaky.failing = true
+    newcomerViewModel.refresh()
+    assertTrue(newcomerViewModel.uiState.value.hasNoTasks)
+    assertEquals(R.string.mytasks_refresh_failed, newcomerViewModel.uiState.value.errorMsg)
 
     val viewModel = myTasks()
     viewModel.togglePriority(Priority.MEDIUM)
@@ -331,8 +342,8 @@ class MyTasksViewModelTest {
   /**
    * Turns red when a failed load keeps loading, shows the exception text instead of a fixed
    * message, tells a failed first load and a failed refresh apart wrongly, claims the user has no
-   * tasks or drops the rows of the last load, or when the error does not go once a load succeeds or
-   * the snackbar is dismissed.
+   * tasks once its error is dismissed, or drops the rows of the last load, or when the error does
+   * not go once the snackbar is dismissed or a load succeeds.
    */
   @Test
   fun aFailedLoadSetsTheErrorAndKeepsTheLastRows() {
@@ -342,6 +353,10 @@ class MyTasksViewModelTest {
     var state = viewModel.uiState.value
     assertFalse(state.isLoading)
     assertEquals(R.string.mytasks_load_failed, state.errorMsg)
+
+    viewModel.dismissError()
+    state = viewModel.uiState.value
+    assertNull(state.errorMsg)
     assertFalse(state.hasNoTasks)
 
     flaky.failing = false
@@ -354,10 +369,6 @@ class MyTasksViewModelTest {
     state = viewModel.uiState.value
     assertEquals(R.string.mytasks_refresh_failed, state.errorMsg)
     assertEquals(loaded, state.sections)
-
-    viewModel.dismissError()
-    assertNull(viewModel.uiState.value.errorMsg)
-    assertEquals(loaded, viewModel.uiState.value.sections)
   }
 
   /** Turns red when any event read failure is taken for a missing event instead of an error. */
