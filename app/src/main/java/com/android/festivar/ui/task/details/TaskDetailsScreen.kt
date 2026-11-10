@@ -92,12 +92,14 @@ object TaskDetailsScreenTestTags {
  * @param viewModel holds the task to show and the signed-in user, and applies the actions.
  * @param onBack Called when the user taps the back button.
  * @param onEdit Called with the task id when its owner taps the edit button.
+ * @param onTaskDeleted Called after the task is deleted successfully.
  */
 @Composable
 fun TaskDetailsScreen(
     viewModel: TaskDetailsViewModel,
     onBack: () -> Unit = {},
     onEdit: (String) -> Unit = {},
+    onTaskDeleted: () -> Unit = {},
 ) {
   val state by viewModel.uiState.collectAsStateWithLifecycle()
   LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.load() }
@@ -107,7 +109,7 @@ fun TaskDetailsScreen(
       onTake = viewModel::take,
       onGiveBack = viewModel::giveBack,
       onMarkDone = viewModel::markDone,
-      onDeleteTask = viewModel::deleteTask,
+      onDeleteTask = { viewModel.deleteTask(onTaskDeleted) },
       onRetry = viewModel::load,
       onDismissError = viewModel::clearError,
       onEdit = onEdit,

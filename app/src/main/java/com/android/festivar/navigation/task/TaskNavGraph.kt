@@ -104,6 +104,7 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, dataRepository: 
             },
         onBack = navigator.onBack,
         onEdit = navigator.onEdit,
+        onTaskDeleted = navigator.onTaskDeleted,
     )
   }
   // Reached through AppScreens.editTask(taskId), from the details of a task its owner opened.

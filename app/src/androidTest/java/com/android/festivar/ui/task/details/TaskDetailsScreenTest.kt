@@ -65,7 +65,7 @@ class TaskDetailsScreenTest {
             authRepository = mockk(),
             tasksRepository = repository,
             eventsRepository = EventsRepositoryLocal(listOf(event)),
-            usersRepository = UsersRepositoryLocal(listOf(sami)),
+            usersRepository = UsersRepositoryLocal(listOf(sami, User("owner-1"))),
         )
   }
 
@@ -76,6 +76,7 @@ class TaskDetailsScreenTest {
       user: User = sami,
       onBack: () -> Unit = {},
       onEdit: (String) -> Unit = {},
+      onTaskDeleted: () -> Unit = {},
   ) {
     val viewModel = TaskDetailsViewModel(task.taskId, user, dataRepository)
     composeTestRule.setContent {
@@ -84,6 +85,7 @@ class TaskDetailsScreenTest {
             viewModel = viewModel,
             onBack = onBack,
             onEdit = onEdit,
+            onTaskDeleted = onTaskDeleted,
         )
       }
     }
@@ -108,6 +110,19 @@ class TaskDetailsScreenTest {
     showScreen()
 
     assertFalse(exists(TaskDetailsScreenTestTags.MORE_ACTIONS_BUTTON))
+  }
+
+  @Test
+  fun successfulDeletionCallsOnTaskDeleted() {
+    var deletionCount = 0
+    showScreen(user = User("owner-1"), onTaskDeleted = { deletionCount++ })
+
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MORE_ACTIONS_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.DELETE_MENU_ITEM).performClick()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.DELETE_CONFIRM_BUTTON).performClick()
+
+    composeTestRule.waitUntil(5_000) { deletionCount == 1 }
+    assertEquals(1, deletionCount)
   }
 
   private fun assertBadge(label: String) =

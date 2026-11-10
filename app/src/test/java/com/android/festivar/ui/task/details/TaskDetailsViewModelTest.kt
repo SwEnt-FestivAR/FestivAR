@@ -570,23 +570,27 @@ class TaskDetailsViewModelTest {
   @Test
   fun deleteTask_deletesThroughDataRepository() {
     val vm = viewModel(task(), User(uid = "owner-1"), mockDataRepository)
+    var deletionCount = 0
 
-    vm.deleteTask()
+    vm.deleteTask { deletionCount++ }
 
     coVerify(exactly = 1) { mockDataRepository.deleteTask("t1") }
     assertFalse(vm.uiState.value.isUpdating)
     assertNull(vm.uiState.value.errorMsg)
+    assertEquals(1, deletionCount)
   }
 
   @Test
   fun deleteTask_failureShowsError() {
     val vm = viewModel(task(), User(uid = "owner-1"), mockDataRepository)
+    var deletionCount = 0
     coEvery { mockDataRepository.deleteTask("t1") } throws IOException("offline")
 
-    vm.deleteTask()
+    vm.deleteTask { deletionCount++ }
 
     assertEquals(R.string.task_details_save_failed, vm.uiState.value.errorMsg)
     assertFalse(vm.uiState.value.isUpdating)
+    assertEquals(0, deletionCount)
   }
 
   @Test

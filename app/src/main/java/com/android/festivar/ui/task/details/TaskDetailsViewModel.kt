@@ -173,7 +173,7 @@ class TaskDetailsViewModel(
       }
 
   /** Deletes the task. Does nothing unless the current user owns it. */
-  fun deleteTask() {
+  fun deleteTask(onDeleted: () -> Unit = {}) {
     val before = _uiState.getAndUpdate {
       if (it.canEdit && !it.isLoading && !it.isUpdating) {
         it.copy(isUpdating = true, errorMsg = null)
@@ -186,7 +186,6 @@ class TaskDetailsViewModel(
     viewModelScope.launch {
       try {
         dataRepository.deleteTask(taskId)
-        _uiState.update { it.copy(isUpdating = false) }
       } catch (e: CancellationException) {
         _uiState.update { it.copy(isUpdating = false) }
         throw e
@@ -195,7 +194,10 @@ class TaskDetailsViewModel(
         _uiState.update {
           it.copy(isUpdating = false, errorMsg = R.string.task_details_save_failed)
         }
+        return@launch
       }
+      _uiState.update { it.copy(isUpdating = false) }
+      onDeleted()
     }
   }
 
