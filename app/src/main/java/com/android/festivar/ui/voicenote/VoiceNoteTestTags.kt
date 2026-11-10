@@ -26,6 +26,7 @@ object VoiceNoteTestTags {
  */
 object VoiceNoteRecordTestTags {
   const val RECORD_BAR = "voiceNoteRecordBar"
+  const val VOICE_NOTE_SENDING = "voiceNoteSending"
   const val VOICE_NOTE_RECORD = "voiceNoteRecord"
   const val RECORDING_DOT = "voiceNoteRecordingDot"
   const val SEND_ERROR = "voiceNoteSendError"

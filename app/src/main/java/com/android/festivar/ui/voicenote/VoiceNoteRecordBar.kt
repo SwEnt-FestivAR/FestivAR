@@ -47,19 +47,40 @@ private const val DISABLED_ALPHA = 0.5f
  * record bar under them. It draws no bar of its own: the screen puts it in the [FixedBottomBar] it
  * shares with the other things fixed at the bottom (the playback notice, the buttons of the task).
  * Only the owner of a task without a note sees it: it is hidden otherwise. The owner holds the
- * round button to record, releases it to stop. Without the microphone permission the record bar is
- * greyed out.
+ * round button to record, releases it to stop. Without the microphone permission, and while the
+ * recording is sent, the record bar is greyed out. While the recording waits for the owner to send
+ * it, the bar shows it as a note that cannot be played yet.
  */
 @Composable
 fun ColumnScope.VoiceNoteRecordBar(state: VoiceNoteUiState, callbacks: VoiceNoteCallbacks) {
   if (!state.showRecordBar) return
   VoiceNoteOwnerNotices(state, callbacks)
-  RecordPill(state, callbacks)
+  val waiting = state.waiting
+  if (waiting != null) {
+    WaitingRecording(waiting)
+  } else {
+    RecordPill(state, callbacks)
+  }
 }
 
 /**
- * The bar of the design: a white box with a border and rounded corners, with the hint or the timer
- * and the record button.
+ * The recording that waits for the owner to send it, shown as a note. Nothing can be played yet,
+ * because the recording is not uploaded.
+ */
+@Composable
+private fun WaitingRecording(recording: PendingRecording.Waiting) {
+  VoiceNotePlayer(
+      duration = recording.duration,
+      isPlaying = false,
+      onTogglePlay = {},
+      modifier = Modifier.fillMaxWidth(),
+      enabled = false,
+  )
+}
+
+/**
+ * The bar of the design: a white box with a border and rounded corners, with the label (hint, timer
+ * or sending) and the record button.
  */
 @Composable
 private fun RecordPill(state: VoiceNoteUiState, callbacks: VoiceNoteCallbacks) {
@@ -81,15 +102,29 @@ private fun RecordPill(state: VoiceNoteUiState, callbacks: VoiceNoteCallbacks) {
       if (state.isRecording) {
         RecordingIndicator(state)
       } else {
-        Text(
-            stringResource(R.string.voice_note_hold_to_record),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        IdleLabel(state)
       }
     }
     RecordButton(state.recordEnabled, callbacks)
   }
+}
+
+/** The label of the idle pill: "Hold to record", or the length of the recording being sent. */
+@Composable
+private fun IdleLabel(state: VoiceNoteUiState) {
+  val sending = state.sending
+  Text(
+      if (sending != null) {
+        stringResource(R.string.voice_note_sending, formatVoiceDuration(sending.duration))
+      } else {
+        stringResource(R.string.voice_note_hold_to_record)
+      },
+      style = MaterialTheme.typography.bodyLarge,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      modifier =
+          if (sending != null) Modifier.testTag(VoiceNoteRecordTestTags.VOICE_NOTE_SENDING)
+          else Modifier,
+  )
 }
 
 /** The red dot and the timer shown while recording. */
@@ -171,6 +206,25 @@ internal fun VoiceNoteRecordBarIdlePreview() {
 internal fun VoiceNoteRecordBarRecordingPreview() {
   VoiceNoteBarPreviewScreen(
       VoiceNoteUiState(canManage = true, recorder = RecorderState.Recording(Duration.ofSeconds(3)))
+  )
+}
+
+@Preview(showBackground = true)
+@Composable
+internal fun VoiceNoteRecordBarWaitingPreview() {
+  VoiceNoteBarPreviewScreen(
+      VoiceNoteUiState(canManage = true, pending = PendingRecording.Waiting(Duration.ofSeconds(7)))
+  )
+}
+
+@Preview(showBackground = true)
+@Composable
+internal fun VoiceNoteRecordBarSendingPreview() {
+  VoiceNoteBarPreviewScreen(
+      VoiceNoteUiState(
+          canManage = true,
+          pending = PendingRecording.Sending(Duration.ofSeconds(7)),
+      )
   )
 }
 
