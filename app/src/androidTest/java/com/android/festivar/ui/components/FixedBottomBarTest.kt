@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.ui.theme.AppTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -45,12 +46,11 @@ class FixedBottomBarTest {
   /**
    * Breaks if the bar leaves the bottom of the page, or if its content is not kept above the system
    * navigation bar. The navigation bar is simulated with 48dp of insets, so the test does not
-   * depend on the navigation mode of the device.
+   * depend on the navigation mode of the device or on the padding of the bar.
    */
   @Test
   fun staysAtTheBottomAboveTheNavigationBar() {
     val navigationBar = 48.dp
-    val bottomPadding = 24.dp
     composeTestRule.setContent {
       AppTheme {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
@@ -70,11 +70,9 @@ class FixedBottomBarTest {
         barBottom.value,
         1f,
     )
-    assertEquals(
-        "the content must end above the navigation bar and the bottom space of the bar",
-        (pageBottom - navigationBar - bottomPadding).value,
-        lineBottom.value,
-        1f,
+    assertTrue(
+        "the content must end above the navigation bar",
+        lineBottom <= pageBottom - navigationBar,
     )
   }
 

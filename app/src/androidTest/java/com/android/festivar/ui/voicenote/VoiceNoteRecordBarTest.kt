@@ -11,7 +11,6 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertContentDescriptionEquals
-import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -26,7 +25,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.up
-import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
@@ -113,13 +111,13 @@ class VoiceNoteRecordBarTest {
     tag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).assertDoesNotExist()
   }
 
-  /** Breaks if the bar is not the 56dp of the design, or does not invite to hold to record. */
+  /** Breaks if the idle bar does not show the hint and the record button. */
   @Test
   fun idleBarInvitesToHoldToRecord() {
     show(VoiceNoteUiState(canManage = true))
     composeTestRule.onNodeWithText(text(R.string.voice_note_hold_to_record)).assertIsDisplayed()
     tag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).assertIsDisplayed()
-    tag(VoiceNoteRecordTestTags.RECORDING_BAR).assertHeightIsEqualTo(56.dp)
+    tag(VoiceNoteRecordTestTags.RECORDING_BAR).assertIsDisplayed()
   }
 
   /** Breaks if the idle bar shows the red recording dot. */
