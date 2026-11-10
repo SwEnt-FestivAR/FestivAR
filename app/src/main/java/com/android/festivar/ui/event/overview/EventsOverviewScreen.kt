@@ -423,7 +423,7 @@ private fun EventItem(event: Event, onClick: () -> Unit) {
 
 @Preview(showBackground = true, widthDp = 412, heightDp = 915)
 @Composable
-private fun EventsOverviewContentPreview() {
+internal fun EventsOverviewContentPreview() {
   val zone = ZoneId.of("Europe/Zurich")
   fun date(month: Int, day: Int, hour: Int) =
       ZonedDateTime.of(2026, month, day, hour, 0, 0, 0, zone)
@@ -485,7 +485,7 @@ private fun EventsOverviewContentPreview() {
 
 @Preview(showBackground = true, widthDp = 412, heightDp = 915)
 @Composable
-private fun EventsOverviewEmptyPreview() {
+internal fun EventsOverviewEmptyPreview() {
   AppTheme {
     EventsOverviewContent(
         uiState = EventsOverviewUIState(user = User("u0", name = "Yasmine", surname = "Amrani"))
