@@ -472,10 +472,11 @@ internal fun whenLine(task: Task, rangeFormat: String): String? {
   return "${formatDate(start.toLocalDate())}, $times"
 }
 
+private val previewZone = ZoneId.of("Europe/Zurich")
+
 private val previewUser = User("u1", "Sami", "Kabbaj")
 
-private val previewTookItAt =
-    ZonedDateTime.of(2026, 10, 17, 9, 12, 0, 0, ZoneId.of("Europe/Zurich"))
+private val previewTookItAt = ZonedDateTime.of(2026, 10, 17, 9, 12, 0, 0, previewZone)
 
 private val previewTask =
     Task(
@@ -485,8 +486,8 @@ private val previewTask =
         description =
             "Extension reel is in the blue crate by the van. Run it along the fence, not across " +
                 "the path. Ask Marie for the gaffer tape.",
-        startTime = ZonedDateTime.of(2026, 10, 17, 9, 30, 0, 0, ZoneId.of("Europe/Zurich")),
-        endTime = ZonedDateTime.of(2026, 10, 17, 9, 50, 0, 0, ZoneId.of("Europe/Zurich")),
+        startTime = ZonedDateTime.of(2026, 10, 17, 9, 30, 0, 0, previewZone),
+        endTime = ZonedDateTime.of(2026, 10, 17, 9, 50, 0, 0, previewZone),
         location = "Stage, north corner",
         maxAssign = 1,
         ownerId = previewUser.uid,
