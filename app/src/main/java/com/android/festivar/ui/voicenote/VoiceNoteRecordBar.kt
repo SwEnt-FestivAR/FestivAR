@@ -45,22 +45,6 @@ import com.android.festivar.ui.components.NoticeSnackbar
 import com.android.festivar.ui.theme.AppTheme
 import java.time.Duration
 
-/**
- * Test tags of the record bar and of the notices above it, named after the tags of the "Voice
- * notes" frames in Figma.
- */
-object VoiceNoteRecordTestTags {
-  const val RECORDING_BAR = "voiceNoteRecordingBar"
-  const val VOICE_NOTE_RECORD = "voiceNoteRecord"
-  const val RECORDING_DOT = "voiceNoteRecordingDot"
-  const val SEND_ERROR = "voiceNoteSendError"
-  const val SEND_RETRY = "voiceNoteSendRetry"
-  const val MIC_DENIED = "voiceNoteMicDenied"
-  const val OPEN_SETTINGS = "voiceNoteOpenSettings"
-  const val PLAYBACK_ERROR = "voiceNotePlaybackError"
-  const val PLAYBACK_RETRY = "voiceNotePlaybackRetry"
-}
-
 /** The opacity of the record bar when the microphone is off. */
 private const val DISABLED_ALPHA = 0.5f
 

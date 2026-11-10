@@ -15,3 +15,19 @@ object VoiceNoteTestTags {
   const val KEEP_BUTTON = "voiceNoteKeep"
   const val CONFIRM_DELETE_BUTTON = "voiceNoteConfirmDeleteButton"
 }
+
+/**
+ * Test tags of the record bar and of the notices above it, named after the tags of the "Voice
+ * notes" frames in Figma.
+ */
+object VoiceNoteRecordTestTags {
+  const val RECORDING_BAR = "voiceNoteRecordingBar"
+  const val VOICE_NOTE_RECORD = "voiceNoteRecord"
+  const val RECORDING_DOT = "voiceNoteRecordingDot"
+  const val SEND_ERROR = "voiceNoteSendError"
+  const val SEND_RETRY = "voiceNoteSendRetry"
+  const val MIC_DENIED = "voiceNoteMicDenied"
+  const val OPEN_SETTINGS = "voiceNoteOpenSettings"
+  const val PLAYBACK_ERROR = "voiceNotePlaybackError"
+  const val PLAYBACK_RETRY = "voiceNotePlaybackRetry"
+}
