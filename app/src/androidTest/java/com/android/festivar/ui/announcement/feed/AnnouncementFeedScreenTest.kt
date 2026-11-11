@@ -29,6 +29,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.DpRect
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -219,10 +220,12 @@ class AnnouncementFeedScreenTest {
     assertEquals(expected.map { it.first }, callbacks.filters)
   }
 
-  // Breaks if the French chip labels get long again (e.g. "Avertissement"), so that the last chip
-  // is clipped on a 360dp phone.
+  // Breaks if the French chip labels get long again (e.g. "Avertissement"), so that the four chips
+  // no longer fit on one line of a 360dp phone, or if on a narrower screen the chips go past its
+  // edge instead of wrapping onto a second line.
   @Test
-  fun frenchChipsFitOnA360dpPhone() {
+  fun frenchChipsFitOnOneLineOfA360dpPhoneAndWrapOnANarrowerOne() {
+    var width by mutableStateOf(360.dp)
     composeTestRule.setContent {
       val configuration =
           Configuration(LocalConfiguration.current).apply { setLocale(Locale.FRENCH) }
@@ -233,7 +236,7 @@ class AnnouncementFeedScreenTest {
           LocalResources provides context.resources,
       ) {
         AppTheme {
-          Box(Modifier.requiredWidth(360.dp).testTag(SCREEN)) {
+          Box(Modifier.requiredWidth(width).testTag(SCREEN)) {
             AnnouncementFeedContent(
                 uiState = figmaState,
                 canAddAnnouncement = true,
@@ -244,19 +247,31 @@ class AnnouncementFeedScreenTest {
       }
     }
 
-    val screen = composeTestRule.onNodeWithTag(SCREEN).getUnclippedBoundsInRoot()
     composeTestRule
         .onNode(
             hasTestTag(AnnouncementFeedScreenTestTags.filterChip(AnnouncementFilter.WARNING))
                 .and(hasText("Alerte"))
         )
         .assertExists()
-    AnnouncementFilter.entries.forEach {
+    assertEquals(1, chipsInsideTheScreen().values.map { it.top }.distinct().size)
+
+    width = 200.dp
+    val chips = chipsInsideTheScreen()
+    val all = chips.getValue(AnnouncementFilter.ALL)
+    val info = chips.getValue(AnnouncementFilter.INFO)
+    assertTrue("Info at ${info.top} is not below All at ${all.top}", info.top >= all.bottom)
+  }
+
+  /** The bounds of each filter chip, by filter, after checking that none ends past [SCREEN]. */
+  private fun chipsInsideTheScreen(): Map<AnnouncementFilter, DpRect> {
+    val screen = composeTestRule.onNodeWithTag(SCREEN).getUnclippedBoundsInRoot()
+    return AnnouncementFilter.entries.associateWith {
       val chip =
           composeTestRule
               .onNodeWithTag(AnnouncementFeedScreenTestTags.filterChip(it))
               .getUnclippedBoundsInRoot()
       assertTrue("$it ends at ${chip.right}, past ${screen.right}", chip.right <= screen.right)
+      chip
     }
   }
 
