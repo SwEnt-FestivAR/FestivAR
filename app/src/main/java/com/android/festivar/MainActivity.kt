@@ -7,8 +7,8 @@ package com.android.festivar
 import android.content.Context
 import android.content.pm.ActivityInfo
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -30,7 +30,7 @@ import com.android.festivar.navigation.profile.profileGraph
 import com.android.festivar.navigation.task.taskGraph
 import com.android.festivar.ui.theme.AppTheme
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
     // The system start screen is the app's only splash, shown while the app starts
