@@ -199,7 +199,9 @@ class MyTasksScreenTest {
     tag(MyTasksScreenTestTags.CLEAR_FILTERS).performClick()
 
     state.value = MyTasksUiState(isLoading = false, errorMsg = R.string.mytasks_load_failed)
-    tag(MyTasksScreenTestTags.ERROR).assertTextContains(str(R.string.mytasks_load_failed))
+    // The snackbar is not clickable, so its text stays on its own node instead of merging into it
+    tag(MyTasksScreenTestTags.ERROR).assertIsDisplayed()
+    composeTestRule.onNodeWithText(str(R.string.mytasks_load_failed)).assertIsDisplayed()
     tag(MyTasksScreenTestTags.EMPTY).assertDoesNotExist()
     tag(MyTasksScreenTestTags.RETRY).performClick()
 
