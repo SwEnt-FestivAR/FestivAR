@@ -28,6 +28,7 @@ import androidx.compose.ui.test.up
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
+import com.android.festivar.model.audio.PendingRecording
 import com.android.festivar.model.audio.PlayerState
 import com.android.festivar.model.audio.RecorderState
 import com.android.festivar.model.voicenote.VoiceNote
