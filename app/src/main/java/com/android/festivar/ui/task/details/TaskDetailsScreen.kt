@@ -155,7 +155,7 @@ fun TaskDetailsContent(
             },
             actions = {
               state.task
-                  ?.takeIf { state.canEdit }
+                  ?.takeIf { state.canEdit && !state.isLoading && !state.isUpdating }
                   ?.let { task ->
                     Box {
                       IconButton(
