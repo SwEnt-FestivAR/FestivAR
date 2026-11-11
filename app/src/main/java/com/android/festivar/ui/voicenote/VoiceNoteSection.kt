@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -25,8 +26,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
 import com.android.festivar.model.audio.PlayerState
+import com.android.festivar.model.audio.RecorderState
 import com.android.festivar.model.voicenote.VoiceNote
 import com.android.festivar.ui.components.FestivarConfirmDialog
+import com.android.festivar.ui.components.FixedBottomBar
 import com.android.festivar.ui.components.SectionLabel
 import com.android.festivar.ui.theme.AppTheme
 import java.time.Clock
@@ -222,12 +225,42 @@ internal fun VoiceNoteDeleteConfirmPreview() {
   )
 }
 
-@Preview(showBackground = true)
+/**
+ * The section with the record bar fixed under it, as in the "send confirm", "sending" and
+ * "recording failed" frames of the design, which show the whole screen and not only the section.
+ */
+@Composable
+private fun VoiceNoteScreenPreview(state: VoiceNoteUiState) {
+  AppTheme {
+    Column(Modifier.fillMaxSize()) {
+      Column(Modifier.weight(1f).padding(horizontal = 20.dp)) {
+        VoiceNoteSection(state, previewCallbacks, stringResource(R.string.voice_note_organizer))
+      }
+      FixedBottomBar { VoiceNoteRecordBar(state, previewCallbacks) }
+    }
+  }
+}
+
+@Preview(showBackground = true, heightDp = 480)
 @Composable
 internal fun VoiceNoteSendConfirmPreview() {
-  VoiceNotePreviewScreen(
+  VoiceNoteScreenPreview(
       VoiceNoteUiState(canManage = true, pending = PendingRecording.Waiting(Duration.ofSeconds(7)))
   )
+}
+
+@Preview(showBackground = true, heightDp = 480)
+@Composable
+internal fun VoiceNoteSendingPreview() {
+  VoiceNoteScreenPreview(
+      VoiceNoteUiState(canManage = true, pending = PendingRecording.Sending(Duration.ofSeconds(7)))
+  )
+}
+
+@Preview(showBackground = true, heightDp = 480)
+@Composable
+internal fun VoiceNoteRecordingFailedPreview() {
+  VoiceNoteScreenPreview(VoiceNoteUiState(canManage = true, recorder = RecorderState.Failed))
 }
 
 @Preview(showBackground = true)
