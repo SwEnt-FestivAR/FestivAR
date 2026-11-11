@@ -23,6 +23,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
+import com.android.festivar.ui.components.PeopleCardTestTags
 import com.android.festivar.ui.components.UserListTestTags
 import com.android.festivar.ui.components.formatDate
 import com.android.festivar.ui.components.formatTime
@@ -293,7 +294,7 @@ class TaskDetailsContentTest {
     show(state())
     composeTestRule
         .onNode(
-            hasTestTag(TaskDetailsScreenTestTags.ON_THIS_TASK_COUNT).and(hasText("1 person")),
+            hasTestTag(PeopleCardTestTags.COUNT).and(hasText("1 person")),
             useUnmergedTree = true,
         )
         .performScrollTo()
@@ -306,7 +307,7 @@ class TaskDetailsContentTest {
     show(state(sharedTask))
     composeTestRule
         .onNode(
-            hasTestTag(TaskDetailsScreenTestTags.ON_THIS_TASK_COUNT).and(hasText("2 people")),
+            hasTestTag(PeopleCardTestTags.COUNT).and(hasText("2 people")),
             useUnmergedTree = true,
         )
         .performScrollTo()

@@ -11,6 +11,12 @@
     <string name="action_open_settings">Ouvrir les paramètres</string>
     <!-- User list -->
     <string name="user_list_uncategorized">Inconnu</string>
+    <plurals name="people_count">
+        <item quantity="one">%d personne</item>
+        <item quantity="many">%d personnes</item>
+        <item quantity="other">%d personnes</item>
+    </plurals>
+    <string name="people_more">+%d</string>
     <!-- Samples shown in the previews of the shared components -->
     <string name="action_continue_anyway">Continuer</string>
     <string name="notice_snackbar_sample_message">Erreur dans le processus lancé.</string>

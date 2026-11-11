@@ -23,6 +23,7 @@ import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepositoryLocal
+import com.android.festivar.ui.components.PeopleCardTestTags
 import com.android.festivar.ui.theme.AppTheme
 import io.mockk.mockk
 import java.time.ZonedDateTime
@@ -176,7 +177,7 @@ class TaskDetailsScreenTest {
         .assertIsDisplayed()
     composeTestRule
         .onNode(
-            hasTestTag(TaskDetailsScreenTestTags.ON_THIS_TASK_COUNT).and(hasText("1 person")),
+            hasTestTag(PeopleCardTestTags.COUNT).and(hasText("1 person")),
             useUnmergedTree = true,
         )
         .performScrollTo()

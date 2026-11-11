@@ -3,8 +3,6 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.ui.task.details
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,16 +10,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
@@ -50,7 +44,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -60,8 +53,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.festivar.R
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
-import com.android.festivar.ui.components.Avatar
 import com.android.festivar.ui.components.FestivarConfirmDialog
+import com.android.festivar.ui.components.PeopleCard
 import com.android.festivar.ui.components.PillStyle
 import com.android.festivar.ui.components.SectionLabel
 import com.android.festivar.ui.components.StatusPill
@@ -69,6 +62,7 @@ import com.android.festivar.ui.components.UserListBottomSheet
 import com.android.festivar.ui.components.UserTag
 import com.android.festivar.ui.components.formatDate
 import com.android.festivar.ui.components.formatTime
+import com.android.festivar.ui.components.peopleCount
 import com.android.festivar.ui.theme.AppTheme
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -88,7 +82,6 @@ object TaskDetailsScreenTestTags {
   const val PLACE = "detailsPlace"
   const val DESCRIPTION = "detailsDescription"
   const val ON_THIS_TASK_SECTION = "detailsOnThisTask"
-  const val ON_THIS_TASK_COUNT = "detailsOnThisTaskCount"
   const val ON_THIS_TASK_SHEET = "detailsOnThisTaskSheet"
   const val TAKE_BUTTON = "detailsTakeButton"
   const val GIVE_BACK_BUTTON = "detailsGiveBackButton"
@@ -331,72 +324,15 @@ private fun Body(task: Task, status: TaskStatus, onOpenPeople: () -> Unit) {
         modifier = Modifier.testTag(TaskDetailsScreenTestTags.DESCRIPTION),
     )
   }
-  if (task.assignees.isNotEmpty()) OnThisTask(task, onOpenPeople)
-}
-
-/** The card that says how many people took the task, and opens their list when tapped. */
-@Composable
-private fun OnThisTask(task: Task, onClick: () -> Unit) {
-  val people = task.assignees
-  Row(
-      Modifier.fillMaxWidth()
-          .background(MaterialTheme.colorScheme.surfaceContainerLow, MaterialTheme.shapes.medium)
-          .clickable(onClick = onClick)
-          .padding(16.dp)
-          .testTag(TaskDetailsScreenTestTags.ON_THIS_TASK_SECTION),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(12.dp),
-  ) {
-    PeopleStack(people)
-    Column(Modifier.weight(1f)) {
-      Text(
-          stringResource(R.string.details_on_this_task),
-          style = MaterialTheme.typography.titleMedium,
-      )
-      Text(
-          peopleCount(people.size),
-          style = MaterialTheme.typography.bodyMedium,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-          modifier = Modifier.testTag(TaskDetailsScreenTestTags.ON_THIS_TASK_COUNT),
-      )
-    }
-    Icon(
-        Icons.AutoMirrored.Filled.KeyboardArrowRight,
-        contentDescription = null,
-        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+  if (task.assignees.isNotEmpty()) {
+    PeopleCard(
+        stringResource(R.string.details_on_this_task),
+        task.assignees,
+        onOpenPeople,
+        Modifier.testTag(TaskDetailsScreenTestTags.ON_THIS_TASK_SECTION),
     )
   }
 }
-
-/** The first two [people] as avatars overlapping by 12dp, then "+N" for the others. */
-@Composable
-private fun PeopleStack(people: List<User>) {
-  val shown = people.take(2)
-  val more = people.size - shown.size
-  val slots = shown.size + if (more > 0) 1 else 0
-  Box(Modifier.width((32 + 20 * (slots - 1)).dp).height(32.dp)) {
-    shown.forEachIndexed { index, user -> Avatar(user, Modifier.offset(x = (20 * index).dp)) }
-    if (more > 0) {
-      Box(
-          contentAlignment = Alignment.Center,
-          modifier =
-              Modifier.offset(x = 40.dp)
-                  .size(32.dp)
-                  .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
-      ) {
-        Text(
-            stringResource(R.string.details_more_people, more),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
-        )
-      }
-    }
-  }
-}
-
-@Composable
-private fun peopleCount(count: Int): String =
-    pluralStringResource(R.plurals.details_people, count, count)
 
 /** Everyone who took [task], read only, each with the time they took it. */
 @OptIn(ExperimentalMaterial3Api::class)
