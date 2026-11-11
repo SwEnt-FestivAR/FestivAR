@@ -270,13 +270,13 @@ private fun Body(
 ) {
   when {
 
-      // What is shown when you are still loading.
+    // What is shown when you are still loading.
     state.isLoading && state.totalTasks == 0 ->
         CenteredBox {
           CircularProgressIndicator(Modifier.size(32.dp).testTag(MyTasksScreenTestTags.LOADING))
         }
 
-      // What is shown when you have no tasks.
+    // What is shown when you have no tasks.
     state.hasNoTasks ->
         CenteredBox {
           Column(
@@ -294,7 +294,7 @@ private fun Body(
           }
         }
 
-      // What is shown when, due to the filters, no tasks is displayed.
+    // What is shown when, due to the filters, no tasks is displayed.
     state.nothingMatches ->
         CenteredBox {
           Column(
@@ -315,7 +315,7 @@ private fun Body(
           }
         }
 
-      // What is shown in the normal case.
+    // What is shown in the normal case.
     else -> TaskList(state, onOpenTask)
   }
 }
@@ -339,16 +339,16 @@ private fun TaskList(state: MyTasksUiState, onOpenTask: (String) -> Unit) {
       contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 88.dp),
   ) {
 
-      // We show each section one by one.
+    // We show each section one by one.
     state.sections.forEach { section ->
       val sectionTag = MyTasksScreenTestTags.section(section.day)
 
-        // On the section, its label.
+      // On the section, its label.
       item(key = sectionTag) {
         SectionLabel(dayLabel(section.day, today), Modifier.testTag(sectionTag))
       }
 
-        // Each task row.
+      // Each task row.
       section.rows.forEach { row ->
         item(key = row.task.taskId) {
           TaskRow(
@@ -363,7 +363,6 @@ private fun TaskList(state: MyTasksUiState, onOpenTask: (String) -> Unit) {
           Hairline()
         }
       }
-
     }
   }
 }
