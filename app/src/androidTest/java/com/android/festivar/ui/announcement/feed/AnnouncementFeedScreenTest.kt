@@ -35,6 +35,8 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.android.festivar.R
+import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
@@ -449,7 +451,8 @@ class AnnouncementFeedScreenTest {
     val viewModel =
         AnnouncementFeedViewModel(
             eventId = EVENT_ID,
-            eventsRepository = repository,
+            dataRepository =
+                DataRepositoryLocal(FakeAuthRepository(), eventsRepository = repository),
             clock = Clock.fixed(at(today, 15).toInstant(), zone),
         )
     composeTestRule.setContent {
