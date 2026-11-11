@@ -473,6 +473,16 @@ class DataRepositoryLocalTest {
   }
 
   @Test
+  fun quitEvent_byTheEventOwner_throwsAndKeepsTheOwnerAsMember() = runTest {
+    assertThrows(IllegalArgumentException::class.java) {
+      runBlocking { dataRepository.quitEvent("e1", "alice") }
+    }
+
+    assertEquals(listOf("alice", "bob"), memberIds("e1"))
+    assertUser("alice", listOf("e1"), listOf("t1"))
+  }
+
+  @Test
   fun quitEvent_notMember_throwsAndChangesNothing() = runTest {
     assertFailsWithoutChanges(IllegalArgumentException::class.java) {
       dataRepository.quitEvent("e1", "carla")
