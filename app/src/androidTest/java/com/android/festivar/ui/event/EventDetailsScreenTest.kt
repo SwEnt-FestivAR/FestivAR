@@ -2,6 +2,7 @@ package com.android.festivar.ui.event
 
 // Co-authored-by: Copilot App
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 
 import android.annotation.SuppressLint
 import androidx.compose.ui.semantics.SemanticsActions
@@ -129,6 +130,21 @@ class EventDetailsScreenTest {
     setContent(eventNoTasks)
     composeTestRule.onNodeWithText("0").assertIsDisplayed()
     composeTestRule.onNodeWithText("of 0").assertIsDisplayed()
+  }
+
+  /** Breaks if "of N" stops sitting after the open count, or the label stops sitting below both. */
+  @Test
+  fun statCardStacksCountThenTotalThenLabel() {
+    setContent(eventSameMonth)
+
+    val count = composeTestRule.onNodeWithText("${tasksListSize / 2}").getUnclippedBoundsInRoot()
+    val total = composeTestRule.onNodeWithText("of $tasksListSize").getUnclippedBoundsInRoot()
+    val label = composeTestRule.onNodeWithText("tasks still open").getUnclippedBoundsInRoot()
+
+    assertTrue(total.left >= count.right)
+    assertTrue(total.bottom <= count.bottom)
+    assertTrue(label.top >= count.bottom)
+    assertTrue(label.top >= total.bottom)
   }
 
   /** Red if an empty location does not display the address fallback text. */
