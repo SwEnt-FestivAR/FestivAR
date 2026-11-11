@@ -42,6 +42,31 @@
 
     <string name="mytasks_load_failed">Impossible de charger vos tâches.</string>
     <string name="mytasks_refresh_failed">Impossible d’actualiser vos tâches.</string>
+    <string name="mytasks_title">Mes tâches</string>
+    <string name="mytasks_filters">Filtres</string>
+    <string name="mytasks_filters_count">Filtres · %1$d</string>
+    <string name="mytasks_status_todo">À faire</string>
+    <string name="mytasks_priority_none">Sans priorité</string>
+    <string name="mytasks_clear">Effacer</string>
+    <string name="mytasks_events">Événements</string>
+    <string name="mytasks_events_all">Tous</string>
+    <plurals name="mytasks_events_selected">
+        <item quantity="one">%d événement</item>
+        <item quantity="many">%d événements</item>
+        <item quantity="other">%d événements</item>
+    </plurals>
+    <string name="mytasks_unknown_event">Événement inconnu</string>
+    <string name="mytasks_show_tasks_from">Afficher les tâches de</string>
+    <string name="mytasks_today">Aujourd’hui</string>
+    <string name="mytasks_tomorrow">Demain</string>
+    <string name="mytasks_yesterday">Hier</string>
+    <string name="mytasks_anytime">Sans horaire</string>
+    <string name="mytasks_done">Finie</string>
+    <string name="mytasks_in_minutes">dans %1$d min</string>
+    <string name="mytasks_empty_title">Aucune tâche pour l’instant</string>
+    <string name="mytasks_empty_body">Prenez une tâche dans un événement et elle apparaîtra ici.</string>
+    <string name="mytasks_no_match">Aucune tâche ne correspond à ces filtres.</string>
+    <string name="mytasks_clear_filters">Effacer les filtres</string>
 
 
 </resources>

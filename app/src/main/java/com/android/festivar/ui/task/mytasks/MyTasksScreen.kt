@@ -52,6 +52,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -109,29 +110,6 @@ object MyTasksScreenTestTags {
 
   /** One tag per day; the tasks without a start share the "anytime" one. */
   fun section(day: LocalDate?) = "myTasksSection_" + (day?.toString() ?: "anytime")
-}
-
-// The words of this screen that have no string resource yet. They are kept here, in one place, so
-// they can move to strings_tasks.xml (and be translated) without touching the layout.
-private object Labels {
-  const val TITLE = "My tasks"
-  const val FILTERS = "Filters"
-  const val TO_DO = "To do"
-  const val NO_PRIORITY = "No priority"
-  const val EVENTS = "Events"
-  const val ALL_EVENTS = "All"
-  const val EVENTS_SELECTED = "%d events"
-  const val UNKNOWN_EVENT = "Unknown event"
-  const val SHOW_TASKS_FROM = "Show tasks from"
-  const val CLEAR = "Clear"
-  const val TODAY = "Today"
-  const val TOMORROW = "Tomorrow"
-  const val YESTERDAY = "Yesterday"
-  const val IN_MINUTES = "in %d min"
-  const val EMPTY_TITLE = "No tasks yet"
-  const val EMPTY_BODY = "Take a task from an event and it shows up here."
-  const val NO_MATCH = "No tasks match these filters."
-  const val CLEAR_FILTERS = "Clear filters"
 }
 
 // The priority chips, most urgent first, as the design shows them.
@@ -195,7 +173,7 @@ fun MyTasksContent(
         TopAppBar(
             title = {
               Text(
-                  Labels.TITLE,
+                  stringResource(R.string.mytasks_title),
                   style = MaterialTheme.typography.titleLarge,
                   modifier = Modifier.testTag(MyTasksScreenTestTags.TITLE),
               )
@@ -284,9 +262,12 @@ private fun Body(
               verticalArrangement = Arrangement.spacedBy(12.dp),
               modifier = Modifier.padding(horizontal = 24.dp).testTag(MyTasksScreenTestTags.EMPTY),
           ) {
-            Text(Labels.EMPTY_TITLE, style = MaterialTheme.typography.headlineSmall)
             Text(
-                Labels.EMPTY_BODY,
+                stringResource(R.string.mytasks_empty_title),
+                style = MaterialTheme.typography.headlineSmall,
+            )
+            Text(
+                stringResource(R.string.mytasks_empty_body),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -302,7 +283,7 @@ private fun Body(
               modifier = Modifier.testTag(MyTasksScreenTestTags.NO_MATCH),
           ) {
             Text(
-                Labels.NO_MATCH,
+                stringResource(R.string.mytasks_no_match),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -310,7 +291,7 @@ private fun Body(
                 onClick = onClearFilters,
                 modifier = Modifier.testTag(MyTasksScreenTestTags.CLEAR_FILTERS),
             ) {
-              Text(Labels.CLEAR_FILTERS)
+              Text(stringResource(R.string.mytasks_clear_filters))
             }
           }
         }
@@ -388,7 +369,9 @@ private fun FiltersZone(
 
       // The chip that allows to see all the filters.
       DropdownChip(
-          label = if (count > 0) "${Labels.FILTERS} · $count" else Labels.FILTERS,
+          label =
+              if (count > 0) stringResource(R.string.mytasks_filters_count, count)
+              else stringResource(R.string.mytasks_filters),
           active = count > 0,
           open = open,
           onClick = onToggleOpen,
@@ -420,7 +403,7 @@ private fun FiltersZone(
         ) {
           // Ink while it can clear something; disabled, it keeps the button's greyed-out color
           Text(
-              Labels.CLEAR,
+              stringResource(R.string.mytasks_clear),
               color = if (count > 0) MaterialTheme.colorScheme.onSurface else Color.Unspecified,
           )
         }
@@ -491,7 +474,11 @@ private fun EventsSelector(
         val accent = if (tinted) colors.onPrimaryContainer else colors.onSurfaceVariant
         Icon(Icons.Filled.DateRange, contentDescription = null, Modifier.size(18.dp), tint = accent)
 
-        Text(Labels.EVENTS, style = MaterialTheme.typography.labelMedium, color = accent)
+        Text(
+            stringResource(R.string.mytasks_events),
+            style = MaterialTheme.typography.labelMedium,
+            color = accent,
+        )
         Text(
             eventsValue(state),
             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
@@ -522,7 +509,7 @@ private fun EventsSelector(
             verticalAlignment = Alignment.CenterVertically,
         ) {
           Text(
-              Labels.SHOW_TASKS_FROM,
+              stringResource(R.string.mytasks_show_tasks_from),
               style = MaterialTheme.typography.labelMedium,
               color = colors.onSurfaceVariant,
               modifier = Modifier.weight(1f),
@@ -532,7 +519,10 @@ private fun EventsSelector(
               enabled = active,
               modifier = Modifier.testTag(MyTasksScreenTestTags.EVENTS_CLEAR),
           ) {
-            Text(Labels.CLEAR, color = if (active) colors.onPrimaryContainer else Color.Unspecified)
+            Text(
+                stringResource(R.string.mytasks_clear),
+                color = if (active) colors.onPrimaryContainer else Color.Unspecified,
+            )
           }
         }
         state.events.forEach { option ->
@@ -554,7 +544,11 @@ private fun EventsSelector(
                 modifier = Modifier.padding(12.dp),
             )
             Text(
-                "${option.title ?: Labels.UNKNOWN_EVENT} · ${option.count}",
+                stringResource(
+                    R.string.mytasks_event_option,
+                    option.title ?: stringResource(R.string.mytasks_unknown_event),
+                    option.count,
+                ),
                 style = MaterialTheme.typography.bodyLarge,
             )
           }
@@ -614,15 +608,16 @@ private fun rememberTimeFormat(): DateTimeFormatter {
 /** "Today · Sat 17 Oct", "Tomorrow · …", "Yesterday · …", "Mon 19 Oct", or "Any time". */
 @Composable
 private fun dayLabel(day: LocalDate?, today: LocalDate): String {
-  if (day == null) return stringResource(R.string.overview_group_anytime)
+  if (day == null) return stringResource(R.string.mytasks_anytime)
   val relative =
       when (day) {
-        today -> Labels.TODAY
-        today.plusDays(1) -> Labels.TOMORROW
-        today.minusDays(1) -> Labels.YESTERDAY
+        today -> stringResource(R.string.mytasks_today)
+        today.plusDays(1) -> stringResource(R.string.mytasks_tomorrow)
+        today.minusDays(1) -> stringResource(R.string.mytasks_yesterday)
         else -> null
       }
-  return relative?.let { "$it · ${formatDate(day)}" } ?: formatDate(day)
+  return relative?.let { stringResource(R.string.mytasks_relative_day, it, formatDate(day)) }
+      ?: formatDate(day)
 }
 
 /** The priority (unless none), the place and the event, joined with a middle dot. */
@@ -638,21 +633,22 @@ private fun MyTaskRowUi.subtitle(): String {
 @Composable
 private fun MyTaskRowUi.trailing(): String =
     when {
-      task.completed -> stringResource(R.string.overview_chip_done)
-      minutesUntilStart != null -> Labels.IN_MINUTES.format(minutesUntilStart)
+      task.completed -> stringResource(R.string.mytasks_done)
+      minutesUntilStart != null -> stringResource(R.string.mytasks_in_minutes, minutesUntilStart)
       else -> ""
     }
 
 @Composable
 private fun MyTaskStatus.label(): String =
     when (this) {
-      MyTaskStatus.TODO -> Labels.TO_DO
+      MyTaskStatus.TODO -> stringResource(R.string.mytasks_status_todo)
       MyTaskStatus.DONE -> stringResource(R.string.overview_chip_done)
     }
 
 @Composable
 private fun Priority.label(): String =
-    if (this == Priority.NONE) Labels.NO_PRIORITY else stringResource(priorityLabelRes(this))
+    if (this == Priority.NONE) stringResource(R.string.mytasks_priority_none)
+    else stringResource(priorityLabelRes(this))
 
 /** The active statuses then priorities, for the folded Filters zone: "To do · Urgent". */
 @Composable
@@ -663,12 +659,13 @@ private fun activeFiltersSummary(state: MyTasksUiState): String {
 }
 
 /** "All", the one checked event's title, or "2 events". */
+@Composable
 private fun eventsValue(state: MyTasksUiState): String {
   val selected = state.events.filter { it.selected }
   return when (selected.size) {
-    0 -> Labels.ALL_EVENTS
-    1 -> selected.single().title ?: Labels.UNKNOWN_EVENT
-    else -> Labels.EVENTS_SELECTED.format(selected.size)
+    0 -> stringResource(R.string.mytasks_events_all)
+    1 -> selected.single().title ?: stringResource(R.string.mytasks_unknown_event)
+    else -> pluralStringResource(R.plurals.mytasks_events_selected, selected.size, selected.size)
   }
 }
 
