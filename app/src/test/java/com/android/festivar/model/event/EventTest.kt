@@ -21,6 +21,7 @@ class EventTest {
   private val titleMessage = "The title cannot be empty."
   private val duplicateTaskMessage = "A task is duplicated."
   private val duplicateMemberMessage = "A user is registered twice."
+  private val ownerNotMemberMessage = "The owner must be a member."
   private val dateMessage = "endDate must be strictly after startDate."
   private val duplicateAnnouncementMessage = "An announcement is duplicated."
   // Also the message of addAnnouncement on a full event.
@@ -81,13 +82,14 @@ class EventTest {
 
   /** Builds a valid event with every field set, so we can check that the functions keep them. */
   private fun eventWith(
-      members: List<User> = emptyList(),
+      members: List<User> = listOf(alice),
+      ownerId: String = members.firstOrNull()?.uid ?: "owner-1",
       tasks: List<Task> = emptyList(),
       announcements: List<Announcement> = emptyList(),
   ): Event =
       Event(
           eventId = "e1",
-          ownerId = "owner-1",
+          ownerId = ownerId,
           title = "Festival",
           description = "Description",
           members = members,
@@ -116,6 +118,7 @@ class EventTest {
             eventId = "e1",
             ownerId = "owner-1",
             title = "Festival",
+            members = listOf(User("owner-1")),
             startDate = start,
             endDate = start.plusDays(2),
         )
@@ -123,7 +126,7 @@ class EventTest {
     assertEquals("e1", event.eventId)
     assertEquals("Festival", event.title)
     assertEquals("", event.description)
-    assertTrue(event.members.isEmpty())
+    assertEquals(listOf(User("owner-1")), event.members)
     assertEquals(start, event.startDate)
     assertEquals(start.plusDays(2), event.endDate)
     assertEquals("", event.location)
@@ -216,6 +219,7 @@ class EventTest {
     assertInvalid(titleMessage) { event.copy(title = " ") }
     assertInvalid(duplicateTaskMessage) { event.copy(tasks = listOf(task("t1"), task("t1"))) }
     assertInvalid(duplicateMemberMessage) { event.copy(members = listOf(alice, alice)) }
+    assertInvalid(ownerNotMemberMessage) { event.copy(ownerId = outsider.uid) }
     assertInvalid(dateMessage) { event.copy(endDate = start) }
   }
 
@@ -259,12 +263,20 @@ class EventTest {
   /** removeMember removes only the user with the given id and does not change the original. */
   @Test
   fun removeMember_removesOnlyTheGivenUser() {
-    val event = eventWith(members = listOf(alice, bob))
+    val event = eventWith(members = listOf(alice, bob), ownerId = bob.uid)
 
     val result = event.removeMember(alice.uid)
 
     assertEquals(event.copy(members = listOf(bob)), result)
     assertEquals(listOf(alice, bob), event.members)
+  }
+
+  /** removeMember refuses to remove the event owner. */
+  @Test
+  fun removeMember_fails_whenUserIsOwner() {
+    val event = eventWith(members = listOf(alice, bob), ownerId = alice.uid)
+
+    assertInvalid("The event owner cannot be removed.") { event.removeMember(alice.uid) }
   }
 
   /** removeMember refuses an id that is not the one of a member. */

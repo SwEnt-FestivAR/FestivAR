@@ -306,6 +306,7 @@ class DataRepositoryLocalTest {
   @Test
   fun deleteTask_ownerNoLongerListingIt_deletesItAnyway() = runTest {
     // alice, the owner of t1, loses it from her tasks when she quits e1.
+    eventsRepository.editEvent("e1", e1.copy(ownerId = bob.uid))
     dataRepository.quitEvent("e1", "alice")
 
     dataRepository.deleteTask("t1")
@@ -462,6 +463,7 @@ class DataRepositoryLocalTest {
 
   @Test
   fun quitEvent_byATaskOwner_keepsTheOwnerButRemovesTheTaskFromTheirTasks() = runTest {
+    eventsRepository.editEvent("e1", e1.copy(ownerId = bob.uid))
     dataRepository.quitEvent("e1", "alice")
 
     assertEquals(listOf("bob"), memberIds("e1"))

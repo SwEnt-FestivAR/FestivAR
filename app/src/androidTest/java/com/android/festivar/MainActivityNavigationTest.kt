@@ -222,11 +222,13 @@ class MainActivityNavigationTest {
     // The join screen reads and writes the events in the Firestore emulator, whose rules need a
     // signed-in user, and the ViewModel reads the stored profile back by uid before it writes
     val start = ZonedDateTime.now().plusDays(1)
+    val owner = User(uid = "event-owner")
     val event =
         Event(
             eventId = "join-${UUID.randomUUID()}",
-            ownerId = "owner",
+            ownerId = owner.uid,
             title = "Joinable Event",
+            members = listOf(owner),
             startDate = start,
             endDate = start.plusHours(2),
         )
@@ -236,6 +238,7 @@ class MainActivityNavigationTest {
     val events = EventRepositoryFirebase(Firebase.firestore)
     runBlocking {
       Firebase.auth.signInAnonymously().await()
+      users.addUser(owner)
       users.addUser(storedUser)
       events.addEvent(event)
     }
@@ -268,6 +271,7 @@ class MainActivityNavigationTest {
     } finally {
       runBlocking {
         runCatching { events.deleteEvent(event.eventId) }
+        runCatching { users.deleteUser(owner.uid) }
         runCatching { users.deleteUser(storedUser.uid) }
         Firebase.auth.signOut()
       }
@@ -311,7 +315,7 @@ class MainActivityNavigationTest {
     val event =
         Event(
             eventId = "event-${UUID.randomUUID()}",
-            ownerId = "owner",
+            ownerId = storedUser.uid,
             title = "Fête de l'Asso",
             members = listOf(storedUser),
             startDate = now.minusHours(1),
@@ -378,14 +382,17 @@ class MainActivityNavigationTest {
     val event =
         Event(
             eventId = "back-${UUID.randomUUID()}",
-            ownerId = "owner",
+            ownerId = storedUser.uid,
             title = "Event With Tasks",
+            members = listOf(storedUser),
             startDate = start,
             endDate = start.plusHours(2),
         )
     val events = EventRepositoryFirebase(Firebase.firestore)
+    val users = UsersRepositoryFirebase(Firebase.firestore)
     runBlocking {
       Firebase.auth.signInAnonymously().await()
+      users.addUser(storedUser)
       events.addEvent(event)
     }
 
@@ -414,6 +421,7 @@ class MainActivityNavigationTest {
     } finally {
       runBlocking {
         runCatching { events.deleteEvent(event.eventId) }
+        runCatching { users.deleteUser(storedUser.uid) }
         Firebase.auth.signOut()
       }
     }

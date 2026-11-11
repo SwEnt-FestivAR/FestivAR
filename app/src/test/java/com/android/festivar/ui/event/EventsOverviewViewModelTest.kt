@@ -140,7 +140,12 @@ class EventsOverviewViewModelTest {
 
   /** An event Sara is not a member of, so it is never shown to her. */
   private val eventWithoutSara =
-      pastEvent.copy(eventId = "6", title = "Satellite Quiz", members = listOf())
+      pastEvent.copy(
+          eventId = "6",
+          ownerId = "other-owner",
+          title = "Satellite Quiz",
+          members = listOf(User("other-owner")),
+      )
 
   @Before
   fun setUp() {

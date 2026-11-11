@@ -119,7 +119,12 @@ class EventRepositoryFirebaseTest {
 
   @Test
   fun getEventsForUser_returnsOnlyMatchingEvents() = runBlocking {
-    val otherEvent = event.copy(eventId = "event-${UUID.randomUUID()}", members = emptyList())
+    val otherEvent =
+        event.copy(
+            eventId = "event-${UUID.randomUUID()}",
+            ownerId = "other-owner",
+            members = listOf(User("other-owner")),
+        )
     repository.addEvent(event)
     repository.addEvent(otherEvent)
 
@@ -241,14 +246,17 @@ class EventRepositoryFirebaseTest {
                 "eventId" to event.eventId,
                 "ownerId" to event.ownerId,
                 "title" to event.title,
-                "members" to listOf("user-2"),
+                "members" to listOf("user-1", "user-2"),
                 "startDate" to event.startDate.toString(),
                 "endDate" to event.endDate.toString(),
             )
         )
         .await()
 
-    assertEquals(listOf(User("user-2", "Alex", "Lee")), repository.getEvent(event.eventId).members)
+    assertEquals(
+        listOf(User("user-1"), User("user-2", "Alex", "Lee")),
+        repository.getEvent(event.eventId).members,
+    )
   }
 
   @Test
@@ -270,7 +278,7 @@ class EventRepositoryFirebaseTest {
     assertEquals(event.eventId, result.eventId)
     assertEquals("", result.description)
     assertEquals("", result.location)
-    assertTrue(result.members.isEmpty())
+    assertEquals(listOf(User("user-1")), result.members)
     assertTrue(result.tasks.isEmpty())
     assertFalse(result.closed)
     assertTrue(result.announcements.isEmpty())

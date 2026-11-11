@@ -51,7 +51,7 @@ data class Event(
     val ownerId: String,
     val title: String,
     val description: String = "",
-    val members: List<User> = emptyList(),
+    val members: List<User> = listOf(User(ownerId)),
     val startDate: ZonedDateTime,
     val endDate: ZonedDateTime,
     val location: String = "",
@@ -66,6 +66,7 @@ data class Event(
     require(title.isNotBlank()) { "The title cannot be empty." }
     require(tasks.map { it.taskId }.distinct().size == tasks.size) { "A task is duplicated." }
     require(members.distinctBy { it.uid }.size == members.size) { "A user is registered twice." }
+    require(members.any { it.uid == ownerId }) { "The owner must be a member." }
     require(announcements.distinctBy { it.announcementId }.size == announcements.size) {
       "An announcement is duplicated."
     }
@@ -120,6 +121,7 @@ data class Event(
    */
   fun removeMember(userId: String): Event {
     require(members.any { it.uid == userId }) { "This user is not a member of the event." }
+    require(userId != ownerId) { "The event owner cannot be removed." }
 
     return copy(members = members.filterNot { it.uid == userId })
   }
