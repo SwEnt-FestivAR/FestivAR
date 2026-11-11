@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -24,9 +25,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
+import com.android.festivar.model.audio.PendingRecording
 import com.android.festivar.model.audio.PlayerState
+import com.android.festivar.model.audio.RecorderState
 import com.android.festivar.model.voicenote.VoiceNote
 import com.android.festivar.ui.components.FestivarConfirmDialog
+import com.android.festivar.ui.components.FixedBottomBar
 import com.android.festivar.ui.components.SectionLabel
 import com.android.festivar.ui.theme.AppTheme
 import java.time.Clock
@@ -36,8 +40,8 @@ import java.time.ZonedDateTime
 
 /**
  * The voice note section of a task, for the owner and for the volunteers: the label, then the note
- * or the empty state, and the dialog to confirm the deletion of the note. It shows nothing to a
- * volunteer when the task has no note.
+ * or the empty state, and the dialogs to confirm the deletion of the note and the sending of a
+ * recording. It shows nothing to a volunteer when the task has no note.
  *
  * It only draws the note and the empty state. The record bar and the notices about the recording or
  * the playback (errors, missing microphone permission) are other composables, so they are not shown
@@ -77,6 +81,20 @@ fun VoiceNoteSection(
         modifier = Modifier.testTag(VoiceNoteTestTags.CONFIRM_DELETE),
         confirmModifier = Modifier.testTag(VoiceNoteTestTags.CONFIRM_DELETE_BUTTON),
         dismissModifier = Modifier.testTag(VoiceNoteTestTags.KEEP_BUTTON),
+    )
+  }
+  if (state.showSendDialog) {
+    FestivarConfirmDialog(
+        title = stringResource(R.string.voice_note_send_title),
+        message = stringResource(R.string.voice_note_send_body),
+        confirmText = stringResource(R.string.voice_note_send_confirm),
+        dismissText = stringResource(R.string.action_cancel),
+        onConfirm = callbacks.onConfirmSend,
+        onDismiss = callbacks.onCancelSend,
+        modifier = Modifier.testTag(VoiceNoteTestTags.CONFIRM_SEND),
+        confirmModifier = Modifier.testTag(VoiceNoteTestTags.CONFIRM_SEND_BUTTON),
+        dismissModifier = Modifier.testTag(VoiceNoteTestTags.CANCEL_SEND_BUTTON),
+        destructive = false,
     )
   }
 }
@@ -206,6 +224,44 @@ internal fun VoiceNoteDeleteConfirmPreview() {
   VoiceNotePreviewScreen(
       VoiceNoteUiState(note = previewNote, canManage = true, showDeleteConfirm = true)
   )
+}
+
+/**
+ * The section with the record bar fixed under it, as in the "send confirm", "sending" and
+ * "recording failed" frames of the design, which show the whole screen and not only the section.
+ */
+@Composable
+private fun VoiceNoteScreenPreview(state: VoiceNoteUiState) {
+  AppTheme {
+    Column(Modifier.fillMaxSize()) {
+      Column(Modifier.weight(1f).padding(horizontal = 20.dp)) {
+        VoiceNoteSection(state, previewCallbacks, stringResource(R.string.voice_note_organizer))
+      }
+      FixedBottomBar { VoiceNoteRecordBar(state, previewCallbacks) }
+    }
+  }
+}
+
+@Preview(showBackground = true, heightDp = 480)
+@Composable
+internal fun VoiceNoteSendConfirmPreview() {
+  VoiceNoteScreenPreview(
+      VoiceNoteUiState(canManage = true, pending = PendingRecording.Waiting(Duration.ofSeconds(7)))
+  )
+}
+
+@Preview(showBackground = true, heightDp = 480)
+@Composable
+internal fun VoiceNoteSendingPreview() {
+  VoiceNoteScreenPreview(
+      VoiceNoteUiState(canManage = true, pending = PendingRecording.Sending(Duration.ofSeconds(7)))
+  )
+}
+
+@Preview(showBackground = true, heightDp = 480)
+@Composable
+internal fun VoiceNoteRecordingFailedPreview() {
+  VoiceNoteScreenPreview(VoiceNoteUiState(canManage = true, recorder = RecorderState.Failed))
 }
 
 @Preview(showBackground = true)

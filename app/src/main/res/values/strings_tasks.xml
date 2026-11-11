@@ -1,5 +1,6 @@
 <!-- Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com> -->
 <!-- Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com> -->
+<!-- Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com> -->
 <resources>
     <string name="tasks_back">Back</string>
     <string name="tasks_search">Search</string>
@@ -35,4 +36,12 @@
 
     <string name="task_details_load_failed">Unable to load the task.</string>
     <string name="task_details_save_failed">Unable to save the change.</string>
+    <string name="task_details_more_actions">More task actions</string>
+    <string name="task_details_delete_task">Delete task</string>
+    <string name="task_details_delete_confirmation_title">Delete this task?</string>
+    <string name="task_details_delete_confirmation_message">“%1$s” will be removed and its volunteers told. This cannot be undone.</string>
+    <string name="task_details_keep_task">Keep it</string>
+
+    <string name="mytasks_load_failed">Unable to load your tasks.</string>
+    <string name="mytasks_refresh_failed">Unable to refresh your tasks.</string>
 </resources>

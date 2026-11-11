@@ -1,5 +1,6 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.ui.task.details
 
 import android.util.Log
@@ -170,6 +171,35 @@ class TaskDetailsViewModel(
         repository.editTask(taskId, completedTask)
         completedTask
       }
+
+  /** Deletes the task. Does nothing unless the current user owns it. */
+  fun deleteTask(onDeleted: () -> Unit = {}) {
+    val before = _uiState.getAndUpdate {
+      if (it.canEdit && !it.isLoading && !it.isUpdating) {
+        it.copy(isUpdating = true, errorMsg = null)
+      } else {
+        it
+      }
+    }
+    if (!before.canEdit || before.isLoading || before.isUpdating) return
+
+    viewModelScope.launch {
+      try {
+        dataRepository.deleteTask(taskId)
+      } catch (e: CancellationException) {
+        _uiState.update { it.copy(isUpdating = false) }
+        throw e
+      } catch (e: Exception) {
+        Log.e(LOG_TAG, "Error deleting task $taskId", e)
+        _uiState.update {
+          it.copy(isUpdating = false, errorMsg = R.string.task_details_save_failed)
+        }
+        return@launch
+      }
+      _uiState.update { it.copy(isUpdating = false) }
+      onDeleted()
+    }
+  }
 
   /** Clears the error message. */
   fun clearError() = _uiState.update { it.copy(errorMsg = null) }

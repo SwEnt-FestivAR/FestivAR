@@ -18,6 +18,11 @@ class DateTimeFormattersTest {
   }
 
   @Test
+  fun formatWeekday_usesOnlyTheShortWeekday() {
+    assertEquals("Sat", formatWeekday(LocalDate.of(2026, 10, 17)))
+  }
+
+  @Test
   fun formatDay_usesShortWeekdayAndDayWithoutMonth() {
     assertEquals("Fri 16", formatDay(LocalDate.of(2026, 10, 16)))
   }

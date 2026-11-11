@@ -195,6 +195,64 @@ class TaskRepositoryFirebaseTest {
     }
   }
 
+  // Breaks if takenAt is not written, or comes back with another instant or zone.
+  @Test
+  fun takenAt_survivesTheRoundTrip() = runBlocking {
+    val at = ZonedDateTime.parse("2037-05-12T09:12:00+02:00[Europe/Zurich]")
+    val taken = task.copy(assignees = emptyList()).addAssignee(User("user-1"), at)
+    repository.addTask(taken)
+
+    val stored = repository.getTask(taken.taskId).takenAt.getValue("user-1")
+
+    assertEquals(at.toInstant(), stored.toInstant())
+    assertEquals(at.zone, stored.zone)
+    assertEquals(taken, repository.getTask(taken.taskId))
+  }
+
+  // Breaks if a takenAt entry that is not a uid to ISO string pair loads silently instead of
+  // failing.
+  @Test
+  fun documentToTask_withABadTakenAtEntry_fails() = runBlocking {
+    val documentId = "task-${UUID.randomUUID()}"
+    val document = Firebase.firestore.collection(TASK_COLLECTION_PATH).document(documentId)
+    document
+        .set(
+            mapOf(
+                "eventId" to "event-2",
+                "title" to "Old task",
+                "assignees" to listOf("user-2"),
+                "takenAt" to mapOf("user-2" to 1234),
+                "ownerId" to "owner-1",
+            )
+        )
+        .await()
+
+    try {
+      val snapshot = document.get().await()
+      assertThrowsOfType<IllegalArgumentException> { invokeDocumentToTask(snapshot) }
+    } finally {
+      document.delete().await()
+    }
+  }
+
+  // Breaks if the structure of a spot is not written, or comes back changed.
+  @Test
+  fun spotOnAStructure_survivesTheRoundTrip() = runBlocking {
+    val pinned = task.copy(spot = TaskSpot.onStructure("stage"))
+    repository.addTask(pinned)
+
+    assertEquals(pinned, repository.getTask(pinned.taskId))
+  }
+
+  // Breaks if the coordinates of a free point are not written, or lose their sign or decimals.
+  @Test
+  fun spotAtAFreePoint_survivesTheRoundTrip() = runBlocking {
+    val pinned = task.copy(spot = TaskSpot.at(2.5, -7.0))
+    repository.addTask(pinned)
+
+    assertEquals(TaskSpot.at(2.5, -7.0), repository.getTask(pinned.taskId).spot)
+  }
+
   @Test
   fun documentToTask_failsWhenTheOwnerIsMissing() = runBlocking {
     val documentId = "task-${UUID.randomUUID()}"

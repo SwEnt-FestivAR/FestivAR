@@ -8,9 +8,15 @@
     <string name="details_description">Description</string>
     <string name="details_take">Prendre cette tâche</string>
     <string name="details_give_back">Rendre la tâche</string>
+    <string name="details_give_back_title">Rendre cette tâche ?</string>
+    <string name="details_give_back_message">D’autres pourront prendre « %1$s ». Vous pourrez la reprendre si elle est encore libre.</string>
+    <string name="details_give_back_keep">La garder</string>
     <string name="details_mark_done">Terminée</string>
     <string name="details_dismiss">Fermer</string>
     <string name="details_retry">Réessayer</string>
     <string name="details_location">Lieu : %s</string>
     <string name="details_time_range">De %1$s à %2$s</string>
+    <string name="details_on_this_task">Sur cette tâche</string>
+    <string name="details_people_sheet_subtitle">%1$s · %2$s</string>
+    <string name="details_took_it">Prise le %1$s à %2$s</string>
 </resources>

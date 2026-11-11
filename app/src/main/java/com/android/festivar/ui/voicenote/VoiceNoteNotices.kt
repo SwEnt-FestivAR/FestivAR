@@ -16,26 +16,29 @@ import com.android.festivar.ui.components.InfoNoteButton
 import com.android.festivar.ui.components.NoticeSnackbar
 import com.android.festivar.ui.theme.AppTheme
 
-/** An error of the voice note, shown with the shared snackbar and a Retry. */
+/**
+ * An error of the voice note, shown with the shared snackbar and its action (a Retry by default).
+ */
 @Composable
 internal fun ErrorNotice(
     @StringRes message: Int,
-    onRetry: () -> Unit,
+    onAction: () -> Unit,
     tag: String,
     actionTag: String,
+    @StringRes actionLabel: Int = R.string.action_retry,
 ) {
   NoticeSnackbar(
       message = stringResource(message),
-      actionLabel = stringResource(R.string.action_retry),
-      onAction = onRetry,
+      actionLabel = stringResource(actionLabel),
+      onAction = onAction,
       modifier = Modifier.testTag(tag),
       actionModifier = Modifier.testTag(actionTag),
   )
 }
 
 /**
- * The notices above the record bar: the failed send (with a Retry), and the information that the
- * microphone is off (with a button to the settings).
+ * The notices above the record bar: the failed send (with a Retry), the failed recording (with a
+ * Dismiss), and the information that the microphone is off (with a button to the settings).
  */
 @Composable
 internal fun ColumnScope.VoiceNoteOwnerNotices(
@@ -45,9 +48,18 @@ internal fun ColumnScope.VoiceNoteOwnerNotices(
   if (state.sendFailed) {
     ErrorNotice(
         message = R.string.voice_note_send_failed,
-        onRetry = callbacks.onRetry,
+        onAction = callbacks.onRetry,
         tag = VoiceNoteRecordTestTags.SEND_ERROR,
         actionTag = VoiceNoteRecordTestTags.SEND_RETRY,
+    )
+  }
+  if (state.recordingFailed) {
+    ErrorNotice(
+        message = R.string.voice_note_recording_failed,
+        onAction = callbacks.onDismissRecordingFailed,
+        tag = VoiceNoteRecordTestTags.RECORDING_ERROR,
+        actionTag = VoiceNoteRecordTestTags.RECORDING_ERROR_DISMISS,
+        actionLabel = R.string.action_dismiss,
     )
   }
   if (state.micDenied) {
@@ -76,7 +88,7 @@ fun ColumnScope.VoiceNotePlaybackNotice(state: VoiceNoteUiState, callbacks: Voic
   if (!state.playbackFailed) return
   ErrorNotice(
       message = R.string.voice_note_playback_failed,
-      onRetry = callbacks.onRetry,
+      onAction = callbacks.onRetry,
       tag = VoiceNoteRecordTestTags.PLAYBACK_ERROR,
       actionTag = VoiceNoteRecordTestTags.PLAYBACK_RETRY,
   )

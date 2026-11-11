@@ -14,4 +14,7 @@
     <string name="voice_note_delete_body">Les bénévoles de cette tâche ne pourront plus l’écouter.</string>
     <string name="voice_note_keep">La garder</string>
     <string name="voice_note_delete_confirm">Supprimer</string>
+    <string name="voice_note_send_title">Envoyer cette note vocale ?</string>
+    <string name="voice_note_send_body">Les bénévoles de cette tâche pourront l’écouter.</string>
+    <string name="voice_note_send_confirm">Envoyer</string>
 </resources>

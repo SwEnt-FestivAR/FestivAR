@@ -8,9 +8,15 @@
     <string name="details_description">Description</string>
     <string name="details_take">Take this task</string>
     <string name="details_give_back">Give it back</string>
+    <string name="details_give_back_title">Give this task back?</string>
+    <string name="details_give_back_message">Others will be able to take “%1$s”. You can take it again if it is still free.</string>
+    <string name="details_give_back_keep">Keep it</string>
     <string name="details_mark_done">Mark done</string>
     <string name="details_dismiss">Dismiss</string>
     <string name="details_retry">Retry</string>
     <string name="details_location">Location: %s</string>
     <string name="details_time_range">%1$s to %2$s</string>
+    <string name="details_on_this_task">On this task</string>
+    <string name="details_people_sheet_subtitle">%1$s · %2$s</string>
+    <string name="details_took_it">Took it %1$s, %2$s</string>
 </resources>

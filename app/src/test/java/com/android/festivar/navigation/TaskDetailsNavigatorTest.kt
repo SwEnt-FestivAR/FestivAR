@@ -24,6 +24,13 @@ class TaskDetailsNavigatorTest {
     verify { navController.popBackStack() }
   }
 
+  @Test
+  fun successfulDeletePopsDetailsFromBackStack() {
+    navigator.onTaskDeleted()
+
+    verify { navController.popBackStack() }
+  }
+
   // Breaks if edit opens another route, or the navigation drops launchSingleTop.
   @Test
   fun editOpensTheEditTaskRouteSingleTop() {
