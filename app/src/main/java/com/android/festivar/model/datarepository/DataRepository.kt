@@ -275,7 +275,7 @@ interface DataRepository {
    * @param eventId The identifier of the [Event] to quit.
    * @param userId The [User.uid] of the user quitting it.
    * @throws NoSuchElementException If the event or the user does not exist.
-   * @throws IllegalArgumentException If the user is not a member of the event.
+   * @throws IllegalArgumentException If the user is not a member of the event or is its owner.
    * @throws DataInconsistencyException If a write failed and could not be fully undone.
    */
   suspend fun quitEvent(eventId: String, userId: String) {

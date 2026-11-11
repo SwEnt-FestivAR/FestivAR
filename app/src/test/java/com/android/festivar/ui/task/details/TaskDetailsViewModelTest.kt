@@ -130,6 +130,7 @@ class TaskDetailsViewModelTest {
       events.addEvent(
           Event(
               eventId = task.eventId,
+              ownerId = "owner",
               title = "Summer festival",
               tasks = listOf(task),
               startDate = start,

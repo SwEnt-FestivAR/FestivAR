@@ -146,6 +146,7 @@ class TaskOverviewViewModelTest {
                 listOf(
                     Event(
                         eventId = EVENT,
+                        ownerId = owner.uid,
                         title = "Festival",
                         members = listOf(owner, signedInUser, otherUser),
                         startDate = at(0, 0),

@@ -61,6 +61,7 @@ class EventDetailsScreenTest {
   private val eventSameMonth =
       Event(
           eventId = EVENT_ID,
+          ownerId = "user",
           title = "Fête de l'Asso 2026",
           members = listOf(User(uid = "user", name = "Sami K.")),
           startDate = eventStartDate,

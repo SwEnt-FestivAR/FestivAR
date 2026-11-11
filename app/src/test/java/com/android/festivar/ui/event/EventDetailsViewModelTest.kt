@@ -159,6 +159,7 @@ class EventDetailsViewModelTest {
     val start = ZonedDateTime.of(2026, 10, 16, 10, 0, 0, 0, ZoneId.of("Europe/Zurich"))
     return Event(
         eventId = eventId,
+        ownerId = "owner",
         title = "Test event",
         startDate = start,
         endDate = start.plusHours(2),

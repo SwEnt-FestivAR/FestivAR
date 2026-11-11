@@ -58,6 +58,7 @@ class JoinEventScreenTest {
   private val event =
       Event(
           eventId = "vidy26abc",
+          ownerId = "owner",
           title = "Vidy Festival",
           startDate = start,
           endDate = start.plusHours(5),

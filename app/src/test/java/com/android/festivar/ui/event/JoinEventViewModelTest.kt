@@ -41,6 +41,7 @@ class JoinEventViewModelTest {
   private val fete =
       Event(
           eventId = "fete2026",
+          ownerId = sami.uid,
           title = "Fete de l'Asso 2026",
           members = listOf(sami),
           startDate = start,
@@ -49,6 +50,7 @@ class JoinEventViewModelTest {
   private val noel =
       Event(
           eventId = "noel-12",
+          ownerId = "owner",
           title = "Noel",
           startDate = start.plusDays(60),
           endDate = start.plusDays(60).plusHours(3),
@@ -579,7 +581,13 @@ class JoinEventViewModelTest {
   @Test
   fun twoEventsSharingACodeAreBothListedAndJoiningOneLeavesTheOtherAlone() {
     // fete2026 and fete2026-bis both give FETE20.
-    val bis = fete.copy(eventId = "fete2026-bis", title = "Fete bis", members = emptyList())
+    val bis =
+        fete.copy(
+            eventId = "fete2026-bis",
+            ownerId = "other-owner",
+            title = "Fete bis",
+            members = listOf(User("other-owner")),
+        )
     val colliding = EventsRepositoryLocal(listOf(fete, bis, noel))
     val viewModel = viewModel(eventsRepository = colliding)
 
@@ -592,7 +600,7 @@ class JoinEventViewModelTest {
 
     assertEquals("fete2026-bis", viewModel.uiState.value.joinedEventId)
     assertEquals(
-        listOf(ada.uid),
+        listOf("other-owner", ada.uid),
         runBlocking { colliding.getEvent("fete2026-bis") }.members.map { it.uid },
     )
     assertEquals(

@@ -322,6 +322,7 @@ internal fun EditEventScreenPreview() {
   val event =
       Event(
           eventId = "preview-event",
+          ownerId = "owner",
           title = "Balelec",
           description = "Annual music festival by the lake.",
           startDate = ZonedDateTime.of(2037, 10, 17, 16, 0, 0, 0, zone),
