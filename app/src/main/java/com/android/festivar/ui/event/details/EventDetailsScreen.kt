@@ -162,35 +162,33 @@ private fun EventInfo(
         style = MaterialTheme.typography.headlineMedium,
     )
 
-    Row(
+    Column(
         modifier =
             Modifier.fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
                 .background(MaterialTheme.colorScheme.surfaceContainerLow)
                 .padding(14.dp)
                 .testTag(EventDetailsScreenTestTags.OPEN_TASKS_STAT),
-        verticalAlignment = Alignment.CenterVertically,
     ) {
-      Column {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-          Text(
-              text = openTasks.toString(),
-              color = MaterialTheme.colorScheme.onSurface,
-              style = NumeralLarge,
-          )
-          Text(
-              text = stringResource(R.string.event_details_tasks_count, event.tasks.size),
-              modifier = Modifier.padding(start = 4.dp, top = 12.dp),
-              color = MaterialTheme.colorScheme.onSurfaceVariant,
-              style = MaterialTheme.typography.bodySmall,
-          )
-        }
+      Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
-            text = stringResource(R.string.event_details_tasks_still_open),
+            text = openTasks.toString(),
+            modifier = Modifier.alignByBaseline(),
+            color = MaterialTheme.colorScheme.onSurface,
+            style = NumeralLarge,
+        )
+        Text(
+            text = stringResource(R.string.event_details_tasks_count, event.tasks.size),
+            modifier = Modifier.alignByBaseline(),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
         )
       }
+      Text(
+          text = stringResource(R.string.event_details_tasks_still_open),
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          style = MaterialTheme.typography.bodySmall,
+      )
     }
 
     Column(
