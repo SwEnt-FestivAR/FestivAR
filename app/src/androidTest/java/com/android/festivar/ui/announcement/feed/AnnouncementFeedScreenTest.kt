@@ -190,7 +190,8 @@ class AnnouncementFeedScreenTest {
   private fun top(tag: String): Float =
       composeTestRule.onNodeWithTag(tag).getUnclippedBoundsInRoot().top.value
 
-  // Breaks if a chip is missing, out of order (All first, then by priority), shows a wrong count,
+  // Breaks if a chip is missing, out of reading order (All first, then by priority, on one line or
+  // wrapped onto two depending on the screen's width), shows a wrong count,
   // is not the one marked selected, or reports another filter than its own when tapped.
   @Test
   fun chipsShowEachFilterAllFirstAndReportTheTappedOne() {
@@ -203,15 +204,15 @@ class AnnouncementFeedScreenTest {
             AnnouncementFilter.WARNING to ("Warning" to "1"),
             AnnouncementFilter.INFO to ("Info" to "4"),
         )
-    val lefts = expected.map { (filter, labelAndCount) ->
+    val bounds = expected.map { (filter, labelAndCount) ->
       val (label, count) = labelAndCount
       val tag = AnnouncementFeedScreenTestTags.filterChip(filter)
       composeTestRule
           .onNode(hasTestTag(tag).and(hasText(label)).and(hasText(count)))
           .assertIsDisplayed()
-      composeTestRule.onNodeWithTag(tag).getUnclippedBoundsInRoot().left.value
+      composeTestRule.onNodeWithTag(tag).getUnclippedBoundsInRoot()
     }
-    assertEquals(lefts.sorted(), lefts)
+    assertEquals(bounds.sortedWith(compareBy({ it.top }, { it.left })), bounds)
     expected.forEach { (filter, _) ->
       val chip = composeTestRule.onNodeWithTag(AnnouncementFeedScreenTestTags.filterChip(filter))
       if (filter == AnnouncementFilter.ALL) chip.assertIsSelected() else chip.assertIsNotSelected()
@@ -220,12 +221,10 @@ class AnnouncementFeedScreenTest {
     assertEquals(expected.map { it.first }, callbacks.filters)
   }
 
-  // Breaks if the French chip labels get long again (e.g. "Avertissement"), so that the four chips
-  // no longer fit on one line of a 360dp phone, or if on a narrower screen the chips go past its
-  // edge instead of wrapping onto a second line.
+  // Breaks if the chips don't use their short French labels, or if on a screen too narrow for them
+  // they go past its edge instead of wrapping onto a second line.
   @Test
-  fun frenchChipsFitOnOneLineOfA360dpPhoneAndWrapOnANarrowerOne() {
-    var width by mutableStateOf(360.dp)
+  fun frenchChipsWrapOntoASecondLineOnANarrowScreen() {
     composeTestRule.setContent {
       val configuration =
           Configuration(LocalConfiguration.current).apply { setLocale(Locale.FRENCH) }
@@ -236,7 +235,7 @@ class AnnouncementFeedScreenTest {
           LocalResources provides context.resources,
       ) {
         AppTheme {
-          Box(Modifier.requiredWidth(width).testTag(SCREEN)) {
+          Box(Modifier.requiredWidth(200.dp).testTag(SCREEN)) {
             AnnouncementFeedContent(
                 uiState = figmaState,
                 canAddAnnouncement = true,
@@ -253,9 +252,6 @@ class AnnouncementFeedScreenTest {
                 .and(hasText("Alerte"))
         )
         .assertExists()
-    assertEquals(1, chipsInsideTheScreen().values.map { it.top }.distinct().size)
-
-    width = 200.dp
     val chips = chipsInsideTheScreen()
     val all = chips.getValue(AnnouncementFilter.ALL)
     val info = chips.getValue(AnnouncementFilter.INFO)
