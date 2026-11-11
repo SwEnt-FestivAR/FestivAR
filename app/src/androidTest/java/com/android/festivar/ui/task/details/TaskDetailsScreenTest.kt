@@ -5,13 +5,16 @@ package com.android.festivar.ui.task.details
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onChild
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
@@ -20,6 +23,7 @@ import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepositoryLocal
+import com.android.festivar.ui.components.PeopleCardTestTags
 import com.android.festivar.ui.theme.AppTheme
 import io.mockk.mockk
 import java.time.ZonedDateTime
@@ -161,6 +165,24 @@ class TaskDetailsScreenTest {
     assertBadge("Open")
     val saved = runBlocking { repository.getTask(task.taskId) }
     assertEquals(emptyList<String>(), saved.assignees.map { it.uid })
+  }
+
+  // Breaks if taking the task through the ViewModel does not put the taker on the section.
+  @Test
+  fun takingTheTaskShowsMeOnIt() {
+    showScreen()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.TAKE_BUTTON).performClick()
+    composeTestRule.waitUntil(5_000) { exists(TaskDetailsScreenTestTags.ON_THIS_TASK_SECTION) }
+    composeTestRule
+        .onNodeWithTag(TaskDetailsScreenTestTags.ON_THIS_TASK_SECTION)
+        .assertIsDisplayed()
+    composeTestRule
+        .onNode(
+            hasTestTag(PeopleCardTestTags.COUNT).and(hasText("1 person")),
+            useUnmergedTree = true,
+        )
+        .performScrollTo()
+        .assertIsDisplayed()
   }
 
   @Test

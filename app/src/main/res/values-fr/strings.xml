@@ -12,6 +12,12 @@
     <string name="action_dismiss">Ignorer</string>
     <!-- User list -->
     <string name="user_list_uncategorized">Inconnu</string>
+    <plurals name="people_count">
+        <item quantity="one">%d personne</item>
+        <item quantity="many">%d personnes</item>
+        <item quantity="other">%d personnes</item>
+    </plurals>
+    <string name="people_more">+%d</string>
     <!-- Samples shown in the previews of the shared components -->
     <string name="action_continue_anyway">Continuer</string>
     <string name="notice_snackbar_sample_message">Erreur dans le processus lancé.</string>
@@ -62,7 +68,7 @@
     <string name="join_event_join">Rejoindre comme bénévole</string>
     <string name="join_event_open">Ouvrir l’événement</string>
     <string name="join_event_already_member">Vous participez déjà à cet événement.</string>
-    <string name="join_event_code_field">Code de participation</string>
+    <string name="join_event_code_field">Code d’accès</string>
     <string name="join_event_code_cell">Caractère %1$d du code</string>
     <string name="join_event_code_empty">Le code est vide</string>
     <string name="join_event_code_so_far">Code saisi : %1$s</string>

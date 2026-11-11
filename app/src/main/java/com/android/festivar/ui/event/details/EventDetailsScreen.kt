@@ -1,7 +1,7 @@
 package com.android.festivar.ui.event.details
 
 // Co-authored-by: Copilot App
-// Co-authored-by: Claude Sonnet 5.5
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 
 import androidx.compose.foundation.background
@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.TaskAlt
@@ -40,12 +41,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
 import com.android.festivar.model.event.Event
+import com.android.festivar.model.event.joinCodeOf
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.formatEventDate
@@ -60,6 +63,8 @@ object EventDetailsScreenTestTags {
   const val EVENT_NAME = "eventName"
   const val FETCH_ERROR = "eventDetailsFetchError"
   const val OPEN_TASKS_STAT = "openTasksStat"
+  const val JOIN_CODE_ROW = "joinCodeRow"
+  const val JOIN_CODE_VALUE = "joinCodeValue"
   const val OWNER_ROW = "ownerRow"
   const val DATE_ROW = "dateRow"
   const val ADDRESS_ROW = "addressRow"
@@ -193,6 +198,8 @@ private fun EventInfo(
       }
     }
 
+    JoinCodeRow(code = joinCodeOf(event))
+
     Column(
         modifier =
             Modifier.fillMaxWidth()
@@ -220,6 +227,43 @@ private fun EventInfo(
           label = stringResource(R.string.event_details_address),
           value = event.location.ifBlank { stringResource(R.string.event_details_no_location) },
           tag = EventDetailsScreenTestTags.ADDRESS_ROW,
+      )
+    }
+  }
+}
+
+/**
+ * The event's join code as plain text on one line with its label, in capitals as in Figma. Everyone
+ * in the event sees it, so the row has no share action. The code is selectable so it can be copied,
+ * and the row is one node for screen readers, which read the label then the code.
+ *
+ * @param code the join code to show.
+ */
+@Composable
+private fun JoinCodeRow(code: String) {
+  Row(
+      modifier =
+          Modifier.fillMaxWidth()
+              .padding(vertical = 12.dp)
+              .semantics(mergeDescendants = true) {}
+              .testTag(EventDetailsScreenTestTags.JOIN_CODE_ROW),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(16.dp),
+  ) {
+    Text(
+        text = stringResource(R.string.event_details_join_code).uppercase(),
+        modifier = Modifier.weight(1f),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = MaterialTheme.typography.labelSmall,
+    )
+    SelectionContainer {
+      Text(
+          text = code,
+          modifier = Modifier.testTag(EventDetailsScreenTestTags.JOIN_CODE_VALUE),
+          color = MaterialTheme.colorScheme.onSurface,
+          style = MaterialTheme.typography.headlineSmall,
+          maxLines = 1,
+          softWrap = false,
       )
     }
   }
@@ -318,6 +362,9 @@ private fun EventDetailsRow(
   }
 }
 
+/** An id like the ones the repository generates, so the preview shows a realistic join code. */
+private const val PREVIEW_EVENT_ID = "3f9a1c2e-7b4d-4e8a-9c15-d2a6b0f84e37"
+
 @Preview
 @Composable
 internal fun EventDetailsScreenPreview() {
@@ -328,7 +375,7 @@ internal fun EventDetailsScreenPreview() {
 
   val event =
       Event(
-          eventId = "0",
+          eventId = PREVIEW_EVENT_ID,
           ownerId = "user",
           title = "Fête de l'Asso 2026",
           members = listOf(User(uid = "user", name = "Sami K.")),
@@ -341,7 +388,7 @@ internal fun EventDetailsScreenPreview() {
                   init = { index ->
                     Task(
                         taskId = index.toString(),
-                        eventId = "0",
+                        eventId = PREVIEW_EVENT_ID,
                         title = "Task $index",
                         ownerId = "user",
                         completed = index % 2 == 0,
