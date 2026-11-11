@@ -6,11 +6,10 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
+import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.event.EventsRepository
-import com.android.festivar.model.event.EventsRepositoryProvider
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.user.UsersRepository
-import com.android.festivar.model.user.UsersRepositoryProvider
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -52,24 +51,20 @@ data class AnnouncementDetailsUiState(
  *
  * @param eventId identifier of the event containing the announcement.
  * @param announcementId identifier of the announcement to show.
- * @param eventsRepository repository used to load the event and save pin changes.
- * @param usersRepository repository used to load the author's name.
+ * @param dataRepository provides the event and user repositories used by this ViewModel.
  */
 class AnnouncementDetailsViewModel(
     private val eventId: String,
     private val announcementId: String,
-
     private val dataRepository: DataRepository,
-    
 ) : ViewModel() {
+  private val eventsRepository: EventsRepository = dataRepository.eventsRepository
+  private val usersRepository: UsersRepository = dataRepository.usersRepository
+
   init {
     require(eventId.isNotBlank()) { "eventId must not be blank" }
     require(announcementId.isNotBlank()) { "announcementId must not be blank" }
   }
-
-    private val eventsRepository: EventsRepository = dataRepository.eventsRepository
-    private val usersRepository: UsersRepository = dataRepository.usersRepository
-
 
   private val _uiState = MutableStateFlow(AnnouncementDetailsUiState())
   val uiState: StateFlow<AnnouncementDetailsUiState> = _uiState.asStateFlow()

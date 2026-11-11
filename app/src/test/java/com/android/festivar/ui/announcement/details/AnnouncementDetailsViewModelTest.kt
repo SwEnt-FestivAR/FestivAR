@@ -2,12 +2,16 @@
 package com.android.festivar.ui.announcement.details
 
 import com.android.festivar.R
+import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.event.announcement.AnnouncementPriority
 import com.android.festivar.model.user.User
+import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryLocal
 import java.io.IOException
 import java.time.ZonedDateTime
@@ -64,7 +68,18 @@ class AnnouncementDetailsViewModelTest {
     Dispatchers.resetMain()
   }
 
-  private fun viewModel() = AnnouncementDetailsViewModel("event-1", "announcement-1", events, users)
+  private fun dataRepository(
+      eventsRepository: EventsRepository = events,
+      usersRepository: UsersRepository = users,
+  ): DataRepository =
+      DataRepositoryLocal(
+          authRepository = FakeAuthRepository(),
+          eventsRepository = eventsRepository,
+          usersRepository = usersRepository,
+      )
+
+  private fun viewModel() =
+      AnnouncementDetailsViewModel("event-1", "announcement-1", dataRepository())
 
   @Test
   fun loadProvidesAnnouncementAuthorAndEventEndTime() {
@@ -131,7 +146,7 @@ class AnnouncementDetailsViewModelTest {
         object : EventsRepository by localEvents {
           override suspend fun getEvent(eventId: String) = event.copy(announcements = emptyList())
         }
-    val vm = AnnouncementDetailsViewModel("event-1", "announcement-1", repository, users)
+    val vm = AnnouncementDetailsViewModel("event-1", "announcement-1", dataRepository(repository))
 
     vm.load()
 
@@ -159,7 +174,12 @@ class AnnouncementDetailsViewModelTest {
   @Test
   fun loadJoinsOnlyNonBlankAuthorNameParts() {
     val blankSurnameUsers = UsersRepositoryLocal(listOf(User(uid = "author-1", name = "Marie")))
-    val vm = AnnouncementDetailsViewModel("event-1", "announcement-1", events, blankSurnameUsers)
+    val vm =
+        AnnouncementDetailsViewModel(
+            "event-1",
+            "announcement-1",
+            dataRepository(usersRepository = blankSurnameUsers),
+        )
 
     vm.load()
 
@@ -235,10 +255,10 @@ class AnnouncementDetailsViewModelTest {
   @Test
   fun blankIdsFailFast() {
     assertThrows(IllegalArgumentException::class.java) {
-      AnnouncementDetailsViewModel(" ", "announcement-1", events, users)
+      AnnouncementDetailsViewModel(" ", "announcement-1", dataRepository())
     }
     assertThrows(IllegalArgumentException::class.java) {
-      AnnouncementDetailsViewModel("event-1", " ", events, users)
+      AnnouncementDetailsViewModel("event-1", " ", dataRepository())
     }
   }
 
