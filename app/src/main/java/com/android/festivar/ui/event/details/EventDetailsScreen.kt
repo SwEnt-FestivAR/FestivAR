@@ -14,7 +14,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.TaskAlt
@@ -62,6 +64,7 @@ object EventDetailsScreenTestTags {
   const val OPEN_TASKS_STAT = "openTasksStat"
   const val STATUS_PILL = "eventStatusPill"
   const val SUBTITLE = "eventSubtitle"
+  const val DESCRIPTION = "eventDescription"
   const val SEE_TASKS_BUTTON = "seeTasksButton"
 }
 
@@ -139,7 +142,10 @@ private fun EventDetailsContent(
   }
 }
 
-/** Displays the loaded event: its title and status, its dates and place, and its task summary. */
+/**
+ * Displays the loaded event: its title and status, its dates and place, its description and its
+ * task summary. The content scrolls so that a long description stays readable.
+ */
 @Composable
 private fun EventInfo(
     event: Event,
@@ -148,7 +154,11 @@ private fun EventInfo(
   val openTasks = event.tasks.count { !it.completed }
 
   Column(
-      modifier = modifier.fillMaxSize().padding(start = 20.dp, top = 16.dp, end = 20.dp),
+      modifier =
+          modifier
+              .fillMaxSize()
+              .verticalScroll(rememberScrollState())
+              .padding(start = 20.dp, top = 16.dp, end = 20.dp),
       verticalArrangement = Arrangement.spacedBy(12.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
   ) {
@@ -180,6 +190,15 @@ private fun EventInfo(
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         style = MaterialTheme.typography.bodyMedium,
     )
+
+    if (event.description.isNotBlank()) {
+      Text(
+          text = event.description,
+          modifier = Modifier.fillMaxWidth().testTag(EventDetailsScreenTestTags.DESCRIPTION),
+          color = MaterialTheme.colorScheme.onSurface,
+          style = MaterialTheme.typography.bodyLarge,
+      )
+    }
 
     Row(
         modifier =
