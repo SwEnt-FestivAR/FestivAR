@@ -85,14 +85,14 @@ data class CreateEventUIState(
   val canCreate: Boolean
     get() = isValid && !isSaving && createdEventId == null
 
-  fun toEvent(eventId: String, ownerId: String, membersList: List<User>): Event {
+  fun toEvent(eventId: String, owner: User): Event {
     require(isValid) { "The form is not valid." }
     return Event(
         eventId = eventId,
-        ownerId = ownerId,
+        ownerId = owner.uid,
         title = name,
         description = notes,
-        members = membersList,
+        members = listOf(owner),
         startDate = startDateTime!!,
         endDate = endDateTime!!,
         location = venue,
@@ -171,8 +171,7 @@ class CreateEventViewModel(
     check(userId.isNotBlank()) { "User not signed in" }
     val creator = dataRepository.usersRepository.getUser(userId)
 
-    val newEvent =
-        currentState.toEvent(dataRepository.eventsRepository.getNewUid(), userId, listOf(creator))
+    val newEvent = currentState.toEvent(dataRepository.eventsRepository.getNewUid(), creator)
     dataRepository.createEvent(newEvent)
     updateState { it.copy(isSaving = false, createdEventId = newEvent.eventId) }
   }
