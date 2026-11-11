@@ -29,8 +29,8 @@ class SettingsFragmentTest {
   fun localeFromStringElseBranch() {
     assertEquals(LocaleListCompat.forLanguageTags("fr"), localeFromString("fr"))
     assertEquals(LocaleListCompat.forLanguageTags("en"), localeFromString("en"))
-    assertEquals(LocaleListCompat.getDefault(), localeFromString("system"))
-    assertEquals(LocaleListCompat.getDefault(), localeFromString("de"))
+    assertEquals(LocaleListCompat.getEmptyLocaleList(), localeFromString("system"))
+    assertEquals(LocaleListCompat.getEmptyLocaleList(), localeFromString("de"))
   }
 
   @Test
@@ -40,7 +40,7 @@ class SettingsFragmentTest {
     assertEquals(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM, nightModeForTheme("system"))
     assertEquals(LocaleListCompat.forLanguageTags("fr"), localeFromString("fr"))
     assertEquals(LocaleListCompat.forLanguageTags("en"), localeFromString("en"))
-    assertEquals(LocaleListCompat.getDefault(), localeFromString("system"))
+    assertEquals(LocaleListCompat.getEmptyLocaleList(), localeFromString("system"))
   }
 
   @Test
