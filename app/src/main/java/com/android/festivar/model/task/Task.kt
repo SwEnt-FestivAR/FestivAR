@@ -48,6 +48,8 @@ import java.time.ZonedDateTime
  * @property maxAssign Maximum number of people who can join or be assigned to the [Task].
  * @property assignees People who joined or were assigned the [Task].
  * @property takenAt When each assignee took the [Task], by [User.uid].
+ * @property spot Where the task sits on the venue plan, or null when it has no pin (it then does
+ *   not appear on the map).
  * @property completed Whether the [Task] has been completed.
  * @property voiceNote The voice note of the [Task], or `null` if it has none.
  * @property ownerId The [User.uid] of the task owner (the user who created it). Every task has one.
@@ -66,6 +68,7 @@ data class Task(
     val maxAssign: Int = 1,
     val assignees: List<User> = emptyList(),
     val takenAt: Map<String, ZonedDateTime> = emptyMap(),
+    val spot: TaskSpot? = null,
     val completed: Boolean = false,
     val voiceNote: VoiceNote? = null,
     val ownerId: String,

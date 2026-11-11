@@ -1,6 +1,7 @@
 package com.android.festivar.ui.event
 
 // Co-authored-by: Copilot App
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 
 import android.annotation.SuppressLint
 import androidx.compose.ui.semantics.SemanticsActions
@@ -13,6 +14,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
@@ -185,11 +188,13 @@ class EventDetailsScreenTest {
       EventDetailsScreen(
           viewModel =
               EventDetailsViewModel(
-                  object : EventsRepository by EventsRepositoryLocal() {
-                    override suspend fun getEvent(eventId: String): Event {
-                      throw IllegalStateException("fetch failed")
-                    }
-                  },
+                  dataRepositoryWith(
+                      object : EventsRepository by EventsRepositoryLocal() {
+                        override suspend fun getEvent(eventId: String): Event {
+                          throw IllegalStateException("fetch failed")
+                        }
+                      }
+                  ),
                   eventId = "missing",
               ),
           onTasksButtonClicked = {},
@@ -240,6 +245,12 @@ class EventDetailsScreenTest {
     verify(exactly = 1) { onBack() }
   }
 
+  private fun dataRepositoryWith(eventsRepository: EventsRepository) =
+      DataRepositoryLocal(
+          authRepository = FakeAuthRepository(),
+          eventsRepository = eventsRepository,
+      )
+
   @SuppressLint("ViewModelConstructorInComposable")
   private fun setContent(
       event: Event,
@@ -248,7 +259,11 @@ class EventDetailsScreenTest {
   ) {
     composeTestRule.setContent {
       EventDetailsScreen(
-          viewModel = EventDetailsViewModel(EventsRepositoryLocal(listOf(event)), event.eventId),
+          viewModel =
+              EventDetailsViewModel(
+                  dataRepositoryWith(EventsRepositoryLocal(listOf(event))),
+                  event.eventId,
+              ),
           onTasksButtonClicked = onTasksButtonClicked,
           onBack = onBack,
       )
