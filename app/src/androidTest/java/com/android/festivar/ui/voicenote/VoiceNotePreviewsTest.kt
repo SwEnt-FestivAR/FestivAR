@@ -58,6 +58,38 @@ class VoiceNotePreviewsTest {
     composeTestRule.onNodeWithText(text(R.string.voice_note_delete_title)).assertIsDisplayed()
   }
 
+  /** Breaks if the send preview no longer shows the dialog that asks to send the recording. */
+  @Test
+  fun sendConfirmPreview_showsTheDialog() {
+    composeTestRule.setContent { VoiceNoteSendConfirmPreview() }
+
+    composeTestRule.onNodeWithTag(VoiceNoteTestTags.CONFIRM_SEND).assertIsDisplayed()
+  }
+
+  /** Breaks if the send confirm preview no longer shows the waiting recording behind the dialog. */
+  @Test
+  fun sendConfirmPreview_showsTheWaitingRecordingBehindTheDialog() {
+    composeTestRule.setContent { VoiceNoteSendConfirmPreview() }
+
+    composeTestRule.onNodeWithTag(VoiceNoteTestTags.VOICE_NOTE_DURATION).assertExists()
+  }
+
+  /** Breaks if the sending preview no longer shows the greyed-out bar with the recording length. */
+  @Test
+  fun sendingPreview_showsTheSendingBar() {
+    composeTestRule.setContent { VoiceNoteSendingPreview() }
+
+    composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.VOICE_NOTE_SENDING).assertIsDisplayed()
+  }
+
+  /** Breaks if the recording failed preview no longer shows the notice with its Dismiss action. */
+  @Test
+  fun recordingFailedPreview_showsTheNotice() {
+    composeTestRule.setContent { VoiceNoteRecordingFailedPreview() }
+
+    composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.RECORDING_ERROR).assertIsDisplayed()
+  }
+
   /** Breaks if the volunteer preview no longer shows the note without the trash. */
   @Test
   fun volunteerPreview_showsTheNoteWithoutTrash() {

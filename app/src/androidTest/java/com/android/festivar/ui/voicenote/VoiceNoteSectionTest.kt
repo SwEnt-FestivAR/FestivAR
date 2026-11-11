@@ -12,6 +12,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
+import com.android.festivar.model.audio.PendingRecording
 import com.android.festivar.model.audio.PlayerState
 import com.android.festivar.model.voicenote.VoiceNote
 import com.android.festivar.ui.components.formatDate
@@ -52,6 +53,8 @@ class VoiceNoteSectionTest {
   private val onDelete = mockk<() -> Unit>(relaxed = true)
   private val onConfirmDelete = mockk<() -> Unit>(relaxed = true)
   private val onDismissDelete = mockk<() -> Unit>(relaxed = true)
+  private val onConfirmSend = mockk<() -> Unit>(relaxed = true)
+  private val onCancelSend = mockk<() -> Unit>(relaxed = true)
 
   private val callbacks =
       VoiceNoteCallbacks.NoOp.let {
@@ -62,6 +65,9 @@ class VoiceNoteSectionTest {
             onDismissDelete = onDismissDelete,
             onRecordStart = it.onRecordStart,
             onRecordRelease = it.onRecordRelease,
+            onConfirmSend = onConfirmSend,
+            onCancelSend = onCancelSend,
+            onDismissRecordingFailed = it.onDismissRecordingFailed,
             onRetry = it.onRetry,
             onOpenSettings = it.onOpenSettings,
         )
@@ -69,7 +75,14 @@ class VoiceNoteSectionTest {
 
   /** Fails if a callback was called that the test did not verify, so a stray call is caught. */
   private fun assertNoOtherCall() =
-      confirmVerified(onTogglePlay, onDelete, onConfirmDelete, onDismissDelete)
+      confirmVerified(
+          onTogglePlay,
+          onDelete,
+          onConfirmDelete,
+          onDismissDelete,
+          onConfirmSend,
+          onCancelSend,
+      )
 
   /** The fixed current day of the tests: 07/11/2026, the same year as the note. */
   private fun clockOn(date: LocalDate) =
@@ -280,6 +293,36 @@ class VoiceNoteSectionTest {
     composeTestRule.waitForIdle()
     verify(exactly = 1) { onDismissDelete() }
     assertNoOtherCall()
+  }
+
+  private val waiting = PendingRecording.Waiting(Duration.ofSeconds(7))
+
+  /** Breaks if the send dialog loses its texts, or its buttons call the wrong callback. */
+  @Test
+  fun sendDialogOffersCancelAndSend() {
+    show(VoiceNoteUiState(canManage = true, pending = waiting))
+    tag(VoiceNoteTestTags.CONFIRM_SEND).assertIsDisplayed()
+    composeTestRule.onNodeWithText(text(R.string.voice_note_send_title)).assertIsDisplayed()
+    composeTestRule.onNodeWithText(text(R.string.voice_note_send_body)).assertIsDisplayed()
+    tag(VoiceNoteTestTags.CANCEL_SEND_BUTTON).performClick()
+    verify(exactly = 1) { onCancelSend() }
+    tag(VoiceNoteTestTags.CONFIRM_SEND_BUTTON).performClick()
+    verify(exactly = 1) { onConfirmSend() }
+    assertNoOtherCall()
+  }
+
+  /** Breaks if the send dialog opens without a recording to send. */
+  @Test
+  fun noSendDialogWithoutARecording() {
+    show(VoiceNoteUiState(canManage = true))
+    tag(VoiceNoteTestTags.CONFIRM_SEND).assertDoesNotExist()
+  }
+
+  /** Breaks if the send dialog stays open once the owner confirmed and the upload runs. */
+  @Test
+  fun noSendDialogWhileSending() {
+    show(VoiceNoteUiState(canManage = true, pending = PendingRecording.Sending(waiting.duration)))
+    tag(VoiceNoteTestTags.CONFIRM_SEND).assertDoesNotExist()
   }
 
   /** Breaks if the delete dialog is shown without being asked for. */
