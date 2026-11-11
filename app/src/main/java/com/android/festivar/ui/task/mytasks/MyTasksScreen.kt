@@ -707,19 +707,12 @@ private fun previewRow(task: Task, eventTitle: String?, minutesUntilStart: Int? 
         minutesUntilStart = minutesUntilStart,
     )
 
-private fun previewState(
-    statuses: Set<MyTaskStatus> = emptySet(),
-    priorities: Set<Priority> = emptySet(),
-    eventIds: Set<String> = emptySet(),
-): MyTasksUiState {
+private fun previewState(): MyTasksUiState {
   val today = LocalDate.now()
   val fete = "Fête de l'Asso 2026"
   val vidy = "Vidy Fest"
   val noel = "Marché de Noël"
   return MyTasksUiState(
-      statusesSelected = statuses,
-      prioritiesSelected = priorities,
-      eventIdsSelected = eventIds,
       statusCounts = mapOf(MyTaskStatus.TODO to 7, MyTaskStatus.DONE to 3),
       priorityCounts =
           mapOf(
@@ -731,9 +724,9 @@ private fun previewState(
           ),
       events =
           listOf(
-              EventFilterOption(FETE, fete, 6, FETE in eventIds),
-              EventFilterOption(NOEL, noel, 2, NOEL in eventIds),
-              EventFilterOption(VIDY, vidy, 2, VIDY in eventIds),
+              EventFilterOption(FETE, fete, 6, selected = false),
+              EventFilterOption(NOEL, noel, 2, selected = false),
+              EventFilterOption(VIDY, vidy, 2, selected = false),
           ),
       sections =
           listOf(
@@ -853,114 +846,4 @@ private fun previewState(
 @Composable
 private fun MyTasksListPreview() {
   AppTheme(darkTheme = false) { MyTasksContent(previewState()) }
-}
-
-@Preview(name = "Filtered, To do + Urgent", showBackground = true, heightDp = 915, widthDp = 412)
-@Composable
-private fun MyTasksFilteredPreview() {
-  AppTheme(darkTheme = false) {
-    MyTasksContent(
-        previewState(statuses = setOf(MyTaskStatus.TODO), priorities = setOf(Priority.URGENT))
-    )
-  }
-}
-
-@Preview(name = "Filters zone open", showBackground = true, widthDp = 412)
-@Composable
-private fun MyTasksFiltersOpenPreview() {
-  AppTheme(darkTheme = false) {
-    Column(Modifier.padding(20.dp)) {
-      FiltersZone(
-          state =
-              previewState(
-                  statuses = setOf(MyTaskStatus.TODO),
-                  priorities = setOf(Priority.URGENT, Priority.HIGH),
-              ),
-          open = true,
-          onToggleOpen = {},
-          onToggleStatus = {},
-          onTogglePriority = {},
-          onClearChips = {},
-      )
-    }
-  }
-}
-
-@Preview(name = "Events selector open", showBackground = true, widthDp = 412)
-@Composable
-private fun MyTasksEventsOpenPreview() {
-  AppTheme(darkTheme = false) {
-    Column(Modifier.padding(20.dp)) {
-      EventsSelector(
-          state = previewState(eventIds = setOf(FETE)),
-          open = true,
-          onToggleOpen = {},
-          onToggleEvent = {},
-          onClearEvents = {},
-      )
-    }
-  }
-}
-
-@Preview(name = "Events filter applied", showBackground = true, widthDp = 412)
-@Composable
-private fun MyTasksEventsAppliedPreview() {
-  AppTheme(darkTheme = false) {
-    Column(Modifier.padding(20.dp)) {
-      EventsSelector(
-          state = previewState(eventIds = setOf(FETE)),
-          open = false,
-          onToggleOpen = {},
-          onToggleEvent = {},
-          onClearEvents = {},
-      )
-    }
-  }
-}
-
-@Preview(name = "No match", showBackground = true, heightDp = 915, widthDp = 412)
-@Composable
-private fun MyTasksNoMatchPreview() {
-  AppTheme(darkTheme = false) {
-    MyTasksContent(
-        previewState(statuses = setOf(MyTaskStatus.DONE), priorities = setOf(Priority.URGENT))
-            .copy(sections = emptyList())
-    )
-  }
-}
-
-@Preview(name = "Empty", showBackground = true, heightDp = 915, widthDp = 412)
-@Composable
-private fun MyTasksEmptyPreview() {
-  AppTheme(darkTheme = false) {
-    MyTasksContent(MyTasksUiState(isLoading = false, hasLoaded = true))
-  }
-}
-
-@Preview(name = "Loading", showBackground = true, heightDp = 915, widthDp = 412)
-@Composable
-private fun MyTasksLoadingPreview() {
-  AppTheme(darkTheme = false) { MyTasksContent(MyTasksUiState()) }
-}
-
-@Preview(name = "Load error", showBackground = true, heightDp = 915, widthDp = 412)
-@Composable
-private fun MyTasksLoadErrorPreview() {
-  AppTheme(darkTheme = false) {
-    MyTasksContent(MyTasksUiState(isLoading = false, errorMsg = R.string.mytasks_load_failed))
-  }
-}
-
-@Preview(name = "Refresh error", showBackground = true, heightDp = 915, widthDp = 412)
-@Composable
-private fun MyTasksRefreshErrorPreview() {
-  AppTheme(darkTheme = false) {
-    MyTasksContent(previewState().copy(errorMsg = R.string.mytasks_refresh_failed))
-  }
-}
-
-@Preview(name = "Dark", showBackground = true, heightDp = 915, widthDp = 412)
-@Composable
-private fun MyTasksDarkPreview() {
-  AppTheme(darkTheme = true) { MyTasksContent(previewState(eventIds = setOf(FETE))) }
 }
