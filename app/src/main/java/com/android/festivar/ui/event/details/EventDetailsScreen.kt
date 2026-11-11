@@ -4,7 +4,6 @@ package com.android.festivar.ui.event.details
 // Co-authored-by: Claude Sonnet 5.5
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 
-import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -46,10 +45,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
-import com.android.festivar.model.authentication.AuthRepositoryFirebase
-import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
-import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.formatEventDate
@@ -322,7 +318,6 @@ private fun EventDetailsRow(
   }
 }
 
-@SuppressLint("ViewModelConstructorInComposable")
 @Preview
 @Composable
 internal fun EventDetailsScreenPreview() {
@@ -355,37 +350,20 @@ internal fun EventDetailsScreenPreview() {
       )
 
   AppTheme {
-    EventDetailsScreen(
-        viewModel =
-            EventDetailsViewModel(
-                DataRepositoryLocal(
-                    authRepository = AuthRepositoryFirebase(),
-                    eventsRepository = EventsRepositoryLocal(listOf(event)),
-                ),
-                event.eventId,
-            ),
-        onTasksButtonClicked = {},
-        onBack = {},
+    EventDetailsContent(
+        state = EventDetailsUIState(event = event),
+        actions = EventDetailsActions(onBack = {}, onTasksButtonClicked = {}),
     )
   }
 }
 
-@SuppressLint("ViewModelConstructorInComposable")
 @Preview
 @Composable
 internal fun FetchErrorPreview() {
   AppTheme {
-    EventDetailsScreen(
-        viewModel =
-            EventDetailsViewModel(
-                DataRepositoryLocal(
-                    authRepository = AuthRepositoryFirebase(),
-                    eventsRepository = EventsRepositoryLocal(emptyList()),
-                ),
-                "missing",
-            ),
-        onTasksButtonClicked = {},
-        onBack = {},
+    EventDetailsContent(
+        state = EventDetailsUIState(errorMsg = R.string.event_details_fetch_error),
+        actions = EventDetailsActions(onBack = {}, onTasksButtonClicked = {}),
     )
   }
 }
