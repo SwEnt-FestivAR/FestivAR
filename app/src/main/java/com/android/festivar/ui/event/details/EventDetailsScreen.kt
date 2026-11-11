@@ -43,6 +43,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
 import com.android.festivar.model.event.Event
+import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.PillStyle
@@ -284,22 +285,43 @@ internal fun EventDetailsScreenPreview() {
       Event(
           eventId = "0",
           title = "Fête de l'Asso 2026",
-          members = listOf(User(uid = "user", name = "Sami K.")),
+          description =
+              "Our yearly association party by the lake. Three days of concerts, food stands " +
+                  "and games. Volunteers help with setup, bar shifts and cleanup.",
+          members =
+              List(12) { index ->
+                User(
+                    uid = "user$index",
+                    name = "Member",
+                    surname = "$index",
+                    email = "member$index@festivar.ch",
+                    joinedEvents = listOf("0"),
+                )
+              },
           startDate = eventStartDate,
           endDate = eventEndDate,
           location = "Parc de Vidy, Lausanne",
           tasks =
-              List(
-                  size = 10,
-                  init = { index ->
-                    Task(
-                        taskId = index.toString(),
-                        eventId = "0",
-                        title = "Task $index",
-                        ownerId = "user",
-                        completed = index % 2 == 0,
-                    )
-                  },
+              List(31) { index ->
+                Task(
+                    taskId = index.toString(),
+                    eventId = "0",
+                    title = "Task $index",
+                    description = "Help the team with task $index.",
+                    ownerId = "user0",
+                    completed = index >= 7,
+                )
+              },
+          closed = false,
+          announcements =
+              listOf(
+                  Announcement(
+                      announcementId = "0",
+                      title = "Bar shifts moved",
+                      authorId = "user0",
+                      content = "The Friday bar shifts now start at 18:00.",
+                      updatedAt = eventStartDate.minusHours(2),
+                  ),
               ),
       )
 
