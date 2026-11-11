@@ -10,6 +10,7 @@ import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.user.UsersRepository
+import java.time.ZonedDateTime
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,7 +35,7 @@ private const val LOG_TAG = "AnnouncementDetailsVM"
 data class AnnouncementDetailsUiState(
     val announcement: Announcement? = null,
     val authorName: String? = null,
-    val eventEndTime: java.time.ZonedDateTime? = null,
+    val eventEndTime: ZonedDateTime? = null,
     val isLoading: Boolean = true,
     val isUpdating: Boolean = false,
     @param:StringRes val errorMsg: Int? = null,
