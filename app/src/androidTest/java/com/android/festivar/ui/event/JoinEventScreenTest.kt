@@ -30,6 +30,8 @@ import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.android.festivar.R
+import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.joinCodeOf
@@ -90,14 +92,21 @@ class JoinEventScreenTest {
     composeTestRule.setContent { JoinEventContent(state, onBack, onCode, onJoin) }
   }
 
-  private fun screen(opened: MutableList<String>) {
+  /** A view model joining [event] as a stored user who is not a member yet. */
+  private fun joinViewModel(): JoinEventViewModel {
     val user = User(uid = "u1")
-    val viewModel =
-        JoinEventViewModel(
-            user.uid,
-            EventsRepositoryLocal(listOf(event)),
-            UsersRepositoryLocal(listOf(user)),
-        )
+    return JoinEventViewModel(
+        user.uid,
+        DataRepositoryLocal(
+            FakeAuthRepository(),
+            eventsRepository = EventsRepositoryLocal(listOf(event)),
+            usersRepository = UsersRepositoryLocal(listOf(user)),
+        ),
+    )
+  }
+
+  private fun screen(opened: MutableList<String>) {
+    val viewModel = joinViewModel()
     composeTestRule.setContent {
       JoinEventScreen(viewModel = viewModel, onOpenEvent = { opened.add(it) })
     }
@@ -329,13 +338,7 @@ class JoinEventScreenTest {
   @Test
   fun leavingAndReenteringTheScreenDoesNotOpenTheEventAgain() {
     val opened = mutableListOf<String>()
-    val user = User(uid = "u1")
-    val viewModel =
-        JoinEventViewModel(
-            user.uid,
-            EventsRepositoryLocal(listOf(event)),
-            UsersRepositoryLocal(listOf(user)),
-        )
+    val viewModel = joinViewModel()
     var shown by mutableStateOf(true)
     composeTestRule.setContent {
       if (shown) JoinEventScreen(viewModel = viewModel, onOpenEvent = { opened.add(it) })
