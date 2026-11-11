@@ -269,10 +269,14 @@ private fun Body(
     onOpenTask: (String) -> Unit,
 ) {
   when {
+
+      // What is shown when you are still loading.
     state.isLoading && state.totalTasks == 0 ->
         CenteredBox {
           CircularProgressIndicator(Modifier.size(32.dp).testTag(MyTasksScreenTestTags.LOADING))
         }
+
+      // What is shown when you have no tasks.
     state.hasNoTasks ->
         CenteredBox {
           Column(
@@ -289,6 +293,8 @@ private fun Body(
             )
           }
         }
+
+      // What is shown when, due to the filters, no tasks is displayed.
     state.nothingMatches ->
         CenteredBox {
           Column(
@@ -308,6 +314,8 @@ private fun Body(
             }
           }
         }
+
+      // What is shown in the normal case.
     else -> TaskList(state, onOpenTask)
   }
 }
@@ -321,18 +329,26 @@ private fun CenteredBox(content: @Composable () -> Unit) {
 /** The rows day by day, each one opening its task details when tapped. */
 @Composable
 private fun TaskList(state: MyTasksUiState, onOpenTask: (String) -> Unit) {
+
   val timeFormat = rememberTimeFormat()
   val today = LocalDate.now()
+
   // The bottom padding keeps the last row clear of the error snackbar
   LazyColumn(
       Modifier.fillMaxSize().testTag(MyTasksScreenTestTags.LIST),
       contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 88.dp),
   ) {
+
+      // We show each section one by one.
     state.sections.forEach { section ->
       val sectionTag = MyTasksScreenTestTags.section(section.day)
+
+        // On the section, its label.
       item(key = sectionTag) {
         SectionLabel(dayLabel(section.day, today), Modifier.testTag(sectionTag))
       }
+
+        // Each task row.
       section.rows.forEach { row ->
         item(key = row.task.taskId) {
           TaskRow(
@@ -347,6 +363,7 @@ private fun TaskList(state: MyTasksUiState, onOpenTask: (String) -> Unit) {
           Hairline()
         }
       }
+
     }
   }
 }
