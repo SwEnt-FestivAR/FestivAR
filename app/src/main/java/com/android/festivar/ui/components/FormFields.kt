@@ -63,7 +63,9 @@ internal fun limitEdit(old: String, new: String, maxLength: Int): String {
   val end = minOf(new.commonSuffixWith(old).length, old.length - start)
   val typed = new.substring(start, new.length - end)
   val room = limit - start - end
-  return new.take(start) + typed.take(room) + new.takeLast(end)
+  // An emoji or other character outside the BMP takes two chars: never keep only its first half.
+  val cut = if (room > 0 && typed[room - 1].isHighSurrogate()) room - 1 else room
+  return new.take(start) + typed.take(cut) + new.takeLast(end)
 }
 
 /**

@@ -65,4 +65,18 @@ class FormFieldsTest {
   fun limitEdit_repeatedLetterAtTheLimit_isDropped() {
     assertEquals("aaa", limitEdit(old = "aaa", new = "aaaa", maxLength = 3))
   }
+
+  // An emoji takes two chars: with room for one, it is dropped whole. Breaks if its first half is
+  // kept, which would leave a broken character in the text.
+  @Test
+  fun limitEdit_emojiWithRoomForHalfOfIt_isDroppedWhole() {
+    assertEquals("ab", limitEdit(old = "ab", new = "ab😀", maxLength = 3))
+  }
+
+  // An emoji that fits is kept and only what follows it is cut: breaks if the surrogate check
+  // drops a whole emoji when the cut falls right after it.
+  @Test
+  fun limitEdit_emojiThatFits_isKept() {
+    assertEquals("a😀", limitEdit(old = "a", new = "a😀b", maxLength = 3))
+  }
 }
