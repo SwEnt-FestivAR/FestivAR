@@ -62,7 +62,10 @@ class MyTasksScreenTest {
                   EventFilterOption(GONE, null, 1, selected = false),
               ),
           sections =
-              listOf(MyTasksDaySection(today, listOf(desk, power)), MyTasksDaySection(null, listOf(gear))),
+              listOf(
+                  MyTasksDaySection(today, listOf(desk, power)),
+                  MyTasksDaySection(null, listOf(gear)),
+              ),
           totalTasks = 3,
           isLoading = false,
           hasLoaded = true,
@@ -246,15 +249,23 @@ class MyTasksScreenTest {
     val tasks = TasksRepositoryLocal()
     runBlocking {
       tasks.addTask(
-          Task("power", FETE, "Run power to stage", startTime = start, assignees = listOf(me),
-              ownerId = me.uid)
+          Task(
+              "power",
+              FETE,
+              "Run power to stage",
+              startTime = start,
+              assignees = listOf(me),
+              ownerId = me.uid,
+          )
       )
     }
     val data =
         DataRepositoryLocal(
             FakeAuthRepository(),
             tasks,
-            EventsRepositoryLocal(listOf(Event(FETE, "Fête", startDate = start, endDate = start.plusDays(1)))),
+            EventsRepositoryLocal(
+                listOf(Event(FETE, "Fête", startDate = start, endDate = start.plusDays(1)))
+            ),
             UsersRepositoryLocal(listOf(me)),
         )
     var opened: String? = null
@@ -305,8 +316,16 @@ class MyTasksScreenTest {
     ): MyTaskRowUi {
       val time = LocalTime.of(14, 30)
       val task =
-          Task(id, FETE, title, startTime = day?.atTime(time)?.atZone(ZoneId.systemDefault()),
-              location = "Stage", priority = priority, completed = done, ownerId = "owner")
+          Task(
+              id,
+              FETE,
+              title,
+              startTime = day?.atTime(time)?.atZone(ZoneId.systemDefault()),
+              location = "Stage",
+              priority = priority,
+              completed = done,
+              ownerId = "owner",
+          )
       return MyTaskRowUi(task, eventTitle, time.takeIf { day != null }, minutes)
     }
   }
