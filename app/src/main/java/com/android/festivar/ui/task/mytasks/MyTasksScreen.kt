@@ -58,14 +58,12 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.festivar.R
 import com.android.festivar.model.task.Priority
-import com.android.festivar.model.task.Task
 import com.android.festivar.ui.components.FilterChip
 import com.android.festivar.ui.components.Hairline
 import com.android.festivar.ui.components.NoticeSnackbar
@@ -74,10 +72,7 @@ import com.android.festivar.ui.components.SectionLabel
 import com.android.festivar.ui.components.TaskRow
 import com.android.festivar.ui.components.formatDate
 import com.android.festivar.ui.components.priorityLabelRes
-import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
-import java.time.LocalTime
-import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -682,86 +677,4 @@ private fun eventsValue(state: MyTasksUiState): String {
     1 -> selected.single().title ?: stringResource(R.string.mytasks_unknown_event)
     else -> pluralStringResource(R.plurals.mytasks_events_selected, selected.size, selected.size)
   }
-}
-
-// ---- Previews: sample data of the design, around today so the day labels read as in it ----
-
-/** One row of the Fête de l'Asso starting at [time] on [day]. */
-private fun previewRow(
-    id: String,
-    title: String,
-    day: LocalDate,
-    time: LocalTime,
-    priority: Priority,
-    done: Boolean = false,
-    minutesUntilStart: Int? = null,
-): MyTaskRowUi {
-  val start = day.atTime(time).atZone(ZoneId.systemDefault())
-  val task =
-      Task(
-          id,
-          "fete",
-          title,
-          startTime = start,
-          location = "Stage",
-          priority = priority,
-          completed = done,
-          ownerId = "owner",
-      )
-  return MyTaskRowUi(task, "Fête de l'Asso", time, minutesUntilStart)
-}
-
-private fun previewState(): MyTasksUiState {
-  val today = LocalDate.now()
-  val tomorrow = today.plusDays(1)
-  return MyTasksUiState(
-      statusCounts = mapOf(MyTaskStatus.TODO to 2, MyTaskStatus.DONE to 1),
-      priorityCounts = mapOf(Priority.URGENT to 1, Priority.HIGH to 1, Priority.MEDIUM to 1),
-      events = listOf(EventFilterOption("fete", "Fête de l'Asso", 3, selected = false)),
-      sections =
-          listOf(
-              MyTasksDaySection(
-                  today,
-                  listOf(
-                      previewRow(
-                          "desk",
-                          "Set up ticket desk",
-                          today,
-                          LocalTime.of(11, 0),
-                          Priority.MEDIUM,
-                          done = true,
-                      ),
-                      previewRow(
-                          "power",
-                          "Run power to stage",
-                          today,
-                          LocalTime.of(14, 30),
-                          Priority.URGENT,
-                          minutesUntilStart = 28,
-                      ),
-                  ),
-              ),
-              MyTasksDaySection(
-                  tomorrow,
-                  listOf(
-                      previewRow(
-                          "wrist",
-                          "Hand out wristbands",
-                          tomorrow,
-                          LocalTime.of(15, 0),
-                          Priority.HIGH,
-                      )
-                  ),
-              ),
-          ),
-      totalTasks = 3,
-      isLoading = false,
-      hasLoaded = true,
-  )
-}
-
-@Preview(name = "List", showBackground = true, heightDp = 915, widthDp = 412)
-@Composable
-internal fun MyTasksListPreview() {
-  AppTheme(darkTheme = false) { MyTasksContent(previewState()) }
 }
