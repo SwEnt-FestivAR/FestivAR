@@ -18,6 +18,9 @@ fun formatDate(date: LocalDate): String = date.format(formatter("EEE d MMM"))
 /** Formats a date with its year, e.g. `Sat 17 Oct 2026`. */
 fun formatDateWithYear(date: LocalDate): String = date.format(formatter("EEE d MMM yyyy"))
 
+/** Formats only the day of the week of a date, e.g. `Sat`. */
+fun formatWeekday(date: LocalDate): String = date.format(formatter("EEE"))
+
 /** Formats a date without its month, e.g. `Sat 17`, for a range ending in the same month. */
 fun formatDay(date: LocalDate): String = date.format(formatter("EEE d"))
 
