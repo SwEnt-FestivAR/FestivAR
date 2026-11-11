@@ -235,6 +235,24 @@ class TaskRepositoryFirebaseTest {
     }
   }
 
+  // Breaks if the structure of a spot is not written, or comes back changed.
+  @Test
+  fun spotOnAStructure_survivesTheRoundTrip() = runBlocking {
+    val pinned = task.copy(spot = TaskSpot.onStructure("stage"))
+    repository.addTask(pinned)
+
+    assertEquals(pinned, repository.getTask(pinned.taskId))
+  }
+
+  // Breaks if the coordinates of a free point are not written, or lose their sign or decimals.
+  @Test
+  fun spotAtAFreePoint_survivesTheRoundTrip() = runBlocking {
+    val pinned = task.copy(spot = TaskSpot.at(2.5, -7.0))
+    repository.addTask(pinned)
+
+    assertEquals(TaskSpot.at(2.5, -7.0), repository.getTask(pinned.taskId).spot)
+  }
+
   @Test
   fun documentToTask_failsWhenTheOwnerIsMissing() = runBlocking {
     val documentId = "task-${UUID.randomUUID()}"

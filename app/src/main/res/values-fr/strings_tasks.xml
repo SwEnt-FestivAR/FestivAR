@@ -1,5 +1,6 @@
 <!-- Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com> -->
 <!-- Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com> -->
+<!-- Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com> -->
 <resources>
     <string name="tasks_back">Retour</string>
 
@@ -39,6 +40,11 @@
     <string name="pin_done">Tâches finies</string>
     <string name="task_details_load_failed">Échec du chargement de la tâche</string>
     <string name="task_details_save_failed">Échec de la sauvegarde</string>
+    <string name="task_details_more_actions">Plus d’actions pour la tâche</string>
+    <string name="task_details_delete_task">Supprimer la tâche</string>
+    <string name="task_details_delete_confirmation_title">Supprimer cette tâche ?</string>
+    <string name="task_details_delete_confirmation_message">« %1$s » sera supprimée et ses bénévoles seront avertis. Cette action est irréversible.</string>
+    <string name="task_details_keep_task">Garder la tâche</string>
 
     <string name="mytasks_load_failed">Impossible de charger vos tâches.</string>
     <string name="mytasks_refresh_failed">Impossible d’actualiser vos tâches.</string>

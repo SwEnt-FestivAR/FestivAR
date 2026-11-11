@@ -13,6 +13,7 @@ import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.cancel
 import androidx.compose.ui.test.center
 import androidx.compose.ui.test.down
@@ -27,6 +28,7 @@ import androidx.compose.ui.test.up
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
+import com.android.festivar.model.audio.PendingRecording
 import com.android.festivar.model.audio.PlayerState
 import com.android.festivar.model.audio.RecorderState
 import com.android.festivar.model.voicenote.VoiceNote
@@ -62,20 +64,25 @@ class VoiceNoteRecordBarTest {
 
   // JUnit creates a new instance of the class for every test, so these mocks start every test
   // without any call
+  private val onTogglePlay = mockk<() -> Unit>(relaxed = true)
   private val onRecordStart = mockk<() -> Unit>(relaxed = true)
   private val onRecordRelease = mockk<() -> Unit>(relaxed = true)
   private val onRetry = mockk<() -> Unit>(relaxed = true)
   private val onOpenSettings = mockk<() -> Unit>(relaxed = true)
+  private val onDismissRecordingFailed = mockk<() -> Unit>(relaxed = true)
 
   private val callbacks =
       VoiceNoteCallbacks.NoOp.let {
         VoiceNoteCallbacks(
-            onTogglePlay = it.onTogglePlay,
+            onTogglePlay = onTogglePlay,
             onDelete = it.onDelete,
             onConfirmDelete = it.onConfirmDelete,
             onDismissDelete = it.onDismissDelete,
             onRecordStart = onRecordStart,
             onRecordRelease = onRecordRelease,
+            onConfirmSend = it.onConfirmSend,
+            onCancelSend = it.onCancelSend,
+            onDismissRecordingFailed = onDismissRecordingFailed,
             onRetry = onRetry,
             onOpenSettings = onOpenSettings,
         )
@@ -83,7 +90,14 @@ class VoiceNoteRecordBarTest {
 
   /** Fails if a callback was called that the test did not verify, so a stray call is caught. */
   private fun assertNoOtherCall() =
-      confirmVerified(onRecordStart, onRecordRelease, onRetry, onOpenSettings)
+      confirmVerified(
+          onTogglePlay,
+          onRecordStart,
+          onRecordRelease,
+          onRetry,
+          onOpenSettings,
+          onDismissRecordingFailed,
+      )
 
   private fun show(state: VoiceNoteUiState) = composeTestRule.setContent {
     AppTheme {
@@ -233,6 +247,79 @@ class VoiceNoteRecordBarTest {
     assertNoOtherCall()
   }
 
+  private val waiting = PendingRecording.Waiting(Duration.ofSeconds(7))
+
+  /** Breaks if sending does not grey the bar, or does not say how long the recording is. */
+  @Test
+  fun sendingGreysTheBarAndShowsTheLengthOfTheRecording() {
+    show(
+        VoiceNoteUiState(
+            canManage = true,
+            pending = PendingRecording.Sending(Duration.ofSeconds(7)),
+        )
+    )
+    tag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).assertIsNotEnabled()
+    tag(VoiceNoteRecordTestTags.VOICE_NOTE_SENDING)
+        .assertTextContains(text(R.string.voice_note_sending, "0:07"))
+    composeTestRule.onNodeWithText(text(R.string.voice_note_hold_to_record)).assertDoesNotExist()
+    tag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).performTouchInput {
+      down(center)
+      up()
+    }
+    verify(exactly = 0) { onRecordStart() }
+    assertNoOtherCall()
+  }
+
+  /** Breaks if the waiting recording is not shown as a note that cannot be played yet. */
+  @Test
+  fun waitingRecordingIsShownAsADisabledNote() {
+    show(VoiceNoteUiState(canManage = true, pending = waiting))
+    tag(VoiceNoteTestTags.VOICE_NOTE_DURATION).assertTextContains("0:07")
+    tag(VoiceNoteTestTags.VOICE_NOTE_PLAY).assertIsNotEnabled()
+    tag(VoiceNoteRecordTestTags.RECORD_BAR).assertDoesNotExist()
+  }
+
+  /** Breaks if tapping the play button of the waiting recording starts a playback. */
+  @Test
+  fun waitingRecordingCannotBePlayed() {
+    show(VoiceNoteUiState(canManage = true, pending = waiting))
+    tag(VoiceNoteTestTags.VOICE_NOTE_PLAY).performClick()
+    verify(exactly = 0) { onTogglePlay() }
+    assertNoOtherCall()
+  }
+
+  /** Breaks if a denied microphone enables the bar while the recording is sent. */
+  @Test
+  fun sendingWithDeniedMicrophoneKeepsTheBarDisabled() {
+    show(
+        VoiceNoteUiState(
+            canManage = true,
+            micDenied = true,
+            pending = PendingRecording.Sending(Duration.ofSeconds(7)),
+        )
+    )
+    tag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).assertIsNotEnabled()
+    tag(VoiceNoteRecordTestTags.VOICE_NOTE_SENDING)
+        .assertTextContains(text(R.string.voice_note_sending, "0:07"))
+    tag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).performTouchInput {
+      down(center)
+      up()
+    }
+    verify(exactly = 0) { onRecordStart() }
+    assertNoOtherCall()
+  }
+
+  /** Breaks if a recording that failed shows no snackbar, or its Dismiss does nothing. */
+  @Test
+  fun recordingFailedShowsDismiss() {
+    show(VoiceNoteUiState(canManage = true, recorder = RecorderState.Failed))
+    tag(VoiceNoteRecordTestTags.RECORDING_ERROR).assertIsDisplayed()
+    composeTestRule.onNodeWithText(text(R.string.voice_note_recording_failed)).assertIsDisplayed()
+    tag(VoiceNoteRecordTestTags.RECORDING_ERROR_DISMISS).performClick()
+    verify(exactly = 1) { onDismissRecordingFailed() }
+    assertNoOtherCall()
+  }
+
   /** Breaks if a failed send shows no snackbar, or its Retry does nothing. */
   @Test
   fun sendFailedShowsRetry() {
@@ -261,6 +348,7 @@ class VoiceNoteRecordBarTest {
     tag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).assertIsDisplayed()
     tag(VoiceNoteRecordTestTags.PLAYBACK_ERROR).assertDoesNotExist()
     tag(VoiceNoteRecordTestTags.SEND_ERROR).assertDoesNotExist()
+    tag(VoiceNoteRecordTestTags.RECORDING_ERROR).assertDoesNotExist()
     tag(VoiceNoteRecordTestTags.MIC_DENIED).assertDoesNotExist()
   }
 
