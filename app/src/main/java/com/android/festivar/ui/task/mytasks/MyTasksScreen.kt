@@ -149,6 +149,21 @@ fun MyTasksScreen(
 /**
  * The stateless My tasks: everything it shows comes from [state]. Only whether the Filters zone and
  * the Events selector are unfolded lives here, since it is pure layout.
+ *
+ * @param state what the screen shows: the rows, the filters, the counts, loading and errors.
+ * @param onToggleSearch when we click the search icon of the top bar; opens or closes the search
+ *   field.
+ * @param onQueryChange when we type in the search field, with the new text.
+ * @param onToggleStatus when we click a status chip (To do, Done), with its status.
+ * @param onTogglePriority when we click a priority chip, with its priority.
+ * @param onToggleEvent when we click an event line of the events selector, with the event's id.
+ * @param onClearChips when we click "Clear" in the unfolded Filters zone; unselects every status
+ *   and priority chip.
+ * @param onClearEvents when we click "Clear" in the unfolded events selector; unchecks every event.
+ * @param onClearFilters when we click "Clear filters" in the "No tasks match" state; drops every
+ *   filter and the search.
+ * @param onRetry when we click "Retry" in the error snackbar; reloads the tasks.
+ * @param onOpenTask when we click a task row, with the task's id; opens its details.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
