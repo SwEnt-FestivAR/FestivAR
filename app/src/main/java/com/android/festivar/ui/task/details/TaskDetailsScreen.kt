@@ -54,11 +54,15 @@ import com.android.festivar.R
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.FestivarConfirmDialog
+import com.android.festivar.ui.components.PeopleCard
 import com.android.festivar.ui.components.PillStyle
 import com.android.festivar.ui.components.SectionLabel
 import com.android.festivar.ui.components.StatusPill
+import com.android.festivar.ui.components.UserListBottomSheet
+import com.android.festivar.ui.components.UserTag
 import com.android.festivar.ui.components.formatDate
 import com.android.festivar.ui.components.formatTime
+import com.android.festivar.ui.components.peopleCount
 import com.android.festivar.ui.theme.AppTheme
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -77,6 +81,8 @@ object TaskDetailsScreenTestTags {
   const val WHEN = "detailsWhen"
   const val PLACE = "detailsPlace"
   const val DESCRIPTION = "detailsDescription"
+  const val ON_THIS_TASK_SECTION = "detailsOnThisTask"
+  const val ON_THIS_TASK_SHEET = "detailsOnThisTaskSheet"
   const val TAKE_BUTTON = "detailsTakeButton"
   const val GIVE_BACK_BUTTON = "detailsGiveBackButton"
   const val GIVE_BACK_DIALOG = "detailsGiveBackDialog"
@@ -90,8 +96,9 @@ object TaskDetailsScreenTestTags {
 
 /**
  * The details of a task, where the current user can take it, give it back (after a confirmation) or
- * finish it. The task is loaded each time the screen comes to the front, the first time included,
- * so an edit shows on return.
+ * finish it, and everyone sees who took it in the read only "On this task" section. The task is
+ * loaded each time the screen comes to the front, the first time included, so an edit shows on
+ * return.
  *
  * @param viewModel holds the task to show and the signed-in user, and applies the actions.
  * @param onBack Called when the user taps the back button.
@@ -122,7 +129,9 @@ fun TaskDetailsScreen(
 
 /**
  * The stateless details screen: everything it shows comes from [state]. Giving the task back first
- * asks for a confirmation; [onGiveBack] is called only once the user confirms.
+ * asks for a confirmation; [onGiveBack] is called only once the user confirms. The "On this task"
+ * section, shown once someone took the task, opens the list of people with the time each took it in
+ * a sheet; nothing in it removes a person.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -141,6 +150,7 @@ fun TaskDetailsContent(
   var showDeleteConfirmation by remember { mutableStateOf(false) }
 
   var showGiveBackConfirmation by rememberSaveable { mutableStateOf(false) }
+  var showPeople by rememberSaveable { mutableStateOf(false) }
   Scaffold(
       topBar = {
         TopAppBar(
@@ -242,7 +252,7 @@ fun TaskDetailsContent(
       }
       val task = state.task
       val status = state.status
-      if (task != null && status != null) Body(task, status)
+      if (task != null && status != null) Body(task, status) { showPeople = true }
     }
   }
   if (showDeleteConfirmation) {
@@ -280,10 +290,14 @@ fun TaskDetailsContent(
         dismissModifier = Modifier.testTag(TaskDetailsScreenTestTags.GIVE_BACK_KEEP_BUTTON),
     )
   }
+  val taskWithPeople = state.task
+  if (showPeople && taskWithPeople != null) {
+    PeopleSheet(taskWithPeople, onDismiss = { showPeople = false })
+  }
 }
 
 @Composable
-private fun Body(task: Task, status: TaskStatus) {
+private fun Body(task: Task, status: TaskStatus, onOpenPeople: () -> Unit) {
   StatusPill(
       label = stringResource(status.label()),
       style = status.pillStyle(),
@@ -310,6 +324,54 @@ private fun Body(task: Task, status: TaskStatus) {
         modifier = Modifier.testTag(TaskDetailsScreenTestTags.DESCRIPTION),
     )
   }
+  if (task.assignees.isNotEmpty()) {
+    PeopleCard(
+        stringResource(R.string.details_on_this_task),
+        task.assignees,
+        onOpenPeople,
+        Modifier.testTag(TaskDetailsScreenTestTags.ON_THIS_TASK_SECTION),
+    )
+  }
+}
+
+/** Everyone who took [task], read only, each with the time they took it. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PeopleSheet(task: Task, onDismiss: () -> Unit) {
+  val tag =
+      if (task.completed) {
+        UserTag(
+            stringResource(R.string.details_status_done),
+            MaterialTheme.colorScheme.primaryContainer,
+            MaterialTheme.colorScheme.onPrimaryContainer,
+        )
+      } else {
+        UserTag(
+            stringResource(R.string.details_status_taken),
+            MaterialTheme.colorScheme.tertiaryContainer,
+            MaterialTheme.colorScheme.onTertiaryContainer,
+        )
+      }
+  val tookIt = stringResource(R.string.details_took_it)
+  UserListBottomSheet(
+      users = task.assignees,
+      onDismissRequest = onDismiss,
+      title = stringResource(R.string.details_on_this_task),
+      subtitle =
+          stringResource(
+              R.string.details_people_sheet_subtitle,
+              peopleCount(task.assignees.size),
+              task.title,
+          ),
+      supportingText = { user ->
+        task.takenAt[user.uid]?.let {
+          tookIt.format(formatDate(it.toLocalDate()), formatTime(it.toLocalTime()))
+        }
+      },
+      tags = { listOf(tag) },
+      onUserClick = null,
+      modifier = Modifier.testTag(TaskDetailsScreenTestTags.ON_THIS_TASK_SHEET),
+  )
 }
 
 /** A muted line under the title: the time or the place. */
@@ -428,7 +490,11 @@ internal fun whenLine(task: Task, rangeFormat: String): String? {
   return "${formatDate(start.toLocalDate())}, $times"
 }
 
+private val previewZone = ZoneId.of("Europe/Zurich")
+
 private val previewUser = User("u1", "Sami", "Kabbaj")
+
+private val previewTookItAt = ZonedDateTime.of(2026, 10, 17, 9, 12, 0, 0, previewZone)
 
 private val previewTask =
     Task(
@@ -438,8 +504,8 @@ private val previewTask =
         description =
             "Extension reel is in the blue crate by the van. Run it along the fence, not across " +
                 "the path. Ask Marie for the gaffer tape.",
-        startTime = ZonedDateTime.of(2026, 10, 17, 9, 30, 0, 0, ZoneId.of("Europe/Zurich")),
-        endTime = ZonedDateTime.of(2026, 10, 17, 9, 50, 0, 0, ZoneId.of("Europe/Zurich")),
+        startTime = ZonedDateTime.of(2026, 10, 17, 9, 30, 0, 0, previewZone),
+        endTime = ZonedDateTime.of(2026, 10, 17, 9, 50, 0, 0, previewZone),
         location = "Stage, north corner",
         maxAssign = 1,
         ownerId = previewUser.uid,
@@ -454,9 +520,10 @@ private fun previewState(status: TaskStatus) =
         task =
             when (status) {
               TaskStatus.OPEN -> previewTask
-              TaskStatus.TAKEN -> previewTask.addAssignee(previewOtherUser)
-              TaskStatus.YOURS -> previewTask.addAssignee(previewUser)
-              TaskStatus.DONE -> previewTask.addAssignee(previewOtherUser).complete()
+              TaskStatus.TAKEN -> previewTask.addAssignee(previewOtherUser, previewTookItAt)
+              TaskStatus.YOURS -> previewTask.addAssignee(previewUser, previewTookItAt)
+              TaskStatus.DONE ->
+                  previewTask.addAssignee(previewOtherUser, previewTookItAt).complete()
             },
         isLoading = false,
     )
