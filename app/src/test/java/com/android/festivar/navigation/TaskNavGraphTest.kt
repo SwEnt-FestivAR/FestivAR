@@ -16,6 +16,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
+import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
 import com.android.festivar.model.authentication.AuthRepository
@@ -29,6 +30,7 @@ import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.navigation.task.taskGraph
 import com.android.festivar.ui.task.create.CreateTaskScreenTestTags
+import com.android.festivar.ui.task.details.TaskDetailsScreenTestTags
 import com.android.festivar.ui.task.mytasks.MyTasksScreenTestTags
 import com.android.festivar.ui.theme.AppTheme
 import com.google.firebase.auth.FirebaseUser
@@ -222,10 +224,11 @@ class TaskNavGraphTest {
     assertEquals("Old title", runBlocking { repository.getTask("t1") }.title)
   }
 
-  // Breaks if the My tasks route stops showing the signed-in user's tasks, or if a tapped row stops
-  // opening the details of that task.
+  // Breaks if the My tasks route stops showing the signed-in user's tasks, if a tapped row stops
+  // opening the details of that task, or if the arrow or the system back of the details stops
+  // returning to My tasks.
   @Test
-  fun myTasksRoute_tappingARow_opensItsTaskDetails() {
+  fun myTasksRoute_aRowOpensItsTaskDetailsAndBackReturns() {
     val owner = User("owner-1")
     runBlocking {
       repository.addTask(
@@ -246,18 +249,29 @@ class TaskNavGraphTest {
             mockk<AuthRepository> { every { currentUser } returns user },
             ownerTasks = listOf("t1"),
         )
-    composeTestRule.waitUntil(timeoutMillis = 5_000) {
-      composeTestRule
-          .onAllNodesWithTag(MyTasksScreenTestTags.row("t1"))
-          .fetchSemanticsNodes()
-          .isNotEmpty()
+    val route = { navController.currentBackStackEntry?.destination?.route }
+    // Waits for the row, taps it, and checks the details of t1 opened
+    val openTheTask = {
+      composeTestRule.waitUntil(timeoutMillis = 5_000) {
+        composeTestRule
+            .onAllNodesWithTag(MyTasksScreenTestTags.row("t1"))
+            .fetchSemanticsNodes()
+            .isNotEmpty()
+      }
+      composeTestRule.onNodeWithTag(MyTasksScreenTestTags.row("t1")).performClick()
+      composeTestRule.waitForIdle()
+      assertEquals("${AppScreens.TaskDetails.name}/{taskId}", route())
+      assertEquals("t1", navController.currentBackStackEntry?.arguments?.getString("taskId"))
     }
 
-    composeTestRule.onNodeWithTag(MyTasksScreenTestTags.row("t1")).performClick()
+    openTheTask()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.BACK_BUTTON).performClick()
     composeTestRule.waitForIdle()
+    assertEquals(AppScreens.MyTasks.name, route())
 
-    val entry = navController.currentBackStackEntry
-    assertEquals("${AppScreens.TaskDetails.name}/{taskId}", entry?.destination?.route)
-    assertEquals("t1", entry?.arguments?.getString("taskId"))
+    openTheTask()
+    Espresso.pressBack()
+    composeTestRule.waitForIdle()
+    assertEquals(AppScreens.MyTasks.name, route())
   }
 }
