@@ -41,6 +41,12 @@ const val DEFAULT_MAX_LENGTH = 80
 /** Maximum number of characters of a long, multi-line [FestivarTextField], e.g. a description. */
 const val LONG_TEXT_MAX_LENGTH = 500
 
+/**
+ * Maximum number of characters of an email or password [FestivarTextField]. An email address can be
+ * up to 320 characters (RFC 5321), and a password manager may generate long passwords.
+ */
+const val CREDENTIAL_MAX_LENGTH = 320
+
 /** Test tags of [FestivarTextField]. */
 object FestivarTextFieldTestTags {
   /** The "length/maxLength" counter under the field, shown when `showCounter` is true. */
