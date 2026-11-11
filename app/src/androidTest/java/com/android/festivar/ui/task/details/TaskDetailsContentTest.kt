@@ -238,12 +238,23 @@ class TaskDetailsContentTest {
 
   private val tookItAt = ZonedDateTime.of(2026, 10, 17, 9, 12, 0, 0, ZoneId.of("Europe/Zurich"))
 
-  /** [sami] and [yasser] both took the task, at [tookItAt]. */
+  private val tookItLater = tookItAt.plusMinutes(28)
+
+  /** [sami] took the task at [tookItAt], [yasser] at [tookItLater]. */
   private val sharedTask =
       task
           .copy(assignees = emptyList(), takenAt = emptyMap())
           .addAssignee(sami, tookItAt)
-          .addAssignee(yasser, tookItAt)
+          .addAssignee(yasser, tookItLater)
+
+  private fun tookItLine(at: ZonedDateTime) =
+      "Took it ${formatDate(at.toLocalDate())}, ${formatTime(at.toLocalTime())}"
+
+  private fun rowWithText(user: User, text: String) =
+      composeTestRule.onNode(
+          hasTestTag(UserListTestTags.row(user.uid)).and(hasAnyDescendant(hasText(text))),
+          useUnmergedTree = true,
+      )
 
   private fun openThePeopleSheet(task: Task) {
     show(state(task))
@@ -321,14 +332,8 @@ class TaskDetailsContentTest {
   @Test
   fun theSheetShowsWhenEachPersonTookTheTask() {
     openThePeopleSheet(sharedTask)
-    val expected =
-        "Took it ${formatDate(tookItAt.toLocalDate())}, ${formatTime(tookItAt.toLocalTime())}"
-    composeTestRule
-        .onNode(
-            hasTestTag(UserListTestTags.row(sami.uid)).and(hasAnyDescendant(hasText(expected))),
-            useUnmergedTree = true,
-        )
-        .assertExists()
+    rowWithText(sami, tookItLine(tookItAt)).assertExists()
+    rowWithText(yasser, tookItLine(tookItLater)).assertExists()
   }
 
   // Breaks if an older assignee, stored without a time, gets an invented one.
@@ -355,24 +360,16 @@ class TaskDetailsContentTest {
   @Test
   fun aDoneTaskTagsPeopleDone() {
     openThePeopleSheet(sharedTask.complete())
-    composeTestRule
-        .onNode(
-            hasTestTag(UserListTestTags.row(sami.uid)).and(hasAnyDescendant(hasText("Done"))),
-            useUnmergedTree = true,
-        )
-        .assertExists()
+    rowWithText(sami, "Done").assertExists()
+    rowWithText(yasser, "Done").assertExists()
   }
 
   // Breaks if a task in progress tags its people as done.
   @Test
   fun aTakenTaskTagsPeopleTaken() {
     openThePeopleSheet(sharedTask)
-    composeTestRule
-        .onNode(
-            hasTestTag(UserListTestTags.row(sami.uid)).and(hasAnyDescendant(hasText("Taken"))),
-            useUnmergedTree = true,
-        )
-        .assertExists()
+    rowWithText(sami, "Taken").assertExists()
+    rowWithText(yasser, "Taken").assertExists()
   }
 
   // Breaks if the sheet lets anyone remove a person: its rows must do nothing when tapped.
