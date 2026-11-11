@@ -26,6 +26,7 @@ const val MAX_ANNOUNCEMENTS_PER_EVENT = 100
  * Every new version goes through the `init` block, so the rules below always hold:
  * - [title] is not blank;
  * - [eventId] is not blank;
+ * - [ownerId] identifies one of the members;
  * - a [User] is a joined member at most once, identified by its [User.uid] (no duplicates);
  * - a [Task] is unique in the event (no duplicates);
  * - an [Announcement] is unique in the event, identified by its [Announcement.announcementId] (no
@@ -34,6 +35,7 @@ const val MAX_ANNOUNCEMENTS_PER_EVENT = 100
  * - [endDate] must be after [startDate];
  *
  * @property eventId Unique identifier of the [Event].
+ * @property ownerId Unique identifier of the user who created and owns the [Event].
  * @property title Name of the [Event], shown as the screen title.
  * @property description Free-text description of specifications about the [Event].
  * @property members People who joined or were assigned the [Event].
