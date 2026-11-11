@@ -262,6 +262,7 @@ fun TaskDetailsContent(
           dismissModifier = Modifier.testTag(TaskDetailsScreenTestTags.DELETE_DISMISS_BUTTON),
       )
     }
+  }
   val taskToGiveBack = state.task
   if (showGiveBackConfirmation && taskToGiveBack != null) {
     FestivarConfirmDialog(
