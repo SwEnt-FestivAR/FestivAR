@@ -14,12 +14,12 @@ import java.time.Duration
  *   other users can only listen.
  * @property recorder What the recorder is doing, to show the timer. A recording that failed while
  *   it was made is [RecorderState.Failed], read by [recordingFailed].
+ * @property pending The recording that waits to be sent or is being sent, or `null` if there is
+ *   none.
  * @property player What the player is doing.
  * @property sendFailed Whether the last recording could not be uploaded.
  * @property micDenied Whether the microphone permission is refused, so the user cannot record.
  * @property showDeleteConfirm Whether the dialog asking to confirm the deletion is open.
- * @property pending The recording that waits to be sent or is being sent, or `null` if there is
- *   none.
  *
  * There is no `errorMsg` on purpose. The errors are a closed set that call for different actions
  * (retry the sending, retry the playback, open the settings), so the state names them with flags,
@@ -30,11 +30,11 @@ data class VoiceNoteUiState(
     val note: VoiceNote? = null,
     val canManage: Boolean = false,
     val recorder: RecorderState = RecorderState.Idle,
+    val pending: PendingRecording? = null,
     val player: PlayerState = PlayerState.Idle,
     val sendFailed: Boolean = false,
     val micDenied: Boolean = false,
     val showDeleteConfirm: Boolean = false,
-    val pending: PendingRecording? = null,
 ) {
   /**
    * Whether the section has something to show: a note to everybody, or the empty state to the
