@@ -25,7 +25,7 @@ private const val LOG_TAG = "AnnouncementDetailsVM"
  * UI state of the Announcement Details screen.
  *
  * @property announcement the announcement shown, or null until loaded.
- * @property authorName the name of the announcement's author.
+ * @property authorName the author's name, or "Unknown author" if the account no longer exists.
  * @property eventEndTime the end time of the event that contains the announcement.
  * @property isLoading true while the announcement is being loaded.
  * @property isUpdating true while the pin state is being saved.
@@ -83,9 +83,13 @@ class AnnouncementDetailsViewModel(
                 ?: throw NoSuchElementException(
                     "Announcement $announcementId not found in event $eventId"
                 )
-        val author = usersRepository.getUser(announcement.authorId)
         val authorName =
-            listOf(author.name, author.surname).filter(String::isNotBlank).joinToString(" ")
+            try {
+              val author = usersRepository.getUser(announcement.authorId)
+              listOf(author.name, author.surname).filter(String::isNotBlank).joinToString(" ")
+            } catch (_: NoSuchElementException) {
+              "Unknown author"
+            }
         _uiState.update {
           it.copy(
               announcement = announcement,

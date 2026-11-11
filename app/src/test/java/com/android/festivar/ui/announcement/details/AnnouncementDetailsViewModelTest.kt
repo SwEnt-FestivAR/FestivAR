@@ -187,6 +187,30 @@ class AnnouncementDetailsViewModelTest {
   }
 
   @Test
+  fun loadShowsAnnouncementWhenAuthorNoLongerExists() {
+    val deletedAuthorRepository =
+        object : UsersRepository by users {
+          override suspend fun getUser(uId: String): User {
+            throw NoSuchElementException("User $uId not found")
+          }
+        }
+    val vm =
+        AnnouncementDetailsViewModel(
+            "event-1",
+            "announcement-1",
+            dataRepository(usersRepository = deletedAuthorRepository),
+        )
+
+    vm.load()
+
+    assertEquals(announcement, vm.uiState.value.announcement)
+    assertEquals("Unknown author", vm.uiState.value.authorName)
+    assertEquals(event.endDate, vm.uiState.value.eventEndTime)
+    assertFalse(vm.uiState.value.isLoading)
+    assertNull(vm.uiState.value.errorMsg)
+  }
+
+  @Test
   fun togglePinPersistsAndBlocksConcurrentTaps() {
     val gate = CompletableDeferred<Unit>()
     events.beforeEdit = { gate.await() }
