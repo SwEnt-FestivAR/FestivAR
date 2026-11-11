@@ -235,6 +235,40 @@ class EventsRepositoryLocalTest {
   }
 
   @Test
+  fun setAnnouncementPinned_updatesOnlyTheTargetAnnouncement() = runTest {
+    val otherAnnouncement = announcement.copy(announcementId = "a2", title = "Bar opens")
+    val eventWithAnnouncements = event.copy(announcements = listOf(announcement, otherAnnouncement))
+    repository = EventsRepositoryLocal(listOf(eventWithAnnouncements, otherEvent))
+
+    val updated = repository.setAnnouncementPinned(event.eventId, announcement.announcementId, true)
+
+    assertEquals(announcement.copy(pinned = true), updated)
+    assertEquals(
+        listOf(announcement.copy(pinned = true), otherAnnouncement),
+        repository.getEvent(event.eventId).announcements,
+    )
+    assertEquals(otherEvent, repository.getEvent(otherEvent.eventId))
+  }
+
+  @Test
+  fun setAnnouncementPinned_missingAnnouncementThrowsAndKeepsTheEvent() = runTest {
+    repository = EventsRepositoryLocal(listOf(eventWithAnnouncement))
+
+    assertThrows(IllegalArgumentException::class.java) {
+      runBlocking { repository.setAnnouncementPinned(event.eventId, "missing", true) }
+    }
+
+    assertEquals(eventWithAnnouncement, repository.getEvent(event.eventId))
+  }
+
+  @Test
+  fun setAnnouncementPinned_unknownEventThrows() {
+    assertThrows(NoSuchElementException::class.java) {
+      runBlocking { repository.setAnnouncementPinned("unknown", announcement.announcementId, true) }
+    }
+  }
+
+  @Test
   fun deleteAnnouncement_removesTheAnnouncement() = runTest {
     repository = EventsRepositoryLocal(listOf(eventWithAnnouncement))
     repository.deleteAnnouncement(event.eventId, announcement.announcementId)
