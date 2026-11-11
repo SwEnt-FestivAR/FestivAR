@@ -38,6 +38,7 @@ class EventDetailsPreviewsTest {
     composeTestRule
         .onNodeWithTag(EventDetailsScreenTestTags.SUBTITLE)
         .assertTextEquals("Fri 16 to Sun 18 Oct · Parc de Vidy, Lausanne")
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DESCRIPTION).assertIsDisplayed()
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.SEE_TASKS_BUTTON).assertIsDisplayed()
   }
 

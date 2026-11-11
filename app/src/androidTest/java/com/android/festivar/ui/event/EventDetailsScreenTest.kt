@@ -5,8 +5,10 @@ package com.android.festivar.ui.event
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 
 import android.annotation.SuppressLint
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -15,6 +17,8 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.datarepository.DataRepositoryLocal
@@ -30,6 +34,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -170,6 +175,62 @@ class EventDetailsScreenTest {
     setContent(eventSameMonth.copy(title = "Annual open-air association festival ".repeat(6)))
 
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.STATUS_PILL).assertIsDisplayed()
+  }
+
+  /** Breaks if the description of the event is missing or not placed under its subtitle. */
+  @Test
+  fun displaysTheEventDescriptionUnderTheSubtitle() {
+    setContent(eventSameMonth.copy(description = "Concerts, food stands and games by the lake."))
+
+    val description =
+        composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DESCRIPTION).assertIsDisplayed()
+    description.assertTextEquals("Concerts, food stands and games by the lake.")
+    val subtitleBottom =
+        composeTestRule
+            .onNodeWithTag(EventDetailsScreenTestTags.SUBTITLE)
+            .getUnclippedBoundsInRoot()
+            .bottom
+    assertTrue(description.getUnclippedBoundsInRoot().top >= subtitleBottom)
+  }
+
+  /** Breaks if an event without a description still shows an empty block under its subtitle. */
+  @Test
+  fun hidesTheDescriptionWhenItIsEmpty() {
+    setContent(eventSameMonth.copy(description = ""))
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DESCRIPTION).assertDoesNotExist()
+  }
+
+  /** Breaks if a blank description is treated as text and leaves an empty block. */
+  @Test
+  fun hidesTheDescriptionWhenItIsBlank() {
+    setContent(eventSameMonth.copy(description = "     "))
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DESCRIPTION).assertDoesNotExist()
+  }
+
+  /**
+   * Breaks if a long description is cut instead of shown in full, or pushes the task summary out of
+   * reach instead of scrolling.
+   */
+  @Test
+  fun aLongDescriptionIsShownInFullAndLetsTheUserReachTheTaskSummary() {
+    setContent(eventSameMonth.copy(description = "A long festival description. ".repeat(120)))
+
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.OPEN_TASKS_STAT)
+        .performScrollTo()
+        .assertIsDisplayed()
+
+    val layouts = mutableListOf<TextLayoutResult>()
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.DESCRIPTION)
+        .fetchSemanticsNode()
+        .config[SemanticsActions.GetTextLayoutResult]
+        .action
+        ?.invoke(layouts)
+    assertFalse(layouts.single().didOverflowHeight)
+    assertTrue(layouts.single().lineCount > 3)
   }
 
   /** Red if a fetch failure leaves event content or actions visible. */
