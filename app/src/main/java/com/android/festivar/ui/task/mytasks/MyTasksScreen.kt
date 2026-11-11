@@ -762,6 +762,6 @@ private fun previewState(): MyTasksUiState {
 
 @Preview(name = "List", showBackground = true, heightDp = 915, widthDp = 412)
 @Composable
-private fun MyTasksListPreview() {
+internal fun MyTasksListPreview() {
   AppTheme(darkTheme = false) { MyTasksContent(previewState()) }
 }
