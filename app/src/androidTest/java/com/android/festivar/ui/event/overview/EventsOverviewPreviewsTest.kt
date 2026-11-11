@@ -23,6 +23,7 @@ class EventsOverviewPreviewsTest {
 
   private val targetContext = InstrumentationRegistry.getInstrumentation().targetContext
 
+  /** Breaks if the content preview no longer renders its title, avatar, chip, or actions. */
   @Test
   fun eventsOverviewContentPreview_showsEventsAndActions() {
     composeTestRule.setContent { EventsOverviewContentPreview() }
@@ -37,6 +38,7 @@ class EventsOverviewPreviewsTest {
         .assertIsDisplayed()
   }
 
+  /** Breaks if the empty preview no longer renders its localized state and actions. */
   @Test
   fun eventsOverviewEmptyPreview_showsEmptyStateActions() {
     composeTestRule.setContent { EventsOverviewEmptyPreview() }

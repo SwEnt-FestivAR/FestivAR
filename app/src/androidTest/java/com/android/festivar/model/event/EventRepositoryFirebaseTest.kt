@@ -117,6 +117,9 @@ class EventRepositoryFirebaseTest {
     assertThrows { repository.getEvent(event.eventId) }
   }
 
+  /**
+   * Breaks if an event without `ownerId` is accepted or the exception does not identify the event.
+   */
   @Test
   fun getEvent_withoutOwnerIdIsRefused() = runBlocking {
     eventDocument()

@@ -472,6 +472,7 @@ class DataRepositoryLocalTest {
     assertUser("alice", emptyList(), emptyList())
   }
 
+  /** Breaks if an event owner can quit or is removed from the event's membership. */
   @Test
   fun quitEvent_byTheEventOwner_throwsAndKeepsTheOwnerAsMember() = runTest {
     assertThrows(IllegalArgumentException::class.java) {
