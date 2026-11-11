@@ -134,24 +134,24 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, dataRepository: 
     )
   }
 
-    // Every task the signed-in user has taken, across their events. Not reachable from the UI yet:
-    // the bottom bar will open it.
-    composable(AppScreens.MyTasks.name) {
-        val navigator = MyTasksNavigator(navController)
-        val firebaseUser = dataRepository.authRepository.currentUser
-        if (firebaseUser == null) {
-            // Nobody is signed in, so there is nobody whose tasks to show
-            LaunchedEffect(Unit) { navigator.onSignedOut() }
-            return@composable
-        }
-        MyTasksScreen(
-            viewModel =
-                viewModel(key = firebaseUser.uid) {
-                    MyTasksViewModel(firebaseUser.uid, dataRepository)
-                },
-            onOpenTask = navigator.onOpenTask,
-        )
+  // Every task the signed-in user has taken, across their events. Not reachable from the UI yet:
+  // the bottom bar will open it.
+  composable(AppScreens.MyTasks.name) {
+    val navigator = MyTasksNavigator(navController)
+    val firebaseUser = dataRepository.authRepository.currentUser
+    if (firebaseUser == null) {
+      // Nobody is signed in, so there is nobody whose tasks to show
+      LaunchedEffect(Unit) { navigator.onSignedOut() }
+      return@composable
     }
+    MyTasksScreen(
+        viewModel =
+            viewModel(key = firebaseUser.uid) {
+              MyTasksViewModel(firebaseUser.uid, dataRepository)
+            },
+        onOpenTask = navigator.onOpenTask,
+    )
+  }
 }
 
 /**
