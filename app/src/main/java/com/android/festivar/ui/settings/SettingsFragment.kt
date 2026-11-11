@@ -64,5 +64,5 @@ internal fun localeFromString(s: String): LocaleListCompat =
     when (s) {
       "fr" -> LocaleListCompat.forLanguageTags("fr")
       "en" -> LocaleListCompat.forLanguageTags("en")
-      else -> LocaleListCompat.getDefault()
+      else -> LocaleListCompat.getEmptyLocaleList()
     }
