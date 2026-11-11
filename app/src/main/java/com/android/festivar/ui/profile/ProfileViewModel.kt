@@ -1,15 +1,20 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored by Copilot
 package com.android.festivar.ui.profile
 
+import android.content.Context
 import android.util.Log
 import androidx.annotation.StringRes
+import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
 import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
-import com.android.festivar.model.user.UsersRepositoryProvider
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,9 +38,11 @@ private const val LOG_TAG = "ProfileViewModel"
  * @property isLoading Whether the [User] item is currently being fetched.
  * @property isSaving Whether the [User] item is being saved and updated with the new values.
  * @property signedOut Whether the [User] signs out, keeps the information to block any other
- *   operation when the disconnection is occured.
+ *   operation when the disconnection is occurred.
  * @property isSigningOut Whether the [User] is currently in the process of signing out, it blocks
  *   any other operation while trying to disconnect the [User].
+ * @property isUpgrading Whether the account upgrade bottom sheet is visible.
+ * @property showSignOutWarning Whether the anonymous-account sign-out warning is visible.
  */
 data class ProfileUIState(
     val user: User? = null,
@@ -46,6 +53,12 @@ data class ProfileUIState(
     val isSaving: Boolean = false,
     val signedOut: Boolean = false,
     val isSigningOut: Boolean = false,
+    val isUserAnonymous: Boolean = false,
+    val email: String = "",
+    val password: String = "",
+    val isPasswordVisible: Boolean = false,
+    val isUpgrading: Boolean = false,
+    val showSignOutWarning: Boolean = false,
 ) {
   /**
    * Whether the Save changes button can be pressed: the profile is loaded, no save is running, no
@@ -94,15 +107,17 @@ data class ProfileUIState(
  *
  * Manages the UI state by fetching the [User] item through the [UsersRepository].
  *
- * @property repository The repository used to fetch the [User] item.
- * @property authRepository The repository used to fetch the [User] account or sign him out.
+ * @property dataRepository The repository giving access to the [UsersRepository], used to fetch and
+ *   edit the [User] item, and to the [AuthRepository], used to sign the [User] out.
  * @property uId The current [User] unique identifier.
  */
 class ProfileViewModel(
-    private val repository: UsersRepository = UsersRepositoryProvider.repository,
-    private val authRepository: AuthRepository,
+    private val dataRepository: DataRepository,
     private val uId: String,
 ) : ViewModel() {
+
+  private val repository: UsersRepository = dataRepository.usersRepository
+  private val authRepository: AuthRepository = dataRepository.authRepository
 
   private val _uiState = MutableStateFlow(ProfileUIState())
   val uiState: StateFlow<ProfileUIState> = _uiState.asStateFlow()
@@ -207,6 +222,103 @@ class ProfileViewModel(
     }
   }
 
+  /** Updates the email and clears any prior error. */
+  fun updateEmail(email: String) {
+    _uiState.update { it.copy(email = email, errorMsg = null) }
+  }
+
+  /** Updates the password and clears any prior error. */
+  fun updatePassword(password: String) {
+    _uiState.update { it.copy(password = password, errorMsg = null) }
+  }
+
+  /** Toggles whether the password is displayed in plain text. */
+  fun togglePasswordVisibility() {
+    _uiState.update { it.copy(isPasswordVisible = !it.isPasswordVisible) }
+  }
+
+  /** Shows the account upgrade bottom sheet. */
+  fun showUpgradeSheet() {
+    _uiState.update { it.copy(isUpgrading = true) }
+  }
+
+  /** Hides the account upgrade bottom sheet and clears its credentials. */
+  fun hideUpgradeSheet() {
+    _uiState.update { it.copy(isUpgrading = false, email = "", password = "") }
+  }
+
+  /** Shows the warning displayed before an anonymous account signs out. */
+  fun showSignOutWarning() {
+    _uiState.update { it.copy(showSignOutWarning = true) }
+  }
+
+  /** Hides the anonymous-account sign-out warning. */
+  fun hideSignOutWarning() {
+    _uiState.update { it.copy(showSignOutWarning = false) }
+  }
+
+  /** Upgrades the anonymous account with email and password. */
+  fun upgradeWithEmail() {
+    val state = _uiState.value
+    if (state.isLoading || !state.isUserAnonymous) return
+    if (state.email.isBlank() || state.password.isBlank()) {
+      _uiState.update { it.copy(errorMsg = R.string.profile_anon_upgrade_failed) }
+      return
+    }
+
+    val email = state.email.trim()
+    val password = state.password
+
+    _uiState.update { it.copy(isLoading = true, errorMsg = null) }
+    upgradeAccount("email") { authRepository.signUpWithEmailAndPassword(email, password) }
+  }
+
+  fun upgradeWithGoogle(context: Context, credentialManager: CredentialManager) {
+    val state = _uiState.value
+    if (state.isLoading || !state.isUserAnonymous) return
+
+    _uiState.update { it.copy(isLoading = true, errorMsg = null) }
+    upgradeAccount("Google") {
+      val signInWithGoogleOption =
+          GetSignInWithGoogleOption.Builder(context.getString(R.string.default_web_client_id))
+              .build()
+      val request =
+          GetCredentialRequest.Builder().addCredentialOption(signInWithGoogleOption).build()
+      val credential = credentialManager.getCredential(context, request).credential
+      authRepository.signInWithGoogle(credential)
+    }
+  }
+
+  private fun upgradeAccount(
+      method: String,
+      operation: suspend () -> Result<*>,
+  ) {
+    viewModelScope.launch {
+      try {
+        operation()
+            .fold(
+                onSuccess = {
+                  _uiState.update { it.copy(isLoading = false) }
+                  getUserInformation()
+                },
+                onFailure = { e ->
+                  Log.e(LOG_TAG, "Error upgrading account with $method", e)
+                  _uiState.update {
+                    it.copy(isLoading = false, errorMsg = R.string.profile_anon_upgrade_failed)
+                  }
+                },
+            )
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        Log.e(LOG_TAG, "Error upgrading account with $method", e)
+        _uiState.update {
+          it.copy(isLoading = false, errorMsg = R.string.profile_anon_upgrade_failed)
+        }
+      }
+    }
+  }
+
   /** Function that fetches the [User] item from the repository and updates the UI state. */
   fun getUserInformation() {
     if (_uiState.value.isLoading) return
@@ -219,12 +331,14 @@ class ProfileViewModel(
     viewModelScope.launch {
       try {
         val user = repository.getUser(uId)
+        val isAnonymous = authRepository.currentUser?.isAnonymous == true
         _uiState.update {
           it.copy(
               user = user,
               name = user.name,
               surname = user.surname,
               isLoading = false,
+              isUserAnonymous = isAnonymous,
           )
         }
       } catch (e: CancellationException) {

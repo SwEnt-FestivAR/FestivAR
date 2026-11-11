@@ -12,6 +12,7 @@
     <!-- User list -->
     <string name="user_list_uncategorized">Inconnu</string>
     <!-- Samples shown in the previews of the shared components -->
+    <string name="action_continue_anyway">Continuer</string>
     <string name="notice_snackbar_sample_message">Erreur dans le processus lancé.</string>
     <string name="info_note_sample_message">Le microphone de FestivAR est désactivé. Activez-le dans les paramètres pour enregistrer une note.</string>
     <string name="discard_message">Votre saisie sera perdue.</string>
@@ -70,4 +71,12 @@
         <item quantity="other">%d membres</item>
         <item quantity="many">%d membres</item>
     </plurals>
+    <!-- Bottom navigation bar -->
+    <string name="nav_events">Événements</string>
+    <string name="nav_my_tasks">Mes tâches</string>
+    <string name="nav_profile">Profil</string>
+    <string name="nav_event_details">Détails de l\'événement</string>
+    <string name="nav_event_tasks">Tâches de l\'événement</string>
+    <string name="nav_task_details">Détails de la tâche</string>
+    <string name="action_continue">Continuer</string>
 </resources>

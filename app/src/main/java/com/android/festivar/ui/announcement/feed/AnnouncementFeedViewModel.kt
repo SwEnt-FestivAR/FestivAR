@@ -7,8 +7,8 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
+import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.event.EventsRepository
-import com.android.festivar.model.event.EventsRepositoryProvider
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.event.announcement.AnnouncementPriority
 import java.time.Clock
@@ -110,24 +110,26 @@ data class AnnouncementFeedUIState(
 /**
  * ViewModel of the announcement feed.
  *
- * Manages the UI state by fetching an event's announcements through the [EventsRepository]. Nothing
- * is fetched until [refreshUIState] is called: the screen calls it each time it is shown. Until the
- * first fetch, the UI state is already loading.
+ * Manages the UI state by fetching an event's announcements through the [EventsRepository] of
+ * [dataRepository]. Nothing is fetched until [refreshUIState] is called: the screen calls it each
+ * time it is shown. Until the first fetch, the UI state is already loading.
  *
  * Pinned announcements appear separately, followed by unpinned announcements grouped by their
  * update date. The announcements in the state have their `updatedAt` in the time zone of [clock],
  * so the times the screen shows always match the date headers.
  *
  * @property eventId The unique identifier of the event whose announcements are shown.
- * @property eventsRepository The repository used to fetch the announcements.
+ * @property dataRepository Gives the [EventsRepository] used to fetch the announcements.
  * @property clock Gives the time zone of the announcements' `updatedAt` and the sections' dates.
  *   The device's clock by default.
  */
 class AnnouncementFeedViewModel(
     private val eventId: String,
-    private val eventsRepository: EventsRepository = EventsRepositoryProvider.repository,
+    private val dataRepository: DataRepository,
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
+
+  private val eventsRepository: EventsRepository = dataRepository.eventsRepository
 
   // Loading from the start: nothing is fetched until the screen calls refreshUIState on resume, and
   // until then the screen must show its progress indicator, not its empty state.

@@ -1,5 +1,9 @@
 <!-- Co-authored-by: Copilot App -->
 <resources>
+    <string name="edit_event_title">Edit event</string>
+    <string name="edit_event_back">Navigate back</string>
+    <string name="edit_event_button_save">Save changes</string>
+    <string name="edit_event_discard_title">Discard event edits?</string>
     <string name="edit_event_error_fetch_failed">Unable to load the event.</string>
     <string name="edit_event_error_save_failed">Unable to save the event changes.</string>
 </resources>

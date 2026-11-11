@@ -7,10 +7,10 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
+import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.task.Priority
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
-import com.android.festivar.model.task.TasksRepositoryProvider
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.DateTimeRange
 import com.android.festivar.ui.components.END_OF_DAY
@@ -172,14 +172,18 @@ private const val SAVE_TIMEOUT_MS = 15_000L
 @StringRes private val SAVE_FAILED_MESSAGE = R.string.create_task_error_save_failed
 
 /**
- * Holds the state of the Create task screen and saves the new task in [tasksRepository].
+ * Holds the state of the Create task screen and saves the new task through [dataRepository], which
+ * also adds it to its event and to the tasks assigned to its owner.
+ *
+ * [DataRepository.addTask] does not check that the owner is a member of the event: it stays the job
+ * of this view model and of the screens that open it.
  *
  * @param eventId The event the created task belongs to. It cannot be blank.
  * @param currentUserId Gives the uid of the signed-in user, who becomes the owner of the task. It
  *   is asked when the user taps "Create task", not when the screen opens, so a sign-out or an
  *   account change in between is taken into account. A task always has an owner when it is created:
  *   a blank uid saves nothing and shows the save error.
- * @param tasksRepository Where the task is saved. It is the app's repository by default; the tests
+ * @param dataRepository Saves the task and keeps its event and its owner in sync with it. The tests
  *   give an in-memory one.
  * @param saveTimeoutMs How long a save may last before it is reported as failed, so that the form
  *   never stays stuck in the saving state. A failed save is followed by a read of the task under
@@ -190,7 +194,7 @@ class CreateTaskViewModel
 private constructor(
     private val eventId: String,
     private val currentUserId: () -> String,
-    private val tasksRepository: TasksRepository,
+    private val dataRepository: DataRepository,
     private val saveTimeoutMs: Long,
     zone: ZoneId,
     private val formEditing: TaskFormEditing,
@@ -199,10 +203,13 @@ private constructor(
   constructor(
       eventId: String,
       currentUserId: () -> String,
-      tasksRepository: TasksRepository = TasksRepositoryProvider.repository,
+      dataRepository: DataRepository,
       saveTimeoutMs: Long = SAVE_TIMEOUT_MS,
       zone: ZoneId = ZoneId.systemDefault(),
-  ) : this(eventId, currentUserId, tasksRepository, saveTimeoutMs, zone, TaskFormEditing())
+  ) : this(eventId, currentUserId, dataRepository, saveTimeoutMs, zone, TaskFormEditing())
+
+  // Gives the new task id, and reads or edits the task after a failed save (see onSaveFailed).
+  private val tasksRepository: TasksRepository = dataRepository.tasksRepository
 
   // The id of the task being created. It is kept across retries: if a save timed out or failed
   // after reaching the server, the retry targets the same task instead of creating a second one.
@@ -246,7 +253,7 @@ private constructor(
     _uiState.update { it.copy(isSaving = true, errorMsg = null) }
     viewModelScope.launch {
       try {
-        withTimeout(saveTimeoutMs) { tasksRepository.addTask(task) }
+        withTimeout(saveTimeoutMs) { dataRepository.addTask(task) }
         _uiState.update { it.copy(isSaving = false, isCreated = true) }
       } catch (e: TimeoutCancellationException) {
         onSaveFailed(task, e)
@@ -259,17 +266,29 @@ private constructor(
     }
   }
 
-  // A failed save may still have reached the server (for example a timeout). If the task exists,
-  // it is created, and updated if the form changed since that save; otherwise the error is shown
-  // and the user can retry with the same task id.
+  /**
+   * Decides what a failed save means, since it may still have reached the server (for example after
+   * a timeout).
+   *
+   * If [task] is stored, it is created: it is updated if the form changed since that save, and
+   * added to its event and to its owner if that save stopped before doing it (see
+   * [repairTaskSync]). Otherwise, or if this check fails or times out too, the save error is shown
+   * and the user can retry with the same task id.
+   *
+   * @param task The task that could not be saved, as built from the form at the last tap.
+   * @param e The failure of the save, logged as a warning.
+   */
   private suspend fun onSaveFailed(task: Task, e: Exception) {
     // Not an error yet: the task may have been stored anyway, which is checked below.
     Log.w(TAG, "Adding the task failed, checking whether it was stored", e)
     val alreadySaved =
         try {
           withTimeout(saveTimeoutMs) {
+            // Throws if the task is not stored, so nothing below runs for a task that does not
+            // exist: linking it would leave its event pointing to a missing task.
             val stored = tasksRepository.getTask(task.taskId)
             if (stored != task) tasksRepository.editTask(task.taskId, task)
+            repairTaskSync(task)
           }
           Log.i(TAG, "The task was stored despite the failure")
           true
@@ -285,6 +304,38 @@ private constructor(
     _uiState.update {
       if (alreadySaved) it.copy(isSaving = false, isCreated = true)
       else it.copy(isSaving = false, errorMsg = SAVE_FAILED_MESSAGE)
+    }
+  }
+
+  /**
+   * Adds a stored [task] to its event and to the tasks assigned to its owner, wherever it is
+   * missing. A failed save may have stored the task but stopped before these writes. If everything
+   * is correctly synchronized, nothing changes.
+   *
+   * Only what is missing is written, so a fully linked task writes nothing, and a failure halfway
+   * is completed by the next retry. It does not repair the task itself: [onSaveFailed] calls it
+   * only after it found the task and updated it if needed.
+   *
+   * Call it only once the task is known to be stored: an event listing a task that does not exist
+   * can no longer be read.
+   *
+   * @param task The stored task. Its event and its owner must exist.
+   * @throws NoSuchElementException If the event or the owner does not exist.
+   */
+  private suspend fun repairTaskSync(task: Task) {
+    val eventsRepository = dataRepository.eventsRepository
+    val usersRepository = dataRepository.usersRepository
+
+    // Checks the synchronization with the event the task is part of and repairs it if needed.
+    val event = eventsRepository.getEvent(task.eventId)
+    if (event.tasks.none { it.taskId == task.taskId }) {
+      eventsRepository.editEvent(event.eventId, event.addTask(task))
+    }
+
+    // Checks the synchronization with the user the task is created by and repairs it if needed.
+    val owner = usersRepository.getUser(task.ownerId)
+    if (task.taskId !in owner.tasksAssigned) {
+      usersRepository.editUser(owner.uid, owner.addAssignedTask(task.taskId))
     }
   }
 }

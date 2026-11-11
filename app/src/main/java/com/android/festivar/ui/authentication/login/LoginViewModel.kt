@@ -78,6 +78,13 @@ class LoginViewModel(private val authRepository: AuthRepository = AuthRepository
     }
   }
 
+  /** Authenticates anonymously */
+  fun anonymousAuth() {
+    val state = _uiState.value
+    if (state.isLoading) return
+    authenticate { authRepository.signInAnonymous() }
+  }
+
   /** Clears the current authentication error. */
   fun clearError() {
     _uiState.update { it.copy(errorMsg = null) }

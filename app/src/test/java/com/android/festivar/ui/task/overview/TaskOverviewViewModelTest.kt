@@ -3,10 +3,13 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.overview
 
+import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.user.User
+import io.mockk.mockk
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -119,7 +122,14 @@ class TaskOverviewViewModelTest {
    * one [TaskOverviewViewModel.refresh] called the way the screen's first resume does.
    */
   private fun overview(userId: String = me.uid, repo: TasksRepository = repository) =
-      TaskOverviewViewModel(EVENT, userId, repo, clock).also { it.refresh() }
+      TaskOverviewViewModel(EVENT, userId, dataOf(repo), clock).also { it.refresh() }
+
+  /**
+   * The app's data with [tasks] as its tasks repository; the overview only reads tasks, so the
+   * other repositories are the local defaults and the auth is never called.
+   */
+  private fun dataOf(tasks: TasksRepository) =
+      DataRepositoryLocal(authRepository = mockk<AuthRepository>(), tasksRepository = tasks)
 
   /** The ids of every visible row, in section then row order. */
   private fun TaskOverviewUiState.visibleIds() = sections.flatMap { section ->
@@ -151,7 +161,7 @@ class TaskOverviewViewModelTest {
   fun aNewViewModelReadsNothingAndStaysLoadingUntilTheFirstRefresh() {
     val counting = CountingRepository(repository)
 
-    val state = TaskOverviewViewModel(EVENT, me.uid, counting, clock).uiState.value
+    val state = TaskOverviewViewModel(EVENT, me.uid, dataOf(counting), clock).uiState.value
 
     assertEquals(0, counting.loads)
     assertTrue(state.isLoading)
@@ -162,7 +172,7 @@ class TaskOverviewViewModelTest {
   @Test
   fun oneRefreshIsExactlyOneLoad() {
     val counting = CountingRepository(repository)
-    val viewModel = TaskOverviewViewModel(EVENT, me.uid, counting, clock)
+    val viewModel = TaskOverviewViewModel(EVENT, me.uid, dataOf(counting), clock)
 
     viewModel.refresh()
 
@@ -535,7 +545,7 @@ class TaskOverviewViewModelTest {
       )
     }
     val newYork = clock.withZone(ZoneId.of("America/New_York"))
-    val viewModel = TaskOverviewViewModel(EVENT, me.uid, repository, newYork)
+    val viewModel = TaskOverviewViewModel(EVENT, me.uid, dataOf(repository), newYork)
     viewModel.refresh()
 
     val section =
