@@ -2,17 +2,19 @@ package com.android.festivar.ui.event
 
 // Co-authored-by: Copilot App
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 
 import android.annotation.SuppressLint
-import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.text.TextLayoutResult
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.datarepository.DataRepositoryLocal
@@ -28,7 +30,6 @@ import io.mockk.mockk
 import io.mockk.verify
 import java.time.ZoneId
 import java.time.ZonedDateTime
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -75,7 +76,7 @@ class EventDetailsScreenTest {
   private val eventDifferentYear = eventSameMonth.copy(endDate = eventStartDate.plusYears(1))
   private val eventNoTasks = eventSameMonth.copy(tasks = emptyList())
 
-  /** Red if the screen does not display the event information and expected controls. */
+  /** Breaks if the screen does not display the event information and expected controls. */
   @Test
   fun displaysEventDataAndTaggedElements() {
     val event = eventSameMonth
@@ -86,41 +87,43 @@ class EventDetailsScreenTest {
             EventDetailsScreenTestTags.BACK_BUTTON,
             EventDetailsScreenTestTags.EVENT_NAME,
             EventDetailsScreenTestTags.OPEN_TASKS_STAT,
-            EventDetailsScreenTestTags.OWNER_ROW,
-            EventDetailsScreenTestTags.DATE_ROW,
-            EventDetailsScreenTestTags.ADDRESS_ROW,
+            EventDetailsScreenTestTags.STATUS_PILL,
+            EventDetailsScreenTestTags.SUBTITLE,
             EventDetailsScreenTestTags.SEE_TASKS_BUTTON,
         )
         .forEach { tag -> composeTestRule.onNodeWithTag(tag).assertIsDisplayed() }
 
     composeTestRule.onNodeWithText(event.title).assertIsDisplayed()
-    composeTestRule.onNodeWithText("Sami K.").assertIsDisplayed()
-    composeTestRule.onNodeWithText(event.location).assertIsDisplayed()
+    composeTestRule
+        .onNode(
+            hasTestTag(EventDetailsScreenTestTags.STATUS_PILL) and hasAnyDescendant(hasText("Open"))
+        )
+        .assertIsDisplayed()
     composeTestRule.onNodeWithText("${tasksListSize / 2}").assertIsDisplayed()
     composeTestRule.onNodeWithText("of $tasksListSize").assertIsDisplayed()
     composeTestRule.onNodeWithText("tasks still open").assertIsDisplayed()
-    composeTestRule.onNodeWithText("Fri 16 to Sun 18 Oct").assertIsDisplayed()
+    assertSubtitle("Fri 16 to Sun 18 Oct · Parc de Vidy, Lausanne")
   }
 
-  /** Red if an event ending on its start day is formatted as a multi-day event. */
+  /** Breaks if an event ending on its start day is formatted as a multi-day event. */
   @Test
   fun displaysSameDayEventDate() {
     setContent(eventSameDay)
-    composeTestRule.onNodeWithText("Fri 16 Oct").assertIsDisplayed()
+    assertSubtitle("Fri 16 Oct · Parc de Vidy, Lausanne")
   }
 
-  /** Red if an event spanning one month is formatted without both endpoint dates. */
+  /** Breaks if an event spanning one month is formatted without both endpoint dates. */
   @Test
   fun displaysDifferentMonthEventDate() {
     setContent(eventDifferentMonth)
-    composeTestRule.onNodeWithText("Fri 16 Oct to Mon 16 Nov").assertIsDisplayed()
+    assertSubtitle("Fri 16 Oct to Mon 16 Nov · Parc de Vidy, Lausanne")
   }
 
-  /** Red if an event spanning one year omits either year from the displayed date. */
+  /** Breaks if an event spanning one year omits either year from the displayed date. */
   @Test
   fun displaysDifferentYearEventDate() {
     setContent(eventDifferentYear)
-    composeTestRule.onNodeWithText("Fri 16 Oct 2026 to Sat 16 Oct 2027").assertIsDisplayed()
+    assertSubtitle("Fri 16 Oct 2026 to Sat 16 Oct 2027 · Parc de Vidy, Lausanne")
   }
 
   /** Red if an event with no tasks displays incorrect task statistics. */
@@ -131,52 +134,42 @@ class EventDetailsScreenTest {
     composeTestRule.onNodeWithText("of 0").assertIsDisplayed()
   }
 
-  /** Red if an empty location does not display the address fallback text. */
+  /** Breaks if an event without a place still shows a dangling separator after its dates. */
   @Test
-  fun displaysFallbackWhenEventHasEmptyLocationString() {
+  fun subtitleShowsOnlyTheDatesWhenTheLocationIsEmpty() {
     setContent(eventSameMonth.copy(location = ""))
 
-    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.ADDRESS_ROW).assertIsDisplayed()
-    composeTestRule.onNodeWithText("No location specified").assertIsDisplayed()
+    assertSubtitle("Fri 16 to Sun 18 Oct")
   }
 
-  /** Red if a whitespace-only location is not treated as missing. */
+  /** Breaks if a whitespace-only location is shown as a place after the dates. */
   @Test
-  fun displaysFallbackWhenEventHasWhitespaceOnlyLocationString() {
+  fun subtitleShowsOnlyTheDatesWhenTheLocationIsBlank() {
     setContent(eventSameMonth.copy(location = "     "))
 
-    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.ADDRESS_ROW).assertIsDisplayed()
-    composeTestRule.onNodeWithText("No location specified").assertIsDisplayed()
+    assertSubtitle("Fri 16 to Sun 18 Oct")
   }
 
-  /** Red if a long location overflows its address row or is not ellipsized. */
+  /** Breaks if an open event is not marked Open, or a closed one is not marked Closed. */
   @Test
-  fun truncatesLongLocationWithinAddressRow() {
-    val longLocation =
-        "Main entrance, north-western courtyard beside the temporary festival information tent"
-    setContent(eventSameMonth.copy(location = longLocation))
+  fun statusPillFollowsWhetherTheEventIsClosed() {
+    setContent(eventSameMonth.copy(closed = true))
 
-    val rowBounds =
-        composeTestRule
-            .onNodeWithTag(EventDetailsScreenTestTags.ADDRESS_ROW)
-            .assertIsDisplayed()
-            .getUnclippedBoundsInRoot()
-    val valueBounds =
-        composeTestRule.onNodeWithText(longLocation).assertIsDisplayed().getUnclippedBoundsInRoot()
-
-    assertTrue(valueBounds.right <= rowBounds.right)
-    assertTrue(valueBounds.bottom <= rowBounds.bottom)
-
-    val layouts = mutableListOf<TextLayoutResult>()
     composeTestRule
-        .onNodeWithText(longLocation)
-        .fetchSemanticsNode()
-        .config[SemanticsActions.GetTextLayoutResult]
-        .action
-        ?.invoke(layouts)
+        .onNode(
+            hasTestTag(EventDetailsScreenTestTags.STATUS_PILL) and
+                hasAnyDescendant(hasText("Closed"))
+        )
+        .assertIsDisplayed()
+    composeTestRule.onNodeWithText("Open").assertDoesNotExist()
+  }
 
-    assertEquals(2, layouts.single().lineCount)
-    assertTrue(layouts.single().isLineEllipsized(1))
+  /** Breaks if a long title pushes the status pill out of the screen. */
+  @Test
+  fun statusPillStaysVisibleWithALongTitle() {
+    setContent(eventSameMonth.copy(title = "Annual open-air association festival ".repeat(6)))
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.STATUS_PILL).assertIsDisplayed()
   }
 
   /** Red if a fetch failure leaves event content or actions visible. */
@@ -249,6 +242,10 @@ class EventDetailsScreenTest {
           authRepository = FakeAuthRepository(),
           eventsRepository = eventsRepository,
       )
+
+  private fun assertSubtitle(text: String) {
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.SUBTITLE).assertTextEquals(text)
+  }
 
   @SuppressLint("ViewModelConstructorInComposable")
   private fun setContent(

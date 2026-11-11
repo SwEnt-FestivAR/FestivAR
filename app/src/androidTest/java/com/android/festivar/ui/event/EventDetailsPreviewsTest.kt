@@ -2,6 +2,7 @@ package com.android.festivar.ui.event
 
 // Co-authored-by: Copilot App
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
@@ -34,7 +35,9 @@ class EventDetailsPreviewsTest {
 
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.EVENT_NAME).assertIsDisplayed()
     composeTestRule.onNodeWithText("Fête de l'Asso 2026").assertIsDisplayed()
-    composeTestRule.onNodeWithText("Parc de Vidy, Lausanne").assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.SUBTITLE)
+        .assertTextEquals("Fri 16 to Sun 18 Oct · Parc de Vidy, Lausanne")
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.SEE_TASKS_BUTTON).assertIsDisplayed()
   }
 
