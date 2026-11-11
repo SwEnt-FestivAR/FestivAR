@@ -58,13 +58,18 @@ data class AnnouncementDetailsUiState(
 class AnnouncementDetailsViewModel(
     private val eventId: String,
     private val announcementId: String,
-    private val eventsRepository: EventsRepository = EventsRepositoryProvider.repository,
-    private val usersRepository: UsersRepository = UsersRepositoryProvider.repository,
+
+    private val dataRepository: DataRepository,
+    
 ) : ViewModel() {
   init {
     require(eventId.isNotBlank()) { "eventId must not be blank" }
     require(announcementId.isNotBlank()) { "announcementId must not be blank" }
   }
+
+    private val eventsRepository: EventsRepository = dataRepository.eventsRepository
+    private val usersRepository: UsersRepository = dataRepository.usersRepository
+
 
   private val _uiState = MutableStateFlow(AnnouncementDetailsUiState())
   val uiState: StateFlow<AnnouncementDetailsUiState> = _uiState.asStateFlow()
