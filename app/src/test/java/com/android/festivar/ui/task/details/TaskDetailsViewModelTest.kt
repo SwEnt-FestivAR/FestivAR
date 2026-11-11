@@ -1,9 +1,11 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.ui.task.details
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
+import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
@@ -12,6 +14,9 @@ import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepositoryLocal
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import java.io.IOException
 import java.time.ZonedDateTime
@@ -84,6 +89,19 @@ class TaskDetailsViewModelTest {
           eventsRepository = events,
           usersRepository = users,
       )
+  private val mockDataRepository =
+      mockk<DataRepository>(relaxed = true) {
+        every { tasksRepository } returns repository
+        coEvery { joinTask(any(), any()) } coAnswers
+            {
+              dataRepository.joinTask(firstArg(), secondArg())
+            }
+        coEvery { quitTask(any(), any()) } coAnswers
+            {
+              dataRepository.quitTask(firstArg(), secondArg())
+            }
+        coEvery { deleteTask(any()) } coAnswers { dataRepository.deleteTask(firstArg()) }
+      }
   private val me = User(uid = "me")
   private val other = User(uid = "other")
   private val start = ZonedDateTime.parse("2026-07-01T14:00:00+02:00")
@@ -102,7 +120,11 @@ class TaskDetailsViewModelTest {
    * Stores [task], its event and [user], consistent with each other: the user lists the task when
    * they are one of its assignees. Then creates the view model and loads the task.
    */
-  private fun viewModel(task: Task, user: User = me): TaskDetailsViewModel {
+  private fun viewModel(
+      task: Task,
+      user: User = me,
+      repo: DataRepository = dataRepository,
+  ): TaskDetailsViewModel {
     runBlocking {
       repository.local.addTask(task)
       events.addEvent(
@@ -117,7 +139,7 @@ class TaskDetailsViewModelTest {
       val assigned = task.assignees.any { it.uid == user.uid }
       users.addUser(if (assigned) user.copy(tasksAssigned = listOf(task.taskId)) else user)
     }
-    return TaskDetailsViewModel(task.taskId, user, dataRepository).also { it.load() }
+    return TaskDetailsViewModel(task.taskId, user, repo).also { it.load() }
   }
 
   private fun task(
@@ -518,5 +540,76 @@ class TaskDetailsViewModelTest {
     assertFalse(vm.uiState.value.isUpdating)
     assertNull(vm.uiState.value.errorMsg)
     assertEquals(TaskStatus.OPEN, vm.uiState.value.status)
+  }
+
+  @Test
+  fun deleteTask_whileLoadingDoesNothing() {
+    repository.getGate = CompletableDeferred()
+    val vm = TaskDetailsViewModel("t1", User(uid = "owner-1"), mockDataRepository)
+
+    vm.load()
+    vm.deleteTask()
+
+    coVerify(exactly = 0) { mockDataRepository.deleteTask(any()) }
+    assertTrue(vm.uiState.value.isLoading)
+    assertFalse(vm.uiState.value.isUpdating)
+  }
+
+  @Test
+  fun deleteTask_whileSavingDoesNothing() {
+    repository.editGate = CompletableDeferred()
+    val vm = viewModel(task(), User(uid = "owner-1"), mockDataRepository)
+    vm.take()
+
+    vm.deleteTask()
+
+    coVerify(exactly = 0) { mockDataRepository.deleteTask(any()) }
+    assertTrue(vm.uiState.value.isUpdating)
+  }
+
+  @Test
+  fun deleteTask_deletesThroughDataRepository() {
+    val vm = viewModel(task(), User(uid = "owner-1"), mockDataRepository)
+    var deletionCount = 0
+
+    vm.deleteTask { deletionCount++ }
+
+    coVerify(exactly = 1) { mockDataRepository.deleteTask("t1") }
+    assertFalse(vm.uiState.value.isUpdating)
+    assertNull(vm.uiState.value.errorMsg)
+    assertEquals(1, deletionCount)
+  }
+
+  @Test
+  fun deleteTask_failureShowsError() {
+    val vm = viewModel(task(), User(uid = "owner-1"), mockDataRepository)
+    var deletionCount = 0
+    coEvery { mockDataRepository.deleteTask("t1") } throws IOException("offline")
+
+    vm.deleteTask { deletionCount++ }
+
+    assertEquals(R.string.task_details_save_failed, vm.uiState.value.errorMsg)
+    assertFalse(vm.uiState.value.isUpdating)
+    assertEquals(0, deletionCount)
+  }
+
+  @Test
+  fun deleteTask_cancelledResetStateWithoutError() {
+    val vm = viewModel(task(), User(uid = "owner-1"), mockDataRepository)
+    coEvery { mockDataRepository.deleteTask("t1") } throws CancellationException("cancelled")
+
+    vm.deleteTask()
+
+    assertFalse(vm.uiState.value.isUpdating)
+    assertNull(vm.uiState.value.errorMsg)
+  }
+
+  @Test
+  fun deleteTask_nonOwnerDoesNothing() {
+    val vm = viewModel(task(), repo = mockDataRepository)
+
+    vm.deleteTask()
+
+    coVerify(exactly = 0) { mockDataRepository.deleteTask(any()) }
   }
 }
