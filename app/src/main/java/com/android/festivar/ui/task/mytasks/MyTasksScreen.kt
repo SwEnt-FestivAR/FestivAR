@@ -4,7 +4,6 @@ package com.android.festivar.ui.task.mytasks
 import android.text.format.DateFormat
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,12 +15,16 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -535,32 +538,38 @@ private fun EventsSelector(
             )
           }
         }
-        state.events.forEach { option ->
-          Row(
-              Modifier.fillMaxWidth()
-                  .clickable(role = Role.Checkbox) { onToggleEvent(option.eventId) }
-                  .testTag(MyTasksScreenTestTags.eventOption(option.eventId)),
-              verticalAlignment = Alignment.CenterVertically,
-          ) {
-            // The whole row toggles, so the box itself does not take the tap twice
-            Checkbox(
-                checked = option.selected,
-                onCheckedChange = null,
-                colors =
-                    CheckboxDefaults.colors(
-                        checkedColor = colors.primary,
-                        checkmarkColor = colors.onPrimary,
-                    ),
-                modifier = Modifier.padding(12.dp),
-            )
-            Text(
-                stringResource(
-                    R.string.mytasks_event_option,
-                    option.title ?: stringResource(R.string.mytasks_unknown_event),
-                    option.count,
-                ),
-                style = MaterialTheme.typography.bodyLarge,
-            )
+        // At most five lines high, scrolling past them, so many events never push the tasks away
+        Column(Modifier.heightIn(max = 240.dp).verticalScroll(rememberScrollState())) {
+          state.events.forEach { option ->
+            Row(
+                Modifier.fillMaxWidth()
+                    // Toggleable, not just clickable, so a screen reader hears ticked or not
+                    .toggleable(value = option.selected, role = Role.Checkbox) {
+                      onToggleEvent(option.eventId)
+                    }
+                    .testTag(MyTasksScreenTestTags.eventOption(option.eventId)),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+              // The whole row toggles, so the box itself does not take the tap twice
+              Checkbox(
+                  checked = option.selected,
+                  onCheckedChange = null,
+                  colors =
+                      CheckboxDefaults.colors(
+                          checkedColor = colors.primary,
+                          checkmarkColor = colors.onPrimary,
+                      ),
+                  modifier = Modifier.padding(12.dp),
+              )
+              Text(
+                  stringResource(
+                      R.string.mytasks_event_option,
+                      option.title ?: stringResource(R.string.mytasks_unknown_event),
+                      option.count,
+                  ),
+                  style = MaterialTheme.typography.bodyLarge,
+              )
+            }
           }
         }
       }

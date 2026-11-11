@@ -7,12 +7,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -155,8 +158,9 @@ class MyTasksScreenTest {
 
   /**
    * Turns red when the folded selector stops saying "All", the checked event or how many are
-   * checked, or when an unfolded line stops showing its title and count, naming a missing event, or
-   * calling back.
+   * checked, when an unfolded line stops showing its title and count, naming a missing event,
+   * telling whether it is checked, or calling back, or when the last of many events can no longer
+   * be scrolled to.
    */
   @Test
   fun theEventsSelectorShowsTheEventsAndChecksThem() {
@@ -173,10 +177,14 @@ class MyTasksScreenTest {
     composeTestRule
         .onNodeWithText(str(R.string.mytasks_event_option, str(R.string.mytasks_unknown_event), 1))
         .assertIsDisplayed()
-    tag(MyTasksScreenTestTags.eventOption(GONE)).performClick()
+    tag(MyTasksScreenTestTags.eventOption(FETE)).assertIsOn()
+    tag(MyTasksScreenTestTags.eventOption(GONE)).assertIsOff().performClick()
     tag(MyTasksScreenTestTags.EVENTS_CLEAR).assertIsEnabled().performClick()
-
     assertEquals(listOf("event:$GONE", "clearEvents"), calls)
+
+    state.value =
+        listed.copy(events = (1..20).map { EventFilterOption("e$it", "Event $it", 1, false) })
+    tag(MyTasksScreenTestTags.eventOption("e20")).performScrollTo().assertIsDisplayed()
   }
 
   /**
