@@ -64,6 +64,7 @@ class VoiceNoteRecordBarTest {
 
   // JUnit creates a new instance of the class for every test, so these mocks start every test
   // without any call
+  private val onTogglePlay = mockk<() -> Unit>(relaxed = true)
   private val onRecordStart = mockk<() -> Unit>(relaxed = true)
   private val onRecordRelease = mockk<() -> Unit>(relaxed = true)
   private val onRetry = mockk<() -> Unit>(relaxed = true)
@@ -73,7 +74,7 @@ class VoiceNoteRecordBarTest {
   private val callbacks =
       VoiceNoteCallbacks.NoOp.let {
         VoiceNoteCallbacks(
-            onTogglePlay = it.onTogglePlay,
+            onTogglePlay = onTogglePlay,
             onDelete = it.onDelete,
             onConfirmDelete = it.onConfirmDelete,
             onDismissDelete = it.onDismissDelete,
@@ -90,6 +91,7 @@ class VoiceNoteRecordBarTest {
   /** Fails if a callback was called that the test did not verify, so a stray call is caught. */
   private fun assertNoOtherCall() =
       confirmVerified(
+          onTogglePlay,
           onRecordStart,
           onRecordRelease,
           onRetry,
@@ -275,6 +277,36 @@ class VoiceNoteRecordBarTest {
     tag(VoiceNoteTestTags.VOICE_NOTE_DURATION).assertTextContains("0:07")
     tag(VoiceNoteTestTags.VOICE_NOTE_PLAY).assertIsNotEnabled()
     tag(VoiceNoteRecordTestTags.RECORD_BAR).assertDoesNotExist()
+  }
+
+  /** Breaks if tapping the play button of the waiting recording starts a playback. */
+  @Test
+  fun waitingRecordingCannotBePlayed() {
+    show(VoiceNoteUiState(canManage = true, pending = waiting))
+    tag(VoiceNoteTestTags.VOICE_NOTE_PLAY).performClick()
+    verify(exactly = 0) { onTogglePlay() }
+    assertNoOtherCall()
+  }
+
+  /** Breaks if a denied microphone enables the bar while the recording is sent. */
+  @Test
+  fun sendingWithDeniedMicrophoneKeepsTheBarDisabled() {
+    show(
+        VoiceNoteUiState(
+            canManage = true,
+            micDenied = true,
+            pending = PendingRecording.Sending(Duration.ofSeconds(7)),
+        )
+    )
+    tag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).assertIsNotEnabled()
+    tag(VoiceNoteRecordTestTags.VOICE_NOTE_SENDING)
+        .assertTextContains(text(R.string.voice_note_sending, "0:07"))
+    tag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).performTouchInput {
+      down(center)
+      up()
+    }
+    verify(exactly = 0) { onRecordStart() }
+    assertNoOtherCall()
   }
 
   /** Breaks if a recording that failed shows no snackbar, or its Dismiss does nothing. */

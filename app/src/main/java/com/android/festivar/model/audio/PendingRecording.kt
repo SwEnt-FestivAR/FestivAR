@@ -5,7 +5,9 @@ import java.time.Duration
 
 /**
  * A recording that is not sent yet. It is not a [VoiceNote] yet, because it has no URL: only its
- * length is known. It is first [Waiting] for the owner to confirm or cancel, then [Sending].
+ * length is known. It does not hold the audio file either: the temporary `.m4a` file is kept by the
+ * [VoiceRecorder] in the cache of the app until it is uploaded or dropped. It is first [Waiting]
+ * for the owner to confirm or cancel, then [Sending].
  */
 sealed interface PendingRecording {
   /** The length of the recording, shown while it waits and while it is sent. */
