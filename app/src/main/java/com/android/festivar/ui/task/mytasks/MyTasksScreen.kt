@@ -385,6 +385,8 @@ private fun FiltersZone(
   val count = state.activeFilterCount
   Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+
+      // The chip that allows to see all the filters.
       DropdownChip(
           label = if (count > 0) "${Labels.FILTERS} · $count" else Labels.FILTERS,
           active = count > 0,
@@ -392,6 +394,9 @@ private fun FiltersZone(
           onClick = onToggleOpen,
           modifier = Modifier.testTag(MyTasksScreenTestTags.FILTERS_TOGGLE),
       )
+
+      // When the filter chip is closed and that some filters are selected, writes a summary of
+      // which are selected.
       if (!open && count > 0) {
         Spacer(Modifier.width(12.dp))
         Text(
@@ -404,6 +409,8 @@ private fun FiltersZone(
             modifier = Modifier.weight(1f).testTag(MyTasksScreenTestTags.FILTERS_SUMMARY),
         )
       }
+
+      // When it is opened, there is a button to clear the filter.
       if (open) {
         Spacer(Modifier.weight(1f))
         TextButton(
@@ -419,6 +426,7 @@ private fun FiltersZone(
         }
       }
     }
+
     if (open) {
       FlowRow(
           horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -464,6 +472,7 @@ private fun EventsSelector(
   val tinted = open || active
   val shape = RoundedCornerShape(12.dp)
   val colors = MaterialTheme.colorScheme
+
   Column(
       Modifier.fillMaxWidth()
           .clip(shape)
@@ -481,6 +490,7 @@ private fun EventsSelector(
       ) {
         val accent = if (tinted) colors.onPrimaryContainer else colors.onSurfaceVariant
         Icon(Icons.Filled.DateRange, contentDescription = null, Modifier.size(18.dp), tint = accent)
+
         Text(Labels.EVENTS, style = MaterialTheme.typography.labelMedium, color = accent)
         Text(
             eventsValue(state),
@@ -499,6 +509,7 @@ private fun EventsSelector(
         )
       }
     }
+
     if (open) {
       Hairline()
       Column(
