@@ -8,6 +8,9 @@
     <string name="details_description">Description</string>
     <string name="details_take">Prendre cette tâche</string>
     <string name="details_give_back">Rendre la tâche</string>
+    <string name="details_give_back_title">Rendre cette tâche ?</string>
+    <string name="details_give_back_message">D’autres pourront prendre « %1$s ». Vous pourrez la reprendre si elle est encore libre.</string>
+    <string name="details_give_back_keep">La garder</string>
     <string name="details_mark_done">Terminée</string>
     <string name="details_dismiss">Fermer</string>
     <string name="details_retry">Réessayer</string>

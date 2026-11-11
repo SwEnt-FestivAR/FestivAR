@@ -1,10 +1,11 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.authentication.forgotpassword
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.model.authentication.AuthRepository
-import com.android.festivar.model.authentication.AuthRepositoryFirebase
+import com.android.festivar.model.datarepository.DataRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,10 +26,17 @@ enum class ForgotPasswordError {
   REQUEST_FAILED,
 }
 
-/** Handles password reset requests. */
+/**
+ * Handles password reset requests for the forgot-password screen.
+ *
+ * Validates the entered email, then asks for a reset email to be sent to its trimmed value.
+ *
+ * @property dataRepository Gives the [AuthRepository] used to send the password reset email.
+ */
 class ForgotPasswordViewModel(
-    private val authRepository: AuthRepository = AuthRepositoryFirebase()
+    private val dataRepository: DataRepository,
 ) : ViewModel() {
+  private val authRepository: AuthRepository = dataRepository.authRepository
   private val _uiState = MutableStateFlow(ForgotPasswordUIState())
 
   /** Observable state for the forgot-password screen. */
