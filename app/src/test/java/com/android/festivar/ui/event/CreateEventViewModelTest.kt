@@ -143,6 +143,55 @@ class CreateEventViewModelTest {
     assertFalse(viewModel.uiState.value.canCreate)
   }
 
+  /** Red if the ViewModel misses a form field or asks before the user enters anything. */
+  @Test
+  fun needsDiscardConfirmationTracksEnteredDetails() {
+    assertFalse(viewModel.needsDiscardConfirmation)
+    viewModel.showPicker(DateTimeField.START_DATE)
+    assertFalse(viewModel.needsDiscardConfirmation)
+
+    val edits: List<(CreateEventViewModel) -> Unit> =
+        listOf(
+            { it.updateName("Festival") },
+            { it.updateStartDate(startDate) },
+            { it.updateEndDate(endDate) },
+            { it.updateStartTime(startTime) },
+            { it.updateEndTime(endTime) },
+            { it.updateVenue("Main square") },
+            { it.updateNotes("Bring equipment") },
+        )
+    edits.forEach { edit ->
+      val editedViewModel = CreateEventViewModel(dataRepository, creator.uid)
+      edit(editedViewModel)
+      assertTrue(editedViewModel.needsDiscardConfirmation)
+    }
+  }
+
+  /** Red if discard confirmation does not preserve, cancel, or discard the current draft. */
+  @Test
+  fun discardRequestCanBeCancelledOrConfirmed() {
+    val untouchedViewModel = CreateEventViewModel(dataRepository, creator.uid)
+    untouchedViewModel.requestDiscard()
+    assertTrue(untouchedViewModel.uiState.value.isDiscarded)
+    assertFalse(untouchedViewModel.uiState.value.showDiscardConfirmation)
+
+    viewModel.updateName("Festival")
+
+    viewModel.requestDiscard()
+    assertTrue(viewModel.uiState.value.showDiscardConfirmation)
+    assertFalse(viewModel.uiState.value.isDiscarded)
+
+    viewModel.cancelDiscard()
+    assertFalse(viewModel.uiState.value.showDiscardConfirmation)
+    assertFalse(viewModel.uiState.value.isDiscarded)
+    assertEquals("Festival", viewModel.uiState.value.name)
+
+    viewModel.requestDiscard()
+    viewModel.confirmDiscard()
+    assertFalse(viewModel.uiState.value.showDiscardConfirmation)
+    assertTrue(viewModel.uiState.value.isDiscarded)
+  }
+
   /** Red if submitting an invalid form changes the saving state or writes an event. */
   @Test
   fun createEventDoesNothingWhenFormIsInvalid() = runBlocking {
