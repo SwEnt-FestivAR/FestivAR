@@ -3,6 +3,9 @@
 // Co-authored-by: Copilot App
 package com.android.festivar.ui.components
 
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import com.android.festivar.R
 import com.android.festivar.model.event.Event
 import java.time.LocalDate
 import java.time.LocalTime
@@ -39,6 +42,17 @@ fun formatEventDate(event: Event): String {
     start.year == end.year -> "${formatDate(start)} to ${formatDate(end)}"
     else -> "${formatDateWithYear(start)} to ${formatDateWithYear(end)}"
   }
+}
+
+/**
+ * Formats the days and the location of an [event], e.g. "Fri 16 to Sun 18 Oct · Parc de Vidy". The
+ * days come from [formatEventDate]; an event without a location shows its days only.
+ */
+@Composable
+fun formatEventDatesAndPlace(event: Event): String {
+  val dates = formatEventDate(event)
+  return if (event.location.isBlank()) dates
+  else stringResource(R.string.event_dates_location, dates, event.location)
 }
 
 /** Formats a time the way the forms show it, e.g. `09:30`. */

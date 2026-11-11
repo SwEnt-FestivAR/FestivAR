@@ -79,4 +79,6 @@
     <string name="nav_event_details">Event details</string>
     <string name="nav_event_tasks">Event tasks</string>
     <string name="nav_task_details">Task details</string>
+    <!-- The days of an event, then its location, e.g. "Fri 16 Oct · Parc de Vidy" -->
+    <string name="event_dates_location" translatable="false">%1$s · %2$s</string>
 </resources>
