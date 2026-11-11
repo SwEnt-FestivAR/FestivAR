@@ -674,169 +674,75 @@ private fun eventsValue(state: MyTasksUiState): String {
 
 // ---- Previews: sample data of the design, around today so the day labels read as in it ----
 
-private const val FETE = "fete"
-private const val VIDY = "vidy"
-private const val NOEL = "noel"
-
-private fun previewTask(
+/** One row of the Fête de l'Asso starting at [time] on [day]. */
+private fun previewRow(
     id: String,
-    eventId: String,
     title: String,
-    day: LocalDate?,
+    day: LocalDate,
     time: LocalTime,
-    location: String,
-    priority: Priority = Priority.NONE,
-    completed: Boolean = false,
-) =
-    Task(
-        taskId = id,
-        eventId = eventId,
-        title = title,
-        startTime = day?.atTime(time)?.atZone(ZoneId.systemDefault()),
-        location = location,
-        priority = priority,
-        completed = completed,
-        ownerId = "owner",
-    )
-
-private fun previewRow(task: Task, eventTitle: String?, minutesUntilStart: Int? = null) =
-    MyTaskRowUi(
-        task = task,
-        eventTitle = eventTitle,
-        startTime = task.startTime?.toLocalTime(),
-        minutesUntilStart = minutesUntilStart,
-    )
+    priority: Priority,
+    done: Boolean = false,
+    minutesUntilStart: Int? = null,
+): MyTaskRowUi {
+  val start = day.atTime(time).atZone(ZoneId.systemDefault())
+  val task =
+      Task(
+          id,
+          "fete",
+          title,
+          startTime = start,
+          location = "Stage",
+          priority = priority,
+          completed = done,
+          ownerId = "owner",
+      )
+  return MyTaskRowUi(task, "Fête de l'Asso", time, minutesUntilStart)
+}
 
 private fun previewState(): MyTasksUiState {
   val today = LocalDate.now()
-  val fete = "Fête de l'Asso 2026"
-  val vidy = "Vidy Fest"
-  val noel = "Marché de Noël"
+  val tomorrow = today.plusDays(1)
   return MyTasksUiState(
-      statusCounts = mapOf(MyTaskStatus.TODO to 7, MyTaskStatus.DONE to 3),
-      priorityCounts =
-          mapOf(
-              Priority.URGENT to 1,
-              Priority.HIGH to 2,
-              Priority.MEDIUM to 3,
-              Priority.LOW to 2,
-              Priority.NONE to 2,
-          ),
-      events =
-          listOf(
-              EventFilterOption(FETE, fete, 6, selected = false),
-              EventFilterOption(NOEL, noel, 2, selected = false),
-              EventFilterOption(VIDY, vidy, 2, selected = false),
-          ),
+      statusCounts = mapOf(MyTaskStatus.TODO to 2, MyTaskStatus.DONE to 1),
+      priorityCounts = mapOf(Priority.URGENT to 1, Priority.HIGH to 1, Priority.MEDIUM to 1),
+      events = listOf(EventFilterOption("fete", "Fête de l'Asso", 3, selected = false)),
       sections =
           listOf(
-              MyTasksDaySection(
-                  today.minusDays(1),
-                  listOf(
-                      previewRow(
-                          previewTask(
-                              "unload",
-                              FETE,
-                              "Unload tables from van",
-                              today.minusDays(1),
-                              LocalTime.of(18, 0),
-                              "Parking",
-                              completed = true,
-                          ),
-                          fete,
-                      )
-                  ),
-              ),
               MyTasksDaySection(
                   today,
                   listOf(
                       previewRow(
-                          previewTask(
-                              "desk",
-                              FETE,
-                              "Set up ticket desk",
-                              today,
-                              LocalTime.of(11, 0),
-                              "Entrance",
-                              Priority.MEDIUM,
-                              completed = true,
-                          ),
-                          fete,
+                          "desk",
+                          "Set up ticket desk",
+                          today,
+                          LocalTime.of(11, 0),
+                          Priority.MEDIUM,
+                          done = true,
                       ),
                       previewRow(
-                          previewTask(
-                              "power",
-                              FETE,
-                              "Run power to stage",
-                              today,
-                              LocalTime.of(14, 30),
-                              "Stage",
-                              Priority.URGENT,
-                          ),
-                          fete,
+                          "power",
+                          "Run power to stage",
+                          today,
+                          LocalTime.of(14, 30),
+                          Priority.URGENT,
                           minutesUntilStart = 28,
                       ),
-                      previewRow(
-                          previewTask(
-                              "bar",
-                              FETE,
-                              "Close the bar, count the float",
-                              today,
-                              LocalTime.of(23, 0),
-                              "Marquee B",
-                              Priority.HIGH,
-                          ),
-                          fete,
-                      ),
                   ),
               ),
               MyTasksDaySection(
-                  today.plusDays(1),
+                  tomorrow,
                   listOf(
                       previewRow(
-                          previewTask(
-                              "ice",
-                              VIDY,
-                              "Ice run",
-                              today.plusDays(1),
-                              LocalTime.of(11, 30),
-                              "Off site",
-                          ),
-                          vidy,
-                      ),
-                      previewRow(
-                          previewTask(
-                              "wrist",
-                              VIDY,
-                              "Hand out wristbands",
-                              today.plusDays(1),
-                              LocalTime.of(15, 0),
-                              "Entrance",
-                              Priority.HIGH,
-                          ),
-                          vidy,
-                      ),
-                  ),
-              ),
-              MyTasksDaySection(
-                  null,
-                  listOf(
-                      previewRow(
-                          previewTask(
-                              "gear",
-                              NOEL,
-                              "Return the sound gear",
-                              null,
-                              LocalTime.MIDNIGHT,
-                              "Storage",
-                              Priority.MEDIUM,
-                          ),
-                          noel,
+                          "wrist",
+                          "Hand out wristbands",
+                          tomorrow,
+                          LocalTime.of(15, 0),
+                          Priority.HIGH,
                       )
                   ),
               ),
           ),
-      totalTasks = 10,
+      totalTasks = 3,
       isLoading = false,
       hasLoaded = true,
   )
