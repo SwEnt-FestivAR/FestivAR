@@ -1,11 +1,10 @@
 package com.android.festivar.ui.event.details
 
 // Co-authored-by: Copilot App
-// Co-authored-by: Claude Sonnet 5.5
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,7 +21,6 @@ import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -41,14 +39,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
-import com.android.festivar.ui.components.formatEventDate
+import com.android.festivar.ui.components.PillStyle
+import com.android.festivar.ui.components.StatusPill
+import com.android.festivar.ui.components.formatEventDatesAndPlace
 import com.android.festivar.ui.theme.AppTheme
 import com.android.festivar.ui.theme.NumeralLarge
 import java.time.ZoneId
@@ -60,9 +59,8 @@ object EventDetailsScreenTestTags {
   const val EVENT_NAME = "eventName"
   const val FETCH_ERROR = "eventDetailsFetchError"
   const val OPEN_TASKS_STAT = "openTasksStat"
-  const val OWNER_ROW = "ownerRow"
-  const val DATE_ROW = "dateRow"
-  const val ADDRESS_ROW = "addressRow"
+  const val STATUS_PILL = "eventStatusPill"
+  const val SUBTITLE = "eventSubtitle"
   const val SEE_TASKS_BUTTON = "seeTasksButton"
 }
 
@@ -140,26 +138,46 @@ private fun EventDetailsContent(
   }
 }
 
-/** Displays the loaded event, including its task summary and identifying information. */
+/** Displays the loaded event: its title and status, its dates and place, and its task summary. */
 @Composable
 private fun EventInfo(
     event: Event,
     modifier: Modifier = Modifier,
 ) {
   val openTasks = event.tasks.count { !it.completed }
-  val date = formatEventDate(event)
-  val owner = event.members.firstOrNull()?.name.orEmpty()
 
   Column(
       modifier = modifier.fillMaxSize().padding(start = 20.dp, top = 16.dp, end = 20.dp),
       verticalArrangement = Arrangement.spacedBy(12.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
   ) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+      Text(
+          text = event.title,
+          modifier = Modifier.weight(1f).testTag(EventDetailsScreenTestTags.EVENT_NAME),
+          color = MaterialTheme.colorScheme.onBackground,
+          style = MaterialTheme.typography.headlineMedium,
+      )
+      StatusPill(
+          label =
+              stringResource(
+                  if (event.closed) R.string.event_details_status_closed
+                  else R.string.event_details_status_open
+              ),
+          style = if (event.closed) PillStyle.OUTLINED else PillStyle.LIME,
+          modifier = Modifier.testTag(EventDetailsScreenTestTags.STATUS_PILL),
+      )
+    }
+
     Text(
-        text = event.title,
-        modifier = Modifier.fillMaxWidth().testTag(EventDetailsScreenTestTags.EVENT_NAME),
-        color = MaterialTheme.colorScheme.onBackground,
-        style = MaterialTheme.typography.headlineMedium,
+        text = formatEventDatesAndPlace(event),
+        modifier = Modifier.fillMaxWidth().testTag(EventDetailsScreenTestTags.SUBTITLE),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = MaterialTheme.typography.bodyMedium,
     )
 
     Row(
@@ -191,36 +209,6 @@ private fun EventInfo(
             style = MaterialTheme.typography.bodySmall,
         )
       }
-    }
-
-    Column(
-        modifier =
-            Modifier.fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerLowest)
-                .border(
-                    1.dp,
-                    MaterialTheme.colorScheme.outlineVariant,
-                    RoundedCornerShape(12.dp),
-                ),
-    ) {
-      EventDetailsRow(
-          label = stringResource(R.string.event_details_owner),
-          value = owner,
-          tag = EventDetailsScreenTestTags.OWNER_ROW,
-      )
-      HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-      EventDetailsRow(
-          label = stringResource(R.string.event_details_date),
-          value = date,
-          tag = EventDetailsScreenTestTags.DATE_ROW,
-      )
-      HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-      EventDetailsRow(
-          label = stringResource(R.string.event_details_address),
-          value = event.location.ifBlank { stringResource(R.string.event_details_no_location) },
-          tag = EventDetailsScreenTestTags.ADDRESS_ROW,
-      )
     }
   }
 }
@@ -280,40 +268,6 @@ private fun EventDetailsBottomBar(onTasksButtonClicked: () -> Unit) {
         text = stringResource(R.string.event_details_see_tasks),
         modifier = Modifier.padding(start = 8.dp),
         style = MaterialTheme.typography.labelLarge,
-    )
-  }
-}
-
-/**
- * Displays one label/value pair from the event information card.
- *
- * The value is limited to two lines so long locations remain inside the card and are truncated with
- * an ellipsis when necessary.
- */
-@Composable
-private fun EventDetailsRow(
-    label: String,
-    value: String,
-    tag: String,
-) {
-  Row(
-      modifier = Modifier.fillMaxWidth().testTag(tag).padding(horizontal = 16.dp, vertical = 14.dp),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.SpaceBetween,
-  ) {
-    Text(
-        text = label,
-        color = MaterialTheme.colorScheme.onSurface,
-        style = MaterialTheme.typography.bodyMedium,
-    )
-    Text(
-        text = value,
-        modifier = Modifier.weight(1f).padding(start = 10.dp),
-        textAlign = TextAlign.End,
-        maxLines = 2,
-        overflow = TextOverflow.Ellipsis,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        style = MaterialTheme.typography.bodyMedium,
     )
   }
 }

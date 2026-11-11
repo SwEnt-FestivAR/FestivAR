@@ -23,11 +23,11 @@ import com.android.festivar.ui.theme.AppTheme
 enum class PillStyle {
   /** White with a thin border, e.g. "Closed". */
   OUTLINED,
-  /** Light lime, e.g. "7 tasks open". */
+  /** Light lime, e.g. "7 tasks open" or the "Open" status of an event. */
   LIME,
   /** Ink with light text, e.g. "Ongoing". */
   INK,
-  /** Muted grey, e.g. "Open". */
+  /** Muted grey, e.g. the "Open" status of a task. */
   MUTED,
   /** Amber, e.g. "Taken". */
   AMBER,
