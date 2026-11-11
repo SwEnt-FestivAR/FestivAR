@@ -97,7 +97,7 @@ private fun festivarFieldColors(): TextFieldColors {
  *   hide it.
  * @param trailingIcon Content at the end of the field, e.g. a show/hide password button.
  * @param maxLength Maximum number of characters. Text typed or pasted past it is cut off, see
- *   [limitEdit]. A longer text the field already holds is kept.
+ *   [limitEdit]. A longer text the field already holds is kept, and the field shows as invalid.
  * @param showCounter Whether to show a "length/maxLength" counter under the field.
  */
 @Composable
@@ -124,7 +124,7 @@ fun FestivarTextField(
       label = { Text(label) },
       textStyle = MaterialTheme.typography.bodyLarge,
       singleLine = singleLine,
-      isError = isError,
+      isError = isError || value.length > maxLength,
       keyboardOptions = keyboardOptions,
       keyboardActions = keyboardActions,
       visualTransformation = visualTransformation,

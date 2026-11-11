@@ -349,6 +349,47 @@ class FormFieldsTest {
         .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Error))
   }
 
+  // A text saved before the limit and longer than it is kept, but the field flags it as invalid on
+  // its own: breaks if the field only shows the error the screen passes in.
+  @Test
+  fun textField_holdingMoreThanMaxLength_isMarkedAsInvalid() {
+    composeTestRule.setContent {
+      AppTheme {
+        FestivarTextField(
+            value = "abcdef",
+            onValueChange = {},
+            label = "Title",
+            maxLength = 5,
+            modifier = Modifier.testTag(fieldTag),
+        )
+      }
+    }
+
+    composeTestRule
+        .onNodeWithTag(fieldTag)
+        .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Error))
+  }
+
+  // Counterpart of the test above: a text exactly at the limit is valid. Breaks on an off-by-one.
+  @Test
+  fun textField_atMaxLength_isNotMarkedAsInvalid() {
+    composeTestRule.setContent {
+      AppTheme {
+        FestivarTextField(
+            value = "abcde",
+            onValueChange = {},
+            label = "Title",
+            maxLength = 5,
+            modifier = Modifier.testTag(fieldTag),
+        )
+      }
+    }
+
+    composeTestRule
+        .onNodeWithTag(fieldTag)
+        .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Error))
+  }
+
   // The error line displays exactly the message it is given.
   @Test
   fun fieldError_showsItsMessage() {
