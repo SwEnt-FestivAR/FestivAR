@@ -118,6 +118,24 @@ class EventRepositoryFirebaseTest {
   }
 
   @Test
+  fun getEvent_withoutOwnerIdIsRefused() = runBlocking {
+    eventDocument()
+        .set(
+            mapOf(
+                "eventId" to event.eventId,
+                "title" to event.title,
+                "startDate" to event.startDate.toString(),
+                "endDate" to event.endDate.toString(),
+            )
+        )
+        .await()
+
+    assertThrowsOfType<IllegalArgumentException>("Event '${event.eventId}' has no owner") {
+      repository.getEvent(event.eventId)
+    }
+  }
+
+  @Test
   fun getEventsForUser_returnsOnlyMatchingEvents() = runBlocking {
     val otherEvent =
         event.copy(
