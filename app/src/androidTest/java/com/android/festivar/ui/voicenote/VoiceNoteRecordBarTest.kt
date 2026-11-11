@@ -250,7 +250,13 @@ class VoiceNoteRecordBarTest {
   /** Breaks if sending does not grey the bar, or does not say how long the recording is. */
   @Test
   fun sendingGreysTheBarAndShowsTheLengthOfTheRecording() {
-    show(VoiceNoteUiState(canManage = true, pending = PendingRecording.Sending(waiting.duration)))
+    show(
+        VoiceNoteUiState(
+            canManage = true,
+            pending = PendingRecording.Sending(Duration.ofSeconds(7)),
+        )
+    )
+    tag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).assertIsNotEnabled()
     tag(VoiceNoteRecordTestTags.VOICE_NOTE_SENDING)
         .assertTextContains(text(R.string.voice_note_sending, "0:07"))
     composeTestRule.onNodeWithText(text(R.string.voice_note_hold_to_record)).assertDoesNotExist()
