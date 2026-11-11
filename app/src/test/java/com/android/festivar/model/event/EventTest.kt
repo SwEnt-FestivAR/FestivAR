@@ -155,7 +155,7 @@ class EventTest {
     assertInvalid(eventIdMessage) { event(eventId = " \t\n") }
   }
 
-  /** Red if the ownerId is blank. */
+  /** Breaks if [Event] accepts a blank `ownerId`. */
   @Test
   fun init_fails_whenOwnerIdIsBlank() {
     assertInvalid(ownerIdMessage) { event(ownerId = "") }
@@ -271,7 +271,7 @@ class EventTest {
     assertEquals(listOf(alice, bob), event.members)
   }
 
-  /** removeMember refuses to remove the event owner. */
+  /** Breaks if `removeMember` lets the event owner be removed. */
   @Test
   fun removeMember_fails_whenUserIsOwner() {
     val event = eventWith(members = listOf(alice, bob), ownerId = alice.uid)
