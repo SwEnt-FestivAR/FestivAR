@@ -3,6 +3,8 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.ui.components
 
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+
 import androidx.annotation.StringRes
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
@@ -160,6 +162,7 @@ fun FestivarPickerField(
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     isError: Boolean = false,
 ) {
   val currentOnClick by rememberUpdatedState(onClick)
@@ -176,6 +179,7 @@ fun FestivarPickerField(
       onValueChange = {},
       modifier = modifier.fillMaxWidth(),
       readOnly = true,
+      enabled = enabled,
       label = { Text(label) },
       textStyle = MaterialTheme.typography.bodyLarge,
       singleLine = true,

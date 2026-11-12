@@ -161,7 +161,7 @@ class CreateEventViewModel(
     val form = currentState
     val eventId = pendingEventId ?: dataRepository.eventsRepository.getNewUid()
     pendingEventId = eventId
-    updateState { it.copy(isSaving = true, errorMsg = null) }
+    updateState { it.copy(isSaving = true, errorMsg = null, openPicker = null) }
     viewModelScope.launch {
       try {
         withTimeout(saveTimeoutMs) { save(form, eventId) }

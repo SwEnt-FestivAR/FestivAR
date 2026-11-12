@@ -1,8 +1,11 @@
 package com.android.festivar.ui.event.create
 
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+
 // Co-authored-by: Copilot App
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -104,13 +107,15 @@ fun CreateEventScreen(
     onCreated: () -> Unit = {},
 ) {
   val uiState by viewModel.uiState.collectAsState()
+  val requestBack = { if (!uiState.isSaving) onBack() }
+  BackHandler(onBack = requestBack)
   LaunchedEffect(uiState.createdEventId) { if (uiState.createdEventId != null) onCreated() }
 
   CreateEventContent(
       state = uiState,
       actions =
           CreateEventActions(
-              onBack = onBack,
+              onBack = requestBack,
               onNameChange = viewModel::updateName,
               onShowPicker = viewModel::showPicker,
               onVenueChange = viewModel::updateVenue,
@@ -169,6 +174,7 @@ fun CreateEventContent(
           venue = state.venue,
           notes = state.notes,
           openPicker = state.openPicker,
+          enabled = !state.isSaving,
           testTags = createEventFieldTags,
           onNameChange = actions.onNameChange,
           onShowPicker = actions.onShowPicker,
