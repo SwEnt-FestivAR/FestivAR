@@ -111,8 +111,6 @@ fun CreateEventScreen(
     onCreated: () -> Unit = {},
 ) {
   val uiState by viewModel.uiState.collectAsState()
-  val requestBack = { if (!uiState.isSaving) onBack() }
-  BackHandler(onBack = requestBack)
   LaunchedEffect(uiState.isDiscarded) { if (uiState.isDiscarded) onBack() }
   LaunchedEffect(uiState.createdEventId) { if (uiState.createdEventId != null) onCreated() }
   BackHandler(onBack = viewModel::requestDiscard)
@@ -121,7 +119,7 @@ fun CreateEventScreen(
       state = uiState,
       actions =
           CreateEventActions(
-              onBack = requestBack,
+              onBack = viewModel::requestDiscard,
               onNameChange = viewModel::updateName,
               onShowPicker = viewModel::showPicker,
               onVenueChange = viewModel::updateVenue,
