@@ -64,7 +64,7 @@ import com.android.festivar.ui.components.EmptyState
 import com.android.festivar.ui.components.FilterChip
 import com.android.festivar.ui.components.RefreshableStateList
 import com.android.festivar.ui.components.floatingShadow
-import com.android.festivar.ui.components.formatEventDates
+import com.android.festivar.ui.components.formatEventDateAndLocation
 import com.android.festivar.ui.theme.AppTheme
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -404,7 +404,7 @@ private fun EventItem(event: Event, onClick: () -> Unit) {
         color = MaterialTheme.colorScheme.onSurface,
     )
     Text(
-        text = formatEventDates(event),
+        text = formatEventDateAndLocation(event),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )

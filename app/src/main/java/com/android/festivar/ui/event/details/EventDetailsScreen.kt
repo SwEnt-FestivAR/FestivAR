@@ -50,7 +50,7 @@ import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.PillStyle
 import com.android.festivar.ui.components.StatusPill
-import com.android.festivar.ui.components.formatEventDates
+import com.android.festivar.ui.components.formatEventDateAndLocation
 import com.android.festivar.ui.theme.AppTheme
 import com.android.festivar.ui.theme.NumeralLarge
 import java.time.ZoneId
@@ -182,7 +182,7 @@ private fun EventInfo(
         )
       }
       Text(
-          text = formatEventDates(event),
+          text = formatEventDateAndLocation(event),
           modifier = Modifier.testTag(EventDetailsScreenTestTags.SUBTITLE),
           color = MaterialTheme.colorScheme.onSurfaceVariant,
           style = MaterialTheme.typography.bodyMedium,
