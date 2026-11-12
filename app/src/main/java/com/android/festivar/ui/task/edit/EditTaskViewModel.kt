@@ -131,11 +131,11 @@ private const val SAVE_TIMEOUT_MS = 15_000L
 
 /**
  * Holds the state of the Edit task screen: loads the task, edits it in the Create task form and
- * saves it through [repository].
+ * saves it through the tasks repository of [dataRepository].
  *
  * @param taskId The task to edit. It cannot be blank.
  * @param currentUserId Gives the uid of the signed-in user; only the owner of the task can save.
- * @param repository Where the task is read and saved. The app's one by default.
+ * @param dataRepository Gives the tasks repository the task is read from and saved to.
  * @param saveTimeoutMs How long a save may last before it is reported as failed. A failed save is
  *   followed by a read under the same timeout.
  * @param zone The time zone the form shows the times in. The device's one by default.
