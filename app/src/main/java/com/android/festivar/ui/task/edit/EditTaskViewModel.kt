@@ -10,7 +10,6 @@ import com.android.festivar.R
 import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
-import com.android.festivar.model.task.TasksRepositoryProvider
 import com.android.festivar.ui.components.FieldError
 import com.android.festivar.ui.task.TaskFormEditing
 import com.android.festivar.ui.task.TaskFormEditor
@@ -159,7 +158,7 @@ private constructor(
       zone: ZoneId = ZoneId.systemDefault(),
   ) : this(taskId, currentUserId, dataRepository, saveTimeoutMs, zone, TaskFormEditing())
 
-    private val repository: TasksRepository = dataRepository.tasksRepository
+  private val repository: TasksRepository = dataRepository.tasksRepository
 
   private val _uiState = MutableStateFlow(EditTaskUiState(form = CreateTaskUiState(zone = zone)))
 
