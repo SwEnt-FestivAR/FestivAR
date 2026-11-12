@@ -43,6 +43,7 @@ import com.android.festivar.ui.components.FestivarPrioritySelector
 import com.android.festivar.ui.components.FestivarStepper
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.components.FieldError
+import com.android.festivar.ui.components.LONG_TEXT_MAX_LENGTH
 import com.android.festivar.ui.task.DiscardTaskDialog
 import com.android.festivar.ui.task.TaskFormBackHandling
 import com.android.festivar.ui.task.TaskFormLabels
@@ -204,6 +205,8 @@ fun CreateTaskContent(
           onValueChange = actions.onDescriptionChange,
           label = stringResource(R.string.create_task_field_description),
           singleLine = false,
+          maxLength = LONG_TEXT_MAX_LENGTH,
+          showCounter = true,
           modifier = Modifier.testTag(CreateTaskScreenTestTags.DESCRIPTION_FIELD),
       )
       FestivarTextField(
