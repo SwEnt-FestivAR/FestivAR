@@ -3,12 +3,14 @@ package com.android.festivar.ui.event
 // Co-authored-by: Copilot App
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 
+import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
-import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -17,6 +19,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
+import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
@@ -24,6 +27,8 @@ import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepositoryLocal
+import com.android.festivar.ui.components.LONG_TEXT_MAX_LENGTH
+import com.android.festivar.ui.components.checkTheOnlyCounterIsUnder
 import com.android.festivar.ui.components.formatDate
 import com.android.festivar.ui.components.formatTime
 import com.android.festivar.ui.event.create.CreateEventScreen
@@ -47,7 +52,7 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class CreateEventScreenTest {
 
-  @get:Rule val composeTestRule = createComposeRule()
+  @get:Rule val composeTestRule = createAndroidComposeRule<ComponentActivity>()
   private lateinit var viewModel: CreateEventViewModel
   private var dataRepository = DataRepositoryLocal(mockk())
   private val DEFAULT_PICKED_TIME = LocalTime.of(9, 0)
@@ -82,6 +87,18 @@ class CreateEventScreenTest {
         .forEach { tag -> composeTestRule.onNodeWithTag(tag).assertIsDisplayed() }
   }
 
+  /** Red if the notes lose their long limit and counter, or if another field gets a counter too. */
+  @Test
+  fun onlyTheNotesShowACharacterCounter() {
+    viewModel = CreateEventViewModel(dataRepository)
+    composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
+
+    composeTestRule.checkTheOnlyCounterIsUnder(
+        CreateEventScreenTestTags.DESCRIPTION_FIELD,
+        "0/$LONG_TEXT_MAX_LENGTH",
+    )
+  }
+
   /**
    * Red if the fields do not respond to input or if the button is not enabled after all required
    * fields are filled.
@@ -103,6 +120,9 @@ class CreateEventScreenTest {
         .onNodeWithTag(CreateEventScreenTestTags.DESCRIPTION_FIELD)
         .performTextInput("Bring the stage equipment")
 
+    // The keyboard pans the window to keep the notes, the last field, above it, which pushes the
+    // name off the top of a small screen. Hide it, as a user would to check the form.
+    Espresso.closeSoftKeyboard()
     composeTestRule.onNodeWithText("Summer festival").assertIsDisplayed()
     composeTestRule.onNodeWithText("Main square").assertIsDisplayed()
     composeTestRule.onNodeWithText("Bring the stage equipment").assertIsDisplayed()
@@ -191,7 +211,7 @@ class CreateEventScreenTest {
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsNotEnabled()
   }
 
-  /** Red if clicking the navigation button does not call onBack. */
+  /** Red if clicking the navigation button on an untouched form does not call onBack. */
   @Test
   fun navigateButtonCallsOnBack() {
     val onBack = mockk<() -> Unit>(relaxed = true)
@@ -199,6 +219,58 @@ class CreateEventScreenTest {
     composeTestRule.setContent { CreateEventScreen(viewModel = viewModel, onBack = onBack) }
 
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAVIGATION_BUTTON).performClick()
+    composeTestRule.waitForIdle()
+    verify(exactly = 1) { onBack() }
+  }
+
+  /** Red if the back arrow skips confirmation or if either dialog choice behaves incorrectly. */
+  @Test
+  fun backArrowAsksBeforeDiscardingEnteredDetails() {
+    val onBack = mockk<() -> Unit>(relaxed = true)
+    viewModel = CreateEventViewModel(dataRepository)
+    viewModel.updateName("Summer festival")
+    composeTestRule.setContent { CreateEventScreen(viewModel = viewModel, onBack = onBack) }
+
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAVIGATION_BUTTON).performClick()
+
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.DISCARD_DIALOG).assertIsDisplayed()
+    composeTestRule.onNodeWithText("Discard this event?").assertIsDisplayed()
+    verify(exactly = 0) { onBack() }
+
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.KEEP_EDITING_BUTTON).performClick()
+    assertTrue(
+        composeTestRule
+            .onAllNodesWithTag(CreateEventScreenTestTags.DISCARD_DIALOG)
+            .fetchSemanticsNodes()
+            .isEmpty()
+    )
+    composeTestRule
+        .onNodeWithTag(CreateEventScreenTestTags.NAME_FIELD)
+        .assertTextContains("Summer festival")
+    verify(exactly = 0) { onBack() }
+
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAVIGATION_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.DISCARD_BUTTON).performClick()
+    composeTestRule.waitForIdle()
+    verify(exactly = 1) { onBack() }
+  }
+
+  /** Red if system back leaves an edited event without asking first. */
+  @Test
+  fun systemBackAsksBeforeDiscardingEnteredDetails() {
+    val onBack = mockk<() -> Unit>(relaxed = true)
+    viewModel = CreateEventViewModel(dataRepository)
+    viewModel.updateName("Summer festival")
+    composeTestRule.setContent { CreateEventScreen(viewModel = viewModel, onBack = onBack) }
+
+    pressSystemBack()
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.DISCARD_DIALOG).assertIsDisplayed()
+    verify(exactly = 0) { onBack() }
+
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.DISCARD_BUTTON).performClick()
+    composeTestRule.waitForIdle()
     verify(exactly = 1) { onBack() }
   }
 
@@ -262,8 +334,8 @@ class CreateEventScreenTest {
   }
 
   /**
-   * Red if the button stays enabled or shows no spinner while the write runs, or if the screen
-   * never reports the saved event.
+   * Red if the button stays enabled or shows no spinner while the write runs, back leaves during
+   * the write, or the screen never reports the saved event.
    */
   @Test
   fun savingDisablesTheButtonWithASpinnerAndASavedEventCallsOnCreated() {
@@ -271,6 +343,7 @@ class CreateEventScreenTest {
     val endDate = startDate.plusDays(1)
     val gate = CompletableDeferred<Unit>()
     val onCreated = mockk<() -> Unit>(relaxed = true)
+    val onBack = mockk<() -> Unit>(relaxed = true)
     val creator = User("creator-123", "Alice", "AliceInWonderland")
     dataRepository =
         DataRepositoryLocal(
@@ -283,7 +356,9 @@ class CreateEventScreenTest {
             dataRepository,
             creator.uid,
         )
-    composeTestRule.setContent { CreateEventScreen(viewModel = viewModel, onCreated = onCreated) }
+    composeTestRule.setContent {
+      CreateEventScreen(viewModel = viewModel, onBack = onBack, onCreated = onCreated)
+    }
 
     viewModel.updateName("Summer festival")
     viewModel.updateStartDate(startDate)
@@ -294,6 +369,16 @@ class CreateEventScreenTest {
 
     waitForTag(CreateEventScreenTestTags.SAVING_INDICATOR)
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsNotEnabled()
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAVIGATION_BUTTON).performClick()
+    pressSystemBack()
+    composeTestRule.waitForIdle()
+    assertTrue(
+        composeTestRule
+            .onAllNodesWithTag(CreateEventScreenTestTags.DISCARD_DIALOG)
+            .fetchSemanticsNodes()
+            .isEmpty()
+    )
+    verify(exactly = 0) { onBack() }
     verify(exactly = 0) { onCreated() }
 
     gate.complete(Unit)
@@ -386,6 +471,12 @@ class CreateEventScreenTest {
   private fun waitForTag(tag: String) {
     composeTestRule.waitUntil(5_000) {
       composeTestRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
+    }
+  }
+
+  private fun pressSystemBack() {
+    composeTestRule.runOnUiThread {
+      composeTestRule.activity.onBackPressedDispatcher.onBackPressed()
     }
   }
 }
