@@ -7,8 +7,8 @@ package com.android.festivar
 import android.content.Context
 import android.content.pm.ActivityInfo
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -36,14 +36,16 @@ import com.android.festivar.navigation.event.eventGraph
 import com.android.festivar.navigation.profile.profileGraph
 import com.android.festivar.navigation.task.taskGraph
 import com.android.festivar.ui.components.BottomNavigationBar
+import com.android.festivar.ui.settings.applySavedSettings
 import com.android.festivar.ui.theme.AppTheme
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
     // The system start screen is the app's only splash, shown while the app starts
     installSplashScreen()
     super.onCreate(savedInstanceState)
+    applySavedSettings(this)
     // Source - https://stackoverflow.com/q/73598309
     // Posted by Alix Blaine
     // Retrieved 2026-11-05, License - CC BY-SA 4.0
