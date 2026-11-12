@@ -52,7 +52,7 @@ fun formatEventDate(event: Event): String {
 fun formatEventDates(event: Event): String {
   val dates = formatEventDate(event)
   return if (event.location.isBlank()) dates
-  else stringResource(R.string.events_overview_dates_location, dates, event.location)
+  else stringResource(R.string.event_dates_location, dates, event.location)
 }
 
 /** Formats a time the way the forms show it, e.g. `09:30`. */
