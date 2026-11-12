@@ -3,11 +3,6 @@
     <string name="announcement_feed_load_failed">Unable to load the announcements.</string>
     <string name="announcement_feed_title">Announcements</string>
     <string name="announcement_feed_navigate_back">Back</string>
-    <!-- Labels of the filter chips, kept short so that the four chips fit on one line -->
-    <string name="announcement_feed_filter_all">All</string>
-    <string name="announcement_feed_filter_urgent">Urgent</string>
-    <string name="announcement_feed_filter_warning">Warning</string>
-    <string name="announcement_feed_filter_info">Info</string>
     <string name="announcement_feed_pinned">Pinned</string>
     <!-- Header of today's announcements, e.g. "Today · Sat 17 Oct" -->
     <string name="announcement_feed_today">Today · %1$s</string>
@@ -18,5 +13,4 @@
     <string name="announcement_feed_filter_empty">Nothing here. Try another filter.</string>
     <string name="announcement_feed_empty_title">No announcements yet</string>
     <string name="announcement_feed_empty_subtitle">Organizers post updates about the event here.</string>
-    <string name="announcement_feed_add">Add announcement</string>
 </resources>
