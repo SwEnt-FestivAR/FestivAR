@@ -41,7 +41,6 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, dataRepository:
           onSelectEvent = navigator.onSelectEvent,
           onJoinEvent = navigator.onJoinEvent,
           onAddEvent = navigator.onAddEvent,
-          onSelectAvatar = navigator.onSelectAvatar,
       )
     }
   }

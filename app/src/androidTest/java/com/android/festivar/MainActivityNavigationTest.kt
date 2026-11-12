@@ -49,7 +49,6 @@ import com.android.festivar.ui.announcement.create.CreateAnnouncementScreenTestT
 import com.android.festivar.ui.announcement.feed.AnnouncementFeedScreenTestTags
 import com.android.festivar.ui.authentication.login.LoginScreenTestTags
 import com.android.festivar.ui.authentication.signup.SignUpScreenTestTags
-import com.android.festivar.ui.components.AvatarTestTags
 import com.android.festivar.ui.components.BottomNavigationBarTestTags
 import com.android.festivar.ui.components.NavigationSubScreen
 import com.android.festivar.ui.components.NavigationTab
@@ -93,7 +92,7 @@ class MainActivityNavigationTest {
 
   private val signedInUser = mockk<FirebaseUser> { every { uid } returns signedInUid }
 
-  // The avatar shows the initials of the stored profile of the signed-in user
+  // The stored profile of the signed-in user
   private val storedUser = User(uid = signedInUid, name = "Sara", surname = "Keller")
 
   @Before
@@ -159,32 +158,6 @@ class MainActivityNavigationTest {
     composeTestRule.onNodeWithText("Return to login").performClick()
 
     composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
-  }
-
-  @Test
-  fun eventOverviewShowsStoredUserAndAvatarNavigatesToProfile() {
-    setSignedInContent()
-
-    composeTestRule.waitUntil(timeoutMillis = 10_000) {
-      composeTestRule.onAllNodesWithText("SK").fetchSemanticsNodes().isNotEmpty()
-    }
-    composeTestRule.onNodeWithText("SK").assertIsDisplayed()
-
-    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.USER_AVATAR).performClick()
-
-    waitUntilTagExists(ProfileScreenTestTags.TITLE)
-    composeTestRule.onNodeWithTag(ProfileScreenTestTags.TITLE).assertIsDisplayed()
-  }
-
-  @Test
-  fun eventOverviewWithoutStoredUserShowsPersonIcon() {
-    UsersRepositoryProvider.repository = UsersRepositoryLocal()
-    setSignedInContent()
-
-    waitUntilTagExists(EventsOverviewScreenTestTags.USER_AVATAR)
-    composeTestRule
-        .onNodeWithTag(AvatarTestTags.PERSON_ICON, useUnmergedTree = true)
-        .assertIsDisplayed()
   }
 
   @Test

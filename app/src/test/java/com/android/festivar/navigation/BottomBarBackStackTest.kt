@@ -7,7 +7,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.android.festivar.navigation.event.EventsOverviewNavigator
 import com.android.festivar.ui.components.NavigationTab
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -53,27 +52,12 @@ class BottomBarBackStackTest {
     composeTestRule.waitForIdle()
   }
 
-  private fun openProfileFromTheAvatar() {
-    composeTestRule.runOnUiThread { EventsOverviewNavigator(navController).onSelectAvatar() }
-    assertEquals(AppScreens.Profile.name, currentRoute())
-  }
-
   /** Taps [tab] on the bar as the screen now shown displays it. */
   private fun tap(tab: NavigationTab) {
     composeTestRule.runOnUiThread {
       navigator.onTabSelected(tab, bottomBarStateFor(navController.currentDestination?.route, null))
     }
     composeTestRule.waitForIdle()
-  }
-
-  // Breaks if the Events tab leaves the user on a profile opened from the avatar.
-  @Test
-  fun theEventsTabLeavesAProfileOpenedFromTheAvatar() {
-    openProfileFromTheAvatar()
-
-    tap(NavigationTab.EVENTS)
-
-    assertEquals(AppScreens.EventsOverview.name, currentRoute())
   }
 
   // Breaks if the Events tab stops working from a tab opened through the bar.
@@ -85,10 +69,10 @@ class BottomBarBackStackTest {
     assertEquals(AppScreens.EventsOverview.name, currentRoute())
   }
 
-  // Breaks if a profile opened from the avatar blocks the other tabs.
+  // Breaks if the profile opened from the bar blocks the other tabs.
   @Test
-  fun theMyTasksTabLeavesAProfileOpenedFromTheAvatar() {
-    openProfileFromTheAvatar()
+  fun theMyTasksTabLeavesTheProfile() {
+    tap(NavigationTab.PROFILE)
 
     tap(NavigationTab.MY_TASKS)
 
