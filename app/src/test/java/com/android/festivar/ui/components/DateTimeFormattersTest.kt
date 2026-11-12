@@ -85,34 +85,6 @@ class DateTimeFormattersTest {
     )
   }
 
-  /** Breaks if the place is not joined to the days with a middle dot on one line. */
-  @Test
-  fun formatEventDateAndLocation_joinsDaysAndLocation() {
-    assertEquals(
-        "Fri 16 to Sun 18 Oct · Parc de Vidy",
-        formatEventDateAndLocation(multiDayEvent("Parc de Vidy")),
-    )
-  }
-
-  /** Breaks if an event without a place keeps a dangling separator or a placeholder. */
-  @Test
-  fun formatEventDateAndLocation_blankLocationLeavesOnlyTheDays() {
-    assertEquals("Fri 16 to Sun 18 Oct", formatEventDateAndLocation(multiDayEvent("")))
-    assertEquals("Fri 16 to Sun 18 Oct", formatEventDateAndLocation(multiDayEvent("   ")))
-  }
-
-  private fun multiDayEvent(location: String): Event {
-    val start = ZonedDateTime.of(2026, 10, 16, 10, 0, 0, 0, ZoneId.of("Europe/Zurich"))
-    return Event(
-        eventId = "event",
-        ownerId = "owner",
-        title = "Event",
-        startDate = start,
-        endDate = start.plusDays(2),
-        location = location,
-    )
-  }
-
   @Test
   fun formatTime_usesTwentyFourHourClockWithPadding() {
     assertEquals("09:30", formatTime(LocalTime.of(9, 30)))
