@@ -64,6 +64,7 @@ internal class VoiceNoteRecording(
       _stage.value = RecordingStage.Failed
     } catch (e: IllegalStateException) {
       Log.e(LOG_TAG, "Error starting a recording", e)
+      _stage.value = RecordingStage.Failed
     }
   }
 
@@ -82,6 +83,7 @@ internal class VoiceNoteRecording(
           return
         } catch (e: IllegalStateException) {
           Log.e(LOG_TAG, "Error finishing a recording", e)
+          _stage.value = RecordingStage.Failed
           return
         }
     _stage.value = RecordingStage.Waiting(audio)

@@ -88,14 +88,13 @@ class VoiceNoteRecordingTest {
   }
 
   @Test
-  fun start_ignoresAnIllegalRecorderState() {
-    recorder.start()
+  fun start_isFailedWhenRecorderThrowsIllegalStateException() {
+    recorder.startFailure = IllegalStateException("recorder unavailable")
     val subject = recording
 
     subject.start()
 
-    assertEquals(1, recorder.starts)
-    assertEquals(RecordingStage.Idle, subject.stage.value)
+    assertEquals(RecordingStage.Failed, subject.stage.value)
   }
 
   @Test
@@ -111,6 +110,17 @@ class VoiceNoteRecordingTest {
   fun finish_isFailedWhenRecorderCannotProduceAudio() {
     recorder.start()
     recorder.stopFailure = VoiceRecorderException("too short")
+    val subject = recording
+
+    subject.finish()
+
+    assertEquals(RecordingStage.Failed, subject.stage.value)
+  }
+
+  @Test
+  fun finish_isFailedWhenRecorderThrowsIllegalStateException() {
+    recorder.start()
+    recorder.stopFailure = IllegalStateException("recorder unavailable")
     val subject = recording
 
     subject.finish()
