@@ -488,4 +488,3 @@ class TaskDetailsContentTest {
     composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.PLAYBACK_ERROR).assertDoesNotExist()
   }
 }
-

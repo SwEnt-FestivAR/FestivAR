@@ -621,4 +621,3 @@ internal fun TaskDetailsSaveErrorPreview() {
   val state = previewState(TaskStatus.YOURS).copy(errorMsg = R.string.task_details_save_failed)
   AppTheme { TaskDetailsContent(state) }
 }
-
