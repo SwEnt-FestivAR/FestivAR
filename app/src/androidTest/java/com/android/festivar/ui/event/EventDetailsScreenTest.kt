@@ -20,6 +20,7 @@ import androidx.compose.ui.test.onChild
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -154,6 +155,52 @@ class EventDetailsScreenTest {
     composeTestRule
         .onNodeWithTag(EventDetailsScreenTestTags.SUBTITLE)
         .assertTextEquals("Fri 16 to Sun 18 Oct")
+  }
+
+  /** Breaks if the description is not shown as plain text under the subtitle. */
+  @Test
+  fun descriptionShowsUnderSubtitle() {
+    setContent(eventSameMonth.copy(description = "Bring a jacket."))
+
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.DESCRIPTION)
+        .assertTextEquals("Bring a jacket.")
+    val subtitleBottom =
+        composeTestRule
+            .onNodeWithTag(EventDetailsScreenTestTags.SUBTITLE)
+            .getUnclippedBoundsInRoot()
+            .bottom
+    val descriptionTop =
+        composeTestRule
+            .onNodeWithTag(EventDetailsScreenTestTags.DESCRIPTION)
+            .getUnclippedBoundsInRoot()
+            .top
+    val statTop =
+        composeTestRule
+            .onNodeWithTag(EventDetailsScreenTestTags.OPEN_TASKS_STAT)
+            .getUnclippedBoundsInRoot()
+            .top
+    assertTrue(descriptionTop >= subtitleBottom)
+    assertTrue(descriptionTop < statTop)
+  }
+
+  /** Breaks if an event without a description still shows an empty description block. */
+  @Test
+  fun descriptionIsAbsentWhenBlank() {
+    setContent(eventSameMonth.copy(description = "  "))
+
+    composeTestRule.onAllNodesWithTag(EventDetailsScreenTestTags.DESCRIPTION).assertCountEquals(0)
+  }
+
+  /** Breaks if a long description is cut off instead of reachable by scrolling. */
+  @Test
+  fun longDescriptionIsFullyReadableByScrolling() {
+    val text = (1..80).joinToString(" ") { "Line$it of the long description." }
+    setContent(eventSameMonth.copy(description = text))
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DESCRIPTION).assertTextEquals(text)
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.JOIN_CODE_ROW).performScrollTo()
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.JOIN_CODE_ROW).assertIsDisplayed()
   }
 
   /** Breaks if an open event does not show the Open chip. */
