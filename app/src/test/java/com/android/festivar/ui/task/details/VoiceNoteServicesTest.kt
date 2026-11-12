@@ -12,6 +12,7 @@ class VoiceNoteServicesTest {
   private val player = FakeVoicePlayer()
   private val services = VoiceNoteServices(recorder, storage, player)
 
+  /** Breaks if a storage cleanup exception escapes and interrupts the caller. */
   @Test
   fun deleteAudioQuietly_ignoresStorageExceptions() = runTest {
     storage.deleteFailure = IllegalStateException("storage unavailable")
@@ -21,6 +22,7 @@ class VoiceNoteServicesTest {
     assertEquals(listOf("https://example.com/note.m4a"), storage.deletions)
   }
 
+  /** Breaks if coroutine cancellation is swallowed during storage cleanup. */
   @Test(expected = CancellationException::class)
   fun deleteAudioQuietly_rethrowsCancellationExceptions() = runTest {
     storage.deleteFailure = CancellationException("cancelled")

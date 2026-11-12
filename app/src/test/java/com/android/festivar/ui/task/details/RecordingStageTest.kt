@@ -9,6 +9,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class RecordingStageTest {
+  /** Breaks if pending exposes a stage that is not waiting or sending. */
   @Test
   fun pending_returnsWaitingAndSendingRecordings_onlyForHeldStages() {
     val duration = Duration.ofSeconds(7)
