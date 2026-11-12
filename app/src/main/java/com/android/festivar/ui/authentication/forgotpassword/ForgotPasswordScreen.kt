@@ -33,6 +33,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
+import com.android.festivar.ui.components.CREDENTIAL_MAX_LENGTH
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.theme.AppTheme
 
@@ -98,6 +99,7 @@ private fun ForgotPasswordScreenContent(
           value = uiState.email,
           onValueChange = onEmailChange,
           label = stringResource(R.string.signup_email),
+          maxLength = CREDENTIAL_MAX_LENGTH,
           keyboardOptions =
               KeyboardOptions(
                   capitalization = KeyboardCapitalization.None,

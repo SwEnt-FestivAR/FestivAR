@@ -5,7 +5,6 @@ package com.android.festivar.ui.event.details
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,15 +14,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -43,7 +43,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
@@ -51,7 +50,9 @@ import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.joinCodeOf
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
-import com.android.festivar.ui.components.formatEventDate
+import com.android.festivar.ui.components.PillStyle
+import com.android.festivar.ui.components.StatusPill
+import com.android.festivar.ui.components.formatEventDateAndLocation
 import com.android.festivar.ui.theme.AppTheme
 import com.android.festivar.ui.theme.NumeralLarge
 import java.time.ZoneId
@@ -65,9 +66,9 @@ object EventDetailsScreenTestTags {
   const val OPEN_TASKS_STAT = "openTasksStat"
   const val JOIN_CODE_ROW = "joinCodeRow"
   const val JOIN_CODE_VALUE = "joinCodeValue"
-  const val OWNER_ROW = "ownerRow"
-  const val DATE_ROW = "dateRow"
-  const val ADDRESS_ROW = "addressRow"
+  const val STATUS_CHIP = "statusChip"
+  const val SUBTITLE = "eventSubtitle"
+  const val DESCRIPTION = "eventDescription"
   const val SEE_TASKS_BUTTON = "seeTasksButton"
 }
 
@@ -152,20 +153,56 @@ private fun EventInfo(
     modifier: Modifier = Modifier,
 ) {
   val openTasks = event.tasks.count { !it.completed }
-  val date = formatEventDate(event)
-  val owner = event.members.firstOrNull()?.name.orEmpty()
 
   Column(
-      modifier = modifier.fillMaxSize().padding(start = 20.dp, top = 16.dp, end = 20.dp),
+      modifier =
+          modifier
+              .fillMaxSize()
+              .verticalScroll(rememberScrollState())
+              .padding(start = 20.dp, top = 16.dp, end = 20.dp),
       verticalArrangement = Arrangement.spacedBy(12.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
   ) {
-    Text(
-        text = event.title,
-        modifier = Modifier.fillMaxWidth().testTag(EventDetailsScreenTestTags.EVENT_NAME),
-        color = MaterialTheme.colorScheme.onBackground,
-        style = MaterialTheme.typography.headlineMedium,
-    )
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+      Row(
+          modifier = Modifier.fillMaxWidth(),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(8.dp),
+      ) {
+        Text(
+            text = event.title,
+            modifier = Modifier.weight(1f).testTag(EventDetailsScreenTestTags.EVENT_NAME),
+            color = MaterialTheme.colorScheme.onBackground,
+            style = MaterialTheme.typography.headlineMedium,
+        )
+        StatusPill(
+            label =
+                stringResource(
+                    if (event.closed) R.string.event_details_status_closed
+                    else R.string.event_details_status_open
+                ),
+            style = if (event.closed) PillStyle.OUTLINED else PillStyle.LIME,
+            modifier = Modifier.testTag(EventDetailsScreenTestTags.STATUS_CHIP),
+        )
+      }
+      Text(
+          text = formatEventDateAndLocation(event),
+          modifier = Modifier.testTag(EventDetailsScreenTestTags.SUBTITLE),
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          style = MaterialTheme.typography.bodyMedium,
+      )
+      if (event.description.isNotBlank()) {
+        Text(
+            text = event.description,
+            modifier = Modifier.padding(top = 8.dp).testTag(EventDetailsScreenTestTags.DESCRIPTION),
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.bodyMedium,
+        )
+      }
+    }
 
     Row(
         modifier =
@@ -199,36 +236,6 @@ private fun EventInfo(
     }
 
     JoinCodeRow(code = joinCodeOf(event))
-
-    Column(
-        modifier =
-            Modifier.fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerLowest)
-                .border(
-                    1.dp,
-                    MaterialTheme.colorScheme.outlineVariant,
-                    RoundedCornerShape(12.dp),
-                ),
-    ) {
-      EventDetailsRow(
-          label = stringResource(R.string.event_details_owner),
-          value = owner,
-          tag = EventDetailsScreenTestTags.OWNER_ROW,
-      )
-      HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-      EventDetailsRow(
-          label = stringResource(R.string.event_details_date),
-          value = date,
-          tag = EventDetailsScreenTestTags.DATE_ROW,
-      )
-      HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-      EventDetailsRow(
-          label = stringResource(R.string.event_details_address),
-          value = event.location.ifBlank { stringResource(R.string.event_details_no_location) },
-          tag = EventDetailsScreenTestTags.ADDRESS_ROW,
-      )
-    }
   }
 }
 
@@ -328,78 +335,59 @@ private fun EventDetailsBottomBar(onTasksButtonClicked: () -> Unit) {
   }
 }
 
-/**
- * Displays one label/value pair from the event information card.
- *
- * The value is limited to two lines so long locations remain inside the card and are truncated with
- * an ellipsis when necessary.
- */
-@Composable
-private fun EventDetailsRow(
-    label: String,
-    value: String,
-    tag: String,
-) {
-  Row(
-      modifier = Modifier.fillMaxWidth().testTag(tag).padding(horizontal = 16.dp, vertical = 14.dp),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.SpaceBetween,
-  ) {
-    Text(
-        text = label,
-        color = MaterialTheme.colorScheme.onSurface,
-        style = MaterialTheme.typography.bodyMedium,
-    )
-    Text(
-        text = value,
-        modifier = Modifier.weight(1f).padding(start = 10.dp),
-        textAlign = TextAlign.End,
-        maxLines = 2,
-        overflow = TextOverflow.Ellipsis,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        style = MaterialTheme.typography.bodyMedium,
-    )
-  }
-}
-
 /** An id like the ones the repository generates, so the preview shows a realistic join code. */
 private const val PREVIEW_EVENT_ID = "3f9a1c2e-7b4d-4e8a-9c15-d2a6b0f84e37"
 
-@Preview
-@Composable
-internal fun EventDetailsScreenPreview() {
+private fun previewEvent(): Event {
   val eventStartDate: ZonedDateTime =
       ZonedDateTime.of(2026, 10, 16, 10, 0, 0, 0, ZoneId.of("Europe/Zurich"))
   val eventEndDate: ZonedDateTime =
       ZonedDateTime.of(2026, 10, 18, 18, 0, 0, 0, ZoneId.of("Europe/Zurich"))
 
-  val event =
-      Event(
-          eventId = PREVIEW_EVENT_ID,
-          ownerId = "user",
-          title = "Fête de l'Asso 2026",
-          members = listOf(User(uid = "user", name = "Sami K.")),
-          startDate = eventStartDate,
-          endDate = eventEndDate,
-          location = "Parc de Vidy, Lausanne",
-          tasks =
-              List(
-                  size = 10,
-                  init = { index ->
-                    Task(
-                        taskId = index.toString(),
-                        eventId = PREVIEW_EVENT_ID,
-                        title = "Task $index",
-                        ownerId = "user",
-                        completed = index % 2 == 0,
-                    )
-                  },
-              ),
-      )
+  return Event(
+      eventId = PREVIEW_EVENT_ID,
+      ownerId = "user",
+      title = "Fête de l'Asso 2026",
+      members = listOf(User(uid = "user", name = "Sami K.")),
+      startDate = eventStartDate,
+      endDate = eventEndDate,
+      location = "Parc de Vidy, Lausanne",
+      description =
+          "Our yearly association party by the lake. Three days of concerts, food stands and " +
+              "games. Volunteers help with setup, bar shifts and cleanup.",
+      tasks =
+          List(
+              size = 10,
+              init = { index ->
+                Task(
+                    taskId = index.toString(),
+                    eventId = PREVIEW_EVENT_ID,
+                    title = "Task $index",
+                    ownerId = "user",
+                    completed = index % 2 == 0,
+                )
+              },
+          ),
+  )
+}
 
+@Preview
+@Composable
+internal fun EventDetailsScreenPreview() {
   AppTheme {
     EventDetailsContent(
-        state = EventDetailsUIState(event = event),
+        state = EventDetailsUIState(event = previewEvent()),
+        actions = EventDetailsActions(onBack = {}, onTasksButtonClicked = {}),
+    )
+  }
+}
+
+@Preview
+@Composable
+internal fun ClosedEventPreview() {
+  AppTheme {
+    EventDetailsContent(
+        state = EventDetailsUIState(event = previewEvent().copy(closed = true)),
         actions = EventDetailsActions(onBack = {}, onTasksButtonClicked = {}),
     )
   }
