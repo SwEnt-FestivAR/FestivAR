@@ -1,3 +1,4 @@
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
@@ -84,10 +85,7 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, dataRepository:
       route = "${AppScreens.EditEvent.name}/{eventId}",
       arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
   ) { backStackEntry ->
-    val eventId =
-        requireNotNull(backStackEntry.arguments?.getString("eventId")) {
-          "eventId argument is required"
-        }
+    val eventId = backStackEntry.arguments?.getString("eventId") ?: ""
     require(eventId.isNotBlank()) { "eventId must not be blank" }
     val currentUserId: () -> String = { dataRepository.authRepository.currentUser?.uid.orEmpty() }
     val navigator = EditEventNavigator(navController, eventId)
