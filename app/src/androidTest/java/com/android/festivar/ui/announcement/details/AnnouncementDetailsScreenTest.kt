@@ -4,8 +4,11 @@ package com.android.festivar.ui.announcement.details
 import android.content.ActivityNotFoundException
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.UriHandler
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -249,7 +252,8 @@ class AnnouncementDetailsScreenTest {
                   when (openAttempts++) {
                     0 -> throw ActivityNotFoundException("No application can open $uri")
                     1 -> throw IllegalArgumentException("Invalid URI: $uri")
-                    else -> throw SecurityException("Cannot open $uri")
+                    2 -> throw SecurityException("Cannot open $uri")
+                    else -> Unit
                   }
                 }
               }
@@ -261,14 +265,77 @@ class AnnouncementDetailsScreenTest {
     composeTestRule.waitUntil(5_000) {
       composeTestRule.onAllNodesWithTag(Tags.TITLE).fetchSemanticsNodes().isNotEmpty()
     }
+    composeTestRule.onNodeWithTag(Tags.BACK_BUTTON).performClick()
     repeat(3) {
       composeTestRule
           .onNodeWithTag(Tags.link(announcement.links.single()))
           .performScrollTo()
           .performClick()
     }
-    assertEquals(3, openAttempts)
+    composeTestRule
+        .onNodeWithTag(Tags.link(announcement.links.single()))
+        .performScrollTo()
+        .performClick()
+    assertEquals(4, openAttempts)
     composeTestRule.onNodeWithTag(Tags.link(announcement.links.single())).assertIsDisplayed()
+  }
+
+  @Test
+  fun screenUsesModifierAndBackCallback() {
+    var backCount = 0
+    val viewModel =
+        AnnouncementDetailsViewModel(
+            eventId = "event-1",
+            announcementId = announcement.announcementId,
+            dataRepository =
+                DataRepositoryLocal(
+                    authRepository = FakeAuthRepository(),
+                    eventsRepository = events,
+                    usersRepository = UsersRepositoryLocal(emptyList()),
+                ),
+        )
+    composeTestRule.setContent {
+      AppTheme {
+        AnnouncementDetailsScreen(
+            modifier = Modifier.testTag("announcementDetailsRoot"),
+            viewModel = viewModel,
+            onBack = { backCount++ },
+        )
+      }
+    }
+
+    composeTestRule.waitUntil(5_000) {
+      composeTestRule.onAllNodesWithTag(Tags.TITLE).fetchSemanticsNodes().isNotEmpty()
+    }
+    composeTestRule.onNodeWithTag("announcementDetailsRoot").assertIsDisplayed()
+    composeTestRule.onNodeWithTag(Tags.BACK_BUTTON).performClick()
+    assertEquals(1, backCount)
+  }
+
+  @Test
+  fun defaultContentActionsAreNoOps() {
+    val uiState =
+        mutableStateOf(AnnouncementDetailsUiState(announcement = announcement, isLoading = false))
+    composeTestRule.setContent { AppTheme { AnnouncementDetailsContent(state = uiState.value) } }
+
+    composeTestRule.onNodeWithTag(Tags.BACK_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(Tags.PIN_BUTTON).performClick()
+    composeTestRule
+        .onNodeWithTag(Tags.link(announcement.links.single()))
+        .performScrollTo()
+        .performClick()
+    composeTestRule
+        .onNodeWithText(
+            composeTestRule.activity.getString(R.string.announcement_details_pin_to_top)
+        )
+        .assertIsDisplayed()
+
+    composeTestRule.runOnIdle {
+      uiState.value =
+          AnnouncementDetailsUiState(errorMsg = R.string.announcement_details_load_failed)
+    }
+    composeTestRule.onNodeWithTag(Tags.RETRY).performClick()
+    composeTestRule.onNodeWithTag(Tags.ERROR).assertIsDisplayed()
   }
 
   @Test
