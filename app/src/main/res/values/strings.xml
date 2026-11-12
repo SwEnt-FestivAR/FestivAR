@@ -9,8 +9,16 @@
     <string name="action_cancel">Cancel</string>
     <string name="action_retry">Retry</string>
     <string name="action_open_settings">Open settings</string>
+    <string name="action_dismiss">Dismiss</string>
+    <string name="action_continue">Continue</string>
+    <string name="action_continue_anyway">Continue anyway</string>
     <!-- User list -->
     <string name="user_list_uncategorized">Unknown</string>
+    <plurals name="people_count">
+        <item quantity="one">%d person</item>
+        <item quantity="other">%d people</item>
+    </plurals>
+    <string name="people_more">+%d</string>
     <!-- Samples shown in the previews of the shared components -->
     <string name="notice_snackbar_sample_message">Error in the launched process.</string>
     <string name="info_note_sample_message">Microphone is off for FestivAR. Turn it on in Settings to record a note.</string>
@@ -69,4 +77,13 @@
         <item quantity="one">%d member</item>
         <item quantity="other">%d members</item>
     </plurals>
+    <!-- Bottom navigation bar -->
+    <string name="nav_events">Events</string>
+    <string name="nav_my_tasks">My tasks</string>
+    <string name="nav_profile">Profile</string>
+    <string name="nav_event_details">Event details</string>
+    <string name="nav_event_tasks">Event tasks</string>
+    <string name="nav_task_details">Task details</string>
+    <!-- The days of an event, then its location, e.g. "Fri 16 Oct · Parc de Vidy" -->
+    <string name="event_dates_location" translatable="false">%1$s · %2$s</string>
 </resources>

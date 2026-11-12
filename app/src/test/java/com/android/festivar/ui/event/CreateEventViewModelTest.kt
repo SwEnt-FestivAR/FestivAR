@@ -3,6 +3,7 @@ package com.android.festivar.ui.event
 // Co-authored-by: Copilot App
 
 import com.android.festivar.R
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
@@ -15,6 +16,7 @@ import com.android.festivar.ui.components.FieldError
 import com.android.festivar.ui.components.START_OF_DAY
 import com.android.festivar.ui.event.create.CreateEventUIState
 import com.android.festivar.ui.event.create.CreateEventViewModel
+import io.mockk.mockk
 import java.time.LocalDate
 import java.time.LocalTime
 import kotlin.time.Duration.Companion.milliseconds
@@ -35,6 +37,7 @@ import org.junit.Test
 class CreateEventViewModelTest {
   private lateinit var eventsRepository: EventsRepositoryLocal
   private lateinit var usersRepository: UsersRepositoryLocal
+  private lateinit var dataRepository: DataRepositoryLocal
   private val creator = User(uid = "creator-123", name = "Alice", surname = "AliceInWonderland")
 
   private lateinit var viewModel: CreateEventViewModel
@@ -48,7 +51,13 @@ class CreateEventViewModelTest {
   fun setUp() {
     eventsRepository = EventsRepositoryLocal()
     usersRepository = UsersRepositoryLocal(listOf(creator))
-    viewModel = CreateEventViewModel(eventsRepository, usersRepository, creator.uid)
+    dataRepository =
+        DataRepositoryLocal(
+            authRepository = mockk(),
+            eventsRepository = eventsRepository,
+            usersRepository = usersRepository,
+        )
+    viewModel = CreateEventViewModel(dataRepository, creator.uid)
   }
 
   /** Red if updating every event field does not persist the entered values. */
@@ -134,6 +143,55 @@ class CreateEventViewModelTest {
     assertFalse(viewModel.uiState.value.canCreate)
   }
 
+  /** Red if the ViewModel misses a form field or asks before the user enters anything. */
+  @Test
+  fun needsDiscardConfirmationTracksEnteredDetails() {
+    assertFalse(viewModel.needsDiscardConfirmation)
+    viewModel.showPicker(DateTimeField.START_DATE)
+    assertFalse(viewModel.needsDiscardConfirmation)
+
+    val edits: List<(CreateEventViewModel) -> Unit> =
+        listOf(
+            { it.updateName("Festival") },
+            { it.updateStartDate(startDate) },
+            { it.updateEndDate(endDate) },
+            { it.updateStartTime(startTime) },
+            { it.updateEndTime(endTime) },
+            { it.updateVenue("Main square") },
+            { it.updateNotes("Bring equipment") },
+        )
+    edits.forEach { edit ->
+      val editedViewModel = CreateEventViewModel(dataRepository, creator.uid)
+      edit(editedViewModel)
+      assertTrue(editedViewModel.needsDiscardConfirmation)
+    }
+  }
+
+  /** Red if discard confirmation does not preserve, cancel, or discard the current draft. */
+  @Test
+  fun discardRequestCanBeCancelledOrConfirmed() {
+    val untouchedViewModel = CreateEventViewModel(dataRepository, creator.uid)
+    untouchedViewModel.requestDiscard()
+    assertTrue(untouchedViewModel.uiState.value.isDiscarded)
+    assertFalse(untouchedViewModel.uiState.value.showDiscardConfirmation)
+
+    viewModel.updateName("Festival")
+
+    viewModel.requestDiscard()
+    assertTrue(viewModel.uiState.value.showDiscardConfirmation)
+    assertFalse(viewModel.uiState.value.isDiscarded)
+
+    viewModel.cancelDiscard()
+    assertFalse(viewModel.uiState.value.showDiscardConfirmation)
+    assertFalse(viewModel.uiState.value.isDiscarded)
+    assertEquals("Festival", viewModel.uiState.value.name)
+
+    viewModel.requestDiscard()
+    viewModel.confirmDiscard()
+    assertFalse(viewModel.uiState.value.showDiscardConfirmation)
+    assertTrue(viewModel.uiState.value.isDiscarded)
+  }
+
   /** Red if submitting an invalid form changes the saving state or writes an event. */
   @Test
   fun createEventDoesNothingWhenFormIsInvalid() = runBlocking {
@@ -164,7 +222,7 @@ class CreateEventViewModelTest {
   @Test
   fun toEventThrowsWhenFormIsInvalid() {
     assertThrows(IllegalArgumentException::class.java) {
-      viewModel.uiState.value.toEvent("event-123", emptyList())
+      viewModel.uiState.value.toEvent("event-123", creator)
     }
   }
 
@@ -172,14 +230,14 @@ class CreateEventViewModelTest {
   @Test
   fun toEventCreatesEventFromFields() {
     fillAllFields()
-    val members = listOf(creator)
 
-    val event = viewModel.uiState.value.toEvent("event-123", members)
+    val event = viewModel.uiState.value.toEvent("event-123", creator)
 
     assertEquals("event-123", event.eventId)
+    assertEquals(creator.uid, event.ownerId)
     assertEquals("Summer festival", event.title)
     assertEquals("Bring the stage equipment", event.description)
-    assertEquals(members, event.members)
+    assertEquals(listOf(creator), event.members)
     assertEquals(viewModel.uiState.value.startDateTime, event.startDate)
     assertEquals(viewModel.uiState.value.endDateTime, event.endDate)
     assertEquals("Main square", event.location)
@@ -311,7 +369,13 @@ class CreateEventViewModelTest {
             localRepository.addEvent(event)
           }
         }
-    val gatedViewModel = CreateEventViewModel(gatedRepository, usersRepository, creator.uid)
+    dataRepository =
+        DataRepositoryLocal(
+            mockk(),
+            eventsRepository = gatedRepository,
+            usersRepository = usersRepository,
+        )
+    val gatedViewModel = CreateEventViewModel(dataRepository, creator.uid)
     gatedViewModel.updateName("Summer festival")
     gatedViewModel.updateStartDate(startDate)
     gatedViewModel.updateEndDate(endDate)
@@ -338,6 +402,7 @@ class CreateEventViewModelTest {
     viewModel.createEvent()
 
     val event = waitForEvents(eventsRepository).single()
+    assertEquals(creator.uid, event.ownerId)
     assertEquals(listOf(creator), event.members)
     assertTrue(usersRepository.getUser(creator.uid).joinedEvents.contains(event.eventId))
   }
@@ -351,7 +416,13 @@ class CreateEventViewModelTest {
             error("offline")
           }
         }
-    val failingViewModel = CreateEventViewModel(failingRepository, usersRepository, creator.uid)
+    dataRepository =
+        DataRepositoryLocal(
+            mockk(),
+            eventsRepository = failingRepository,
+            usersRepository = usersRepository,
+        )
+    val failingViewModel = CreateEventViewModel(dataRepository, creator.uid)
     viewModel = failingViewModel
 
     fillAllFields()
@@ -375,7 +446,7 @@ class CreateEventViewModelTest {
   /** Red if a missing user ID does not fail before writing an event. */
   @Test
   fun createEventWithBlankUserIdShowsAnErrorAndDoesNotAddAnEvent() = runBlocking {
-    viewModel = CreateEventViewModel(eventsRepository, usersRepository, userId = "")
+    viewModel = CreateEventViewModel(dataRepository, userId = "")
     fillRequiredFields()
 
     viewModel.createEvent()
@@ -400,7 +471,13 @@ class CreateEventViewModelTest {
             error("offline")
           }
         }
-    val failingViewModel = CreateEventViewModel(failingRepository, usersRepository, creator.uid)
+    dataRepository =
+        DataRepositoryLocal(
+            mockk(),
+            eventsRepository = failingRepository,
+            usersRepository = usersRepository,
+        )
+    val failingViewModel = CreateEventViewModel(dataRepository, creator.uid)
     failingViewModel.updateName("Summer festival")
     failingViewModel.updateStartDate(startDate)
     failingViewModel.updateEndDate(endDate)
@@ -512,7 +589,13 @@ class CreateEventViewModelTest {
       eventsRepository: EventsRepository,
       usersRepository: UsersRepository,
   ) {
-    viewModel = CreateEventViewModel(eventsRepository, usersRepository, creator.uid)
+    dataRepository =
+        DataRepositoryLocal(
+            mockk(),
+            eventsRepository = eventsRepository,
+            usersRepository = usersRepository,
+        )
+    viewModel = CreateEventViewModel(dataRepository, creator.uid)
     fillRequiredFields()
     viewModel.createEvent()
   }

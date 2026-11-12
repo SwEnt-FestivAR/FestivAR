@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.authentication.forgotpassword
 
 import androidx.compose.foundation.background
@@ -31,8 +32,8 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.R
+import com.android.festivar.ui.components.CREDENTIAL_MAX_LENGTH
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.theme.AppTheme
 
@@ -44,12 +45,19 @@ internal object ForgotPasswordScreenTestTags {
   const val ERROR_MESSAGE = "password_reset_error_message"
 }
 
-/** Lets users request a password reset email and return to login. */
+/**
+ * Lets users request a password reset email and return to login.
+ *
+ * @param onReturnToLogin Called when the user taps the return to login button.
+ * @param modifier The [Modifier] applied to the screen.
+ * @param viewModel The [ForgotPasswordViewModel] holding the screen state. The caller must create
+ *   it with a [com.android.festivar.model.datarepository.DataRepository].
+ */
 @Composable
 fun ForgotPasswordScreen(
     onReturnToLogin: () -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: ForgotPasswordViewModel = viewModel(),
+    viewModel: ForgotPasswordViewModel,
 ) {
   val uiState by viewModel.uiState.collectAsState()
 
@@ -91,6 +99,7 @@ private fun ForgotPasswordScreenContent(
           value = uiState.email,
           onValueChange = onEmailChange,
           label = stringResource(R.string.signup_email),
+          maxLength = CREDENTIAL_MAX_LENGTH,
           keyboardOptions =
               KeyboardOptions(
                   capitalization = KeyboardCapitalization.None,

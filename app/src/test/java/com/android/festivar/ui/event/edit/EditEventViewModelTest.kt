@@ -1,4 +1,4 @@
-package com.android.festivar.ui.event
+package com.android.festivar.ui.event.edit
 
 // Co-authored-by: Copilot App
 
@@ -359,7 +359,10 @@ class EditEventViewModelTest {
         )
     eventsRepository.editEvent(
         initialEvent.eventId,
-        initialEvent.copy(members = listOf(joinedMember), tasks = listOf(addedTask)),
+        initialEvent.copy(
+            members = listOf(User("member-1"), joinedMember),
+            tasks = listOf(addedTask),
+        ),
     )
 
     viewModel.saveChanges()
@@ -367,7 +370,7 @@ class EditEventViewModelTest {
 
     val saved = eventsRepository.getEvent(initialEvent.eventId)
     assertEquals("Updated festival", saved.title)
-    assertEquals(listOf(joinedMember), saved.members)
+    assertEquals(listOf(User("member-1"), joinedMember), saved.members)
     assertEquals(listOf(addedTask), saved.tasks)
   }
 
@@ -586,6 +589,7 @@ class EditEventViewModelTest {
     val start = ZonedDateTime.now(ZoneId.of("Europe/Zurich")).plusDays(2)
     return Event(
         eventId = "event-1",
+        ownerId = "member-1",
         title = "Festival",
         description = "Bring supplies",
         members = listOf(User(uid = "member-1")),

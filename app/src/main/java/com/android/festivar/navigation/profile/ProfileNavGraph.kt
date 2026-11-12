@@ -28,7 +28,7 @@ fun NavGraphBuilder.profileGraph(navController: NavHostController, dataRepositor
         profileViewModel =
             viewModel {
               ProfileViewModel(
-                  authRepository = dataRepository.authRepository,
+                  dataRepository = dataRepository,
                   uId = uid,
               )
             },

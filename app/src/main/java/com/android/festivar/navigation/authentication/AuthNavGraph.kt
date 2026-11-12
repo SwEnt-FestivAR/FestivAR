@@ -24,7 +24,7 @@ fun NavGraphBuilder.authGraph(
   composable(route = AppScreens.SignUp.name) {
     val navigator = SignUpNavigator(navController)
     SignUpScreen(
-        viewModel = viewModel { SignUpViewModel(dataRepository.authRepository) },
+        viewModel = viewModel { SignUpViewModel(dataRepository) },
         onSignInClick = navigator.onSignInClick,
         onBackClick = navigator.onBackClick,
         onSignUpSuccess = navigator.onSignUpSuccess,
@@ -34,7 +34,7 @@ fun NavGraphBuilder.authGraph(
     val navigator = LoginNavigator(navController)
     LoginScreen(
         credentialManager = credentialManager,
-        viewModel = viewModel { LoginViewModel(dataRepository.authRepository) },
+        viewModel = viewModel { LoginViewModel(dataRepository) },
         onSignUpClick = navigator.onSignUpClick,
         onForgotPasswordClick = navigator.onForgotPasswordClick,
         onSignedIn = navigator.onSignedIn,
@@ -43,7 +43,7 @@ fun NavGraphBuilder.authGraph(
   composable(route = AppScreens.ForgotPassword.name) {
     val navigator = LoginNavigator(navController)
     ForgotPasswordScreen(
-        viewModel = viewModel { ForgotPasswordViewModel(dataRepository.authRepository) },
+        viewModel = viewModel { ForgotPasswordViewModel(dataRepository) },
         onReturnToLogin = navigator.onReturnToLogin,
     )
   }

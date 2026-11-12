@@ -16,7 +16,6 @@ import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
-import com.android.festivar.model.event.EventsRepositoryProvider
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.navigation.announcement.announcementGraph
 import com.android.festivar.ui.announcement.create.CreateAnnouncementScreenTestTags as Tags
@@ -26,10 +25,8 @@ import io.mockk.every
 import io.mockk.mockk
 import java.time.ZonedDateTime
 import kotlinx.coroutines.runBlocking
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
-import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
@@ -53,6 +50,7 @@ class AnnouncementNavGraphTest {
           listOf(
               Event(
                   eventId = EVENT_ID,
+                  ownerId = "owner",
                   title = "Balelec",
                   startDate = ZonedDateTime.now().plusDays(1),
                   endDate = ZonedDateTime.now().plusDays(2),
@@ -62,16 +60,6 @@ class AnnouncementNavGraphTest {
   private val signedInUser = mockk<FirebaseUser> { every { uid } returns USER_ID }
   private lateinit var navController: NavHostController
 
-  @Before
-  fun setUp() {
-    EventsRepositoryProvider.repository = repository
-  }
-
-  @After
-  fun tearDown() {
-    EventsRepositoryProvider.reset()
-  }
-
   /** Shows the announcement graph behind a previous screen, as [user]; null means signed out. */
   private fun showTheGraphAs(user: FirebaseUser?) {
     composeTestRule.setContent {
@@ -80,7 +68,10 @@ class AnnouncementNavGraphTest {
         composable(PREVIOUS_SCREEN) { Text(PREVIOUS_SCREEN) }
         announcementGraph(
             navController,
-            DataRepositoryLocal(FakeAuthRepository(currentUser = user)),
+            DataRepositoryLocal(
+                FakeAuthRepository(currentUser = user),
+                eventsRepository = repository,
+            ),
         )
       }
     }

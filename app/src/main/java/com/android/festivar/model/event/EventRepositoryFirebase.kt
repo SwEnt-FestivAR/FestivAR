@@ -15,7 +15,7 @@ import kotlinx.coroutines.tasks.await
 
 private const val EVENT_COLLECTION_PATH = "events"
 private const val TAG = "EventRepositoryFirebase"
-private const val ANNOUNCEMENTS_NOT_STORED = "Announcements are not stored in Firestore yet."
+private const val ANNOUNCEMENTS_FIELD = "announcements"
 
 class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsRepository {
 
@@ -99,27 +99,83 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
         .await()
   }
 
-  // Announcements are not stored in Firestore yet: going through editEvent would silently drop
-  // them, so these throw instead.
-
-  /** @throws UnsupportedOperationException always, until announcements are stored in Firestore. */
   override suspend fun addAnnouncement(eventId: String, announcement: Announcement) {
-    throw UnsupportedOperationException(ANNOUNCEMENTS_NOT_STORED)
+    updateAnnouncements(eventId) { it.withAnnouncement(announcement) }
   }
 
-  /** @throws UnsupportedOperationException always, until announcements are stored in Firestore. */
   override suspend fun editAnnouncement(eventId: String, announcement: Announcement) {
-    throw UnsupportedOperationException(ANNOUNCEMENTS_NOT_STORED)
+    updateAnnouncements(eventId) { it.withEditedAnnouncement(announcement) }
   }
 
-  /** @throws UnsupportedOperationException always, until announcements are stored in Firestore. */
+  override suspend fun setAnnouncementPinned(
+      eventId: String,
+      announcementId: String,
+      pinned: Boolean,
+  ): Announcement {
+    val document = eventCollection.document(eventId)
+    return db.runTransaction { transaction ->
+          val snapshot = transaction.get(document)
+          if (!snapshot.exists()) {
+            throw NoSuchElementException("Event '$eventId' does not exist.")
+          }
+          val announcements = readAnnouncements(snapshot)
+          val current =
+              announcements.firstOrNull { it.announcementId == announcementId }
+                  ?: throw IllegalArgumentException("This announcement is not in the event.")
+          val updated = current.copy(pinned = pinned)
+          transaction.update(
+              document,
+              ANNOUNCEMENTS_FIELD,
+              announcements.withEditedAnnouncement(updated).map { it.toMap() },
+          )
+          updated
+        }
+        .await()
+  }
+
   override suspend fun deleteAnnouncement(eventId: String, announcementId: String) {
-    throw UnsupportedOperationException(ANNOUNCEMENTS_NOT_STORED)
+    updateAnnouncements(eventId) { it.withoutAnnouncement(announcementId) }
+  }
+
+  /** In one transaction, so that two concurrent changes cannot overwrite each other. */
+  private suspend fun updateAnnouncements(
+      eventId: String,
+      change: (List<Announcement>) -> List<Announcement>,
+  ) {
+    val document = eventCollection.document(eventId)
+    db.runTransaction { transaction ->
+          val snapshot = transaction.get(document)
+          if (!snapshot.exists()) {
+            throw NoSuchElementException("Event '$eventId' does not exist.")
+          }
+          val announcements = change(readAnnouncements(snapshot))
+          transaction.update(document, ANNOUNCEMENTS_FIELD, announcements.map { it.toMap() })
+        }
+        .await()
+  }
+
+  /**
+   * An event saved before announcements were stored has none. Any other non-list value is refused,
+   * so that a transaction never overwrites data it could not read.
+   */
+  private fun readAnnouncements(document: DocumentSnapshot): List<Announcement> {
+    val invalid = "Invalid announcement data for event ${document.id}"
+    val stored = document.get(ANNOUNCEMENTS_FIELD) ?: return emptyList()
+    val list = stored as? List<*> ?: throw IllegalArgumentException("$invalid.")
+    return list.map { value ->
+      val map = value as? Map<*, *> ?: throw IllegalArgumentException("$invalid.")
+      try {
+        Announcement.fromMap(map)
+      } catch (e: IllegalArgumentException) {
+        throw IllegalArgumentException("$invalid: ${e.message}", e)
+      }
+    }
   }
 
   private fun toFirestoreData(event: Event): Map<String, Any?> {
     return mapOf(
         "eventId" to event.eventId,
+        "ownerId" to event.ownerId,
         "title" to event.title,
         "description" to event.description,
         "members" to event.members.map { it.uid },
@@ -130,12 +186,16 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
         "closed" to event.closed,
         // Stored so a join can be a single query instead of a download of the whole collection
         "joinCode" to joinCodeOf(event),
+        ANNOUNCEMENTS_FIELD to event.announcements.map { it.toMap() },
     )
   }
 
   private suspend fun documentToEvent(document: DocumentSnapshot): Event {
     check(document.exists()) { "Event '${document.id}' does not exist." }
 
+    val ownerId =
+        document.getString("ownerId")
+            ?: throw IllegalArgumentException("Event '${document.id}' has no owner")
     val tasks =
         (document.get("tasks") as? List<*>).orEmpty().map { value ->
           val taskId =
@@ -144,14 +204,15 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
         }
 
     val members =
-        (document.get("members") as? List<*>).orEmpty().map { value ->
+        (document.get("members") as? List<*>)?.map { value ->
           val userId =
               value as? String ?: throw IllegalArgumentException("Invalid member data: $value")
           userRepo.getUser(userId)
-        }
+        } ?: listOf(userRepo.getUser(ownerId))
 
     return Event(
         eventId = document.getString("eventId") ?: document.id,
+        ownerId = ownerId,
         title =
             document.getString("title")
                 ?: throw IllegalArgumentException("Event '${document.id}' has missing title"),
@@ -162,6 +223,7 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
         location = document.getString("location") ?: "",
         tasks = tasks,
         closed = document.getBoolean("closed") ?: false,
+        announcements = readAnnouncements(document),
     )
   }
 }

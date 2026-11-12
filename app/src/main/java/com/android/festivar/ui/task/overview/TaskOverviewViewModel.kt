@@ -4,9 +4,8 @@ package com.android.festivar.ui.task.overview
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.task.Task
-import com.android.festivar.model.task.TasksRepository
-import com.android.festivar.model.task.TasksRepositoryProvider
 import java.time.Clock
 import java.time.Duration
 import java.time.LocalDate
@@ -102,13 +101,14 @@ data class TaskOverviewUiState(
  *
  * @param userId the signed-in user, whose tasks MINE holds; the nav graph sends a signed-out user
  *   to the login before building this ViewModel.
- * @param repository where the event's tasks are read: the app's one unless a test passes its own.
+ * @param dataRepository the app's data; the event's tasks are read from its
+ *   [DataRepository.tasksRepository], and nothing is written.
  * @param clock decides what "now" is, so the NOW group can be tested.
  */
 class TaskOverviewViewModel(
     private val eventId: String,
     private val userId: String,
-    private val repository: TasksRepository = TasksRepositoryProvider.repository,
+    private val dataRepository: DataRepository,
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
   private val _uiState = MutableStateFlow(TaskOverviewUiState())
@@ -116,6 +116,7 @@ class TaskOverviewViewModel(
 
   private var tasks: List<Task> = emptyList()
   private var load: Job? = null
+  private val deletingTaskIds = mutableSetOf<String>()
 
   /** Pinged after every load, so a waiting regroup recomputes its next boundary. */
   private val tasksChanged = Channel<Unit>(Channel.CONFLATED)
@@ -139,7 +140,7 @@ class TaskOverviewViewModel(
       _uiState.update { it.copy(isLoading = true) }
       try {
         tasks =
-            repository
+            dataRepository.tasksRepository
                 .getAllTasks(eventId)
                 .sortedWith(compareBy(nullsLast()) { it: Task -> it.startTime }.thenBy { it.title })
         _uiState.update { derive(it.copy(isLoading = false, errorMsg = null)) }
@@ -165,6 +166,25 @@ class TaskOverviewViewModel(
   /** Replaces the search text; a blank query shows every task of the current chip. */
   fun setQuery(query: String) {
     _uiState.update { derive(it.copy(query = query)) }
+  }
+
+  /** Deletes [taskId] and removes it from the overview only after the repository succeeds. */
+  fun deleteTask(taskId: String) {
+    if (!deletingTaskIds.add(taskId)) return
+    viewModelScope.launch {
+      try {
+        dataRepository.deleteTask(taskId)
+        tasks = tasks.filterNot { it.taskId == taskId }
+        _uiState.update { derive(it.copy(errorMsg = null)) }
+        tasksChanged.trySend(Unit)
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        _uiState.update { it.copy(errorMsg = e.message ?: e.toString()) }
+      } finally {
+        deletingTaskIds.remove(taskId)
+      }
+    }
   }
 
   /**

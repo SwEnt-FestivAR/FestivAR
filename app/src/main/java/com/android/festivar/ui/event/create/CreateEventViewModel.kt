@@ -7,11 +7,9 @@ import android.util.Log
 import androidx.annotation.StringRes
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
+import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.event.Event
-import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.user.User
-import com.android.festivar.model.user.UsersRepository
-import com.android.festivar.model.user.UsersRepositoryProvider
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.DateTimeRange
 import com.android.festivar.ui.components.FieldError
@@ -27,10 +25,8 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /**
  * UI state of the create event form.
@@ -52,6 +48,8 @@ data class CreateEventUIState(
     val openPicker: DateTimeField? = null,
     val isSaving: Boolean = false,
     val createdEventId: String? = null,
+    val showDiscardConfirmation: Boolean = false,
+    val isDiscarded: Boolean = false,
     val zone: ZoneId = ZoneId.systemDefault(),
     @StringRes val errorMsg: Int? = null,
 ) {
@@ -89,13 +87,14 @@ data class CreateEventUIState(
   val canCreate: Boolean
     get() = isValid && !isSaving && createdEventId == null
 
-  fun toEvent(eventId: String, membersList: List<User>): Event {
+  fun toEvent(eventId: String, owner: User): Event {
     require(isValid) { "The form is not valid." }
     return Event(
         eventId = eventId,
+        ownerId = owner.uid,
         title = name,
         description = notes,
-        members = membersList,
+        members = listOf(owner),
         startDate = startDateTime!!,
         endDate = endDateTime!!,
         location = venue,
@@ -109,16 +108,21 @@ private const val TAG = "CreateEventViewModel"
  * Holds the create event form, validates it and saves the event with the signed-in user as its
  * first member.
  *
- * @property eventsRepository where the event is written.
- * @property usersRepository where the creator's profile is read and its joined events updated.
+ * @property dataRepository The general repository handling the interactions/synchronization/updates
+ *   between the different repositories. It coordinates the creation of the event and the update of
+ *   its members.
  * @property userId the uid of the signed-in user, blank when nobody is.
  */
 class CreateEventViewModel(
-    private val eventsRepository: EventsRepository,
-    private val usersRepository: UsersRepository = UsersRepositoryProvider.repository,
+    private val dataRepository: DataRepository,
     private val userId: String = "",
 ) : EventFormViewModel<CreateEventUIState>(CreateEventUIState()) {
   val uiState: StateFlow<CreateEventUIState> = formState
+
+  /** Whether leaving the form would discard any entered event details. */
+  val needsDiscardConfirmation: Boolean
+    get() =
+        currentState.createdEventId == null && !currentState.isSaving && hasChanges(currentState)
 
   override fun clearError(state: CreateEventUIState) = state.copy(errorMsg = null)
 
@@ -148,6 +152,39 @@ class CreateEventViewModel(
 
   override fun currentPicker(state: CreateEventUIState) = state.openPicker
 
+  /** Handles system or top-bar back requests, asking before losing entered details. */
+  fun requestDiscard() {
+    updateState { state ->
+      when {
+        state.isSaving || state.createdEventId != null || state.isDiscarded -> state
+        hasChanges(state) -> state.copy(showDiscardConfirmation = true)
+        else -> state.copy(isDiscarded = true)
+      }
+    }
+  }
+
+  /** Closes the discard dialog and keeps the entered details. */
+  fun cancelDiscard() {
+    updateState { it.copy(showDiscardConfirmation = false) }
+  }
+
+  /** Confirms that the user wants to leave and discard the entered details. */
+  fun confirmDiscard() {
+    updateState {
+      if (it.isSaving || it.createdEventId != null) it.copy(showDiscardConfirmation = false)
+      else it.copy(showDiscardConfirmation = false, isDiscarded = true)
+    }
+  }
+
+  private fun hasChanges(state: CreateEventUIState): Boolean =
+      state.name.isNotEmpty() ||
+          state.startDate != null ||
+          state.endDate != null ||
+          state.startTime != null ||
+          state.endTime != null ||
+          state.venue.isNotEmpty() ||
+          state.notes.isNotEmpty()
+
   /**
    * Saves the form as a new event with the creator as its first member. Ignored while a save runs
    * or once one succeeded; a failure leaves the form as it is and sets
@@ -172,17 +209,10 @@ class CreateEventViewModel(
 
   private suspend fun save() {
     check(userId.isNotBlank()) { "User not signed in" }
-    val creator = usersRepository.getUser(userId)
+    val creator = dataRepository.usersRepository.getUser(userId)
 
-    val newEvent = currentState.toEvent(eventsRepository.getNewUid(), listOf(creator))
-    eventsRepository.addEvent(newEvent)
-    try {
-      usersRepository.editUser(creator.uid, creator.addJoinedEvent(newEvent.eventId))
-    } catch (e: Exception) {
-      // Do not leave an event that the creator's profile does not know about
-      withContext(NonCancellable) { runCatching { eventsRepository.deleteEvent(newEvent.eventId) } }
-      throw e
-    }
+    val newEvent = currentState.toEvent(dataRepository.eventsRepository.getNewUid(), creator)
+    dataRepository.createEvent(newEvent)
     updateState { it.copy(isSaving = false, createdEventId = newEvent.eventId) }
   }
 }

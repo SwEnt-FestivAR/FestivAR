@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.authentication.forgotpassword
 
 import androidx.compose.ui.test.assertIsDisplayed
@@ -11,6 +12,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
+import com.android.festivar.ui.components.CREDENTIAL_MAX_LENGTH
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -29,7 +32,7 @@ class ForgotPasswordScreenTest {
   @Before
   fun setUp() {
     authRepository = FakeAuthRepository()
-    viewModel = ForgotPasswordViewModel(authRepository)
+    viewModel = ForgotPasswordViewModel(DataRepositoryLocal(authRepository))
   }
 
   @Test
@@ -109,5 +112,20 @@ class ForgotPasswordScreenTest {
     composeTestRule.onNodeWithTag(ForgotPasswordScreenTestTags.RETURN_BUTTON).performClick()
 
     assertTrue(returnedToLogin)
+  }
+
+  // An email address can be up to 320 characters, far over the 80 default. Breaks if the field
+  // keeps the default or loses its limit.
+  @Test
+  fun emailTakesUpToTheCredentialLimit() {
+    composeTestRule.setContent { ForgotPasswordScreen(viewModel = viewModel, onReturnToLogin = {}) }
+
+    composeTestRule
+        .onNodeWithTag(ForgotPasswordScreenTestTags.EMAIL_INPUT)
+        .performTextInput("a".repeat(CREDENTIAL_MAX_LENGTH + 1))
+
+    composeTestRule.runOnIdle {
+      assertEquals(CREDENTIAL_MAX_LENGTH, viewModel.uiState.value.email.length)
+    }
   }
 }

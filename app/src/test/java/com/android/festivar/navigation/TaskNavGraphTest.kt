@@ -16,19 +16,27 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
+import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.datarepository.DataRepositoryLocal
+import com.android.festivar.model.event.Event
+import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.task.TasksRepositoryProvider
+import com.android.festivar.model.user.User
+import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.navigation.task.taskGraph
 import com.android.festivar.ui.task.create.CreateTaskScreenTestTags
+import com.android.festivar.ui.task.details.TaskDetailsScreenTestTags
+import com.android.festivar.ui.task.mytasks.MyTasksScreenTestTags
 import com.android.festivar.ui.theme.AppTheme
 import com.google.firebase.auth.FirebaseUser
 import io.mockk.every
 import io.mockk.mockk
+import java.time.ZonedDateTime
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -57,12 +65,37 @@ class TaskNavGraphTest {
     TasksRepositoryProvider.reset()
   }
 
+  // The create route saves through the data repository, which also adds the task to its event and
+  // to its owner: both must exist, and the task lands in the same [repository] as the edit route.
+  private fun dataRepository(
+      authRepository: AuthRepository,
+      ownerTasks: List<String> = emptyList(),
+  ): DataRepositoryLocal {
+    val owner = User("owner-1", joinedEvents = listOf("event-1"), tasksAssigned = ownerTasks)
+    val start = ZonedDateTime.now().plusDays(1)
+    val event =
+        Event(
+            eventId = "event-1",
+            ownerId = owner.uid,
+            title = "Summer festival",
+            members = listOf(owner),
+            startDate = start,
+            endDate = start.plusDays(2),
+        )
+    return DataRepositoryLocal(
+        authRepository = authRepository,
+        tasksRepository = repository,
+        eventsRepository = EventsRepositoryLocal(listOf(event)),
+        usersRepository = UsersRepositoryLocal(listOf(owner)),
+    )
+  }
+
   private fun openCreateTaskRoute(authRepository: AuthRepository) {
     composeTestRule.setContent {
       AppTheme {
         val navController = rememberNavController()
         NavHost(navController, startDestination = AppScreens.createTask("event-1")) {
-          taskGraph(navController, DataRepositoryLocal(authRepository))
+          taskGraph(navController, dataRepository(authRepository))
         }
       }
     }
@@ -101,14 +134,18 @@ class TaskNavGraphTest {
   }
 
   // The [route] is opened on top of a "start" screen, to see where leaving goes back to.
-  private fun openOnTopOfStart(route: String, authRepository: AuthRepository): NavHostController {
+  private fun openOnTopOfStart(
+      route: String,
+      authRepository: AuthRepository,
+      ownerTasks: List<String> = emptyList(),
+  ): NavHostController {
     lateinit var navController: NavHostController
     composeTestRule.setContent {
       AppTheme {
         navController = rememberNavController()
         NavHost(navController, startDestination = "start") {
           composable("start") {}
-          taskGraph(navController, DataRepositoryLocal(authRepository))
+          taskGraph(navController, dataRepository(authRepository, ownerTasks))
         }
       }
     }
@@ -186,5 +223,56 @@ class TaskNavGraphTest {
 
     assertEquals("start", navController.currentBackStackEntry?.destination?.route)
     assertEquals("Old title", runBlocking { repository.getTask("t1") }.title)
+  }
+
+  // Breaks if the My tasks route stops showing the signed-in user's tasks, if a tapped row stops
+  // opening the details of that task, or if the arrow or the system back of the details stops
+  // returning to My tasks.
+  @Test
+  fun myTasksRoute_aRowOpensItsTaskDetailsAndBackReturns() {
+    val owner = User("owner-1")
+    runBlocking {
+      repository.addTask(
+          Task(
+              "t1",
+              "event-1",
+              "Run power to stage",
+              assignees = listOf(owner),
+              ownerId = owner.uid,
+          )
+      )
+    }
+    // Relaxed: the task details read the user's name and email too
+    val user = mockk<FirebaseUser>(relaxed = true) { every { uid } returns owner.uid }
+    val navController =
+        openOnTopOfStart(
+            AppScreens.MyTasks.name,
+            mockk<AuthRepository> { every { currentUser } returns user },
+            ownerTasks = listOf("t1"),
+        )
+    val route = { navController.currentBackStackEntry?.destination?.route }
+    // Waits for the row, taps it, and checks the details of t1 opened
+    val openTheTask = {
+      composeTestRule.waitUntil(timeoutMillis = 5_000) {
+        composeTestRule
+            .onAllNodesWithTag(MyTasksScreenTestTags.row("t1"))
+            .fetchSemanticsNodes()
+            .isNotEmpty()
+      }
+      composeTestRule.onNodeWithTag(MyTasksScreenTestTags.row("t1")).performClick()
+      composeTestRule.waitForIdle()
+      assertEquals("${AppScreens.TaskDetails.name}/{taskId}", route())
+      assertEquals("t1", navController.currentBackStackEntry?.arguments?.getString("taskId"))
+    }
+
+    openTheTask()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.BACK_BUTTON).performClick()
+    composeTestRule.waitForIdle()
+    assertEquals(AppScreens.MyTasks.name, route())
+
+    openTheTask()
+    Espresso.pressBack()
+    composeTestRule.waitForIdle()
+    assertEquals(AppScreens.MyTasks.name, route())
   }
 }

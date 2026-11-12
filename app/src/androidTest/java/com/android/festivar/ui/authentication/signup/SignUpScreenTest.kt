@@ -1,5 +1,6 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.authentication.signup
 
 import androidx.compose.ui.test.assertIsDisplayed
@@ -14,6 +15,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
+import com.android.festivar.ui.components.CREDENTIAL_MAX_LENGTH
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -33,7 +36,7 @@ class SignUpScreenTest {
   @Before
   fun setUp() {
     authRepository = FakeAuthRepository()
-    viewModel = SignUpViewModel(authRepository)
+    viewModel = SignUpViewModel(DataRepositoryLocal(authRepository))
   }
 
   @Test
@@ -218,5 +221,21 @@ class SignUpScreenTest {
 
     composeTestRule.waitForIdle()
     assertTrue(callbackInvoked)
+  }
+
+  // An email or a generated password can be much longer than the 80 default: both fields take up
+  // to CREDENTIAL_MAX_LENGTH characters. Breaks if either keeps the default or loses its limit.
+  @Test
+  fun emailAndPasswordTakeUpToTheCredentialLimit() {
+    composeTestRule.setContent { SignUpScreen(viewModel = viewModel) }
+    val tooLong = "a".repeat(CREDENTIAL_MAX_LENGTH + 1)
+
+    composeTestRule.onNodeWithTag(SignUpScreenTestTags.EMAIL_FIELD).performTextInput(tooLong)
+    composeTestRule.onNodeWithTag(SignUpScreenTestTags.PASS_FIELD).performTextInput(tooLong)
+
+    composeTestRule.runOnIdle {
+      assertEquals(CREDENTIAL_MAX_LENGTH, viewModel.uiState.value.email.length)
+      assertEquals(CREDENTIAL_MAX_LENGTH, viewModel.uiState.value.password.length)
+    }
   }
 }

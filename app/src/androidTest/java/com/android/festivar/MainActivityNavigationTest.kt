@@ -3,6 +3,7 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar
 
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -13,7 +14,7 @@ import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
@@ -224,10 +225,13 @@ class MainActivityNavigationTest {
     // The join screen reads and writes the events in the Firestore emulator, whose rules need a
     // signed-in user, and the ViewModel reads the stored profile back by uid before it writes
     val start = ZonedDateTime.now().plusDays(1)
+    val owner = User(uid = "event-owner")
     val event =
         Event(
             eventId = "join-${UUID.randomUUID()}",
+            ownerId = owner.uid,
             title = "Joinable Event",
+            members = listOf(owner),
             startDate = start,
             endDate = start.plusHours(2),
         )
@@ -237,6 +241,7 @@ class MainActivityNavigationTest {
     val events = EventRepositoryFirebase(Firebase.firestore)
     runBlocking {
       Firebase.auth.signInAnonymously().await()
+      users.addUser(owner)
       users.addUser(storedUser)
       events.addEvent(event)
     }
@@ -269,6 +274,7 @@ class MainActivityNavigationTest {
     } finally {
       runBlocking {
         runCatching { events.deleteEvent(event.eventId) }
+        runCatching { users.deleteUser(owner.uid) }
         runCatching { users.deleteUser(storedUser.uid) }
         Firebase.auth.signOut()
       }
@@ -312,6 +318,7 @@ class MainActivityNavigationTest {
     val event =
         Event(
             eventId = "event-${UUID.randomUUID()}",
+            ownerId = storedUser.uid,
             title = "Fête de l'Asso",
             members = listOf(storedUser),
             startDate = now.minusHours(1),
@@ -378,13 +385,17 @@ class MainActivityNavigationTest {
     val event =
         Event(
             eventId = "back-${UUID.randomUUID()}",
+            ownerId = storedUser.uid,
             title = "Event With Tasks",
+            members = listOf(storedUser),
             startDate = start,
             endDate = start.plusHours(2),
         )
     val events = EventRepositoryFirebase(Firebase.firestore)
+    val users = UsersRepositoryFirebase(Firebase.firestore)
     runBlocking {
       Firebase.auth.signInAnonymously().await()
+      users.addUser(storedUser)
       events.addEvent(event)
     }
 
@@ -413,6 +424,7 @@ class MainActivityNavigationTest {
     } finally {
       runBlocking {
         runCatching { events.deleteEvent(event.eventId) }
+        runCatching { users.deleteUser(storedUser.uid) }
         Firebase.auth.signOut()
       }
     }
@@ -470,13 +482,30 @@ class MainActivityNavigationTest {
 
   @Test
   fun addTaskOnTheOverviewOpensCreateTaskAndTheNewTaskShowsOnReturn() {
-    TasksRepositoryProvider.repository = TasksRepositoryLocal()
+    val tasks = TasksRepositoryLocal()
+    TasksRepositoryProvider.repository = tasks
+    // The create screen saves through the data repository, which also adds the task to its event
+    // and to its owner: both must exist. The overview reads the same local tasks.
+    val owner = User(testUserId, joinedEvents = listOf("e1"))
+    val start = ZonedDateTime.now().plusDays(1)
+    val event =
+        Event(
+            eventId = "e1",
+            ownerId = owner.uid,
+            title = "Summer festival",
+            members = listOf(owner),
+            startDate = start,
+            endDate = start.plusDays(2),
+        )
     composeTestRule.setContent {
       FestivAR(
           credentialManager = mockk<CredentialManager>(relaxed = true),
           dataRepository =
-              DataRepositoryFirebase(
-                  authRepository = FakeAuthRepository(currentUser = firebaseUser)
+              DataRepositoryLocal(
+                  authRepository = FakeAuthRepository(currentUser = firebaseUser),
+                  tasksRepository = tasks,
+                  eventsRepository = EventsRepositoryLocal(listOf(event)),
+                  usersRepository = UsersRepositoryLocal(listOf(owner)),
               ),
           startDestinationOverride = AppScreens.taskOverview("e1"),
       )
@@ -580,6 +609,7 @@ class MainActivityNavigationTest {
     val event =
         Event(
             eventId = "e1",
+            ownerId = "u0",
             title = "Balelec",
             startDate = start,
             endDate = start.plusHours(2),
@@ -738,8 +768,9 @@ class MainActivityNavigationTest {
       )
     }
 
-    waitUntilTagExists(TaskDetailsScreenTestTags.EDIT_BUTTON)
-    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.EDIT_BUTTON).performClick()
+    waitUntilTagExists(TaskDetailsScreenTestTags.MORE_ACTIONS_BUTTON)
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MORE_ACTIONS_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.EDIT_MENU_ITEM).performClick()
     waitUntilTagExists(CreateTaskScreenTestTags.TITLE_FIELD)
     composeTestRule.onNodeWithTag(EditTaskScreenTestTags.SCREEN).assertIsDisplayed()
   }

@@ -20,7 +20,8 @@ enum class AppScreens {
   CreateAnnouncement,
   AnnouncementFeed,
   TaskDetails,
-  EditTask;
+  EditTask,
+  MyTasks;
 
   companion object {
     fun eventDetails(eventId: String) = "${EventDetails.name}/$eventId"

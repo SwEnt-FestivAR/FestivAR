@@ -3,9 +3,9 @@ package com.android.festivar.ui.announcement.feed
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -189,10 +188,12 @@ fun AnnouncementFeedContent(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = Modifier.fillMaxSize().padding(pd).padding(top = 4.dp),
     ) {
-      // Scrolls sideways if the chips don't fit, e.g. with long translations
-      Row(
+      // Wraps onto a second line if the chips don't fit, e.g. on a narrow phone or with long
+      // translations, so that none of them is cut off by the edge of the screen
+      FlowRow(
           horizontalArrangement = Arrangement.spacedBy(8.dp),
-          modifier = Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp),
+          verticalArrangement = Arrangement.spacedBy(8.dp),
+          modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
       ) {
         chipOrder.forEach { filter ->
           FilterChip(

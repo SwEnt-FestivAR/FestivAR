@@ -11,7 +11,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
 import com.android.festivar.model.authentication.AuthRepository
-import com.android.festivar.model.authentication.AuthRepositoryFirebase
+import com.android.festivar.model.datarepository.DataRepository
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.CancellationException
@@ -36,8 +36,11 @@ data class LoginUIState(
 )
 
 /** Handles email and Google authentication for the login screen. */
-class LoginViewModel(private val authRepository: AuthRepository = AuthRepositoryFirebase()) :
-    ViewModel() {
+class LoginViewModel(
+    private val dataRepository: DataRepository,
+) : ViewModel() {
+
+  private val authRepository: AuthRepository = dataRepository.authRepository
   private val _uiState = MutableStateFlow(LoginUIState())
 
   /** Observable state for the login screen. */
@@ -76,6 +79,13 @@ class LoginViewModel(private val authRepository: AuthRepository = AuthRepository
       val credential = credentialManager.getCredential(context, request).credential
       authRepository.signInWithGoogle(credential)
     }
+  }
+
+  /** Authenticates anonymously */
+  fun anonymousAuth() {
+    val state = _uiState.value
+    if (state.isLoading) return
+    authenticate { authRepository.signInAnonymous() }
   }
 
   /** Clears the current authentication error. */

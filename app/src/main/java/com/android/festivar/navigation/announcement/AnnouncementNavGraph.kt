@@ -39,7 +39,8 @@ fun NavGraphBuilder.announcementGraph(
     }
     // No key needed: the view model is scoped to this back stack entry, which has its own eventId.
     CreateAnnouncementScreen(
-        viewModel = viewModel { CreateAnnouncementViewModel(eventId, currentUserId) },
+        viewModel =
+            viewModel { CreateAnnouncementViewModel(eventId, currentUserId, dataRepository) },
         onBack = leave,
         onPublished = leave,
     )
@@ -56,7 +57,7 @@ fun NavGraphBuilder.announcementGraph(
         }
     val navigator = AnnouncementFeedNavigator(navController, backStackEntry)
     AnnouncementFeedScreen(
-        viewModel = viewModel { AnnouncementFeedViewModel(eventId) },
+        viewModel = viewModel { AnnouncementFeedViewModel(eventId, dataRepository) },
         // Events have no owner yet, so everyone may add an announcement for now
         canAddAnnouncement = true,
         onBack = navigator.onBack,

@@ -26,6 +26,7 @@ const val MAX_ANNOUNCEMENTS_PER_EVENT = 100
  * Every new version goes through the `init` block, so the rules below always hold:
  * - [title] is not blank;
  * - [eventId] is not blank;
+ * - [ownerId] identifies one of the members;
  * - a [User] is a joined member at most once, identified by its [User.uid] (no duplicates);
  * - a [Task] is unique in the event (no duplicates);
  * - an [Announcement] is unique in the event, identified by its [Announcement.announcementId] (no
@@ -34,6 +35,7 @@ const val MAX_ANNOUNCEMENTS_PER_EVENT = 100
  * - [endDate] must be after [startDate];
  *
  * @property eventId Unique identifier of the [Event].
+ * @property ownerId Unique identifier of the user who created and owns the [Event].
  * @property title Name of the [Event], shown as the screen title.
  * @property description Free-text description of specifications about the [Event].
  * @property members People who joined or were assigned the [Event].
@@ -46,9 +48,10 @@ const val MAX_ANNOUNCEMENTS_PER_EVENT = 100
  */
 data class Event(
     val eventId: String,
+    val ownerId: String,
     val title: String,
     val description: String = "",
-    val members: List<User> = emptyList(),
+    val members: List<User> = listOf(User(ownerId)),
     val startDate: ZonedDateTime,
     val endDate: ZonedDateTime,
     val location: String = "",
@@ -59,9 +62,11 @@ data class Event(
 
   init {
     require(eventId.isNotBlank()) { "The eventId cannot be empty." }
+    require(ownerId.isNotBlank()) { "The ownerId cannot be empty." }
     require(title.isNotBlank()) { "The title cannot be empty." }
     require(tasks.map { it.taskId }.distinct().size == tasks.size) { "A task is duplicated." }
     require(members.distinctBy { it.uid }.size == members.size) { "A user is registered twice." }
+    require(members.any { it.uid == ownerId }) { "The owner must be a member." }
     require(announcements.distinctBy { it.announcementId }.size == announcements.size) {
       "An announcement is duplicated."
     }
@@ -116,6 +121,7 @@ data class Event(
    */
   fun removeMember(userId: String): Event {
     require(members.any { it.uid == userId }) { "This user is not a member of the event." }
+    require(userId != ownerId) { "The event owner cannot be removed." }
 
     return copy(members = members.filterNot { it.uid == userId })
   }
@@ -161,13 +167,7 @@ data class Event(
    *   [MAX_ANNOUNCEMENTS_PER_EVENT] announcements.
    */
   fun addAnnouncement(announcement: Announcement): Event {
-    require(announcements.none { it.announcementId == announcement.announcementId }) {
-      "This announcement is already in the event."
-    }
-    require(announcements.size < MAX_ANNOUNCEMENTS_PER_EVENT) {
-      "An event cannot have more than $MAX_ANNOUNCEMENTS_PER_EVENT announcements."
-    }
-    return copy(announcements = announcements + announcement)
+    return copy(announcements = announcements.withAnnouncement(announcement))
   }
 
   /**
@@ -182,15 +182,7 @@ data class Event(
    *   [Announcement.announcementId] as [announcement].
    */
   fun editAnnouncement(announcement: Announcement): Event {
-    require(announcements.any { it.announcementId == announcement.announcementId }) {
-      "This announcement is not in the event."
-    }
-    return copy(
-        announcements =
-            announcements.map {
-              if (it.announcementId == announcement.announcementId) announcement else it
-            }
-    )
+    return copy(announcements = announcements.withEditedAnnouncement(announcement))
   }
 
   /**
@@ -203,9 +195,33 @@ data class Event(
    * @throws IllegalArgumentException If [announcementId]'s [Announcement] is not in the event.
    */
   fun removeAnnouncement(announcementId: String): Event {
-    require(announcements.any { it.announcementId == announcementId }) {
-      "This announcement is not in the event."
-    }
-    return copy(announcements = announcements.filterNot { it.announcementId == announcementId })
+    return copy(announcements = announcements.withoutAnnouncement(announcementId))
   }
+}
+
+/** [Event.addAnnouncement] on the list alone, also used by EventRepositoryFirebase. */
+internal fun List<Announcement>.withAnnouncement(announcement: Announcement): List<Announcement> {
+  require(none { it.announcementId == announcement.announcementId }) {
+    "This announcement is already in the event."
+  }
+  require(size < MAX_ANNOUNCEMENTS_PER_EVENT) {
+    "An event cannot have more than $MAX_ANNOUNCEMENTS_PER_EVENT announcements."
+  }
+  return this + announcement
+}
+
+/** [Event.editAnnouncement] on the list alone, also used by EventRepositoryFirebase. */
+internal fun List<Announcement>.withEditedAnnouncement(
+    announcement: Announcement
+): List<Announcement> {
+  require(any { it.announcementId == announcement.announcementId }) {
+    "This announcement is not in the event."
+  }
+  return map { if (it.announcementId == announcement.announcementId) announcement else it }
+}
+
+/** [Event.removeAnnouncement] on the list alone, also used by EventRepositoryFirebase. */
+internal fun List<Announcement>.withoutAnnouncement(announcementId: String): List<Announcement> {
+  require(any { it.announcementId == announcementId }) { "This announcement is not in the event." }
+  return filterNot { it.announcementId == announcementId }
 }

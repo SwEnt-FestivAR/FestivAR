@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.authentication.login
 
 import android.content.Context
@@ -12,6 +13,7 @@ import androidx.credentials.exceptions.GetCredentialException
 import androidx.credentials.exceptions.NoCredentialException
 import com.android.festivar.R
 import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.google.firebase.auth.FirebaseUser
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -30,7 +32,7 @@ import org.robolectric.Shadows.shadowOf
 @RunWith(RobolectricTestRunner::class)
 class LoginViewModelTest {
   private val authRepository = mockk<AuthRepository>()
-  private val viewModel = LoginViewModel(authRepository)
+  private val viewModel = LoginViewModel(DataRepositoryLocal(authRepository))
 
   @Test
   fun initiallyIsNotSignedIn() {
@@ -133,6 +135,36 @@ class LoginViewModelTest {
     coVerify(exactly = 1) {
       authRepository.signInWithEmailAndPassword("user@example.com", "secret")
     }
+  }
+
+  @Test
+  fun anonymousSignInUpdatesStateOnSuccess() {
+    val user = mockk<FirebaseUser>()
+    coEvery { authRepository.signInAnonymous() } returns Result.success(user)
+
+    viewModel.anonymousAuth()
+    shadowOf(Looper.getMainLooper()).idle()
+
+    assertTrue(viewModel.uiState.value.isSignedIn)
+    assertFalse(viewModel.uiState.value.isLoading)
+    assertNull(viewModel.uiState.value.errorMsg)
+    coVerify(exactly = 1) { authRepository.signInAnonymous() }
+  }
+
+  @Test
+  fun anonymousSignInFailureShowsError() {
+    coEvery { authRepository.signInAnonymous() } returns
+        Result.failure(IllegalStateException("Anonymous sign-in rejected"))
+
+    viewModel.anonymousAuth()
+    shadowOf(Looper.getMainLooper()).idle()
+
+    assertFalse(viewModel.uiState.value.isSignedIn)
+    assertFalse(viewModel.uiState.value.isLoading)
+    assertEquals(
+        "Unable to sign in. Check your details and try again.",
+        viewModel.uiState.value.errorMsg,
+    )
   }
 
   @Test

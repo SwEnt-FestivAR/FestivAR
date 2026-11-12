@@ -1,6 +1,8 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.event
 
+import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
@@ -103,6 +105,7 @@ class EventsOverviewViewModelTest {
   private val ongoingEvent =
       Event(
           eventId = "0",
+          ownerId = sara.uid,
           title = "Fête de l'Asso",
           description = "The yearly party of the association",
           members = listOf(sara),
@@ -114,6 +117,7 @@ class EventsOverviewViewModelTest {
   private val upcomingEvent =
       Event(
           eventId = "1",
+          ownerId = sara.uid,
           title = "Soirée Jazz",
           description = "A jazz concert at Satellite",
           members = listOf(sara),
@@ -125,6 +129,7 @@ class EventsOverviewViewModelTest {
   private val pastEvent =
       Event(
           eventId = "2",
+          ownerId = sara.uid,
           title = "Balélec",
           description = "The EPFL music festival",
           members = listOf(sara),
@@ -135,7 +140,12 @@ class EventsOverviewViewModelTest {
 
   /** An event Sara is not a member of, so it is never shown to her. */
   private val eventWithoutSara =
-      pastEvent.copy(eventId = "6", title = "Satellite Quiz", members = listOf())
+      pastEvent.copy(
+          eventId = "6",
+          ownerId = "other-owner",
+          title = "Satellite Quiz",
+          members = listOf(User("other-owner")),
+      )
 
   @Before
   fun setUp() {
@@ -158,8 +168,12 @@ class EventsOverviewViewModelTest {
   ): EventsOverviewViewModel {
     val viewModel =
         EventsOverviewViewModel(
-            eventsRepository = withRepository,
-            usersRepository = usersRepository,
+            dataRepository =
+                DataRepositoryLocal(
+                    FakeAuthRepository(),
+                    eventsRepository = withRepository,
+                    usersRepository = usersRepository,
+                ),
             uId = sara.uid,
             now = { now },
         )
@@ -735,8 +749,12 @@ class EventsOverviewViewModelTest {
     val repository = RecordingEventsRepository(listOf(lastYear, nextYear))
     val viewModel =
         EventsOverviewViewModel(
-            eventsRepository = repository,
-            usersRepository = RecordingUsersRepository(listOf(sara)),
+            dataRepository =
+                DataRepositoryLocal(
+                    FakeAuthRepository(),
+                    eventsRepository = repository,
+                    usersRepository = RecordingUsersRepository(listOf(sara)),
+                ),
             uId = sara.uid,
         )
     viewModel.refreshUIState()

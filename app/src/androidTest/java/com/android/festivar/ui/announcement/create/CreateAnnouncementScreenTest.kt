@@ -19,12 +19,16 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.platform.app.InstrumentationRegistry
 import com.android.festivar.R
+import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.event.announcement.AnnouncementPriority
 import com.android.festivar.ui.announcement.create.CreateAnnouncementScreenTestTags as Tags
+import com.android.festivar.ui.components.LONG_TEXT_MAX_LENGTH
+import com.android.festivar.ui.components.checkTheOnlyCounterIsUnder
 import com.android.festivar.ui.theme.AppTheme
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -60,6 +64,7 @@ class CreateAnnouncementScreenTest {
             listOf(
                 Event(
                     eventId = EVENT_ID,
+                    ownerId = "owner",
                     title = "Balelec",
                     startDate = ZonedDateTime.of(2026, 11, 6, 16, 0, 0, 0, zone),
                     endDate = ZonedDateTime.of(2026, 11, 7, 4, 0, 0, 0, zone),
@@ -74,7 +79,12 @@ class CreateAnnouncementScreenTest {
             local.addAnnouncement(eventId, announcement)
           }
         }
-    val viewModel = CreateAnnouncementViewModel(EVENT_ID, { "owner-1" }, scripted)
+    val viewModel =
+        CreateAnnouncementViewModel(
+            EVENT_ID,
+            { "owner-1" },
+            DataRepositoryLocal(FakeAuthRepository(), eventsRepository = scripted),
+        )
     composeTestRule.setContent {
       AppTheme {
         CreateAnnouncementScreen(
@@ -148,6 +158,12 @@ class CreateAnnouncementScreenTest {
     publishButton().assertIsNotEnabled()
     composeTestRule.onNodeWithTag(Tags.TITLE_ERROR).assertDoesNotExist()
     composeTestRule.onNodeWithTag(Tags.DESCRIPTION_ERROR).assertDoesNotExist()
+  }
+
+  // Breaks if the content loses its long limit and counter, or if the title gets a counter too.
+  @Test
+  fun onlyTheContentShowsACharacterCounter() {
+    composeTestRule.checkTheOnlyCounterIsUnder(Tags.DESCRIPTION_FIELD, "0/$LONG_TEXT_MAX_LENGTH")
   }
 
   // Breaks if the fields swap their values, a chip reports the wrong priority, the button does not

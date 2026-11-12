@@ -1,5 +1,6 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Gemini <noreply@google.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.authentication.login
 
 import androidx.compose.ui.semantics.Role
@@ -8,7 +9,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -17,6 +18,10 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
+import com.android.festivar.ui.components.CREDENTIAL_MAX_LENGTH
+import com.google.firebase.auth.FirebaseUser
+import io.mockk.mockk
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -28,7 +33,7 @@ import org.junit.runner.RunWith
 class LoginScreenTest {
   @get:Rule val composeTestRule = createComposeRule()
 
-  private val viewModel = LoginViewModel(FakeAuthRepository())
+  private val viewModel = LoginViewModel(DataRepositoryLocal(FakeAuthRepository()))
 
   @Test
   fun displaysLoginFieldsAndMasksPassword() {
@@ -53,6 +58,10 @@ class LoginScreenTest {
         .assert(SemanticsMatcher.expectValue(SemanticsProperties.Password, Unit))
     composeTestRule.onNodeWithTag(LoginScreenTestTags.LOGIN_BUTTON).assertIsDisplayed()
     composeTestRule.onNodeWithTag(LoginScreenTestTags.GOOGLE_BUTTON).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(LoginScreenTestTags.ANONYMOUS_BUTTON)
+        .performScrollTo()
+        .assertIsDisplayed()
   }
 
   @Test
@@ -83,7 +92,7 @@ class LoginScreenTest {
 
   @Test
   fun passwordDoneImeActionSignsIn() {
-    val loginViewModel = LoginViewModel(FakeAuthRepository())
+    val loginViewModel = LoginViewModel(DataRepositoryLocal(FakeAuthRepository()))
     composeTestRule.setContent {
       LoginScreen(
           viewModel = loginViewModel,
@@ -105,7 +114,7 @@ class LoginScreenTest {
   @Test
   fun createAccountFooterUsesButtonAndNavigatesOnClick() {
     var signUpClicked = false
-    val loginViewModel = LoginViewModel(FakeAuthRepository())
+    val loginViewModel = LoginViewModel(DataRepositoryLocal(FakeAuthRepository()))
     composeTestRule.setContent {
       LoginScreen(
           viewModel = loginViewModel,
@@ -125,7 +134,7 @@ class LoginScreenTest {
   @Test
   fun forgotPasswordButtonInvokesCallback() {
     var forgotPasswordClicked = false
-    val loginViewModel = LoginViewModel(FakeAuthRepository())
+    val loginViewModel = LoginViewModel(DataRepositoryLocal(FakeAuthRepository()))
     composeTestRule.setContent {
       LoginScreen(
           viewModel = loginViewModel,
@@ -142,7 +151,7 @@ class LoginScreenTest {
   @Test
   fun googleSignInButtonIsDisabledWhileAnotherSignInIsLoading() {
     val authRepository = FakeAuthRepository(signInDeferred = CompletableDeferred())
-    val loadingViewModel = LoginViewModel(authRepository)
+    val loadingViewModel = LoginViewModel(DataRepositoryLocal(authRepository))
     composeTestRule.setContent {
       LoginScreen(
           viewModel = loadingViewModel,
@@ -160,5 +169,55 @@ class LoginScreenTest {
     authRepository.signInDeferred?.complete(
         Result.failure(UnsupportedOperationException("Not used in this UI test"))
     )
+  }
+
+  @Test
+  fun anonymousSignInButtonSignsIn() {
+    val user = mockk<FirebaseUser>()
+    val authRepository = FakeAuthRepository(signInAnonymousResult = Result.success(user))
+    val loginViewModel = LoginViewModel(DataRepositoryLocal(authRepository))
+    var signedIn = false
+
+    composeTestRule.setContent {
+      LoginScreen(
+          viewModel = loginViewModel,
+          onSignUpClick = {},
+          onSignedIn = { signedIn = true },
+      )
+    }
+
+    composeTestRule
+        .onNodeWithTag(LoginScreenTestTags.ANONYMOUS_BUTTON)
+        .performScrollTo()
+        .performClick()
+    composeTestRule.onNodeWithText("Cancel").performClick()
+    composeTestRule.runOnIdle { assertTrue(!loginViewModel.uiState.value.isSignedIn) }
+
+    composeTestRule
+        .onNodeWithTag(LoginScreenTestTags.ANONYMOUS_BUTTON)
+        .performScrollTo()
+        .performClick()
+    composeTestRule.onNodeWithText("Continue anyway").performClick()
+
+    composeTestRule.runOnIdle {
+      assertTrue(signedIn)
+      assertTrue(loginViewModel.uiState.value.isSignedIn)
+    }
+  }
+
+  // An email or a generated password can be much longer than the 80 default: both fields take up
+  // to CREDENTIAL_MAX_LENGTH characters. Breaks if either keeps the default or loses its limit.
+  @Test
+  fun emailAndPasswordTakeUpToTheCredentialLimit() {
+    composeTestRule.setContent { LoginScreen(viewModel = viewModel, onSignUpClick = {}) }
+    val tooLong = "a".repeat(CREDENTIAL_MAX_LENGTH + 1)
+
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.EMAIL_INPUT).performTextInput(tooLong)
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.PASSWORD_INPUT).performTextInput(tooLong)
+
+    composeTestRule.runOnIdle {
+      assertEquals(CREDENTIAL_MAX_LENGTH, viewModel.uiState.value.email.length)
+      assertEquals(CREDENTIAL_MAX_LENGTH, viewModel.uiState.value.password.length)
+    }
   }
 }
