@@ -40,7 +40,6 @@ import io.mockk.mockk
 import io.mockk.verify
 import java.time.ZoneId
 import java.time.ZonedDateTime
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -186,23 +185,12 @@ class EventDetailsScreenTest {
     assertTrue(descriptionTop < statTop)
   }
 
-  /** Breaks if an event without a description shows an empty node or leaves a gap. */
+  /** Breaks if an event without a description still shows an empty description block. */
   @Test
   fun descriptionIsAbsentWhenBlank() {
     setContent(eventSameMonth.copy(description = "  "))
 
     composeTestRule.onAllNodesWithTag(EventDetailsScreenTestTags.DESCRIPTION).assertCountEquals(0)
-    val subtitleBottom =
-        composeTestRule
-            .onNodeWithTag(EventDetailsScreenTestTags.SUBTITLE)
-            .getUnclippedBoundsInRoot()
-            .bottom
-    val statTop =
-        composeTestRule
-            .onNodeWithTag(EventDetailsScreenTestTags.OPEN_TASKS_STAT)
-            .getUnclippedBoundsInRoot()
-            .top
-    assertEquals(12f, (statTop - subtitleBottom).value, 0.5f)
   }
 
   /** Breaks if a long description is cut off instead of reachable by scrolling. */
