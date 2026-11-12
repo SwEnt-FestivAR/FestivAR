@@ -16,6 +16,8 @@ import com.android.festivar.ui.event.create.CreateEventScreen
 import com.android.festivar.ui.event.create.CreateEventViewModel
 import com.android.festivar.ui.event.details.EventDetailsScreen
 import com.android.festivar.ui.event.details.EventDetailsViewModel
+import com.android.festivar.ui.event.edit.EditEventScreen
+import com.android.festivar.ui.event.edit.EditEventViewModel
 import com.android.festivar.ui.event.join.JoinEventScreen
 import com.android.festivar.ui.event.join.JoinEventViewModel
 import com.android.festivar.ui.event.overview.EventsOverviewScreen
@@ -71,11 +73,39 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, dataRepository:
     val eventId = backStackEntry.arguments?.getString("eventId") ?: ""
     require(eventId.isNotBlank()) { "eventId must not be blank" }
     val navigator = EventDetailsNavigator(navController)
+    val currentUserId = dataRepository.authRepository.currentUser?.uid.orEmpty()
+    // Keyed by user: the view model knows who the owner is, so another sign-in needs a new one
     EventDetailsScreen(
-        viewModel { EventDetailsViewModel(dataRepository, eventId) },
+        viewModel(key = "$eventId:$currentUserId") {
+          EventDetailsViewModel(dataRepository, eventId, currentUserId)
+        },
         onBack = navigator.onBack,
         onTasksButtonClicked = { navigator.onTasksButtonClicked(eventId) },
         onAnnouncementsClicked = { navigator.onAnnouncementsClicked(eventId) },
+        onEditClicked = { navigator.onEdit(eventId) },
+    )
+  }
+  // Reached through AppScreens.editEvent(eventId), from the details of an event its owner opened
+  composable(
+      route = "${AppScreens.EditEvent.name}/{eventId}",
+      arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
+  ) { backStackEntry ->
+    val eventId = backStackEntry.arguments?.getString("eventId") ?: ""
+    require(eventId.isNotBlank()) { "eventId must not be blank" }
+    // Saved or not, leaving the screen goes back to the event details
+    val leave: () -> Unit = { navController.popBackStack() }
+    EditEventScreen(
+        eventId = eventId,
+        // No key needed: the view model is scoped to this back stack entry, with its own eventId
+        viewModel =
+            viewModel {
+              EditEventViewModel(
+                  dataRepository.eventsRepository,
+                  { dataRepository.authRepository.currentUser?.uid.orEmpty() },
+              )
+            },
+        onBack = leave,
+        onSaved = leave,
     )
   }
   composable(route = AppScreens.JoinEvent.name) {
