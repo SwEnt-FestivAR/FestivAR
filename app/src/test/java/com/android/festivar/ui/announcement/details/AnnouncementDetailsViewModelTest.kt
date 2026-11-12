@@ -204,7 +204,11 @@ class AnnouncementDetailsViewModelTest {
     vm.load()
 
     assertEquals(announcement, vm.uiState.value.announcement)
-    assertEquals("Unknown author", vm.uiState.value.authorName)
+    assertNull(vm.uiState.value.authorName)
+    assertEquals(
+        R.string.announcement_details_user_fetch_failed,
+        vm.uiState.value.authorNameRes,
+    )
     assertEquals(event.endDate, vm.uiState.value.eventEndTime)
     assertFalse(vm.uiState.value.isLoading)
     assertNull(vm.uiState.value.errorMsg)

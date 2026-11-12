@@ -26,8 +26,8 @@ private const val LOG_TAG = "AnnouncementDetailsVM"
  * UI state of the Announcement Details screen.
  *
  * @property announcement the announcement shown, or null until loaded.
- * @property authorName the author's name, or null when the account no longer exists.
- * @property authorNameRes the localized fallback for a missing author, or null when known.
+ * @property authorName the author's name, or null if the account no longer exists.
+ * @property authorNameRes the string resource for a missing author's name, or null when known.
  * @property eventEndTime the end time of the event that contains the announcement.
  * @property isLoading true while the announcement is being loaded.
  * @property isUpdating true while the pin state is being saved.
@@ -36,7 +36,7 @@ private const val LOG_TAG = "AnnouncementDetailsVM"
 data class AnnouncementDetailsUiState(
     val announcement: Announcement? = null,
     val authorName: String? = null,
-    @StringRes val authorNameRes: Int? = null,
+    @param:StringRes val authorNameRes: Int? = null,
     val eventEndTime: ZonedDateTime? = null,
     val isLoading: Boolean = true,
     val isUpdating: Boolean = false,
