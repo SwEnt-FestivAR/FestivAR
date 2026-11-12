@@ -62,6 +62,8 @@ import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.event.joinCodeOf
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
+import com.android.festivar.ui.components.FestivarConfirmDialog
+import com.android.festivar.ui.components.NoticeSnackbar
 import com.android.festivar.ui.components.PeopleCard
 import com.android.festivar.ui.components.PillStyle
 import com.android.festivar.ui.components.StatusPill
@@ -88,6 +90,11 @@ object EventDetailsScreenTestTags {
   const val ANNOUNCEMENTS_ROW = "announcementsRow"
   const val MEMBERS_CARD = "membersCard"
   const val MEMBERS_SHEET = "membersSheet"
+  const val DELETE_DIALOG = "eventDeleteDialog"
+  const val DELETE_CONFIRM_BUTTON = "eventDeleteConfirmButton"
+  const val DELETE_DISMISS_BUTTON = "eventDeleteDismissButton"
+  const val DELETE_ERROR = "eventDeleteError"
+  const val DELETE_ERROR_DISMISS = "eventDeleteErrorDismiss"
 }
 
 /** Callbacks handled by the Event Details screen. */
@@ -95,6 +102,9 @@ class EventDetailsActions(
     val onBack: () -> Unit = {},
     val onTasksButtonClicked: () -> Unit = {},
     val onAnnouncementsClicked: () -> Unit = {},
+    val onDeleteConfirmed: () -> Unit = {},
+    val onDeleteCancelled: () -> Unit = {},
+    val onDeleteErrorDismissed: () -> Unit = {},
 )
 
 /**
@@ -107,6 +117,7 @@ class EventDetailsActions(
  * @param onBack called when the back button is clicked.
  * @param onTasksButtonClicked called when the "See tasks" button is clicked.
  * @param onAnnouncementsClicked called when the "Announcements" row is clicked.
+ * @param onEventDeleted called once the event is deleted, to leave the screen.
  * @param modifier modifier applied to the event content.
  */
 @Composable
@@ -115,6 +126,7 @@ fun EventDetailsScreen(
     onBack: () -> Unit,
     onTasksButtonClicked: () -> Unit,
     onAnnouncementsClicked: () -> Unit,
+    onEventDeleted: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
   val uiState by viewModel.uiState.collectAsState()
@@ -127,6 +139,9 @@ fun EventDetailsScreen(
               onBack = onBack,
               onTasksButtonClicked = onTasksButtonClicked,
               onAnnouncementsClicked = onAnnouncementsClicked,
+              onDeleteConfirmed = { viewModel.confirmDelete(onEventDeleted) },
+              onDeleteCancelled = viewModel::cancelDelete,
+              onDeleteErrorDismissed = viewModel::clearDeleteError,
           ),
       modifier = modifier,
   )
@@ -140,9 +155,33 @@ private fun EventDetailsContent(
     modifier: Modifier = Modifier,
 ) {
   val event = state.event
+  if (state.deleteRequested && event != null) {
+    FestivarConfirmDialog(
+        title = stringResource(R.string.event_details_delete_title, event.title),
+        message = stringResource(R.string.event_details_delete_message),
+        confirmText = stringResource(R.string.event_details_delete_confirm),
+        dismissText = stringResource(R.string.event_details_delete_keep),
+        onConfirm = actions.onDeleteConfirmed,
+        onDismiss = actions.onDeleteCancelled,
+        modifier = Modifier.testTag(EventDetailsScreenTestTags.DELETE_DIALOG),
+        confirmModifier = Modifier.testTag(EventDetailsScreenTestTags.DELETE_CONFIRM_BUTTON),
+        dismissModifier = Modifier.testTag(EventDetailsScreenTestTags.DELETE_DISMISS_BUTTON),
+    )
+  }
   Scaffold(
       containerColor = MaterialTheme.colorScheme.background,
       topBar = { EventDetailsTopBar(onBack = actions.onBack) },
+      snackbarHost = {
+        state.deleteErrorMsg?.let {
+          NoticeSnackbar(
+              message = stringResource(it),
+              actionLabel = stringResource(R.string.action_dismiss),
+              onAction = actions.onDeleteErrorDismissed,
+              modifier = Modifier.testTag(EventDetailsScreenTestTags.DELETE_ERROR),
+              actionModifier = Modifier.testTag(EventDetailsScreenTestTags.DELETE_ERROR_DISMISS),
+          )
+        }
+      },
       bottomBar = {
         if (event != null) {
           EventDetailsBottomBar(onTasksButtonClicked = actions.onTasksButtonClicked)

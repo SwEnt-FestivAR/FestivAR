@@ -63,6 +63,7 @@ class EventDetailsMembersTest {
             onBack = {},
             onTasksButtonClicked = {},
             onAnnouncementsClicked = {},
+            onEventDeleted = {},
         )
       }
     }

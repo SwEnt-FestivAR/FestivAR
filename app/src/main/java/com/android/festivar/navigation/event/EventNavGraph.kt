@@ -77,6 +77,7 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, dataRepository:
         onBack = navigator.onBack,
         onTasksButtonClicked = { navigator.onTasksButtonClicked(eventId) },
         onAnnouncementsClicked = { navigator.onAnnouncementsClicked(eventId) },
+        onEventDeleted = navigator.onBack,
     )
   }
   composable(route = AppScreens.JoinEvent.name) {
