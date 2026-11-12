@@ -326,41 +326,53 @@ private fun EventDetailsBottomBar(onTasksButtonClicked: () -> Unit) {
 /** An id like the ones the repository generates, so the preview shows a realistic join code. */
 private const val PREVIEW_EVENT_ID = "3f9a1c2e-7b4d-4e8a-9c15-d2a6b0f84e37"
 
-@Preview
-@Composable
-internal fun EventDetailsScreenPreview() {
+private fun previewEvent(): Event {
   val eventStartDate: ZonedDateTime =
       ZonedDateTime.of(2026, 10, 16, 10, 0, 0, 0, ZoneId.of("Europe/Zurich"))
   val eventEndDate: ZonedDateTime =
       ZonedDateTime.of(2026, 10, 18, 18, 0, 0, 0, ZoneId.of("Europe/Zurich"))
 
-  val event =
-      Event(
-          eventId = PREVIEW_EVENT_ID,
-          ownerId = "user",
-          title = "Fête de l'Asso 2026",
-          members = listOf(User(uid = "user", name = "Sami K.")),
-          startDate = eventStartDate,
-          endDate = eventEndDate,
-          location = "Parc de Vidy, Lausanne",
-          tasks =
-              List(
-                  size = 10,
-                  init = { index ->
-                    Task(
-                        taskId = index.toString(),
-                        eventId = PREVIEW_EVENT_ID,
-                        title = "Task $index",
-                        ownerId = "user",
-                        completed = index % 2 == 0,
-                    )
-                  },
-              ),
-      )
+  return Event(
+      eventId = PREVIEW_EVENT_ID,
+      ownerId = "user",
+      title = "Fête de l'Asso 2026",
+      members = listOf(User(uid = "user", name = "Sami K.")),
+      startDate = eventStartDate,
+      endDate = eventEndDate,
+      location = "Parc de Vidy, Lausanne",
+      tasks =
+          List(
+              size = 10,
+              init = { index ->
+                Task(
+                    taskId = index.toString(),
+                    eventId = PREVIEW_EVENT_ID,
+                    title = "Task $index",
+                    ownerId = "user",
+                    completed = index % 2 == 0,
+                )
+              },
+          ),
+  )
+}
 
+@Preview
+@Composable
+internal fun EventDetailsScreenPreview() {
   AppTheme {
     EventDetailsContent(
-        state = EventDetailsUIState(event = event),
+        state = EventDetailsUIState(event = previewEvent()),
+        actions = EventDetailsActions(onBack = {}, onTasksButtonClicked = {}),
+    )
+  }
+}
+
+@Preview
+@Composable
+internal fun ClosedEventPreview() {
+  AppTheme {
+    EventDetailsContent(
+        state = EventDetailsUIState(event = previewEvent().copy(closed = true)),
         actions = EventDetailsActions(onBack = {}, onTasksButtonClicked = {}),
     )
   }
