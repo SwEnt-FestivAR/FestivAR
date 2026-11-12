@@ -4,7 +4,6 @@
 package com.android.festivar.ui.task.details
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,19 +16,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -53,6 +46,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.festivar.R
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
+import com.android.festivar.ui.components.DeleteMenuItem
+import com.android.festivar.ui.components.EditDeleteMenu
 import com.android.festivar.ui.components.FestivarConfirmDialog
 import com.android.festivar.ui.components.PeopleCard
 import com.android.festivar.ui.components.PillStyle
@@ -146,7 +141,6 @@ fun TaskDetailsContent(
     onEdit: (String) -> Unit = {},
     onDeleteTask: () -> Unit = {},
 ) {
-  var menuExpanded by remember { mutableStateOf(false) }
   var showDeleteConfirmation by remember { mutableStateOf(false) }
 
   var showGiveBackConfirmation by rememberSaveable { mutableStateOf(false) }
@@ -167,57 +161,19 @@ fun TaskDetailsContent(
               state.task
                   ?.takeIf { state.canEdit && !state.isLoading && !state.isUpdating }
                   ?.let { task ->
-                    Box {
-                      IconButton(
-                          onClick = { menuExpanded = true },
-                          modifier =
-                              Modifier.testTag(TaskDetailsScreenTestTags.MORE_ACTIONS_BUTTON),
-                      ) {
-                        Icon(
-                            Icons.Filled.MoreVert,
-                            contentDescription = stringResource(R.string.task_details_more_actions),
-                        )
-                      }
-                      DropdownMenu(
-                          expanded = menuExpanded,
-                          onDismissRequest = { menuExpanded = false },
-                      ) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.edit_task)) },
-                            onClick = {
-                              menuExpanded = false
-                              onEdit(task.taskId)
-                            },
-                            leadingIcon = { Icon(Icons.Rounded.Edit, contentDescription = null) },
-                            modifier = Modifier.testTag(TaskDetailsScreenTestTags.EDIT_MENU_ITEM),
-                        )
-                        DropdownMenuItem(
-                            text = {
-                              Text(
-                                  stringResource(R.string.task_details_delete_task),
-                                  color = MaterialTheme.colorScheme.error,
-                              )
-                            },
-                            onClick = {
-                              menuExpanded = false
-                              showDeleteConfirmation = true
-                            },
-                            leadingIcon = {
-                              Icon(
-                                  Icons.Filled.Delete,
-                                  contentDescription = null,
-                                  tint = MaterialTheme.colorScheme.error,
-                              )
-                            },
-                            colors =
-                                MenuDefaults.itemColors(
-                                    textColor = MaterialTheme.colorScheme.error,
-                                    leadingIconColor = MaterialTheme.colorScheme.error,
-                                ),
-                            modifier = Modifier.testTag(TaskDetailsScreenTestTags.DELETE_MENU_ITEM),
-                        )
-                      }
-                    }
+                    EditDeleteMenu(
+                        moreActionsDescription = stringResource(R.string.task_details_more_actions),
+                        moreActionsTag = TaskDetailsScreenTestTags.MORE_ACTIONS_BUTTON,
+                        editLabel = stringResource(R.string.edit_task),
+                        editTag = TaskDetailsScreenTestTags.EDIT_MENU_ITEM,
+                        onEdit = { onEdit(task.taskId) },
+                        delete =
+                            DeleteMenuItem(
+                                label = stringResource(R.string.task_details_delete_task),
+                                testTag = TaskDetailsScreenTestTags.DELETE_MENU_ITEM,
+                                onClick = { showDeleteConfirmation = true },
+                            ),
+                    )
                   }
             },
         )

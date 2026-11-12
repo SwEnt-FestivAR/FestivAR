@@ -1,6 +1,7 @@
 package com.android.festivar.ui.event.details
 
 // Co-authored-by: Copilot App
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
@@ -21,10 +22,13 @@ import kotlinx.coroutines.launch
  *
  * @property event the loaded event, or null until loading succeeds.
  * @property errorMsg the string resource of the latest loading failure, or null.
+ * @property isOwner whether the current user organizes the loaded event; only then the screen
+ *   offers to edit it.
  */
 data class EventDetailsUIState(
     val event: Event? = null,
     @StringRes val errorMsg: Int? = null,
+    val isOwner: Boolean = false,
 )
 
 /**
@@ -36,10 +40,13 @@ data class EventDetailsUIState(
  * @param dataRepository repository giving access to the events repository used to retrieve the
  *   event.
  * @param eventId identifier of the event to load.
+ * @param currentUserId identifier of the signed-in user, who owns the event when it is the event's
+ *   [Event.ownerId].
  */
 class EventDetailsViewModel(
     private val dataRepository: DataRepository,
     private val eventId: String,
+    private val currentUserId: String,
 ) : ViewModel() {
 
   private val eventsRepository: EventsRepository = dataRepository.eventsRepository
@@ -53,7 +60,7 @@ class EventDetailsViewModel(
       _uiState.update { EventDetailsUIState() }
       try {
         val event = eventsRepository.getEvent(eventId)
-        _uiState.update { it.copy(event = event) }
+        _uiState.update { it.copy(event = event, isOwner = event.ownerId == currentUserId) }
       } catch (e: CancellationException) {
         throw e
       } catch (_: Exception) {

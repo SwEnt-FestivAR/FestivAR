@@ -79,11 +79,16 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, dataRepository:
     val eventId = backStackEntry.arguments?.getString("eventId") ?: ""
     require(eventId.isNotBlank()) { "eventId must not be blank" }
     val navigator = EventDetailsNavigator(navController)
+    val currentUserId = dataRepository.authRepository.currentUser?.uid.orEmpty()
+    // Keyed by user: the view model knows who the owner is, so another sign-in needs a new one
     EventDetailsScreen(
-        viewModel { EventDetailsViewModel(dataRepository, eventId) },
+        viewModel(key = "$eventId:$currentUserId") {
+          EventDetailsViewModel(dataRepository, eventId, currentUserId)
+        },
         onBack = navigator.onBack,
         onTasksButtonClicked = { navigator.onTasksButtonClicked(eventId) },
         onAnnouncementsClicked = { navigator.onAnnouncementsClicked(eventId) },
+        onEditClicked = { navigator.onEdit(eventId) },
     )
   }
   composable(
