@@ -47,7 +47,6 @@ class VoiceNoteRecordingTest {
         VoiceNoteRecording(
             scope,
             host,
-            ownerId,
             services,
         )
 
@@ -58,7 +57,6 @@ class VoiceNoteRecordingTest {
         VoiceNoteRecording(
             CoroutineScope(Dispatchers.Unconfined),
             host.copy(ownerId = "someone"),
-            ownerId,
             services,
         )
 

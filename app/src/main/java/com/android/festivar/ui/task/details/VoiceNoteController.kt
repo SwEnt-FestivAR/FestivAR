@@ -33,9 +33,7 @@ internal constructor(
     private val host: VoiceNoteHost,
     private val services: VoiceNoteServices?,
 ) {
-  private val recording = services?.let {
-    VoiceNoteRecording(scope, host, host.state.value.currentUserId, it)
-  }
+  private val recording = services?.let { VoiceNoteRecording(scope, host, it) }
   private val playback = services?.let {
     VoiceNotePlayback(it.player) { host.state.value.task?.voiceNote?.audioUrl }
   }
