@@ -8,6 +8,9 @@
     <string name="event_details_join_code">Join code</string>
     <string name="event_details_navigate_back">Navigate back</string>
     <string name="event_details_see_tasks">See tasks</string>
+    <string name="event_details_members">Members</string>
+    <string name="event_details_organizer">Organizer</string>
+    <string name="event_details_members_subtitle">%1$s · %2$s</string>
     <string name="event_details_fetch_error">Something wrong happened while fetching the event. Please try again</string>
     <string name="event_details_status_open">Open</string>
     <string name="event_details_status_closed">Closed</string>

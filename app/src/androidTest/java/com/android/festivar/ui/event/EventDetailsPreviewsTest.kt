@@ -17,6 +17,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.android.festivar.R
 import com.android.festivar.ui.event.details.ClosedEventPreview
+import com.android.festivar.ui.event.details.EventDetailsMembersListPreview
 import com.android.festivar.ui.event.details.EventDetailsScreenPreview
 import com.android.festivar.ui.event.details.EventDetailsScreenTestTags
 import com.android.festivar.ui.event.details.FetchErrorPreview
@@ -50,6 +51,27 @@ class EventDetailsPreviewsTest {
                 .and(hasText("Bar shifts moved"))
         )
         .assertIsDisplayed()
+  }
+
+  /** Breaks if the screen preview stops showing the Members card with its whole team. */
+  @Test
+  fun eventDetailsScreenPreview_showsTheMembersCard() {
+    composeTestRule.setContent { EventDetailsScreenPreview() }
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.MEMBERS_CARD).assertIsDisplayed()
+    composeTestRule.onNodeWithText("12 members").assertIsDisplayed()
+  }
+
+  /** Breaks if the Members list preview stops opening the list with the organizer tagged. */
+  @Test
+  fun membersListPreview_showsTheListWithTheOrganizerTag() {
+    composeTestRule.setContent { EventDetailsMembersListPreview() }
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.MEMBERS_SHEET).assertIsDisplayed()
+    composeTestRule.onNodeWithText("Olivia Roy").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Organizer").assertIsDisplayed()
   }
 
   /** Breaks if the closed event preview stops showing the Closed chip. */

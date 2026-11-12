@@ -16,6 +16,7 @@ import androidx.navigation.navArgument
 import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.user.User
 import com.android.festivar.navigation.AppScreens
+import com.android.festivar.navigation.TaskOrigin
 import com.android.festivar.ui.task.create.CreateTaskScreen
 import com.android.festivar.ui.task.create.CreateTaskViewModel
 import com.android.festivar.ui.task.details.TaskDetailsScreen
@@ -78,8 +79,16 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, dataRepository: 
     )
   }
   composable(
-      route = "${AppScreens.TaskDetails.name}/{taskId}",
-      arguments = listOf(navArgument("taskId") { type = NavType.StringType }),
+      route = "${AppScreens.TaskDetails.name}/{taskId}?from={from}",
+      arguments =
+          listOf(
+              navArgument("taskId") { type = NavType.StringType },
+              // Where the details were opened from, read by the bottom bar only.
+              navArgument("from") {
+                type = NavType.StringType
+                defaultValue = TaskOrigin.EVENT.name
+              },
+          ),
   ) { backStackEntry ->
     val taskId = backStackEntry.arguments?.getString("taskId") ?: ""
     val firebaseUser = dataRepository.authRepository.currentUser
@@ -129,14 +138,14 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, dataRepository: 
     val leave: () -> Unit = { navController.popBackStack() }
     // No key needed: the view model is scoped to this back stack entry, which has its own taskId.
     EditTaskScreen(
-        viewModel = viewModel { EditTaskViewModel(taskId, currentUserId) },
+        viewModel = viewModel { EditTaskViewModel(taskId, currentUserId, dataRepository) },
         onBack = leave,
         onSaved = leave,
     )
   }
 
-  // Every task the signed-in user has taken, across their events. Not reachable from the UI yet:
-  // the bottom bar will open it.
+  // Every task the signed-in user has taken, across their events. Its tab on the bottom bar opens
+  // it.
   composable(AppScreens.MyTasks.name) {
     val navigator = MyTasksNavigator(navController)
     val firebaseUser = dataRepository.authRepository.currentUser

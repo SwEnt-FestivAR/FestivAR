@@ -3,12 +3,16 @@ package com.android.festivar.navigation.task
 
 import androidx.navigation.NavHostController
 import com.android.festivar.navigation.AppScreens
+import com.android.festivar.navigation.TaskOrigin
 
 /** Where My tasks can go: to the details of a task, or to the login when signed out. */
 class MyTasksNavigator(private val navController: NavHostController) {
-  /** Opens the details of the tapped task; back returns to My tasks. */
+  /**
+   * Opens the details of the tapped task, telling them they were opened from My tasks so the bottom
+   * bar keeps that tab selected; back returns to My tasks.
+   */
   val onOpenTask: (taskId: String) -> Unit = { taskId ->
-    navController.navigate(AppScreens.taskDetails(taskId))
+    navController.navigate(AppScreens.taskDetails(taskId, TaskOrigin.MY_TASKS))
   }
 
   /** Opens the login and clears the back stack, so back cannot return to My tasks. */

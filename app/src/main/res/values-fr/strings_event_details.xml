@@ -8,6 +8,9 @@
     <string name="event_details_join_code">Code d’accès</string>
     <string name="event_details_navigate_back">Retour</string>
     <string name="event_details_see_tasks">Voir les tâches</string>
+    <string name="event_details_members">Membres</string>
+    <string name="event_details_organizer">Organisateur</string>
+    <string name="event_details_members_subtitle">%1$s · %2$s</string>
     <string name="event_details_fetch_error">Une erreur est survenue lors du chargement de l’événement. Réessayez.</string>
     <string name="event_details_status_open">Ouvert</string>
     <string name="event_details_status_closed">Fermé</string>
