@@ -49,6 +49,7 @@ class VoiceNoteRecordingTest {
             services,
         )
 
+  /** Breaks if recording starts for a user who cannot manage the task. */
   @Test
   fun start_isIgnoredWhenUserCannotManageTheTask() {
     val other =
@@ -65,6 +66,7 @@ class VoiceNoteRecordingTest {
     assertEquals(RecordingStage.Idle, other.stage.value)
   }
 
+  /** Breaks if a completed recording is not held for confirmation. */
   @Test
   fun startAndFinish_holdsTheTemporaryRecording() {
     val subject = recording
@@ -77,6 +79,7 @@ class VoiceNoteRecordingTest {
     assertTrue(recorder.lastAudio!!.file.exists())
   }
 
+  /** Breaks if a recorder failure is not exposed as a failed stage. */
   @Test
   fun start_isFailedWhenRecorderRejectsIt() {
     recorder.startFailure = VoiceRecorderException("busy")
@@ -87,6 +90,7 @@ class VoiceNoteRecordingTest {
     assertEquals(RecordingStage.Failed, subject.stage.value)
   }
 
+  /** Breaks if an illegal recorder state is silently ignored while starting. */
   @Test
   fun start_isFailedWhenRecorderThrowsIllegalStateException() {
     recorder.startFailure = IllegalStateException("recorder unavailable")
@@ -97,6 +101,7 @@ class VoiceNoteRecordingTest {
     assertEquals(RecordingStage.Failed, subject.stage.value)
   }
 
+  /** Breaks if finishing without an active recording changes the workflow state. */
   @Test
   fun finish_isIgnoredWithoutAnActiveRecording() {
     val subject = recording
@@ -106,6 +111,7 @@ class VoiceNoteRecordingTest {
     assertEquals(RecordingStage.Idle, subject.stage.value)
   }
 
+  /** Breaks if an error producing audio is not exposed as a failed stage. */
   @Test
   fun finish_isFailedWhenRecorderCannotProduceAudio() {
     recorder.start()
@@ -117,6 +123,7 @@ class VoiceNoteRecordingTest {
     assertEquals(RecordingStage.Failed, subject.stage.value)
   }
 
+  /** Breaks if an illegal recorder state is silently ignored while finishing. */
   @Test
   fun finish_isFailedWhenRecorderThrowsIllegalStateException() {
     recorder.start()
@@ -128,6 +135,7 @@ class VoiceNoteRecordingTest {
     assertEquals(RecordingStage.Failed, subject.stage.value)
   }
 
+  /** Breaks if cancelling leaves the temporary recording file behind. */
   @Test
   fun cancelSend_deletesTheWaitingTemporaryFile() {
     val subject = recording
@@ -141,6 +149,7 @@ class VoiceNoteRecordingTest {
     assertFalse(file.exists())
   }
 
+  /** Breaks if confirming a recording does not upload and save its voice note. */
   @Test
   fun confirmSend_uploadsAndSavesTheVoiceNote() = runTest {
     val subject = recording
@@ -155,6 +164,7 @@ class VoiceNoteRecordingTest {
     assertEquals(RecordingStage.Idle, subject.stage.value)
   }
 
+  /** Breaks if confirming without a waiting recording starts an upload or save. */
   @Test
   fun confirmSend_isIgnoredWithoutAWaitingRecording() = runTest {
     recording.confirmSend()
@@ -163,6 +173,7 @@ class VoiceNoteRecordingTest {
     assertNull(host.savedTask)
   }
 
+  /** Breaks if an in-flight upload loses its recording before it finishes. */
   @Test
   fun sending_keepsTheRecordingUntilTheUploadFinishes() = runTest {
     val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
@@ -179,6 +190,7 @@ class VoiceNoteRecordingTest {
     assertEquals(RecordingStage.Idle, subject.stage.value)
   }
 
+  /** Breaks if a failed upload cannot be retried with the held recording. */
   @Test
   fun failedUpload_keepsTheRecordingAndRetrySendsIt() = runTest {
     storage.uploadFailure = IOException("offline")
@@ -201,6 +213,7 @@ class VoiceNoteRecordingTest {
     assertFalse(file.exists())
   }
 
+  /** Breaks if a failed save leaves uploaded audio or prevents retrying. */
   @Test
   fun failedSave_deletesUploadedAudioAndAllowsRetry() = runTest {
     host.saveFailure = IOException("offline")
@@ -219,6 +232,7 @@ class VoiceNoteRecordingTest {
     assertEquals(2, storage.uploads.size)
   }
 
+  /** Breaks if cancellation leaves the screen saving, reports an error, or leaks uploaded audio. */
   @Test
   fun cancelledUpload_finishesTheSaveWithoutShowingAnError() = runTest {
     host.saveFailure = CancellationException("cancelled")
@@ -234,6 +248,7 @@ class VoiceNoteRecordingTest {
     assertEquals(listOf("https://fake/task/1.m4a"), storage.deletions)
   }
 
+  /** Breaks if a new recording cannot replace an unsent failed recording. */
   @Test
   fun newRecording_dropsAnUnsentRecording() {
     storage.uploadFailure = IOException("offline")
@@ -251,6 +266,7 @@ class VoiceNoteRecordingTest {
     assertEquals(RecorderState.Recording(Duration.ZERO), recorder.state.value)
   }
 
+  /** Breaks if dismissing a failure leaves the recording or recorder failed. */
   @Test
   fun dismissFailure_clearsRecordingAndRecorderFailure() {
     recorder.startFailure = VoiceRecorderException("busy")
@@ -267,6 +283,7 @@ class VoiceNoteRecordingTest {
     assertEquals(RecorderState.Idle, recorder.state.value)
   }
 
+  /** Breaks if releasing screen resources leaves held audio or the recorder active. */
   @Test
   fun releaseResources_dropsHeldAudioAndCancelsRecorder() {
     val subject = recording
@@ -280,6 +297,7 @@ class VoiceNoteRecordingTest {
     assertEquals(1, recorder.cancelCalls)
   }
 
+  /** Breaks if releasing during a send deletes the file before the upload finishes. */
   @Test
   fun releaseResources_keepsAudioWhileSendingUntilTheUploadFinishes() = runTest {
     val gate = kotlinx.coroutines.CompletableDeferred<Unit>()

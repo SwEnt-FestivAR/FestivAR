@@ -7,8 +7,8 @@ import com.android.festivar.model.audio.RecorderState
 import com.android.festivar.model.audio.VoiceRecorderException
 import com.android.festivar.model.voicenote.VoiceNote
 import kotlin.coroutines.cancellation.CancellationException
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -51,8 +51,9 @@ internal class VoiceNoteRecording(
     get() = _stage.value is RecordingStage.SendFailed
 
   /**
-   * Starts recording, once the microphone permission is granted. Does nothing unless the user can
-   * add a voice note and no recording waits to be sent or is being sent.
+   * Starts recording after the caller has requested and received microphone permission. Does
+   * nothing unless the user can add a voice note and no recording waits to be sent or is being
+   * sent.
    */
   fun start() {
     val busy = _stage.value is RecordingStage.Waiting || _stage.value is RecordingStage.Sending

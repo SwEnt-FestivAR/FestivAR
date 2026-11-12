@@ -8,7 +8,9 @@ import kotlinx.coroutines.flow.StateFlow
 /**
  * What the voice note logic needs from the Task details screen: the task it shows and the way to
  * save a change to it. Saving goes through the screen so that the voice note and the other actions
- * (take, give back, mark done) never save at the same time.
+ * (take, give back, mark done) never save at the same time. The voice note workflow stays separate
+ * from the ViewModel's other actions and uses this interface to share their save gate without
+ * depending directly on the ViewModel.
  */
 internal interface VoiceNoteHost {
   /** The state of the screen: the task shown, and whether it is loading or saving. */
