@@ -11,6 +11,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.announcement.Announcement
@@ -48,6 +50,7 @@ class AnnouncementDetailsScreenTest {
               Event(
                   eventId = "event-1",
                   title = "Vidyfest",
+                  ownerId = "owner-1",
                   startDate = postedAt.minusHours(1),
                   endDate = postedAt.plusHours(2),
                   announcements = listOf(announcement),
@@ -61,10 +64,14 @@ class AnnouncementDetailsScreenTest {
         AnnouncementDetailsViewModel(
             eventId = "event-1",
             announcementId = announcement.announcementId,
-            eventsRepository = events,
-            usersRepository =
-                UsersRepositoryLocal(
-                    listOf(User(uid = "author-1", name = "Marie", surname = "Dupont"))
+            dataRepository =
+                DataRepositoryLocal(
+                    authRepository = FakeAuthRepository(),
+                    eventsRepository = events,
+                    usersRepository =
+                        UsersRepositoryLocal(
+                            listOf(User(uid = "author-1", name = "Marie", surname = "Dupont"))
+                        ),
                 ),
         )
     composeTestRule.setContent { AppTheme { AnnouncementDetailsScreen(viewModel = viewModel) } }
