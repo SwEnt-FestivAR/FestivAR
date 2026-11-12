@@ -65,15 +65,15 @@ fun PeopleCard(
 
 /**
  * The content of a [PeopleCard] without its background, for a row that sits in a card shared with
- * other rows. It takes the same parameters as [PeopleCard].
+ * other rows. It takes the same parameters as [PeopleCard], all of them given by the caller.
  */
 @Composable
 fun PeopleRow(
     title: String,
     people: List<User>,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    subtitle: String = peopleCount(people.size),
+    modifier: Modifier,
+    subtitle: String,
 ) {
   Row(
       modifier.fillMaxWidth().clickable(onClick = onClick).padding(16.dp),
