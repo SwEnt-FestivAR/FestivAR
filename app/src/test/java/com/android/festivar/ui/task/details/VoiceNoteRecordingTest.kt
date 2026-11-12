@@ -221,15 +221,17 @@ class VoiceNoteRecordingTest {
 
   @Test
   fun cancelledUpload_finishesTheSaveWithoutShowingAnError() = runTest {
-    storage.uploadFailure = CancellationException("cancelled")
+    host.saveFailure = CancellationException("cancelled")
     val subject = recording
     subject.start()
     subject.finish()
 
     subject.confirmSend()
 
-    assertTrue(subject.stage.value is RecordingStage.Sending)
+    assertEquals(RecordingStage.Idle, subject.stage.value)
     assertFalse(subject.hasFailedSend)
+    assertFalse(host.state.value.isUpdating)
+    assertEquals(listOf("https://fake/task/1.m4a"), storage.deletions)
   }
 
   @Test
@@ -266,16 +268,34 @@ class VoiceNoteRecordingTest {
   }
 
   @Test
-  fun release_dropsHeldAudioAndCancelsRecorder() {
+  fun releaseResources_dropsHeldAudioAndCancelsRecorder() {
     val subject = recording
     subject.start()
     subject.finish()
     val file = recorder.lastAudio!!.file
 
-    subject.release()
+    subject.releaseResources()
 
     assertFalse(file.exists())
     assertEquals(1, recorder.cancelCalls)
+  }
+
+  @Test
+  fun releaseResources_keepsAudioWhileSendingUntilTheUploadFinishes() = runTest {
+    val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+    storage.uploadGate = gate
+    val subject = recording
+    subject.start()
+    subject.finish()
+    val file = recorder.lastAudio!!.file
+
+    subject.confirmSend()
+    subject.releaseResources()
+
+    assertTrue(file.exists())
+    gate.complete(Unit)
+    testScheduler.advanceUntilIdle()
+    assertFalse(file.exists())
   }
 
   private class RecordingHost(

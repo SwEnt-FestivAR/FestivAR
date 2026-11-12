@@ -7,11 +7,13 @@ import com.android.festivar.model.audio.RecorderState
 import com.android.festivar.model.audio.VoiceRecorderException
 import com.android.festivar.model.voicenote.VoiceNote
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private const val LOG_TAG = "VoiceNoteRecording"
 
@@ -110,9 +112,15 @@ internal class VoiceNoteRecording(
     if (recorder.state.value is RecorderState.Failed) recorder.cancel()
   }
 
-  /** Frees what the screen no longer needs: the held recording, and the recorder. */
-  fun release() {
-    drop()
+  /**
+   * Frees what the screen no longer needs when its lifecycle ends.
+   *
+   * A waiting or failed recording is dropped immediately. A send in progress is left alone so its
+   * upload can finish without the temporary file being deleted underneath it; cancellation of the
+   * send cleans up both the uploaded file and the local file.
+   */
+  fun releaseResources() {
+    if (_stage.value !is RecordingStage.Sending) drop()
     recorder.cancel()
   }
 
@@ -129,6 +137,10 @@ internal class VoiceNoteRecording(
         drop()
         host.finishSaving(updated)
       } catch (e: CancellationException) {
+        url?.let { uploadedUrl ->
+          withContext(NonCancellable) { services.deleteAudioQuietly(uploadedUrl) }
+        }
+        drop()
         host.finishSaving(null)
         throw e
       } catch (e: Exception) {
