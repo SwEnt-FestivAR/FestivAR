@@ -5,6 +5,8 @@ package com.android.festivar.ui.task.edit
 import android.os.Looper
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
+import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.task.Priority
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TaskSpot
@@ -107,14 +109,17 @@ class EditTaskViewModelTest {
       )
   private val local = TasksRepositoryLocal().also { runBlocking { it.addTask(seeded) } }
   private val repository = ScriptedRepository(local)
-  private val viewModel = EditTaskViewModel("task-1", { "owner-1" }, repository, zone = zone)
+  // The ViewModel only reaches the tasks through the tasks repository of the DataRepository.
+  private val dataRepository =
+      DataRepositoryLocal(FakeAuthRepository(), tasksRepository = repository)
+  private val viewModel = EditTaskViewModel("task-1", { "owner-1" }, dataRepository, zone = zone)
 
   private fun stored(): Task = runBlocking { local.getTask("task-1") }
 
   private fun idle() = shadowOf(Looper.getMainLooper()).idle()
 
   private fun loadedViewModel(saveTimeoutMs: Long = 15_000L): EditTaskViewModel =
-      EditTaskViewModel("task-1", { "owner-1" }, repository, saveTimeoutMs, zone).apply { load() }
+      EditTaskViewModel("task-1", { "owner-1" }, dataRepository, saveTimeoutMs, zone).apply { load() }
 
   // Breaks if the ViewModel loads in init or reports loading before being asked.
   @Test
@@ -160,7 +165,7 @@ class EditTaskViewModelTest {
     assertEquals(zone, form.zone)
 
     val elsewhere =
-        EditTaskViewModel("task-1", { "someone-else" }, repository, zone = ZoneId.of("UTC"))
+        EditTaskViewModel("task-1", { "someone-else" }, dataRepository, zone =ZoneId.of("UTC"))
     elsewhere.load()
 
     val other = elsewhere.uiState.value
@@ -203,7 +208,7 @@ class EditTaskViewModelTest {
   // Breaks if the guard or the error reset blocks a retry after a failed load.
   @Test
   fun aFailedLoadCanBeRetried() {
-    val vm = EditTaskViewModel("task-2", { "owner-1" }, repository, zone = zone)
+    val vm = EditTaskViewModel("task-2", { "owner-1" }, dataRepository, zone =zone)
     vm.load()
     assertEquals(R.string.edit_task_error_load_failed, vm.uiState.value.errorMsg)
 
@@ -227,7 +232,7 @@ class EditTaskViewModelTest {
   @Test
   fun aUserWhoIsNoLongerTheOwnerAtSaveTimeCannotSave() {
     var user = "owner-1"
-    val vm = EditTaskViewModel("task-1", { user }, repository, zone = zone)
+    val vm = EditTaskViewModel("task-1", { user }, dataRepository, zone =zone)
     vm.load()
     vm.updateTitle("Run power to the main stage")
     assertTrue(vm.uiState.value.isOwner())
@@ -285,7 +290,7 @@ class EditTaskViewModelTest {
             endTime = ZonedDateTime.of(day, END_OF_DAY, zone),
         )
     runBlocking { local.addTask(wholeDay) }
-    val vm = EditTaskViewModel("task-3", { "owner-1" }, repository, zone = zone)
+    val vm = EditTaskViewModel("task-3", { "owner-1" }, dataRepository, zone =zone)
 
     vm.load()
 
@@ -314,7 +319,7 @@ class EditTaskViewModelTest {
           )
       )
     }
-    val vm = EditTaskViewModel("task-4", { "owner-1" }, repository, zone = zone)
+    val vm = EditTaskViewModel("task-4", { "owner-1" }, dataRepository, zone =zone)
 
     vm.load()
 
@@ -347,7 +352,7 @@ class EditTaskViewModelTest {
   // Breaks if a failed load leaves the screen loading or shows no error.
   @Test
   fun aMissingTaskReportsTheLoadError() {
-    val vm = EditTaskViewModel("missing", { "owner-1" }, repository, zone = zone)
+    val vm = EditTaskViewModel("missing", { "owner-1" }, dataRepository, zone =zone)
 
     vm.load()
 
@@ -466,7 +471,7 @@ class EditTaskViewModelTest {
   // Breaks if canSave or save() does not check that the signed-in user owns the task.
   @Test
   fun aNonOwnerCannotSave() {
-    val vm = EditTaskViewModel("task-1", { "someone-else" }, repository, zone = zone)
+    val vm = EditTaskViewModel("task-1", { "someone-else" }, dataRepository, zone =zone)
     vm.load()
     vm.updateTitle("Hijacked")
 
@@ -625,7 +630,7 @@ class EditTaskViewModelTest {
   // Breaks if clearError does not reset the message the snackbar shows.
   @Test
   fun clearErrorRemovesTheMessage() {
-    val vm = EditTaskViewModel("missing", { "owner-1" }, repository, zone = zone)
+    val vm = EditTaskViewModel("missing", { "owner-1" }, dataRepository, zone =zone)
     vm.load()
     assertEquals(R.string.edit_task_error_load_failed, vm.uiState.value.errorMsg)
 
@@ -638,7 +643,7 @@ class EditTaskViewModelTest {
   @Test
   fun aBlankTaskIdFailsFast() {
     assertThrows(IllegalArgumentException::class.java) {
-      EditTaskViewModel(" ", { "owner-1" }, repository)
+      EditTaskViewModel(" ", { "owner-1" }, dataRepository)
     }
   }
 
