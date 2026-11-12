@@ -40,7 +40,7 @@ enum class AppScreens {
 
     fun announcementDetails(eventId: String, announcementId: String) =
         "${AnnouncementDetails.name}/$eventId/$announcementId"
-    
+
     fun announcementFeed(eventId: String) = "${AnnouncementFeed.name}/$eventId"
   }
 }
