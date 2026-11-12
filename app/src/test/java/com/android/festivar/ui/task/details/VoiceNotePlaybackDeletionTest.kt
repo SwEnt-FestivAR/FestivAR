@@ -9,8 +9,8 @@ import java.time.Duration
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import kotlin.coroutines.cancellation.CancellationException
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -44,8 +44,7 @@ class VoiceNotePlaybackDeletionTest {
   private val services = VoiceNoteServices(recorder, storage, player)
   private val scope =
       CoroutineScope(
-          Dispatchers.Unconfined +
-              CoroutineExceptionHandler { _, _ -> },
+          Dispatchers.Unconfined + CoroutineExceptionHandler { _, _ -> },
       )
 
   @Test
@@ -306,7 +305,6 @@ class VoiceNotePlaybackDeletionTest {
   }
 
   companion object {
-    private val recordedAt =
-        ZonedDateTime.of(2026, 10, 17, 9, 12, 0, 0, ZoneOffset.UTC)
+    private val recordedAt = ZonedDateTime.of(2026, 10, 17, 9, 12, 0, 0, ZoneOffset.UTC)
   }
 }

@@ -42,5 +42,3 @@ internal class VoiceNotePlayback(
         else -> false
       }
 }
-
-
