@@ -380,6 +380,67 @@ class CreateEventViewModelTest {
     assertEquals(1, localRepository.getAllEvents().size)
   }
 
+  /** Red if a timed-out lookup leaves the event save stuck or without an error. */
+  @Test
+  fun timedOutEventLookupShowsSaveError() = runBlocking {
+    val checkingRepository =
+        object : EventsRepository by eventsRepository {
+          override suspend fun addEvent(event: Event) {
+            error("offline")
+          }
+
+          override suspend fun getEvent(eventId: String): Event {
+            withContext(NonCancellable) { delay(100) }
+            error("not found")
+          }
+        }
+    dataRepository =
+        DataRepositoryLocal(
+            mockk(),
+            eventsRepository = checkingRepository,
+            usersRepository = usersRepository,
+        )
+    viewModel = CreateEventViewModel(dataRepository, creator.uid, saveTimeoutMs = 10)
+    fillRequiredFields()
+
+    viewModel.createEvent()
+    withTimeout(5_000.milliseconds) {
+      while (viewModel.uiState.value.errorMsg == null) delay(10.milliseconds)
+    }
+
+    assertFalse(viewModel.uiState.value.isSaving)
+    assertEquals(R.string.create_event_error_save_failed, viewModel.uiState.value.errorMsg)
+  }
+
+  /** Red if cancellation while checking a failed save is converted into a save error. */
+  @Test
+  fun cancelledEventLookupIsPropagated() = runBlocking {
+    val cancelledCheckingRepository =
+        object : EventsRepository by eventsRepository {
+          override suspend fun addEvent(event: Event) {
+            error("offline")
+          }
+
+          override suspend fun getEvent(eventId: String): Event {
+            throw CancellationException("Cancelled")
+          }
+        }
+    dataRepository =
+        DataRepositoryLocal(
+            mockk(),
+            eventsRepository = cancelledCheckingRepository,
+            usersRepository = usersRepository,
+        )
+    viewModel = CreateEventViewModel(dataRepository, creator.uid)
+    fillRequiredFields()
+
+    viewModel.createEvent()
+    delay(100.milliseconds)
+
+    assertTrue(viewModel.uiState.value.isSaving)
+    assertNull(viewModel.uiState.value.errorMsg)
+  }
+
   /** Red if creating an event does not add its creator to membership data. */
   @Test
   fun createEventAddsTheCreatorToMembersAndJoinedEvents() = runBlocking {
