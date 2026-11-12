@@ -461,6 +461,13 @@ class TaskDetailsContentTest {
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MARK_DONE_BUTTON).assertIsDisplayed()
   }
 
+  @Test
+  fun recordBarIsShownWithoutTaskActions() {
+    show(state(task.complete()), voiceNote = VoiceNoteUiState(canManage = true))
+    composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MARK_DONE_BUTTON).assertDoesNotExist()
+  }
+
   /** Breaks if a volunteer is not shown the note and who recorded it, or gets a record bar. */
   @Test
   fun volunteerSeesTheNoteAndWhoRecordedIt() {
@@ -480,6 +487,15 @@ class TaskDetailsContentTest {
     show(state(), voiceNote = failed)
     composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.PLAYBACK_ERROR).assertIsDisplayed()
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MARK_DONE_BUTTON).assertIsDisplayed()
+  }
+
+  @Test
+  fun failedPlaybackShowsItsNoticeWithoutTaskActions() {
+    val failed =
+        VoiceNoteUiState(note = previewNote, player = PlayerState.Failed(previewNote.audioUrl))
+    show(state(task.complete()), voiceNote = failed)
+    composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.PLAYBACK_ERROR).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MARK_DONE_BUTTON).assertDoesNotExist()
   }
 
   /** Breaks if a task with nothing to do and no voice note to record still draws a bottom bar. */
