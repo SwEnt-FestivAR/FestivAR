@@ -39,7 +39,6 @@ import io.mockk.mockk
 import io.mockk.verify
 import java.time.ZoneId
 import java.time.ZonedDateTime
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -123,15 +122,18 @@ class EventDetailsScreenTest {
         .assertTextEquals("Fri 16 to Sun 18 Oct · Parc de Vidy, Lausanne")
   }
 
-  /** Breaks if a long place wraps the subtitle onto several lines instead of ellipsizing it. */
+  /**
+   * Breaks if a long place is cut short instead of wrapping, since this is the only place it shows.
+   */
   @Test
-  fun subtitleStaysOnOneLineForLongPlace() {
-    setContent(
-        eventSameMonth.copy(
-            location =
-                "Main entrance, north-western courtyard beside the temporary festival information tent"
-        )
-    )
+  fun subtitleShowsTheWholeLongPlace() {
+    val place =
+        "Main entrance, north-western courtyard beside the temporary festival information tent"
+    setContent(eventSameMonth.copy(location = place))
+
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.SUBTITLE)
+        .assertTextEquals("Fri 16 to Sun 18 Oct · $place")
 
     val layouts = mutableListOf<TextLayoutResult>()
     composeTestRule
@@ -141,8 +143,8 @@ class EventDetailsScreenTest {
         .action
         ?.invoke(layouts)
 
-    assertEquals(1, layouts.single().lineCount)
-    assertTrue(layouts.single().isLineEllipsized(0))
+    assertTrue(layouts.single().lineCount > 1)
+    assertTrue((0 until layouts.single().lineCount).none { layouts.single().isLineEllipsized(it) })
   }
 
   /** Breaks if an event without a place shows a dangling separator or a placeholder. */
