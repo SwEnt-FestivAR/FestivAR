@@ -193,6 +193,16 @@ class VoiceNoteRecordingTest {
     assertFalse(file.exists())
   }
 
+  /** Breaks if cancelling outside the waiting stage changes the recording workflow. */
+  @Test
+  fun cancelSend_isIgnoredWithoutAWaitingRecording() {
+    val subject = recording
+
+    subject.cancelSend()
+
+    assertEquals(RecordingStage.Idle, subject.stage.value)
+  }
+
   /** Breaks if confirming a recording does not upload and save its voice note. */
   @Test
   fun confirmSend_uploadsAndSavesTheVoiceNote() = runTest {
@@ -215,6 +225,21 @@ class VoiceNoteRecordingTest {
 
     assertTrue(storage.uploads.isEmpty())
     assertNull(host.savedTask)
+  }
+
+  /** Breaks if sending bypasses the screen save gate and starts a concurrent upload. */
+  @Test
+  fun confirmSend_isIgnoredWhileTheScreenIsSaving() = runTest {
+    val subject = recording
+    subject.start()
+    subject.finish()
+    host.blockSaving()
+
+    subject.confirmSend()
+
+    assertTrue(storage.uploads.isEmpty())
+    assertTrue(subject.stage.value is RecordingStage.Waiting)
+    assertTrue(host.state.value.isUpdating)
   }
 
   /** Breaks if an in-flight upload loses its recording before it finishes. */
@@ -418,6 +443,10 @@ class VoiceNoteRecordingTest {
 
     fun copy(ownerId: String): RecordingHost =
         RecordingHost(_state.value.task!!.copy(ownerId = ownerId), _state.value.currentUserId)
+
+    fun blockSaving() {
+        _state.value = _state.value.copy(isUpdating = true)
+    }
   }
 
   companion object {
