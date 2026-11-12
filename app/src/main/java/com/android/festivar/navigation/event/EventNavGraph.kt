@@ -91,29 +91,6 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, dataRepository:
         onEditClicked = { navigator.onEdit(eventId) },
     )
   }
-  // Reached through AppScreens.editEvent(eventId), from the details of an event its owner opened
-  composable(
-      route = "${AppScreens.EditEvent.name}/{eventId}",
-      arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
-  ) { backStackEntry ->
-    val eventId = backStackEntry.arguments?.getString("eventId") ?: ""
-    require(eventId.isNotBlank()) { "eventId must not be blank" }
-    // Saved or not, leaving the screen goes back to the event details
-    val leave: () -> Unit = { navController.popBackStack() }
-    EditEventScreen(
-        eventId = eventId,
-        // No key needed: the view model is scoped to this back stack entry, with its own eventId
-        viewModel =
-            viewModel {
-              EditEventViewModel(
-                  dataRepository.eventsRepository,
-                  { dataRepository.authRepository.currentUser?.uid.orEmpty() },
-              )
-            },
-        onBack = leave,
-        onSaved = leave,
-    )
-  }
   composable(
       route = "${AppScreens.EditEvent.name}/{eventId}",
       arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
