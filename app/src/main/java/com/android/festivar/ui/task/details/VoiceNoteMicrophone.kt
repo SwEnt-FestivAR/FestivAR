@@ -63,4 +63,3 @@ private fun Context.openAppSettings() =
             Uri.fromParts("package", packageName, null),
         )
     )
-
