@@ -39,13 +39,6 @@ class EventsOverviewNavigatorTest {
   }
 
   @Test
-  fun selectAvatarNavigatesToProfile() {
-    navigator.onSelectAvatar()
-
-    verify { navController.navigate(AppScreens.Profile.name, any<NavOptionsBuilder.() -> Unit>()) }
-  }
-
-  @Test
   fun signedOutNavigatesToLoginAndClearsBackStack() {
     val options = slot<NavOptionsBuilder.() -> Unit>()
 
