@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -257,13 +258,15 @@ class VoiceNotePlaybackDeletionTest {
     callbacks.onConfirmDelete()
 
     assertNull(host.savedTask!!.voiceNote)
+    assertFalse(controller.uiState.value.isPlaying)
+    assertEquals(PlayerState.Idle, player.state.value)
     assertFalse(controller.uiState.value.showDeleteConfirm)
   }
 
   /** Breaks if permission state or resource release is not routed by the controller. */
   @Test
   fun controller_routesMicrophonePermissionAndRelease() {
-    val controller = VoiceNoteController(scope, host, services)
+    val controller = VoiceNoteController(scope, PlaybackHost(task.copy(voiceNote = null)), services)
     var asked = false
     val callbacks =
         controller.callbacks(
@@ -274,12 +277,15 @@ class VoiceNotePlaybackDeletionTest {
 
     callbacks.onRecordStart()
     assertTrue(asked)
+    controller.startRecording()
     controller.onMicPermissionResult(false)
     assertTrue(controller.uiState.value.micDenied)
     controller.onMicPermissionResult(true)
     assertFalse(controller.uiState.value.micDenied)
     controller.release()
 
+    assertFalse(controller.uiState.value.showSendDialog)
+    assertEquals(1, recorder.cancels)
     assertTrue(player.released)
   }
 
@@ -325,7 +331,7 @@ class VoiceNotePlaybackDeletionTest {
     callbacks.onRecordRelease()
     callbacks.onConfirmSend()
     assertFalse(controller.uiState.value.showSendDialog)
-    assertTrue(emptyHost.savedTask!!.voiceNote != null)
+    assertNotNull(emptyHost.savedTask!!.voiceNote)
 
     recorder.startFailure = VoiceRecorderException("microphone unavailable")
     val failureController =
