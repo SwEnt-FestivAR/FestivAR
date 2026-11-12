@@ -6,11 +6,11 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
+import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.event.EventsRepository
-import com.android.festivar.model.event.EventsRepositoryProvider
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.user.UsersRepository
-import com.android.festivar.model.user.UsersRepositoryProvider
+import java.time.ZonedDateTime
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,7 +26,8 @@ private const val LOG_TAG = "AnnouncementDetailsVM"
  * UI state of the Announcement Details screen.
  *
  * @property announcement the announcement shown, or null until loaded.
- * @property authorName the name of the announcement's author.
+ * @property authorName the author's name, or null when the account no longer exists.
+ * @property authorNameRes the localized fallback for a missing author, or null when known.
  * @property eventEndTime the end time of the event that contains the announcement.
  * @property isLoading true while the announcement is being loaded.
  * @property isUpdating true while the pin state is being saved.
@@ -35,7 +36,8 @@ private const val LOG_TAG = "AnnouncementDetailsVM"
 data class AnnouncementDetailsUiState(
     val announcement: Announcement? = null,
     val authorName: String? = null,
-    val eventEndTime: java.time.ZonedDateTime? = null,
+    @StringRes val authorNameRes: Int? = null,
+    val eventEndTime: ZonedDateTime? = null,
     val isLoading: Boolean = true,
     val isUpdating: Boolean = false,
     @param:StringRes val errorMsg: Int? = null,
@@ -52,15 +54,16 @@ data class AnnouncementDetailsUiState(
  *
  * @param eventId identifier of the event containing the announcement.
  * @param announcementId identifier of the announcement to show.
- * @param eventsRepository repository used to load the event and save pin changes.
- * @param usersRepository repository used to load the author's name.
+ * @param dataRepository provides the event and user repositories used by this ViewModel.
  */
 class AnnouncementDetailsViewModel(
     private val eventId: String,
     private val announcementId: String,
-    private val eventsRepository: EventsRepository = EventsRepositoryProvider.repository,
-    private val usersRepository: UsersRepository = UsersRepositoryProvider.repository,
+    private val dataRepository: DataRepository,
 ) : ViewModel() {
+  private val eventsRepository: EventsRepository = dataRepository.eventsRepository
+  private val usersRepository: UsersRepository = dataRepository.usersRepository
+
   init {
     require(eventId.isNotBlank()) { "eventId must not be blank" }
     require(announcementId.isNotBlank()) { "announcementId must not be blank" }
@@ -83,16 +86,25 @@ class AnnouncementDetailsViewModel(
                 ?: throw NoSuchElementException(
                     "Announcement $announcementId not found in event $eventId"
                 )
-        val author = usersRepository.getUser(announcement.authorId)
         val authorName =
-            listOf(author.name, author.surname).filter(String::isNotBlank).joinToString(" ")
+            try {
+              val author = usersRepository.getUser(announcement.authorId)
+              listOf(author.name, author.surname).filter(String::isNotBlank).joinToString(" ")
+            } catch (_: NoSuchElementException) {
+              null
+            }
         _uiState.update {
           it.copy(
               announcement = announcement,
               authorName = authorName,
+              authorNameRes =
+                  if (authorName == null) R.string.announcement_details_user_fetch_failed else null,
               eventEndTime = event.endDate,
               isLoading = false,
-              errorMsg = null,
+              errorMsg =
+                  it.errorMsg.takeUnless { error ->
+                    error == R.string.announcement_details_load_failed
+                  },
           )
         }
       } catch (e: CancellationException) {

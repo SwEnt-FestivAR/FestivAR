@@ -2,6 +2,7 @@
 <resources>
     <string name="announcement_details_load_failed">Impossible de charger l\'annonce.</string>
     <string name="announcement_details_save_failed">Impossible de mettre à jour l\'annonce.</string>
+    <string name="announcement_details_user_fetch_failed">Auteur Inconnu</string>
     <string name="announcement_details_back">Retour</string>
     <string name="announcement_details_posted_at">%1$s, %2$s</string>
     <string name="announcement_details_until">Jusqu’au %1$s, %2$s</string>

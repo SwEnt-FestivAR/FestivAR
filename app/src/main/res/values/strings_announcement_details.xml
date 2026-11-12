@@ -2,6 +2,7 @@
 <resources>
     <string name="announcement_details_load_failed">Unable to load the announcement.</string>
     <string name="announcement_details_save_failed">Unable to update the announcement.</string>
+    <string name="announcement_details_user_fetch_failed">Unknown author</string>
     <string name="announcement_details_back">Back</string>
     <string name="announcement_details_posted_at">%1$s, %2$s</string>
     <string name="announcement_details_until">Until %1$s, %2$s</string>
