@@ -1,15 +1,21 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.ui.announcement.details
 
+import android.content.ActivityNotFoundException
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
 import com.android.festivar.model.authentication.FakeAuthRepository
@@ -87,14 +93,25 @@ class AnnouncementDetailsScreenTest {
     composeTestRule.onNodeWithTag(Tags.END_TIME).assertIsDisplayed()
     composeTestRule.onNodeWithTag(Tags.AUTHOR).assertTextContains("Posted by Marie Dupont")
     composeTestRule.onNodeWithTag(Tags.DESCRIPTION).assertTextContains(announcement.content)
-    composeTestRule.onNodeWithTag(Tags.link(announcement.links.single())).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(Tags.link(announcement.links.single()))
+        .performScrollTo()
+        .assertIsDisplayed()
 
     composeTestRule.onNodeWithTag(Tags.PIN_BUTTON).assertIsEnabled().performClick()
-    composeTestRule.onNodeWithText("Unpin from top").assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(
+            composeTestRule.activity.getString(R.string.announcement_details_unpin_from_top)
+        )
+        .assertIsDisplayed()
     assertTrue(runBlocking { events.getEvent("event-1").announcements.single().pinned })
 
     composeTestRule.onNodeWithTag(Tags.PIN_BUTTON).performClick()
-    composeTestRule.onNodeWithText("Pin to top").assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(
+            composeTestRule.activity.getString(R.string.announcement_details_pin_to_top)
+        )
+        .assertIsDisplayed()
     assertFalse(runBlocking { events.getEvent("event-1").announcements.single().pinned })
   }
 
@@ -112,7 +129,11 @@ class AnnouncementDetailsScreenTest {
     }
 
     composeTestRule.onNodeWithTag(Tags.LOADING).assertIsDisplayed()
-    composeTestRule.onNodeWithTag(Tags.ERROR).assertTextContains("Unable to load the announcement.")
+    composeTestRule
+        .onNodeWithTag(Tags.ERROR)
+        .assertTextContains(
+            composeTestRule.activity.getString(R.string.announcement_details_load_failed)
+        )
     composeTestRule.onNodeWithTag(Tags.RETRY).performClick()
     assertEquals(1, retryCount)
     composeTestRule.onNodeWithTag(Tags.PIN_BUTTON).assertDoesNotExist()
@@ -136,12 +157,41 @@ class AnnouncementDetailsScreenTest {
       }
     }
 
-    composeTestRule.onNodeWithTag(Tags.AUTHOR).assertTextContains("Posted by Unknown author")
+    composeTestRule
+        .onNodeWithTag(Tags.AUTHOR)
+        .assertTextContains(
+            composeTestRule.activity.getString(
+                R.string.announcement_details_posted_by,
+                composeTestRule.activity.getString(R.string.announcement_details_user_fetch_failed),
+            )
+        )
     composeTestRule.onNodeWithTag(Tags.END_TIME).assertDoesNotExist()
     composeTestRule.onNodeWithTag(Tags.DESCRIPTION).assertDoesNotExist()
     composeTestRule.onNodeWithTag(Tags.link("https://vidyfest.ch/map")).assertDoesNotExist()
     composeTestRule.onNodeWithTag(Tags.BACK_BUTTON).performClick()
     assertEquals(1, backCount)
+  }
+
+  @Test
+  fun showsExistingDetailsWhileRefreshingAndDisablesPinWithoutAuthor() {
+    composeTestRule.setContent {
+      AppTheme {
+        AnnouncementDetailsContent(
+            state =
+                AnnouncementDetailsUiState(
+                    announcement = announcement.copy(content = "", links = emptyList()),
+                    isLoading = true,
+                )
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag(Tags.TITLE).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(Tags.LOADING).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(Tags.AUTHOR).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(Tags.DESCRIPTION).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(Tags.link("https://vidyfest.ch/map")).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(Tags.PIN_BUTTON).assertIsNotEnabled()
   }
 
   @Test
@@ -172,8 +222,44 @@ class AnnouncementDetailsScreenTest {
     composeTestRule.onNodeWithTag(Tags.RETRY).assertDoesNotExist()
     composeTestRule.onNodeWithTag(Tags.AUTHOR).assertDoesNotExist()
     composeTestRule.onNodeWithTag(Tags.DESCRIPTION).assertDoesNotExist()
-    composeTestRule.onNodeWithTag(Tags.link(link)).performClick()
+    composeTestRule.onNodeWithTag(Tags.link(link)).performScrollTo().performClick()
     assertEquals(link, openedLink)
     composeTestRule.onNodeWithText("vidyfest.ch/map").assertIsDisplayed()
+  }
+
+  @Test
+  fun failedUriLaunchDoesNotCrashTheScreen() {
+    val viewModel =
+        AnnouncementDetailsViewModel(
+            eventId = "event-1",
+            announcementId = announcement.announcementId,
+            dataRepository =
+                DataRepositoryLocal(
+                    authRepository = FakeAuthRepository(),
+                    eventsRepository = events,
+                    usersRepository = UsersRepositoryLocal(emptyList()),
+                ),
+        )
+    composeTestRule.setContent {
+      CompositionLocalProvider(
+          LocalUriHandler provides
+              object : UriHandler {
+                override fun openUri(uri: String) {
+                  throw ActivityNotFoundException("No application can open $uri")
+                }
+              }
+      ) {
+        AppTheme { AnnouncementDetailsScreen(viewModel = viewModel) }
+      }
+    }
+
+    composeTestRule.waitUntil(5_000) {
+      composeTestRule.onAllNodesWithTag(Tags.TITLE).fetchSemanticsNodes().isNotEmpty()
+    }
+    composeTestRule
+        .onNodeWithTag(Tags.link(announcement.links.single()))
+        .performScrollTo()
+        .performClick()
+    composeTestRule.onNodeWithTag(Tags.link(announcement.links.single())).assertIsDisplayed()
   }
 }

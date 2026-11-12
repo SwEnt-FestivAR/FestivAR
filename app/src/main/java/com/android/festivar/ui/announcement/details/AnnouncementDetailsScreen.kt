@@ -1,6 +1,8 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.ui.announcement.details
 
+import android.content.ActivityNotFoundException
+import android.util.Log
 import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -34,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -45,13 +48,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.festivar.R
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.event.announcement.AnnouncementPriority
-import com.android.festivar.ui.components.PillStyle
+import com.android.festivar.ui.announcement.announcementPriorityLabelRes
+import com.android.festivar.ui.announcement.announcementPriorityPillStyle
 import com.android.festivar.ui.components.SectionLabel
 import com.android.festivar.ui.components.StatusPill
 import com.android.festivar.ui.components.formatDate
 import com.android.festivar.ui.components.formatTime
 import com.android.festivar.ui.theme.AppTheme
 import java.time.ZonedDateTime
+
+private const val LOG_TAG = "AnnouncementDetailsScreen"
 
 object AnnouncementDetailsScreenTestTags {
   const val BACK_BUTTON = "announcementDetailsBackButton"
@@ -75,9 +81,9 @@ object AnnouncementDetailsScreenTestTags {
  */
 @Composable
 fun AnnouncementDetailsScreen(
+    modifier: Modifier = Modifier,
     viewModel: AnnouncementDetailsViewModel,
     onBack: () -> Unit = {},
-    modifier: Modifier = Modifier,
 ) {
   val state by viewModel.uiState.collectAsStateWithLifecycle()
   val uriHandler = LocalUriHandler.current
@@ -88,21 +94,33 @@ fun AnnouncementDetailsScreen(
       onBack = onBack,
       onTogglePin = viewModel::togglePin,
       onRetry = viewModel::load,
-      onOpenLink = uriHandler::openUri,
+      onOpenLink = { url -> openAnnouncementLink(uriHandler, url) },
       modifier = modifier,
   )
+}
+
+private fun openAnnouncementLink(uriHandler: UriHandler, url: String) {
+  try {
+    uriHandler.openUri(url)
+  } catch (e: ActivityNotFoundException) {
+    Log.w(LOG_TAG, "No app can open announcement link: $url", e)
+  } catch (e: IllegalArgumentException) {
+    Log.w(LOG_TAG, "Invalid announcement link: $url", e)
+  } catch (e: SecurityException) {
+    Log.w(LOG_TAG, "Not allowed to open announcement link: $url", e)
+  }
 }
 
 /** Stateless announcement details UI. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnnouncementDetailsContent(
+    modifier: Modifier = Modifier,
     state: AnnouncementDetailsUiState,
     onBack: () -> Unit = {},
     onTogglePin: () -> Unit = {},
     onRetry: () -> Unit = {},
     onOpenLink: (String) -> Unit = {},
-    modifier: Modifier = Modifier,
 ) {
   Scaffold(
       modifier = modifier,
@@ -209,8 +227,8 @@ private fun AnnouncementBody(
       if (authorName == null && authorNameRes != null) stringResource(authorNameRes) else authorName
 
   StatusPill(
-      label = stringResource(priorityLabel(announcement.priority)),
-      style = priorityStyle(announcement.priority),
+      label = stringResource(announcementPriorityLabelRes(announcement.priority)),
+      style = announcementPriorityPillStyle(announcement.priority),
       modifier = Modifier.testTag(AnnouncementDetailsScreenTestTags.PRIORITY_BADGE),
   )
   Text(
@@ -289,20 +307,6 @@ private fun AnnouncementLink(url: String, onOpenLink: (String) -> Unit) {
     )
   }
 }
-
-private fun priorityLabel(priority: AnnouncementPriority): Int =
-    when (priority) {
-      AnnouncementPriority.INFO -> R.string.create_announcement_priority_info
-      AnnouncementPriority.WARNING -> R.string.create_announcement_priority_warning
-      AnnouncementPriority.URGENT -> R.string.create_announcement_priority_urgent
-    }
-
-private fun priorityStyle(priority: AnnouncementPriority): PillStyle =
-    when (priority) {
-      AnnouncementPriority.INFO -> PillStyle.MUTED
-      AnnouncementPriority.WARNING -> PillStyle.AMBER
-      AnnouncementPriority.URGENT -> PillStyle.ERROR
-    }
 
 @Preview(showBackground = true)
 @Composable
