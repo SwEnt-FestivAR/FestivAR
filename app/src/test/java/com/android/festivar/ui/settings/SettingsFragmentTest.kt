@@ -74,6 +74,21 @@ class SettingsFragmentTest {
   }
 
   @Test
+  fun savedPreferencesApplyWithoutOpeningSettings() {
+    val activity = Robolectric.buildActivity(MySettingsActivity::class.java).setup().get()
+    PreferenceManager.getDefaultSharedPreferences(activity)
+        .edit()
+        .putString("theme", "dark")
+        .putString("language", "fr")
+        .commit()
+
+    applySavedSettings(activity)
+
+    assertEquals(AppCompatDelegate.MODE_NIGHT_YES, AppCompatDelegate.getDefaultNightMode())
+    assertEquals(LocaleListCompat.forLanguageTags("fr"), AppCompatDelegate.getApplicationLocales())
+  }
+
+  @Test
   fun settingsFragmentWithNullPreferencesInSharedPreferences() {
     val activity = Robolectric.buildActivity(MySettingsActivity::class.java).setup().get()
     PreferenceManager.getDefaultSharedPreferences(activity).edit().clear().commit()

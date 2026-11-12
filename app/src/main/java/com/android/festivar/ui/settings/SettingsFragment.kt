@@ -18,14 +18,9 @@ class SettingsFragment : PreferenceFragmentCompat() {
     val themePreference = findPreference<androidx.preference.DropDownPreference>("theme")
     themePreference?.setOnPreferenceChangeListener { _, newValue ->
       val theme = newValue as? String ?: return@setOnPreferenceChangeListener false
-      applyTheme(theme)
+      applyThemePreference(theme)
       true
     }
-
-    val selectedTheme =
-        PreferenceManager.getDefaultSharedPreferences(requireContext()).getString("theme", "system")
-            ?: "system"
-    applyTheme(selectedTheme)
 
     ///////////////////
     ///// Language ////
@@ -33,24 +28,25 @@ class SettingsFragment : PreferenceFragmentCompat() {
     val languagePreferences = findPreference<androidx.preference.DropDownPreference>("language")
     languagePreferences?.setOnPreferenceChangeListener { _, newValue ->
       val language = newValue as? String ?: return@setOnPreferenceChangeListener false
-      applyLanguage(language)
+      applyLanguagePreference(language)
       true
     }
-
-    val selectedLanguage =
-        PreferenceManager.getDefaultSharedPreferences(requireContext())
-            .getString("language", "system") // the system is not magic here
-        ?: "system"
-    applyLanguage(selectedLanguage)
+    applySavedSettings(requireContext())
   }
+}
 
-  private fun applyTheme(theme: String) {
-    AppCompatDelegate.setDefaultNightMode(nightModeForTheme(theme))
-  }
+internal fun applySavedSettings(context: android.content.Context) {
+  val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+  applyThemePreference(preferences.getString("theme", "system") ?: "system")
+  applyLanguagePreference(preferences.getString("language", "system") ?: "system")
+}
 
-  private fun applyLanguage(lan: String) {
-    AppCompatDelegate.setApplicationLocales(localeFromString(lan))
-  }
+private fun applyThemePreference(theme: String) {
+  AppCompatDelegate.setDefaultNightMode(nightModeForTheme(theme))
+}
+
+private fun applyLanguagePreference(language: String) {
+  AppCompatDelegate.setApplicationLocales(localeFromString(language))
 }
 
 internal fun nightModeForTheme(theme: String): Int =
