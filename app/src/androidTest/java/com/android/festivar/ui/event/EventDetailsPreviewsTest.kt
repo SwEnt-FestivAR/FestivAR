@@ -21,6 +21,7 @@ import com.android.festivar.ui.event.details.EventDetailsMembersListPreview
 import com.android.festivar.ui.event.details.EventDetailsScreenPreview
 import com.android.festivar.ui.event.details.EventDetailsScreenTestTags
 import com.android.festivar.ui.event.details.FetchErrorPreview
+import com.android.festivar.ui.event.details.OwnerEventDetailsPreview
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -72,6 +73,17 @@ class EventDetailsPreviewsTest {
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.MEMBERS_SHEET).assertIsDisplayed()
     composeTestRule.onNodeWithText("Olivia Roy").assertIsDisplayed()
     composeTestRule.onNodeWithText("Organizer").assertIsDisplayed()
+  }
+
+  /** Breaks if the owner preview stops showing the menu button. */
+  @Test
+  fun ownerEventDetailsPreview_showsMenuButton() {
+    composeTestRule.setContent { OwnerEventDetailsPreview() }
+    composeTestRule.waitForIdle()
+
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.MORE_ACTIONS_BUTTON)
+        .assertIsDisplayed()
   }
 
   /** Breaks if the closed event preview stops showing the Closed chip. */
