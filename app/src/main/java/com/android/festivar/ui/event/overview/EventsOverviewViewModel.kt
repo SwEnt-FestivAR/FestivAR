@@ -1,14 +1,11 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.event.overview
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
-import com.android.festivar.model.user.User
-import com.android.festivar.model.user.UsersRepository
 import java.time.ZonedDateTime
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -34,8 +31,6 @@ enum class EventsFilter {
  * @property pastEvents The [Event] items that are closed or ended, the most recently ended first.
  * @property selectedFilter Which [Event] items are shown: [ongoingEvents], [upcomingEvents] or
  *   [pastEvents].
- * @property user The signed-in [User], whose avatar is shown in the top bar. `null` only until a
- *   ViewModel provides it, and only the identifier until the saved [User] is fetched.
  * @property isLoading Whether the [Event] items are currently being fetched.
  * @property hasError Whether the last fetch of the [Event] items failed. It stays `true` until a
  *   fetch succeeds, so the screen can keep showing the error with a retry.
@@ -47,7 +42,6 @@ data class EventsOverviewUIState(
     val upcomingEvents: List<Event> = emptyList(),
     val pastEvents: List<Event> = emptyList(),
     val selectedFilter: EventsFilter = EventsFilter.ONGOING,
-    val user: User? = null,
     val isLoading: Boolean = false,
     val hasError: Boolean = false,
     val errorMsg: String? = null,
@@ -72,15 +66,12 @@ data class EventsOverviewUIState(
 /**
  * ViewModel of the Events Overview screen.
  *
- * Manages the UI state by fetching the signed-in [User] through the [UsersRepository] of
- * [dataRepository] and its [Event] items through its [EventsRepository]. Nothing is fetched until
- * [refreshUIState] is called: the screen calls it each time it is shown. Until the first fetch, the
- * UI state is already loading.
+ * Manages the UI state by fetching the [Event] items of the signed-in user through the
+ * [EventsRepository] of [dataRepository]. Nothing is fetched until [refreshUIState] is called: the
+ * screen calls it each time it is shown. Until the first fetch, the UI state is already loading.
  *
- * @property dataRepository Gives the [EventsRepository] used to fetch the [Event] items and the
- *   [UsersRepository] holding the [User] saved by the sign in or the sign up, with the name and
- *   surname shown in the avatar.
- * @property uId The signed-in [User] unique identifier.
+ * @property dataRepository Gives the [EventsRepository] used to fetch the [Event] items.
+ * @property uId The signed-in user unique identifier.
  * @property now Gives the current time, used to split ongoing, upcoming and past [Event] items.
  */
 class EventsOverviewViewModel(
@@ -90,17 +81,11 @@ class EventsOverviewViewModel(
 ) : ViewModel() {
 
   private val eventsRepository: EventsRepository = dataRepository.eventsRepository
-  private val usersRepository: UsersRepository = dataRepository.usersRepository
 
-  // Until the saved User is fetched, the avatar shows a person icon. Loading from the start:
-  // nothing is fetched until the screen calls refreshUIState on resume, and until then the screen
-  // must show its progress indicator, not its empty state.
-  private val _uiState =
-      MutableStateFlow(EventsOverviewUIState(user = User(uid = uId), isLoading = true))
+  // Loading from the start: nothing is fetched until the screen calls refreshUIState on resume,
+  // and until then the screen must show its progress indicator, not its empty state.
+  private val _uiState = MutableStateFlow(EventsOverviewUIState(isLoading = true))
   val uiState: StateFlow<EventsOverviewUIState> = _uiState.asStateFlow()
-
-  /** The fetch of the [User] in progress, cancelled when a newer one starts. */
-  private var getUserJob: Job? = null
 
   /** The fetch of the [Event] items in progress, cancelled when a newer one starts. */
   private var getEventsJob: Job? = null
@@ -119,38 +104,15 @@ class EventsOverviewViewModel(
   }
 
   /**
-   * Refreshes the UI state by fetching the [User] and the [Event] items from the repositories, e.g.
-   * when the screen is shown again after the profile was edited, or when the user retries.
+   * Refreshes the UI state by fetching the [Event] items from the repository, e.g. when the screen
+   * is shown again after an event was created or joined, or when the user retries.
    */
   fun refreshUIState() {
-    getUser()
     getEvents()
   }
 
   /**
-   * Fetches the signed-in [User] from the repository and shows it in the avatar. Cancels the
-   * previous fetch, so that an older result never overwrites a newer one. If it fails, the avatar
-   * keeps what it shows.
-   */
-  private fun getUser() {
-    getUserJob?.cancel()
-    getUserJob = viewModelScope.launch {
-      try {
-        val user = usersRepository.getUser(uId)
-        ensureActive()
-        _uiState.update { it.copy(user = user) }
-      } catch (e: CancellationException) {
-        // Cancelled by a newer fetch or because the ViewModel is cleared: not an error
-        throw e
-      } catch (e: Exception) {
-        // The events can still be shown: the avatar only misses the name and surname
-        Log.w("EventsOverviewViewModel", "Failed to fetch the user", e)
-      }
-    }
-  }
-
-  /**
-   * Fetches the [Event] items of the signed-in [User] from the repository and updates the UI state.
+   * Fetches the [Event] items of the signed-in user from the repository and updates the UI state.
    * Cancels the previous fetch, so that an older result never overwrites a newer one. A failure
    * keeps the [Event] items already shown, and the error stays until a fetch succeeds.
    */

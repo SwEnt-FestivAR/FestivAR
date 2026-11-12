@@ -382,7 +382,7 @@ class EndToEndTest {
 
   /**
    * Opens the profile of [email] from the Profile tab of the bottom bar and signs out, back to the
-   * login screen. Both journeys use the tab, which every screen with a bar offers.
+   * login screen.
    */
   private fun signOutFromTheProfile(email: String) {
     composeTestRule
