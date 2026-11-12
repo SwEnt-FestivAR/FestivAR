@@ -34,6 +34,7 @@ import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
+import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.ui.event.details.EventDetailsScreen
 import com.android.festivar.ui.event.details.EventDetailsScreenTestTags
 import com.android.festivar.ui.event.details.EventDetailsViewModel
@@ -41,6 +42,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -280,6 +282,7 @@ class EventDetailsScreenTest {
           onTasksButtonClicked = {},
           onAnnouncementsClicked = {},
           onBack = {},
+          onEventDeleted = {},
       )
     }
     composeTestRule.waitForIdle()
@@ -373,10 +376,118 @@ class EventDetailsScreenTest {
     verify(exactly = 1) { onBack() }
   }
 
+  /**
+   * Breaks if asking to delete does not show the confirmation naming the event with its two
+   * buttons, or if it deletes the event before the owner confirmed.
+   */
+  @Test
+  fun requestingDeleteShowsTheConfirmationWithoutDeleting() {
+    val deleted = mutableListOf<String>()
+    val viewModel = deletableViewModel(deleted)
+
+    composeTestRule.runOnIdle { viewModel.requestDelete() }
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DELETE_DIALOG).assertIsDisplayed()
+    composeTestRule.onNodeWithText("Delete Fête de l'Asso 2026?").assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText("Its tasks, structures and team go with it. This cannot be undone.")
+        .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.DELETE_CONFIRM_BUTTON)
+        .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.DELETE_DISMISS_BUTTON)
+        .assertIsDisplayed()
+    assertTrue(deleted.isEmpty())
+  }
+
+  /** Breaks if "Keep it" does not close the dialog or if it deletes the event. */
+  @Test
+  fun keepItClosesTheConfirmationAndDeletesNothing() {
+    val deleted = mutableListOf<String>()
+    val viewModel = deletableViewModel(deleted)
+    composeTestRule.runOnIdle { viewModel.requestDelete() }
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DELETE_DISMISS_BUTTON).performClick()
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DELETE_DIALOG).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.EVENT_NAME).assertIsDisplayed()
+    assertTrue(deleted.isEmpty())
+  }
+
+  /** Breaks if "Delete" does not delete the event and then call onEventDeleted exactly once. */
+  @Test
+  fun confirmingDeleteDeletesTheEventAndLeavesTheScreen() {
+    val deleted = mutableListOf<String>()
+    val onEventDeleted = mockk<() -> Unit>(relaxed = true)
+    val viewModel = deletableViewModel(deleted, onEventDeleted = onEventDeleted)
+    composeTestRule.runOnIdle { viewModel.requestDelete() }
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DELETE_CONFIRM_BUTTON).performClick()
+    composeTestRule.waitForIdle()
+
+    assertEquals(listOf(EVENT_ID), deleted)
+    verify(exactly = 1) { onEventDeleted() }
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DELETE_DIALOG).assertDoesNotExist()
+  }
+
+  /**
+   * Breaks if a failed deletion does not show an error, leaves the screen, or if the error cannot
+   * be dismissed.
+   */
+  @Test
+  fun failedDeleteShowsADismissibleErrorAndKeepsTheScreen() {
+    val onEventDeleted = mockk<() -> Unit>(relaxed = true)
+    val viewModel =
+        deletableViewModel(mutableListOf(), failing = true, onEventDeleted = onEventDeleted)
+    composeTestRule.runOnIdle { viewModel.requestDelete() }
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DELETE_CONFIRM_BUTTON).performClick()
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DELETE_ERROR).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.EVENT_NAME).assertIsDisplayed()
+    verify(exactly = 0) { onEventDeleted() }
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DELETE_ERROR_DISMISS).performClick()
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DELETE_ERROR).assertDoesNotExist()
+  }
+
+  /** Shows [eventSameMonth] with a ViewModel whose repository records the deleted ids. */
+  @SuppressLint("ViewModelConstructorInComposable")
+  private fun deletableViewModel(
+      deleted: MutableList<String>,
+      failing: Boolean = false,
+      onEventDeleted: () -> Unit = {},
+  ): EventDetailsViewModel {
+    val repository =
+        object : EventsRepository by EventsRepositoryLocal(listOf(eventSameMonth)) {
+          override suspend fun deleteEvent(eventId: String) {
+            if (failing) throw IllegalStateException("delete failed")
+            deleted += eventId
+          }
+        }
+    val viewModel = EventDetailsViewModel(dataRepositoryWith(repository), EVENT_ID)
+    composeTestRule.setContent {
+      EventDetailsScreen(
+          viewModel = viewModel,
+          onTasksButtonClicked = {},
+          onAnnouncementsClicked = {},
+          onBack = {},
+          onEventDeleted = onEventDeleted,
+      )
+    }
+    composeTestRule.waitForIdle()
+    return viewModel
+  }
+
   private fun dataRepositoryWith(eventsRepository: EventsRepository) =
       DataRepositoryLocal(
           authRepository = FakeAuthRepository(),
           eventsRepository = eventsRepository,
+          usersRepository =
+              UsersRepositoryLocal(listOf(User(uid = "user", joinedEvents = listOf(EVENT_ID)))),
       )
 
   /**
@@ -466,6 +577,7 @@ class EventDetailsScreenTest {
           onTasksButtonClicked = onTasksButtonClicked,
           onAnnouncementsClicked = onAnnouncementsClicked,
           onBack = onBack,
+          onEventDeleted = {},
       )
     }
     composeTestRule.waitForIdle()
