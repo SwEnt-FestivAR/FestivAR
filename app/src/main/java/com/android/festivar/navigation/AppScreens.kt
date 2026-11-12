@@ -18,6 +18,7 @@ enum class AppScreens {
   CreateEvent,
   CreateTask,
   CreateAnnouncement,
+  AnnouncementFeed,
   TaskDetails,
   EditTask,
   MyTasks;
@@ -35,6 +36,8 @@ enum class AppScreens {
     fun editTask(taskId: String) = "${EditTask.name}/$taskId"
 
     fun createAnnouncement(eventId: String) = "${CreateAnnouncement.name}/$eventId"
+
+    fun announcementFeed(eventId: String) = "${AnnouncementFeed.name}/$eventId"
   }
 }
 
