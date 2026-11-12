@@ -1,6 +1,8 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.components
 
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+
 import androidx.annotation.StringRes
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -38,6 +40,7 @@ fun FestivarPrioritySelector(
     selected: Priority,
     onSelect: (Priority) -> Unit,
     label: String,
+    enabled: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
   Column(modifier = modifier) {
@@ -51,6 +54,7 @@ fun FestivarPrioritySelector(
             label = stringResource(priorityLabelRes(priority)),
             selected = priority == selected,
             onClick = { onSelect(priority) },
+            enabled = enabled,
         )
       }
     }

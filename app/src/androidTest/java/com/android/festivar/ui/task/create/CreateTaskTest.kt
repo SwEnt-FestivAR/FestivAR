@@ -1,3 +1,4 @@
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.create
@@ -40,6 +41,7 @@ import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZonedDateTime
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
 
@@ -64,6 +66,7 @@ abstract class CreateTaskTest {
 
   /** While true, saving a task fails as if the device were offline. */
   var addTaskFails = false
+  var addTaskGate: CompletableDeferred<Unit>? = null
 
   @Before
   open fun setUp() {
@@ -73,6 +76,7 @@ abstract class CreateTaskTest {
         object : TasksRepository by repository {
           override suspend fun addTask(task: Task) {
             if (addTaskFails) throw IllegalStateException("offline")
+            addTaskGate?.await()
             repository.addTask(task)
           }
         }
@@ -99,6 +103,7 @@ abstract class CreateTaskTest {
     createdCount = 0
     backCount = 0
     addTaskFails = false
+    addTaskGate = null
   }
 
   fun savedTasks(): List<Task> = runBlocking { repository.getAllTasks(EVENT_ID) }

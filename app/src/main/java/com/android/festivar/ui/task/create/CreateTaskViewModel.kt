@@ -250,7 +250,7 @@ private constructor(
     val taskId = pendingTaskId ?: tasksRepository.getNewUid()
     pendingTaskId = taskId
     val task = form.toTask(taskId, eventId, ownerId)
-    _uiState.update { it.copy(isSaving = true, errorMsg = null) }
+    _uiState.update { it.copy(isSaving = true, errorMsg = null, openPicker = null) }
     viewModelScope.launch {
       try {
         withTimeout(saveTimeoutMs) { dataRepository.addTask(task) }
