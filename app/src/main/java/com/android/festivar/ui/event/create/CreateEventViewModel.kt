@@ -51,6 +51,8 @@ data class CreateEventUIState(
     val openPicker: DateTimeField? = null,
     val isSaving: Boolean = false,
     val createdEventId: String? = null,
+    val showDiscardConfirmation: Boolean = false,
+    val isDiscarded: Boolean = false,
     val zone: ZoneId = ZoneId.systemDefault(),
     @StringRes val errorMsg: Int? = null,
 ) {
@@ -123,6 +125,11 @@ class CreateEventViewModel(
   val uiState: StateFlow<CreateEventUIState> = formState
   private var pendingEventId: String? = null
 
+  /** Whether leaving the form would discard any entered event details. */
+  val needsDiscardConfirmation: Boolean
+    get() =
+        currentState.createdEventId == null && !currentState.isSaving && hasChanges(currentState)
+
   override fun clearError(state: CreateEventUIState) = state.copy(errorMsg = null)
 
   override fun updateNameState(state: CreateEventUIState, newName: String) =
@@ -150,6 +157,39 @@ class CreateEventViewModel(
       state.copy(openPicker = picker)
 
   override fun currentPicker(state: CreateEventUIState) = state.openPicker
+
+  /** Handles system or top-bar back requests, asking before losing entered details. */
+  fun requestDiscard() {
+    updateState { state ->
+      when {
+        state.isSaving || state.createdEventId != null || state.isDiscarded -> state
+        hasChanges(state) -> state.copy(showDiscardConfirmation = true)
+        else -> state.copy(isDiscarded = true)
+      }
+    }
+  }
+
+  /** Closes the discard dialog and keeps the entered details. */
+  fun cancelDiscard() {
+    updateState { it.copy(showDiscardConfirmation = false) }
+  }
+
+  /** Confirms that the user wants to leave and discard the entered details. */
+  fun confirmDiscard() {
+    updateState {
+      if (it.isSaving || it.createdEventId != null) it.copy(showDiscardConfirmation = false)
+      else it.copy(showDiscardConfirmation = false, isDiscarded = true)
+    }
+  }
+
+  private fun hasChanges(state: CreateEventUIState): Boolean =
+      state.name.isNotEmpty() ||
+          state.startDate != null ||
+          state.endDate != null ||
+          state.startTime != null ||
+          state.endTime != null ||
+          state.venue.isNotEmpty() ||
+          state.notes.isNotEmpty()
 
   /**
    * Saves the form as a new event with the creator as its first member. Ignored while a save runs

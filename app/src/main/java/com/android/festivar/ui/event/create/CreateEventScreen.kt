@@ -42,6 +42,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.R
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.DateTimeRange
+import com.android.festivar.ui.components.FestivarDiscardDialog
 import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.event.EventFields
 import com.android.festivar.ui.event.EventFieldsTestTags
@@ -65,6 +66,9 @@ object CreateEventScreenTestTags {
   const val CREATE_BUTTON = "createButton"
   const val SAVING_INDICATOR = "createEventSaving"
   const val SAVE_ERROR = "createEventSaveError"
+  const val DISCARD_DIALOG = "createEventDiscardDialog"
+  const val DISCARD_BUTTON = "createEventDiscardButton"
+  const val KEEP_EDITING_BUTTON = "createEventKeepEditingButton"
 }
 
 private val createEventFieldTags =
@@ -109,7 +113,9 @@ fun CreateEventScreen(
   val uiState by viewModel.uiState.collectAsState()
   val requestBack = { if (!uiState.isSaving) onBack() }
   BackHandler(onBack = requestBack)
+  LaunchedEffect(uiState.isDiscarded) { if (uiState.isDiscarded) onBack() }
   LaunchedEffect(uiState.createdEventId) { if (uiState.createdEventId != null) onCreated() }
+  BackHandler(onBack = viewModel::requestDiscard)
 
   CreateEventContent(
       state = uiState,
@@ -126,6 +132,17 @@ fun CreateEventScreen(
           ),
       modifier = modifier,
   )
+
+  if (uiState.showDiscardConfirmation) {
+    FestivarDiscardDialog(
+        title = stringResource(R.string.create_event_discard_title),
+        onConfirm = viewModel::confirmDiscard,
+        onDismiss = viewModel::cancelDiscard,
+        modifier = Modifier.testTag(CreateEventScreenTestTags.DISCARD_DIALOG),
+        confirmModifier = Modifier.testTag(CreateEventScreenTestTags.DISCARD_BUTTON),
+        dismissModifier = Modifier.testTag(CreateEventScreenTestTags.KEEP_EDITING_BUTTON),
+    )
+  }
 }
 
 /**
