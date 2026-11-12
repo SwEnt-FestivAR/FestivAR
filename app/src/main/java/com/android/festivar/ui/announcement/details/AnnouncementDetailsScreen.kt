@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co authored by: Gemini
 package com.android.festivar.ui.announcement.details
 
 import android.content.ActivityNotFoundException
@@ -81,8 +82,8 @@ object AnnouncementDetailsScreenTestTags {
  */
 @Composable
 fun AnnouncementDetailsScreen(
-    modifier: Modifier = Modifier,
     viewModel: AnnouncementDetailsViewModel,
+    modifier: Modifier = Modifier,
     onBack: () -> Unit = {},
 ) {
   val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -91,11 +92,11 @@ fun AnnouncementDetailsScreen(
 
   AnnouncementDetailsContent(
       state = state,
+      modifier = modifier,
       onBack = onBack,
       onTogglePin = viewModel::togglePin,
       onRetry = viewModel::load,
       onOpenLink = { url -> openAnnouncementLink(uriHandler, url) },
-      modifier = modifier,
   )
 }
 
@@ -108,6 +109,8 @@ private fun openAnnouncementLink(uriHandler: UriHandler, url: String) {
     Log.w(LOG_TAG, "Invalid announcement link: $url", e)
   } catch (e: SecurityException) {
     Log.w(LOG_TAG, "Not allowed to open announcement link: $url", e)
+  } catch (e: Exception) {
+    Log.w(LOG_TAG, "Failed to open announcement link: $url", e)
   }
 }
 
@@ -115,8 +118,8 @@ private fun openAnnouncementLink(uriHandler: UriHandler, url: String) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnnouncementDetailsContent(
-    modifier: Modifier = Modifier,
     state: AnnouncementDetailsUiState,
+    modifier: Modifier = Modifier,
     onBack: () -> Unit = {},
     onTogglePin: () -> Unit = {},
     onRetry: () -> Unit = {},
