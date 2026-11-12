@@ -14,6 +14,7 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import org.junit.Assert.assertEquals
@@ -49,6 +50,7 @@ class VoiceNotePlaybackDeletionTest {
           Dispatchers.Unconfined + CoroutineExceptionHandler { _, _ -> },
       )
 
+  /** Breaks if playback cannot start or stop the current note. */
   @Test
   fun playback_togglePlaysThenStopsTheCurrentNote() {
     val subject = VoiceNotePlayback(player) { note.audioUrl }
@@ -63,6 +65,7 @@ class VoiceNotePlaybackDeletionTest {
     assertEquals(1, player.played.size)
   }
 
+  /** Breaks if playback tries to play when the task has no note. */
   @Test
   fun playback_toggleDoesNothingWithoutANote() {
     val subject = VoiceNotePlayback(player) { null }
@@ -73,6 +76,7 @@ class VoiceNotePlaybackDeletionTest {
     assertEquals(PlayerState.Idle, subject.state.value)
   }
 
+  /** Breaks if stopping ignores paused notes or stops a different note. */
   @Test
   fun playback_stopStopsPlayingAndPausedMatchingNotesOnly() {
     val subject = VoiceNotePlayback(player) { note.audioUrl }
@@ -90,6 +94,7 @@ class VoiceNotePlaybackDeletionTest {
     assertEquals(PlayerState.Idle, subject.state.value)
   }
 
+  /** Breaks if releasing playback does not release the player. */
   @Test
   fun playback_releaseReleasesThePlayer() {
     VoiceNotePlayback(player) { note.audioUrl }.release()
@@ -97,35 +102,41 @@ class VoiceNotePlaybackDeletionTest {
     assertTrue(player.released)
   }
 
+  /** Breaks if a non-owner deletion can save or delete the note. */
   @Test
   fun deletion_isIgnoredWhenUserCannotDeleteTheNote() {
+    val nonOwnerHost = PlaybackHost(task, currentUserId = "someone")
     val subject =
         VoiceNoteDeletion(
             scope,
-            PlaybackHost(task.copy(ownerId = "someone")),
+            nonOwnerHost,
             ownerId,
             services,
         ) {}
 
     subject.delete()
 
-    assertNull(host.savedTask)
+    assertNull(nonOwnerHost.savedTask)
     assertTrue(storage.deletions.isEmpty())
+    assertFalse(nonOwnerHost.finishedWithFailure)
   }
 
+  /** Breaks if deletion does not stop playback before removing remote audio. */
   @Test
   fun deletion_savesTheTaskStopsPlaybackAndDeletesAudio() {
-    var stopped: String? = null
-    val subject = VoiceNoteDeletion(scope, host, ownerId, services) { stopped = it }
+    val calls = mutableListOf<String>()
+    storage.onDelete = { calls += "delete" }
+    val subject = VoiceNoteDeletion(scope, host, ownerId, services) { url -> calls += "stop:$url" }
 
     subject.delete()
 
     assertNull(host.savedTask!!.voiceNote)
-    assertEquals(note.audioUrl, stopped)
+    assertEquals(listOf("stop:${note.audioUrl}", "delete"), calls)
     assertEquals(listOf(note.audioUrl), storage.deletions)
     assertFalse(host.finishedWithFailure)
   }
 
+  /** Breaks if a storage failure makes an already-saved deletion fail. */
   @Test
   fun deletion_survivesAStorageFailureAfterSavingTheTask() {
     storage.deleteFailure = IOException("offline")
@@ -137,6 +148,27 @@ class VoiceNotePlaybackDeletionTest {
     assertFalse(host.finishedWithFailure)
   }
 
+  /** Breaks if leaving the screen cancels remote audio cleanup. */
+  @Test
+  fun deletion_cancellationDuringStorageCleanupStillDeletesAudio() {
+    val deleteGate = kotlinx.coroutines.CompletableDeferred<Unit>()
+    storage.deleteGate = deleteGate
+    val deletionJob = Job()
+    val deletionScope =
+        CoroutineScope(
+            Dispatchers.Unconfined + deletionJob + CoroutineExceptionHandler { _, _ -> },
+        )
+    val subject = VoiceNoteDeletion(deletionScope, host, ownerId, services) {}
+
+    subject.delete()
+    deletionJob.cancel()
+    deleteGate.complete(Unit)
+
+    assertEquals(listOf(note.audioUrl), storage.deletions)
+    assertFalse(host.finishedWithFailure)
+  }
+
+  /** Breaks if cancellation during cleanup reports a deletion error. */
   @Test
   fun deletion_cancellationFinishesWithoutShowingADeletionError() {
     storage.deleteFailure = CancellationException("cancelled")
@@ -148,6 +180,7 @@ class VoiceNotePlaybackDeletionTest {
     assertEquals(listOf(note.audioUrl), storage.deletions)
   }
 
+  /** Breaks if a task-save failure removes the note or audio anyway. */
   @Test
   fun deletion_keepsTheNoteWhenSavingFails() {
     host.saveFailure = IOException("offline")
@@ -162,21 +195,10 @@ class VoiceNotePlaybackDeletionTest {
     assertTrue(storage.deletions.isEmpty())
   }
 
-  @Test
-  fun deletion_reportsFailureWhenTheTaskHasNoNote() {
-    val emptyHost = PlaybackHost(task.copy(voiceNote = null))
-    emptyHost.allowDeleteWithoutNote = true
-    val subject = VoiceNoteDeletion(scope, emptyHost, ownerId, services) {}
-
-    subject.delete()
-
-    assertTrue(emptyHost.finishedWithFailure)
-    assertNull(emptyHost.savedTask)
-  }
-
+  /** Breaks if callbacks expose recording or deletion controls without services. */
   @Test
   fun controller_exposesReadOnlyStateWithoutServices() {
-    val controller = VoiceNoteController(scope, host, "volunteer", null)
+    val controller = VoiceNoteController(scope, host, null)
     var requested = false
     val callbacks =
         controller.callbacks(
@@ -193,9 +215,25 @@ class VoiceNotePlaybackDeletionTest {
     assertFalse(controller.uiState.value.showDeleteConfirm)
   }
 
+  /** Breaks if a non-owner can request or confirm voice-note deletion. */
+  @Test
+  fun controller_blocksNonOwnerDeletion() {
+    val nonOwnerHost = PlaybackHost(task, currentUserId = "volunteer")
+    val controller = VoiceNoteController(scope, nonOwnerHost, services)
+
+    controller.requestDelete()
+    controller.confirmDelete()
+
+    assertFalse(controller.uiState.value.showDeleteConfirm)
+    assertNull(nonOwnerHost.savedTask)
+    assertTrue(storage.deletions.isEmpty())
+    assertFalse(nonOwnerHost.finishedWithFailure)
+  }
+
+  /** Breaks if the controller does not route playback, retry, and deletion callbacks. */
   @Test
   fun controller_routesPlaybackRetryAndDeleteCallbacks() {
-    val controller = VoiceNoteController(scope, host, ownerId, services)
+    val controller = VoiceNoteController(scope, host, services)
     var settingsOpened = false
     val callbacks =
         controller.callbacks(
@@ -223,9 +261,10 @@ class VoiceNotePlaybackDeletionTest {
     assertFalse(controller.uiState.value.showDeleteConfirm)
   }
 
+  /** Breaks if permission state or resource release is not routed by the controller. */
   @Test
   fun controller_routesMicrophonePermissionAndRelease() {
-    val controller = VoiceNoteController(scope, host, ownerId, services)
+    val controller = VoiceNoteController(scope, host, services)
     var asked = false
     val callbacks =
         controller.callbacks(
@@ -245,10 +284,11 @@ class VoiceNotePlaybackDeletionTest {
     assertTrue(player.released)
   }
 
+  /** Breaks if recording cancellation and send retry are not routed by the controller. */
   @Test
   fun controller_routesRecordingCancellationAndSendRetry() {
     val emptyHost = PlaybackHost(task.copy(voiceNote = null))
-    val controller = VoiceNoteController(scope, emptyHost, ownerId, services)
+    val controller = VoiceNoteController(scope, emptyHost, services)
 
     controller.startRecording()
     controller.finishRecording()
@@ -269,10 +309,11 @@ class VoiceNotePlaybackDeletionTest {
     assertEquals(1, storage.uploads.size)
   }
 
+  /** Breaks if callbacks cannot complete recording or dismiss recorder failures. */
   @Test
   fun controller_callbacksRouteRecordingSuccessAndFailureDismissal() {
     val emptyHost = PlaybackHost(task.copy(voiceNote = null))
-    val controller = VoiceNoteController(scope, emptyHost, ownerId, services)
+    val controller = VoiceNoteController(scope, emptyHost, services)
     val callbacks =
         controller.callbacks(
             hasMicrophone = { true },
@@ -289,7 +330,7 @@ class VoiceNotePlaybackDeletionTest {
 
     recorder.startFailure = VoiceRecorderException("microphone unavailable")
     val failureController =
-        VoiceNoteController(scope, PlaybackHost(task.copy(voiceNote = null)), ownerId, services)
+        VoiceNoteController(scope, PlaybackHost(task.copy(voiceNote = null)), services)
     val failureCallbacks =
         failureController.callbacks(
             hasMicrophone = { true },
@@ -302,11 +343,14 @@ class VoiceNotePlaybackDeletionTest {
     assertEquals(RecorderState.Idle, failureController.uiState.value.recorder)
   }
 
-  private class PlaybackHost(initialTask: Task) : VoiceNoteHost {
+  private class PlaybackHost(
+      initialTask: Task,
+      currentUserId: String = initialTask.ownerId,
+  ) : VoiceNoteHost {
     private val _state =
         MutableStateFlow(
             TaskDetailsUiState(
-                currentUserId = initialTask.ownerId,
+                currentUserId = currentUserId,
                 task = initialTask,
                 isLoading = false,
             ),
@@ -314,12 +358,11 @@ class VoiceNotePlaybackDeletionTest {
     var saveFailure: Exception? = null
     var savedTask: Task? = null
     var finishedWithFailure = false
-    var allowDeleteWithoutNote = false
     override val state: StateFlow<TaskDetailsUiState> = _state
 
     override fun startSaving(allowed: (TaskDetailsUiState) -> Boolean): Task? {
       val current = _state.value
-      if (current.isUpdating || (!allowDeleteWithoutNote && !allowed(current))) return null
+      if (current.isUpdating || !allowed(current)) return null
       _state.value = current.copy(isUpdating = true)
       return current.task
     }

@@ -1,12 +1,13 @@
 // Co-authored-by: Copilot App
-// Co-authored-by: Copilot App
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.details
 
 import android.util.Log
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private const val LOG_TAG = "VoiceNoteDeletion"
 
@@ -38,7 +39,7 @@ internal class VoiceNoteDeletion(
         host.saveTask(updated)
         stopPlaying(note.audioUrl)
         host.finishSaving(updated)
-        services.deleteAudioQuietly(note.audioUrl)
+        withContext(NonCancellable) { services.deleteAudioQuietly(note.audioUrl) }
       } catch (e: CancellationException) {
         host.finishSaving(null)
         throw e
