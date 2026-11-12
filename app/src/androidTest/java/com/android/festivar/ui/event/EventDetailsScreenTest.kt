@@ -16,6 +16,8 @@ import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onChild
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -99,41 +101,111 @@ class EventDetailsScreenTest {
             EventDetailsScreenTestTags.BACK_BUTTON,
             EventDetailsScreenTestTags.EVENT_NAME,
             EventDetailsScreenTestTags.OPEN_TASKS_STAT,
-            EventDetailsScreenTestTags.OWNER_ROW,
-            EventDetailsScreenTestTags.DATE_ROW,
-            EventDetailsScreenTestTags.ADDRESS_ROW,
+            EventDetailsScreenTestTags.STATUS_CHIP,
+            EventDetailsScreenTestTags.SUBTITLE,
             EventDetailsScreenTestTags.SEE_TASKS_BUTTON,
         )
         .forEach { tag -> composeTestRule.onNodeWithTag(tag).assertIsDisplayed() }
 
     composeTestRule.onNodeWithText(event.title).assertIsDisplayed()
-    composeTestRule.onNodeWithText("Sami K.").assertIsDisplayed()
-    composeTestRule.onNodeWithText(event.location).assertIsDisplayed()
     composeTestRule.onNodeWithText("${tasksListSize / 2}").assertIsDisplayed()
     composeTestRule.onNodeWithText("of $tasksListSize").assertIsDisplayed()
     composeTestRule.onNodeWithText("tasks still open").assertIsDisplayed()
-    composeTestRule.onNodeWithText("Fri 16 to Sun 18 Oct").assertIsDisplayed()
+  }
+
+  /** Breaks if the dates and the place are not on one line under the title. */
+  @Test
+  fun subtitleShowsDatesAndPlace() {
+    setContent(eventSameMonth)
+
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.SUBTITLE)
+        .assertTextEquals("Fri 16 to Sun 18 Oct · Parc de Vidy, Lausanne")
+  }
+
+  /** Breaks if a long place wraps the subtitle onto several lines instead of ellipsizing it. */
+  @Test
+  fun subtitleStaysOnOneLineForLongPlace() {
+    setContent(
+        eventSameMonth.copy(
+            location =
+                "Main entrance, north-western courtyard beside the temporary festival information tent"
+        )
+    )
+
+    val layouts = mutableListOf<TextLayoutResult>()
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.SUBTITLE)
+        .fetchSemanticsNode()
+        .config[SemanticsActions.GetTextLayoutResult]
+        .action
+        ?.invoke(layouts)
+
+    assertEquals(1, layouts.single().lineCount)
+    assertTrue(layouts.single().isLineEllipsized(0))
+  }
+
+  /** Breaks if an event without a place shows a dangling separator or a placeholder. */
+  @Test
+  fun subtitleShowsOnlyDatesWithoutPlace() {
+    setContent(eventSameMonth.copy(location = "  "))
+
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.SUBTITLE)
+        .assertTextEquals("Fri 16 to Sun 18 Oct")
+  }
+
+  /** Breaks if an open event does not show the Open chip. */
+  @Test
+  fun statusChipShowsOpenForOpenEvent() {
+    setContent(eventSameMonth)
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.STATUS_CHIP)
+        .onChild()
+        .assertTextEquals("Open")
+  }
+
+  /** Breaks if a closed event still shows the Open chip. */
+  @Test
+  fun statusChipShowsClosedForClosedEvent() {
+    setContent(eventSameMonth.copy(closed = true))
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.STATUS_CHIP)
+        .onChild()
+        .assertTextEquals("Closed")
+  }
+
+  /** Breaks if the Owner, Date or Address rows, or the owner's name, come back. */
+  @Test
+  fun infoCardRowsAreGone() {
+    setContent(eventSameMonth)
+
+    listOf("Owner", "Date", "Address", "Sami K.").forEach {
+      composeTestRule.onAllNodesWithText(it).assertCountEquals(0)
+    }
   }
 
   /** Red if an event ending on its start day is formatted as a multi-day event. */
   @Test
   fun displaysSameDayEventDate() {
     setContent(eventSameDay)
-    composeTestRule.onNodeWithText("Fri 16 Oct").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Fri 16 Oct", substring = true).assertIsDisplayed()
   }
 
   /** Red if an event spanning one month is formatted without both endpoint dates. */
   @Test
   fun displaysDifferentMonthEventDate() {
     setContent(eventDifferentMonth)
-    composeTestRule.onNodeWithText("Fri 16 Oct to Mon 16 Nov").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Fri 16 Oct to Mon 16 Nov", substring = true).assertIsDisplayed()
   }
 
   /** Red if an event spanning one year omits either year from the displayed date. */
   @Test
   fun displaysDifferentYearEventDate() {
     setContent(eventDifferentYear)
-    composeTestRule.onNodeWithText("Fri 16 Oct 2026 to Sat 16 Oct 2027").assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText("Fri 16 Oct 2026 to Sat 16 Oct 2027", substring = true)
+        .assertIsDisplayed()
   }
 
   /** Red if an event with no tasks displays incorrect task statistics. */
@@ -142,54 +214,6 @@ class EventDetailsScreenTest {
     setContent(eventNoTasks)
     composeTestRule.onNodeWithText("0").assertIsDisplayed()
     composeTestRule.onNodeWithText("of 0").assertIsDisplayed()
-  }
-
-  /** Red if an empty location does not display the address fallback text. */
-  @Test
-  fun displaysFallbackWhenEventHasEmptyLocationString() {
-    setContent(eventSameMonth.copy(location = ""))
-
-    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.ADDRESS_ROW).assertIsDisplayed()
-    composeTestRule.onNodeWithText("No location specified").assertIsDisplayed()
-  }
-
-  /** Red if a whitespace-only location is not treated as missing. */
-  @Test
-  fun displaysFallbackWhenEventHasWhitespaceOnlyLocationString() {
-    setContent(eventSameMonth.copy(location = "     "))
-
-    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.ADDRESS_ROW).assertIsDisplayed()
-    composeTestRule.onNodeWithText("No location specified").assertIsDisplayed()
-  }
-
-  /** Red if a long location overflows its address row or is not ellipsized. */
-  @Test
-  fun truncatesLongLocationWithinAddressRow() {
-    val longLocation =
-        "Main entrance, north-western courtyard beside the temporary festival information tent"
-    setContent(eventSameMonth.copy(location = longLocation))
-
-    val rowBounds =
-        composeTestRule
-            .onNodeWithTag(EventDetailsScreenTestTags.ADDRESS_ROW)
-            .assertIsDisplayed()
-            .getUnclippedBoundsInRoot()
-    val valueBounds =
-        composeTestRule.onNodeWithText(longLocation).assertIsDisplayed().getUnclippedBoundsInRoot()
-
-    assertTrue(valueBounds.right <= rowBounds.right)
-    assertTrue(valueBounds.bottom <= rowBounds.bottom)
-
-    val layouts = mutableListOf<TextLayoutResult>()
-    composeTestRule
-        .onNodeWithText(longLocation)
-        .fetchSemanticsNode()
-        .config[SemanticsActions.GetTextLayoutResult]
-        .action
-        ?.invoke(layouts)
-
-    assertEquals(2, layouts.single().lineCount)
-    assertTrue(layouts.single().isLineEllipsized(1))
   }
 
   /** Red if a fetch failure leaves event content or actions visible. */
