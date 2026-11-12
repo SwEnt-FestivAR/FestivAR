@@ -1,6 +1,7 @@
 package com.android.festivar.ui.event
 
 // Co-authored-by: Copilot App
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 
 import com.android.festivar.R
 import com.android.festivar.model.datarepository.DataRepositoryLocal
@@ -22,8 +23,10 @@ import java.time.LocalTime
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -341,6 +344,38 @@ class CreateEventViewModelTest {
     withTimeout(5_000.milliseconds) {
       while (gatedViewModel.uiState.value.createdEventId == null) delay(10.milliseconds)
     }
+
+    assertEquals(1, localRepository.getAllEvents().size)
+  }
+
+  /** Red if a timed-out save can create a duplicate when the user retries. */
+  @Test
+  fun timedOutSaveChecksWhetherEventWasStoredBeforeAllowingRetry() = runBlocking {
+    val localRepository = EventsRepositoryLocal()
+    val slowRepository =
+        object : EventsRepository by localRepository {
+          override suspend fun addEvent(event: Event) {
+            withContext(NonCancellable) {
+              localRepository.addEvent(event)
+              delay(50)
+            }
+          }
+        }
+    dataRepository =
+        DataRepositoryLocal(
+            mockk(),
+            eventsRepository = slowRepository,
+            usersRepository = usersRepository,
+        )
+    viewModel = CreateEventViewModel(dataRepository, creator.uid, saveTimeoutMs = 10)
+    fillRequiredFields()
+
+    viewModel.createEvent()
+    withTimeout(5_000.milliseconds) {
+      while (viewModel.uiState.value.createdEventId == null) delay(10.milliseconds)
+    }
+    viewModel.createEvent()
+    delay(10.milliseconds)
 
     assertEquals(1, localRepository.getAllEvents().size)
   }

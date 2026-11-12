@@ -2,6 +2,7 @@ package com.android.festivar.ui.event.create
 
 // Co-authored-by: Copilot App
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 
 import android.util.Log
 import androidx.annotation.StringRes
@@ -25,8 +26,10 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 
 /**
  * UI state of the create event form.
@@ -101,6 +104,7 @@ data class CreateEventUIState(
 }
 
 private const val TAG = "CreateEventViewModel"
+private const val SAVE_TIMEOUT_MS = 15_000L
 
 /**
  * Holds the create event form, validates it and saves the event with the signed-in user as its
@@ -114,8 +118,10 @@ private const val TAG = "CreateEventViewModel"
 class CreateEventViewModel(
     private val dataRepository: DataRepository,
     private val userId: String = "",
+    private val saveTimeoutMs: Long = SAVE_TIMEOUT_MS,
 ) : EventFormViewModel<CreateEventUIState>(CreateEventUIState()) {
   val uiState: StateFlow<CreateEventUIState> = formState
+  private var pendingEventId: String? = null
 
   override fun clearError(state: CreateEventUIState) = state.copy(errorMsg = null)
 
@@ -152,27 +158,50 @@ class CreateEventViewModel(
    */
   fun createEvent() {
     if (!currentState.canCreate) return
+    val form = currentState
+    val eventId = pendingEventId ?: dataRepository.eventsRepository.getNewUid()
+    pendingEventId = eventId
     updateState { it.copy(isSaving = true, errorMsg = null) }
     viewModelScope.launch {
       try {
-        save()
+        withTimeout(saveTimeoutMs) { save(form, eventId) }
+        updateState { it.copy(isSaving = false, createdEventId = eventId) }
+      } catch (e: TimeoutCancellationException) {
+        onSaveFailed(eventId, e)
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
-        Log.e(TAG, e.message ?: "Saving the event failed", e)
-        updateState {
-          it.copy(isSaving = false, errorMsg = R.string.create_event_error_save_failed)
-        }
+        onSaveFailed(eventId, e)
       }
     }
   }
 
-  private suspend fun save() {
+  private suspend fun save(form: CreateEventUIState, eventId: String) {
     check(userId.isNotBlank()) { "User not signed in" }
     val creator = dataRepository.usersRepository.getUser(userId)
 
-    val newEvent = currentState.toEvent(dataRepository.eventsRepository.getNewUid(), creator)
+    val newEvent = form.toEvent(eventId, creator)
     dataRepository.createEvent(newEvent)
-    updateState { it.copy(isSaving = false, createdEventId = newEvent.eventId) }
+  }
+
+  private suspend fun onSaveFailed(eventId: String, error: Exception) {
+    Log.w(TAG, "Creating the event failed, checking whether it was stored", error)
+    val alreadySaved =
+        try {
+          withTimeout(saveTimeoutMs) { dataRepository.eventsRepository.getEvent(eventId) }
+          true
+        } catch (e: TimeoutCancellationException) {
+          Log.e(TAG, "The event could not be checked in time, so it may not be stored")
+          false
+        } catch (e: CancellationException) {
+          throw e
+        } catch (checkError: Exception) {
+          Log.e(TAG, "The event could not be checked, so it may not be stored", checkError)
+          false
+        }
+    updateState {
+      if (alreadySaved) it.copy(isSaving = false, createdEventId = eventId)
+      else it.copy(isSaving = false, errorMsg = R.string.create_event_error_save_failed)
+    }
   }
 }
