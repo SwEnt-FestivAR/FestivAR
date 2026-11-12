@@ -191,14 +191,18 @@ class EventDetailsScreenTest {
   @Test
   fun displaysSameDayEventDate() {
     setContent(eventSameDay)
-    composeTestRule.onNodeWithText("Fri 16 Oct", substring = true).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.SUBTITLE)
+        .assertTextEquals("Fri 16 Oct · Parc de Vidy, Lausanne")
   }
 
   /** Red if an event spanning one month is formatted without both endpoint dates. */
   @Test
   fun displaysDifferentMonthEventDate() {
     setContent(eventDifferentMonth)
-    composeTestRule.onNodeWithText("Fri 16 Oct to Mon 16 Nov", substring = true).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.SUBTITLE)
+        .assertTextEquals("Fri 16 Oct to Mon 16 Nov · Parc de Vidy, Lausanne")
   }
 
   /** Red if an event spanning one year omits either year from the displayed date. */
@@ -206,8 +210,8 @@ class EventDetailsScreenTest {
   fun displaysDifferentYearEventDate() {
     setContent(eventDifferentYear)
     composeTestRule
-        .onNodeWithText("Fri 16 Oct 2026 to Sat 16 Oct 2027", substring = true)
-        .assertIsDisplayed()
+        .onNodeWithTag(EventDetailsScreenTestTags.SUBTITLE)
+        .assertTextEquals("Fri 16 Oct 2026 to Sat 16 Oct 2027 · Parc de Vidy, Lausanne")
   }
 
   /** Red if an event with no tasks displays incorrect task statistics. */
