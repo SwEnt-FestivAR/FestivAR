@@ -1,3 +1,4 @@
+// Co-authored-by: Copilot App
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
@@ -21,12 +22,17 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
+import com.android.festivar.model.audio.PlayerState
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.PeopleCardTestTags
 import com.android.festivar.ui.components.UserListTestTags
 import com.android.festivar.ui.components.formatDate
 import com.android.festivar.ui.components.formatTime
+import com.android.festivar.ui.voicenote.VoiceNoteRecordTestTags
+import com.android.festivar.ui.voicenote.VoiceNoteTestTags
+import com.android.festivar.ui.voicenote.VoiceNoteUiState
+import com.android.festivar.ui.voicenote.previewNote
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import org.junit.Assert.assertEquals
@@ -63,7 +69,8 @@ class TaskDetailsContentTest {
       isLoading: Boolean = false,
       isUpdating: Boolean = false,
       errorMsg: Int? = null,
-  ) = TaskDetailsUiState(sami.uid, task, isLoading, isUpdating, errorMsg)
+      ownerName: String = "",
+  ) = TaskDetailsUiState(sami.uid, task, isLoading, isUpdating, errorMsg, ownerName)
 
   private fun show(
       state: TaskDetailsUiState,
@@ -75,6 +82,7 @@ class TaskDetailsContentTest {
       onBack: () -> Unit = {},
       onEdit: (String) -> Unit = {},
       onDeleteTask: () -> Unit = {},
+      voiceNote: VoiceNoteUiState = VoiceNoteUiState(),
   ) = composeTestRule.setContent {
     TaskDetailsContent(
         state,
@@ -86,6 +94,7 @@ class TaskDetailsContentTest {
         onDismissError,
         onEdit,
         onDeleteTask,
+        voiceNote = voiceNote,
     )
   }
 
@@ -430,4 +439,53 @@ class TaskDetailsContentTest {
     assertEquals(0, deletes)
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.DELETE_DIALOG).assertDoesNotExist()
   }
+
+  // Voice note
+
+  /** Breaks if the owner of a task without a note gets no empty state or no record bar. */
+  @Test
+  fun ownerWithoutANoteSeesTheEmptyStateAndTheRecordBar() {
+    show(state(), voiceNote = VoiceNoteUiState(canManage = true))
+    composeTestRule.onNodeWithTag(VoiceNoteTestTags.VOICE_NOTE_EMPTY).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).assertIsDisplayed()
+  }
+
+  /** Breaks if the record bar replaces the buttons of the task instead of sharing the bottom. */
+  @Test
+  fun recordBarAndTheButtonsOfTheTaskShareTheBottom() {
+    show(state(), voiceNote = VoiceNoteUiState(canManage = true))
+    composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MARK_DONE_BUTTON).assertIsDisplayed()
+  }
+
+  /** Breaks if a volunteer is not shown the note and who recorded it, or gets a record bar. */
+  @Test
+  fun volunteerSeesTheNoteAndWhoRecordedIt() {
+    show(state(ownerName = "Marie Dupont"), voiceNote = VoiceNoteUiState(note = previewNote))
+    composeTestRule
+        .onNodeWithTag(VoiceNoteTestTags.VOICE_NOTE_AUTHOR)
+        .assertTextContains("Marie Dupont", substring = true)
+    composeTestRule.onNodeWithTag(VoiceNoteTestTags.VOICE_NOTE_PLAY).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).assertDoesNotExist()
+  }
+
+  /** Breaks if a failed playback shows no notice next to the buttons of the task. */
+  @Test
+  fun failedPlaybackShowsItsNoticeNextToTheButtonsOfTheTask() {
+    val failed =
+        VoiceNoteUiState(note = previewNote, player = PlayerState.Failed(previewNote.audioUrl))
+    show(state(), voiceNote = failed)
+    composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.PLAYBACK_ERROR).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MARK_DONE_BUTTON).assertIsDisplayed()
+  }
+
+  /** Breaks if a task with nothing to do and no voice note to record still draws a bottom bar. */
+  @Test
+  fun nothingIsFixedAtTheBottomWhenThereIsNothingToShowThere() {
+    show(state(task.complete()), voiceNote = VoiceNoteUiState(note = previewNote))
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MARK_DONE_BUTTON).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.RECORD_BAR).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.PLAYBACK_ERROR).assertDoesNotExist()
+  }
 }
+
