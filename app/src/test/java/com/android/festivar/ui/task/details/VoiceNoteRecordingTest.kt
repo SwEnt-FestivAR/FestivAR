@@ -103,6 +103,25 @@ class VoiceNoteRecordingTest {
     assertEquals(RecordingStage.Failed, subject.stage.value)
   }
 
+  /** Breaks if a failed replacement start drops the recording that could still be retried. */
+  @Test
+  fun start_preservesAnUnsentRecordingWhenRecorderRejectsIt() = runTest {
+    storage.uploadFailure = IOException("offline")
+    val subject = recording
+    subject.start()
+    subject.finish()
+    val file = recorder.lastAudio!!.file
+    subject.confirmSend()
+    testScheduler.advanceUntilIdle()
+    assertTrue(subject.stage.value is RecordingStage.SendFailed)
+
+    recorder.startFailure = IllegalStateException("recorder unavailable")
+    subject.start()
+
+    assertTrue(file.exists())
+    assertTrue(subject.stage.value is RecordingStage.Failed)
+  }
+
   /** Breaks if starting replaces a recording that is waiting for confirmation. */
   @Test
   fun start_isIgnoredWhileWaitingToSend() {
@@ -445,7 +464,7 @@ class VoiceNoteRecordingTest {
         RecordingHost(_state.value.task!!.copy(ownerId = ownerId), _state.value.currentUserId)
 
     fun blockSaving() {
-        _state.value = _state.value.copy(isUpdating = true)
+      _state.value = _state.value.copy(isUpdating = true)
     }
   }
 

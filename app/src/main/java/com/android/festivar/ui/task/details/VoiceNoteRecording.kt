@@ -59,9 +59,9 @@ internal class VoiceNoteRecording(
     val busy = _stage.value is RecordingStage.Waiting || _stage.value is RecordingStage.Sending
     val recording = recorder.state.value is RecorderState.Recording
     if (busy || recording || !host.state.value.canAddVoiceNote) return
-    drop() // a new recording replaces the one that could not be sent
     try {
       recorder.start()
+      drop() // a new recording replaces the one that could not be sent
     } catch (e: VoiceRecorderException) {
       Log.e(LOG_TAG, "Error starting a recording", e)
       _stage.value = RecordingStage.Failed
@@ -147,7 +147,9 @@ internal class VoiceNoteRecording(
       } catch (e: Exception) {
         Log.e(LOG_TAG, "Error sending the voice note of task ${task.taskId}", e)
         // The file is useless without the note: remove it, the recording is kept for another try.
-        url?.let { services.deleteAudioQuietly(it) }
+        url?.let { uploadedUrl ->
+          withContext(NonCancellable) { services.deleteAudioQuietly(uploadedUrl) }
+        }
         _stage.value = RecordingStage.SendFailed(held.audio)
         host.finishSaving(null)
       }
