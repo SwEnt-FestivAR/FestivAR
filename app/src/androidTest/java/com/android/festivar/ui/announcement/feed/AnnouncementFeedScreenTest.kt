@@ -449,6 +449,7 @@ class AnnouncementFeedScreenTest {
   private fun figmaEvent() =
       Event(
           eventId = EVENT_ID,
+          ownerId = "u0",
           title = "Balelec",
           startDate = at(yesterday, 8),
           endDate = at(today.plusDays(1), 4),
