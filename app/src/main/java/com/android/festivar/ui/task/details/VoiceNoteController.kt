@@ -157,7 +157,7 @@ internal constructor(
 
   /** Frees what the screen no longer needs: the held recording, the recorder and the player. */
   fun release() {
-    recording?.release()
+    recording?.releaseResources()
     playback?.release()
   }
 }
