@@ -3,6 +3,7 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar
 
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -58,7 +59,7 @@ import com.android.festivar.ui.profile.ProfileScreenTestTags
 import com.android.festivar.ui.task.create.CreateTaskScreenTestTags
 import com.android.festivar.ui.task.details.TaskDetailsScreenTestTags
 import com.android.festivar.ui.task.edit.EditTaskScreenTestTags
-import com.android.festivar.ui.task.mytasks.MyTasksPlaceholderTestTags
+import com.android.festivar.ui.task.mytasks.MyTasksScreenTestTags
 import com.android.festivar.ui.task.overview.TaskOverviewScreenTestTags
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseUser
@@ -229,10 +230,13 @@ class MainActivityNavigationTest {
     // The join screen reads and writes the events in the Firestore emulator, whose rules need a
     // signed-in user, and the ViewModel reads the stored profile back by uid before it writes
     val start = ZonedDateTime.now().plusDays(1)
+    val owner = User(uid = "event-owner")
     val event =
         Event(
             eventId = "join-${UUID.randomUUID()}",
+            ownerId = owner.uid,
             title = "Joinable Event",
+            members = listOf(owner),
             startDate = start,
             endDate = start.plusHours(2),
         )
@@ -242,6 +246,7 @@ class MainActivityNavigationTest {
     val events = EventRepositoryFirebase(Firebase.firestore)
     runBlocking {
       Firebase.auth.signInAnonymously().await()
+      users.addUser(owner)
       users.addUser(storedUser)
       events.addEvent(event)
     }
@@ -274,6 +279,7 @@ class MainActivityNavigationTest {
     } finally {
       runBlocking {
         runCatching { events.deleteEvent(event.eventId) }
+        runCatching { users.deleteUser(owner.uid) }
         runCatching { users.deleteUser(storedUser.uid) }
         Firebase.auth.signOut()
       }
@@ -317,6 +323,7 @@ class MainActivityNavigationTest {
     val event =
         Event(
             eventId = "event-${UUID.randomUUID()}",
+            ownerId = storedUser.uid,
             title = "Fête de l'Asso",
             members = listOf(storedUser),
             startDate = now.minusHours(1),
@@ -383,13 +390,17 @@ class MainActivityNavigationTest {
     val event =
         Event(
             eventId = "back-${UUID.randomUUID()}",
+            ownerId = storedUser.uid,
             title = "Event With Tasks",
+            members = listOf(storedUser),
             startDate = start,
             endDate = start.plusHours(2),
         )
     val events = EventRepositoryFirebase(Firebase.firestore)
+    val users = UsersRepositoryFirebase(Firebase.firestore)
     runBlocking {
       Firebase.auth.signInAnonymously().await()
+      users.addUser(storedUser)
       events.addEvent(event)
     }
 
@@ -418,6 +429,7 @@ class MainActivityNavigationTest {
     } finally {
       runBlocking {
         runCatching { events.deleteEvent(event.eventId) }
+        runCatching { users.deleteUser(storedUser.uid) }
         Firebase.auth.signOut()
       }
     }
@@ -484,6 +496,7 @@ class MainActivityNavigationTest {
     val event =
         Event(
             eventId = "e1",
+            ownerId = owner.uid,
             title = "Summer festival",
             members = listOf(owner),
             startDate = start,
@@ -720,8 +733,9 @@ class MainActivityNavigationTest {
       )
     }
 
-    waitUntilTagExists(TaskDetailsScreenTestTags.EDIT_BUTTON)
-    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.EDIT_BUTTON).performClick()
+    waitUntilTagExists(TaskDetailsScreenTestTags.MORE_ACTIONS_BUTTON)
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MORE_ACTIONS_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.EDIT_MENU_ITEM).performClick()
     waitUntilTagExists(CreateTaskScreenTestTags.TITLE_FIELD)
     composeTestRule.onNodeWithTag(EditTaskScreenTestTags.SCREEN).assertIsDisplayed()
   }
@@ -894,14 +908,14 @@ class MainActivityNavigationTest {
 
   // Breaks if the My tasks tab has no destination or the Events tab does not return.
   @Test
-  fun theMyTasksTabOpensThePlaceholderAndTheEventsTabReturns() {
+  fun theMyTasksTabOpensMyTasksAndTheEventsTabReturns() {
     seedNoEvents()
     setSignedInContent()
 
     waitUntilTagExists(BottomNavigationBarTestTags.BOTTOM_NAVIGATION_BAR)
     composeTestRule.onNodeWithTag(tabTag(NavigationTab.MY_TASKS)).performClick()
-    waitUntilTagExists(MyTasksPlaceholderTestTags.SCREEN)
-    composeTestRule.onNodeWithTag(MyTasksPlaceholderTestTags.SCREEN).assertIsDisplayed()
+    waitUntilTagExists(MyTasksScreenTestTags.TITLE)
+    composeTestRule.onNodeWithTag(MyTasksScreenTestTags.TITLE).assertIsDisplayed()
     composeTestRule.onNodeWithTag(tabTag(NavigationTab.MY_TASKS)).assertIsSelected()
 
     composeTestRule.onNodeWithTag(tabTag(NavigationTab.EVENTS)).performClick()

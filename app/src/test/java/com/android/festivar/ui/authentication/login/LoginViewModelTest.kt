@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.authentication.login
 
 import android.content.Context
@@ -12,6 +13,7 @@ import androidx.credentials.exceptions.GetCredentialException
 import androidx.credentials.exceptions.NoCredentialException
 import com.android.festivar.R
 import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.google.firebase.auth.FirebaseUser
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -30,7 +32,7 @@ import org.robolectric.Shadows.shadowOf
 @RunWith(RobolectricTestRunner::class)
 class LoginViewModelTest {
   private val authRepository = mockk<AuthRepository>()
-  private val viewModel = LoginViewModel(authRepository)
+  private val viewModel = LoginViewModel(DataRepositoryLocal(authRepository))
 
   @Test
   fun initiallyIsNotSignedIn() {

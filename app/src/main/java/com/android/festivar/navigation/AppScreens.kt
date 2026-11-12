@@ -13,14 +13,14 @@ enum class AppScreens {
   TaskOverview,
   EventsOverview,
   Profile,
-  MyTasks,
   JoinEvent,
   EventDetails,
   CreateEvent,
   CreateTask,
   CreateAnnouncement,
   TaskDetails,
-  EditTask;
+  EditTask,
+  MyTasks;
 
   companion object {
     fun eventDetails(eventId: String) = "${EventDetails.name}/$eventId"

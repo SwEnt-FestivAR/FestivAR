@@ -1,5 +1,6 @@
 <!-- Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com> -->
 <!-- Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com> -->
+<!-- Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com> -->
 <resources>
     <string name="tasks_back">Back</string>
     <string name="tasks_search">Search</string>
@@ -35,7 +36,38 @@
 
     <string name="task_details_load_failed">Unable to load the task.</string>
     <string name="task_details_save_failed">Unable to save the change.</string>
+    <string name="task_details_more_actions">More task actions</string>
+    <string name="task_details_delete_task">Delete task</string>
+    <string name="task_details_delete_confirmation_title">Delete this task?</string>
+    <string name="task_details_delete_confirmation_message">“%1$s” will be removed and its volunteers told. This cannot be undone.</string>
+    <string name="task_details_keep_task">Keep it</string>
 
     <string name="mytasks_load_failed">Unable to load your tasks.</string>
     <string name="mytasks_refresh_failed">Unable to refresh your tasks.</string>
+    <string name="mytasks_title">My tasks</string>
+    <string name="mytasks_filters">Filters</string>
+    <string name="mytasks_filters_count">Filters · %1$d</string>
+    <string name="mytasks_status_todo">To do</string>
+    <string name="mytasks_priority_none">No priority</string>
+    <string name="mytasks_clear">Clear</string>
+    <string name="mytasks_events">Events</string>
+    <string name="mytasks_events_all">All</string>
+    <plurals name="mytasks_events_selected">
+        <item quantity="one">%d event</item>
+        <item quantity="other">%d events</item>
+    </plurals>
+    <string name="mytasks_unknown_event">Unknown event</string>
+    <string name="mytasks_event_option" translatable="false">%1$s · %2$d</string>
+    <string name="mytasks_show_tasks_from">Show tasks from</string>
+    <string name="mytasks_today">Today</string>
+    <string name="mytasks_tomorrow">Tomorrow</string>
+    <string name="mytasks_yesterday">Yesterday</string>
+    <string name="mytasks_relative_day" translatable="false">%1$s · %2$s</string>
+    <string name="mytasks_anytime">Any time</string>
+    <string name="mytasks_done">Done</string>
+    <string name="mytasks_in_minutes">in %1$d min</string>
+    <string name="mytasks_empty_title">No tasks yet</string>
+    <string name="mytasks_empty_body">Take a task from an event and it shows up here.</string>
+    <string name="mytasks_no_match">No tasks match these filters.</string>
+    <string name="mytasks_clear_filters">Clear filters</string>
 </resources>

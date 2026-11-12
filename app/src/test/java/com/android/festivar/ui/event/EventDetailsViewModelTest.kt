@@ -1,8 +1,11 @@
 package com.android.festivar.ui.event
 
 // Co-authored-by: Copilot App
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 
 import com.android.festivar.R
+import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
@@ -41,7 +44,11 @@ class EventDetailsViewModelTest {
   @Test
   fun fetchEventLoadsEvent() = runTest {
     val event = testEvent("event-1")
-    val viewModel = EventDetailsViewModel(EventsRepositoryLocal(listOf(event)), event.eventId)
+    val viewModel =
+        EventDetailsViewModel(
+            dataRepositoryWith(EventsRepositoryLocal(listOf(event))),
+            event.eventId,
+        )
     viewModel.fetchEvent()
 
     advanceUntilIdle()
@@ -54,11 +61,13 @@ class EventDetailsViewModelTest {
   fun fetchEventReportsErrorWhenRepositoryFails() = runTest {
     val viewModel =
         EventDetailsViewModel(
-            object : EventsRepository by EventsRepositoryLocal() {
-              override suspend fun getEvent(eventId: String): Event {
-                throw IllegalStateException("fetch failed")
-              }
-            },
+            dataRepositoryWith(
+                object : EventsRepository by EventsRepositoryLocal() {
+                  override suspend fun getEvent(eventId: String): Event {
+                    throw IllegalStateException("fetch failed")
+                  }
+                }
+            ),
             eventId = "missing",
         )
 
@@ -81,7 +90,7 @@ class EventDetailsViewModelTest {
             return event
           }
         }
-    val viewModel = EventDetailsViewModel(repository, event.eventId)
+    val viewModel = EventDetailsViewModel(dataRepositoryWith(repository), event.eventId)
 
     viewModel.fetchEvent()
     advanceUntilIdle()
@@ -105,7 +114,7 @@ class EventDetailsViewModelTest {
             return event
           }
         }
-    val viewModel = EventDetailsViewModel(repository, event.eventId)
+    val viewModel = EventDetailsViewModel(dataRepositoryWith(repository), event.eventId)
     viewModel.fetchEvent()
 
     advanceUntilIdle()
@@ -124,11 +133,13 @@ class EventDetailsViewModelTest {
   fun fetchEventDoesNotConvertCancellationExceptionIntoFetchError() = runTest {
     val viewModel =
         EventDetailsViewModel(
-            object : EventsRepository by EventsRepositoryLocal() {
-              override suspend fun getEvent(eventId: String): Event {
-                throw CancellationException("fetch cancelled")
-              }
-            },
+            dataRepositoryWith(
+                object : EventsRepository by EventsRepositoryLocal() {
+                  override suspend fun getEvent(eventId: String): Event {
+                    throw CancellationException("fetch cancelled")
+                  }
+                }
+            ),
             eventId = "event-1",
         )
     viewModel.fetchEvent()
@@ -138,10 +149,17 @@ class EventDetailsViewModelTest {
     assertNull(viewModel.uiState.value.errorMsg)
   }
 
+  private fun dataRepositoryWith(eventsRepository: EventsRepository) =
+      DataRepositoryLocal(
+          authRepository = FakeAuthRepository(),
+          eventsRepository = eventsRepository,
+      )
+
   private fun testEvent(eventId: String): Event {
     val start = ZonedDateTime.of(2026, 10, 16, 10, 0, 0, 0, ZoneId.of("Europe/Zurich"))
     return Event(
         eventId = eventId,
+        ownerId = "owner",
         title = "Test event",
         startDate = start,
         endDate = start.plusHours(2),

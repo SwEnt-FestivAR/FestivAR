@@ -2,7 +2,6 @@
 package com.android.festivar.ui.announcement.create
 
 import androidx.activity.compose.BackHandler
-import androidx.annotation.StringRes
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -47,11 +46,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
 import com.android.festivar.model.event.announcement.AnnouncementPriority
+import com.android.festivar.ui.announcement.announcementPriorityLabelRes
 import com.android.festivar.ui.components.FestivarDiscardDialog
 import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.components.FestivarFieldWithError
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.components.FilterChip
+import com.android.festivar.ui.components.LONG_TEXT_MAX_LENGTH
 import com.android.festivar.ui.components.SectionLabel
 import com.android.festivar.ui.theme.AppTheme
 
@@ -212,6 +213,8 @@ fun CreateAnnouncementContent(
             label = stringResource(R.string.create_announcement_field_description),
             enabled = state.isEditable,
             singleLine = false,
+            maxLength = LONG_TEXT_MAX_LENGTH,
+            showCounter = true,
             isError = state.contentError != null,
             modifier =
                 Modifier.heightIn(min = 96.dp)
@@ -275,15 +278,6 @@ private fun PublishBar(state: CreateAnnouncementUiState, onPublish: () -> Unit) 
     }
   }
 }
-
-/** The string resource that names [priority] on the chips of this screen. */
-@StringRes
-private fun announcementPriorityLabelRes(priority: AnnouncementPriority): Int =
-    when (priority) {
-      AnnouncementPriority.INFO -> R.string.create_announcement_priority_info
-      AnnouncementPriority.WARNING -> R.string.create_announcement_priority_warning
-      AnnouncementPriority.URGENT -> R.string.create_announcement_priority_urgent
-    }
 
 /**
  * Titled row of chips to pick an [AnnouncementPriority]; [selected] is the current one. The chips

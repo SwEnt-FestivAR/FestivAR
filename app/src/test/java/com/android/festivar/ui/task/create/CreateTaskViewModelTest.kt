@@ -53,6 +53,7 @@ class CreateTaskViewModelTest {
           listOf(
               Event(
                   eventId = "event-1",
+                  ownerId = owner1.uid,
                   title = "Summer festival",
                   members = listOf(owner1, owner2),
                   startDate = day.atStartOfDay(zone),

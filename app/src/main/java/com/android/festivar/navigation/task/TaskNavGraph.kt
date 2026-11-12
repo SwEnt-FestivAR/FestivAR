@@ -23,7 +23,8 @@ import com.android.festivar.ui.task.details.TaskDetailsScreen
 import com.android.festivar.ui.task.details.TaskDetailsViewModel
 import com.android.festivar.ui.task.edit.EditTaskScreen
 import com.android.festivar.ui.task.edit.EditTaskViewModel
-import com.android.festivar.ui.task.mytasks.MyTasksPlaceholderScreen
+import com.android.festivar.ui.task.mytasks.MyTasksScreen
+import com.android.festivar.ui.task.mytasks.MyTasksViewModel
 import com.android.festivar.ui.task.overview.TaskOverviewScreen
 import com.android.festivar.ui.task.overview.TaskOverviewViewModel
 
@@ -56,8 +57,6 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, dataRepository: 
         onAddTask = { navigator.onAddTask(eventId) },
     )
   }
-  // Until the My tasks screen of #397 lands, its tab opens a placeholder.
-  composable(route = AppScreens.MyTasks.name) { MyTasksPlaceholderScreen() }
   // The route carries the id of the event the new task belongs to.
   composable(
       route = "${AppScreens.CreateTask.name}/{eventId}",
@@ -116,6 +115,7 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, dataRepository: 
             },
         onBack = navigator.onBack,
         onEdit = navigator.onEdit,
+        onTaskDeleted = navigator.onTaskDeleted,
     )
   }
   // Reached through AppScreens.editTask(taskId), from the details of a task its owner opened.
@@ -141,6 +141,25 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, dataRepository: 
         viewModel = viewModel { EditTaskViewModel(taskId, currentUserId) },
         onBack = leave,
         onSaved = leave,
+    )
+  }
+
+  // Every task the signed-in user has taken, across their events. Its tab on the bottom bar opens
+  // it.
+  composable(AppScreens.MyTasks.name) {
+    val navigator = MyTasksNavigator(navController)
+    val firebaseUser = dataRepository.authRepository.currentUser
+    if (firebaseUser == null) {
+      // Nobody is signed in, so there is nobody whose tasks to show
+      LaunchedEffect(Unit) { navigator.onSignedOut() }
+      return@composable
+    }
+    MyTasksScreen(
+        viewModel =
+            viewModel(key = firebaseUser.uid) {
+              MyTasksViewModel(firebaseUser.uid, dataRepository)
+            },
+        onOpenTask = navigator.onOpenTask,
     )
   }
 }

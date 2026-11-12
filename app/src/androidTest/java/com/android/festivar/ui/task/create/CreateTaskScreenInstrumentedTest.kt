@@ -19,6 +19,8 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.android.festivar.R
 import com.android.festivar.model.task.Priority
 import com.android.festivar.ui.components.FieldError
+import com.android.festivar.ui.components.LONG_TEXT_MAX_LENGTH
+import com.android.festivar.ui.components.checkTheOnlyCounterIsUnder
 import java.time.Duration
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
@@ -70,6 +72,16 @@ class CreateTaskScreenInstrumentedTest : CreateTaskTest() {
         .assertIsNotEnabled() // The form is empty.
     fieldTags.forEach { composeTestRule.onNodeWithTag(it).performScrollTo().assertIsDisplayed() }
     composeTestRule.checkNoFieldErrorIsDisplayed()
+  }
+
+  // Breaks if the description loses its long limit and counter, or if another field (e.g. the
+  // title) gets a counter too.
+  @Test
+  fun onlyTheDescriptionShowsACharacterCounter() {
+    composeTestRule.checkTheOnlyCounterIsUnder(
+        CreateTaskScreenTestTags.DESCRIPTION_FIELD,
+        "0/$LONG_TEXT_MAX_LENGTH",
+    )
   }
 
   @Test

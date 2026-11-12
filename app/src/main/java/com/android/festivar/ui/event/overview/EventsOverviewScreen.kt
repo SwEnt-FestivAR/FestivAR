@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.event.overview
 
 import androidx.activity.compose.BackHandler
@@ -63,7 +64,7 @@ import com.android.festivar.ui.components.EmptyState
 import com.android.festivar.ui.components.FilterChip
 import com.android.festivar.ui.components.RefreshableStateList
 import com.android.festivar.ui.components.floatingShadow
-import com.android.festivar.ui.components.formatEventDate
+import com.android.festivar.ui.components.formatEventDateAndLocation
 import com.android.festivar.ui.theme.AppTheme
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -80,17 +81,6 @@ object EventsOverviewScreenTestTags {
   const val CREATE_EVENT_BUTTON = "createEventFab"
 
   fun getTestTagForEventItem(event: Event): String = "eventItem${event.eventId}"
-}
-
-/**
- * Formats the days and the location of an [event], e.g. "Fri 16 to Sun 18 Oct · Parc de Vidy". The
- * days come from [formatEventDate].
- */
-@Composable
-private fun formatEventDates(event: Event): String {
-  val dates = formatEventDate(event)
-  return if (event.location.isBlank()) dates
-  else stringResource(R.string.events_overview_dates_location, dates, event.location)
 }
 
 /**
@@ -414,7 +404,7 @@ private fun EventItem(event: Event, onClick: () -> Unit) {
         color = MaterialTheme.colorScheme.onSurface,
     )
     Text(
-        text = formatEventDates(event),
+        text = formatEventDateAndLocation(event),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -423,7 +413,7 @@ private fun EventItem(event: Event, onClick: () -> Unit) {
 
 @Preview(showBackground = true, widthDp = 412, heightDp = 915)
 @Composable
-private fun EventsOverviewContentPreview() {
+internal fun EventsOverviewContentPreview() {
   val zone = ZoneId.of("Europe/Zurich")
   fun date(month: Int, day: Int, hour: Int) =
       ZonedDateTime.of(2026, month, day, hour, 0, 0, 0, zone)
@@ -431,6 +421,7 @@ private fun EventsOverviewContentPreview() {
       listOf(
           Event(
               eventId = "1",
+              ownerId = "owner-1",
               title = "Fête de l'Asso 2026",
               startDate = date(10, 16, 10),
               endDate = date(10, 18, 23),
@@ -438,6 +429,7 @@ private fun EventsOverviewContentPreview() {
           ),
           Event(
               eventId = "2",
+              ownerId = "owner-2",
               title = "Soirée Jazz",
               startDate = date(11, 6, 19),
               endDate = date(11, 6, 23),
@@ -445,6 +437,7 @@ private fun EventsOverviewContentPreview() {
           ),
           Event(
               eventId = "3",
+              ownerId = "owner-3",
               title = "Marché de Noël",
               startDate = date(12, 12, 10),
               endDate = date(12, 13, 20),
@@ -454,6 +447,7 @@ private fun EventsOverviewContentPreview() {
   val ongoingEvent =
       Event(
           eventId = "4",
+          ownerId = "owner-4",
           title = "Concert au Lac",
           startDate = date(10, 8, 18),
           endDate = date(10, 8, 23),
@@ -462,6 +456,7 @@ private fun EventsOverviewContentPreview() {
       (5..12).map {
         Event(
             eventId = "$it",
+            ownerId = "owner-$it",
             title = "Event $it",
             startDate = date(9, it, 10),
             endDate = date(9, it, 20),
@@ -480,7 +475,7 @@ private fun EventsOverviewContentPreview() {
 
 @Preview(showBackground = true, widthDp = 412, heightDp = 915)
 @Composable
-private fun EventsOverviewEmptyPreview() {
+internal fun EventsOverviewEmptyPreview() {
   AppTheme {
     EventsOverviewContent(
         uiState = EventsOverviewUIState(user = User("u0", name = "Yasmine", surname = "Amrani"))
