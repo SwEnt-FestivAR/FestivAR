@@ -1,3 +1,4 @@
+// Co-authored-by: Copilot App
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
@@ -47,6 +48,8 @@ enum class TaskStatus {
  * @property isUpdating true while an action is being saved, so a second tap does nothing. Actions
  *   are also disabled while [isLoading], so a reload cannot overwrite a saved change.
  * @property errorMsg the string resource of the last failure, or null.
+ * @property ownerName the name of the owner of [task], who is credited with its voice note. Blank
+ *   when the current user is the owner, when the task has no voice note, or if it is unknown.
  */
 data class TaskDetailsUiState(
     val currentUserId: String,
@@ -54,6 +57,7 @@ data class TaskDetailsUiState(
     val isLoading: Boolean = true,
     val isUpdating: Boolean = false,
     @StringRes val errorMsg: Int? = null,
+    val ownerName: String = "",
 ) {
   /** The badge of [task], computed from it so the two cannot differ; null while [task] is null. */
   val status: TaskStatus?
@@ -85,6 +89,7 @@ data class TaskDetailsUiState(
   /** Whether the actions bar is shown at all: only open and own tasks have one. */
   val hasActions: Boolean
     get() = status == TaskStatus.OPEN || status == TaskStatus.YOURS
+
 }
 
 /**
@@ -92,6 +97,9 @@ data class TaskDetailsUiState(
  * back and mark it done. Each action saves its change through [dataRepository] and shows the task
  * only once saved. Taking and giving back read the task again, since the stored assignee is the
  * user's stored profile; marking done shows the completed task directly.
+ *
+ * It also gives the voice note of the task ([voiceNote]): everybody can play it, and only the task
+ * owner can record, send and delete it.
  *
  * Nothing loads until [load] is called: the screen calls it on every resume, the first one
  * included, so a load at construction would read the task twice on open.
@@ -101,16 +109,28 @@ data class TaskDetailsUiState(
  *   someone is signed in.
  * @param dataRepository where the task is read and saved. Taking and giving back the task go
  *   through it, so the user's [User.tasksAssigned] and the task in its event change too.
+ * @param voiceNoteServices what records, keeps and plays the voice note. Without it the section is
+ *   read-only and the note cannot be played.
  */
 class TaskDetailsViewModel(
     private val taskId: String,
     private val currentUser: User,
     private val dataRepository: DataRepository,
+    voiceNoteServices: VoiceNoteServices? = null,
 ) : ViewModel() {
   private val repository: TasksRepository = dataRepository.tasksRepository
 
   private val _uiState = MutableStateFlow(TaskDetailsUiState(currentUserId = currentUser.uid))
   val uiState: StateFlow<TaskDetailsUiState> = _uiState.asStateFlow()
+
+  /** The voice note of the task: the state of its section and the actions behind it. */
+  val voiceNote =
+      VoiceNoteController(
+          scope = viewModelScope,
+          host = TaskHost(),
+          currentUserId = currentUser.uid,
+          services = voiceNoteServices,
+      )
 
   // isLoading starts true, so it cannot tell a running load from the initial state.
   private var loadJob: Job? = null
@@ -126,11 +146,13 @@ class TaskDetailsViewModel(
       _uiState.update { it.copy(isLoading = true) }
       try {
         val task = repository.getTask(taskId)
+        val ownerName = ownerNameOf(task)
         // Only a load error is cleared: a save error stays until the user dismisses it, even
         // when the task reloads on resume.
         _uiState.update {
           it.copy(
               task = task,
+              ownerName = ownerName,
               isLoading = false,
               errorMsg = it.errorMsg.takeUnless { e -> e == R.string.task_details_load_failed },
           )
@@ -141,6 +163,23 @@ class TaskDetailsViewModel(
         Log.e(LOG_TAG, "Error loading task $taskId", e)
         _uiState.update { it.copy(isLoading = false, errorMsg = R.string.task_details_load_failed) }
       }
+    }
+  }
+
+  /**
+   * The name of the owner of [task], read only when somebody else has to be credited with its voice
+   * note. A name that cannot be read is blank: the task is shown all the same.
+   */
+  private suspend fun ownerNameOf(task: Task): String {
+    if (task.voiceNote == null || task.ownerId == currentUser.uid) return ""
+    return try {
+      val owner = dataRepository.usersRepository.getUser(task.ownerId)
+      "${owner.name} ${owner.surname}".trim()
+    } catch (e: CancellationException) {
+      throw e
+    } catch (e: Exception) {
+      Log.w(LOG_TAG, "Error loading the owner of task $taskId", e)
+      ""
     }
   }
 
@@ -208,33 +247,56 @@ class TaskDetailsViewModel(
   // https://github.com/SwEnt-FestivAR/FestivAR/issues/186
   // save stores the change and returns the task to show.
   private fun saveIf(allowed: (TaskDetailsUiState) -> Boolean, save: suspend (Task) -> Task) {
-    // Checking and setting isUpdating in one step, so two taps cannot both start a save.
-    val canRun = { state: TaskDetailsUiState -> allowed(state) && state.task != null }
-
-    val before = _uiState.getAndUpdate {
-      if (canRun(it)) it.copy(isUpdating = true, errorMsg = null) else it
-    }
-
-    val task = before.task?.takeIf { canRun(before) } ?: return
+    val task = startSaving(allowed) ?: return
 
     viewModelScope.launch {
       try {
-        val updated = save(task)
-        _uiState.update {
-          it.copy(
-              task = updated,
-              isUpdating = false,
-          )
-        }
+        finishSaving(save(task))
       } catch (e: CancellationException) {
-        _uiState.update { it.copy(isUpdating = false) }
+        finishSaving(null)
         throw e
       } catch (e: Exception) {
         Log.e(LOG_TAG, "Error saving task $taskId", e)
-        _uiState.update {
-          it.copy(isUpdating = false, errorMsg = R.string.task_details_save_failed)
-        }
+        finishSaving(null, failed = true)
       }
     }
   }
+
+  /**
+   * Marks the state as updating if [allowed] and a task is shown, and returns that task; null if
+   * the action must not run. Checking and setting `isUpdating` is one step, so two taps cannot both
+   * start a save.
+   */
+  private fun startSaving(allowed: (TaskDetailsUiState) -> Boolean): Task? {
+    val canRun = { state: TaskDetailsUiState -> allowed(state) && state.task != null }
+    val before = _uiState.getAndUpdate {
+      if (canRun(it)) it.copy(isUpdating = true, errorMsg = null) else it
+    }
+    return before.task?.takeIf { canRun(before) }
+  }
+
+  private fun finishSaving(updated: Task?, failed: Boolean = false) = _uiState.update {
+    it.copy(
+        task = updated ?: it.task,
+        isUpdating = false,
+        errorMsg = if (failed) R.string.task_details_save_failed else it.errorMsg,
+    )
+  }
+
+  override fun onCleared() = voiceNote.release()
+
+  /** Lets the voice note save the task through the guard of the other actions. */
+  private inner class TaskHost : VoiceNoteHost {
+    override val state: StateFlow<TaskDetailsUiState>
+      get() = uiState
+
+    override fun startSaving(allowed: (TaskDetailsUiState) -> Boolean) =
+        this@TaskDetailsViewModel.startSaving(allowed)
+
+    override suspend fun saveTask(updated: Task) = repository.editTask(taskId, updated)
+
+    override fun finishSaving(updated: Task?, failed: Boolean) =
+        this@TaskDetailsViewModel.finishSaving(updated, failed)
+  }
 }
+
