@@ -89,6 +89,7 @@ class CreateTaskActions(
     val onPriorityChange: (Priority) -> Unit = {},
     val onMaxAssignDecrease: () -> Unit = {},
     val onMaxAssignIncrease: () -> Unit = {},
+    val onMaxAssignChange: (String) -> Unit = {},
     val onEstimatedMinutesChange: (String) -> Unit = {},
     val onShowPicker: (DateTimeField?) -> Unit = {},
     val onDatePicked: (LocalDate) -> Unit = {},
@@ -254,6 +255,8 @@ fun CreateTaskContent(
             decreaseDescription = stringResource(R.string.create_task_max_assign_decrease),
             increaseDescription = stringResource(R.string.create_task_max_assign_increase),
             minValue = MIN_MAX_ASSIGN,
+            typeable = true,
+            onValueChange = actions.onMaxAssignChange,
             modifier = Modifier.testTag(CreateTaskScreenTestTags.MAX_ASSIGN_FIELD),
             decreaseModifier =
                 Modifier.testTag(CreateTaskScreenTestTags.MAX_ASSIGN_DECREASE_BUTTON),
