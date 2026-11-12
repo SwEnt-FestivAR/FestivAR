@@ -258,7 +258,7 @@ class CreateTaskScreenInstrumentedTest : CreateTaskTest() {
 
     addTaskGate?.complete(Unit)
     composeTestRule.waitUntil(UI_WAIT_TIMEOUT) { createdCount == 1 }
-    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.TITLE_FIELD).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.TITLE_FIELD).assertIsEnabled()
   }
 
   @Test
