@@ -178,7 +178,7 @@ private fun EventInfo(
                     if (event.closed) R.string.event_details_status_closed
                     else R.string.event_details_status_open
                 ),
-            style = if (event.closed) PillStyle.OUTLINED else PillStyle.MUTED,
+            style = if (event.closed) PillStyle.OUTLINED else PillStyle.LIME,
             modifier = Modifier.testTag(EventDetailsScreenTestTags.STATUS_CHIP),
         )
       }
