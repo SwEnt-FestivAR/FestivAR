@@ -1,4 +1,6 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored by: Gemini
 package com.android.festivar.navigation
 
 import androidx.compose.material3.Text
@@ -19,6 +21,7 @@ import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.navigation.announcement.announcementGraph
 import com.android.festivar.ui.announcement.create.CreateAnnouncementScreenTestTags as Tags
+import com.android.festivar.ui.announcement.details.AnnouncementDetailsScreenTestTags as DetailsTags
 import com.android.festivar.ui.announcement.feed.AnnouncementFeedScreenTestTags as FeedTags
 import com.google.firebase.auth.FirebaseUser
 import io.mockk.every
@@ -224,5 +227,30 @@ class AnnouncementNavGraphTest {
 
     assertThePreviousScreenIsAloneOnTheBackStack()
     composeTestRule.onNodeWithTag(FeedTags.TITLE).assertDoesNotExist()
+  }
+
+  // Breaks if opening announcement details route fails to navigate to AnnouncementDetailsScreen or
+  // if
+  // back does not return to the previous screen.
+  @Test
+  fun detailsOpensAnnouncementDetailsScreenAndNavigatesBack() {
+    val announcement =
+        Announcement(
+            announcementId = "a1",
+            title = "Stage B is closed",
+            authorId = USER_ID,
+            updatedAt = ZonedDateTime.now(),
+        )
+    runBlocking { repository.addAnnouncement(EVENT_ID, announcement) }
+
+    showTheGraphAs(signedInUser)
+    composeTestRule.runOnUiThread {
+      navController.navigate(AppScreens.announcementDetails(EVENT_ID, "a1"))
+    }
+
+    composeTestRule.onNodeWithTag(DetailsTags.TITLE).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(DetailsTags.BACK_BUTTON).performClick()
+
+    assertThePreviousScreenIsAloneOnTheBackStack()
   }
 }
