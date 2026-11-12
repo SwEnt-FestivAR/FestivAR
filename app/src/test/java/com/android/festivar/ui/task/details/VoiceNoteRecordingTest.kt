@@ -9,9 +9,11 @@ import java.time.Duration
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.runTest
@@ -248,6 +250,24 @@ class VoiceNoteRecordingTest {
     assertEquals(listOf("https://fake/task/1.m4a"), storage.deletions)
   }
 
+  /** Breaks if cancelling the send job leaves uploaded audio or the screen save gate active. */
+  @Test
+  fun cancellingTheSendJob_cleansUpAndFinishesSaving() = runTest {
+    val saveGate = CompletableDeferred<Unit>()
+    host.saveGate = saveGate
+    val subject = recording
+    subject.start()
+    subject.finish()
+
+    subject.confirmSend()
+    assertTrue(subject.stage.value is RecordingStage.Sending)
+    scope.cancel()
+
+    assertEquals(RecordingStage.Idle, subject.stage.value)
+    assertFalse(host.state.value.isUpdating)
+    assertEquals(listOf("https://fake/task/1.m4a"), storage.deletions)
+  }
+
   /** Breaks if a new recording cannot replace an unsent failed recording. */
   @Test
   fun newRecording_dropsAnUnsentRecording() {
@@ -329,6 +349,7 @@ class VoiceNoteRecordingTest {
             ),
         )
     var saveFailure: Exception? = null
+    var saveGate: CompletableDeferred<Unit>? = null
     var savedTask: Task? = null
     override val state: StateFlow<TaskDetailsUiState> = _state
 
@@ -340,6 +361,7 @@ class VoiceNoteRecordingTest {
     }
 
     override suspend fun saveTask(updated: Task) {
+      saveGate?.await()
       saveFailure?.let { throw it }
       savedTask = updated
     }
