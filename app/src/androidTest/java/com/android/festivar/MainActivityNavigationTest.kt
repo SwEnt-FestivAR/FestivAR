@@ -6,6 +6,8 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar
 
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assert
@@ -305,6 +307,25 @@ class MainActivityNavigationTest {
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.TITLE).assertIsDisplayed()
 
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAVIGATION_BUTTON).performClick()
+    waitUntilTagExists(EventsOverviewScreenTestTags.TITLE)
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  @Test
+  fun doubleTapCreateEventBackLeavesOnlyOnce() {
+    seedNoEvents()
+    setSignedInContent()
+
+    waitUntilTagExists(EventsOverviewScreenTestTags.CREATE_EVENT_BUTTON)
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.CREATE_EVENT_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.TITLE).assertIsDisplayed()
+
+    composeTestRule.mainClock.autoAdvance = false
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAVIGATION_BUTTON).performClick()
+    composeTestRule.mainClock.advanceTimeBy(100L)
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAVIGATION_BUTTON).performClick()
+    composeTestRule.mainClock.autoAdvance = true
+
     waitUntilTagExists(EventsOverviewScreenTestTags.TITLE)
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.TITLE).assertIsDisplayed()
   }
