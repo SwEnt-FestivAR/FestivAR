@@ -213,6 +213,41 @@ class TaskNavGraphTest {
     assertEquals("New title", runBlocking { repository.getTask("t1") }.title)
   }
 
+  // Breaks if the optional origin argument does not parse, so a task opened from My tasks has no
+  // destination.
+  @Test
+  fun taskDetailsRoute_fromMyTasks_opensTheDetailsAndKeepsTheOrigin() {
+    runBlocking { repository.addTask(Task("t1", "event-1", "Old title", ownerId = "owner-1")) }
+    val user = mockk<FirebaseUser>(relaxed = true) { every { uid } returns "owner-1" }
+    val authRepository = mockk<AuthRepository> { every { currentUser } returns user }
+    lateinit var navController: NavHostController
+    composeTestRule.setContent {
+      AppTheme {
+        navController = rememberNavController()
+        NavHost(
+            navController,
+            startDestination = AppScreens.taskDetails("t1", TaskOrigin.MY_TASKS),
+        ) {
+          taskGraph(
+              navController,
+              DataRepositoryLocal(authRepository, tasksRepository = repository),
+          )
+        }
+      }
+    }
+
+    composeTestRule.waitUntil(timeoutMillis = 5_000) {
+      composeTestRule
+          .onAllNodesWithTag(TaskDetailsScreenTestTags.TITLE)
+          .fetchSemanticsNodes()
+          .isNotEmpty()
+    }
+    assertEquals(
+        TaskOrigin.MY_TASKS.name,
+        navController.currentBackStackEntry?.arguments?.getString("from"),
+    )
+  }
+
   // Breaks if back from an unchanged edit form does not pop the edit route.
   @Test
   fun editTaskRoute_back_returnsToThePreviousScreen() {
@@ -226,7 +261,8 @@ class TaskNavGraphTest {
   }
 
   // Breaks if the My tasks route stops showing the signed-in user's tasks, if a tapped row stops
-  // opening the details of that task, or if the arrow or the system back of the details stops
+  // opening the details of that task as opened from My tasks, or if the arrow or the system back of
+  // the details stops
   // returning to My tasks.
   @Test
   fun myTasksRoute_aRowOpensItsTaskDetailsAndBackReturns() {
@@ -261,8 +297,10 @@ class TaskNavGraphTest {
       }
       composeTestRule.onNodeWithTag(MyTasksScreenTestTags.row("t1")).performClick()
       composeTestRule.waitForIdle()
-      assertEquals("${AppScreens.TaskDetails.name}/{taskId}", route())
-      assertEquals("t1", navController.currentBackStackEntry?.arguments?.getString("taskId"))
+      assertEquals("${AppScreens.TaskDetails.name}/{taskId}?from={from}", route())
+      val arguments = navController.currentBackStackEntry?.arguments
+      assertEquals("t1", arguments?.getString("taskId"))
+      assertEquals(TaskOrigin.MY_TASKS.name, arguments?.getString("from"))
     }
 
     openTheTask()

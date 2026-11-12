@@ -16,12 +16,15 @@ class MyTasksNavigatorTest {
   private val navController = mockk<NavHostController>(relaxed = true)
   private val navigator = MyTasksNavigator(navController)
 
-  /** Turns red when a tapped row stops opening the details of that task. */
+  /**
+   * Turns red when a tapped row stops opening the details of that task, or stops telling them they
+   * were opened from My tasks.
+   */
   @Test
   fun openTaskNavigatesToTaskDetails() {
     navigator.onOpenTask("task-123")
 
-    verify { navController.navigate(AppScreens.taskDetails("task-123")) }
+    verify { navController.navigate(AppScreens.taskDetails("task-123", TaskOrigin.MY_TASKS)) }
   }
 
   /** Turns red when signing out stops opening the login or leaves My tasks under it. */
