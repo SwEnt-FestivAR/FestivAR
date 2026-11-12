@@ -103,6 +103,48 @@ class VoiceNoteRecordingTest {
     assertEquals(RecordingStage.Failed, subject.stage.value)
   }
 
+  /** Breaks if starting replaces a recording that is waiting for confirmation. */
+  @Test
+  fun start_isIgnoredWhileWaitingToSend() {
+    val subject = recording
+    subject.start()
+    subject.finish()
+
+    subject.start()
+
+    assertEquals(1, recorder.starts)
+    assertTrue(subject.stage.value is RecordingStage.Waiting)
+  }
+
+  /** Breaks if starting replaces a recording that is being sent. */
+  @Test
+  fun start_isIgnoredWhileSending() = runTest {
+    val gate = CompletableDeferred<Unit>()
+    storage.uploadGate = gate
+    val subject = recording
+    subject.start()
+    subject.finish()
+    subject.confirmSend()
+
+    subject.start()
+
+    assertEquals(1, recorder.starts)
+    assertTrue(subject.stage.value is RecordingStage.Sending)
+    gate.complete(Unit)
+  }
+
+  /** Breaks if starting while the recorder is active calls the recorder twice. */
+  @Test
+  fun start_isIgnoredWhileRecorderIsAlreadyRecording() {
+    recorder.start()
+    val subject = recording
+
+    subject.start()
+
+    assertEquals(1, recorder.starts)
+    assertEquals(RecorderState.Recording(Duration.ZERO), recorder.state.value)
+  }
+
   /** Breaks if finishing without an active recording changes the workflow state. */
   @Test
   fun finish_isIgnoredWithoutAnActiveRecording() {
