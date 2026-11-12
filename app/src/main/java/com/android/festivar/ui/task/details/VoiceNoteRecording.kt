@@ -27,13 +27,11 @@ private const val LOG_TAG = "VoiceNoteRecording"
  *
  * @param scope where the uploads run.
  * @param host the task shown, and the way to save it.
- * @param currentUserId the user recording, who must own the task.
  * @param services what records the audio and keeps it.
  */
 internal class VoiceNoteRecording(
     private val scope: CoroutineScope,
     private val host: VoiceNoteHost,
-    private val currentUserId: String,
     private val services: VoiceNoteServices,
 ) {
   private val recorder = services.recorder
@@ -134,7 +132,7 @@ internal class VoiceNoteRecording(
       try {
         url = services.storage.upload(held.audio, task.taskId)
         val note = VoiceNote(services.newId(), url, held.audio.duration, services.now())
-        val updated = task.attachVoiceNote(note, currentUserId)
+        val updated = task.attachVoiceNote(note, host.state.value.currentUserId)
         host.saveTask(updated)
         drop()
         host.finishSaving(updated)
