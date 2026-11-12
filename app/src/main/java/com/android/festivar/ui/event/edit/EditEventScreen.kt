@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -150,7 +149,7 @@ fun EditEventContent(
     modifier: Modifier = Modifier,
 ) {
   Scaffold(
-      modifier = modifier.testTag(EditEventScreenTestTags.SCREEN).imePadding(),
+      modifier = modifier.testTag(EditEventScreenTestTags.SCREEN),
       containerColor = MaterialTheme.colorScheme.background,
       topBar = { EditEventTopBar(onBack = actions.onBack) },
       bottomBar = {
@@ -322,6 +321,7 @@ internal fun EditEventScreenPreview() {
   val event =
       Event(
           eventId = "preview-event",
+          ownerId = "owner",
           title = "Balelec",
           description = "Annual music festival by the lake.",
           startDate = ZonedDateTime.of(2037, 10, 17, 16, 0, 0, 0, zone),

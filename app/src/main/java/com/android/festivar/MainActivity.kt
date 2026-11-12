@@ -9,26 +9,34 @@ import android.content.pm.ActivityInfo
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.credentials.CredentialManager
 import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.datarepository.DataRepositoryFirebase
 import com.android.festivar.navigation.AppScreens
+import com.android.festivar.navigation.BottomBarNavigator
 import com.android.festivar.navigation.announcement.announcementGraph
 import com.android.festivar.navigation.authentication.authGraph
+import com.android.festivar.navigation.bottomBarStateFor
 import com.android.festivar.navigation.event.eventGraph
 import com.android.festivar.navigation.profile.profileGraph
 import com.android.festivar.navigation.task.taskGraph
 import com.android.festivar.ui.settings.applySavedSettings
+import com.android.festivar.ui.components.BottomNavigationBar
 import com.android.festivar.ui.theme.AppTheme
 
 class MainActivity : AppCompatActivity() {
@@ -51,6 +59,10 @@ class MainActivity : AppCompatActivity() {
 /**
  * `FestivAR` is the main composable function that sets up the whole app UI. It initializes the
  * navigation controller and defines the navigation graph.
+ *
+ * The bottom bar shows under the top-level screens and is hidden on forms and authentication. Its
+ * selected tab is derived from the current back stack entry: a task's details keep the tab they
+ * were opened from, carried in their route (see [bottomBarStateFor]).
  */
 @Composable
 fun FestivAR(
@@ -66,15 +78,35 @@ fun FestivAR(
           ?: if (dataRepository.authRepository.currentUser != null) AppScreens.EventsOverview.name
           else AppScreens.Login.name
 
-  NavHost(
-      navController = navController,
-      startDestination = startDestination,
-  ) {
-    authGraph(navController, credentialManager, dataRepository)
-    eventGraph(navController, dataRepository)
-    taskGraph(navController, dataRepository)
-    announcementGraph(navController, dataRepository)
-    profileGraph(navController, dataRepository)
+  val entry by navController.currentBackStackEntryAsState()
+  val bar = bottomBarStateFor(entry?.destination?.route, entry?.arguments?.getString("from"))
+  val bottomBarNavigator = remember(navController) { BottomBarNavigator(navController) }
+
+  Scaffold(
+      // The screens' own Scaffolds handle the system bars; a second inset here would double the
+      // top padding.
+      contentWindowInsets = WindowInsets(0, 0, 0, 0),
+      bottomBar = {
+        bar?.let {
+          BottomNavigationBar(
+              selectedTab = it.selectedTab,
+              onTabSelected = { tab -> bottomBarNavigator.onTabSelected(tab, it) },
+              subScreen = it.subScreen,
+          )
+        }
+      },
+  ) { padding ->
+    NavHost(
+        navController = navController,
+        startDestination = startDestination,
+        modifier = Modifier.padding(padding),
+    ) {
+      authGraph(navController, credentialManager, dataRepository)
+      eventGraph(navController, dataRepository)
+      taskGraph(navController, dataRepository)
+      announcementGraph(navController, dataRepository)
+      profileGraph(navController, dataRepository)
+    }
   }
 }
 

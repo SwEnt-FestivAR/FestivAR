@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.event.overview
 
 import androidx.activity.compose.BackHandler
@@ -13,7 +14,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -57,20 +57,17 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.android.festivar.R
 import com.android.festivar.model.event.Event
-import com.android.festivar.model.user.User
-import com.android.festivar.ui.components.Avatar
 import com.android.festivar.ui.components.EmptyState
 import com.android.festivar.ui.components.FilterChip
 import com.android.festivar.ui.components.RefreshableStateList
 import com.android.festivar.ui.components.floatingShadow
-import com.android.festivar.ui.components.formatEventDate
+import com.android.festivar.ui.components.formatEventDateAndLocation
 import com.android.festivar.ui.theme.AppTheme
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
 object EventsOverviewScreenTestTags {
   const val TITLE = "eventsOverviewTitle"
-  const val USER_AVATAR = "eventsOverviewUserAvatar"
   const val ONGOING_CHIP = "ongoingEventsChip"
   const val UPCOMING_CHIP = "upcomingEventsChip"
   const val PAST_CHIP = "pastEventsChip"
@@ -83,17 +80,6 @@ object EventsOverviewScreenTestTags {
 }
 
 /**
- * Formats the days and the location of an [event], e.g. "Fri 16 to Sun 18 Oct · Parc de Vidy". The
- * days come from [formatEventDate].
- */
-@Composable
-private fun formatEventDates(event: Event): String {
-  val dates = formatEventDate(event)
-  return if (event.location.isBlank()) dates
-  else stringResource(R.string.events_overview_dates_location, dates, event.location)
-}
-
-/**
  * Screen showing the [Event] items of the user, split between ongoing, upcoming and past ones. The
  * [Event] items are fetched again every time the screen comes back to the front, e.g. after adding
  * a new one, and when the user pulls the list down.
@@ -102,7 +88,6 @@ private fun formatEventDates(event: Event): String {
  * @param onSelectEvent Called when the user clicks on an [Event] card.
  * @param onJoinEvent Called when the user clicks on the "Join" button.
  * @param onAddEvent Called when the user clicks on the "Create" button.
- * @param onSelectAvatar Called when the user clicks on its avatar in the top bar.
  */
 @Composable
 fun EventsOverviewScreen(
@@ -110,7 +95,6 @@ fun EventsOverviewScreen(
     onSelectEvent: (Event) -> Unit = {},
     onJoinEvent: () -> Unit = {},
     onAddEvent: () -> Unit = {},
-    onSelectAvatar: () -> Unit = {},
 ) {
   val uiState by eventsOverviewViewModel.uiState.collectAsState()
 
@@ -123,7 +107,6 @@ fun EventsOverviewScreen(
       onSelectEvent = onSelectEvent,
       onJoinEvent = onJoinEvent,
       onAddEvent = onAddEvent,
-      onSelectAvatar = onSelectAvatar,
   )
 }
 
@@ -136,7 +119,6 @@ fun EventsOverviewScreen(
  * @param onSelectEvent Called when the user clicks on an [Event] card.
  * @param onJoinEvent Called when the user clicks on the "Join" button.
  * @param onAddEvent Called when the user clicks on the "Create" button.
- * @param onSelectAvatar Called when the user clicks on its avatar in the top bar.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -147,7 +129,6 @@ fun EventsOverviewContent(
     onSelectEvent: (Event) -> Unit = {},
     onJoinEvent: () -> Unit = {},
     onAddEvent: () -> Unit = {},
-    onSelectAvatar: () -> Unit = {},
 ) {
   Scaffold(
       topBar = {
@@ -158,17 +139,6 @@ fun EventsOverviewContent(
                   style = MaterialTheme.typography.titleLarge,
                   modifier = Modifier.testTag(EventsOverviewScreenTestTags.TITLE),
               )
-            },
-            actions = {
-              uiState.user?.let { user ->
-                Box(
-                    modifier =
-                        Modifier.padding(end = 12.dp)
-                            .testTag(EventsOverviewScreenTestTags.USER_AVATAR)
-                ) {
-                  Avatar(user = user, onClick = onSelectAvatar)
-                }
-              }
             },
         )
       },
@@ -414,7 +384,7 @@ private fun EventItem(event: Event, onClick: () -> Unit) {
         color = MaterialTheme.colorScheme.onSurface,
     )
     Text(
-        text = formatEventDates(event),
+        text = formatEventDateAndLocation(event),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -423,7 +393,7 @@ private fun EventItem(event: Event, onClick: () -> Unit) {
 
 @Preview(showBackground = true, widthDp = 412, heightDp = 915)
 @Composable
-private fun EventsOverviewContentPreview() {
+internal fun EventsOverviewContentPreview() {
   val zone = ZoneId.of("Europe/Zurich")
   fun date(month: Int, day: Int, hour: Int) =
       ZonedDateTime.of(2026, month, day, hour, 0, 0, 0, zone)
@@ -431,6 +401,7 @@ private fun EventsOverviewContentPreview() {
       listOf(
           Event(
               eventId = "1",
+              ownerId = "owner-1",
               title = "Fête de l'Asso 2026",
               startDate = date(10, 16, 10),
               endDate = date(10, 18, 23),
@@ -438,6 +409,7 @@ private fun EventsOverviewContentPreview() {
           ),
           Event(
               eventId = "2",
+              ownerId = "owner-2",
               title = "Soirée Jazz",
               startDate = date(11, 6, 19),
               endDate = date(11, 6, 23),
@@ -445,6 +417,7 @@ private fun EventsOverviewContentPreview() {
           ),
           Event(
               eventId = "3",
+              ownerId = "owner-3",
               title = "Marché de Noël",
               startDate = date(12, 12, 10),
               endDate = date(12, 13, 20),
@@ -454,6 +427,7 @@ private fun EventsOverviewContentPreview() {
   val ongoingEvent =
       Event(
           eventId = "4",
+          ownerId = "owner-4",
           title = "Concert au Lac",
           startDate = date(10, 8, 18),
           endDate = date(10, 8, 23),
@@ -462,6 +436,7 @@ private fun EventsOverviewContentPreview() {
       (5..12).map {
         Event(
             eventId = "$it",
+            ownerId = "owner-$it",
             title = "Event $it",
             startDate = date(9, it, 10),
             endDate = date(9, it, 20),
@@ -473,17 +448,12 @@ private fun EventsOverviewContentPreview() {
           upcomingEvents = upcomingEvents,
           pastEvents = pastEvents,
           selectedFilter = EventsFilter.UPCOMING,
-          user = User("u0", name = "Yasmine", surname = "Amrani"),
       )
   AppTheme { EventsOverviewContent(uiState = uiState) }
 }
 
 @Preview(showBackground = true, widthDp = 412, heightDp = 915)
 @Composable
-private fun EventsOverviewEmptyPreview() {
-  AppTheme {
-    EventsOverviewContent(
-        uiState = EventsOverviewUIState(user = User("u0", name = "Yasmine", surname = "Amrani"))
-    )
-  }
+internal fun EventsOverviewEmptyPreview() {
+  AppTheme { EventsOverviewContent(uiState = EventsOverviewUIState()) }
 }

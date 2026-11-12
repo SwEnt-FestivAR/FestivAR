@@ -47,6 +47,7 @@ class EventRepositoryFirebaseTest {
     event =
         Event(
             eventId = "event-${UUID.randomUUID()}",
+            ownerId = "user-1",
             title = "Fête de l'Asso",
             description = "Description",
             members = listOf(User("user-1")),
@@ -116,9 +117,35 @@ class EventRepositoryFirebaseTest {
     assertThrows { repository.getEvent(event.eventId) }
   }
 
+  /**
+   * Breaks if an event without `ownerId` is accepted or the exception does not identify the event.
+   */
+  @Test
+  fun getEvent_withoutOwnerIdIsRefused() = runBlocking {
+    eventDocument()
+        .set(
+            mapOf(
+                "eventId" to event.eventId,
+                "title" to event.title,
+                "startDate" to event.startDate.toString(),
+                "endDate" to event.endDate.toString(),
+            )
+        )
+        .await()
+
+    assertThrowsOfType<IllegalArgumentException>("Event '${event.eventId}' has no owner") {
+      repository.getEvent(event.eventId)
+    }
+  }
+
   @Test
   fun getEventsForUser_returnsOnlyMatchingEvents() = runBlocking {
-    val otherEvent = event.copy(eventId = "event-${UUID.randomUUID()}", members = emptyList())
+    val otherEvent =
+        event.copy(
+            eventId = "event-${UUID.randomUUID()}",
+            ownerId = "other-owner",
+            members = listOf(User("other-owner")),
+        )
     repository.addEvent(event)
     repository.addEvent(otherEvent)
 
@@ -238,15 +265,19 @@ class EventRepositoryFirebaseTest {
         .set(
             mapOf(
                 "eventId" to event.eventId,
+                "ownerId" to event.ownerId,
                 "title" to event.title,
-                "members" to listOf("user-2"),
+                "members" to listOf("user-1", "user-2"),
                 "startDate" to event.startDate.toString(),
                 "endDate" to event.endDate.toString(),
             )
         )
         .await()
 
-    assertEquals(listOf(User("user-2", "Alex", "Lee")), repository.getEvent(event.eventId).members)
+    assertEquals(
+        listOf(User("user-1"), User("user-2", "Alex", "Lee")),
+        repository.getEvent(event.eventId).members,
+    )
   }
 
   @Test
@@ -255,6 +286,7 @@ class EventRepositoryFirebaseTest {
     document
         .set(
             mapOf(
+                "ownerId" to event.ownerId,
                 "title" to event.title,
                 "startDate" to event.startDate.toString(),
                 "endDate" to event.endDate.toString(),
@@ -267,7 +299,7 @@ class EventRepositoryFirebaseTest {
     assertEquals(event.eventId, result.eventId)
     assertEquals("", result.description)
     assertEquals("", result.location)
-    assertTrue(result.members.isEmpty())
+    assertEquals(listOf(User("user-1")), result.members)
     assertTrue(result.tasks.isEmpty())
     assertFalse(result.closed)
     assertTrue(result.announcements.isEmpty())
@@ -355,6 +387,35 @@ class EventRepositoryFirebaseTest {
     assertEquals(event.copy(announcements = listOf(a1, a3)), repository.getEvent(event.eventId))
   }
 
+  @Test
+  fun setAnnouncementPinned_preservesTheLatestAnnouncementFields() = runBlocking {
+    val original = fullAnnouncement.copy(pinned = false)
+    repository.addEvent(event.copy(announcements = listOf(original)))
+    val editedElsewhere = original.copy(title = "Updated elsewhere", content = "New details")
+    repository.editAnnouncement(event.eventId, editedElsewhere)
+
+    val pinned = repository.setAnnouncementPinned(event.eventId, original.announcementId, true)
+
+    assertEquals(editedElsewhere.copy(pinned = true), pinned)
+    assertEquals(listOf(pinned), repository.getEvent(event.eventId).announcements)
+  }
+
+  @Test
+  fun setAnnouncementPinned_missingEventOrAnnouncementThrowsAndChangesNothing() = runBlocking {
+    assertThrowsOfType<NoSuchElementException> {
+      repository.setAnnouncementPinned(event.eventId, "a1", true)
+    }
+    assertFalse(eventDocument().get().await().exists())
+
+    val stored = announcement("a1")
+    repository.addEvent(event.copy(announcements = listOf(stored)))
+    assertThrowsOfType<IllegalArgumentException> {
+      repository.setAnnouncementPinned(event.eventId, "missing", true)
+    }
+
+    assertEquals(listOf(stored), repository.getEvent(event.eventId).announcements)
+  }
+
   /** Red if editing or deleting an unknown id succeeds, adds it or changes the stored ones. */
   @Test
   fun editAndDeleteAnnouncement_withAnUnknownIdThrow_andChangeNothing() = runBlocking {
@@ -433,6 +494,7 @@ class EventRepositoryFirebaseTest {
         .set(
             mapOf(
                 "eventId" to event.eventId,
+                "ownerId" to event.ownerId,
                 "title" to event.title,
                 "startDate" to event.startDate.toString(),
                 "endDate" to event.endDate.toString(),

@@ -31,7 +31,6 @@ import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
-import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.ui.components.EmptyStateTestTags
 import com.android.festivar.ui.components.RefreshableListTestTags
 import com.android.festivar.ui.event.overview.EventsOverviewContent
@@ -98,6 +97,7 @@ class EventsOverviewScreenTest {
   private val ongoingEvent =
       Event(
           eventId = "0",
+          ownerId = sara.uid,
           title = "Fête de l'Asso",
           description = "The yearly party of the association",
           members = listOf(sara, marc, alice, bob),
@@ -121,6 +121,7 @@ class EventsOverviewScreenTest {
   private val upcomingEvent =
       Event(
           eventId = "1",
+          ownerId = sara.uid,
           title = "Soirée Jazz",
           description = "A jazz concert at Satellite",
           members = listOf(sara),
@@ -136,6 +137,7 @@ class EventsOverviewScreenTest {
   private val pastEvent =
       Event(
           eventId = "2",
+          ownerId = sara.uid,
           title = "Balélec",
           description = "The EPFL music festival",
           members = listOf(sara),
@@ -147,11 +149,7 @@ class EventsOverviewScreenTest {
   private fun createViewModel(withRepository: EventsRepository): EventsOverviewViewModel {
     return EventsOverviewViewModel(
         dataRepository =
-            DataRepositoryLocal(
-                FakeAuthRepository(),
-                eventsRepository = withRepository,
-                usersRepository = UsersRepositoryLocal(listOf(sara)),
-            ),
+            DataRepositoryLocal(FakeAuthRepository(), eventsRepository = withRepository),
         uId = sara.uid,
         now = { now },
     )
@@ -162,7 +160,6 @@ class EventsOverviewScreenTest {
       onSelectEvent: (Event) -> Unit = {},
       onJoinEvent: () -> Unit = {},
       onAddEvent: () -> Unit = {},
-      onSelectAvatar: () -> Unit = {},
       viewModel: EventsOverviewViewModel = createViewModel(withRepository),
       lifecycleOwner: LifecycleOwner? = null,
   ): EventsOverviewViewModel {
@@ -177,7 +174,6 @@ class EventsOverviewScreenTest {
               onSelectEvent = onSelectEvent,
               onJoinEvent = onJoinEvent,
               onAddEvent = onAddEvent,
-              onSelectAvatar = onSelectAvatar,
           )
         }
       }
@@ -215,15 +211,14 @@ class EventsOverviewScreenTest {
   }
 
   /**
-   * Test that the title, the avatar, the filter chips, the list and the "+" button are displayed,
-   * and that the "Join" and "Create" buttons stay hidden until the "+" button is clicked.
+   * Test that the title, the filter chips, the list and the "+" button are displayed, and that the
+   * "Join" and "Create" buttons stay hidden until the "+" button is clicked.
    */
   @Test
   fun displaysAllComponents() {
     setContent(withRepository = EventsRepositoryImpl(listOf(ongoingEvent)))
 
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.TITLE).assertIsDisplayed()
-    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.USER_AVATAR).assertIsDisplayed()
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.ONGOING_CHIP).assertIsDisplayed()
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.UPCOMING_CHIP).assertIsDisplayed()
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.PAST_CHIP).assertIsDisplayed()
@@ -257,20 +252,6 @@ class EventsOverviewScreenTest {
         .assertIsDisplayed()
     composeTestRule
         .onNode(hasTestTag(EventsOverviewScreenTestTags.PAST_CHIP).and(hasText("1")))
-        .assertIsDisplayed()
-  }
-
-  /** Test that the avatar of the top bar shows the initials of the signed-in user. */
-  @Test
-  fun avatarShowsTheInitialsOfTheUser() {
-    setContent(withRepository = EventsRepositoryImpl())
-
-    composeTestRule
-        .onNode(
-            hasTestTag(EventsOverviewScreenTestTags.USER_AVATAR)
-                .and(hasAnyDescendant(hasText("SK"))),
-            useUnmergedTree = true,
-        )
         .assertIsDisplayed()
   }
 
@@ -529,7 +510,7 @@ class EventsOverviewScreenTest {
   /** Test that the error state of an error without cause is still worded. */
   @Test
   fun errorWithoutCauseIsStillWorded() {
-    setContent(uiState = EventsOverviewUIState(user = sara, hasError = true))
+    setContent(uiState = EventsOverviewUIState(hasError = true))
 
     composeTestRule
         .onNodeWithTag(RefreshableListTestTags.ERROR_MESSAGE)
@@ -697,16 +678,5 @@ class EventsOverviewScreenTest {
 
     assertEquals(0, joins)
     assertEquals(1, adds)
-  }
-
-  /** Test that clicking on the avatar of the top bar calls onSelectAvatar. */
-  @Test
-  fun clickingAvatarCallsOnSelectAvatar() {
-    var clicks = 0
-    setContent(withRepository = EventsRepositoryImpl(), onSelectAvatar = { clicks++ })
-
-    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.USER_AVATAR).performClick()
-
-    assertEquals(1, clicks)
   }
 }

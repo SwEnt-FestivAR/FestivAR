@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -52,6 +51,7 @@ import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.components.FestivarFieldWithError
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.components.FilterChip
+import com.android.festivar.ui.components.LONG_TEXT_MAX_LENGTH
 import com.android.festivar.ui.components.SectionLabel
 import com.android.festivar.ui.theme.AppTheme
 
@@ -154,7 +154,7 @@ fun CreateAnnouncementContent(
     modifier: Modifier = Modifier,
 ) {
   Scaffold(
-      modifier = modifier.imePadding(),
+      modifier = modifier,
       containerColor = MaterialTheme.colorScheme.background,
       topBar = {
         TopAppBar(
@@ -212,6 +212,8 @@ fun CreateAnnouncementContent(
             label = stringResource(R.string.create_announcement_field_description),
             enabled = state.isEditable,
             singleLine = false,
+            maxLength = LONG_TEXT_MAX_LENGTH,
+            showCounter = true,
             isError = state.contentError != null,
             modifier =
                 Modifier.heightIn(min = 96.dp)

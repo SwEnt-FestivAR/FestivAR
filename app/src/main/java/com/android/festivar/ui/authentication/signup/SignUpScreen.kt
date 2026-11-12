@@ -1,5 +1,6 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.authentication.signup
 
 import androidx.compose.foundation.background
@@ -47,6 +48,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
+import com.android.festivar.ui.components.CREDENTIAL_MAX_LENGTH
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.components.NoticeSnackbar
 
@@ -241,6 +243,7 @@ private fun SignUpEmailField(
       value = value,
       onValueChange = onValueChange,
       label = label,
+      maxLength = CREDENTIAL_MAX_LENGTH,
       modifier = Modifier.testTag(tag),
       keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
   )
@@ -262,6 +265,7 @@ private fun PasswordTextField(
       value = value,
       onValueChange = onValueChange,
       label = label,
+      maxLength = CREDENTIAL_MAX_LENGTH,
       modifier = Modifier.testTag(tag),
       visualTransformation =
           if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),

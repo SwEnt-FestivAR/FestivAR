@@ -19,6 +19,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.android.festivar.model.authentication.AuthRepositoryFirebase
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventRepositoryFirebase
 import com.android.festivar.model.event.joinCodeOf
@@ -27,6 +28,8 @@ import com.android.festivar.model.user.UsersRepositoryFirebase
 import com.android.festivar.model.user.UsersRepositoryProvider
 import com.android.festivar.ui.authentication.login.LoginScreenTestTags
 import com.android.festivar.ui.authentication.signup.SignUpScreenTestTags
+import com.android.festivar.ui.components.BottomNavigationBarTestTags
+import com.android.festivar.ui.components.NavigationTab
 import com.android.festivar.ui.event.create.CreateEventScreenTestTags
 import com.android.festivar.ui.event.details.EventDetailsScreenTestTags
 import com.android.festivar.ui.event.join.JoinEventScreenTestTags
@@ -231,11 +234,13 @@ class EndToEndTest {
   }
 
   /**
-   * Opens the profile of [email] from the overview's avatar and signs out, back to the login
-   * screen.
+   * Opens the profile of [email] from the Profile tab of the bottom bar and signs out, back to the
+   * login screen.
    */
   private fun signOutFromTheProfile(email: String) {
-    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.USER_AVATAR).performClick()
+    composeTestRule
+        .onNodeWithTag(BottomNavigationBarTestTags.getTestTagForTab(NavigationTab.PROFILE))
+        .performClick()
     waitUntilTagExists(ProfileScreenTestTags.TITLE)
     // The sign out button only shows once the profile is loaded
     waitUntilTagExists(ProfileScreenTestTags.SIGN_OUT_BUTTON)
@@ -296,15 +301,9 @@ class EndToEndTest {
     private const val CREATED_EVENT_TITLE = "Vidy Afterparty"
     private val MEMBER_EMAIL = "e2e-member-${UUID.randomUUID()}@festivar.test"
     private val ORGANIZER_EMAIL = "e2e-organizer-${UUID.randomUUID()}@festivar.test"
+    private val EVENT_OWNER_EMAIL = "e2e-event-owner-${UUID.randomUUID()}@festivar.test"
 
-    private val start = ZonedDateTime.now().plusDays(1)
-    private val event =
-        Event(
-            eventId = "e2e-${UUID.randomUUID()}",
-            title = "Vidy Festival",
-            startDate = start,
-            endDate = start.plusHours(5),
-        )
+    private lateinit var event: Event
 
     /** Runs [block] as a throwaway anonymous user, as the Firestore rules need a signed-in one. */
     private fun asAnonymousUser(block: suspend () -> Unit) = runBlocking {
@@ -347,22 +346,21 @@ class EndToEndTest {
 
       // Clean up any potential leftover test accounts or events from previous runs
       asAnonymousUser {
-        val events = EventRepositoryFirebase(Firebase.firestore)
         val tasks = TaskRepositoryFirebase(Firebase.firestore)
-        logged("delete leftover seeded event's tasks") {
-          runCatching { tasks.getAllTasks(event.eventId).forEach { tasks.deleteTask(it.taskId) } }
-        }
-        logged("delete leftover seeded event") { runCatching { events.deleteEvent(event.eventId) } }
-        logged("delete leftover created events") {
-          runCatching {
-            events
-                .getAllEvents()
-                .filter { it.title == CREATED_EVENT_TITLE }
-                .forEach { events.deleteEvent(it.eventId) }
-          }
+        logged("delete leftover test events") {
+          val snapshots = Firebase.firestore.collection("events").get().await()
+          snapshots.documents
+              .filter { it.getString("title") in setOf("Vidy Festival", CREATED_EVENT_TITLE) }
+              .forEach { document ->
+                (document.get("tasks") as? List<*>).orEmpty().filterIsInstance<String>().forEach {
+                    taskId ->
+                  runCatching { tasks.deleteTask(taskId) }
+                }
+                document.reference.delete().await()
+              }
         }
       }
-      for (email in listOf(MEMBER_EMAIL, ORGANIZER_EMAIL)) {
+      for (email in listOf(MEMBER_EMAIL, ORGANIZER_EMAIL, EVENT_OWNER_EMAIL)) {
         runCatching {
           asTheUser(email) { uid ->
             logged("delete leftover profile of $email") {
@@ -376,7 +374,25 @@ class EndToEndTest {
       }
       Firebase.auth.signOut()
 
-      asAnonymousUser { EventRepositoryFirebase(Firebase.firestore).addEvent(event) }
+      val owner = runBlocking {
+        val users = UsersRepositoryFirebase(Firebase.firestore)
+        val authRepository = AuthRepositoryFirebase(usersRepository = users)
+        val firebaseUser =
+            authRepository.signUpWithEmailAndPassword(EVENT_OWNER_EMAIL, PASSWORD).getOrThrow()
+        users.getUser(firebaseUser.uid)
+      }
+      val start = ZonedDateTime.now().plusDays(1)
+      event =
+          Event(
+              eventId = "e2e-${UUID.randomUUID()}",
+              ownerId = owner.uid,
+              title = "Vidy Festival",
+              members = listOf(owner),
+              startDate = start,
+              endDate = start.plusHours(5),
+          )
+      runBlocking { EventRepositoryFirebase(Firebase.firestore).addEvent(event) }
+      Firebase.auth.signOut()
       // Signed out, so the app starts on the login screen
     }
 
@@ -399,7 +415,7 @@ class EndToEndTest {
         }
       }
       // An Auth account can only be deleted by itself, so each member signs in once more
-      for (email in listOf(MEMBER_EMAIL, ORGANIZER_EMAIL)) {
+      for (email in listOf(MEMBER_EMAIL, ORGANIZER_EMAIL, EVENT_OWNER_EMAIL)) {
         runCatching {
           asTheUser(email) { uid ->
             logged("delete the profile of $email") {

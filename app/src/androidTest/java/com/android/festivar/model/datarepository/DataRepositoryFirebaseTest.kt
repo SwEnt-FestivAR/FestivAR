@@ -91,6 +91,7 @@ class DataRepositoryFirebaseTest {
     eventsRepository.addEvent(
         Event(
             eventId = e1,
+            ownerId = alice,
             title = "Summer festival",
             members = listOf(User(alice), User(bob)),
             tasks = listOf(task),
@@ -191,6 +192,7 @@ class DataRepositoryFirebaseTest {
     val event =
         Event(
             eventId = e3,
+            ownerId = alice,
             title = "Closing party",
             members = listOf(User(alice), User(carla)),
             startDate = start,

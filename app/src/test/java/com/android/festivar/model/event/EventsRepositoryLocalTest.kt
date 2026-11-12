@@ -22,13 +22,20 @@ class EventsRepositoryLocalTest {
   private val event =
       Event(
           eventId = "1",
+          ownerId = sara.uid,
           title = "Fête de l'Asso",
           members = listOf(sara),
           startDate = start,
           endDate = start.plusHours(13),
       )
   private val otherEvent =
-      Event(eventId = "2", title = "Soirée Jazz", startDate = start, endDate = start.plusHours(5))
+      Event(
+          eventId = "2",
+          ownerId = "owner",
+          title = "Soirée Jazz",
+          startDate = start,
+          endDate = start.plusHours(5),
+      )
   private val announcement =
       Announcement(announcementId = "a1", title = "Gates open", authorId = "u1", updatedAt = start)
   private val eventWithAnnouncement = event.copy(announcements = listOf(announcement))
@@ -231,6 +238,40 @@ class EventsRepositoryLocalTest {
   fun editAnnouncement_unknownEventThrows() {
     assertThrows(NoSuchElementException::class.java) {
       runBlocking { repository.editAnnouncement("unknown", announcement) }
+    }
+  }
+
+  @Test
+  fun setAnnouncementPinned_updatesOnlyTheTargetAnnouncement() = runTest {
+    val otherAnnouncement = announcement.copy(announcementId = "a2", title = "Bar opens")
+    val eventWithAnnouncements = event.copy(announcements = listOf(announcement, otherAnnouncement))
+    repository = EventsRepositoryLocal(listOf(eventWithAnnouncements, otherEvent))
+
+    val updated = repository.setAnnouncementPinned(event.eventId, announcement.announcementId, true)
+
+    assertEquals(announcement.copy(pinned = true), updated)
+    assertEquals(
+        listOf(announcement.copy(pinned = true), otherAnnouncement),
+        repository.getEvent(event.eventId).announcements,
+    )
+    assertEquals(otherEvent, repository.getEvent(otherEvent.eventId))
+  }
+
+  @Test
+  fun setAnnouncementPinned_missingAnnouncementThrowsAndKeepsTheEvent() = runTest {
+    repository = EventsRepositoryLocal(listOf(eventWithAnnouncement))
+
+    assertThrows(IllegalArgumentException::class.java) {
+      runBlocking { repository.setAnnouncementPinned(event.eventId, "missing", true) }
+    }
+
+    assertEquals(eventWithAnnouncement, repository.getEvent(event.eventId))
+  }
+
+  @Test
+  fun setAnnouncementPinned_unknownEventThrows() {
+    assertThrows(NoSuchElementException::class.java) {
+      runBlocking { repository.setAnnouncementPinned("unknown", announcement.announcementId, true) }
     }
   }
 

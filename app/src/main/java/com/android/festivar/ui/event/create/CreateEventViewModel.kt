@@ -48,6 +48,8 @@ data class CreateEventUIState(
     val openPicker: DateTimeField? = null,
     val isSaving: Boolean = false,
     val createdEventId: String? = null,
+    val showDiscardConfirmation: Boolean = false,
+    val isDiscarded: Boolean = false,
     val zone: ZoneId = ZoneId.systemDefault(),
     @StringRes val errorMsg: Int? = null,
 ) {
@@ -85,13 +87,14 @@ data class CreateEventUIState(
   val canCreate: Boolean
     get() = isValid && !isSaving && createdEventId == null
 
-  fun toEvent(eventId: String, membersList: List<User>): Event {
+  fun toEvent(eventId: String, owner: User): Event {
     require(isValid) { "The form is not valid." }
     return Event(
         eventId = eventId,
+        ownerId = owner.uid,
         title = name,
         description = notes,
-        members = membersList,
+        members = listOf(owner),
         startDate = startDateTime!!,
         endDate = endDateTime!!,
         location = venue,
@@ -115,6 +118,11 @@ class CreateEventViewModel(
     private val userId: String = "",
 ) : EventFormViewModel<CreateEventUIState>(CreateEventUIState()) {
   val uiState: StateFlow<CreateEventUIState> = formState
+
+  /** Whether leaving the form would discard any entered event details. */
+  val needsDiscardConfirmation: Boolean
+    get() =
+        currentState.createdEventId == null && !currentState.isSaving && hasChanges(currentState)
 
   override fun clearError(state: CreateEventUIState) = state.copy(errorMsg = null)
 
@@ -144,6 +152,39 @@ class CreateEventViewModel(
 
   override fun currentPicker(state: CreateEventUIState) = state.openPicker
 
+  /** Handles system or top-bar back requests, asking before losing entered details. */
+  fun requestDiscard() {
+    updateState { state ->
+      when {
+        state.isSaving || state.createdEventId != null || state.isDiscarded -> state
+        hasChanges(state) -> state.copy(showDiscardConfirmation = true)
+        else -> state.copy(isDiscarded = true)
+      }
+    }
+  }
+
+  /** Closes the discard dialog and keeps the entered details. */
+  fun cancelDiscard() {
+    updateState { it.copy(showDiscardConfirmation = false) }
+  }
+
+  /** Confirms that the user wants to leave and discard the entered details. */
+  fun confirmDiscard() {
+    updateState {
+      if (it.isSaving || it.createdEventId != null) it.copy(showDiscardConfirmation = false)
+      else it.copy(showDiscardConfirmation = false, isDiscarded = true)
+    }
+  }
+
+  private fun hasChanges(state: CreateEventUIState): Boolean =
+      state.name.isNotEmpty() ||
+          state.startDate != null ||
+          state.endDate != null ||
+          state.startTime != null ||
+          state.endTime != null ||
+          state.venue.isNotEmpty() ||
+          state.notes.isNotEmpty()
+
   /**
    * Saves the form as a new event with the creator as its first member. Ignored while a save runs
    * or once one succeeded; a failure leaves the form as it is and sets
@@ -170,8 +211,7 @@ class CreateEventViewModel(
     check(userId.isNotBlank()) { "User not signed in" }
     val creator = dataRepository.usersRepository.getUser(userId)
 
-    val newEvent =
-        currentState.toEvent(dataRepository.eventsRepository.getNewUid(), listOf(creator))
+    val newEvent = currentState.toEvent(dataRepository.eventsRepository.getNewUid(), creator)
     dataRepository.createEvent(newEvent)
     updateState { it.copy(isSaving = false, createdEventId = newEvent.eventId) }
   }
