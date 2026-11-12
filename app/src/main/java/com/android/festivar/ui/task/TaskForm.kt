@@ -1,5 +1,6 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.ui.task
 
 import androidx.activity.compose.BackHandler
@@ -58,12 +59,17 @@ fun taskFormActions(
 @Composable
 internal fun TaskFormBackHandling(
     needsConfirmation: Boolean,
+    isSaving: Boolean = false,
     onBack: () -> Unit,
     @StringRes dialogTitle: Int,
     content: @Composable (requestBack: () -> Unit) -> Unit,
 ) {
   var askToDiscard by rememberSaveable { mutableStateOf(false) }
-  val requestBack = { if (needsConfirmation) askToDiscard = true else onBack() }
+  val requestBack = {
+    if (!isSaving) {
+      if (needsConfirmation) askToDiscard = true else onBack()
+    }
+  }
   BackHandler(onBack = requestBack)
 
   content(requestBack)

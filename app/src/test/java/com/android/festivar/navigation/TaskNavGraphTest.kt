@@ -1,5 +1,6 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.navigation
 
 import android.content.Context
@@ -168,6 +169,22 @@ class TaskNavGraphTest {
     composeTestRule.waitForIdle()
 
     assertEquals("start", navController.currentBackStackEntry?.destination?.route)
+  }
+
+  @Test
+  fun createTaskRoute_doubleTapBackPopsOnlyOnce() {
+    val navController =
+        openOnTopOfStart(AppScreens.createTask("event-1"), mockk<AuthRepository>(relaxed = true))
+
+    composeTestRule.mainClock.autoAdvance = false
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.BACK_BUTTON).performClick()
+    composeTestRule.mainClock.advanceTimeBy(100L)
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.BACK_BUTTON).performClick()
+    composeTestRule.mainClock.autoAdvance = true
+    composeTestRule.waitForIdle()
+
+    assertEquals("start", navController.currentBackStackEntry?.destination?.route)
+    assertTrue(navController.previousBackStackEntry == null)
   }
 
   @Test

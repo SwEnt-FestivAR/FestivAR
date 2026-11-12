@@ -1,5 +1,6 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.ui.task.create
 
 import androidx.compose.foundation.layout.Arrangement
@@ -119,6 +120,7 @@ fun CreateTaskScreen(
 
   TaskFormBackHandling(
       needsConfirmation = state.needsDiscardConfirmation,
+      isSaving = state.isSaving,
       onBack = onBack,
       dialogTitle = R.string.create_task_discard_title,
   ) { requestBack ->
@@ -196,6 +198,7 @@ fun CreateTaskContent(
             value = state.title,
             onValueChange = actions.onTitleChange,
             label = stringResource(R.string.create_task_field_title),
+            enabled = !state.isSaving,
             isError = state.titleError != null,
             modifier = Modifier.testTag(CreateTaskScreenTestTags.TITLE_FIELD),
         )
@@ -207,12 +210,14 @@ fun CreateTaskContent(
           singleLine = false,
           maxLength = LONG_TEXT_MAX_LENGTH,
           showCounter = true,
+          enabled = !state.isSaving,
           modifier = Modifier.testTag(CreateTaskScreenTestTags.DESCRIPTION_FIELD),
       )
       FestivarTextField(
           value = state.location,
           onValueChange = actions.onLocationChange,
           label = stringResource(R.string.create_task_field_location),
+          enabled = !state.isSaving,
           modifier = Modifier.testTag(CreateTaskScreenTestTags.LOCATION_FIELD),
       )
       FestivarDateTimeRow(
@@ -223,6 +228,7 @@ fun CreateTaskContent(
           dateError = state.startDateError,
           onDateClick = { actions.onShowPicker(DateTimeField.START_DATE) },
           onTimeClick = { actions.onShowPicker(DateTimeField.START_TIME) },
+          enabled = !state.isSaving,
           dateTag = CreateTaskScreenTestTags.START_DATE_FIELD,
           dateErrorTag = CreateTaskScreenTestTags.START_DATE_ERROR,
           timeTag = CreateTaskScreenTestTags.START_TIME_FIELD,
@@ -235,6 +241,7 @@ fun CreateTaskContent(
           dateError = state.endDateError,
           onDateClick = { actions.onShowPicker(DateTimeField.END_DATE) },
           onTimeClick = { actions.onShowPicker(DateTimeField.END_TIME) },
+          enabled = !state.isSaving,
           dateTag = CreateTaskScreenTestTags.END_DATE_FIELD,
           dateErrorTag = CreateTaskScreenTestTags.END_DATE_ERROR,
           timeTag = CreateTaskScreenTestTags.END_TIME_FIELD,
@@ -243,6 +250,7 @@ fun CreateTaskContent(
           selected = state.priority,
           onSelect = actions.onPriorityChange,
           label = stringResource(R.string.create_task_field_priority),
+          enabled = !state.isSaving,
           modifier =
               Modifier.padding(bottom = 8.dp).testTag(CreateTaskScreenTestTags.PRIORITY_SELECTOR),
       )
@@ -255,6 +263,7 @@ fun CreateTaskContent(
             decreaseDescription = stringResource(R.string.create_task_max_assign_decrease),
             increaseDescription = stringResource(R.string.create_task_max_assign_increase),
             minValue = MIN_MAX_ASSIGN,
+            enabled = !state.isSaving,
             modifier = Modifier.testTag(CreateTaskScreenTestTags.MAX_ASSIGN_FIELD),
             decreaseModifier =
                 Modifier.testTag(CreateTaskScreenTestTags.MAX_ASSIGN_DECREASE_BUTTON),
@@ -272,6 +281,7 @@ fun CreateTaskContent(
             label = stringResource(R.string.create_task_field_estimated_time),
             isError = state.estimatedTimeError != null,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            enabled = !state.isSaving,
             modifier = Modifier.testTag(CreateTaskScreenTestTags.ESTIMATED_TIME_FIELD),
         )
       }

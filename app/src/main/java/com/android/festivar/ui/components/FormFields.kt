@@ -160,6 +160,7 @@ fun FestivarPickerField(
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     isError: Boolean = false,
 ) {
   val currentOnClick by rememberUpdatedState(onClick)
@@ -176,6 +177,7 @@ fun FestivarPickerField(
       onValueChange = {},
       modifier = modifier.fillMaxWidth(),
       readOnly = true,
+      enabled = enabled,
       label = { Text(label) },
       textStyle = MaterialTheme.typography.bodyLarge,
       singleLine = true,
