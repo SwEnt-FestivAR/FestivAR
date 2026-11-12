@@ -11,8 +11,6 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.android.festivar.model.datarepository.DataRepository
-import com.android.festivar.model.event.EventsRepositoryProvider
-import com.android.festivar.model.user.UsersRepositoryProvider
 import com.android.festivar.navigation.AppScreens
 import com.android.festivar.ui.event.create.CreateEventScreen
 import com.android.festivar.ui.event.create.CreateEventViewModel
@@ -75,9 +73,10 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, dataRepository:
     require(eventId.isNotBlank()) { "eventId must not be blank" }
     val navigator = EventDetailsNavigator(navController)
     EventDetailsScreen(
-        viewModel { EventDetailsViewModel(EventsRepositoryProvider.repository, eventId) },
+        viewModel { EventDetailsViewModel(dataRepository, eventId) },
         onBack = navigator.onBack,
         onTasksButtonClicked = { navigator.onTasksButtonClicked(eventId) },
+        onAnnouncementsClicked = { navigator.onAnnouncementsClicked(eventId) },
     )
   }
   composable(route = AppScreens.JoinEvent.name) {
@@ -94,8 +93,7 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, dataRepository:
             viewModel {
               JoinEventViewModel(
                   firebaseUser.uid,
-                  EventsRepositoryProvider.repository,
-                  UsersRepositoryProvider.repository,
+                  dataRepository,
               )
             },
         onBack = navigator.onBack,

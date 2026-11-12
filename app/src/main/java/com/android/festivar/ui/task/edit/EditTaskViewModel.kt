@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 package com.android.festivar.ui.task.edit
 
 import android.util.Log
@@ -6,9 +7,9 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
+import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
-import com.android.festivar.model.task.TasksRepositoryProvider
 import com.android.festivar.ui.components.FieldError
 import com.android.festivar.ui.task.TaskFormEditing
 import com.android.festivar.ui.task.TaskFormEditor
@@ -67,8 +68,8 @@ data class EditTaskUiState(
         isOwner() && form.isValid && maxAssignError == null && hasChanges && !isSaving && !isSaved
 
   /**
-   * Builds the edited [Task]. What the form does not own (assignees, takenAt, completion, voice
-   * note, owner, event) is kept from [task].
+   * Builds the edited [Task]. What the form does not own (assignees, takenAt, spot, completion,
+   * voice note, owner, event) is kept from [task].
    *
    * @throws IllegalArgumentException if no task is loaded, the form is not valid, or fewer people
    *   are needed than are assigned (the rules of [CreateTaskUiState.toTask] and [Task]).
@@ -82,6 +83,7 @@ data class EditTaskUiState(
             // since the load can be lost: https://github.com/SwEnt-FestivAR/FestivAR/issues/186
             assignees = original.assignees,
             takenAt = original.takenAt,
+            spot = original.spot,
             completed = original.completed,
             voiceNote = original.voiceNote,
         )
@@ -129,11 +131,11 @@ private const val SAVE_TIMEOUT_MS = 15_000L
 
 /**
  * Holds the state of the Edit task screen: loads the task, edits it in the Create task form and
- * saves it through [repository].
+ * saves it through the tasks repository of [dataRepository].
  *
  * @param taskId The task to edit. It cannot be blank.
  * @param currentUserId Gives the uid of the signed-in user; only the owner of the task can save.
- * @param repository Where the task is read and saved. The app's one by default.
+ * @param dataRepository Gives the tasks repository the task is read from and saved to.
  * @param saveTimeoutMs How long a save may last before it is reported as failed. A failed save is
  *   followed by a read under the same timeout.
  * @param zone The time zone the form shows the times in. The device's one by default.
@@ -142,7 +144,7 @@ class EditTaskViewModel
 private constructor(
     private val taskId: String,
     private val currentUserId: () -> String,
-    private val repository: TasksRepository,
+    private val dataRepository: DataRepository,
     private val saveTimeoutMs: Long,
     private val zone: ZoneId,
     private val formEditing: TaskFormEditing,
@@ -151,10 +153,12 @@ private constructor(
   constructor(
       taskId: String,
       currentUserId: () -> String,
-      repository: TasksRepository = TasksRepositoryProvider.repository,
+      dataRepository: DataRepository,
       saveTimeoutMs: Long = SAVE_TIMEOUT_MS,
       zone: ZoneId = ZoneId.systemDefault(),
-  ) : this(taskId, currentUserId, repository, saveTimeoutMs, zone, TaskFormEditing())
+  ) : this(taskId, currentUserId, dataRepository, saveTimeoutMs, zone, TaskFormEditing())
+
+  private val repository: TasksRepository = dataRepository.tasksRepository
 
   private val _uiState = MutableStateFlow(EditTaskUiState(form = CreateTaskUiState(zone = zone)))
 

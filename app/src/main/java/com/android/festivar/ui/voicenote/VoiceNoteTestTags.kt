@@ -14,6 +14,9 @@ object VoiceNoteTestTags {
   const val CONFIRM_DELETE = "voiceNoteConfirmDelete"
   const val KEEP_BUTTON = "voiceNoteKeep"
   const val CONFIRM_DELETE_BUTTON = "voiceNoteConfirmDeleteButton"
+  const val CONFIRM_SEND = "voiceNoteConfirmSend"
+  const val CANCEL_SEND_BUTTON = "voiceNoteCancelSendButton"
+  const val CONFIRM_SEND_BUTTON = "voiceNoteConfirmSendButton"
 }
 
 /**
@@ -23,10 +26,13 @@ object VoiceNoteTestTags {
  */
 object VoiceNoteRecordTestTags {
   const val RECORD_BAR = "voiceNoteRecordBar"
+  const val VOICE_NOTE_SENDING = "voiceNoteSending"
   const val VOICE_NOTE_RECORD = "voiceNoteRecord"
   const val RECORDING_DOT = "voiceNoteRecordingDot"
   const val SEND_ERROR = "voiceNoteSendError"
   const val SEND_RETRY = "voiceNoteSendRetry"
+  const val RECORDING_ERROR = "voiceNoteRecordingError"
+  const val RECORDING_ERROR_DISMISS = "voiceNoteRecordingErrorDismiss"
   const val MIC_DENIED = "voiceNoteMicDenied"
   const val OPEN_SETTINGS = "voiceNoteOpenSettings"
   const val PLAYBACK_ERROR = "voiceNotePlaybackError"

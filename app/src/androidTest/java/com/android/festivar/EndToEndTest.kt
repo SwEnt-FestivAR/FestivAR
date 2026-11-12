@@ -20,6 +20,8 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import com.android.festivar.model.authentication.AuthRepositoryFirebase
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventRepositoryFirebase
 import com.android.festivar.model.event.joinCodeOf
@@ -31,6 +33,7 @@ import com.android.festivar.ui.authentication.signup.SignUpScreenTestTags
 import com.android.festivar.ui.components.BottomNavigationBarTestTags
 import com.android.festivar.ui.components.NavigationSubScreen
 import com.android.festivar.ui.components.NavigationTab
+import com.android.festivar.ui.components.PeopleCardTestTags
 import com.android.festivar.ui.event.create.CreateEventScreenTestTags
 import com.android.festivar.ui.event.details.EventDetailsScreenTestTags
 import com.android.festivar.ui.event.join.JoinEventScreenTestTags
@@ -38,7 +41,7 @@ import com.android.festivar.ui.event.overview.EventsOverviewScreenTestTags
 import com.android.festivar.ui.profile.ProfileScreenTestTags
 import com.android.festivar.ui.task.create.CreateTaskScreenTestTags
 import com.android.festivar.ui.task.details.TaskDetailsScreenTestTags
-import com.android.festivar.ui.task.mytasks.MyTasksPlaceholderTestTags
+import com.android.festivar.ui.task.mytasks.MyTasksScreenTestTags
 import com.android.festivar.ui.task.overview.TaskOverviewScreenTestTags
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
@@ -160,11 +163,12 @@ class EndToEndTest {
   /**
    * Walks the M2 path as a new member: sign up, join the seeded event, open its task board and
    * check the bottom bar (Events nested under the tasks disc), add a task and open it, take it and
-   * see the "On this task" section, visit My tasks, come back, give the task back after keeping it
-   * once, and sign out through the Profile tab. It proves the bar follows the member through the
-   * board and the task, that taking and giving back are stored, and that the confirmation can be
-   * declined. It turns red if a tag disappears, the bar highlights a tab inside the board, the
-   * section outlives the give back, or the assignee is still stored at the end.
+   * see the "On this task" section, find the task in My tasks and open it from there, give it back
+   * after keeping it once, and sign out through the Profile tab. It proves the bar follows the
+   * member through the board, the task and My tasks, that taking and giving back are stored, and
+   * that the confirmation can be declined. It turns red if a tag disappears, the bar highlights the
+   * wrong tab, My tasks misses the taken task, the section outlives the give back, or the assignee
+   * is still stored at the end.
    */
   @Test
   fun aMemberWalksTheM2PathBoardTaskBottomBarTakeAndGiveBack() {
@@ -217,36 +221,22 @@ class EndToEndTest {
           .performScrollTo()
           .assertIsDisplayed()
       composeTestRule
-          .onNodeWithTag(TaskDetailsScreenTestTags.ON_THIS_TASK_COUNT, useUnmergedTree = true)
+          .onNodeWithTag(PeopleCardTestTags.COUNT, useUnmergedTree = true)
           .performScrollTo()
           .assertTextEquals("1 person")
 
-      // My tasks is a placeholder until #397, with its tab selected
+      // My tasks lists the taken task, and opening it from there keeps the bar on My tasks
       composeTestRule
           .onNodeWithTag(BottomNavigationBarTestTags.getTestTagForTab(NavigationTab.MY_TASKS))
           .performClick()
-      waitUntilTagExists(MyTasksPlaceholderTestTags.SCREEN)
+      waitUntilTagExists(MyTasksScreenTestTags.TITLE)
       composeTestRule
           .onNodeWithTag(BottomNavigationBarTestTags.getTestTagForTab(NavigationTab.MY_TASKS))
           .assertIsSelected()
-      // To add once My tasks lists tasks (#397): check that the taken task appears in the list
-
-      // Back from a tab returns to the events overview, then down to the task again
-      Espresso.pressBack()
-      waitUntilTagExists(EventsOverviewScreenTestTags.UPCOMING_CHIP)
-      composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.UPCOMING_CHIP).performClick()
-      waitUntilTagExists(EventsOverviewScreenTestTags.getTestTagForEventItem(event))
-      composeTestRule
-          .onNodeWithTag(EventsOverviewScreenTestTags.getTestTagForEventItem(event))
-          .performClick()
-      waitUntilTagExists(EventDetailsScreenTestTags.SEE_TASKS_BUTTON)
-      composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.SEE_TASKS_BUTTON).performClick()
-      // The board opens on the Open chip, and the task is now mine
-      waitUntilTagExists(TaskOverviewScreenTestTags.CHIP_MINE)
-      composeTestRule.onNodeWithTag(TaskOverviewScreenTestTags.CHIP_MINE).performClick()
       waitUntilTextExists(M2_TASK_TITLE)
       composeTestRule.onNodeWithText(M2_TASK_TITLE).performClick()
       waitUntilTagExists(TaskDetailsScreenTestTags.GIVE_BACK_BUTTON)
+      assertTheBarNests(NavigationTab.MY_TASKS, NavigationSubScreen.TASK_DETAILS)
 
       // To add once the owner menu exists (#399, PR #440): as the organizer, delete a task after
       // the confirmation
@@ -403,6 +393,13 @@ class EndToEndTest {
     waitUntilTagExists(ProfileScreenTestTags.SIGN_OUT_BUTTON)
     composeTestRule.onNodeWithTag(ProfileScreenTestTags.EMAIL).assertTextEquals(email)
     composeTestRule.onNodeWithTag(ProfileScreenTestTags.SIGN_OUT_BUTTON).performClick()
+    val continueText =
+        InstrumentationRegistry.getInstrumentation()
+            .targetContext
+            .getString(R.string.action_continue_anyway)
+    if (composeTestRule.onAllNodesWithText(continueText).fetchSemanticsNodes().isNotEmpty()) {
+      composeTestRule.onNodeWithText(continueText).performClick()
+    }
     waitUntilTagExists(LoginScreenTestTags.TITLE)
     composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
   }
@@ -453,15 +450,9 @@ class EndToEndTest {
     private val MEMBER_EMAIL = "e2e-member-${UUID.randomUUID()}@festivar.test"
     private val M2_MEMBER_EMAIL = "e2e-m2-member-${UUID.randomUUID()}@festivar.test"
     private val ORGANIZER_EMAIL = "e2e-organizer-${UUID.randomUUID()}@festivar.test"
+    private val EVENT_OWNER_EMAIL = "e2e-event-owner-${UUID.randomUUID()}@festivar.test"
 
-    private val start = ZonedDateTime.now().plusDays(1)
-    private val event =
-        Event(
-            eventId = "e2e-${UUID.randomUUID()}",
-            title = "Vidy Festival",
-            startDate = start,
-            endDate = start.plusHours(5),
-        )
+    private lateinit var event: Event
 
     /** Runs [block] as a throwaway anonymous user, as the Firestore rules need a signed-in one. */
     private fun asAnonymousUser(block: suspend () -> Unit) = runBlocking {
@@ -504,22 +495,21 @@ class EndToEndTest {
 
       // Clean up any potential leftover test accounts or events from previous runs
       asAnonymousUser {
-        val events = EventRepositoryFirebase(Firebase.firestore)
         val tasks = TaskRepositoryFirebase(Firebase.firestore)
-        logged("delete leftover seeded event's tasks") {
-          runCatching { tasks.getAllTasks(event.eventId).forEach { tasks.deleteTask(it.taskId) } }
-        }
-        logged("delete leftover seeded event") { runCatching { events.deleteEvent(event.eventId) } }
-        logged("delete leftover created events") {
-          runCatching {
-            events
-                .getAllEvents()
-                .filter { it.title == CREATED_EVENT_TITLE }
-                .forEach { events.deleteEvent(it.eventId) }
-          }
+        logged("delete leftover test events") {
+          val snapshots = Firebase.firestore.collection("events").get().await()
+          snapshots.documents
+              .filter { it.getString("title") in setOf("Vidy Festival", CREATED_EVENT_TITLE) }
+              .forEach { document ->
+                (document.get("tasks") as? List<*>).orEmpty().filterIsInstance<String>().forEach {
+                    taskId ->
+                  runCatching { tasks.deleteTask(taskId) }
+                }
+                document.reference.delete().await()
+              }
         }
       }
-      for (email in listOf(MEMBER_EMAIL, M2_MEMBER_EMAIL, ORGANIZER_EMAIL)) {
+      for (email in listOf(MEMBER_EMAIL, M2_MEMBER_EMAIL, ORGANIZER_EMAIL, EVENT_OWNER_EMAIL)) {
         runCatching {
           asTheUser(email) { uid ->
             logged("delete leftover profile of $email") {
@@ -533,7 +523,25 @@ class EndToEndTest {
       }
       Firebase.auth.signOut()
 
-      asAnonymousUser { EventRepositoryFirebase(Firebase.firestore).addEvent(event) }
+      val owner = runBlocking {
+        val users = UsersRepositoryFirebase(Firebase.firestore)
+        val authRepository = AuthRepositoryFirebase(usersRepository = users)
+        val firebaseUser =
+            authRepository.signUpWithEmailAndPassword(EVENT_OWNER_EMAIL, PASSWORD).getOrThrow()
+        users.getUser(firebaseUser.uid)
+      }
+      val start = ZonedDateTime.now().plusDays(1)
+      event =
+          Event(
+              eventId = "e2e-${UUID.randomUUID()}",
+              ownerId = owner.uid,
+              title = "Vidy Festival",
+              members = listOf(owner),
+              startDate = start,
+              endDate = start.plusHours(5),
+          )
+      runBlocking { EventRepositoryFirebase(Firebase.firestore).addEvent(event) }
+      Firebase.auth.signOut()
       // Signed out, so the app starts on the login screen
     }
 
@@ -556,7 +564,7 @@ class EndToEndTest {
         }
       }
       // An Auth account can only be deleted by itself, so each member signs in once more
-      for (email in listOf(MEMBER_EMAIL, M2_MEMBER_EMAIL, ORGANIZER_EMAIL)) {
+      for (email in listOf(MEMBER_EMAIL, M2_MEMBER_EMAIL, ORGANIZER_EMAIL, EVENT_OWNER_EMAIL)) {
         runCatching {
           asTheUser(email) { uid ->
             logged("delete the profile of $email") {

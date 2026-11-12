@@ -17,11 +17,6 @@
     <string name="details_location">Location: %s</string>
     <string name="details_time_range">%1$s to %2$s</string>
     <string name="details_on_this_task">On this task</string>
-    <plurals name="details_people">
-        <item quantity="one">%d person</item>
-        <item quantity="other">%d people</item>
-    </plurals>
     <string name="details_people_sheet_subtitle">%1$s · %2$s</string>
     <string name="details_took_it">Took it %1$s, %2$s</string>
-    <string name="details_more_people">+%d</string>
 </resources>

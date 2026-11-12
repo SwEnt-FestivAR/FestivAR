@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored by Copilot
 package com.android.festivar.ui.profile
 
 import androidx.compose.foundation.layout.Box
@@ -7,7 +8,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -28,19 +28,24 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.credentials.CredentialManager
 import com.android.festivar.R
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.Avatar
+import com.android.festivar.ui.components.FestivarConfirmDialog
 import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.components.NoticeSnackbar
@@ -55,6 +60,8 @@ object ProfileScreenTestTags {
   const val NAME_FIELD = "profileNameField"
   const val EMAIL = "profileEmail"
   const val SAVE_BUTTON = "profileSaveButton"
+  const val UPGRADE_BUTTON = "profileUpgradeButton"
+  const val UPGRADE_SHEET = "profileUpgradeSheet"
   const val SIGN_OUT_BUTTON = "profileSignOutButton"
   const val RETRY_BUTTON = "profileRetryButton"
   const val ERROR_MESSAGE = "profileErrorMessage"
@@ -86,10 +93,14 @@ fun ProfileScreen(
     profileViewModel: ProfileViewModel,
     onBack: () -> Unit = {},
     onSignedOut: () -> Unit = {},
+    credentialManager: CredentialManager = CredentialManager.create(LocalContext.current),
 ) {
 
   val profileUIState by profileViewModel.uiState.collectAsState()
+  val context = LocalContext.current
   val snackbarHostState = remember { SnackbarHostState() }
+  // SheetState is Compose UI state, so it stays local; visibility belongs in ProfileUIState.
+  val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
   // Shows each error once in the snackbar, then clears it so it does not come back.
   val errorMsg = profileUIState.errorMsg?.let { stringResource(it) }
@@ -100,49 +111,98 @@ fun ProfileScreen(
     }
   }
 
-  // Leaves the screen once the sign out succeeded.
+  // Leaves the screen once the sign-out succeeded.
   LaunchedEffect(profileUIState.signedOut) { if (profileUIState.signedOut) onSignedOut() }
 
-  Scaffold(
-      topBar = {
-        TopAppBar(
-            title = {
-              Text(
-                  text = stringResource(R.string.profile_title),
-                  style = MaterialTheme.typography.titleLarge,
-                  modifier = Modifier.testTag(ProfileScreenTestTags.TITLE),
-              )
-            },
-            navigationIcon = {
-              IconButton(onClick = onBack, Modifier.testTag(ProfileScreenTestTags.BACK)) {
-                Icon(
-                    Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = stringResource(R.string.profile_back),
+  // Closes bottom sheet once upgrade/linking succeeded.
+  LaunchedEffect(profileUIState.isUserAnonymous) {
+    if (!profileUIState.isUserAnonymous && profileUIState.isUpgrading) {
+      profileViewModel.hideUpgradeSheet()
+    }
+  }
+
+  Box(modifier = Modifier.fillMaxSize()) {
+    Scaffold(
+        topBar = {
+          TopAppBar(
+              title = {
+                Text(
+                    text = stringResource(R.string.profile_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.testTag(ProfileScreenTestTags.TITLE),
                 )
-              }
-            },
-        )
-      },
-      snackbarHost = {
-        SnackbarHost(snackbarHostState) { data ->
-          NoticeSnackbar(
-              message = data.visuals.message,
-              actionLabel = "",
-              onAction = {},
-              modifier = Modifier.testTag(ProfileScreenTestTags.ERROR_MESSAGE),
+              },
+              navigationIcon = {
+                IconButton(onClick = onBack, Modifier.testTag(ProfileScreenTestTags.BACK)) {
+                  Icon(
+                      Icons.AutoMirrored.Filled.ArrowBack,
+                      contentDescription = stringResource(R.string.profile_back),
+                  )
+                }
+              },
           )
-        }
-      },
-  ) { padding ->
-    ProfileScreenContent(
-        uiState = profileUIState,
-        onSurnameChange = profileViewModel::updateSurname,
-        onNameChange = profileViewModel::updateName,
-        onSaveClick = profileViewModel::saveChanges,
-        onSignOutClick = profileViewModel::signOut,
-        onRetryClick = profileViewModel::getUserInformation,
-        modifier = Modifier.padding(padding),
-    )
+        },
+    ) { padding ->
+      ProfileScreenContent(
+          uiState = profileUIState,
+          onSurnameChange = profileViewModel::updateSurname,
+          onNameChange = profileViewModel::updateName,
+          onSaveClick = profileViewModel::saveChanges,
+          onSignOutClick = {
+            if (profileUIState.isUserAnonymous) {
+              profileViewModel.showSignOutWarning()
+            } else {
+              profileViewModel.signOut()
+            }
+          },
+          onRetryClick = profileViewModel::getUserInformation,
+          onUpgradeClick = profileViewModel::showUpgradeSheet,
+          modifier = Modifier.padding(padding),
+      )
+    }
+
+    if (profileUIState.isUpgrading) {
+      UpgradeBottomSheet(
+          onUpgradeCancel = profileViewModel::hideUpgradeSheet,
+          sheetState = sheetState,
+          uiState = profileUIState,
+          onEmailChange = profileViewModel::updateEmail,
+          onPasswordChange = profileViewModel::updatePassword,
+          onLoginClick = profileViewModel::upgradeWithEmail,
+          onTogglePasswordVisibility = profileViewModel::togglePasswordVisibility,
+          onGoogleUpgrade = { profileViewModel.upgradeWithGoogle(context, credentialManager) },
+          snackbarHostState = snackbarHostState,
+      )
+    }
+
+    if (profileUIState.showSignOutWarning && profileUIState.isUserAnonymous) {
+      FestivarConfirmDialog(
+          title = stringResource(R.string.login_warning),
+          message = stringResource(R.string.profile_anon_sign_out_warning),
+          confirmText = stringResource(R.string.action_continue_anyway),
+          dismissText = stringResource(R.string.action_cancel),
+          onConfirm = {
+            profileViewModel.hideSignOutWarning()
+            profileViewModel.signOut()
+          },
+          onDismiss = profileViewModel::hideSignOutWarning,
+          destructive = true,
+      )
+    }
+
+    if (!profileUIState.isUpgrading) {
+      SnackbarHost(
+          hostState = snackbarHostState,
+          modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
+      ) { data ->
+        NoticeSnackbar(
+            message = data.visuals.message,
+            actionLabel = "",
+            onAction = {},
+            modifier = Modifier.testTag(ProfileScreenTestTags.ERROR_MESSAGE),
+        )
+      }
+    }
   }
 }
 
@@ -166,10 +226,11 @@ internal fun ProfileScreenContent(
     onSaveClick: () -> Unit,
     onSignOutClick: () -> Unit,
     onRetryClick: () -> Unit,
+    onUpgradeClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
   Column(
-      modifier = modifier.fillMaxSize().imePadding().padding(16.dp),
+      modifier = modifier.fillMaxSize().padding(16.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
   ) {
     // Until the profile is loaded there is nothing to show or edit.
@@ -249,6 +310,25 @@ internal fun ProfileScreenContent(
             message = stringResource(R.string.profile_invalid_name_chars),
             modifier = Modifier.testTag(ProfileScreenTestTags.NAME_ERROR),
         )
+      }
+    }
+
+    if (uiState.isUserAnonymous) {
+      Button(
+          onClick = onUpgradeClick,
+          enabled = true,
+          shape = RoundedCornerShape(12.dp),
+          modifier =
+              Modifier.fillMaxWidth().height(48.dp).testTag(ProfileScreenTestTags.UPGRADE_BUTTON),
+      ) {
+        if (uiState.isSaving) {
+          CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+        } else {
+          Text(
+              text = stringResource(R.string.profile_anon_upgrade),
+              style = MaterialTheme.typography.labelLarge,
+          )
+        }
       }
     }
 

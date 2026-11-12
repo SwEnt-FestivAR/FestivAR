@@ -1,5 +1,6 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.ui.task.details
 
 import androidx.compose.foundation.layout.Column
@@ -22,6 +23,7 @@ import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepositoryLocal
+import com.android.festivar.ui.components.PeopleCardTestTags
 import com.android.festivar.ui.theme.AppTheme
 import io.mockk.mockk
 import java.time.ZonedDateTime
@@ -55,6 +57,7 @@ class TaskDetailsScreenTest {
     val event =
         Event(
             eventId = task.eventId,
+            ownerId = "owner",
             title = "Summer festival",
             tasks = listOf(task),
             startDate = start,
@@ -67,7 +70,7 @@ class TaskDetailsScreenTest {
             authRepository = mockk(),
             tasksRepository = repository,
             eventsRepository = EventsRepositoryLocal(listOf(event)),
-            usersRepository = UsersRepositoryLocal(listOf(sami)),
+            usersRepository = UsersRepositoryLocal(listOf(sami, User("owner-1"))),
         )
   }
 
@@ -78,6 +81,7 @@ class TaskDetailsScreenTest {
       user: User = sami,
       onBack: () -> Unit = {},
       onEdit: (String) -> Unit = {},
+      onTaskDeleted: () -> Unit = {},
   ) {
     val viewModel = TaskDetailsViewModel(task.taskId, user, dataRepository)
     composeTestRule.setContent {
@@ -86,6 +90,7 @@ class TaskDetailsScreenTest {
             viewModel = viewModel,
             onBack = onBack,
             onEdit = onEdit,
+            onTaskDeleted = onTaskDeleted,
         )
       }
     }
@@ -98,17 +103,31 @@ class TaskDetailsScreenTest {
     val edited = mutableListOf<String>()
     showScreen(user = User("owner-1"), onEdit = { edited += it })
 
-    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.EDIT_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MORE_ACTIONS_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.EDIT_MENU_ITEM).performClick()
 
     assertEquals(listOf(task.taskId), edited)
   }
 
   // Breaks if a volunteer who does not own the task is offered the edit.
   @Test
-  fun aVolunteerSeesNoEditButton() {
+  fun aVolunteerSeesNoOwnerMenu() {
     showScreen()
 
-    assertFalse(exists(TaskDetailsScreenTestTags.EDIT_BUTTON))
+    assertFalse(exists(TaskDetailsScreenTestTags.MORE_ACTIONS_BUTTON))
+  }
+
+  @Test
+  fun successfulDeletionCallsOnTaskDeleted() {
+    var deletionCount = 0
+    showScreen(user = User("owner-1"), onTaskDeleted = { deletionCount++ })
+
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MORE_ACTIONS_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.DELETE_MENU_ITEM).performClick()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.DELETE_CONFIRM_BUTTON).performClick()
+
+    composeTestRule.waitUntil(5_000) { deletionCount == 1 }
+    assertEquals(1, deletionCount)
   }
 
   private fun assertBadge(label: String) =
@@ -159,7 +178,7 @@ class TaskDetailsScreenTest {
         .assertIsDisplayed()
     composeTestRule
         .onNode(
-            hasTestTag(TaskDetailsScreenTestTags.ON_THIS_TASK_COUNT).and(hasText("1 person")),
+            hasTestTag(PeopleCardTestTags.COUNT).and(hasText("1 person")),
             useUnmergedTree = true,
         )
         .performScrollTo()

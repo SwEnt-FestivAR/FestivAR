@@ -143,6 +143,55 @@ class CreateEventViewModelTest {
     assertFalse(viewModel.uiState.value.canCreate)
   }
 
+  /** Red if the ViewModel misses a form field or asks before the user enters anything. */
+  @Test
+  fun needsDiscardConfirmationTracksEnteredDetails() {
+    assertFalse(viewModel.needsDiscardConfirmation)
+    viewModel.showPicker(DateTimeField.START_DATE)
+    assertFalse(viewModel.needsDiscardConfirmation)
+
+    val edits: List<(CreateEventViewModel) -> Unit> =
+        listOf(
+            { it.updateName("Festival") },
+            { it.updateStartDate(startDate) },
+            { it.updateEndDate(endDate) },
+            { it.updateStartTime(startTime) },
+            { it.updateEndTime(endTime) },
+            { it.updateVenue("Main square") },
+            { it.updateNotes("Bring equipment") },
+        )
+    edits.forEach { edit ->
+      val editedViewModel = CreateEventViewModel(dataRepository, creator.uid)
+      edit(editedViewModel)
+      assertTrue(editedViewModel.needsDiscardConfirmation)
+    }
+  }
+
+  /** Red if discard confirmation does not preserve, cancel, or discard the current draft. */
+  @Test
+  fun discardRequestCanBeCancelledOrConfirmed() {
+    val untouchedViewModel = CreateEventViewModel(dataRepository, creator.uid)
+    untouchedViewModel.requestDiscard()
+    assertTrue(untouchedViewModel.uiState.value.isDiscarded)
+    assertFalse(untouchedViewModel.uiState.value.showDiscardConfirmation)
+
+    viewModel.updateName("Festival")
+
+    viewModel.requestDiscard()
+    assertTrue(viewModel.uiState.value.showDiscardConfirmation)
+    assertFalse(viewModel.uiState.value.isDiscarded)
+
+    viewModel.cancelDiscard()
+    assertFalse(viewModel.uiState.value.showDiscardConfirmation)
+    assertFalse(viewModel.uiState.value.isDiscarded)
+    assertEquals("Festival", viewModel.uiState.value.name)
+
+    viewModel.requestDiscard()
+    viewModel.confirmDiscard()
+    assertFalse(viewModel.uiState.value.showDiscardConfirmation)
+    assertTrue(viewModel.uiState.value.isDiscarded)
+  }
+
   /** Red if submitting an invalid form changes the saving state or writes an event. */
   @Test
   fun createEventDoesNothingWhenFormIsInvalid() = runBlocking {
@@ -173,7 +222,7 @@ class CreateEventViewModelTest {
   @Test
   fun toEventThrowsWhenFormIsInvalid() {
     assertThrows(IllegalArgumentException::class.java) {
-      viewModel.uiState.value.toEvent("event-123", emptyList())
+      viewModel.uiState.value.toEvent("event-123", creator)
     }
   }
 
@@ -181,14 +230,14 @@ class CreateEventViewModelTest {
   @Test
   fun toEventCreatesEventFromFields() {
     fillAllFields()
-    val members = listOf(creator)
 
-    val event = viewModel.uiState.value.toEvent("event-123", members)
+    val event = viewModel.uiState.value.toEvent("event-123", creator)
 
     assertEquals("event-123", event.eventId)
+    assertEquals(creator.uid, event.ownerId)
     assertEquals("Summer festival", event.title)
     assertEquals("Bring the stage equipment", event.description)
-    assertEquals(members, event.members)
+    assertEquals(listOf(creator), event.members)
     assertEquals(viewModel.uiState.value.startDateTime, event.startDate)
     assertEquals(viewModel.uiState.value.endDateTime, event.endDate)
     assertEquals("Main square", event.location)
@@ -353,6 +402,7 @@ class CreateEventViewModelTest {
     viewModel.createEvent()
 
     val event = waitForEvents(eventsRepository).single()
+    assertEquals(creator.uid, event.ownerId)
     assertEquals(listOf(creator), event.members)
     assertTrue(usersRepository.getUser(creator.uid).joinedEvents.contains(event.eventId))
   }

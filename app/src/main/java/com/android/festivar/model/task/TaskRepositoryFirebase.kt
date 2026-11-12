@@ -95,6 +95,8 @@ class TaskRepositoryFirebase(
         "maxAssign" to task.maxAssign,
         "assignees" to task.assignees.map { user -> user.uid },
         "takenAt" to task.takenAt.mapValues { it.value.toString() },
+        "spot" to
+            task.spot?.let { mapOf("structureId" to it.structureId, "x" to it.x, "y" to it.y) },
         "completed" to task.completed,
         "ownerId" to task.ownerId,
         "voiceNote" to task.voiceNote?.toMap(),
@@ -117,6 +119,16 @@ class TaskRepositoryFirebase(
           uid to ZonedDateTime.parse(time)
         }
 
+    // A task without a pin has no spot field.
+    val spot =
+        (document.get("spot") as? Map<*, *>)?.let {
+          TaskSpot(
+              structureId = it["structureId"] as? String,
+              x = (it["x"] as? Number)?.toDouble(),
+              y = (it["y"] as? Number)?.toDouble(),
+          )
+        }
+
     return Task(
         taskId = document.getString("taskId") ?: document.id,
         eventId = document.getString("eventId").required("eventId", document.id),
@@ -130,6 +142,7 @@ class TaskRepositoryFirebase(
         maxAssign = document.getLong("maxAssign")?.toInt() ?: 1,
         assignees = ass,
         takenAt = takenAt,
+        spot = spot,
         completed = document.getBoolean("completed") ?: false,
         // Tasks saved before owners existed have no ownerId. They are deleted from Firestore, so a
         // missing one is an error, not a case to handle.

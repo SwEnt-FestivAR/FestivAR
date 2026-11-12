@@ -423,6 +423,7 @@ class AnnouncementFeedViewModelTest {
   private fun event(vararg announcements: Announcement): Event =
       Event(
           eventId = EVENT_ID,
+          ownerId = "owner",
           title = "Festival",
           startDate = at(8),
           endDate = at(18),

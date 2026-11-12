@@ -26,7 +26,10 @@ class VoiceNoteRecordBarPreviewsTest {
       Column {
         VoiceNoteRecordBarIdlePreview()
         VoiceNoteRecordBarRecordingPreview()
+        VoiceNoteRecordBarWaitingPreview()
+        VoiceNoteRecordBarSendingPreview()
         VoiceNoteRecordBarSendFailedPreview()
+        VoiceNoteRecordBarRecordingFailedPreview()
         VoiceNoteRecordBarMicDeniedPreview()
         VoiceNotePlaybackFailedPreview()
       }
@@ -36,5 +39,8 @@ class VoiceNoteRecordBarPreviewsTest {
     composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.SEND_ERROR).assertExists()
     composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.MIC_DENIED).assertExists()
     composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.PLAYBACK_ERROR).assertExists()
+    composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.VOICE_NOTE_SENDING).assertExists()
+    composeTestRule.onNodeWithTag(VoiceNoteTestTags.VOICE_NOTE_DURATION).assertExists()
+    composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.RECORDING_ERROR).assertExists()
   }
 }

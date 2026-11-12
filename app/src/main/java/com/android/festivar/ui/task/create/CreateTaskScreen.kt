@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -43,6 +42,7 @@ import com.android.festivar.ui.components.FestivarPrioritySelector
 import com.android.festivar.ui.components.FestivarStepper
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.components.FieldError
+import com.android.festivar.ui.components.LONG_TEXT_MAX_LENGTH
 import com.android.festivar.ui.task.DiscardTaskDialog
 import com.android.festivar.ui.task.TaskFormBackHandling
 import com.android.festivar.ui.task.TaskFormLabels
@@ -149,7 +149,7 @@ fun CreateTaskContent(
     maxAssignError: FieldError? = null,
 ) {
   Scaffold(
-      modifier = modifier.imePadding(),
+      modifier = modifier,
       containerColor = MaterialTheme.colorScheme.background,
       topBar = { TaskFormTopBar(labels.title, actions.onBack) },
       bottomBar = {
@@ -204,6 +204,8 @@ fun CreateTaskContent(
           onValueChange = actions.onDescriptionChange,
           label = stringResource(R.string.create_task_field_description),
           singleLine = false,
+          maxLength = LONG_TEXT_MAX_LENGTH,
+          showCounter = true,
           modifier = Modifier.testTag(CreateTaskScreenTestTags.DESCRIPTION_FIELD),
       )
       FestivarTextField(

@@ -107,6 +107,32 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
     updateAnnouncements(eventId) { it.withEditedAnnouncement(announcement) }
   }
 
+  override suspend fun setAnnouncementPinned(
+      eventId: String,
+      announcementId: String,
+      pinned: Boolean,
+  ): Announcement {
+    val document = eventCollection.document(eventId)
+    return db.runTransaction { transaction ->
+          val snapshot = transaction.get(document)
+          if (!snapshot.exists()) {
+            throw NoSuchElementException("Event '$eventId' does not exist.")
+          }
+          val announcements = readAnnouncements(snapshot)
+          val current =
+              announcements.firstOrNull { it.announcementId == announcementId }
+                  ?: throw IllegalArgumentException("This announcement is not in the event.")
+          val updated = current.copy(pinned = pinned)
+          transaction.update(
+              document,
+              ANNOUNCEMENTS_FIELD,
+              announcements.withEditedAnnouncement(updated).map { it.toMap() },
+          )
+          updated
+        }
+        .await()
+  }
+
   override suspend fun deleteAnnouncement(eventId: String, announcementId: String) {
     updateAnnouncements(eventId) { it.withoutAnnouncement(announcementId) }
   }
@@ -149,6 +175,7 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
   private fun toFirestoreData(event: Event): Map<String, Any?> {
     return mapOf(
         "eventId" to event.eventId,
+        "ownerId" to event.ownerId,
         "title" to event.title,
         "description" to event.description,
         "members" to event.members.map { it.uid },
@@ -166,6 +193,9 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
   private suspend fun documentToEvent(document: DocumentSnapshot): Event {
     check(document.exists()) { "Event '${document.id}' does not exist." }
 
+    val ownerId =
+        document.getString("ownerId")
+            ?: throw IllegalArgumentException("Event '${document.id}' has no owner")
     val tasks =
         (document.get("tasks") as? List<*>).orEmpty().map { value ->
           val taskId =
@@ -174,14 +204,15 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
         }
 
     val members =
-        (document.get("members") as? List<*>).orEmpty().map { value ->
+        (document.get("members") as? List<*>)?.map { value ->
           val userId =
               value as? String ?: throw IllegalArgumentException("Invalid member data: $value")
           userRepo.getUser(userId)
-        }
+        } ?: listOf(userRepo.getUser(ownerId))
 
     return Event(
         eventId = document.getString("eventId") ?: document.id,
+        ownerId = ownerId,
         title =
             document.getString("title")
                 ?: throw IllegalArgumentException("Event '${document.id}' has missing title"),

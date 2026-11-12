@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.authentication.login
 
 import androidx.compose.foundation.BorderStroke
@@ -11,7 +12,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -56,8 +56,8 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.credentials.CredentialManager
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.R
+import com.android.festivar.ui.components.CREDENTIAL_MAX_LENGTH
 import com.android.festivar.ui.components.FestivarConfirmDialog
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.components.NoticeSnackbar
@@ -82,7 +82,7 @@ internal object LoginScreenTestTags {
 @Composable
 fun LoginScreen(
     modifier: Modifier = Modifier,
-    viewModel: LoginViewModel = viewModel(),
+    viewModel: LoginViewModel,
     onSignUpClick: () -> Unit,
     onForgotPasswordClick: () -> Unit = {},
     onSignedIn: () -> Unit = {},
@@ -162,7 +162,6 @@ private fun LoginScreenContent(
               .fillMaxSize()
               .background(MaterialTheme.colorScheme.surface)
               .padding(horizontal = 16.dp, vertical = 12.dp)
-              .imePadding()
               .verticalScroll(rememberScrollState()),
       verticalArrangement = Arrangement.spacedBy(12.dp),
   ) {
@@ -283,6 +282,7 @@ fun EmailLoginForm(
         value = email,
         onValueChange = onEmailChange,
         label = stringResource(R.string.signup_email),
+        maxLength = CREDENTIAL_MAX_LENGTH,
         modifier = Modifier.fillMaxWidth().testTag(LoginScreenTestTags.EMAIL_INPUT),
         keyboardOptions =
             KeyboardOptions(
@@ -295,6 +295,7 @@ fun EmailLoginForm(
         value = password,
         onValueChange = onPasswordChange,
         label = stringResource(R.string.signup_password),
+        maxLength = CREDENTIAL_MAX_LENGTH,
         modifier = Modifier.fillMaxWidth().testTag(LoginScreenTestTags.PASSWORD_INPUT),
         keyboardOptions =
             KeyboardOptions(

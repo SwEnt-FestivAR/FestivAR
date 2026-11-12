@@ -1,5 +1,6 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.ui.task.details
 
 import androidx.compose.ui.test.assertCountEquals
@@ -22,6 +23,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
+import com.android.festivar.ui.components.PeopleCardTestTags
 import com.android.festivar.ui.components.UserListTestTags
 import com.android.festivar.ui.components.formatDate
 import com.android.festivar.ui.components.formatTime
@@ -71,8 +73,20 @@ class TaskDetailsContentTest {
       onRetry: () -> Unit = {},
       onDismissError: () -> Unit = {},
       onBack: () -> Unit = {},
+      onEdit: (String) -> Unit = {},
+      onDeleteTask: () -> Unit = {},
   ) = composeTestRule.setContent {
-    TaskDetailsContent(state, onBack, onTake, onGiveBack, onMarkDone, onRetry, onDismissError)
+    TaskDetailsContent(
+        state,
+        onBack,
+        onTake,
+        onGiveBack,
+        onMarkDone,
+        onRetry,
+        onDismissError,
+        onEdit,
+        onDeleteTask,
+    )
   }
 
   @Test
@@ -238,12 +252,23 @@ class TaskDetailsContentTest {
 
   private val tookItAt = ZonedDateTime.of(2026, 10, 17, 9, 12, 0, 0, ZoneId.of("Europe/Zurich"))
 
-  /** [sami] and [yasser] both took the task, at [tookItAt]. */
+  private val tookItLater = tookItAt.plusMinutes(28)
+
+  /** [sami] took the task at [tookItAt], [yasser] at [tookItLater]. */
   private val sharedTask =
       task
           .copy(assignees = emptyList(), takenAt = emptyMap())
           .addAssignee(sami, tookItAt)
-          .addAssignee(yasser, tookItAt)
+          .addAssignee(yasser, tookItLater)
+
+  private fun tookItLine(at: ZonedDateTime) =
+      "Took it ${formatDate(at.toLocalDate())}, ${formatTime(at.toLocalTime())}"
+
+  private fun rowWithText(user: User, text: String) =
+      composeTestRule.onNode(
+          hasTestTag(UserListTestTags.row(user.uid)).and(hasAnyDescendant(hasText(text))),
+          useUnmergedTree = true,
+      )
 
   private fun openThePeopleSheet(task: Task) {
     show(state(task))
@@ -269,7 +294,7 @@ class TaskDetailsContentTest {
     show(state())
     composeTestRule
         .onNode(
-            hasTestTag(TaskDetailsScreenTestTags.ON_THIS_TASK_COUNT).and(hasText("1 person")),
+            hasTestTag(PeopleCardTestTags.COUNT).and(hasText("1 person")),
             useUnmergedTree = true,
         )
         .performScrollTo()
@@ -282,7 +307,7 @@ class TaskDetailsContentTest {
     show(state(sharedTask))
     composeTestRule
         .onNode(
-            hasTestTag(TaskDetailsScreenTestTags.ON_THIS_TASK_COUNT).and(hasText("2 people")),
+            hasTestTag(PeopleCardTestTags.COUNT).and(hasText("2 people")),
             useUnmergedTree = true,
         )
         .performScrollTo()
@@ -321,14 +346,8 @@ class TaskDetailsContentTest {
   @Test
   fun theSheetShowsWhenEachPersonTookTheTask() {
     openThePeopleSheet(sharedTask)
-    val expected =
-        "Took it ${formatDate(tookItAt.toLocalDate())}, ${formatTime(tookItAt.toLocalTime())}"
-    composeTestRule
-        .onNode(
-            hasTestTag(UserListTestTags.row(sami.uid)).and(hasAnyDescendant(hasText(expected))),
-            useUnmergedTree = true,
-        )
-        .assertExists()
+    rowWithText(sami, tookItLine(tookItAt)).assertExists()
+    rowWithText(yasser, tookItLine(tookItLater)).assertExists()
   }
 
   // Breaks if an older assignee, stored without a time, gets an invented one.
@@ -355,24 +374,16 @@ class TaskDetailsContentTest {
   @Test
   fun aDoneTaskTagsPeopleDone() {
     openThePeopleSheet(sharedTask.complete())
-    composeTestRule
-        .onNode(
-            hasTestTag(UserListTestTags.row(sami.uid)).and(hasAnyDescendant(hasText("Done"))),
-            useUnmergedTree = true,
-        )
-        .assertExists()
+    rowWithText(sami, "Done").assertExists()
+    rowWithText(yasser, "Done").assertExists()
   }
 
   // Breaks if a task in progress tags its people as done.
   @Test
   fun aTakenTaskTagsPeopleTaken() {
     openThePeopleSheet(sharedTask)
-    composeTestRule
-        .onNode(
-            hasTestTag(UserListTestTags.row(sami.uid)).and(hasAnyDescendant(hasText("Taken"))),
-            useUnmergedTree = true,
-        )
-        .assertExists()
+    rowWithText(sami, "Taken").assertExists()
+    rowWithText(yasser, "Taken").assertExists()
   }
 
   // Breaks if the sheet lets anyone remove a person: its rows must do nothing when tapped.
@@ -382,5 +393,41 @@ class TaskDetailsContentTest {
     row(sami).assertHasNoClickAction()
     row(yasser).assertHasNoClickAction()
     composeTestRule.onAllNodesWithText("Remove", useUnmergedTree = true).assertCountEquals(0)
+  }
+
+  @Test
+  fun ownerMenuEditsTaskAndCanConfirmDeletion() {
+    val edited = mutableListOf<String>()
+    var deletes = 0
+    show(
+        state(task.copy(ownerId = sami.uid)),
+        onEdit = { edited += it },
+        onDeleteTask = { deletes++ },
+    )
+
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MORE_ACTIONS_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.EDIT_MENU_ITEM).performClick()
+    assertEquals(listOf(task.taskId), edited)
+
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MORE_ACTIONS_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.DELETE_MENU_ITEM).performClick()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.DELETE_DIALOG).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.DELETE_CONFIRM_BUTTON).performClick()
+
+    assertEquals(1, deletes)
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.DELETE_DIALOG).assertDoesNotExist()
+  }
+
+  @Test
+  fun deleteConfirmationCanBeDismissed() {
+    var deletes = 0
+    show(state(task.copy(ownerId = sami.uid)), onDeleteTask = { deletes++ })
+
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MORE_ACTIONS_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.DELETE_MENU_ITEM).performClick()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.DELETE_DISMISS_BUTTON).performClick()
+
+    assertEquals(0, deletes)
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.DELETE_DIALOG).assertDoesNotExist()
   }
 }

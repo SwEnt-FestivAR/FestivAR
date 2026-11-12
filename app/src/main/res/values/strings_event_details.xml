@@ -1,13 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Co-authored-by: Copilot App -->
+<!-- Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com> -->
+<!-- Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com> -->
 <resources>
     <string name="event_details_tasks_count">of %1$d</string>
     <string name="event_details_tasks_still_open">tasks still open</string>
-    <string name="event_details_owner">Owner</string>
-    <string name="event_details_date">Date</string>
-    <string name="event_details_address">Address</string>
-    <string name="event_details_no_location">No location specified</string>
+    <string name="event_details_join_code">Join code</string>
     <string name="event_details_navigate_back">Navigate back</string>
     <string name="event_details_see_tasks">See tasks</string>
+    <string name="event_details_members">Members</string>
+    <string name="event_details_organizer">Organizer</string>
+    <string name="event_details_members_subtitle">%1$s · %2$s</string>
     <string name="event_details_fetch_error">Something wrong happened while fetching the event. Please try again</string>
+    <string name="event_details_status_open">Open</string>
+    <string name="event_details_status_closed">Closed</string>
+    <string name="event_details_announcements">Announcements</string>
+    <string name="event_details_no_announcements">No announcements yet</string>
 </resources>

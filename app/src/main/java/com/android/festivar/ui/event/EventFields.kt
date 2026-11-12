@@ -1,6 +1,7 @@
 package com.android.festivar.ui.event
 
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -18,6 +19,7 @@ import com.android.festivar.ui.components.FestivarDateTimeRow
 import com.android.festivar.ui.components.FestivarFieldWithError
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.components.FieldError
+import com.android.festivar.ui.components.LONG_TEXT_MAX_LENGTH
 import java.time.LocalDate
 import java.time.LocalTime
 
@@ -117,6 +119,8 @@ fun EventFields(
         onValueChange = onNotesChange,
         label = stringResource(R.string.create_event_field_notes),
         singleLine = false,
+        maxLength = LONG_TEXT_MAX_LENGTH,
+        showCounter = true,
         modifier = Modifier.testTag(testTags.notes),
     )
     Spacer(modifier = Modifier.height(14.dp))
