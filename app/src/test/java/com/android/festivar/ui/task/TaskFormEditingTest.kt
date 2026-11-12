@@ -90,6 +90,11 @@ class TaskFormEditingTest {
   fun incrementMaxAssignAddsOneAndChangesNothingElse() =
       assertOnly({ it.copy(maxAssign = MIN_MAX_ASSIGN + 1) }) { editing.incrementMaxAssign() }
 
+  // Breaks if typed digits are not parsed as the new number, or another field changes.
+  @Test
+  fun updateMaxAssignChangesOnlyTheMaximum() =
+      assertOnly({ it.copy(maxAssign = 12) }) { editing.updateMaxAssign("12") }
+
   // Breaks if updateEstimatedMinutes keeps a non digit or more than MAX_ESTIMATED_DIGITS digits,
   // so the number no longer fits in an Int.
   @Test
