@@ -25,12 +25,13 @@
     </PreferenceCategory>
 
 
+<!-- Those are just examples
     <PreferenceCategory
         android:layout_width="match_parent"
         app:key="app_category"
         app:title="@string/settings_cat_acc">
 
-        <!-- doesn't do anything yet -->
+
         <Preference
             app:title="@string/settings_delete_acc"
             app:key="del_acc"
@@ -40,5 +41,6 @@
             app:key="notifications"
             app:title="@string/settings_switch_example" />
     </PreferenceCategory>
+-->
 
 </PreferenceScreen>
