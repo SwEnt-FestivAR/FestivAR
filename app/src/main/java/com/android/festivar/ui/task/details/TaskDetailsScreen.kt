@@ -100,6 +100,7 @@ object TaskDetailsScreenTestTags {
   const val LOADING = "detailsLoading"
   const val ERROR_MESSAGE = "detailsError"
   const val ERROR_ACTION = "detailsErrorAction"
+  const val FIXED_BOTTOM_BAR = "detailsFixedBottomBar"
 }
 
 /**
@@ -239,7 +240,7 @@ fun TaskDetailsContent(
       },
       bottomBar = {
         if (state.hasActions || voiceNote.hasBottomContent) {
-          FixedBottomBar {
+          FixedBottomBar(modifier = Modifier.testTag(TaskDetailsScreenTestTags.FIXED_BOTTOM_BAR)) {
             VoiceNotePlaybackNotice(voiceNote, voiceNoteCallbacks)
             VoiceNoteRecordBar(voiceNote, voiceNoteCallbacks)
             if (state.hasActions)

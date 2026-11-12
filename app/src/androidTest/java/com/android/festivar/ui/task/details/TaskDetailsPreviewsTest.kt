@@ -20,6 +20,7 @@ import org.junit.runner.RunWith
 class TaskDetailsPreviewsTest {
   @get:Rule val composeTestRule = createComposeRule()
 
+  /** Breaks if the open preview no longer shows the task or its Take button. */
   @Test
   fun openPreview_showsTaskAndTakeAction() {
     composeTestRule.setContent { TaskDetailsOpenPreview() }
@@ -28,6 +29,7 @@ class TaskDetailsPreviewsTest {
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.TAKE_BUTTON).assertIsDisplayed()
   }
 
+  /** Breaks if the taken preview shows an action that a volunteer cannot perform. */
   @Test
   fun takenPreview_showsTaskWithoutActions() {
     composeTestRule.setContent { TaskDetailsTakenPreview() }
@@ -36,6 +38,7 @@ class TaskDetailsPreviewsTest {
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.TAKE_BUTTON).assertDoesNotExist()
   }
 
+  /** Breaks if the yours preview hides either action available to the assignee. */
   @Test
   fun yoursPreview_showsGiveBackAndMarkDoneActions() {
     composeTestRule.setContent { TaskDetailsYoursPreview() }
@@ -44,6 +47,7 @@ class TaskDetailsPreviewsTest {
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MARK_DONE_BUTTON).assertIsDisplayed()
   }
 
+  /** Breaks if the done preview shows actions for a completed task. */
   @Test
   fun donePreview_showsDoneTaskWithoutActions() {
     composeTestRule.setContent { TaskDetailsDonePreview() }
@@ -52,6 +56,7 @@ class TaskDetailsPreviewsTest {
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MARK_DONE_BUTTON).assertDoesNotExist()
   }
 
+  /** Breaks if the owner preview loses its empty voice-note state or record control. */
   @Test
   fun voiceNoteOwnerPreview_showsEmptyStateAndRecordBar() {
     composeTestRule.setContent { TaskDetailsVoiceNoteOwnerPreview() }
@@ -63,6 +68,7 @@ class TaskDetailsPreviewsTest {
     composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).assertIsDisplayed()
   }
 
+  /** Breaks if the volunteer preview loses playback or incorrectly shows recording controls. */
   @Test
   fun voiceNoteVolunteerPreview_showsNoteWithoutRecordBar() {
     composeTestRule.setContent { TaskDetailsVoiceNoteVolunteerPreview() }
@@ -72,6 +78,7 @@ class TaskDetailsPreviewsTest {
     composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).assertDoesNotExist()
   }
 
+  /** Breaks if the load-error preview stops offering its retry action. */
   @Test
   fun loadErrorPreview_showsRetryError() {
     composeTestRule.setContent { TaskDetailsLoadErrorPreview() }
@@ -80,6 +87,7 @@ class TaskDetailsPreviewsTest {
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.ERROR_ACTION).assertIsDisplayed()
   }
 
+  /** Breaks if the save-error preview loses either the task or its dismissible error. */
   @Test
   fun saveErrorPreview_showsTaskAndDismissError() {
     composeTestRule.setContent { TaskDetailsSaveErrorPreview() }

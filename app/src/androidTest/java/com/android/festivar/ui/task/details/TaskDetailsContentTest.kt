@@ -9,6 +9,8 @@ import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.center
+import androidx.compose.ui.test.down
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -20,6 +22,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.up
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
 import com.android.festivar.model.audio.PlayerState
@@ -29,6 +33,7 @@ import com.android.festivar.ui.components.PeopleCardTestTags
 import com.android.festivar.ui.components.UserListTestTags
 import com.android.festivar.ui.components.formatDate
 import com.android.festivar.ui.components.formatTime
+import com.android.festivar.ui.voicenote.VoiceNoteCallbacks
 import com.android.festivar.ui.voicenote.VoiceNoteRecordTestTags
 import com.android.festivar.ui.voicenote.VoiceNoteTestTags
 import com.android.festivar.ui.voicenote.VoiceNoteUiState
@@ -83,6 +88,7 @@ class TaskDetailsContentTest {
       onEdit: (String) -> Unit = {},
       onDeleteTask: () -> Unit = {},
       voiceNote: VoiceNoteUiState = VoiceNoteUiState(),
+      voiceNoteCallbacks: VoiceNoteCallbacks = VoiceNoteCallbacks.NoOp,
   ) = composeTestRule.setContent {
     TaskDetailsContent(
         state,
@@ -95,6 +101,7 @@ class TaskDetailsContentTest {
         onEdit,
         onDeleteTask,
         voiceNote = voiceNote,
+        voiceNoteCallbacks = voiceNoteCallbacks,
     )
   }
 
@@ -453,6 +460,102 @@ class TaskDetailsContentTest {
     composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).assertIsDisplayed()
   }
 
+  /**
+   * Breaks if the task screen does not forward the record gestures to the voice-note controller.
+   */
+  @Test
+  fun recordingControlsForwardTheirCallbacks() {
+    var started = 0
+    var released = 0
+    val callbacks =
+        VoiceNoteCallbacks.NoOp.let {
+          VoiceNoteCallbacks(
+              onTogglePlay = it.onTogglePlay,
+              onDelete = it.onDelete,
+              onConfirmDelete = it.onConfirmDelete,
+              onDismissDelete = it.onDismissDelete,
+              onRecordStart = { started++ },
+              onRecordRelease = { released++ },
+              onConfirmSend = it.onConfirmSend,
+              onCancelSend = it.onCancelSend,
+              onDismissRecordingFailed = it.onDismissRecordingFailed,
+              onRetry = it.onRetry,
+              onOpenSettings = it.onOpenSettings,
+          )
+        }
+    show(state(), voiceNote = VoiceNoteUiState(canManage = true), voiceNoteCallbacks = callbacks)
+
+    composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).performTouchInput {
+      down(center)
+      up()
+    }
+
+    assertEquals(1, started)
+    assertEquals(1, released)
+  }
+
+  /** Breaks if tapping the task note's player does not invoke its playback callback. */
+  @Test
+  fun playbackControlForwardsItsCallback() {
+    var toggled = 0
+    val callbacks =
+        VoiceNoteCallbacks.NoOp.let {
+          VoiceNoteCallbacks(
+              onTogglePlay = { toggled++ },
+              onDelete = it.onDelete,
+              onConfirmDelete = it.onConfirmDelete,
+              onDismissDelete = it.onDismissDelete,
+              onRecordStart = it.onRecordStart,
+              onRecordRelease = it.onRecordRelease,
+              onConfirmSend = it.onConfirmSend,
+              onCancelSend = it.onCancelSend,
+              onDismissRecordingFailed = it.onDismissRecordingFailed,
+              onRetry = it.onRetry,
+              onOpenSettings = it.onOpenSettings,
+          )
+        }
+    show(
+        state(ownerName = "Marie Dupont"),
+        voiceNote = VoiceNoteUiState(note = previewNote),
+        voiceNoteCallbacks = callbacks,
+    )
+
+    composeTestRule.onNodeWithTag(VoiceNoteTestTags.VOICE_NOTE_PLAY).performClick()
+
+    assertEquals(1, toggled)
+  }
+
+  /** Breaks if confirming note deletion does not invoke the task screen callback. */
+  @Test
+  fun deletingControlForwardsItsCallback() {
+    var deleted = 0
+    val callbacks =
+        VoiceNoteCallbacks.NoOp.let {
+          VoiceNoteCallbacks(
+              onTogglePlay = it.onTogglePlay,
+              onDelete = { deleted++ },
+              onConfirmDelete = it.onConfirmDelete,
+              onDismissDelete = it.onDismissDelete,
+              onRecordStart = it.onRecordStart,
+              onRecordRelease = it.onRecordRelease,
+              onConfirmSend = it.onConfirmSend,
+              onCancelSend = it.onCancelSend,
+              onDismissRecordingFailed = it.onDismissRecordingFailed,
+              onRetry = it.onRetry,
+              onOpenSettings = it.onOpenSettings,
+          )
+        }
+    show(
+        state(),
+        voiceNote = VoiceNoteUiState(note = previewNote, canManage = true),
+        voiceNoteCallbacks = callbacks,
+    )
+
+    composeTestRule.onNodeWithTag(VoiceNoteTestTags.VOICE_NOTE_DELETE).performClick()
+
+    assertEquals(1, deleted)
+  }
+
   /** Breaks if the record bar replaces the buttons of the task instead of sharing the bottom. */
   @Test
   fun recordBarAndTheButtonsOfTheTaskShareTheBottom() {
@@ -505,5 +608,6 @@ class TaskDetailsContentTest {
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MARK_DONE_BUTTON).assertDoesNotExist()
     composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.RECORD_BAR).assertDoesNotExist()
     composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.PLAYBACK_ERROR).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.FIXED_BOTTOM_BAR).assertDoesNotExist()
   }
 }
