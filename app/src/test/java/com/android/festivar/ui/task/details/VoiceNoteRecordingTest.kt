@@ -131,6 +131,34 @@ class VoiceNoteRecordingTest {
     assertFalse(file.exists())
   }
 
+  /** Breaks if a recorder failure drops a sendable recording instead of preserving its retry. */
+  @Test
+  fun start_preservesAnUnsentRecordingWhenRecorderFails() = runTest {
+    storage.uploadFailure = IOException("offline")
+    val subject = recording
+    subject.start()
+    subject.finish()
+    val file = recorder.lastAudio!!.file
+    subject.confirmSend()
+    testScheduler.advanceUntilIdle()
+    assertTrue(subject.stage.value is RecordingStage.SendFailed)
+
+    recorder.startFailure = VoiceRecorderException("microphone busy")
+    subject.start()
+
+    assertTrue(file.exists())
+    assertTrue(subject.stage.value is RecordingStage.SendFailed)
+
+    recorder.startFailure = null
+    storage.uploadFailure = null
+    subject.retrySend()
+    testScheduler.advanceUntilIdle()
+
+    assertEquals(1, storage.uploads.size)
+    assertEquals(RecordingStage.Idle, subject.stage.value)
+    assertFalse(file.exists())
+  }
+
   /** Breaks if starting replaces a recording that is waiting for confirmation. */
   @Test
   fun start_isIgnoredWhileWaitingToSend() {
