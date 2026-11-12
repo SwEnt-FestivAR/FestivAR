@@ -229,6 +229,7 @@ class AnnouncementDetailsScreenTest {
 
   @Test
   fun failedUriLaunchDoesNotCrashTheScreen() {
+    var openAttempts = 0
     val viewModel =
         AnnouncementDetailsViewModel(
             eventId = "event-1",
@@ -245,7 +246,11 @@ class AnnouncementDetailsScreenTest {
           LocalUriHandler provides
               object : UriHandler {
                 override fun openUri(uri: String) {
-                  throw ActivityNotFoundException("No application can open $uri")
+                  when (openAttempts++) {
+                    0 -> throw ActivityNotFoundException("No application can open $uri")
+                    1 -> throw IllegalArgumentException("Invalid URI: $uri")
+                    else -> throw SecurityException("Cannot open $uri")
+                  }
                 }
               }
       ) {
@@ -256,10 +261,28 @@ class AnnouncementDetailsScreenTest {
     composeTestRule.waitUntil(5_000) {
       composeTestRule.onAllNodesWithTag(Tags.TITLE).fetchSemanticsNodes().isNotEmpty()
     }
-    composeTestRule
-        .onNodeWithTag(Tags.link(announcement.links.single()))
-        .performScrollTo()
-        .performClick()
+    repeat(3) {
+      composeTestRule
+          .onNodeWithTag(Tags.link(announcement.links.single()))
+          .performScrollTo()
+          .performClick()
+    }
+    assertEquals(3, openAttempts)
     composeTestRule.onNodeWithTag(Tags.link(announcement.links.single())).assertIsDisplayed()
+  }
+
+  @Test
+  fun previewRendersRepresentativeAnnouncementDetails() {
+    composeTestRule.setContent { AnnouncementDetailsContentPreview() }
+
+    composeTestRule.onNodeWithTag(Tags.TITLE).assertTextContains("Stage B is closed")
+    composeTestRule.onNodeWithTag(Tags.AUTHOR).assertTextContains("Marie Dupont", substring = true)
+    composeTestRule
+        .onNodeWithTag(Tags.DESCRIPTION)
+        .assertTextContains("Strong wind on the hill.", substring = true)
+    composeTestRule
+        .onNodeWithTag(Tags.link("https://vidyfest.ch/map"))
+        .performScrollTo()
+        .assertIsDisplayed()
   }
 }
