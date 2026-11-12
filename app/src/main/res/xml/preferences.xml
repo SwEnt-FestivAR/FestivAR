@@ -28,7 +28,7 @@
 <!-- Those are just examples
     <PreferenceCategory
         android:layout_width="match_parent"
-        app:key="app_category"
+        app:key="acc_category"
         app:title="@string/settings_cat_acc">
 
 
