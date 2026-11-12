@@ -42,7 +42,7 @@ class EventsOverviewNavigatorTest {
   fun selectAvatarNavigatesToProfile() {
     navigator.onSelectAvatar()
 
-    verify { navController.navigate(AppScreens.Profile.name) }
+    verify { navController.navigate(AppScreens.Profile.name, any<NavOptionsBuilder.() -> Unit>()) }
   }
 
   @Test
