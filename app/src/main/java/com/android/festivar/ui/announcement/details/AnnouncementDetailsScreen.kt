@@ -1,6 +1,7 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.ui.announcement.details
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -187,6 +188,7 @@ fun AnnouncementDetailsContent(
         AnnouncementBody(
             announcement = announcement,
             authorName = state.authorName,
+            authorNameRes = state.authorNameRes,
             eventEndTime = state.eventEndTime,
             onOpenLink = onOpenLink,
         )
@@ -199,9 +201,13 @@ fun AnnouncementDetailsContent(
 private fun AnnouncementBody(
     announcement: Announcement,
     authorName: String?,
+    @StringRes authorNameRes: Int?,
     eventEndTime: ZonedDateTime?,
     onOpenLink: (String) -> Unit,
 ) {
+  val displayedAuthorName =
+      if (authorName == null && authorNameRes != null) stringResource(authorNameRes) else authorName
+
   StatusPill(
       label = stringResource(priorityLabel(announcement.priority)),
       style = priorityStyle(announcement.priority),
@@ -236,7 +242,7 @@ private fun AnnouncementBody(
         modifier = Modifier.testTag(AnnouncementDetailsScreenTestTags.END_TIME),
     )
   }
-  authorName?.takeIf(String::isNotBlank)?.let { author ->
+  displayedAuthorName?.takeIf(String::isNotBlank)?.let { author ->
     Text(
         text = stringResource(R.string.announcement_details_posted_by, author),
         style = MaterialTheme.typography.bodyMedium,
