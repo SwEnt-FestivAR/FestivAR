@@ -259,6 +259,42 @@ class VoiceNoteRecordingTest {
     assertEquals(RecordingStage.Idle, subject.stage.value)
   }
 
+  /** Breaks if cancelling a send in progress drops its recording before the upload finishes. */
+  @Test
+  fun cancelSend_isIgnoredWhileSending() = runTest {
+    val gate = CompletableDeferred<Unit>()
+    storage.uploadGate = gate
+    val subject = recording
+    subject.start()
+    subject.finish()
+    val file = recorder.lastAudio!!.file
+    subject.confirmSend()
+
+    subject.cancelSend()
+
+    assertTrue(subject.stage.value is RecordingStage.Sending)
+    assertTrue(file.exists())
+    gate.complete(Unit)
+    testScheduler.advanceUntilIdle()
+  }
+
+  /** Breaks if cancelling a failed send drops its recording instead of preserving retry. */
+  @Test
+  fun cancelSend_isIgnoredAfterASendFailure() = runTest {
+    storage.uploadFailure = IOException("offline")
+    val subject = recording
+    subject.start()
+    subject.finish()
+    val file = recorder.lastAudio!!.file
+    subject.confirmSend()
+    testScheduler.advanceUntilIdle()
+
+    subject.cancelSend()
+
+    assertTrue(subject.stage.value is RecordingStage.SendFailed)
+    assertTrue(file.exists())
+  }
+
   /** Breaks if confirming a recording does not upload and save its voice note. */
   @Test
   fun confirmSend_uploadsAndSavesTheVoiceNote() = runTest {
@@ -296,6 +332,32 @@ class VoiceNoteRecordingTest {
     assertTrue(storage.uploads.isEmpty())
     assertTrue(subject.stage.value is RecordingStage.Waiting)
     assertTrue(host.state.value.isUpdating)
+  }
+
+  /** Breaks if retrying from idle starts an upload without a failed recording. */
+  @Test
+  fun retrySend_isIgnoredFromIdle() = runTest {
+    val subject = recording
+
+    subject.retrySend()
+
+    assertTrue(storage.uploads.isEmpty())
+    assertEquals(RecordingStage.Idle, subject.stage.value)
+  }
+
+  /** Breaks if retrying a waiting recording bypasses the send-stage guard. */
+  @Test
+  fun retrySend_isIgnoredFromWaiting() = runTest {
+    val subject = recording
+    subject.start()
+    subject.finish()
+    val file = recorder.lastAudio!!.file
+
+    subject.retrySend()
+
+    assertTrue(storage.uploads.isEmpty())
+    assertTrue(subject.stage.value is RecordingStage.Waiting)
+    assertTrue(file.exists())
   }
 
   /** Breaks if an in-flight upload loses its recording before it finishes. */
