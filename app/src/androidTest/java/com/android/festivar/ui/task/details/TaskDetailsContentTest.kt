@@ -446,7 +446,10 @@ class TaskDetailsContentTest {
   @Test
   fun ownerWithoutANoteSeesTheEmptyStateAndTheRecordBar() {
     show(state(), voiceNote = VoiceNoteUiState(canManage = true))
-    composeTestRule.onNodeWithTag(VoiceNoteTestTags.VOICE_NOTE_EMPTY).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(VoiceNoteTestTags.VOICE_NOTE_EMPTY)
+        .performScrollTo()
+        .assertIsDisplayed()
     composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).assertIsDisplayed()
   }
 
