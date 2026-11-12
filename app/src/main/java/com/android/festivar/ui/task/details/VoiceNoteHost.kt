@@ -29,4 +29,3 @@ internal interface VoiceNoteHost {
    */
   fun finishSaving(updated: Task?, failed: Boolean = false)
 }
-

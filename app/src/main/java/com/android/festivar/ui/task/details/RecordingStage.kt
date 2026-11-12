@@ -40,4 +40,3 @@ internal val RecordingStage.pending: PendingRecording?
         is RecordingStage.Sending -> PendingRecording.Sending(audio.duration)
         else -> null
       }
-

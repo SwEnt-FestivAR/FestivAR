@@ -145,4 +145,3 @@ internal class VoiceNoteRecording(
     _stage.value = RecordingStage.Idle
   }
 }
-
