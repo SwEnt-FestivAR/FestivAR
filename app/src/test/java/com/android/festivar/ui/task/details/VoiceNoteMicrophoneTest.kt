@@ -7,6 +7,9 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.provider.Settings
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.LocalActivityResultRegistryOwner
+import androidx.activity.result.ActivityResultRegistry
+import androidx.activity.result.contract.ActivityResultContract
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -27,6 +30,7 @@ class VoiceNoteMicrophoneTest {
   private val controller = mockk<VoiceNoteController>(relaxed = true)
   private lateinit var callbacks: VoiceNoteCallbacks
   private val startedIntents = mutableListOf<Intent>()
+  private val activityResultRegistry = TestActivityResultRegistry()
 
   @Before
   fun setUp() {
@@ -71,7 +75,14 @@ class VoiceNoteMicrophoneTest {
           }
         }
     composeTestRule.setContent {
-      CompositionLocalProvider(LocalContext provides context) {
+      CompositionLocalProvider(
+          LocalContext provides context,
+          LocalActivityResultRegistryOwner provides
+              object : androidx.activity.result.ActivityResultRegistryOwner {
+                override val activityResultRegistry =
+                    this@VoiceNoteMicrophoneTest.activityResultRegistry
+              },
+      ) {
         callbacks = rememberVoiceNoteCallbacks(controller = controller, micDenied = false)
       }
     }
@@ -97,6 +108,16 @@ class VoiceNoteMicrophoneTest {
   }
 
   @Test
+  fun permissionResultIsForwardedToTheController() {
+    showMicrophone(hasMicrophone = false)
+
+    callbacks.onRecordStart()
+    activityResultRegistry.dispatchPermissionResult(granted = true)
+
+    io.mockk.verify { controller.onMicPermissionResult(true) }
+  }
+
+  @Test
   fun openingSettingsLaunchesTheApplicationDetailsPage() {
     showMicrophone(hasMicrophone = false)
 
@@ -108,5 +129,22 @@ class VoiceNoteMicrophoneTest {
         "package:${composeTestRule.activity.packageName}",
         intent.dataString,
     )
+  }
+
+  private class TestActivityResultRegistry : ActivityResultRegistry() {
+    private var requestCode: Int? = null
+
+    override fun <I, O> onLaunch(
+        requestCode: Int,
+        contract: ActivityResultContract<I, O>,
+        input: I,
+        options: androidx.core.app.ActivityOptionsCompat?,
+    ) {
+      this.requestCode = requestCode
+    }
+
+    fun dispatchPermissionResult(granted: Boolean) {
+      dispatchResult(requireNotNull(requestCode), granted)
+    }
   }
 }
