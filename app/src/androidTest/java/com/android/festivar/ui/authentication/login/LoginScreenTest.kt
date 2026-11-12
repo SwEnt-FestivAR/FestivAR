@@ -19,6 +19,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.datarepository.DataRepositoryLocal
+import com.android.festivar.ui.components.CREDENTIAL_MAX_LENGTH
 import com.google.firebase.auth.FirebaseUser
 import io.mockk.mockk
 import kotlinx.coroutines.CompletableDeferred
@@ -201,6 +202,22 @@ class LoginScreenTest {
     composeTestRule.runOnIdle {
       assertTrue(signedIn)
       assertTrue(loginViewModel.uiState.value.isSignedIn)
+    }
+  }
+
+  // An email or a generated password can be much longer than the 80 default: both fields take up
+  // to CREDENTIAL_MAX_LENGTH characters. Breaks if either keeps the default or loses its limit.
+  @Test
+  fun emailAndPasswordTakeUpToTheCredentialLimit() {
+    composeTestRule.setContent { LoginScreen(viewModel = viewModel, onSignUpClick = {}) }
+    val tooLong = "a".repeat(CREDENTIAL_MAX_LENGTH + 1)
+
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.EMAIL_INPUT).performTextInput(tooLong)
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.PASSWORD_INPUT).performTextInput(tooLong)
+
+    composeTestRule.runOnIdle {
+      assertEquals(CREDENTIAL_MAX_LENGTH, viewModel.uiState.value.email.length)
+      assertEquals(CREDENTIAL_MAX_LENGTH, viewModel.uiState.value.password.length)
     }
   }
 }

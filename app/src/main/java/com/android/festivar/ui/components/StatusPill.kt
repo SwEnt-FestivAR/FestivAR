@@ -35,7 +35,12 @@ enum class PillStyle {
   ERROR,
 }
 
-/** Status pill of the design, showing [label] with the given [style]. */
+/**
+ * Status pill of the design, showing [label] with the given [style].
+ *
+ * The examples in [PillStyle] are only suggestions: each screen chooses the style that fits its own
+ * statuses, e.g. the event details show "Open" as [PillStyle.LIME].
+ */
 @Composable
 fun StatusPill(label: String, style: PillStyle, modifier: Modifier = Modifier) {
   val colors = MaterialTheme.colorScheme

@@ -2,6 +2,8 @@
 package com.android.festivar.ui.task.details
 
 import com.android.festivar.model.audio.PlayerState
+import com.android.festivar.model.audio.RecorderState
+import com.android.festivar.model.audio.VoiceRecorderException
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.voicenote.VoiceNote
 import java.io.IOException
@@ -265,6 +267,39 @@ class VoiceNotePlaybackDeletionTest {
 
     assertFalse(controller.uiState.value.sendFailed)
     assertEquals(1, storage.uploads.size)
+  }
+
+  @Test
+  fun controller_callbacksRouteRecordingSuccessAndFailureDismissal() {
+    val emptyHost = PlaybackHost(task.copy(voiceNote = null))
+    val controller = VoiceNoteController(scope, emptyHost, ownerId, services)
+    val callbacks =
+        controller.callbacks(
+            hasMicrophone = { true },
+            requestMicrophone = {},
+            onOpenSettings = {},
+        )
+
+    callbacks.onRecordStart()
+    assertEquals(1, recorder.starts)
+    callbacks.onRecordRelease()
+    callbacks.onConfirmSend()
+    assertFalse(controller.uiState.value.showSendDialog)
+    assertTrue(emptyHost.savedTask!!.voiceNote != null)
+
+    recorder.startFailure = VoiceRecorderException("microphone unavailable")
+    val failureController =
+        VoiceNoteController(scope, PlaybackHost(task.copy(voiceNote = null)), ownerId, services)
+    val failureCallbacks =
+        failureController.callbacks(
+            hasMicrophone = { true },
+            requestMicrophone = {},
+            onOpenSettings = {},
+        )
+    failureCallbacks.onRecordStart()
+    assertEquals(RecorderState.Failed, failureController.uiState.value.recorder)
+    failureCallbacks.onDismissRecordingFailed()
+    assertEquals(RecorderState.Idle, failureController.uiState.value.recorder)
   }
 
   private class PlaybackHost(initialTask: Task) : VoiceNoteHost {
