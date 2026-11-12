@@ -14,9 +14,14 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.festivar.model.task.Task
 import com.android.festivar.ui.voicenote.VoiceNoteCallbacks
-import io.mockk.mockk
+import io.mockk.spyk
 import io.mockk.verify
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
@@ -27,37 +32,27 @@ import org.junit.runner.RunWith
 class VoiceNoteMicrophoneTest {
   @get:Rule val composeTestRule = createAndroidComposeRule<ComponentActivity>()
 
-  private val controller = mockk<VoiceNoteController>(relaxed = true)
+  private lateinit var controller: VoiceNoteController
+  private lateinit var recorder: FakeVoiceRecorder
   private lateinit var callbacks: VoiceNoteCallbacks
   private val startedIntents = mutableListOf<Intent>()
   private val activityResultRegistry = TestActivityResultRegistry()
 
   @Before
   fun setUp() {
-    io.mockk.every { controller.callbacks(any(), any(), any()) } answers
-        {
-          val hasMicrophone = firstArg<() -> Boolean>()
-          val requestMicrophone = secondArg<() -> Unit>()
-          val onOpenSettings = thirdArg<() -> Unit>()
-          VoiceNoteCallbacks(
-              onTogglePlay = {},
-              onDelete = {},
-              onConfirmDelete = {},
-              onDismissDelete = {},
-              onRecordStart = {
-                if (hasMicrophone()) controller.startRecording() else requestMicrophone()
-              },
-              onRecordRelease = {},
-              onConfirmSend = {},
-              onCancelSend = {},
-              onDismissRecordingFailed = {},
-              onRetry = {},
-              onOpenSettings = onOpenSettings,
-          )
-        }
+    val host = TestVoiceNoteHost()
+    recorder = FakeVoiceRecorder()
+    controller =
+        spyk(
+            VoiceNoteController(
+                CoroutineScope(Dispatchers.Unconfined),
+                host,
+                VoiceNoteServices(recorder, FakeAudioRepository(), FakeVoicePlayer()),
+            ),
+        )
   }
 
-  private fun showMicrophone(hasMicrophone: Boolean) {
+  private fun showMicrophone(hasMicrophone: Boolean, micDenied: Boolean = false) {
     val context =
         object : ContextWrapper(composeTestRule.activity) {
           override fun checkSelfPermission(permission: String) =
@@ -83,30 +78,33 @@ class VoiceNoteMicrophoneTest {
                     this@VoiceNoteMicrophoneTest.activityResultRegistry
               },
       ) {
-        callbacks = rememberVoiceNoteCallbacks(controller = controller, micDenied = false)
+        callbacks = rememberVoiceNoteCallbacks(controller = controller, micDenied = micDenied)
       }
     }
     composeTestRule.waitForIdle()
   }
 
+  /** Breaks if an enabled microphone does not start recording through the real controller. */
   @Test
   fun recordingStartsWhenMicrophonePermissionIsGranted() {
     showMicrophone(hasMicrophone = true)
 
     callbacks.onRecordStart()
 
-    verify { controller.startRecording() }
+    assertEquals(1, recorder.starts)
   }
 
+  /** Breaks if a denied microphone starts recording instead of launching the permission request. */
   @Test
   fun recordingDoesNotStartWhenMicrophonePermissionIsDenied() {
     showMicrophone(hasMicrophone = false)
 
     callbacks.onRecordStart()
 
-    verify(exactly = 0) { controller.startRecording() }
+    assertEquals(0, recorder.starts)
   }
 
+  /** Breaks if the permission launcher result is not forwarded to the controller. */
   @Test
   fun permissionResultIsForwardedToTheController() {
     showMicrophone(hasMicrophone = false)
@@ -117,6 +115,29 @@ class VoiceNoteMicrophoneTest {
     io.mockk.verify { controller.onMicPermissionResult(true) }
   }
 
+  /** Breaks if returning from settings does not re-check a previously denied microphone. */
+  @Test
+  fun returningFromSettings_rechecksMicrophonePermission() {
+    showMicrophone(hasMicrophone = true, micDenied = true)
+
+    composeTestRule.activityRule.scenario.moveToState(androidx.lifecycle.Lifecycle.State.CREATED)
+    composeTestRule.activityRule.scenario.moveToState(androidx.lifecycle.Lifecycle.State.RESUMED)
+
+    verify { controller.onMicPermissionResult(true) }
+  }
+
+  /** Breaks if an allowed microphone triggers a spurious permission result on resume. */
+  @Test
+  fun returningFromSettings_doesNothingWhenMicrophoneWasNotDenied() {
+    showMicrophone(hasMicrophone = true, micDenied = false)
+
+    composeTestRule.activityRule.scenario.moveToState(androidx.lifecycle.Lifecycle.State.CREATED)
+    composeTestRule.activityRule.scenario.moveToState(androidx.lifecycle.Lifecycle.State.RESUMED)
+
+    verify(exactly = 0) { controller.onMicPermissionResult(any()) }
+  }
+
+  /** Breaks if opening settings does not target this application's details page. */
   @Test
   fun openingSettingsLaunchesTheApplicationDetailsPage() {
     showMicrophone(hasMicrophone = false)
@@ -146,5 +167,23 @@ class VoiceNoteMicrophoneTest {
     fun dispatchPermissionResult(granted: Boolean) {
       dispatchResult(requireNotNull(requestCode), granted)
     }
+  }
+
+  private class TestVoiceNoteHost : VoiceNoteHost {
+    private val task = Task("task", "event", "Task", ownerId = "owner")
+    override val state: StateFlow<TaskDetailsUiState> =
+        MutableStateFlow(
+            TaskDetailsUiState(
+                currentUserId = "owner",
+                task = task,
+                isLoading = false,
+            ),
+        )
+
+    override fun startSaving(allowed: (TaskDetailsUiState) -> Boolean): Task? = null
+
+    override suspend fun saveTask(updated: Task) = Unit
+
+    override fun finishSaving(updated: Task?, failed: Boolean) = Unit
   }
 }
