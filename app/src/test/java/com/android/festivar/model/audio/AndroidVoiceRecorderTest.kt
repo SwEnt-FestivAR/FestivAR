@@ -1,3 +1,4 @@
+// Co-authored-by: Copilot App
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.audio
 
@@ -380,6 +381,19 @@ class AndroidVoiceRecorderTest {
     recorder.cancel()
 
     assertDropped()
+  }
+
+  /** Breaks if a failed recording stays Failed after a cancel, so nobody can dismiss it. */
+  @Test
+  fun cancel_afterAFailureGoesBackToIdle() {
+    record()
+    reportError()
+    assertEquals(RecorderState.Failed, recorder.state.value)
+
+    recorder.cancel()
+
+    assertEquals(RecorderState.Idle, recorder.state.value)
+    assertCanRecordAgain()
   }
 
   /** Breaks if a recorder error is not reported as Failed with everything freed. */

@@ -1,3 +1,4 @@
+// Co-authored-by: Copilot App
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.navigation
@@ -30,9 +31,14 @@ import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.navigation.task.taskGraph
 import com.android.festivar.ui.task.create.CreateTaskScreenTestTags
+import com.android.festivar.ui.task.details.FakeAudioRepository
+import com.android.festivar.ui.task.details.FakeVoicePlayer
+import com.android.festivar.ui.task.details.FakeVoiceRecorder
 import com.android.festivar.ui.task.details.TaskDetailsScreenTestTags
+import com.android.festivar.ui.task.details.VoiceNoteServices
 import com.android.festivar.ui.task.mytasks.MyTasksScreenTestTags
 import com.android.festivar.ui.theme.AppTheme
+import com.android.festivar.ui.voicenote.VoiceNoteRecordTestTags
 import com.google.firebase.auth.FirebaseUser
 import io.mockk.every
 import io.mockk.mockk
@@ -138,6 +144,7 @@ class TaskNavGraphTest {
       route: String,
       authRepository: AuthRepository,
       ownerTasks: List<String> = emptyList(),
+      voiceNoteServices: () -> VoiceNoteServices? = { null },
   ): NavHostController {
     lateinit var navController: NavHostController
     composeTestRule.setContent {
@@ -145,7 +152,7 @@ class TaskNavGraphTest {
         navController = rememberNavController()
         NavHost(navController, startDestination = "start") {
           composable("start") {}
-          taskGraph(navController, dataRepository(authRepository, ownerTasks))
+          taskGraph(navController, dataRepository(authRepository, ownerTasks), voiceNoteServices)
         }
       }
     }
@@ -157,6 +164,56 @@ class TaskNavGraphTest {
   private fun signedInAs(userId: String): AuthRepository {
     val user = mockk<FirebaseUser> { every { uid } returns userId }
     return mockk<AuthRepository> { every { currentUser } returns user }
+  }
+
+  private fun hasRecordButton() =
+      composeTestRule
+          .onAllNodesWithTag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD)
+          .fetchSemanticsNodes()
+          .isNotEmpty()
+
+  private fun openDetailsOfATaskOfTheUser(voiceNoteServices: () -> VoiceNoteServices?) {
+    runBlocking {
+      repository.addTask(
+          Task(taskId = "task-1", eventId = "event-1", title = "Run power", ownerId = "owner-1")
+      )
+    }
+    // The details read the name and the email of the user too
+    val user =
+        mockk<FirebaseUser> {
+          every { uid } returns "owner-1"
+          every { displayName } returns "Owner"
+          every { email } returns "owner@festivar.ch"
+        }
+    val auth = mockk<AuthRepository> { every { currentUser } returns user }
+    openOnTopOfStart(AppScreens.taskDetails("task-1"), auth, voiceNoteServices = voiceNoteServices)
+    composeTestRule.waitUntil(timeoutMillis = 5_000) {
+      composeTestRule
+          .onAllNodesWithTag(TaskDetailsScreenTestTags.TITLE)
+          .fetchSemanticsNodes()
+          .isNotEmpty()
+    }
+  }
+
+  /** Breaks if the details route does not give its screen the services of the voice note. */
+  @Test
+  fun taskDetailsRoute_givesTheVoiceNoteItsServices() {
+    var built = 0
+    openDetailsOfATaskOfTheUser {
+      built++
+      VoiceNoteServices(FakeVoiceRecorder(), FakeAudioRepository(), FakeVoicePlayer())
+    }
+
+    composeTestRule.waitUntil(timeoutMillis = 5_000) { hasRecordButton() }
+    assertEquals(1, built)
+  }
+
+  /** Breaks if the owner can record on a route that was given no services. */
+  @Test
+  fun taskDetailsRoute_withoutServices_hasNoRecordButton() {
+    openDetailsOfATaskOfTheUser { null }
+
+    assertTrue(!hasRecordButton())
   }
 
   @Test
