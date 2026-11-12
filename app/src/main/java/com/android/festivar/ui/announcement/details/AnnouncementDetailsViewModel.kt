@@ -26,7 +26,8 @@ private const val LOG_TAG = "AnnouncementDetailsVM"
  * UI state of the Announcement Details screen.
  *
  * @property announcement the announcement shown, or null until loaded.
- * @property authorName the author's name, or "Unknown author" if the account no longer exists.
+ * @property authorName the author's name, or null when the account no longer exists.
+ * @property authorNameRes the localized fallback for a missing author, or null when known.
  * @property eventEndTime the end time of the event that contains the announcement.
  * @property isLoading true while the announcement is being loaded.
  * @property isUpdating true while the pin state is being saved.
@@ -35,6 +36,7 @@ private const val LOG_TAG = "AnnouncementDetailsVM"
 data class AnnouncementDetailsUiState(
     val announcement: Announcement? = null,
     val authorName: String? = null,
+    @StringRes val authorNameRes: Int? = null,
     val eventEndTime: ZonedDateTime? = null,
     val isLoading: Boolean = true,
     val isUpdating: Boolean = false,
@@ -89,12 +91,14 @@ class AnnouncementDetailsViewModel(
               val author = usersRepository.getUser(announcement.authorId)
               listOf(author.name, author.surname).filter(String::isNotBlank).joinToString(" ")
             } catch (_: NoSuchElementException) {
-              "Unknown author"
+              null
             }
         _uiState.update {
           it.copy(
               announcement = announcement,
               authorName = authorName,
+              authorNameRes =
+                  if (authorName == null) R.string.announcement_details_user_fetch_failed else null,
               eventEndTime = event.endDate,
               isLoading = false,
               errorMsg =
