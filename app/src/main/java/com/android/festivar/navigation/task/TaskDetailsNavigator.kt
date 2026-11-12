@@ -9,6 +9,7 @@ import com.android.festivar.navigation.AppScreens
 /** Where the task details can go: back to whatever opened them, or to the edit of the task. */
 class TaskDetailsNavigator(private val navController: NavHostController) {
   val onBack: () -> Unit = { navController.popBackStack() }
+  val onTaskDeleted: () -> Unit = { navController.popBackStack() }
 
   /** Opens the edit of the task, once even if the edit button is tapped twice. */
   val onEdit: (taskId: String) -> Unit = { taskId ->

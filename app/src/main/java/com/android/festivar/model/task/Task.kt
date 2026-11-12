@@ -26,6 +26,7 @@ import java.time.ZonedDateTime
  * - [maxAssign] is at least 1;
  * - [maxAssign] is never lower than the number of [assignees];
  * - a [User] is assigned at most once, identified by its [User.uid] (no duplicates);
+ * - [takenAt] only names users in [assignees];
  * - [endTime] is not before [startTime];
  * - [estimatedTime] is not negative;
  * - [ownerId] is not blank.
@@ -46,6 +47,9 @@ import java.time.ZonedDateTime
  * @property priority How urgent the [Task] is.
  * @property maxAssign Maximum number of people who can join or be assigned to the [Task].
  * @property assignees People who joined or were assigned the [Task].
+ * @property takenAt When each assignee took the [Task], by [User.uid].
+ * @property spot Where the task sits on the venue plan, or null when it has no pin (it then does
+ *   not appear on the map).
  * @property completed Whether the [Task] has been completed.
  * @property voiceNote The voice note of the [Task], or `null` if it has none.
  * @property ownerId The [User.uid] of the task owner (the user who created it). Every task has one.
@@ -63,6 +67,8 @@ data class Task(
     val priority: Priority = Priority.NONE,
     val maxAssign: Int = 1,
     val assignees: List<User> = emptyList(),
+    val takenAt: Map<String, ZonedDateTime> = emptyMap(),
+    val spot: TaskSpot? = null,
     val completed: Boolean = false,
     val voiceNote: VoiceNote? = null,
     val ownerId: String,
@@ -77,6 +83,9 @@ data class Task(
       "maxAssign is lower than the number of assigned people."
     }
     require(assignees.distinctBy { it.uid }.size == assignees.size) { "A user is assigned twice." }
+    require(takenAt.keys.all { uid -> assignees.any { it.uid == uid } }) {
+      "takenAt names a user who is not assigned."
+    }
     require(startTime == null || endTime == null || !endTime.isBefore(startTime)) {
       "endTime must not be before startTime."
     }
@@ -139,16 +148,17 @@ data class Task(
    * the [assignees] list.
    *
    * @param user The [User] that is going to be assigned to `this`, to be added to [assignees] list.
+   * @param at When the user took it; now by default.
    * @return The [Task] but with [user] added to it.
    * @throws IllegalStateException If the [Task] is already full.
    * @throws IllegalArgumentException If [user] is already assigned, identified by its [User.uid].
    */
-  fun addAssignee(user: User): Task {
+  fun addAssignee(user: User, at: ZonedDateTime = ZonedDateTime.now()): Task {
     check(assignees.size < maxAssign) { "The task is full." }
 
     require(assignees.none { it.uid == user.uid }) { "This user is already assigned to the task." }
 
-    return copy(assignees = assignees + user)
+    return copy(assignees = assignees + user, takenAt = takenAt + (user.uid to at))
   }
 
   /**
@@ -162,6 +172,6 @@ data class Task(
    */
   fun removeAssignee(userId: String): Task {
     require(assignees.any { it.uid == userId }) { "This user is not assigned to the task." }
-    return copy(assignees = assignees.filterNot { it.uid == userId })
+    return copy(assignees = assignees.filterNot { it.uid == userId }, takenAt = takenAt - userId)
   }
 }

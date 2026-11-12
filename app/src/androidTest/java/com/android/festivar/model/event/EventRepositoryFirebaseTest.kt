@@ -47,6 +47,7 @@ class EventRepositoryFirebaseTest {
     event =
         Event(
             eventId = "event-${UUID.randomUUID()}",
+            ownerId = "user-1",
             title = "Fête de l'Asso",
             description = "Description",
             members = listOf(User("user-1")),
@@ -116,9 +117,35 @@ class EventRepositoryFirebaseTest {
     assertThrows { repository.getEvent(event.eventId) }
   }
 
+  /**
+   * Breaks if an event without `ownerId` is accepted or the exception does not identify the event.
+   */
+  @Test
+  fun getEvent_withoutOwnerIdIsRefused() = runBlocking {
+    eventDocument()
+        .set(
+            mapOf(
+                "eventId" to event.eventId,
+                "title" to event.title,
+                "startDate" to event.startDate.toString(),
+                "endDate" to event.endDate.toString(),
+            )
+        )
+        .await()
+
+    assertThrowsOfType<IllegalArgumentException>("Event '${event.eventId}' has no owner") {
+      repository.getEvent(event.eventId)
+    }
+  }
+
   @Test
   fun getEventsForUser_returnsOnlyMatchingEvents() = runBlocking {
-    val otherEvent = event.copy(eventId = "event-${UUID.randomUUID()}", members = emptyList())
+    val otherEvent =
+        event.copy(
+            eventId = "event-${UUID.randomUUID()}",
+            ownerId = "other-owner",
+            members = listOf(User("other-owner")),
+        )
     repository.addEvent(event)
     repository.addEvent(otherEvent)
 
@@ -238,15 +265,19 @@ class EventRepositoryFirebaseTest {
         .set(
             mapOf(
                 "eventId" to event.eventId,
+                "ownerId" to event.ownerId,
                 "title" to event.title,
-                "members" to listOf("user-2"),
+                "members" to listOf("user-1", "user-2"),
                 "startDate" to event.startDate.toString(),
                 "endDate" to event.endDate.toString(),
             )
         )
         .await()
 
-    assertEquals(listOf(User("user-2", "Alex", "Lee")), repository.getEvent(event.eventId).members)
+    assertEquals(
+        listOf(User("user-1"), User("user-2", "Alex", "Lee")),
+        repository.getEvent(event.eventId).members,
+    )
   }
 
   @Test
@@ -255,6 +286,7 @@ class EventRepositoryFirebaseTest {
     document
         .set(
             mapOf(
+                "ownerId" to event.ownerId,
                 "title" to event.title,
                 "startDate" to event.startDate.toString(),
                 "endDate" to event.endDate.toString(),
@@ -267,7 +299,7 @@ class EventRepositoryFirebaseTest {
     assertEquals(event.eventId, result.eventId)
     assertEquals("", result.description)
     assertEquals("", result.location)
-    assertTrue(result.members.isEmpty())
+    assertEquals(listOf(User("user-1")), result.members)
     assertTrue(result.tasks.isEmpty())
     assertFalse(result.closed)
     assertTrue(result.announcements.isEmpty())
@@ -462,6 +494,7 @@ class EventRepositoryFirebaseTest {
         .set(
             mapOf(
                 "eventId" to event.eventId,
+                "ownerId" to event.ownerId,
                 "title" to event.title,
                 "startDate" to event.startDate.toString(),
                 "endDate" to event.endDate.toString(),

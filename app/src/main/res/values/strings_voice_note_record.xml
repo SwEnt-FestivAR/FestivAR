@@ -6,4 +6,6 @@
     <string name="voice_note_send_failed">Voice note not sent. Check your connection.</string>
     <string name="voice_note_playback_failed">Couldn\'t play this voice note. Check your connection.</string>
     <string name="voice_note_mic_denied">Microphone is off for FestivAR. Turn it on in Settings to record a note.</string>
+    <string name="voice_note_sending">Sending voice note · %s</string>
+    <string name="voice_note_recording_failed">Couldn\'t record. Hold the button to try again.</string>
 </resources>

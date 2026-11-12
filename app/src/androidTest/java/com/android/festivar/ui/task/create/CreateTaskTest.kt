@@ -82,6 +82,7 @@ abstract class CreateTaskTest {
     val event =
         Event(
             eventId = EVENT_ID,
+            ownerId = owner.uid,
             title = "Summer festival",
             members = listOf(owner),
             startDate = start,

@@ -10,7 +10,13 @@ class JoinCodeTest {
   private val start = ZonedDateTime.of(2026, 10, 17, 10, 0, 0, 0, ZoneId.of("Europe/Zurich"))
 
   private fun eventWithId(id: String) =
-      Event(eventId = id, title = "Fete", startDate = start, endDate = start.plusHours(2))
+      Event(
+          eventId = id,
+          ownerId = "owner",
+          title = "Fete",
+          startDate = start,
+          endDate = start.plusHours(2),
+      )
 
   @Test
   fun anIdShorterThanSixCharactersGivesAShorterCode() {

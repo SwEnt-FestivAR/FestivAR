@@ -63,6 +63,7 @@ class DataRepositoryLocalTest {
   private val e1 =
       Event(
           eventId = "e1",
+          ownerId = alice.uid,
           title = "Summer festival",
           members = listOf(alice, bob),
           tasks = listOf(t1),
@@ -72,6 +73,7 @@ class DataRepositoryLocalTest {
   private val e2 =
       Event(
           eventId = "e2",
+          ownerId = bob.uid,
           title = "Jazz night",
           members = listOf(bob),
           tasks = listOf(t2),
@@ -93,6 +95,7 @@ class DataRepositoryLocalTest {
   private val e3 =
       Event(
           eventId = "e3",
+          ownerId = alice.uid,
           title = "Closing party",
           members = listOf(alice, carla),
           startDate = start,
@@ -303,6 +306,7 @@ class DataRepositoryLocalTest {
   @Test
   fun deleteTask_ownerNoLongerListingIt_deletesItAnyway() = runTest {
     // alice, the owner of t1, loses it from her tasks when she quits e1.
+    eventsRepository.editEvent("e1", e1.copy(ownerId = bob.uid))
     dataRepository.quitEvent("e1", "alice")
 
     dataRepository.deleteTask("t1")
@@ -459,12 +463,24 @@ class DataRepositoryLocalTest {
 
   @Test
   fun quitEvent_byATaskOwner_keepsTheOwnerButRemovesTheTaskFromTheirTasks() = runTest {
+    eventsRepository.editEvent("e1", e1.copy(ownerId = bob.uid))
     dataRepository.quitEvent("e1", "alice")
 
     assertEquals(listOf("bob"), memberIds("e1"))
     assertEquals(listOf("t1"), taskIds("e1"))
     assertEquals("alice", tasksRepository.getTask("t1").ownerId)
     assertUser("alice", emptyList(), emptyList())
+  }
+
+  /** Breaks if an event owner can quit or is removed from the event's membership. */
+  @Test
+  fun quitEvent_byTheEventOwner_throwsAndKeepsTheOwnerAsMember() = runTest {
+    assertThrows(IllegalArgumentException::class.java) {
+      runBlocking { dataRepository.quitEvent("e1", "alice") }
+    }
+
+    assertEquals(listOf("alice", "bob"), memberIds("e1"))
+    assertUser("alice", listOf("e1"), listOf("t1"))
   }
 
   @Test

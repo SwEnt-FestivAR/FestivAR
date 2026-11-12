@@ -22,13 +22,20 @@ class EventsRepositoryLocalTest {
   private val event =
       Event(
           eventId = "1",
+          ownerId = sara.uid,
           title = "Fête de l'Asso",
           members = listOf(sara),
           startDate = start,
           endDate = start.plusHours(13),
       )
   private val otherEvent =
-      Event(eventId = "2", title = "Soirée Jazz", startDate = start, endDate = start.plusHours(5))
+      Event(
+          eventId = "2",
+          ownerId = "owner",
+          title = "Soirée Jazz",
+          startDate = start,
+          endDate = start.plusHours(5),
+      )
   private val announcement =
       Announcement(announcementId = "a1", title = "Gates open", authorId = "u1", updatedAt = start)
   private val eventWithAnnouncement = event.copy(announcements = listOf(announcement))
