@@ -52,6 +52,7 @@ class AnnouncementDetailsViewModelTest {
           startDate = start.minusHours(1),
           endDate = start.plusHours(2),
           announcements = listOf(announcement),
+          ownerId = "sneaky owner",
       )
   private val localEvents = EventsRepositoryLocal(listOf(event))
   private val events = ScriptedEventsRepository(localEvents)
