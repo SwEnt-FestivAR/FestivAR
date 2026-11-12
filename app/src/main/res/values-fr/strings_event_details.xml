@@ -16,4 +16,9 @@
     <string name="event_details_status_closed">Fermé</string>
     <string name="event_details_announcements">Annonces</string>
     <string name="event_details_no_announcements">Aucune annonce pour l’instant</string>
+    <string name="event_details_delete_title">Supprimer %1$s ?</string>
+    <string name="event_details_delete_message">Ses tâches, structures et son équipe sont supprimées avec lui. Cette action est irréversible.</string>
+    <string name="event_details_delete_confirm">Supprimer</string>
+    <string name="event_details_delete_keep">Le garder</string>
+    <string name="event_details_delete_error">Impossible de supprimer l’événement. Réessayez.</string>
 </resources>

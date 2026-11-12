@@ -16,4 +16,9 @@
     <string name="event_details_status_closed">Closed</string>
     <string name="event_details_announcements">Announcements</string>
     <string name="event_details_no_announcements">No announcements yet</string>
+    <string name="event_details_delete_title">Delete %1$s?</string>
+    <string name="event_details_delete_message">Its tasks, structures and team go with it. This cannot be undone.</string>
+    <string name="event_details_delete_confirm">Delete</string>
+    <string name="event_details_delete_keep">Keep it</string>
+    <string name="event_details_delete_error">Unable to delete the event. Please try again.</string>
 </resources>
