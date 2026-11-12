@@ -11,6 +11,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.festivar.R
 import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
@@ -23,6 +24,7 @@ import com.android.festivar.ui.announcement.details.AnnouncementDetailsScreenTes
 import com.android.festivar.ui.theme.AppTheme
 import java.time.ZonedDateTime
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -94,5 +96,84 @@ class AnnouncementDetailsScreenTest {
     composeTestRule.onNodeWithTag(Tags.PIN_BUTTON).performClick()
     composeTestRule.onNodeWithText("Pin to top").assertIsDisplayed()
     assertFalse(runBlocking { events.getEvent("event-1").announcements.single().pinned })
+  }
+
+  @Test
+  fun showsLoadingErrorAndRetriesWhenAnnouncementIsUnavailable() {
+    var retryCount = 0
+    composeTestRule.setContent {
+      AppTheme {
+        AnnouncementDetailsContent(
+            state =
+                AnnouncementDetailsUiState(errorMsg = R.string.announcement_details_load_failed),
+            onRetry = { retryCount++ },
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag(Tags.LOADING).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(Tags.ERROR).assertTextContains("Unable to load the announcement.")
+    composeTestRule.onNodeWithTag(Tags.RETRY).performClick()
+    assertEquals(1, retryCount)
+    composeTestRule.onNodeWithTag(Tags.PIN_BUTTON).assertDoesNotExist()
+  }
+
+  @Test
+  fun showsFallbackAuthorAndHidesEmptyOptionalDetails() {
+    val announcement = announcement.copy(priority = AnnouncementPriority.INFO)
+    var backCount = 0
+    composeTestRule.setContent {
+      AppTheme {
+        AnnouncementDetailsContent(
+            state =
+                AnnouncementDetailsUiState(
+                    announcement = announcement.copy(content = "", links = emptyList()),
+                    authorNameRes = R.string.announcement_details_user_fetch_failed,
+                    isLoading = false,
+                ),
+            onBack = { backCount++ },
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag(Tags.AUTHOR).assertTextContains("Posted by Unknown author")
+    composeTestRule.onNodeWithTag(Tags.END_TIME).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(Tags.DESCRIPTION).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(Tags.link("https://vidyfest.ch/map")).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(Tags.BACK_BUTTON).performClick()
+    assertEquals(1, backCount)
+  }
+
+  @Test
+  fun opensHttpLinkAndHidesBlankAuthorAndRetryForLoadedAnnouncement() {
+    val link = "http://vidyfest.ch/map"
+    var openedLink: String? = null
+    composeTestRule.setContent {
+      AppTheme {
+        AnnouncementDetailsContent(
+            state =
+                AnnouncementDetailsUiState(
+                    announcement =
+                        announcement.copy(
+                            content = " ",
+                            links = listOf(link),
+                            priority = AnnouncementPriority.WARNING,
+                        ),
+                    authorName = "",
+                    errorMsg = R.string.announcement_details_save_failed,
+                    isLoading = false,
+                ),
+            onOpenLink = { openedLink = it },
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag(Tags.ERROR).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(Tags.RETRY).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(Tags.AUTHOR).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(Tags.DESCRIPTION).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(Tags.link(link)).performClick()
+    assertEquals(link, openedLink)
+    composeTestRule.onNodeWithText("vidyfest.ch/map").assertIsDisplayed()
   }
 }
