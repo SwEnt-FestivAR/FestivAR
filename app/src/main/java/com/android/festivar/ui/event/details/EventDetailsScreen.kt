@@ -36,10 +36,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
@@ -50,8 +54,11 @@ import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.joinCodeOf
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
+import com.android.festivar.ui.components.PeopleCard
 import com.android.festivar.ui.components.PillStyle
 import com.android.festivar.ui.components.StatusPill
+import com.android.festivar.ui.components.UserListBottomSheet
+import com.android.festivar.ui.components.UserTag
 import com.android.festivar.ui.components.formatEventDateAndLocation
 import com.android.festivar.ui.theme.AppTheme
 import com.android.festivar.ui.theme.NumeralLarge
@@ -70,6 +77,8 @@ object EventDetailsScreenTestTags {
   const val SUBTITLE = "eventSubtitle"
   const val DESCRIPTION = "eventDescription"
   const val SEE_TASKS_BUTTON = "seeTasksButton"
+  const val MEMBERS_CARD = "membersCard"
+  const val MEMBERS_SHEET = "membersSheet"
 }
 
 /** Callbacks handled by the Event Details screen. */
@@ -236,6 +245,43 @@ private fun EventInfo(
     }
 
     JoinCodeRow(code = joinCodeOf(event))
+
+    MembersEntry(event = event)
+  }
+}
+
+/**
+ * The "Members" card of the [event], which opens one list of its members: the organizer pinned at
+ * the top with an "Organizer" tag, then the volunteers. The list shows no availability.
+ *
+ * @param startOpen whether the list is open at first, which previews use to show it.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MembersEntry(event: Event, startOpen: Boolean = false) {
+  var showMembers by rememberSaveable { mutableStateOf(startOpen) }
+  val members = event.membersOrganizerFirst()
+  val title = stringResource(R.string.event_details_members)
+  val count = pluralStringResource(R.plurals.join_event_members, members.size, members.size)
+
+  PeopleCard(
+      title = title,
+      people = members,
+      subtitle = count,
+      onClick = { showMembers = true },
+      modifier = Modifier.testTag(EventDetailsScreenTestTags.MEMBERS_CARD),
+  )
+
+  if (showMembers) {
+    val organizerTag = UserTag(stringResource(R.string.event_details_organizer))
+    UserListBottomSheet(
+        users = members,
+        onDismissRequest = { showMembers = false },
+        title = title,
+        subtitle = stringResource(R.string.event_details_members_subtitle, count, event.title),
+        tags = { user -> if (event.isOrganizer(user)) listOf(organizerTag) else emptyList() },
+        modifier = Modifier.testTag(EventDetailsScreenTestTags.MEMBERS_SHEET),
+    )
   }
 }
 
@@ -338,6 +384,26 @@ private fun EventDetailsBottomBar(onTasksButtonClicked: () -> Unit) {
 /** An id like the ones the repository generates, so the preview shows a realistic join code. */
 private const val PREVIEW_EVENT_ID = "3f9a1c2e-7b4d-4e8a-9c15-d2a6b0f84e37"
 
+private const val PREVIEW_OWNER_ID = "owner"
+
+/** Twelve members like in Figma, with the organizer listed last to show they are pinned first. */
+private val previewMembers =
+    listOf(
+            "Sara" to "Keller",
+            "Yann" to "Arnold",
+            "Léa" to "Martin",
+            "Noah" to "Dubois",
+            "Emma" to "Favre",
+            "Luca" to "Rossi",
+            "Mia" to "Schmid",
+            "Hugo" to "Bernard",
+            "Jade" to "Morel",
+            "Theo" to "Girard",
+            "Zoé" to "Perret",
+        )
+        .mapIndexed { index, (name, surname) -> User("u$index", name = name, surname = surname) } +
+        User(PREVIEW_OWNER_ID, name = "Olivia", surname = "Roy")
+
 private fun previewEvent(): Event {
   val eventStartDate: ZonedDateTime =
       ZonedDateTime.of(2026, 10, 16, 10, 0, 0, 0, ZoneId.of("Europe/Zurich"))
@@ -346,9 +412,9 @@ private fun previewEvent(): Event {
 
   return Event(
       eventId = PREVIEW_EVENT_ID,
-      ownerId = "user",
+      ownerId = PREVIEW_OWNER_ID,
       title = "Fête de l'Asso 2026",
-      members = listOf(User(uid = "user", name = "Sami K.")),
+      members = previewMembers,
       startDate = eventStartDate,
       endDate = eventEndDate,
       location = "Parc de Vidy, Lausanne",
@@ -363,7 +429,7 @@ private fun previewEvent(): Event {
                     taskId = index.toString(),
                     eventId = PREVIEW_EVENT_ID,
                     title = "Task $index",
-                    ownerId = "user",
+                    ownerId = PREVIEW_OWNER_ID,
                     completed = index % 2 == 0,
                 )
               },
@@ -390,6 +456,17 @@ internal fun ClosedEventPreview() {
         state = EventDetailsUIState(event = previewEvent().copy(closed = true)),
         actions = EventDetailsActions(onBack = {}, onTasksButtonClicked = {}),
     )
+  }
+}
+
+/** The Members card with its list open. */
+@Preview
+@Composable
+internal fun EventDetailsMembersListPreview() {
+  AppTheme {
+    Box(Modifier.fillMaxSize().padding(20.dp)) {
+      MembersEntry(event = previewEvent(), startOpen = true)
+    }
   }
 }
 
