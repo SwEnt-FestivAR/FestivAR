@@ -14,8 +14,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.TaskAlt
@@ -66,6 +68,7 @@ object EventDetailsScreenTestTags {
   const val JOIN_CODE_VALUE = "joinCodeValue"
   const val STATUS_CHIP = "statusChip"
   const val SUBTITLE = "eventSubtitle"
+  const val DESCRIPTION = "eventDescription"
   const val SEE_TASKS_BUTTON = "seeTasksButton"
 }
 
@@ -152,7 +155,11 @@ private fun EventInfo(
   val openTasks = event.tasks.count { !it.completed }
 
   Column(
-      modifier = modifier.fillMaxSize().padding(start = 20.dp, top = 16.dp, end = 20.dp),
+      modifier =
+          modifier
+              .fillMaxSize()
+              .verticalScroll(rememberScrollState())
+              .padding(start = 20.dp, top = 16.dp, end = 20.dp),
       verticalArrangement = Arrangement.spacedBy(12.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
   ) {
@@ -187,6 +194,14 @@ private fun EventInfo(
           color = MaterialTheme.colorScheme.onSurfaceVariant,
           style = MaterialTheme.typography.bodyMedium,
       )
+      if (event.description.isNotBlank()) {
+        Text(
+            text = event.description,
+            modifier = Modifier.padding(top = 8.dp).testTag(EventDetailsScreenTestTags.DESCRIPTION),
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.bodyMedium,
+        )
+      }
     }
 
     Row(
@@ -337,6 +352,9 @@ private fun previewEvent(): Event {
       startDate = eventStartDate,
       endDate = eventEndDate,
       location = "Parc de Vidy, Lausanne",
+      description =
+          "Our yearly association party by the lake. Three days of concerts, food stands and " +
+              "games. Volunteers help with setup, bar shifts and cleanup.",
       tasks =
           List(
               size = 10,
