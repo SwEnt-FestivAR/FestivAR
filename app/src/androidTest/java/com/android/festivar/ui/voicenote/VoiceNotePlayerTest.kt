@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -111,6 +112,15 @@ class VoiceNotePlayerTest {
     val withAction = tag(CARD_WITH_ACTION).getBoundsInRoot()
     val trailing = tag(TRAILING).getBoundsInRoot()
     assertTrue(withAction.right - trailing.right < plain.right - duration.right)
+  }
+
+  /** Breaks if a player with nothing to play still lets the button be pressed. */
+  @Test
+  fun playButtonIsDisabledWhenThePlayerIsNotEnabled() {
+    composeTestRule.setContent {
+      AppTheme { VoiceNotePlayer(Duration.ofSeconds(7), false, {}, enabled = false) }
+    }
+    tag(VoiceNoteTestTags.VOICE_NOTE_PLAY).assertIsNotEnabled()
   }
 
   /** Breaks if tapping the play button does not call onTogglePlay exactly once. */

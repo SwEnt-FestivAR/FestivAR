@@ -18,6 +18,11 @@ class DateTimeFormattersTest {
   }
 
   @Test
+  fun formatWeekday_usesOnlyTheShortWeekday() {
+    assertEquals("Sat", formatWeekday(LocalDate.of(2026, 10, 17)))
+  }
+
+  @Test
   fun formatDay_usesShortWeekdayAndDayWithoutMonth() {
     assertEquals("Fri 16", formatDay(LocalDate.of(2026, 10, 16)))
   }
@@ -35,6 +40,7 @@ class DateTimeFormattersTest {
         formatEventDate(
             Event(
                 eventId = "same-day",
+                ownerId = "owner",
                 title = "Event",
                 startDate = start,
                 endDate = sameDayEnd,
@@ -46,6 +52,7 @@ class DateTimeFormattersTest {
         formatEventDate(
             Event(
                 eventId = "same-month",
+                ownerId = "owner",
                 title = "Event",
                 startDate = start,
                 endDate = sameMonthEnd,
@@ -57,6 +64,7 @@ class DateTimeFormattersTest {
         formatEventDate(
             Event(
                 eventId = "same-year-different-month",
+                ownerId = "owner",
                 title = "Event",
                 startDate = start,
                 endDate = sameYearDifferentMonthEnd,
@@ -68,6 +76,7 @@ class DateTimeFormattersTest {
         formatEventDate(
             Event(
                 eventId = "different-year",
+                ownerId = "owner",
                 title = "Event",
                 startDate = start,
                 endDate = differentYearEnd,

@@ -3,6 +3,8 @@
 package com.android.festivar.ui.event
 
 import com.android.festivar.R
+import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
@@ -41,6 +43,7 @@ class JoinEventViewModelTest {
   private val fete =
       Event(
           eventId = "fete2026",
+          ownerId = sami.uid,
           title = "Fete de l'Asso 2026",
           members = listOf(sami),
           startDate = start,
@@ -49,6 +52,7 @@ class JoinEventViewModelTest {
   private val noel =
       Event(
           eventId = "noel-12",
+          ownerId = "owner",
           title = "Noel",
           startDate = start.plusDays(60),
           endDate = start.plusDays(60).plusHours(3),
@@ -91,7 +95,15 @@ class JoinEventViewModelTest {
       userId: String = ada.uid,
       eventsRepository: EventsRepository = events,
       usersRepository: UsersRepository = users,
-  ) = JoinEventViewModel(userId, eventsRepository, usersRepository)
+  ) =
+      JoinEventViewModel(
+          userId,
+          DataRepositoryLocal(
+              FakeAuthRepository(),
+              eventsRepository = eventsRepository,
+              usersRepository = usersRepository,
+          ),
+      )
 
   private fun memberIds(eventId: String) = runBlocking {
     events.getEvent(eventId)
@@ -268,7 +280,7 @@ class JoinEventViewModelTest {
   }
 
   @Test
-  fun aFailingUserWriteLeavesTheEventSideWrittenAndReportsIt() {
+  fun aFailingUserWriteUndoesTheEventSideAndReportsIt() {
     val failing =
         object : UsersRepository by users {
           override suspend fun editUser(uId: String, newValue: User) =
@@ -282,7 +294,7 @@ class JoinEventViewModelTest {
     assertEquals(R.string.join_event_join_failed, viewModel.uiState.value.errorRes)
     assertFalse(viewModel.uiState.value.isJoining)
     assertNull(viewModel.uiState.value.joinedEventId)
-    assertEquals(listOf(sami.uid, ada.uid), memberIds("fete2026"))
+    assertEquals(listOf(sami.uid), memberIds("fete2026"))
   }
 
   @Test
@@ -331,6 +343,42 @@ class JoinEventViewModelTest {
     assertNull(viewModel.uiState.value.errorRes)
     assertEquals(listOf(sami.uid, ada.uid), memberIds("fete2026"))
     assertEquals(listOf("fete2026"), runBlocking { halfUsers.getUser(ada.uid) }.joinedEvents)
+  }
+
+  @Test
+  fun aMemberMissingTheEventOnTheUserSideOpensItAndOnlyTheUserSideIsRepaired() {
+    val withAda =
+        CountingEvents(EventsRepositoryLocal(listOf(fete.copy(members = listOf(sami, ada)))))
+    val viewModel = viewModel(userId = ada.uid, eventsRepository = withAda)
+    viewModel.setCode("FETE20")
+    assertTrue(viewModel.uiState.value.matches.single().isMember)
+
+    viewModel.join("fete2026")
+
+    assertEquals("fete2026", viewModel.uiState.value.joinedEventId)
+    assertNull(viewModel.uiState.value.errorRes)
+    assertEquals(listOf("fete2026"), joinedEvents(ada.uid))
+    assertEquals(0, withAda.writes)
+    assertEquals(1, users.writes)
+  }
+
+  @Test
+  fun aStaleUserSideWhoseJoinThenFailsIsLeftConsistentWithTheEvent() {
+    val halfUsers = UsersRepositoryLocal(listOf(ada.addJoinedEvent("fete2026"), sami))
+    val failing =
+        object : EventsRepository by events {
+          override suspend fun editEvent(eventId: String, newValue: Event) =
+              throw IllegalStateException("denied")
+        }
+    val viewModel = viewModel(eventsRepository = failing, usersRepository = halfUsers)
+    viewModel.setCode("FETE20")
+
+    viewModel.join("fete2026")
+
+    assertEquals(R.string.join_event_join_failed, viewModel.uiState.value.errorRes)
+    assertNull(viewModel.uiState.value.joinedEventId)
+    assertEquals(listOf(sami.uid), memberIds("fete2026"))
+    assertEquals(emptyList<String>(), runBlocking { halfUsers.getUser(ada.uid) }.joinedEvents)
   }
 
   @Test
@@ -579,7 +627,13 @@ class JoinEventViewModelTest {
   @Test
   fun twoEventsSharingACodeAreBothListedAndJoiningOneLeavesTheOtherAlone() {
     // fete2026 and fete2026-bis both give FETE20.
-    val bis = fete.copy(eventId = "fete2026-bis", title = "Fete bis", members = emptyList())
+    val bis =
+        fete.copy(
+            eventId = "fete2026-bis",
+            ownerId = "other-owner",
+            title = "Fete bis",
+            members = listOf(User("other-owner")),
+        )
     val colliding = EventsRepositoryLocal(listOf(fete, bis, noel))
     val viewModel = viewModel(eventsRepository = colliding)
 
@@ -592,7 +646,7 @@ class JoinEventViewModelTest {
 
     assertEquals("fete2026-bis", viewModel.uiState.value.joinedEventId)
     assertEquals(
-        listOf(ada.uid),
+        listOf("other-owner", ada.uid),
         runBlocking { colliding.getEvent("fete2026-bis") }.members.map { it.uid },
     )
     assertEquals(

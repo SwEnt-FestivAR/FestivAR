@@ -22,6 +22,8 @@ import com.android.festivar.ui.task.details.TaskDetailsScreen
 import com.android.festivar.ui.task.details.TaskDetailsViewModel
 import com.android.festivar.ui.task.edit.EditTaskScreen
 import com.android.festivar.ui.task.edit.EditTaskViewModel
+import com.android.festivar.ui.task.mytasks.MyTasksScreen
+import com.android.festivar.ui.task.mytasks.MyTasksViewModel
 import com.android.festivar.ui.task.overview.TaskOverviewScreen
 import com.android.festivar.ui.task.overview.TaskOverviewViewModel
 
@@ -104,6 +106,7 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, dataRepository: 
             },
         onBack = navigator.onBack,
         onEdit = navigator.onEdit,
+        onTaskDeleted = navigator.onTaskDeleted,
     )
   }
   // Reached through AppScreens.editTask(taskId), from the details of a task its owner opened.
@@ -129,6 +132,25 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, dataRepository: 
         viewModel = viewModel { EditTaskViewModel(taskId, currentUserId) },
         onBack = leave,
         onSaved = leave,
+    )
+  }
+
+  // Every task the signed-in user has taken, across their events. Not reachable from the UI yet:
+  // the bottom bar will open it.
+  composable(AppScreens.MyTasks.name) {
+    val navigator = MyTasksNavigator(navController)
+    val firebaseUser = dataRepository.authRepository.currentUser
+    if (firebaseUser == null) {
+      // Nobody is signed in, so there is nobody whose tasks to show
+      LaunchedEffect(Unit) { navigator.onSignedOut() }
+      return@composable
+    }
+    MyTasksScreen(
+        viewModel =
+            viewModel(key = firebaseUser.uid) {
+              MyTasksViewModel(firebaseUser.uid, dataRepository)
+            },
+        onOpenTask = navigator.onOpenTask,
     )
   }
 }
