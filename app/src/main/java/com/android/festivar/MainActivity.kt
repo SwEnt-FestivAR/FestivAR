@@ -1,3 +1,4 @@
+// Co-authored-by: Copilot App
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Gemini <noreply@google.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
@@ -20,6 +21,9 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.credentials.CredentialManager
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
+import com.android.festivar.model.audio.AndroidVoicePlayer
+import com.android.festivar.model.audio.AndroidVoiceRecorder
+import com.android.festivar.model.audio.AudioStorageFirebase
 import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.datarepository.DataRepositoryFirebase
 import com.android.festivar.navigation.AppScreens
@@ -28,6 +32,7 @@ import com.android.festivar.navigation.authentication.authGraph
 import com.android.festivar.navigation.event.eventGraph
 import com.android.festivar.navigation.profile.profileGraph
 import com.android.festivar.navigation.task.taskGraph
+import com.android.festivar.ui.task.details.VoiceNoteServices
 import com.android.festivar.ui.theme.AppTheme
 
 class MainActivity : ComponentActivity() {
@@ -49,6 +54,9 @@ class MainActivity : ComponentActivity() {
 /**
  * `FestivAR` is the main composable function that sets up the whole app UI. It initializes the
  * navigation controller and defines the navigation graph.
+ *
+ * @param voiceNoteServices creates what records, keeps and plays the voice note of a task: the
+ *   microphone and the speaker of the device, and Firebase Storage.
  */
 @Composable
 fun FestivAR(
@@ -56,6 +64,13 @@ fun FestivAR(
     credentialManager: CredentialManager = CredentialManager.create(context),
     dataRepository: DataRepository = remember { DataRepositoryFirebase() },
     startDestinationOverride: String? = null,
+    voiceNoteServices: () -> VoiceNoteServices? = {
+      VoiceNoteServices(
+          recorder = AndroidVoiceRecorder(context),
+          storage = AudioStorageFirebase(),
+          player = AndroidVoicePlayer(context),
+      )
+    },
 ) {
   val navController = rememberNavController()
 
@@ -70,7 +85,7 @@ fun FestivAR(
   ) {
     authGraph(navController, credentialManager, dataRepository)
     eventGraph(navController, dataRepository)
-    taskGraph(navController, dataRepository)
+    taskGraph(navController, dataRepository, voiceNoteServices)
     announcementGraph(navController, dataRepository)
     profileGraph(navController, dataRepository)
   }

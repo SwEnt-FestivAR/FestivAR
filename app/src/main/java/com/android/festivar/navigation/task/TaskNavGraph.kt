@@ -1,3 +1,4 @@
+// Co-authored-by: Copilot App
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Gemini <noreply@google.com>
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
@@ -20,6 +21,7 @@ import com.android.festivar.ui.task.create.CreateTaskScreen
 import com.android.festivar.ui.task.create.CreateTaskViewModel
 import com.android.festivar.ui.task.details.TaskDetailsScreen
 import com.android.festivar.ui.task.details.TaskDetailsViewModel
+import com.android.festivar.ui.task.details.VoiceNoteServices
 import com.android.festivar.ui.task.edit.EditTaskScreen
 import com.android.festivar.ui.task.edit.EditTaskViewModel
 import com.android.festivar.ui.task.mytasks.MyTasksScreen
@@ -27,8 +29,18 @@ import com.android.festivar.ui.task.mytasks.MyTasksViewModel
 import com.android.festivar.ui.task.overview.TaskOverviewScreen
 import com.android.festivar.ui.task.overview.TaskOverviewViewModel
 
-/** The destinations of the task feature. */
-fun NavGraphBuilder.taskGraph(navController: NavHostController, dataRepository: DataRepository) {
+/**
+ * The destinations of the task feature.
+ *
+ * @param voiceNoteServices creates what records, keeps and plays the voice note of a task, once for
+ *   each Task details screen (which releases them when it is left). Without them the voice note is
+ *   read-only.
+ */
+fun NavGraphBuilder.taskGraph(
+    navController: NavHostController,
+    dataRepository: DataRepository,
+    voiceNoteServices: () -> VoiceNoteServices? = { null },
+) {
   // Reached through AppScreens.taskOverview(eventId)
   composable(
       route = "${AppScreens.TaskOverview.name}/{eventId}",
@@ -102,7 +114,7 @@ fun NavGraphBuilder.taskGraph(navController: NavHostController, dataRepository: 
     TaskDetailsScreen(
         viewModel =
             viewModel(key = "$taskId:${currentUser.uid}") {
-              TaskDetailsViewModel(taskId, currentUser, dataRepository)
+              TaskDetailsViewModel(taskId, currentUser, dataRepository, voiceNoteServices())
             },
         onBack = navigator.onBack,
         onEdit = navigator.onEdit,

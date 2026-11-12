@@ -1,3 +1,4 @@
+// Co-authored-by: Copilot App
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.audio
 
@@ -103,6 +104,8 @@ class AndroidVoiceRecorder(context: Context) : VoiceRecorder {
 
   override fun cancel() {
     current?.let { drop(it) }
+    // A recording that failed by itself leaves the state at Failed until the next start.
+    if (_state.value is RecorderState.Failed) _state.value = RecorderState.Idle
   }
 
   private fun newRecorder(): MediaRecorder =
