@@ -14,12 +14,14 @@ import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onChild
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -29,6 +31,7 @@ import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.event.details.EventDetailsScreen
@@ -156,6 +159,52 @@ class EventDetailsScreenTest {
         .assertTextEquals("Fri 16 to Sun 18 Oct")
   }
 
+  /** Breaks if the description is not shown as plain text under the subtitle. */
+  @Test
+  fun descriptionShowsUnderSubtitle() {
+    setContent(eventSameMonth.copy(description = "Bring a jacket."))
+
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.DESCRIPTION)
+        .assertTextEquals("Bring a jacket.")
+    val subtitleBottom =
+        composeTestRule
+            .onNodeWithTag(EventDetailsScreenTestTags.SUBTITLE)
+            .getUnclippedBoundsInRoot()
+            .bottom
+    val descriptionTop =
+        composeTestRule
+            .onNodeWithTag(EventDetailsScreenTestTags.DESCRIPTION)
+            .getUnclippedBoundsInRoot()
+            .top
+    val statTop =
+        composeTestRule
+            .onNodeWithTag(EventDetailsScreenTestTags.OPEN_TASKS_STAT)
+            .getUnclippedBoundsInRoot()
+            .top
+    assertTrue(descriptionTop >= subtitleBottom)
+    assertTrue(descriptionTop < statTop)
+  }
+
+  /** Breaks if an event without a description still shows an empty description block. */
+  @Test
+  fun descriptionIsAbsentWhenBlank() {
+    setContent(eventSameMonth.copy(description = "  "))
+
+    composeTestRule.onAllNodesWithTag(EventDetailsScreenTestTags.DESCRIPTION).assertCountEquals(0)
+  }
+
+  /** Breaks if a long description is cut off instead of reachable by scrolling. */
+  @Test
+  fun longDescriptionIsFullyReadableByScrolling() {
+    val text = (1..80).joinToString(" ") { "Line$it of the long description." }
+    setContent(eventSameMonth.copy(description = text))
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DESCRIPTION).assertTextEquals(text)
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.JOIN_CODE_ROW).performScrollTo()
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.JOIN_CODE_ROW).assertIsDisplayed()
+  }
+
   /** Breaks if an open event does not show the Open chip. */
   @Test
   fun statusChipShowsOpenForOpenEvent() {
@@ -229,12 +278,14 @@ class EventDetailsScreenTest {
                   eventId = "missing",
               ),
           onTasksButtonClicked = {},
+          onAnnouncementsClicked = {},
           onBack = {},
       )
     }
     composeTestRule.waitForIdle()
 
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.FETCH_ERROR).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.ANNOUNCEMENTS_ROW).assertDoesNotExist()
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.BACK_BUTTON).assertIsDisplayed()
     assertTrue(
         composeTestRule
@@ -261,6 +312,52 @@ class EventDetailsScreenTest {
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.SEE_TASKS_BUTTON).performClick()
 
     verify(exactly = 1) { onTasksButtonClicked() }
+  }
+
+  /**
+   * Red if the announcements row shows another announcement than the most recently updated one,
+   * e.g. the first or the last of the list.
+   */
+  @Test
+  fun announcementsRowShowsTheTitleOfTheLatestAnnouncement() {
+    fun announcement(id: String, title: String, updatedAt: ZonedDateTime) =
+        Announcement(announcementId = id, title = title, authorId = "user", updatedAt = updatedAt)
+    val first = announcement("a1", "Gates and opening hours", eventStartDate)
+    val latest = announcement("a2", "Stage B is closed", eventStartDate.plusDays(1))
+    val last = announcement("a3", "Headliner moved", eventStartDate.plusHours(5))
+
+    setContent(eventSameMonth.copy(announcements = listOf(first, latest, last)))
+
+    composeTestRule
+        .onNode(
+            hasTestTag(EventDetailsScreenTestTags.ANNOUNCEMENTS_ROW)
+                .and(hasText("Announcements"))
+                .and(hasText(latest.title))
+        )
+        .assertIsDisplayed()
+    composeTestRule.onNodeWithText(first.title).assertDoesNotExist()
+    composeTestRule.onNodeWithText(last.title).assertDoesNotExist()
+  }
+
+  /**
+   * Red if the announcements row of an event without announcements does not say so, or if clicking
+   * it does not invoke the supplied callback exactly once.
+   */
+  @Test
+  fun announcementsRowWithoutAnnouncementSaysSoAndCallsOnAnnouncementsClicked() {
+    val onAnnouncementsClicked = mockk<() -> Unit>(relaxed = true)
+
+    setContent(eventSameMonth, onAnnouncementsClicked = onAnnouncementsClicked)
+
+    composeTestRule
+        .onNode(
+            hasTestTag(EventDetailsScreenTestTags.ANNOUNCEMENTS_ROW)
+                .and(hasText("No announcements yet"))
+        )
+        .assertIsDisplayed()
+        .performClick()
+
+    verify(exactly = 1) { onAnnouncementsClicked() }
   }
 
   /** Red if clicking Back does not invoke the supplied callback exactly once. */
@@ -356,6 +453,7 @@ class EventDetailsScreenTest {
   private fun setContent(
       event: Event,
       onTasksButtonClicked: () -> Unit = {},
+      onAnnouncementsClicked: () -> Unit = {},
       onBack: () -> Unit = {},
   ) {
     composeTestRule.setContent {
@@ -366,6 +464,7 @@ class EventDetailsScreenTest {
                   event.eventId,
               ),
           onTasksButtonClicked = onTasksButtonClicked,
+          onAnnouncementsClicked = onAnnouncementsClicked,
           onBack = onBack,
       )
     }

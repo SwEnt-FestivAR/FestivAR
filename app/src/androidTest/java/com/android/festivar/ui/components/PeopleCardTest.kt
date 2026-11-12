@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Fable 5.2 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.components
 
 import androidx.compose.ui.Modifier
@@ -68,6 +69,24 @@ class PeopleCardTest {
     composeTestRule.onNodeWithText("NF").assertDoesNotExist()
     composeTestRule.onNodeWithTag(PeopleCardTestTags.MORE, true).assertTextEquals("+2")
     count().assertTextEquals("4 people")
+  }
+
+  /** Breaks if a given subtitle does not replace the number of people under the title. */
+  @Test
+  fun aGivenSubtitleReplacesTheNumberOfPeople() {
+    composeTestRule.setContent {
+      AppTheme {
+        PeopleCard(
+            "Members",
+            listOf(sara, liam),
+            {},
+            Modifier.testTag(cardTag),
+            subtitle = "2 members",
+        )
+      }
+    }
+
+    count().assertTextEquals("2 members")
   }
 
   // Breaks if a tap on the card no longer reaches the caller.

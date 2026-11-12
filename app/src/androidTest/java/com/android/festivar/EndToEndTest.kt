@@ -28,6 +28,8 @@ import com.android.festivar.model.user.UsersRepositoryFirebase
 import com.android.festivar.model.user.UsersRepositoryProvider
 import com.android.festivar.ui.authentication.login.LoginScreenTestTags
 import com.android.festivar.ui.authentication.signup.SignUpScreenTestTags
+import com.android.festivar.ui.components.BottomNavigationBarTestTags
+import com.android.festivar.ui.components.NavigationTab
 import com.android.festivar.ui.event.create.CreateEventScreenTestTags
 import com.android.festivar.ui.event.details.EventDetailsScreenTestTags
 import com.android.festivar.ui.event.join.JoinEventScreenTestTags
@@ -232,11 +234,13 @@ class EndToEndTest {
   }
 
   /**
-   * Opens the profile of [email] from the overview's avatar and signs out, back to the login
-   * screen.
+   * Opens the profile of [email] from the Profile tab of the bottom bar and signs out, back to the
+   * login screen.
    */
   private fun signOutFromTheProfile(email: String) {
-    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.USER_AVATAR).performClick()
+    composeTestRule
+        .onNodeWithTag(BottomNavigationBarTestTags.getTestTagForTab(NavigationTab.PROFILE))
+        .performClick()
     waitUntilTagExists(ProfileScreenTestTags.TITLE)
     // The sign out button only shows once the profile is loaded
     waitUntilTagExists(ProfileScreenTestTags.SIGN_OUT_BUTTON)

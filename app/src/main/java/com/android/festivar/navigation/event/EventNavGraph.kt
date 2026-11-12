@@ -49,7 +49,6 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, dataRepository:
           onSelectEvent = navigator.onSelectEvent,
           onJoinEvent = navigator.onJoinEvent,
           onAddEvent = navigator.onAddEvent,
-          onSelectAvatar = navigator.onSelectAvatar,
       )
     }
   }
@@ -84,6 +83,7 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, dataRepository:
         viewModel { EventDetailsViewModel(dataRepository, eventId) },
         onBack = navigator.onBack,
         onTasksButtonClicked = { navigator.onTasksButtonClicked(eventId) },
+        onAnnouncementsClicked = { navigator.onAnnouncementsClicked(eventId) },
     )
   }
   composable(
