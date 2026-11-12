@@ -275,6 +275,7 @@ class EditEventScreenTest {
     val event =
         Event(
             eventId = "test-event",
+            ownerId = "owner",
             title = "Festival",
             description = "Original notes",
             startDate = ZonedDateTime.of(startDate, LocalTime.of(16, 0), zone),

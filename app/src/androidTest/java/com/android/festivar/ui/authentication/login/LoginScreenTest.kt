@@ -18,6 +18,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.ui.components.CREDENTIAL_MAX_LENGTH
 import com.google.firebase.auth.FirebaseUser
 import io.mockk.mockk
@@ -32,7 +33,7 @@ import org.junit.runner.RunWith
 class LoginScreenTest {
   @get:Rule val composeTestRule = createComposeRule()
 
-  private val viewModel = LoginViewModel(FakeAuthRepository())
+  private val viewModel = LoginViewModel(DataRepositoryLocal(FakeAuthRepository()))
 
   @Test
   fun displaysLoginFieldsAndMasksPassword() {
@@ -91,7 +92,7 @@ class LoginScreenTest {
 
   @Test
   fun passwordDoneImeActionSignsIn() {
-    val loginViewModel = LoginViewModel(FakeAuthRepository())
+    val loginViewModel = LoginViewModel(DataRepositoryLocal(FakeAuthRepository()))
     composeTestRule.setContent {
       LoginScreen(
           viewModel = loginViewModel,
@@ -113,7 +114,7 @@ class LoginScreenTest {
   @Test
   fun createAccountFooterUsesButtonAndNavigatesOnClick() {
     var signUpClicked = false
-    val loginViewModel = LoginViewModel(FakeAuthRepository())
+    val loginViewModel = LoginViewModel(DataRepositoryLocal(FakeAuthRepository()))
     composeTestRule.setContent {
       LoginScreen(
           viewModel = loginViewModel,
@@ -133,7 +134,7 @@ class LoginScreenTest {
   @Test
   fun forgotPasswordButtonInvokesCallback() {
     var forgotPasswordClicked = false
-    val loginViewModel = LoginViewModel(FakeAuthRepository())
+    val loginViewModel = LoginViewModel(DataRepositoryLocal(FakeAuthRepository()))
     composeTestRule.setContent {
       LoginScreen(
           viewModel = loginViewModel,
@@ -150,7 +151,7 @@ class LoginScreenTest {
   @Test
   fun googleSignInButtonIsDisabledWhileAnotherSignInIsLoading() {
     val authRepository = FakeAuthRepository(signInDeferred = CompletableDeferred())
-    val loadingViewModel = LoginViewModel(authRepository)
+    val loadingViewModel = LoginViewModel(DataRepositoryLocal(authRepository))
     composeTestRule.setContent {
       LoginScreen(
           viewModel = loadingViewModel,
@@ -174,7 +175,7 @@ class LoginScreenTest {
   fun anonymousSignInButtonSignsIn() {
     val user = mockk<FirebaseUser>()
     val authRepository = FakeAuthRepository(signInAnonymousResult = Result.success(user))
-    val loginViewModel = LoginViewModel(authRepository)
+    val loginViewModel = LoginViewModel(DataRepositoryLocal(authRepository))
     var signedIn = false
 
     composeTestRule.setContent {

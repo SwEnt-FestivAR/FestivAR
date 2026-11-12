@@ -479,7 +479,13 @@ class MyTasksViewModelTest {
       )
 
   private fun event(id: String, title: String) =
-      Event(eventId = id, title = title, startDate = at(0, 0), endDate = at(0, 0).plusDays(3))
+      Event(
+          eventId = id,
+          ownerId = "owner",
+          title = title,
+          startDate = at(0, 0),
+          endDate = at(0, 0).plusDays(3),
+      )
 
   private companion object {
     const val FETE = "fete"

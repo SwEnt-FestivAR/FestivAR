@@ -64,6 +64,7 @@ class CreateAnnouncementScreenTest {
             listOf(
                 Event(
                     eventId = EVENT_ID,
+                    ownerId = "owner",
                     title = "Balelec",
                     startDate = ZonedDateTime.of(2026, 11, 6, 16, 0, 0, 0, zone),
                     endDate = ZonedDateTime.of(2026, 11, 7, 4, 0, 0, 0, zone),

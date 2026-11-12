@@ -6,4 +6,6 @@
     <string name="voice_note_send_failed">Note vocale non envoyée. Vérifiez votre connexion.</string>
     <string name="voice_note_playback_failed">Impossible de lire cette note vocale. Vérifiez votre connexion.</string>
     <string name="voice_note_mic_denied">Le microphone de FestivAR est désactivé. Activez-le dans les paramètres pour enregistrer une note.</string>
+    <string name="voice_note_sending">Envoi de la note vocale · %s</string>
+    <string name="voice_note_recording_failed">Enregistrement impossible. Maintenez le bouton pour réessayer.</string>
 </resources>
