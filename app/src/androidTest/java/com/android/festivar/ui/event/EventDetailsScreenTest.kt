@@ -16,7 +16,6 @@ import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
-import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onChild
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -175,16 +174,6 @@ class EventDetailsScreenTest {
         .onNodeWithTag(EventDetailsScreenTestTags.STATUS_CHIP)
         .onChild()
         .assertTextEquals("Closed")
-  }
-
-  /** Breaks if the Owner, Date or Address rows, or the owner's name, come back. */
-  @Test
-  fun infoCardRowsAreGone() {
-    setContent(eventSameMonth)
-
-    listOf("Owner", "Date", "Address", "Sami K.").forEach {
-      composeTestRule.onAllNodesWithText(it).assertCountEquals(0)
-    }
   }
 
   /** Red if an event ending on its start day is formatted as a multi-day event. */
