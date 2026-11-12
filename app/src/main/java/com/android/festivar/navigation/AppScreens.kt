@@ -18,7 +18,6 @@ enum class AppScreens {
   EventDetails,
   EditEvent,
   CreateEvent,
-  EditEvent,
   CreateTask,
   CreateAnnouncement,
   AnnouncementDetails,
