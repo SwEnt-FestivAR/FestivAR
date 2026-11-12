@@ -119,7 +119,16 @@ class VoiceNoteRecordingTest {
     subject.start()
 
     assertTrue(file.exists())
-    assertTrue(subject.stage.value is RecordingStage.Failed)
+    assertTrue(subject.stage.value is RecordingStage.SendFailed)
+
+    recorder.startFailure = null
+    storage.uploadFailure = null
+    subject.retrySend()
+    testScheduler.advanceUntilIdle()
+
+    assertEquals(1, storage.uploads.size)
+    assertEquals(RecordingStage.Idle, subject.stage.value)
+    assertFalse(file.exists())
   }
 
   /** Breaks if starting replaces a recording that is waiting for confirmation. */

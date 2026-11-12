@@ -59,15 +59,16 @@ internal class VoiceNoteRecording(
     val busy = _stage.value is RecordingStage.Waiting || _stage.value is RecordingStage.Sending
     val recording = recorder.state.value is RecorderState.Recording
     if (busy || recording || !host.state.value.canAddVoiceNote) return
+    val previousStage = _stage.value
     try {
       recorder.start()
       drop() // a new recording replaces the one that could not be sent
     } catch (e: VoiceRecorderException) {
       Log.e(LOG_TAG, "Error starting a recording", e)
-      _stage.value = RecordingStage.Failed
+      if (previousStage !is RecordingStage.SendFailed) _stage.value = RecordingStage.Failed
     } catch (e: IllegalStateException) {
       Log.e(LOG_TAG, "Error starting a recording", e)
-      _stage.value = RecordingStage.Failed
+      if (previousStage !is RecordingStage.SendFailed) _stage.value = RecordingStage.Failed
     }
   }
 
