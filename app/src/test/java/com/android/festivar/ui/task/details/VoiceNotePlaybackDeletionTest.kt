@@ -110,7 +110,6 @@ class VoiceNotePlaybackDeletionTest {
         VoiceNoteDeletion(
             scope,
             nonOwnerHost,
-            ownerId,
             services,
         ) {}
 
@@ -126,7 +125,7 @@ class VoiceNotePlaybackDeletionTest {
   fun deletion_savesTheTaskStopsPlaybackAndDeletesAudio() {
     val calls = mutableListOf<String>()
     storage.onDelete = { calls += "delete" }
-    val subject = VoiceNoteDeletion(scope, host, ownerId, services) { url -> calls += "stop:$url" }
+    val subject = VoiceNoteDeletion(scope, host, services) { url -> calls += "stop:$url" }
 
     subject.delete()
 
@@ -140,7 +139,7 @@ class VoiceNotePlaybackDeletionTest {
   @Test
   fun deletion_survivesAStorageFailureAfterSavingTheTask() {
     storage.deleteFailure = IOException("offline")
-    val subject = VoiceNoteDeletion(scope, host, ownerId, services) {}
+    val subject = VoiceNoteDeletion(scope, host, services) {}
 
     subject.delete()
 
@@ -158,7 +157,7 @@ class VoiceNotePlaybackDeletionTest {
         CoroutineScope(
             Dispatchers.Unconfined + deletionJob + CoroutineExceptionHandler { _, _ -> },
         )
-    val subject = VoiceNoteDeletion(deletionScope, host, ownerId, services) {}
+    val subject = VoiceNoteDeletion(deletionScope, host, services) {}
 
     subject.delete()
     deletionJob.cancel()
@@ -172,7 +171,7 @@ class VoiceNotePlaybackDeletionTest {
   @Test
   fun deletion_cancellationFinishesWithoutShowingADeletionError() {
     storage.deleteFailure = CancellationException("cancelled")
-    val subject = VoiceNoteDeletion(scope, host, ownerId, services) {}
+    val subject = VoiceNoteDeletion(scope, host, services) {}
 
     subject.delete()
 
@@ -185,7 +184,7 @@ class VoiceNotePlaybackDeletionTest {
   fun deletion_keepsTheNoteWhenSavingFails() {
     host.saveFailure = IOException("offline")
     var stopped = false
-    val subject = VoiceNoteDeletion(scope, host, ownerId, services) { stopped = true }
+    val subject = VoiceNoteDeletion(scope, host, services) { stopped = true }
 
     subject.delete()
 

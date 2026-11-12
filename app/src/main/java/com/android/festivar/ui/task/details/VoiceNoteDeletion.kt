@@ -18,14 +18,12 @@ private const val LOG_TAG = "VoiceNoteDeletion"
  *
  * @param scope where the deletion runs.
  * @param host the task shown, and the way to save it.
- * @param currentUserId the user deleting, who must own the task.
  * @param services what keeps the audio.
  * @param stopPlaying called with the URL of the note once it is removed, to stop playing it.
  */
 internal class VoiceNoteDeletion(
     private val scope: CoroutineScope,
     private val host: VoiceNoteHost,
-    private val currentUserId: String,
     private val services: VoiceNoteServices,
     private val stopPlaying: (url: String) -> Unit,
 ) {
@@ -35,7 +33,7 @@ internal class VoiceNoteDeletion(
     scope.launch {
       try {
         val note = checkNotNull(task.voiceNote) { "canDeleteVoiceNote requires a note." }
-        val updated = task.removeVoiceNote(currentUserId)
+        val updated = task.removeVoiceNote(host.state.value.currentUserId)
         host.saveTask(updated)
         stopPlaying(note.audioUrl)
         host.finishSaving(updated)

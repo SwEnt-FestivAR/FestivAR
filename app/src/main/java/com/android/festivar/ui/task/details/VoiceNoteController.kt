@@ -40,9 +40,7 @@ internal constructor(
     VoiceNotePlayback(it.player) { host.state.value.task?.voiceNote?.audioUrl }
   }
   private val deletion = services?.let {
-    VoiceNoteDeletion(scope, host, host.state.value.currentUserId, it) { url ->
-      playback?.stop(url)
-    }
+    VoiceNoteDeletion(scope, host, it) { url -> playback?.stop(url) }
   }
 
   /** The parts of the section that come from neither the task nor what the services do. */
