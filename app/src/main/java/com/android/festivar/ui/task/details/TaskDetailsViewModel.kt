@@ -89,7 +89,6 @@ data class TaskDetailsUiState(
   /** Whether the actions bar is shown at all: only open and own tasks have one. */
   val hasActions: Boolean
     get() = status == TaskStatus.OPEN || status == TaskStatus.YOURS
-
 }
 
 /**
@@ -299,4 +298,3 @@ class TaskDetailsViewModel(
         this@TaskDetailsViewModel.finishSaving(updated, failed)
   }
 }
-
