@@ -58,6 +58,7 @@ import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.joinCodeOf
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
+import com.android.festivar.ui.components.EditDeleteMenu
 import com.android.festivar.ui.components.Hairline
 import com.android.festivar.ui.components.PeopleRow
 import com.android.festivar.ui.components.PillStyle
@@ -85,6 +86,8 @@ object EventDetailsScreenTestTags {
   const val ANNOUNCEMENTS_ROW = "announcementsRow"
   const val MEMBERS_CARD = "membersCard"
   const val MEMBERS_SHEET = "membersSheet"
+  const val MORE_ACTIONS_BUTTON = "eventMoreActionsButton"
+  const val EDIT_MENU_ITEM = "eventEditMenuItem"
 }
 
 /** Callbacks handled by the Event Details screen. */
@@ -92,6 +95,7 @@ class EventDetailsActions(
     val onBack: () -> Unit = {},
     val onTasksButtonClicked: () -> Unit = {},
     val onAnnouncementsClicked: () -> Unit = {},
+    val onEditClicked: () -> Unit = {},
 )
 
 /**
@@ -104,6 +108,7 @@ class EventDetailsActions(
  * @param onBack called when the back button is clicked.
  * @param onTasksButtonClicked called when the "See tasks" button is clicked.
  * @param onAnnouncementsClicked called when the "Announcements" row is clicked.
+ * @param onEditClicked called when the organizer picks "Edit event" in the menu.
  * @param modifier modifier applied to the event content.
  */
 @Composable
@@ -112,6 +117,7 @@ fun EventDetailsScreen(
     onBack: () -> Unit,
     onTasksButtonClicked: () -> Unit,
     onAnnouncementsClicked: () -> Unit,
+    onEditClicked: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
   val uiState by viewModel.uiState.collectAsState()
@@ -124,6 +130,7 @@ fun EventDetailsScreen(
               onBack = onBack,
               onTasksButtonClicked = onTasksButtonClicked,
               onAnnouncementsClicked = onAnnouncementsClicked,
+              onEditClicked = onEditClicked,
           ),
       modifier = modifier,
   )
@@ -139,7 +146,13 @@ private fun EventDetailsContent(
   val event = state.event
   Scaffold(
       containerColor = MaterialTheme.colorScheme.background,
-      topBar = { EventDetailsTopBar(onBack = actions.onBack) },
+      topBar = {
+        EventDetailsTopBar(
+            onBack = actions.onBack,
+            showMenu = state.isOwner,
+            onEditClicked = actions.onEditClicked,
+        )
+      },
       bottomBar = {
         if (event != null) {
           EventDetailsBottomBar(onTasksButtonClicked = actions.onTasksButtonClicked)
@@ -398,10 +411,17 @@ private fun JoinCodeRow(code: String) {
   }
 }
 
-/** Top app bar containing the navigation button for leaving the details screen. */
+/**
+ * Top app bar containing the navigation button for leaving the details screen and, when [showMenu]
+ * is true, the menu to edit the event.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun EventDetailsTopBar(onBack: () -> Unit) {
+private fun EventDetailsTopBar(
+    onBack: () -> Unit,
+    showMenu: Boolean,
+    onEditClicked: () -> Unit,
+) {
   TopAppBar(
       title = {},
       navigationIcon = {
@@ -417,6 +437,17 @@ private fun EventDetailsTopBar(onBack: () -> Unit) {
               imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
               contentDescription = stringResource(R.string.event_details_navigate_back),
               tint = MaterialTheme.colorScheme.onSurface,
+          )
+        }
+      },
+      actions = {
+        if (showMenu) {
+          EditDeleteMenu(
+              moreActionsDescription = stringResource(R.string.event_details_more_actions),
+              moreActionsTag = EventDetailsScreenTestTags.MORE_ACTIONS_BUTTON,
+              editLabel = stringResource(R.string.event_details_edit_event),
+              editTag = EventDetailsScreenTestTags.EDIT_MENU_ITEM,
+              onEdit = onEditClicked,
           )
         }
       },
@@ -520,6 +551,17 @@ internal fun EventDetailsScreenPreview() {
     EventDetailsContent(
         state = EventDetailsUIState(event = previewEvent()),
         actions = EventDetailsActions(onBack = {}, onTasksButtonClicked = {}),
+    )
+  }
+}
+
+@Preview
+@Composable
+internal fun OwnerEventDetailsPreview() {
+  AppTheme {
+    EventDetailsContent(
+        state = EventDetailsUIState(event = previewEvent(), isOwner = true),
+        actions = EventDetailsActions(),
     )
   }
 }

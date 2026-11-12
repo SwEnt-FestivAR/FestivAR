@@ -89,6 +89,12 @@ class FakeAudioRepository : AudioRepository {
   /** While not null, [upload] waits for it to complete. */
   var uploadGate: CompletableDeferred<Unit>? = null
 
+  /** While not null, [delete] waits for it to complete. */
+  var deleteGate: CompletableDeferred<Unit>? = null
+
+  /** Called when [delete] starts removing an audio file. */
+  var onDelete: ((String) -> Unit)? = null
+
   /** The task ids of the uploads, in order. */
   val uploads = mutableListOf<String>()
 
@@ -105,6 +111,8 @@ class FakeAudioRepository : AudioRepository {
   }
 
   override suspend fun delete(audioUrl: String) {
+    deleteGate?.await()
+    onDelete?.invoke(audioUrl)
     deletions += audioUrl
     deleteFailure?.let { throw it }
   }
