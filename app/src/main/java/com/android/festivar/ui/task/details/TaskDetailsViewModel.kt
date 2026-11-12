@@ -127,7 +127,6 @@ class TaskDetailsViewModel(
       VoiceNoteController(
           scope = viewModelScope,
           host = TaskHost(),
-          currentUserId = currentUser.uid,
           services = voiceNoteServices,
       )
 

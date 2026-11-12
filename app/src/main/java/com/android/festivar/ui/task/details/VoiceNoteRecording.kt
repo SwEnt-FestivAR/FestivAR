@@ -8,10 +8,12 @@ import com.android.festivar.model.audio.VoiceRecorderException
 import com.android.festivar.model.voicenote.VoiceNote
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private const val LOG_TAG = "VoiceNoteRecording"
 
@@ -25,13 +27,11 @@ private const val LOG_TAG = "VoiceNoteRecording"
  *
  * @param scope where the uploads run.
  * @param host the task shown, and the way to save it.
- * @param currentUserId the user recording, who must own the task.
  * @param services what records the audio and keeps it.
  */
 internal class VoiceNoteRecording(
     private val scope: CoroutineScope,
     private val host: VoiceNoteHost,
-    private val currentUserId: String,
     private val services: VoiceNoteServices,
 ) {
   private val recorder = services.recorder
@@ -49,21 +49,24 @@ internal class VoiceNoteRecording(
     get() = _stage.value is RecordingStage.SendFailed
 
   /**
-   * Starts recording, once the microphone permission is granted. Does nothing unless the user can
-   * add a voice note and no recording waits to be sent or is being sent.
+   * Starts recording after the caller has requested and received microphone permission. Does
+   * nothing unless the user can add a voice note and no recording waits to be sent or is being
+   * sent.
    */
   fun start() {
     val busy = _stage.value is RecordingStage.Waiting || _stage.value is RecordingStage.Sending
     val recording = recorder.state.value is RecorderState.Recording
     if (busy || recording || !host.state.value.canAddVoiceNote) return
-    drop() // a new recording replaces the one that could not be sent
+    val previousStage = _stage.value
     try {
       recorder.start()
+      drop() // a new recording replaces the one that could not be sent
     } catch (e: VoiceRecorderException) {
       Log.e(LOG_TAG, "Error starting a recording", e)
-      _stage.value = RecordingStage.Failed
+      if (previousStage !is RecordingStage.SendFailed) _stage.value = RecordingStage.Failed
     } catch (e: IllegalStateException) {
       Log.e(LOG_TAG, "Error starting a recording", e)
+      if (previousStage !is RecordingStage.SendFailed) _stage.value = RecordingStage.Failed
     }
   }
 
@@ -82,6 +85,7 @@ internal class VoiceNoteRecording(
           return
         } catch (e: IllegalStateException) {
           Log.e(LOG_TAG, "Error finishing a recording", e)
+          _stage.value = RecordingStage.Failed
           return
         }
     _stage.value = RecordingStage.Waiting(audio)
@@ -108,9 +112,15 @@ internal class VoiceNoteRecording(
     if (recorder.state.value is RecorderState.Failed) recorder.cancel()
   }
 
-  /** Frees what the screen no longer needs: the held recording, and the recorder. */
-  fun release() {
-    drop()
+  /**
+   * Frees what the screen no longer needs when its lifecycle ends.
+   *
+   * A waiting or failed recording is dropped immediately. A send in progress is left alone so its
+   * upload can finish without the temporary file being deleted underneath it; cancellation of the
+   * send cleans up both the uploaded file and the local file.
+   */
+  fun releaseResources() {
+    if (_stage.value !is RecordingStage.Sending) drop()
     recorder.cancel()
   }
 
@@ -122,17 +132,23 @@ internal class VoiceNoteRecording(
       try {
         url = services.storage.upload(held.audio, task.taskId)
         val note = VoiceNote(services.newId(), url, held.audio.duration, services.now())
-        val updated = task.attachVoiceNote(note, currentUserId)
+        val updated = task.attachVoiceNote(note, host.state.value.currentUserId)
         host.saveTask(updated)
         drop()
         host.finishSaving(updated)
       } catch (e: CancellationException) {
+        url?.let { uploadedUrl ->
+          withContext(NonCancellable) { services.deleteAudioQuietly(uploadedUrl) }
+        }
+        drop()
         host.finishSaving(null)
         throw e
       } catch (e: Exception) {
         Log.e(LOG_TAG, "Error sending the voice note of task ${task.taskId}", e)
         // The file is useless without the note: remove it, the recording is kept for another try.
-        url?.let { services.deleteAudioQuietly(it) }
+        url?.let { uploadedUrl ->
+          withContext(NonCancellable) { services.deleteAudioQuietly(uploadedUrl) }
+        }
         _stage.value = RecordingStage.SendFailed(held.audio)
         host.finishSaving(null)
       }
