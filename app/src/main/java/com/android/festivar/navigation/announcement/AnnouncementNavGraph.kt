@@ -58,7 +58,8 @@ fun NavGraphBuilder.announcementGraph(
     val navigator = AnnouncementFeedNavigator(navController, backStackEntry)
     AnnouncementFeedScreen(
         viewModel = viewModel { AnnouncementFeedViewModel(eventId, dataRepository) },
-        // Events have no owner yet, so everyone may add an announcement for now
+        // Every member may add an announcement for now. Limiting it to the event's owner needs the
+        // loaded event, so it is left to the feed's view model
         canAddAnnouncement = true,
         onBack = navigator.onBack,
         onAddAnnouncement = { navigator.onAddAnnouncement(eventId) },
