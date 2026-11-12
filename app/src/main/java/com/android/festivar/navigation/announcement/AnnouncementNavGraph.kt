@@ -86,8 +86,9 @@ fun NavGraphBuilder.announcementGraph(
         canAddAnnouncement = true,
         onBack = navigator.onBack,
         onAddAnnouncement = { navigator.onAddAnnouncement(eventId) },
-        // Will open the details of the announcement (#364)
-        onSelectAnnouncement = {},
+        onSelectAnnouncement = { announcement ->
+          navigator.onSelectAnnouncement(eventId, announcement.announcementId)
+        },
     )
   }
 }

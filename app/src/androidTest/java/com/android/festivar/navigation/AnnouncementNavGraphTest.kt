@@ -253,4 +253,35 @@ class AnnouncementNavGraphTest {
 
     assertThePreviousScreenIsAloneOnTheBackStack()
   }
+
+  // Breaks if selecting an announcement in the feed does not navigate to its announcement details
+  // screen.
+  @Test
+  fun selectingAnnouncementInFeedNavigatesToDetails() {
+    val announcement =
+        Announcement(
+            announcementId = "a1",
+            title = "Stage B is closed",
+            authorId = USER_ID,
+            updatedAt = ZonedDateTime.now(),
+        )
+    runBlocking { repository.addAnnouncement(EVENT_ID, announcement) }
+
+    openTheFeed()
+
+    composeTestRule.onNodeWithTag(FeedTags.announcementRow(announcement)).performClick()
+
+    composeTestRule.onNodeWithTag(DetailsTags.TITLE).assertIsDisplayed()
+    composeTestRule.runOnIdle {
+      assertEquals(EVENT_ID, navController.currentBackStackEntry?.arguments?.getString("eventId"))
+      assertEquals(
+          "a1",
+          navController.currentBackStackEntry?.arguments?.getString("announcementId"),
+      )
+      assertEquals(
+          "${AppScreens.AnnouncementFeed.name}/{eventId}",
+          navController.previousBackStackEntry?.destination?.route,
+      )
+    }
+  }
 }
