@@ -16,6 +16,8 @@ import com.android.festivar.ui.announcement.details.AnnouncementDetailsViewModel
 import com.android.festivar.ui.announcement.feed.AnnouncementFeedScreen
 import com.android.festivar.ui.announcement.feed.AnnouncementFeedViewModel
 
+private const val EVENT_ID_REQUIRED = "eventId argument is required"
+
 /** The destinations of the announcement feature. */
 fun NavGraphBuilder.announcementGraph(
     navController: NavHostController,
@@ -30,9 +32,7 @@ fun NavGraphBuilder.announcementGraph(
           ),
   ) { backStackEntry ->
     val eventId =
-        requireNotNull(backStackEntry.arguments?.getString("eventId")) {
-          "eventId argument is required"
-        }
+        requireNotNull(backStackEntry.arguments?.getString("eventId")) { EVENT_ID_REQUIRED }
     val announcementId =
         requireNotNull(backStackEntry.arguments?.getString("announcementId")) {
           "announcementId argument is required"
@@ -53,9 +53,7 @@ fun NavGraphBuilder.announcementGraph(
       arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
   ) { backStackEntry ->
     val eventId =
-        requireNotNull(backStackEntry.arguments?.getString("eventId")) {
-          "eventId argument is required"
-        }
+        requireNotNull(backStackEntry.arguments?.getString("eventId")) { EVENT_ID_REQUIRED }
     // Asked at each tap on "Publish". Blank when nobody is signed in: the view model then refuses
     // to save (redirect left to #261).
     val currentUserId: () -> String = { dataRepository.authRepository.currentUser?.uid.orEmpty() }
@@ -79,9 +77,7 @@ fun NavGraphBuilder.announcementGraph(
       arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
   ) { backStackEntry ->
     val eventId =
-        requireNotNull(backStackEntry.arguments?.getString("eventId")) {
-          "eventId argument is required"
-        }
+        requireNotNull(backStackEntry.arguments?.getString("eventId")) { EVENT_ID_REQUIRED }
     val navigator = AnnouncementFeedNavigator(navController, backStackEntry)
     AnnouncementFeedScreen(
         viewModel = viewModel { AnnouncementFeedViewModel(eventId, dataRepository) },
