@@ -24,6 +24,11 @@ import com.android.festivar.ui.event.join.JoinEventViewModel
 import com.android.festivar.ui.event.overview.EventsOverviewScreen
 import com.android.festivar.ui.event.overview.EventsOverviewViewModel
 
+internal fun requireEventId(eventId: String): String {
+  require(eventId.isNotBlank()) { "eventId must not be blank" }
+  return eventId
+}
+
 /** The destinations of the event feature. */
 fun NavGraphBuilder.eventGraph(navController: NavHostController, dataRepository: DataRepository) {
   composable(route = AppScreens.EventsOverview.name) {
@@ -85,8 +90,7 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, dataRepository:
       route = "${AppScreens.EditEvent.name}/{eventId}",
       arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
   ) { backStackEntry ->
-    val eventId = backStackEntry.arguments?.getString("eventId") ?: ""
-    require(eventId.isNotBlank()) { "eventId must not be blank" }
+    val eventId = requireEventId(backStackEntry.arguments?.getString("eventId") ?: "")
     val currentUserId: () -> String = { dataRepository.authRepository.currentUser?.uid.orEmpty() }
     val navigator = EditEventNavigator(navController, eventId)
     EditEventScreen(

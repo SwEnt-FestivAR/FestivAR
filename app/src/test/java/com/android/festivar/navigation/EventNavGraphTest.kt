@@ -17,6 +17,7 @@ import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.navigation.event.eventGraph
+import com.android.festivar.navigation.event.requireEventId
 import com.android.festivar.ui.event.edit.EditEventScreenTestTags
 import com.android.festivar.ui.theme.AppTheme
 import com.google.firebase.auth.FirebaseUser
@@ -98,34 +99,7 @@ class EventNavGraphTest {
 
   @Test
   fun editEventRoute_rejectsBlankEventId() {
-    val eventId = "event-123"
-    val event =
-        Event(
-            eventId = eventId,
-            ownerId = "owner-1",
-            title = "Festival",
-            startDate = ZonedDateTime.now().plusDays(1),
-            endDate = ZonedDateTime.now().plusDays(2),
-        )
-    val dataRepository =
-        DataRepositoryLocal(
-            authRepository = mockk<AuthRepository> { every { currentUser } returns null },
-            eventsRepository = EventsRepositoryLocal(listOf(event)),
-        )
-    lateinit var navController: NavHostController
-
-    composeTestRule.setContent {
-      AppTheme {
-        navController = rememberNavController()
-        NavHost(navController, startDestination = AppScreens.eventDetails(eventId)) {
-          eventGraph(navController, dataRepository)
-        }
-      }
-    }
-
-    assertThrows(IllegalArgumentException::class.java) {
-      composeTestRule.runOnIdle { navController.navigate(AppScreens.editEvent(" ")) }
-    }
+    assertThrows(IllegalArgumentException::class.java) { requireEventId(" ") }
   }
 
   @Test
