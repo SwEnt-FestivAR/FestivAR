@@ -7,6 +7,7 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
+import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryProvider
@@ -144,7 +145,7 @@ class EditTaskViewModel
 private constructor(
     private val taskId: String,
     private val currentUserId: () -> String,
-    private val repository: TasksRepository,
+    private val dataRepository: DataRepository,
     private val saveTimeoutMs: Long,
     private val zone: ZoneId,
     private val formEditing: TaskFormEditing,
@@ -153,10 +154,12 @@ private constructor(
   constructor(
       taskId: String,
       currentUserId: () -> String,
-      repository: TasksRepository = TasksRepositoryProvider.repository,
+      dataRepository: DataRepository,
       saveTimeoutMs: Long = SAVE_TIMEOUT_MS,
       zone: ZoneId = ZoneId.systemDefault(),
-  ) : this(taskId, currentUserId, repository, saveTimeoutMs, zone, TaskFormEditing())
+  ) : this(taskId, currentUserId, dataRepository, saveTimeoutMs, zone, TaskFormEditing())
+
+    private val repository: TasksRepository = dataRepository.tasksRepository
 
   private val _uiState = MutableStateFlow(EditTaskUiState(form = CreateTaskUiState(zone = zone)))
 
