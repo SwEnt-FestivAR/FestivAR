@@ -59,10 +59,12 @@ class EventDetailsMembersTest {
                         eventsRepository = EventsRepositoryLocal(listOf(event)),
                     ),
                     event.eventId,
+                    currentUserId = lea.uid,
                 ),
             onBack = {},
             onTasksButtonClicked = {},
             onAnnouncementsClicked = {},
+            onEditClicked = {},
         )
       }
     }
