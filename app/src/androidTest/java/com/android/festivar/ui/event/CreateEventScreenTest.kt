@@ -1,6 +1,7 @@
 package com.android.festivar.ui.event
 
 // Co-authored-by: Copilot App
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
@@ -357,7 +358,11 @@ class CreateEventScreenTest {
             creator.uid,
         )
     composeTestRule.setContent {
-      CreateEventScreen(viewModel = viewModel, onBack = onBack, onCreated = onCreated)
+      CreateEventScreen(
+          viewModel = viewModel,
+          onBack = onBack,
+          onCreated = onCreated,
+      )
     }
 
     viewModel.updateName("Summer festival")
@@ -369,6 +374,8 @@ class CreateEventScreenTest {
 
     waitForTag(CreateEventScreenTestTags.SAVING_INDICATOR)
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsNotEnabled()
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAME_FIELD).assertIsNotEnabled()
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.LOCATION_FIELD).assertIsNotEnabled()
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAVIGATION_BUTTON).performClick()
     pressSystemBack()
     composeTestRule.waitForIdle()
@@ -406,6 +413,7 @@ class CreateEventScreenTest {
     waitForTag(CreateEventScreenTestTags.SAVE_ERROR)
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.SAVE_ERROR).assertIsDisplayed()
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsEnabled()
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAME_FIELD).assertIsEnabled()
     verify(exactly = 0) { onCreated() }
   }
 

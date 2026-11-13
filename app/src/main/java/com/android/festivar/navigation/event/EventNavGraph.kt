@@ -2,6 +2,7 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.navigation.event
 
 import androidx.compose.runtime.LaunchedEffect
@@ -52,8 +53,11 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, dataRepository:
       )
     }
   }
-  composable(route = AppScreens.CreateEvent.name) {
+  composable(route = AppScreens.CreateEvent.name) { backStackEntry ->
     val navigator = CreateEventNavigator(navController)
+    val leave: () -> Unit = {
+      if (navController.currentBackStackEntry == backStackEntry) navigator.onBack()
+    }
     val firebaseUser = dataRepository.authRepository.currentUser
     if (firebaseUser == null) {
       LaunchedEffect(Unit) { navigator.onSignedOut() }
@@ -66,8 +70,8 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, dataRepository:
                     userId = firebaseUser.uid,
                 )
               },
-          onBack = navigator.onBack,
-          onCreated = navigator.onCreated,
+          onBack = leave,
+          onCreated = leave,
       )
     }
   }

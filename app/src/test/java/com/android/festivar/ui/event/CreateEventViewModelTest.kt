@@ -1,6 +1,7 @@
 package com.android.festivar.ui.event
 
 // Co-authored-by: Copilot App
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 
 import com.android.festivar.R
 import com.android.festivar.model.datarepository.DataRepositoryLocal
@@ -22,8 +23,10 @@ import java.time.LocalTime
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -392,6 +395,99 @@ class CreateEventViewModelTest {
     }
 
     assertEquals(1, localRepository.getAllEvents().size)
+  }
+
+  /** Red if a timed-out save can create a duplicate when the user retries. */
+  @Test
+  fun timedOutSaveChecksWhetherEventWasStoredBeforeAllowingRetry() = runBlocking {
+    val localRepository = EventsRepositoryLocal()
+    val slowRepository =
+        object : EventsRepository by localRepository {
+          override suspend fun addEvent(event: Event) {
+            withContext(NonCancellable) {
+              localRepository.addEvent(event)
+              delay(50)
+            }
+          }
+        }
+    dataRepository =
+        DataRepositoryLocal(
+            mockk(),
+            eventsRepository = slowRepository,
+            usersRepository = usersRepository,
+        )
+    viewModel = CreateEventViewModel(dataRepository, creator.uid, saveTimeoutMs = 10)
+    fillRequiredFields()
+
+    viewModel.createEvent()
+    withTimeout(5_000.milliseconds) {
+      while (viewModel.uiState.value.createdEventId == null) delay(10.milliseconds)
+    }
+    viewModel.createEvent()
+    delay(10.milliseconds)
+
+    assertEquals(1, localRepository.getAllEvents().size)
+  }
+
+  /** Red if a timed-out lookup leaves the event save stuck or without an error. */
+  @Test
+  fun timedOutEventLookupShowsSaveError() = runBlocking {
+    val checkingRepository =
+        object : EventsRepository by eventsRepository {
+          override suspend fun addEvent(event: Event) {
+            error("offline")
+          }
+
+          override suspend fun getEvent(eventId: String): Event {
+            withContext(NonCancellable) { delay(100) }
+            error("not found")
+          }
+        }
+    dataRepository =
+        DataRepositoryLocal(
+            mockk(),
+            eventsRepository = checkingRepository,
+            usersRepository = usersRepository,
+        )
+    viewModel = CreateEventViewModel(dataRepository, creator.uid, saveTimeoutMs = 10)
+    fillRequiredFields()
+
+    viewModel.createEvent()
+    withTimeout(5_000.milliseconds) {
+      while (viewModel.uiState.value.errorMsg == null) delay(10.milliseconds)
+    }
+
+    assertFalse(viewModel.uiState.value.isSaving)
+    assertEquals(R.string.create_event_error_save_failed, viewModel.uiState.value.errorMsg)
+  }
+
+  /** Red if cancellation while checking a failed save is converted into a save error. */
+  @Test
+  fun cancelledEventLookupIsPropagated() = runBlocking {
+    val cancelledCheckingRepository =
+        object : EventsRepository by eventsRepository {
+          override suspend fun addEvent(event: Event) {
+            error("offline")
+          }
+
+          override suspend fun getEvent(eventId: String): Event {
+            throw CancellationException("Cancelled")
+          }
+        }
+    dataRepository =
+        DataRepositoryLocal(
+            mockk(),
+            eventsRepository = cancelledCheckingRepository,
+            usersRepository = usersRepository,
+        )
+    viewModel = CreateEventViewModel(dataRepository, creator.uid)
+    fillRequiredFields()
+
+    viewModel.createEvent()
+    delay(100.milliseconds)
+
+    assertTrue(viewModel.uiState.value.isSaving)
+    assertNull(viewModel.uiState.value.errorMsg)
   }
 
   /** Red if creating an event does not add its creator to membership data. */

@@ -1,6 +1,8 @@
 package com.android.festivar.ui.event
 
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 
 import androidx.compose.foundation.layout.Column
@@ -58,6 +60,7 @@ fun EventFields(
     venue: String,
     notes: String,
     openPicker: DateTimeField?,
+    enabled: Boolean = true,
     testTags: EventFieldsTestTags,
     onNameChange: (String) -> Unit,
     onShowPicker: (DateTimeField?) -> Unit,
@@ -72,6 +75,7 @@ fun EventFields(
           value = name,
           onValueChange = onNameChange,
           label = stringResource(R.string.create_event_field_name),
+          enabled = enabled,
           isError = nameError != null,
           modifier = Modifier.testTag(testTags.name),
       )
@@ -86,6 +90,7 @@ fun EventFields(
         dateError = startDateError,
         onDateClick = { onShowPicker(DateTimeField.START_DATE) },
         onTimeClick = { onShowPicker(DateTimeField.START_TIME) },
+        enabled = enabled,
         dateTag = testTags.startDate,
         dateErrorTag = testTags.startDateError,
         timeTag = testTags.startTime,
@@ -100,6 +105,7 @@ fun EventFields(
         dateError = endDateError,
         onDateClick = { onShowPicker(DateTimeField.END_DATE) },
         onTimeClick = { onShowPicker(DateTimeField.END_TIME) },
+        enabled = enabled,
         dateTag = testTags.endDate,
         dateErrorTag = testTags.endDateError,
         timeTag = testTags.endTime,
@@ -110,6 +116,7 @@ fun EventFields(
         value = venue,
         onValueChange = onVenueChange,
         label = stringResource(R.string.create_event_field_venue),
+        enabled = enabled,
         modifier = Modifier.testTag(testTags.venue),
     )
     Spacer(modifier = Modifier.height(8.dp))
@@ -121,6 +128,7 @@ fun EventFields(
         singleLine = false,
         maxLength = LONG_TEXT_MAX_LENGTH,
         showCounter = true,
+        enabled = enabled,
         modifier = Modifier.testTag(testTags.notes),
     )
     Spacer(modifier = Modifier.height(14.dp))
