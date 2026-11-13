@@ -2,6 +2,7 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.details
 
+import androidx.lifecycle.ViewModelStore
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
 import com.android.festivar.model.audio.PendingRecording
@@ -625,6 +626,15 @@ class TaskDetailsViewModelVoiceNoteTest {
     assertNull(vm.uiState.value.errorMsg)
   }
 
+  /** Breaks if the owner is read for a volunteer's task without a voice note. */
+  @Test
+  fun ownerName_isBlankForAVolunteerWhenThereIsNoNote() {
+    runBlocking { users.addUser(owner) }
+    val vm = viewModel(task(), volunteer)
+
+    assertEquals("", vm.uiState.value.ownerName)
+  }
+
   // Callbacks and release
 
   /** Breaks if the record button records while the microphone is off, instead of asking. */
@@ -663,7 +673,7 @@ class TaskDetailsViewModelVoiceNoteTest {
     assertEquals(1, recorder.starts)
   }
 
-  /** Breaks if a callback of the section is not wired to the action it is named after. */
+  /** Breaks if recording, sending, or settings callbacks are not wired to their actions. */
   @Test
   fun callbacks_drivetheVoiceNote() {
     var settingsOpened = false
@@ -711,6 +721,20 @@ class TaskDetailsViewModelVoiceNoteTest {
   @Test
   fun release_releasesThePlayer() {
     viewModel().voiceNote.release()
+    assertTrue(player.released)
+  }
+
+  /** Breaks if clearing the ViewModel leaves recording or playback resources held. */
+  @Test
+  fun clearingTheViewModel_releasesVoiceNoteResources() {
+    val vm = viewModel()
+    vm.voiceNote.startRecording()
+    ViewModelStore().apply {
+      put("task-details", vm)
+      clear()
+    }
+
+    assertEquals(1, recorder.cancels)
     assertTrue(player.released)
   }
 }

@@ -106,6 +106,7 @@ class ProfileScreenTest {
       authRepository: AuthRepository = FakeAuthRepository(),
       onBack: () -> Unit = {},
       onSignedOut: () -> Unit = {},
+      onSettingsClick: () -> Unit = {},
       credentialManager: CredentialManager = mockk(relaxed = true),
       waitForLoad: Boolean = true,
   ): ProfileViewModel {
@@ -124,6 +125,7 @@ class ProfileScreenTest {
           onBack = onBack,
           onSignedOut = onSignedOut,
           credentialManager = credentialManager,
+          onSettingsClick = onSettingsClick,
       )
     }
     if (waitForLoad) waitForTag(ProfileScreenTestTags.AVATAR)
@@ -156,6 +158,16 @@ class ProfileScreenTest {
             ProfileScreenTestTags.SIGN_OUT_BUTTON,
         )
         .forEach { tag -> composeTestRule.onNodeWithTag(tag).assertIsDisplayed() }
+  }
+
+  @Test
+  fun settingsButtonIsDisplayedAndCallsClickHandler() {
+    var settingsClicked = false
+    setProfile(onSettingsClick = { settingsClicked = true })
+
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.SETTINGS).assertIsDisplayed().performClick()
+
+    assertTrue(settingsClicked)
   }
 
   /** Turns red when the avatar stops being shown at its large size of 96.dp. */

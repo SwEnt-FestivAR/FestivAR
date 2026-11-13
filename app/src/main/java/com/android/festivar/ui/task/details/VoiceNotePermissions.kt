@@ -2,13 +2,13 @@
 package com.android.festivar.ui.task.details
 
 /** Whether the current user owns the task and can manage its voice note. */
-val TaskDetailsUiState.canManageVoiceNote: Boolean
+internal val TaskDetailsUiState.canManageVoiceNote: Boolean
   get() = task?.canManageVoiceNote(currentUserId) == true
 
 /** Whether the owner can add a voice note while the screen is idle. */
-val TaskDetailsUiState.canAddVoiceNote: Boolean
+internal val TaskDetailsUiState.canAddVoiceNote: Boolean
   get() = canManageVoiceNote && task?.voiceNote == null && !isUpdating && !isLoading
 
 /** Whether the owner can delete a voice note while the screen is idle. */
-val TaskDetailsUiState.canDeleteVoiceNote: Boolean
+internal val TaskDetailsUiState.canDeleteVoiceNote: Boolean
   get() = canManageVoiceNote && task?.voiceNote != null && !isUpdating && !isLoading

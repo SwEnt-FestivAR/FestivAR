@@ -7,8 +7,6 @@ import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.user.User
-import com.android.festivar.model.user.UsersRepository
-import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.ui.event.overview.EventsFilter
 import com.android.festivar.ui.event.overview.EventsOverviewViewModel
 import java.time.ZoneId
@@ -74,19 +72,6 @@ class EventsOverviewViewModelTest {
     }
   }
 
-  /** A [UsersRepositoryLocal] serving [users], which records for which uids they are fetched. */
-  private class RecordingUsersRepository(
-      users: List<User> = listOf(),
-      private val local: UsersRepository = UsersRepositoryLocal(users),
-  ) : UsersRepository by local {
-    val requestedUids = mutableListOf<String>()
-
-    override suspend fun getUser(uId: String): User {
-      requestedUids.add(uId)
-      return local.getUser(uId)
-    }
-  }
-
   private fun getDate(year: Int, month: Int, day: Int, hour: Int = 0): ZonedDateTime {
     return ZonedDateTime.of(year, month, day, hour, 0, 0, 0, ZoneId.of("Europe/Zurich"))
   }
@@ -96,11 +81,8 @@ class EventsOverviewViewModelTest {
   /** The fixed current time of every test: 17/10/2026 at 18:00. */
   private val now = getDate(2026, 10, 17, hour = 18)
 
-  /** The signed-in user, as stored in the users repository. */
+  /** The signed-in user, member of every event but [eventWithoutSara]. */
   private val sara = User(uid = "u1", name = "Sara", surname = "Keller")
-
-  /** What the avatar shows until the stored [sara] is fetched. */
-  private val saraWithoutProfile = User(uid = sara.uid)
 
   private val ongoingEvent =
       Event(
@@ -163,17 +145,12 @@ class EventsOverviewViewModelTest {
    */
   private fun createViewModel(
       withRepository: EventsRepository,
-      usersRepository: UsersRepository = RecordingUsersRepository(listOf(sara)),
       shown: Boolean = true,
   ): EventsOverviewViewModel {
     val viewModel =
         EventsOverviewViewModel(
             dataRepository =
-                DataRepositoryLocal(
-                    FakeAuthRepository(),
-                    eventsRepository = withRepository,
-                    usersRepository = usersRepository,
-                ),
+                DataRepositoryLocal(FakeAuthRepository(), eventsRepository = withRepository),
             uId = sara.uid,
             now = { now },
         )
@@ -202,28 +179,19 @@ class EventsOverviewViewModelTest {
   @Test
   fun nothingIsFetchedUntilRefreshed() = runTest {
     val repository = RecordingEventsRepository(listOf(ongoingEvent))
-    val usersRepository = RecordingUsersRepository(listOf(sara))
-    val viewModel =
-        createViewModel(
-            withRepository = repository,
-            usersRepository = usersRepository,
-            shown = false,
-        )
+    val viewModel = createViewModel(withRepository = repository, shown = false)
     advanceUntilIdle()
 
     assertTrue(repository.requestedUserIds.isEmpty())
-    assertTrue(usersRepository.requestedUids.isEmpty())
     val state = viewModel.uiState.value
     assertTrue(state.isLoading)
     assertTrue(state.hasNoEvents)
     assertFalse(state.hasError)
-    assertEquals(saraWithoutProfile, state.user)
 
     viewModel.refreshUIState()
     advanceUntilIdle()
 
     assertEquals(listOf(sara.uid), repository.requestedUserIds)
-    assertEquals(listOf(sara.uid), usersRepository.requestedUids)
     assertFalse(viewModel.uiState.value.isLoading)
     assertEquals(listOf(ongoingEvent), viewModel.uiState.value.ongoingEvents)
   }
@@ -359,88 +327,6 @@ class EventsOverviewViewModelTest {
     assertEquals(listOf(ongoingEvent), state.ongoingEvents)
     assertEquals(listOf(upcomingEvent), state.upcomingEvents)
     assertEquals(listOf(pastEvent), state.pastEvents)
-  }
-
-  /**
-   * Test that the signed-in user is in the UI state from the start, while the events load, and
-   * stays there once they are fetched and after a refresh fails.
-   */
-  @Test
-  fun userStaysInTheUIState() = runTest {
-    val repository = RecordingEventsRepository(listOf(ongoingEvent))
-    val viewModel = createViewModel(withRepository = repository)
-    assertTrue(viewModel.uiState.value.isLoading)
-    assertEquals(saraWithoutProfile, viewModel.uiState.value.user)
-
-    advanceUntilIdle()
-    assertFalse(viewModel.uiState.value.isLoading)
-    assertEquals(sara, viewModel.uiState.value.user)
-
-    repository.error = RuntimeException("Network down")
-    viewModel.refreshUIState()
-    advanceUntilIdle()
-    val state = viewModel.uiState.value
-    assertTrue(state.hasError)
-    assertEquals(sara, state.user)
-  }
-
-  /**
-   * Test that the user only has the uid of the signed-in user until its stored profile is fetched,
-   * and that the profile and the events are both fetched with that uid.
-   */
-  @Test
-  fun storedUserIsShownOnceFetched() = runTest {
-    val repository = RecordingEventsRepository()
-    val usersRepository = RecordingUsersRepository(listOf(sara))
-    val viewModel = createViewModel(withRepository = repository, usersRepository = usersRepository)
-    assertEquals(saraWithoutProfile, viewModel.uiState.value.user)
-
-    advanceUntilIdle()
-
-    assertEquals(sara, viewModel.uiState.value.user)
-    assertEquals(listOf(sara.uid), usersRepository.requestedUids)
-    assertEquals(listOf(sara.uid), repository.requestedUserIds)
-  }
-
-  /**
-   * Test that, if the stored profile cannot be fetched, the user keeps only its uid and the events
-   * are still shown, without any error.
-   */
-  @Test
-  fun missingStoredUserKeepsTheUidAndShowsTheEvents() = runTest {
-    val viewModel =
-        createViewModel(
-            withRepository = RecordingEventsRepository(listOf(ongoingEvent)),
-            usersRepository = RecordingUsersRepository(),
-        )
-    advanceUntilIdle()
-
-    val state = viewModel.uiState.value
-    assertEquals(saraWithoutProfile, state.user)
-    assertEquals(listOf(ongoingEvent), state.ongoingEvents)
-    assertFalse(state.isLoading)
-    assertFalse(state.hasError)
-    assertNull(state.errorMsg)
-  }
-
-  /** Test that a refresh fetches the stored profile again, e.g. after it was edited. */
-  @Test
-  fun refreshFetchesTheStoredUserAgain() = runTest {
-    val usersRepository = RecordingUsersRepository(listOf(sara))
-    val viewModel =
-        createViewModel(
-            withRepository = RecordingEventsRepository(),
-            usersRepository = usersRepository,
-        )
-    advanceUntilIdle()
-
-    val renamed = sara.copy(name = "Sarah")
-    usersRepository.editUser(sara.uid, renamed)
-    viewModel.refreshUIState()
-    advanceUntilIdle()
-
-    assertEquals(renamed, viewModel.uiState.value.user)
-    assertEquals(listOf(sara.uid, sara.uid), usersRepository.requestedUids)
   }
 
   /**
@@ -750,11 +636,7 @@ class EventsOverviewViewModelTest {
     val viewModel =
         EventsOverviewViewModel(
             dataRepository =
-                DataRepositoryLocal(
-                    FakeAuthRepository(),
-                    eventsRepository = repository,
-                    usersRepository = RecordingUsersRepository(listOf(sara)),
-                ),
+                DataRepositoryLocal(FakeAuthRepository(), eventsRepository = repository),
             uId = sara.uid,
         )
     viewModel.refreshUIState()
@@ -762,7 +644,6 @@ class EventsOverviewViewModelTest {
 
     assertEquals(listOf(sara.uid), repository.requestedUserIds)
     val state = viewModel.uiState.value
-    assertEquals(sara, state.user)
     assertTrue(state.ongoingEvents.isEmpty())
     assertEquals(listOf(nextYear), state.upcomingEvents)
     assertEquals(listOf(lastYear), state.pastEvents)

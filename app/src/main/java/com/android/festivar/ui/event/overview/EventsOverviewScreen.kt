@@ -14,7 +14,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -58,8 +57,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.android.festivar.R
 import com.android.festivar.model.event.Event
-import com.android.festivar.model.user.User
-import com.android.festivar.ui.components.Avatar
 import com.android.festivar.ui.components.EmptyState
 import com.android.festivar.ui.components.FilterChip
 import com.android.festivar.ui.components.RefreshableStateList
@@ -71,7 +68,6 @@ import java.time.ZonedDateTime
 
 object EventsOverviewScreenTestTags {
   const val TITLE = "eventsOverviewTitle"
-  const val USER_AVATAR = "eventsOverviewUserAvatar"
   const val ONGOING_CHIP = "ongoingEventsChip"
   const val UPCOMING_CHIP = "upcomingEventsChip"
   const val PAST_CHIP = "pastEventsChip"
@@ -92,7 +88,6 @@ object EventsOverviewScreenTestTags {
  * @param onSelectEvent Called when the user clicks on an [Event] card.
  * @param onJoinEvent Called when the user clicks on the "Join" button.
  * @param onAddEvent Called when the user clicks on the "Create" button.
- * @param onSelectAvatar Called when the user clicks on its avatar in the top bar.
  */
 @Composable
 fun EventsOverviewScreen(
@@ -100,7 +95,6 @@ fun EventsOverviewScreen(
     onSelectEvent: (Event) -> Unit = {},
     onJoinEvent: () -> Unit = {},
     onAddEvent: () -> Unit = {},
-    onSelectAvatar: () -> Unit = {},
 ) {
   val uiState by eventsOverviewViewModel.uiState.collectAsState()
 
@@ -113,7 +107,6 @@ fun EventsOverviewScreen(
       onSelectEvent = onSelectEvent,
       onJoinEvent = onJoinEvent,
       onAddEvent = onAddEvent,
-      onSelectAvatar = onSelectAvatar,
   )
 }
 
@@ -126,7 +119,6 @@ fun EventsOverviewScreen(
  * @param onSelectEvent Called when the user clicks on an [Event] card.
  * @param onJoinEvent Called when the user clicks on the "Join" button.
  * @param onAddEvent Called when the user clicks on the "Create" button.
- * @param onSelectAvatar Called when the user clicks on its avatar in the top bar.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -137,7 +129,6 @@ fun EventsOverviewContent(
     onSelectEvent: (Event) -> Unit = {},
     onJoinEvent: () -> Unit = {},
     onAddEvent: () -> Unit = {},
-    onSelectAvatar: () -> Unit = {},
 ) {
   Scaffold(
       topBar = {
@@ -148,17 +139,6 @@ fun EventsOverviewContent(
                   style = MaterialTheme.typography.titleLarge,
                   modifier = Modifier.testTag(EventsOverviewScreenTestTags.TITLE),
               )
-            },
-            actions = {
-              uiState.user?.let { user ->
-                Box(
-                    modifier =
-                        Modifier.padding(end = 12.dp)
-                            .testTag(EventsOverviewScreenTestTags.USER_AVATAR)
-                ) {
-                  Avatar(user = user, onClick = onSelectAvatar)
-                }
-              }
             },
         )
       },
@@ -468,7 +448,6 @@ internal fun EventsOverviewContentPreview() {
           upcomingEvents = upcomingEvents,
           pastEvents = pastEvents,
           selectedFilter = EventsFilter.UPCOMING,
-          user = User("u0", name = "Yasmine", surname = "Amrani"),
       )
   AppTheme { EventsOverviewContent(uiState = uiState) }
 }
@@ -476,9 +455,5 @@ internal fun EventsOverviewContentPreview() {
 @Preview(showBackground = true, widthDp = 412, heightDp = 915)
 @Composable
 internal fun EventsOverviewEmptyPreview() {
-  AppTheme {
-    EventsOverviewContent(
-        uiState = EventsOverviewUIState(user = User("u0", name = "Yasmine", surname = "Amrani"))
-    )
-  }
+  AppTheme { EventsOverviewContent(uiState = EventsOverviewUIState()) }
 }

@@ -10,6 +10,8 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasTestTag
@@ -32,6 +34,7 @@ import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventRepositoryFirebase
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.EventsRepositoryProvider
+import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.event.joinCodeOf
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepositoryLocal
@@ -41,18 +44,24 @@ import com.android.festivar.model.user.UsersRepositoryFirebase
 import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.model.user.UsersRepositoryProvider
 import com.android.festivar.navigation.AppScreens
+import com.android.festivar.navigation.TaskOrigin
 import com.android.festivar.ui.announcement.create.CreateAnnouncementScreenTestTags
+import com.android.festivar.ui.announcement.feed.AnnouncementFeedScreenTestTags
 import com.android.festivar.ui.authentication.login.LoginScreenTestTags
 import com.android.festivar.ui.authentication.signup.SignUpScreenTestTags
-import com.android.festivar.ui.components.AvatarTestTags
+import com.android.festivar.ui.components.BottomNavigationBarTestTags
+import com.android.festivar.ui.components.NavigationSubScreen
+import com.android.festivar.ui.components.NavigationTab
 import com.android.festivar.ui.event.create.CreateEventScreenTestTags
 import com.android.festivar.ui.event.details.EventDetailsScreenTestTags
+import com.android.festivar.ui.event.edit.EditEventScreenTestTags
 import com.android.festivar.ui.event.join.JoinEventScreenTestTags
 import com.android.festivar.ui.event.overview.EventsOverviewScreenTestTags
 import com.android.festivar.ui.profile.ProfileScreenTestTags
 import com.android.festivar.ui.task.create.CreateTaskScreenTestTags
 import com.android.festivar.ui.task.details.TaskDetailsScreenTestTags
 import com.android.festivar.ui.task.edit.EditTaskScreenTestTags
+import com.android.festivar.ui.task.mytasks.MyTasksScreenTestTags
 import com.android.festivar.ui.task.overview.TaskOverviewScreenTestTags
 import com.android.festivar.ui.voicenote.VoiceNoteRecordTestTags
 import com.google.firebase.Firebase
@@ -85,7 +94,7 @@ class MainActivityNavigationTest {
 
   private val signedInUser = mockk<FirebaseUser> { every { uid } returns signedInUid }
 
-  // The avatar shows the initials of the stored profile of the signed-in user
+  // The stored profile of the signed-in user
   private val storedUser = User(uid = signedInUid, name = "Sara", surname = "Keller")
 
   @Before
@@ -151,32 +160,6 @@ class MainActivityNavigationTest {
     composeTestRule.onNodeWithText("Return to login").performClick()
 
     composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
-  }
-
-  @Test
-  fun eventOverviewShowsStoredUserAndAvatarNavigatesToProfile() {
-    setSignedInContent()
-
-    composeTestRule.waitUntil(timeoutMillis = 10_000) {
-      composeTestRule.onAllNodesWithText("SK").fetchSemanticsNodes().isNotEmpty()
-    }
-    composeTestRule.onNodeWithText("SK").assertIsDisplayed()
-
-    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.USER_AVATAR).performClick()
-
-    waitUntilTagExists(ProfileScreenTestTags.TITLE)
-    composeTestRule.onNodeWithTag(ProfileScreenTestTags.TITLE).assertIsDisplayed()
-  }
-
-  @Test
-  fun eventOverviewWithoutStoredUserShowsPersonIcon() {
-    UsersRepositoryProvider.repository = UsersRepositoryLocal()
-    setSignedInContent()
-
-    waitUntilTagExists(EventsOverviewScreenTestTags.USER_AVATAR)
-    composeTestRule
-        .onNodeWithTag(AvatarTestTags.PERSON_ICON, useUnmergedTree = true)
-        .assertIsDisplayed()
   }
 
   @Test
@@ -380,25 +363,8 @@ class MainActivityNavigationTest {
     // The see tasks button only shows once the event is read from the Firestore emulator, whose
     // rules need a signed-in user
     TasksRepositoryProvider.repository = TasksRepositoryLocal()
-    val start = ZonedDateTime.now().plusDays(1)
-    val event =
-        Event(
-            eventId = "back-${UUID.randomUUID()}",
-            ownerId = storedUser.uid,
-            title = "Event With Tasks",
-            members = listOf(storedUser),
-            startDate = start,
-            endDate = start.plusHours(2),
-        )
-    val events = EventRepositoryFirebase(Firebase.firestore)
-    val users = UsersRepositoryFirebase(Firebase.firestore)
-    runBlocking {
-      Firebase.auth.signInAnonymously().await()
-      users.addUser(storedUser)
-      events.addEvent(event)
-    }
 
-    try {
+    withEventOfTheSignedInUser(idPrefix = "back", title = "Event With Tasks") { event ->
       composeTestRule.setContent {
         FestivAR(
             credentialManager = mockk<CredentialManager>(relaxed = true),
@@ -420,12 +386,40 @@ class MainActivityNavigationTest {
           .onNodeWithTag(EventDetailsScreenTestTags.EVENT_NAME)
           .assertTextEquals(event.title)
       composeTestRule.onNodeWithTag(TaskOverviewScreenTestTags.TITLE).assertDoesNotExist()
-    } finally {
-      runBlocking {
-        runCatching { events.deleteEvent(event.eventId) }
-        runCatching { users.deleteUser(storedUser.uid) }
-        Firebase.auth.signOut()
+    }
+  }
+
+  /**
+   * Turns red when the organizer's Edit event item opens another screen than the Edit Event screen,
+   * or when going back from it does not return to the event details.
+   */
+  @Test
+  fun editFromTheEventDetailsOpensTheEditScreenAndBackReturnsToTheDetails() {
+    withEventOfTheSignedInUser(idPrefix = "edit", title = "Event To Edit") { event ->
+      composeTestRule.setContent {
+        FestivAR(
+            credentialManager = mockk<CredentialManager>(relaxed = true),
+            dataRepository =
+                DataRepositoryFirebase(
+                    authRepository = FakeAuthRepository(currentUser = signedInUser)
+                ),
+            startDestinationOverride = AppScreens.eventDetails(event.eventId),
+        )
       }
+
+      waitUntilTagExists(EventDetailsScreenTestTags.MORE_ACTIONS_BUTTON)
+      composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.MORE_ACTIONS_BUTTON).performClick()
+      composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.EDIT_MENU_ITEM).performClick()
+      waitUntilTagExists(EditEventScreenTestTags.SCREEN)
+      composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.EVENT_NAME).assertDoesNotExist()
+
+      composeTestRule.onNodeWithTag(EditEventScreenTestTags.BACK_BUTTON).performClick()
+
+      waitUntilTagExists(EventDetailsScreenTestTags.EVENT_NAME)
+      composeTestRule
+          .onNodeWithTag(EventDetailsScreenTestTags.EVENT_NAME)
+          .assertTextEquals(event.title)
+      composeTestRule.onNodeWithTag(EditEventScreenTestTags.SCREEN).assertDoesNotExist()
     }
   }
 
@@ -592,6 +586,46 @@ class MainActivityNavigationTest {
     }
 
     composeTestRule.onNodeWithTag(CreateAnnouncementScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  /** Turns red when the announcements row of the event details does not open that event's feed. */
+  @Test
+  fun announcementsRowOfTheEventDetailsOpensTheFeedOfTheEvent() {
+    val start = ZonedDateTime.now().plusDays(1)
+    val announcement =
+        Announcement(
+            announcementId = "a1",
+            title = "Stage B is closed",
+            authorId = "u0",
+            updatedAt = ZonedDateTime.now(),
+        )
+    val event =
+        Event(
+            eventId = "e1",
+            ownerId = "u0",
+            title = "Balelec",
+            startDate = start,
+            endDate = start.plusHours(2),
+            announcements = listOf(announcement),
+        )
+    EventsRepositoryProvider.repository = EventsRepositoryLocal(listOf(event))
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          dataRepository =
+              DataRepositoryFirebase(
+                  authRepository = FakeAuthRepository(currentUser = firebaseUser)
+              ),
+          startDestinationOverride = AppScreens.eventDetails(event.eventId),
+      )
+    }
+
+    waitUntilTagExists(EventDetailsScreenTestTags.ANNOUNCEMENTS_ROW)
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.ANNOUNCEMENTS_ROW).performClick()
+
+    waitUntilTagExists(AnnouncementFeedScreenTestTags.TITLE)
+    // The feed shows the announcements of the event whose details were open
+    waitUntilTagExists(AnnouncementFeedScreenTestTags.announcementRow(announcement))
   }
 
   @Test
@@ -835,6 +869,150 @@ class MainActivityNavigationTest {
     EventsRepositoryProvider.repository = EventsRepositoryLocal()
   }
 
+  // Breaks if the bar shows over the authentication screens.
+  @Test
+  fun theBarIsHiddenOnTheLogin() {
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          dataRepository =
+              DataRepositoryFirebase(authRepository = FakeAuthRepository(currentUser = null)),
+      )
+    }
+
+    waitUntilTagExists(LoginScreenTestTags.TITLE)
+    composeTestRule
+        .onNodeWithTag(BottomNavigationBarTestTags.BOTTOM_NAVIGATION_BAR)
+        .assertDoesNotExist()
+  }
+
+  // Breaks if the overview loses its bar, selects another tab or shows a sub-screen disc.
+  @Test
+  fun theEventsOverviewShowsTheBarWithEventsSelected() {
+    seedNoEvents()
+    setSignedInContent()
+
+    waitUntilTagExists(BottomNavigationBarTestTags.BOTTOM_NAVIGATION_BAR)
+    composeTestRule.onNodeWithTag(tabTag(NavigationTab.EVENTS)).assertIsSelected()
+    NavigationSubScreen.entries.forEach { disc(it).assertDoesNotExist() }
+  }
+
+  // Breaks if the task board of an event loses the tasks disc on the Events tab or selects another
+  // tab.
+  @Test
+  fun theTaskOverviewNestsEventsUnderTheTaskBoard() {
+    TasksRepositoryProvider.repository = TasksRepositoryLocal()
+    setContentStartingOn(AppScreens.taskOverview("e1"))
+
+    waitUntilTagExists(BottomNavigationBarTestTags.BOTTOM_NAVIGATION_BAR)
+    disc(NavigationSubScreen.EVENT_TASKS).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(tabTag(NavigationTab.EVENTS)).assertIsSelected()
+    composeTestRule.onNodeWithTag(tabTag(NavigationTab.MY_TASKS)).assertIsNotSelected()
+    composeTestRule.onNodeWithTag(tabTag(NavigationTab.PROFILE)).assertIsNotSelected()
+  }
+
+  // Breaks if tapping Events on the task board no longer returns to the events overview.
+  @Test
+  fun reselectingEventsOnTheTaskBoardReturnsToTheOverview() {
+    seedNoEvents()
+    TasksRepositoryProvider.repository = TasksRepositoryLocal()
+    setContentStartingOn(AppScreens.taskOverview("e1"))
+
+    waitUntilTagExists(BottomNavigationBarTestTags.BOTTOM_NAVIGATION_BAR)
+    composeTestRule.onNodeWithTag(tabTag(NavigationTab.EVENTS)).performClick()
+
+    waitUntilTagExists(EventsOverviewScreenTestTags.TITLE)
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.TITLE).assertIsDisplayed()
+    disc(NavigationSubScreen.EVENT_TASKS).assertDoesNotExist()
+  }
+
+  // Breaks if a task opened from My tasks falls back to the Events tab or loses the task disc.
+  @Test
+  fun aTaskOpenedFromMyTasksKeepsMyTasksSelected() {
+    seedTask()
+    setContentStartingOn(AppScreens.taskDetails("t1", TaskOrigin.MY_TASKS))
+
+    waitUntilTagExists(BottomNavigationBarTestTags.BOTTOM_NAVIGATION_BAR)
+    composeTestRule.onNodeWithTag(tabTag(NavigationTab.MY_TASKS)).assertIsSelected()
+    disc(NavigationSubScreen.TASK_DETAILS).assertIsDisplayed()
+  }
+
+  // Breaks if a task opened from an event leaves the Events tab or loses the task disc.
+  @Test
+  fun aTaskOpenedFromAnEventNestsEventsUnderTheTask() {
+    seedTask()
+    setContentStartingOn(AppScreens.taskDetails("t1"))
+
+    waitUntilTagExists(BottomNavigationBarTestTags.BOTTOM_NAVIGATION_BAR)
+    disc(NavigationSubScreen.TASK_DETAILS).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(tabTag(NavigationTab.EVENTS)).assertIsSelected()
+  }
+
+  // Breaks if the bar shows over a form.
+  @Test
+  fun theCreateTaskRouteHidesTheBar() {
+    TasksRepositoryProvider.repository = TasksRepositoryLocal()
+    setContentStartingOn(AppScreens.createTask("e1"))
+
+    waitUntilTagExists(CreateTaskScreenTestTags.TITLE)
+    composeTestRule
+        .onNodeWithTag(BottomNavigationBarTestTags.BOTTOM_NAVIGATION_BAR)
+        .assertDoesNotExist()
+  }
+
+  // Breaks if the My tasks tab has no destination or the Events tab does not return.
+  @Test
+  fun theMyTasksTabOpensMyTasksAndTheEventsTabReturns() {
+    seedNoEvents()
+    setSignedInContent()
+
+    waitUntilTagExists(BottomNavigationBarTestTags.BOTTOM_NAVIGATION_BAR)
+    composeTestRule.onNodeWithTag(tabTag(NavigationTab.MY_TASKS)).performClick()
+    waitUntilTagExists(MyTasksScreenTestTags.TITLE)
+    composeTestRule.onNodeWithTag(MyTasksScreenTestTags.TITLE).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(tabTag(NavigationTab.MY_TASKS)).assertIsSelected()
+
+    composeTestRule.onNodeWithTag(tabTag(NavigationTab.EVENTS)).performClick()
+    waitUntilTagExists(EventsOverviewScreenTestTags.TITLE)
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  // Breaks if the Profile tab does not open the profile.
+  @Test
+  fun theProfileTabOpensTheProfile() {
+    seedNoEvents()
+    setSignedInContent()
+
+    waitUntilTagExists(BottomNavigationBarTestTags.BOTTOM_NAVIGATION_BAR)
+    composeTestRule.onNodeWithTag(tabTag(NavigationTab.PROFILE)).performClick()
+
+    waitUntilTagExists(ProfileScreenTestTags.TITLE)
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  private fun tabTag(tab: NavigationTab) = BottomNavigationBarTestTags.getTestTagForTab(tab)
+
+  private fun disc(subScreen: NavigationSubScreen) =
+      composeTestRule.onNodeWithTag(
+          BottomNavigationBarTestTags.getTestTagForSubScreen(subScreen),
+          useUnmergedTree = true,
+      )
+
+  /** Shows the app as [firebaseUser] on [route], reading the tasks from the provider. */
+  private fun setContentStartingOn(route: String) {
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          dataRepository =
+              DataRepositoryLocal(
+                  authRepository = FakeAuthRepository(currentUser = firebaseUser),
+                  tasksRepository = TasksRepositoryProvider.repository,
+              ),
+          startDestinationOverride = route,
+      )
+    }
+  }
+
   @After
   fun tearDown() {
     TasksRepositoryProvider.reset()
@@ -852,6 +1030,40 @@ class MainActivityNavigationTest {
                   authRepository = FakeAuthRepository(currentUser = signedInUser)
               ),
       )
+    }
+  }
+
+  /**
+   * Stores [signedInUser] and an event they organize in the Firestore emulator, whose rules need a
+   * signed-in user, runs [block] with that event, then removes both again.
+   */
+  private fun withEventOfTheSignedInUser(idPrefix: String, title: String, block: (Event) -> Unit) {
+    val start = ZonedDateTime.now().plusDays(1)
+    val event =
+        Event(
+            eventId = "$idPrefix-${UUID.randomUUID()}",
+            ownerId = storedUser.uid,
+            title = title,
+            members = listOf(storedUser),
+            startDate = start,
+            endDate = start.plusHours(2),
+        )
+    val events = EventRepositoryFirebase(Firebase.firestore)
+    val users = UsersRepositoryFirebase(Firebase.firestore)
+    runBlocking {
+      Firebase.auth.signInAnonymously().await()
+      users.addUser(storedUser)
+      events.addEvent(event)
+    }
+
+    try {
+      block(event)
+    } finally {
+      runBlocking {
+        runCatching { events.deleteEvent(event.eventId) }
+        runCatching { users.deleteUser(storedUser.uid) }
+        Firebase.auth.signOut()
+      }
     }
   }
 

@@ -9,6 +9,8 @@ import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.center
+import androidx.compose.ui.test.down
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -20,6 +22,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.up
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
 import com.android.festivar.model.audio.PlayerState
@@ -29,6 +33,7 @@ import com.android.festivar.ui.components.PeopleCardTestTags
 import com.android.festivar.ui.components.UserListTestTags
 import com.android.festivar.ui.components.formatDate
 import com.android.festivar.ui.components.formatTime
+import com.android.festivar.ui.voicenote.VoiceNoteCallbacks
 import com.android.festivar.ui.voicenote.VoiceNoteRecordTestTags
 import com.android.festivar.ui.voicenote.VoiceNoteTestTags
 import com.android.festivar.ui.voicenote.VoiceNoteUiState
@@ -83,6 +88,7 @@ class TaskDetailsContentTest {
       onEdit: (String) -> Unit = {},
       onDeleteTask: () -> Unit = {},
       voiceNote: VoiceNoteUiState = VoiceNoteUiState(),
+      voiceNoteCallbacks: VoiceNoteCallbacks = VoiceNoteCallbacks.NoOp,
   ) = composeTestRule.setContent {
     TaskDetailsContent(
         state,
@@ -95,6 +101,7 @@ class TaskDetailsContentTest {
         onEdit,
         onDeleteTask,
         voiceNote = voiceNote,
+        voiceNoteCallbacks = voiceNoteCallbacks,
     )
   }
 
@@ -213,6 +220,26 @@ class TaskDetailsContentTest {
   fun takenTaskHasNoActions() =
       assertNoActions(
           Task("t2", "e1", "Full", maxAssign = 1, assignees = listOf(yasser), ownerId = "owner-1")
+      )
+
+  private fun callbacks(
+      onTogglePlay: () -> Unit = VoiceNoteCallbacks.NoOp.onTogglePlay,
+      onDelete: () -> Unit = VoiceNoteCallbacks.NoOp.onDelete,
+      onRecordStart: () -> Unit = VoiceNoteCallbacks.NoOp.onRecordStart,
+      onRecordRelease: () -> Unit = VoiceNoteCallbacks.NoOp.onRecordRelease,
+  ) =
+      VoiceNoteCallbacks(
+          onTogglePlay = onTogglePlay,
+          onDelete = onDelete,
+          onConfirmDelete = VoiceNoteCallbacks.NoOp.onConfirmDelete,
+          onDismissDelete = VoiceNoteCallbacks.NoOp.onDismissDelete,
+          onRecordStart = onRecordStart,
+          onRecordRelease = onRecordRelease,
+          onConfirmSend = VoiceNoteCallbacks.NoOp.onConfirmSend,
+          onCancelSend = VoiceNoteCallbacks.NoOp.onCancelSend,
+          onDismissRecordingFailed = VoiceNoteCallbacks.NoOp.onDismissRecordingFailed,
+          onRetry = VoiceNoteCallbacks.NoOp.onRetry,
+          onOpenSettings = VoiceNoteCallbacks.NoOp.onOpenSettings,
       )
 
   @Test fun doneTaskHasNoActions() = assertNoActions(task.complete())
@@ -453,12 +480,76 @@ class TaskDetailsContentTest {
     composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).assertIsDisplayed()
   }
 
+  /**
+   * Breaks if the task screen does not forward the record gestures to the voice-note controller.
+   */
+  @Test
+  fun recordingControlsForwardTheirCallbacks() {
+    var started = 0
+    var released = 0
+    val voiceNoteCallbacks =
+        callbacks(onRecordStart = { started++ }, onRecordRelease = { released++ })
+    show(
+        state(),
+        voiceNote = VoiceNoteUiState(canManage = true),
+        voiceNoteCallbacks = voiceNoteCallbacks,
+    )
+
+    composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).performTouchInput {
+      down(center)
+      up()
+    }
+
+    assertEquals(1, started)
+    assertEquals(1, released)
+  }
+
+  /** Breaks if tapping the task note's player does not invoke its playback callback. */
+  @Test
+  fun playbackControlForwardsItsCallback() {
+    var toggled = 0
+    val voiceNoteCallbacks = callbacks(onTogglePlay = { toggled++ })
+    show(
+        state(ownerName = "Marie Dupont"),
+        voiceNote = VoiceNoteUiState(note = previewNote),
+        voiceNoteCallbacks = voiceNoteCallbacks,
+    )
+
+    composeTestRule.onNodeWithTag(VoiceNoteTestTags.VOICE_NOTE_PLAY).performClick()
+
+    assertEquals(1, toggled)
+  }
+
+  /** Breaks if the trash of the note does not invoke the task screen delete callback. */
+  @Test
+  fun deletingControlForwardsItsCallback() {
+    var deleted = 0
+    val voiceNoteCallbacks = callbacks(onDelete = { deleted++ })
+    show(
+        state(),
+        voiceNote = VoiceNoteUiState(note = previewNote, canManage = true),
+        voiceNoteCallbacks = voiceNoteCallbacks,
+    )
+
+    composeTestRule.onNodeWithTag(VoiceNoteTestTags.VOICE_NOTE_DELETE).performClick()
+
+    assertEquals(1, deleted)
+  }
+
   /** Breaks if the record bar replaces the buttons of the task instead of sharing the bottom. */
   @Test
   fun recordBarAndTheButtonsOfTheTaskShareTheBottom() {
     show(state(), voiceNote = VoiceNoteUiState(canManage = true))
     composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).assertIsDisplayed()
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MARK_DONE_BUTTON).assertIsDisplayed()
+  }
+
+  /** Breaks if an owner's record bar disappears when a completed task has no task actions. */
+  @Test
+  fun recordBarIsShownWithoutTaskActions() {
+    show(state(task.complete()), voiceNote = VoiceNoteUiState(canManage = true))
+    composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MARK_DONE_BUTTON).assertDoesNotExist()
   }
 
   /** Breaks if a volunteer is not shown the note and who recorded it, or gets a record bar. */
@@ -482,6 +573,16 @@ class TaskDetailsContentTest {
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MARK_DONE_BUTTON).assertIsDisplayed()
   }
 
+  /** Breaks if a failed playback shows no notice once the task has no buttons. */
+  @Test
+  fun failedPlaybackShowsItsNoticeWithoutTaskActions() {
+    val failed =
+        VoiceNoteUiState(note = previewNote, player = PlayerState.Failed(previewNote.audioUrl))
+    show(state(task.complete()), voiceNote = failed)
+    composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.PLAYBACK_ERROR).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MARK_DONE_BUTTON).assertDoesNotExist()
+  }
+
   /** Breaks if a task with nothing to do and no voice note to record still draws a bottom bar. */
   @Test
   fun nothingIsFixedAtTheBottomWhenThereIsNothingToShowThere() {
@@ -489,5 +590,6 @@ class TaskDetailsContentTest {
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MARK_DONE_BUTTON).assertDoesNotExist()
     composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.RECORD_BAR).assertDoesNotExist()
     composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.PLAYBACK_ERROR).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.FIXED_BOTTOM_BAR).assertDoesNotExist()
   }
 }

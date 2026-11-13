@@ -1,5 +1,4 @@
 // Co-authored-by: Copilot App
-// Co-authored-by: Copilot App
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.details
 
@@ -32,15 +31,14 @@ class VoiceNoteController
 internal constructor(
     scope: CoroutineScope,
     private val host: VoiceNoteHost,
-    currentUserId: String,
     private val services: VoiceNoteServices?,
 ) {
-  private val recording = services?.let { VoiceNoteRecording(scope, host, currentUserId, it) }
+  private val recording = services?.let { VoiceNoteRecording(scope, host, it) }
   private val playback = services?.let {
     VoiceNotePlayback(it.player) { host.state.value.task?.voiceNote?.audioUrl }
   }
   private val deletion = services?.let {
-    VoiceNoteDeletion(scope, host, currentUserId, it) { url -> playback?.stop(url) }
+    VoiceNoteDeletion(scope, host, it) { url -> playback?.stop(url) }
   }
 
   /** The parts of the section that come from neither the task nor what the services do. */
@@ -157,7 +155,7 @@ internal constructor(
 
   /** Frees what the screen no longer needs: the held recording, the recorder and the player. */
   fun release() {
-    recording?.release()
+    recording?.releaseResources()
     playback?.release()
   }
 }

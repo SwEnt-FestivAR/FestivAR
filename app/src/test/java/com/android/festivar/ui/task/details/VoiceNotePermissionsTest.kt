@@ -25,6 +25,7 @@ class VoiceNotePermissionsTest {
               ),
       )
 
+  /** Breaks if a non-owner or unloaded task is allowed to manage a voice note. */
   @Test
   fun canManageVoiceNote_isTrueOnlyForTheOwner() {
     assertTrue(state(task = ownerTask).canManageVoiceNote)
@@ -32,6 +33,7 @@ class VoiceNotePermissionsTest {
     assertFalse(state().canManageVoiceNote)
   }
 
+  /** Breaks if adding is allowed without ownership, an idle screen, or an empty note slot. */
   @Test
   fun canAddVoiceNote_requiresOwnerIdleTaskWithoutANote() {
     assertTrue(state(task = ownerTask, isLoading = false).canAddVoiceNote)
@@ -43,6 +45,7 @@ class VoiceNotePermissionsTest {
     assertFalse(state(task = ownerTask).canAddVoiceNote)
   }
 
+  /** Breaks if deleting is allowed without ownership, an idle screen, or an existing note. */
   @Test
   fun canDeleteVoiceNote_requiresOwnerIdleTaskWithANote() {
     assertTrue(state(task = taskWithNote, isLoading = false).canDeleteVoiceNote)

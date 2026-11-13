@@ -14,8 +14,6 @@ class EventsOverviewNavigator(private val navController: NavHostController) {
 
   val onAddEvent: () -> Unit = { navController.navigate(AppScreens.CreateEvent.name) }
 
-  val onSelectAvatar: () -> Unit = { navController.navigate(AppScreens.Profile.name) }
-
   val onSignedOut: () -> Unit = {
     navController.navigate(AppScreens.Login.name) {
       popUpTo(navController.graph.id) { inclusive = true }
