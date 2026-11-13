@@ -4,10 +4,12 @@
 package com.android.festivar
 
 import android.util.Log
+import androidx.annotation.StringRes
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -25,9 +27,11 @@ import com.android.festivar.model.authentication.AuthRepositoryFirebase
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventRepositoryFirebase
 import com.android.festivar.model.event.joinCodeOf
+import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TaskRepositoryFirebase
 import com.android.festivar.model.user.UsersRepositoryFirebase
 import com.android.festivar.model.user.UsersRepositoryProvider
+import com.android.festivar.model.voicenote.VoiceNote
 import com.android.festivar.ui.authentication.login.LoginScreenTestTags
 import com.android.festivar.ui.authentication.signup.SignUpScreenTestTags
 import com.android.festivar.ui.components.BottomNavigationBarTestTags
@@ -48,6 +52,7 @@ import com.android.festivar.ui.voicenote.VoiceNoteTestTags
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.firestore
+import java.time.Duration
 import java.time.LocalDate
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -57,6 +62,7 @@ import java.util.UUID
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
 import org.junit.AfterClass
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.BeforeClass
 import org.junit.Rule
@@ -76,7 +82,8 @@ import org.junit.runner.RunWith
  *
  * The M2 journey: a member joins the event, sees its join code, opens its task board with the
  * bottom bar, deletes a task they created, checks the voice note of another, takes it, finds it in
- * My tasks and gives it back after the confirmation.
+ * My tasks and gives it back after the confirmation. The volunteer journey: a member opens the
+ * voice note task of the organizer, takes it and marks it done.
  */
 @RunWith(AndroidJUnit4::class)
 class EndToEndTest {
@@ -180,19 +187,8 @@ class EndToEndTest {
     try {
       signUp(M2_MEMBER_EMAIL)
 
-      waitUntilTagExists(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON)
-      composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON).performClick()
-      waitUntilTagExists(JoinEventScreenTestTags.TITLE)
-      composeTestRule
-          .onNodeWithTag(JoinEventScreenTestTags.CODE_INPUT)
-          .performTextInput(joinCodeOf(event))
-      waitUntilTagExists(JoinEventScreenTestTags.join(event.eventId))
-      composeTestRule.onNodeWithTag(JoinEventScreenTestTags.join(event.eventId)).performClick()
+      joinTheSeededEvent()
 
-      waitUntilTagExists(EventDetailsScreenTestTags.EVENT_NAME)
-      composeTestRule
-          .onNodeWithTag(EventDetailsScreenTestTags.EVENT_NAME)
-          .assertTextEquals(event.title)
       // Every member sees the join code of the event they joined, the one they typed
       composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.JOIN_CODE_ROW).assertIsDisplayed()
       composeTestRule
@@ -200,8 +196,7 @@ class EndToEndTest {
           .assertTextEquals(joinCodeOf(event))
 
       // The board: the bar nests the Events tab under the tasks disc
-      composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.SEE_TASKS_BUTTON).performClick()
-      waitUntilTagExists(TaskOverviewScreenTestTags.ADD_TASK)
+      openTheBoard()
       assertTheBoardBar()
 
       // The M1 journey may have left its own task here, so the board is not assumed empty
@@ -307,6 +302,92 @@ class EndToEndTest {
     }
   }
 
+  /**
+   * Walks the volunteer path as a second new member: join the seeded event, open the task its
+   * organizer created with a voice note, and check it is theirs to listen to and not to change (the
+   * note is credited to the organizer, it can be played but not deleted, there is no record bar, no
+   * empty voice note row and no owner menu). Then take it and mark it done, see the "Done" status
+   * replace the actions, sign out, check what is stored, sign back in and find the task under the
+   * Done chip of the board, still done. It turns red if the voice note is not wired for a task that
+   * is not the member's own, if the owner controls leak to a volunteer, if finishing a task is not
+   * stored, or if the done state does not survive a new session.
+   */
+  @Test
+  fun aVolunteerOpensTheOrganizersVoiceNoteTakesTheTaskAndMarksItDone() {
+    try {
+      signUp(VOLUNTEER_EMAIL)
+      joinTheSeededEvent()
+      openTheBoard()
+
+      waitUntilTextExists(SEEDED_TASK_TITLE)
+      composeTestRule.onNodeWithText(SEEDED_TASK_TITLE).performClick()
+      waitUntilTagExists(TaskDetailsScreenTestTags.TAKE_BUTTON)
+      assertTheBarNests(NavigationTab.EVENTS, NavigationSubScreen.TASK_DETAILS)
+      assertTheStatusIs(R.string.details_status_open)
+
+      // Not the owner: no menu to edit or delete the task
+      composeTestRule
+          .onNodeWithTag(TaskDetailsScreenTestTags.MORE_ACTIONS_BUTTON)
+          .assertDoesNotExist()
+
+      // The voice note is the organizer's, to listen to only
+      waitUntilTagExists(VoiceNoteTestTags.VOICE_NOTE_AUTHOR)
+      composeTestRule
+          .onNodeWithTag(VoiceNoteTestTags.VOICE_NOTE_AUTHOR)
+          .performScrollTo()
+          .assertTextContains("$OWNER_NAME $OWNER_SURNAME", substring = true)
+      composeTestRule
+          .onNodeWithTag(VoiceNoteTestTags.VOICE_NOTE_PLAY)
+          .performScrollTo()
+          .assertIsDisplayed()
+      composeTestRule.onNodeWithTag(VoiceNoteTestTags.VOICE_NOTE_DELETE).assertDoesNotExist()
+      composeTestRule.onNodeWithTag(VoiceNoteTestTags.VOICE_NOTE_EMPTY).assertDoesNotExist()
+      composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.RECORD_BAR).assertDoesNotExist()
+
+      // Taking the task and finishing it replaces the actions by the Done status
+      composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.TAKE_BUTTON).performClick()
+      waitUntilTagExists(TaskDetailsScreenTestTags.MARK_DONE_BUTTON)
+      assertTheStatusIs(R.string.details_status_yours)
+      composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MARK_DONE_BUTTON).performClick()
+      waitUntilTagGone(TaskDetailsScreenTestTags.MARK_DONE_BUTTON)
+      assertTheStatusIs(R.string.details_status_done)
+      composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.GIVE_BACK_BUTTON).assertDoesNotExist()
+
+      signOutFromTheProfile(VOLUNTEER_EMAIL)
+
+      // The task is done and taken by the volunteer, and the organizer's voice note is untouched
+      asTheUser(VOLUNTEER_EMAIL) { uid ->
+        val task = TaskRepositoryFirebase(Firebase.firestore).getTask(seededTask.taskId)
+        assertTrue("The task is not stored as done", task.completed)
+        assertTrue("The volunteer is not on the task", task.assignees.any { it.uid == uid })
+        // The time of the note is not compared: it is stored as text and read back
+        assertEquals("The voice note changed", seededTask.voiceNote?.id, task.voiceNote?.id)
+        assertEquals(seededTask.voiceNote?.audioUrl, task.voiceNote?.audioUrl)
+        assertEquals(seededTask.voiceNote?.duration, task.voiceNote?.duration)
+        assertEquals("The task changed owner", seededTask.ownerId, task.ownerId)
+      }
+
+      // A new session finds the same state: the Done chip of the board lists the task as done
+      logIn(VOLUNTEER_EMAIL)
+      composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.UPCOMING_CHIP).performClick()
+      waitUntilTagExists(EventsOverviewScreenTestTags.getTestTagForEventItem(event))
+      composeTestRule
+          .onNodeWithTag(EventsOverviewScreenTestTags.getTestTagForEventItem(event))
+          .performClick()
+      waitUntilTagExists(EventDetailsScreenTestTags.EVENT_NAME)
+      openTheBoard()
+      composeTestRule.onNodeWithTag(TaskOverviewScreenTestTags.CHIP_DONE).performClick()
+      waitUntilTextExists(SEEDED_TASK_TITLE)
+      composeTestRule.onNodeWithText(SEEDED_TASK_TITLE).performClick()
+      waitUntilTagExists(TaskDetailsScreenTestTags.STATUS_BADGE)
+      assertTheStatusIs(R.string.details_status_done)
+      composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MARK_DONE_BUTTON).assertDoesNotExist()
+      signOutFromTheProfile(VOLUNTEER_EMAIL)
+    } finally {
+      Firebase.auth.signOut()
+    }
+  }
+
   @Test
   fun aNewOrganizerSignsUpCreatesAnEventAndFindsIt() {
     try {
@@ -386,6 +467,36 @@ class EndToEndTest {
     Espresso.closeSoftKeyboard()
     composeTestRule.onNodeWithTag(LoginScreenTestTags.LOGIN_BUTTON).assertIsEnabled().performClick()
     waitUntilTagExists(EventsOverviewScreenTestTags.TITLE)
+  }
+
+  /** From the events overview of a new member, joins the seeded event with its code. */
+  private fun joinTheSeededEvent() {
+    waitUntilTagExists(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON)
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON).performClick()
+    waitUntilTagExists(JoinEventScreenTestTags.TITLE)
+    composeTestRule
+        .onNodeWithTag(JoinEventScreenTestTags.CODE_INPUT)
+        .performTextInput(joinCodeOf(event))
+    waitUntilTagExists(JoinEventScreenTestTags.join(event.eventId))
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.join(event.eventId)).performClick()
+
+    // The joined event opens on its details
+    waitUntilTagExists(EventDetailsScreenTestTags.EVENT_NAME)
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.EVENT_NAME)
+        .assertTextEquals(event.title)
+  }
+
+  /** From the event details, opens the task board of the event. */
+  private fun openTheBoard() {
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.SEE_TASKS_BUTTON).performClick()
+    waitUntilTagExists(TaskOverviewScreenTestTags.ADD_TASK)
+  }
+
+  /** The status badge of the task details reads the string [status]. */
+  private fun assertTheStatusIs(@StringRes status: Int) {
+    val text = InstrumentationRegistry.getInstrumentation().targetContext.getString(status)
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.STATUS_BADGE).assertTextEquals(text)
   }
 
   /**
@@ -506,13 +617,20 @@ class EndToEndTest {
     private const val TASK_TITLE = "Hang the banner"
     private const val M2_TASK_TITLE = "Stack the chairs"
     private const val DELETED_TASK_TITLE = "Fold the flags"
+    private const val SEEDED_TASK_TITLE = "Carry the speakers"
+    private const val OWNER_NAME = "Ada"
+    private const val OWNER_SURNAME = "Organizer"
     private const val CREATED_EVENT_TITLE = "Vidy Afterparty"
     private val MEMBER_EMAIL = "e2e-member-${UUID.randomUUID()}@festivar.test"
     private val M2_MEMBER_EMAIL = "e2e-m2-member-${UUID.randomUUID()}@festivar.test"
+    private val VOLUNTEER_EMAIL = "e2e-volunteer-${UUID.randomUUID()}@festivar.test"
     private val ORGANIZER_EMAIL = "e2e-organizer-${UUID.randomUUID()}@festivar.test"
     private val EVENT_OWNER_EMAIL = "e2e-event-owner-${UUID.randomUUID()}@festivar.test"
 
     private lateinit var event: Event
+
+    /** The task the organizer seeded on the event, with a voice note, for the volunteer. */
+    private lateinit var seededTask: Task
 
     /** Runs [block] as a throwaway anonymous user, as the Firestore rules need a signed-in one. */
     private fun asAnonymousUser(block: suspend () -> Unit) = runBlocking {
@@ -569,7 +687,14 @@ class EndToEndTest {
               }
         }
       }
-      for (email in listOf(MEMBER_EMAIL, M2_MEMBER_EMAIL, ORGANIZER_EMAIL, EVENT_OWNER_EMAIL)) {
+      for (email in
+          listOf(
+              MEMBER_EMAIL,
+              M2_MEMBER_EMAIL,
+              VOLUNTEER_EMAIL,
+              ORGANIZER_EMAIL,
+              EVENT_OWNER_EMAIL,
+          )) {
         runCatching {
           asTheUser(email) { uid ->
             logged("delete leftover profile of $email") {
@@ -588,7 +713,10 @@ class EndToEndTest {
         val authRepository = AuthRepositoryFirebase(usersRepository = users)
         val firebaseUser =
             authRepository.signUpWithEmailAndPassword(EVENT_OWNER_EMAIL, PASSWORD).getOrThrow()
-        users.getUser(firebaseUser.uid)
+        // The volunteer sees this name next to the voice note
+        val named = users.getUser(firebaseUser.uid).copy(name = OWNER_NAME, surname = OWNER_SURNAME)
+        users.editUser(named.uid, named)
+        named
       }
       val start = ZonedDateTime.now().plusDays(1)
       event =
@@ -600,7 +728,25 @@ class EndToEndTest {
               startDate = start,
               endDate = start.plusHours(5),
           )
-      runBlocking { EventRepositoryFirebase(Firebase.firestore).addEvent(event) }
+      seededTask =
+          Task(
+              taskId = "e2e-task-${UUID.randomUUID()}",
+              eventId = event.eventId,
+              title = SEEDED_TASK_TITLE,
+              ownerId = owner.uid,
+              voiceNote =
+                  VoiceNote(
+                      id = "e2e-voice-note-${UUID.randomUUID()}",
+                      audioUrl = "https://example.com/e2e-voice-note.m4a",
+                      duration = Duration.ofSeconds(12),
+                      createdAt = ZonedDateTime.now(),
+                  ),
+          )
+      runBlocking {
+        EventRepositoryFirebase(Firebase.firestore).addEvent(event)
+        // Added by its owner, who is still signed in
+        TaskRepositoryFirebase(Firebase.firestore).addTask(seededTask)
+      }
       Firebase.auth.signOut()
       // Signed out, so the app starts on the login screen
     }
@@ -624,7 +770,14 @@ class EndToEndTest {
         }
       }
       // An Auth account can only be deleted by itself, so each member signs in once more
-      for (email in listOf(MEMBER_EMAIL, M2_MEMBER_EMAIL, ORGANIZER_EMAIL, EVENT_OWNER_EMAIL)) {
+      for (email in
+          listOf(
+              MEMBER_EMAIL,
+              M2_MEMBER_EMAIL,
+              VOLUNTEER_EMAIL,
+              ORGANIZER_EMAIL,
+              EVENT_OWNER_EMAIL,
+          )) {
         runCatching {
           asTheUser(email) { uid ->
             logged("delete the profile of $email") {
