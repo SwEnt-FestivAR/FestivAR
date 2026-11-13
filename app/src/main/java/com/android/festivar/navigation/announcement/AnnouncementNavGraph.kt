@@ -2,6 +2,7 @@
 package com.android.festivar.navigation.announcement
 
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -49,7 +50,7 @@ fun NavGraphBuilder.announcementGraph(
       route = "${AppScreens.CreateAnnouncement.name}/{eventId}",
       arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
   ) { backStackEntry ->
-    val eventId = requireEventId(backStackEntry.arguments?.getString("eventId"))
+    val eventId = requireEventId(backStackEntry)
     // Asked at each tap on "Publish". Blank when nobody is signed in: the view model then refuses
     // to save (redirect left to #261).
     val currentUserId: () -> String = { dataRepository.authRepository.currentUser?.uid.orEmpty() }
@@ -72,7 +73,7 @@ fun NavGraphBuilder.announcementGraph(
       route = "${AppScreens.AnnouncementFeed.name}/{eventId}",
       arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
   ) { backStackEntry ->
-    val eventId = requireEventId(backStackEntry.arguments?.getString("eventId"))
+    val eventId = requireEventId(backStackEntry)
     val navigator = AnnouncementFeedNavigator(navController, backStackEntry)
     AnnouncementFeedScreen(
         viewModel = viewModel { AnnouncementFeedViewModel(eventId, dataRepository) },
@@ -90,6 +91,9 @@ fun NavGraphBuilder.announcementGraph(
 
 internal fun requireEventId(eventId: String?): String =
     requireNotNull(eventId) { EVENT_ID_REQUIRED }
+
+internal fun requireEventId(backStackEntry: NavBackStackEntry): String =
+    requireEventId(backStackEntry.arguments?.getString("eventId"))
 
 internal fun requireAnnouncementDetailsArguments(
     eventId: String?,
