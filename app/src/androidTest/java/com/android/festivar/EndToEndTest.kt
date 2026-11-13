@@ -14,6 +14,7 @@ import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onChild
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -554,10 +555,16 @@ class EndToEndTest {
     waitUntilTagExists(TaskOverviewScreenTestTags.ADD_TASK)
   }
 
-  /** The status badge of the task details reads the string [status]. */
+  /**
+   * The status badge of the task details reads the string [status]. The pill does not merge its
+   * label, so the text is on its child, as in the screen tests.
+   */
   private fun assertTheStatusIs(@StringRes status: Int) {
     val text = InstrumentationRegistry.getInstrumentation().targetContext.getString(status)
-    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.STATUS_BADGE).assertTextEquals(text)
+    composeTestRule
+        .onNodeWithTag(TaskDetailsScreenTestTags.STATUS_BADGE)
+        .onChild()
+        .assertTextEquals(text)
   }
 
   /**
@@ -742,9 +749,9 @@ class EndToEndTest {
           snapshots.documents
               .filter { it.getString("title") in setOf("Vidy Festival", CREATED_EVENT_TITLE) }
               .forEach { document ->
-                (document.get("tasks") as? List<*>).orEmpty().filterIsInstance<String>().forEach {
-                    taskId ->
-                  runCatching { tasks.deleteTask(taskId) }
+                // By event id, as a seeded task is not listed in the tasks of its event
+                runCatching {
+                  tasks.getAllTasks(document.id).forEach { tasks.deleteTask(it.taskId) }
                 }
                 document.reference.delete().await()
               }
@@ -753,6 +760,7 @@ class EndToEndTest {
       for (email in
           listOf(
               MEMBER_EMAIL,
+              BOARD_MEMBER_EMAIL,
               M2_MEMBER_EMAIL,
               VOLUNTEER_EMAIL,
               ORGANIZER_EMAIL,
@@ -836,6 +844,7 @@ class EndToEndTest {
       for (email in
           listOf(
               MEMBER_EMAIL,
+              BOARD_MEMBER_EMAIL,
               M2_MEMBER_EMAIL,
               VOLUNTEER_EMAIL,
               ORGANIZER_EMAIL,
