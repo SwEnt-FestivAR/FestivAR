@@ -2,6 +2,7 @@
 package com.android.festivar.navigation.announcement
 
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -16,6 +17,8 @@ import com.android.festivar.ui.announcement.details.AnnouncementDetailsViewModel
 import com.android.festivar.ui.announcement.feed.AnnouncementFeedScreen
 import com.android.festivar.ui.announcement.feed.AnnouncementFeedViewModel
 
+private const val EVENT_ID_REQUIRED = "eventId argument is required"
+
 /** The destinations of the announcement feature. */
 fun NavGraphBuilder.announcementGraph(
     navController: NavHostController,
@@ -29,16 +32,11 @@ fun NavGraphBuilder.announcementGraph(
               navArgument("announcementId") { type = NavType.StringType },
           ),
   ) { backStackEntry ->
-    val eventId =
-        requireNotNull(backStackEntry.arguments?.getString("eventId")) {
-          "eventId argument is required"
-        }
-    val announcementId =
-        requireNotNull(backStackEntry.arguments?.getString("announcementId")) {
-          "announcementId argument is required"
-        }
-    require(eventId.isNotBlank()) { "eventId must not be blank" }
-    require(announcementId.isNotBlank()) { "announcementId must not be blank" }
+    val (eventId, announcementId) =
+        requireAnnouncementDetailsArguments(
+            backStackEntry.arguments?.getString("eventId"),
+            backStackEntry.arguments?.getString("announcementId"),
+        )
     val navigator = AnnouncementDetailsNavigator(navController)
     AnnouncementDetailsScreen(
         viewModel =
@@ -52,10 +50,7 @@ fun NavGraphBuilder.announcementGraph(
       route = "${AppScreens.CreateAnnouncement.name}/{eventId}",
       arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
   ) { backStackEntry ->
-    val eventId =
-        requireNotNull(backStackEntry.arguments?.getString("eventId")) {
-          "eventId argument is required"
-        }
+    val eventId = requireEventId(backStackEntry)
     // Asked at each tap on "Publish". Blank when nobody is signed in: the view model then refuses
     // to save (redirect left to #261).
     val currentUserId: () -> String = { dataRepository.authRepository.currentUser?.uid.orEmpty() }
@@ -78,10 +73,7 @@ fun NavGraphBuilder.announcementGraph(
       route = "${AppScreens.AnnouncementFeed.name}/{eventId}",
       arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
   ) { backStackEntry ->
-    val eventId =
-        requireNotNull(backStackEntry.arguments?.getString("eventId")) {
-          "eventId argument is required"
-        }
+    val eventId = requireEventId(backStackEntry)
     val navigator = AnnouncementFeedNavigator(navController, backStackEntry)
     AnnouncementFeedScreen(
         viewModel = viewModel { AnnouncementFeedViewModel(eventId, dataRepository) },
@@ -90,8 +82,27 @@ fun NavGraphBuilder.announcementGraph(
         canAddAnnouncement = true,
         onBack = navigator.onBack,
         onAddAnnouncement = { navigator.onAddAnnouncement(eventId) },
-        // Will open the details of the announcement (#364)
-        onSelectAnnouncement = {},
+        onSelectAnnouncement = { announcement ->
+          navigator.onSelectAnnouncement(eventId, announcement.announcementId)
+        },
     )
   }
+}
+
+internal fun requireEventId(eventId: String?): String =
+    requireNotNull(eventId) { EVENT_ID_REQUIRED }
+
+internal fun requireEventId(backStackEntry: NavBackStackEntry): String =
+    requireEventId(backStackEntry.arguments?.getString("eventId"))
+
+internal fun requireAnnouncementDetailsArguments(
+    eventId: String?,
+    announcementId: String?,
+): Pair<String, String> {
+  val requiredEventId = requireEventId(eventId)
+  val requiredAnnouncementId =
+      requireNotNull(announcementId) { "announcementId argument is required" }
+  require(requiredEventId.isNotBlank()) { "eventId must not be blank" }
+  require(requiredAnnouncementId.isNotBlank()) { "announcementId must not be blank" }
+  return requiredEventId to requiredAnnouncementId
 }

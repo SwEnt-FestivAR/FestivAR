@@ -23,4 +23,8 @@ class AnnouncementFeedNavigator(
   val onAddAnnouncement: (String) -> Unit = { eventId ->
     navController.navigate(AppScreens.createAnnouncement(eventId))
   }
+
+  val onSelectAnnouncement: (String, String) -> Unit = { eventId, announcementId ->
+    navController.navigate(AppScreens.announcementDetails(eventId, announcementId))
+  }
 }
