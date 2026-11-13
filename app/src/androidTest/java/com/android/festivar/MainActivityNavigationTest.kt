@@ -63,6 +63,7 @@ import com.android.festivar.ui.task.details.TaskDetailsScreenTestTags
 import com.android.festivar.ui.task.edit.EditTaskScreenTestTags
 import com.android.festivar.ui.task.mytasks.MyTasksScreenTestTags
 import com.android.festivar.ui.task.overview.TaskOverviewScreenTestTags
+import com.android.festivar.ui.voicenote.VoiceNoteRecordTestTags
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.auth
@@ -651,6 +652,32 @@ class MainActivityNavigationTest {
           .isNotEmpty()
     }
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  /** Breaks if the app's default voice-note services are not wired into task details. */
+  @Test
+  fun taskDetailsRouteWithDefaultServicesShowsRecordButton() {
+    seedTask(ownerId = testUserId)
+
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          dataRepository =
+              DataRepositoryLocal(
+                  authRepository = FakeAuthRepository(currentUser = firebaseUser),
+                  tasksRepository = TasksRepositoryProvider.repository,
+              ),
+          startDestinationOverride = AppScreens.taskDetails("t1"),
+      )
+    }
+
+    composeTestRule.waitUntil(10_000) {
+      composeTestRule
+          .onAllNodesWithTag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD)
+          .fetchSemanticsNodes()
+          .isNotEmpty()
+    }
+    composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).assertIsDisplayed()
   }
 
   @Test
