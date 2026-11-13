@@ -1,3 +1,4 @@
+// Co-authored-by: Copilot App
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Gemini <noreply@google.com>
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
