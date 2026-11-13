@@ -122,9 +122,8 @@ interface VoiceRecorder {
   fun stop(): Audio
 
   /**
-   * Stops the recording, even if it is paused, and deletes its file. Also clears a failed
-   * recording: the state goes back to [RecorderState.Idle]. Does nothing if nothing is being
-   * recorded.
+   * Stops the recording, even if it is paused, and deletes its file. Does nothing if nothing is
+   * being recorded.
    */
   fun cancel()
 }
