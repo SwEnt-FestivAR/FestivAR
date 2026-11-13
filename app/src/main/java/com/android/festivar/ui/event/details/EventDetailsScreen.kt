@@ -10,21 +10,19 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -53,16 +51,16 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
 import com.android.festivar.model.event.Event
-import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.event.joinCodeOf
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
-import com.android.festivar.ui.components.PeopleCard
+import com.android.festivar.ui.components.EditDeleteMenu
+import com.android.festivar.ui.components.Hairline
+import com.android.festivar.ui.components.PeopleRow
 import com.android.festivar.ui.components.PillStyle
 import com.android.festivar.ui.components.StatusPill
 import com.android.festivar.ui.components.UserListBottomSheet
@@ -88,6 +86,8 @@ object EventDetailsScreenTestTags {
   const val ANNOUNCEMENTS_ROW = "announcementsRow"
   const val MEMBERS_CARD = "membersCard"
   const val MEMBERS_SHEET = "membersSheet"
+  const val MORE_ACTIONS_BUTTON = "eventMoreActionsButton"
+  const val EDIT_MENU_ITEM = "eventEditMenuItem"
 }
 
 /** Callbacks handled by the Event Details screen. */
@@ -95,6 +95,7 @@ class EventDetailsActions(
     val onBack: () -> Unit = {},
     val onTasksButtonClicked: () -> Unit = {},
     val onAnnouncementsClicked: () -> Unit = {},
+    val onEditClicked: () -> Unit = {},
 )
 
 /**
@@ -107,6 +108,7 @@ class EventDetailsActions(
  * @param onBack called when the back button is clicked.
  * @param onTasksButtonClicked called when the "See tasks" button is clicked.
  * @param onAnnouncementsClicked called when the "Announcements" row is clicked.
+ * @param onEditClicked called when the organizer picks "Edit event" in the menu.
  * @param modifier modifier applied to the event content.
  */
 @Composable
@@ -115,6 +117,7 @@ fun EventDetailsScreen(
     onBack: () -> Unit,
     onTasksButtonClicked: () -> Unit,
     onAnnouncementsClicked: () -> Unit,
+    onEditClicked: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
   val uiState by viewModel.uiState.collectAsState()
@@ -127,6 +130,7 @@ fun EventDetailsScreen(
               onBack = onBack,
               onTasksButtonClicked = onTasksButtonClicked,
               onAnnouncementsClicked = onAnnouncementsClicked,
+              onEditClicked = onEditClicked,
           ),
       modifier = modifier,
   )
@@ -142,7 +146,13 @@ private fun EventDetailsContent(
   val event = state.event
   Scaffold(
       containerColor = MaterialTheme.colorScheme.background,
-      topBar = { EventDetailsTopBar(onBack = actions.onBack) },
+      topBar = {
+        EventDetailsTopBar(
+            onBack = actions.onBack,
+            showMenu = state.isOwner,
+            onEditClicked = actions.onEditClicked,
+        )
+      },
       bottomBar = {
         if (event != null) {
           EventDetailsBottomBar(onTasksButtonClicked = actions.onTasksButtonClicked)
@@ -266,13 +276,26 @@ private fun EventInfo(
       }
     }
 
-    AnnouncementsRow(
-        latest = event.announcements.maxByOrNull { it.updatedAt.toInstant() },
-        onClick = onAnnouncementsClicked,
-    )
-
     JoinCodeRow(code = joinCodeOf(event))
 
+    EventLinks(event = event, onAnnouncementsClicked = onAnnouncementsClicked)
+  }
+}
+
+/**
+ * The card under the join code, as in Figma: the "Announcements" row, a hairline inset to the text,
+ * then the [MembersEntry] row.
+ */
+@Composable
+private fun EventLinks(event: Event, onAnnouncementsClicked: () -> Unit) {
+  Column(
+      modifier =
+          Modifier.fillMaxWidth()
+              .clip(RoundedCornerShape(12.dp))
+              .background(MaterialTheme.colorScheme.surfaceContainerLow)
+  ) {
+    AnnouncementsRow(onClick = onAnnouncementsClicked)
+    Hairline(modifier = Modifier.padding(start = 68.dp))
     MembersEntry(event = event)
   }
 }
@@ -291,7 +314,7 @@ private fun MembersEntry(event: Event, startOpen: Boolean = false) {
   val title = stringResource(R.string.event_details_members)
   val count = pluralStringResource(R.plurals.join_event_members, members.size, members.size)
 
-  PeopleCard(
+  PeopleRow(
       title = title,
       people = members,
       subtitle = count,
@@ -312,21 +335,17 @@ private fun MembersEntry(event: Event, startOpen: Boolean = false) {
   }
 }
 
-/**
- * Card row opening the event's announcements. Its subtitle is the title of the [latest] one, or
- * says there is none yet.
- */
+/** Row of the [EventLinks] card opening the event's announcements. */
 @Composable
-private fun AnnouncementsRow(latest: Announcement?, onClick: () -> Unit) {
+private fun AnnouncementsRow(onClick: () -> Unit) {
   Row(
       modifier =
           Modifier.fillMaxWidth()
-              .clip(RoundedCornerShape(12.dp))
-              .background(MaterialTheme.colorScheme.surfaceContainerLow)
               .clickable(onClick = onClick)
-              .padding(14.dp)
+              .padding(horizontal = 16.dp, vertical = 12.dp)
               .testTag(EventDetailsScreenTestTags.ANNOUNCEMENTS_ROW),
       verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(12.dp),
   ) {
     Box(
         contentAlignment = Alignment.Center,
@@ -338,29 +357,19 @@ private fun AnnouncementsRow(latest: Announcement?, onClick: () -> Unit) {
           painter = painterResource(R.drawable.ic_notifications),
           contentDescription = null,
           tint = MaterialTheme.colorScheme.onSurface,
-          modifier = Modifier.size(20.dp),
+          modifier = Modifier.size(24.dp),
       )
     }
-    Spacer(modifier = Modifier.width(12.dp))
-    Column(modifier = Modifier.weight(1f)) {
-      Text(
-          text = stringResource(R.string.event_details_announcements),
-          color = MaterialTheme.colorScheme.onSurface,
-          style = MaterialTheme.typography.titleSmall,
-      )
-      Text(
-          text = latest?.title ?: stringResource(R.string.event_details_no_announcements),
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-          style = MaterialTheme.typography.bodySmall,
-      )
-    }
+    Text(
+        text = stringResource(R.string.event_details_announcements),
+        modifier = Modifier.weight(1f),
+        color = MaterialTheme.colorScheme.onSurface,
+        style = MaterialTheme.typography.titleSmall,
+    )
     Icon(
-        imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
         contentDescription = null,
-        tint = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.padding(start = 8.dp),
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
     )
   }
 }
@@ -402,10 +411,17 @@ private fun JoinCodeRow(code: String) {
   }
 }
 
-/** Top app bar containing the navigation button for leaving the details screen. */
+/**
+ * Top app bar containing the navigation button for leaving the details screen and, when [showMenu]
+ * is true, the menu to edit the event.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun EventDetailsTopBar(onBack: () -> Unit) {
+private fun EventDetailsTopBar(
+    onBack: () -> Unit,
+    showMenu: Boolean,
+    onEditClicked: () -> Unit,
+) {
   TopAppBar(
       title = {},
       navigationIcon = {
@@ -421,6 +437,17 @@ private fun EventDetailsTopBar(onBack: () -> Unit) {
               imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
               contentDescription = stringResource(R.string.event_details_navigate_back),
               tint = MaterialTheme.colorScheme.onSurface,
+          )
+        }
+      },
+      actions = {
+        if (showMenu) {
+          EditDeleteMenu(
+              moreActionsDescription = stringResource(R.string.event_details_more_actions),
+              moreActionsTag = EventDetailsScreenTestTags.MORE_ACTIONS_BUTTON,
+              editLabel = stringResource(R.string.event_details_edit_event),
+              editTag = EventDetailsScreenTestTags.EDIT_MENU_ITEM,
+              onEdit = onEditClicked,
           )
         }
       },
@@ -498,15 +525,6 @@ private fun previewEvent(): Event {
       startDate = eventStartDate,
       endDate = eventEndDate,
       location = "Parc de Vidy, Lausanne",
-      announcements =
-          listOf(
-              Announcement(
-                  announcementId = "a0",
-                  title = "Bar shifts moved",
-                  authorId = "user",
-                  updatedAt = eventStartDate,
-              )
-          ),
       description =
           "Our yearly association party by the lake. Three days of concerts, food stands and " +
               "games. Volunteers help with setup, bar shifts and cleanup.",
@@ -533,6 +551,17 @@ internal fun EventDetailsScreenPreview() {
     EventDetailsContent(
         state = EventDetailsUIState(event = previewEvent()),
         actions = EventDetailsActions(onBack = {}, onTasksButtonClicked = {}),
+    )
+  }
+}
+
+@Preview
+@Composable
+internal fun OwnerEventDetailsPreview() {
+  AppTheme {
+    EventDetailsContent(
+        state = EventDetailsUIState(event = previewEvent(), isOwner = true),
+        actions = EventDetailsActions(),
     )
   }
 }

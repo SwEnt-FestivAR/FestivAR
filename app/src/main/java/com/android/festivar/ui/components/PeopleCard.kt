@@ -50,12 +50,33 @@ fun PeopleCard(
     modifier: Modifier = Modifier,
     subtitle: String = peopleCount(people.size),
 ) {
+  PeopleRow(
+      title = title,
+      people = people,
+      onClick = onClick,
+      modifier =
+          modifier.background(
+              MaterialTheme.colorScheme.surfaceContainerLow,
+              MaterialTheme.shapes.medium,
+          ),
+      subtitle = subtitle,
+  )
+}
+
+/**
+ * The content of a [PeopleCard] without its background, for a row that sits in a card shared with
+ * other rows. It takes the same parameters as [PeopleCard], all of them given by the caller.
+ */
+@Composable
+fun PeopleRow(
+    title: String,
+    people: List<User>,
+    onClick: () -> Unit,
+    modifier: Modifier,
+    subtitle: String,
+) {
   Row(
-      modifier
-          .fillMaxWidth()
-          .background(MaterialTheme.colorScheme.surfaceContainerLow, MaterialTheme.shapes.medium)
-          .clickable(onClick = onClick)
-          .padding(16.dp),
+      modifier.fillMaxWidth().clickable(onClick = onClick).padding(16.dp),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(12.dp),
   ) {

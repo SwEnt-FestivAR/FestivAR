@@ -54,6 +54,7 @@ import com.android.festivar.ui.components.NavigationSubScreen
 import com.android.festivar.ui.components.NavigationTab
 import com.android.festivar.ui.event.create.CreateEventScreenTestTags
 import com.android.festivar.ui.event.details.EventDetailsScreenTestTags
+import com.android.festivar.ui.event.edit.EditEventScreenTestTags
 import com.android.festivar.ui.event.join.JoinEventScreenTestTags
 import com.android.festivar.ui.event.overview.EventsOverviewScreenTestTags
 import com.android.festivar.ui.profile.ProfileScreenTestTags
@@ -62,6 +63,7 @@ import com.android.festivar.ui.task.details.TaskDetailsScreenTestTags
 import com.android.festivar.ui.task.edit.EditTaskScreenTestTags
 import com.android.festivar.ui.task.mytasks.MyTasksScreenTestTags
 import com.android.festivar.ui.task.overview.TaskOverviewScreenTestTags
+import com.android.festivar.ui.voicenote.VoiceNoteRecordTestTags
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.auth
@@ -361,25 +363,8 @@ class MainActivityNavigationTest {
     // The see tasks button only shows once the event is read from the Firestore emulator, whose
     // rules need a signed-in user
     TasksRepositoryProvider.repository = TasksRepositoryLocal()
-    val start = ZonedDateTime.now().plusDays(1)
-    val event =
-        Event(
-            eventId = "back-${UUID.randomUUID()}",
-            ownerId = storedUser.uid,
-            title = "Event With Tasks",
-            members = listOf(storedUser),
-            startDate = start,
-            endDate = start.plusHours(2),
-        )
-    val events = EventRepositoryFirebase(Firebase.firestore)
-    val users = UsersRepositoryFirebase(Firebase.firestore)
-    runBlocking {
-      Firebase.auth.signInAnonymously().await()
-      users.addUser(storedUser)
-      events.addEvent(event)
-    }
 
-    try {
+    withEventOfTheSignedInUser(idPrefix = "back", title = "Event With Tasks") { event ->
       composeTestRule.setContent {
         FestivAR(
             credentialManager = mockk<CredentialManager>(relaxed = true),
@@ -401,12 +386,40 @@ class MainActivityNavigationTest {
           .onNodeWithTag(EventDetailsScreenTestTags.EVENT_NAME)
           .assertTextEquals(event.title)
       composeTestRule.onNodeWithTag(TaskOverviewScreenTestTags.TITLE).assertDoesNotExist()
-    } finally {
-      runBlocking {
-        runCatching { events.deleteEvent(event.eventId) }
-        runCatching { users.deleteUser(storedUser.uid) }
-        Firebase.auth.signOut()
+    }
+  }
+
+  /**
+   * Turns red when the organizer's Edit event item opens another screen than the Edit Event screen,
+   * or when going back from it does not return to the event details.
+   */
+  @Test
+  fun editFromTheEventDetailsOpensTheEditScreenAndBackReturnsToTheDetails() {
+    withEventOfTheSignedInUser(idPrefix = "edit", title = "Event To Edit") { event ->
+      composeTestRule.setContent {
+        FestivAR(
+            credentialManager = mockk<CredentialManager>(relaxed = true),
+            dataRepository =
+                DataRepositoryFirebase(
+                    authRepository = FakeAuthRepository(currentUser = signedInUser)
+                ),
+            startDestinationOverride = AppScreens.eventDetails(event.eventId),
+        )
       }
+
+      waitUntilTagExists(EventDetailsScreenTestTags.MORE_ACTIONS_BUTTON)
+      composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.MORE_ACTIONS_BUTTON).performClick()
+      composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.EDIT_MENU_ITEM).performClick()
+      waitUntilTagExists(EditEventScreenTestTags.SCREEN)
+      composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.EVENT_NAME).assertDoesNotExist()
+
+      composeTestRule.onNodeWithTag(EditEventScreenTestTags.BACK_BUTTON).performClick()
+
+      waitUntilTagExists(EventDetailsScreenTestTags.EVENT_NAME)
+      composeTestRule
+          .onNodeWithTag(EventDetailsScreenTestTags.EVENT_NAME)
+          .assertTextEquals(event.title)
+      composeTestRule.onNodeWithTag(EditEventScreenTestTags.SCREEN).assertDoesNotExist()
     }
   }
 
@@ -639,6 +652,32 @@ class MainActivityNavigationTest {
           .isNotEmpty()
     }
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.TITLE).assertIsDisplayed()
+  }
+
+  /** Breaks if the app's default voice-note services are not wired into task details. */
+  @Test
+  fun taskDetailsRouteWithDefaultServicesShowsRecordButton() {
+    seedTask(ownerId = testUserId)
+
+    composeTestRule.setContent {
+      FestivAR(
+          credentialManager = mockk<CredentialManager>(relaxed = true),
+          dataRepository =
+              DataRepositoryLocal(
+                  authRepository = FakeAuthRepository(currentUser = firebaseUser),
+                  tasksRepository = TasksRepositoryProvider.repository,
+              ),
+          startDestinationOverride = AppScreens.taskDetails("t1"),
+      )
+    }
+
+    composeTestRule.waitUntil(10_000) {
+      composeTestRule
+          .onAllNodesWithTag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD)
+          .fetchSemanticsNodes()
+          .isNotEmpty()
+    }
+    composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).assertIsDisplayed()
   }
 
   @Test
@@ -991,6 +1030,40 @@ class MainActivityNavigationTest {
                   authRepository = FakeAuthRepository(currentUser = signedInUser)
               ),
       )
+    }
+  }
+
+  /**
+   * Stores [signedInUser] and an event they organize in the Firestore emulator, whose rules need a
+   * signed-in user, runs [block] with that event, then removes both again.
+   */
+  private fun withEventOfTheSignedInUser(idPrefix: String, title: String, block: (Event) -> Unit) {
+    val start = ZonedDateTime.now().plusDays(1)
+    val event =
+        Event(
+            eventId = "$idPrefix-${UUID.randomUUID()}",
+            ownerId = storedUser.uid,
+            title = title,
+            members = listOf(storedUser),
+            startDate = start,
+            endDate = start.plusHours(2),
+        )
+    val events = EventRepositoryFirebase(Firebase.firestore)
+    val users = UsersRepositoryFirebase(Firebase.firestore)
+    runBlocking {
+      Firebase.auth.signInAnonymously().await()
+      users.addUser(storedUser)
+      events.addEvent(event)
+    }
+
+    try {
+      block(event)
+    } finally {
+      runBlocking {
+        runCatching { events.deleteEvent(event.eventId) }
+        runCatching { users.deleteUser(storedUser.uid) }
+        Firebase.auth.signOut()
+      }
     }
   }
 

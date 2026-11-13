@@ -5,6 +5,7 @@ package com.android.festivar.ui.event
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 
 import android.annotation.SuppressLint
+import androidx.annotation.StringRes
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasNoClickAction
@@ -14,7 +15,6 @@ import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasTestTag
-import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onChild
@@ -41,6 +41,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -261,28 +262,9 @@ class EventDetailsScreenTest {
   }
 
   /** Red if a fetch failure leaves event content or actions visible. */
-  @SuppressLint("ViewModelConstructorInComposable")
   @Test
   fun displaysErrorWhenEventCannotBeFetched() {
-    composeTestRule.setContent {
-      EventDetailsScreen(
-          viewModel =
-              EventDetailsViewModel(
-                  dataRepositoryWith(
-                      object : EventsRepository by EventsRepositoryLocal() {
-                        override suspend fun getEvent(eventId: String): Event {
-                          throw IllegalStateException("fetch failed")
-                        }
-                      }
-                  ),
-                  eventId = "missing",
-              ),
-          onTasksButtonClicked = {},
-          onAnnouncementsClicked = {},
-          onBack = {},
-      )
-    }
-    composeTestRule.waitForIdle()
+    setContentFailingToFetch()
 
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.FETCH_ERROR).assertIsDisplayed()
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.ANNOUNCEMENTS_ROW).assertDoesNotExist()
@@ -315,49 +297,57 @@ class EventDetailsScreenTest {
   }
 
   /**
-   * Red if the announcements row shows another announcement than the most recently updated one,
-   * e.g. the first or the last of the list.
+   * Breaks if the announcements row shows anything but its label, such as the title of an
+   * announcement, since Figma shows the label alone.
    */
   @Test
-  fun announcementsRowShowsTheTitleOfTheLatestAnnouncement() {
-    fun announcement(id: String, title: String, updatedAt: ZonedDateTime) =
-        Announcement(announcementId = id, title = title, authorId = "user", updatedAt = updatedAt)
-    val first = announcement("a1", "Gates and opening hours", eventStartDate)
-    val latest = announcement("a2", "Stage B is closed", eventStartDate.plusDays(1))
-    val last = announcement("a3", "Headliner moved", eventStartDate.plusHours(5))
+  fun announcementsRowShowsOnlyItsLabel() {
+    val announcement =
+        Announcement(
+            announcementId = "a1",
+            title = "Stage B is closed",
+            authorId = "user",
+            updatedAt = eventStartDate,
+        )
 
-    setContent(eventSameMonth.copy(announcements = listOf(first, latest, last)))
+    setContent(eventSameMonth.copy(announcements = listOf(announcement)))
 
     composeTestRule
-        .onNode(
-            hasTestTag(EventDetailsScreenTestTags.ANNOUNCEMENTS_ROW)
-                .and(hasText("Announcements"))
-                .and(hasText(latest.title))
-        )
+        .onNodeWithTag(EventDetailsScreenTestTags.ANNOUNCEMENTS_ROW)
         .assertIsDisplayed()
-    composeTestRule.onNodeWithText(first.title).assertDoesNotExist()
-    composeTestRule.onNodeWithText(last.title).assertDoesNotExist()
+        .assertTextEquals("Announcements")
+    composeTestRule.onNodeWithText(announcement.title).assertDoesNotExist()
   }
 
-  /**
-   * Red if the announcements row of an event without announcements does not say so, or if clicking
-   * it does not invoke the supplied callback exactly once.
-   */
+  /** Breaks if clicking the announcements row does not invoke the callback exactly once. */
   @Test
-  fun announcementsRowWithoutAnnouncementSaysSoAndCallsOnAnnouncementsClicked() {
+  fun clickingAnnouncementsRowCallsOnAnnouncementsClicked() {
     val onAnnouncementsClicked = mockk<() -> Unit>(relaxed = true)
 
     setContent(eventSameMonth, onAnnouncementsClicked = onAnnouncementsClicked)
 
-    composeTestRule
-        .onNode(
-            hasTestTag(EventDetailsScreenTestTags.ANNOUNCEMENTS_ROW)
-                .and(hasText("No announcements yet"))
-        )
-        .assertIsDisplayed()
-        .performClick()
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.ANNOUNCEMENTS_ROW).performClick()
 
     verify(exactly = 1) { onAnnouncementsClicked() }
+  }
+
+  /**
+   * Breaks if the announcements row is not directly under the join code and above the members row,
+   * as in Figma, for instance back above the join code.
+   */
+  @Test
+  fun announcementsRowSitsBetweenTheJoinCodeAndTheMembers() {
+    setContent(eventSameMonth)
+
+    val joinCode = composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.JOIN_CODE_ROW)
+    val announcements = composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.ANNOUNCEMENTS_ROW)
+    val members = composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.MEMBERS_CARD)
+    val joinCodeBottom = joinCode.getUnclippedBoundsInRoot().bottom
+    val announcementsBounds = announcements.getUnclippedBoundsInRoot()
+    val membersTop = members.getUnclippedBoundsInRoot().top
+
+    assertTrue(announcementsBounds.top >= joinCodeBottom)
+    assertTrue(announcementsBounds.bottom <= membersTop)
   }
 
   /** Red if clicking Back does not invoke the supplied callback exactly once. */
@@ -442,18 +432,89 @@ class EventDetailsScreenTest {
         .assertTextEquals(joinCodeLabel(), "3F9A1C")
   }
 
+  /** Breaks if the organizer cannot open the menu with Edit event. */
+  @Test
+  fun ownerSeesMenuWithEdit() {
+    setContent(eventSameMonth)
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.MORE_ACTIONS_BUTTON).performClick()
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.EDIT_MENU_ITEM).assertIsDisplayed()
+    composeTestRule.onNodeWithText(string(R.string.event_details_edit_event)).assertIsDisplayed()
+  }
+
+  /** Breaks if a volunteer gets the menu button. */
+  @Test
+  fun volunteerSeesNoMenu() {
+    val volunteer = User(uid = "volunteer", name = "Vera V.")
+    setContent(eventSameMonth.copy(members = eventSameMonth.members + volunteer), volunteer.uid)
+
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.MORE_ACTIONS_BUTTON)
+        .assertDoesNotExist()
+  }
+
+  /** Breaks if the menu button shows while the event failed to load. */
+  @Test
+  fun noMenuWhenEventCannotBeFetched() {
+    setContentFailingToFetch()
+
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.MORE_ACTIONS_BUTTON)
+        .assertDoesNotExist()
+  }
+
+  /** Breaks if Edit event does not call the edit callback and close the menu. */
+  @Test
+  fun editMenuItemCallsOnEditAndClosesMenu() {
+    var edits = 0
+    setContent(eventSameMonth, onEditClicked = { edits++ })
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.MORE_ACTIONS_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.EDIT_MENU_ITEM).performClick()
+
+    assertEquals(1, edits)
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.EDIT_MENU_ITEM).assertDoesNotExist()
+  }
+
   /** The label of the join code row, in capitals as the screen shows it. */
-  private fun joinCodeLabel(): String =
-      InstrumentationRegistry.getInstrumentation()
-          .targetContext
-          .getString(R.string.event_details_join_code)
-          .uppercase()
+  private fun joinCodeLabel(): String = string(R.string.event_details_join_code).uppercase()
+
+  private fun string(@StringRes id: Int): String =
+      InstrumentationRegistry.getInstrumentation().targetContext.getString(id)
+
+  @SuppressLint("ViewModelConstructorInComposable")
+  private fun setContentFailingToFetch() {
+    composeTestRule.setContent {
+      EventDetailsScreen(
+          viewModel =
+              EventDetailsViewModel(
+                  dataRepositoryWith(
+                      object : EventsRepository by EventsRepositoryLocal() {
+                        override suspend fun getEvent(eventId: String): Event {
+                          throw IllegalStateException("fetch failed")
+                        }
+                      }
+                  ),
+                  eventId = "missing",
+                  currentUserId = "user",
+              ),
+          onTasksButtonClicked = {},
+          onAnnouncementsClicked = {},
+          onEditClicked = {},
+          onBack = {},
+      )
+    }
+    composeTestRule.waitForIdle()
+  }
 
   @SuppressLint("ViewModelConstructorInComposable")
   private fun setContent(
       event: Event,
+      currentUserId: String = event.ownerId,
       onTasksButtonClicked: () -> Unit = {},
       onAnnouncementsClicked: () -> Unit = {},
+      onEditClicked: () -> Unit = {},
       onBack: () -> Unit = {},
   ) {
     composeTestRule.setContent {
@@ -462,9 +523,11 @@ class EventDetailsScreenTest {
               EventDetailsViewModel(
                   dataRepositoryWith(EventsRepositoryLocal(listOf(event))),
                   event.eventId,
+                  currentUserId,
               ),
           onTasksButtonClicked = onTasksButtonClicked,
           onAnnouncementsClicked = onAnnouncementsClicked,
+          onEditClicked = onEditClicked,
           onBack = onBack,
       )
     }

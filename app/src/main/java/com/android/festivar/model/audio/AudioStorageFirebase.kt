@@ -1,6 +1,8 @@
+// Co-authored-by: Copilot App
 // Co-authored-by: Gemini <gemini@google.com>
 package com.android.festivar.model.audio
 
+import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageException
 import com.google.firebase.storage.StorageMetadata
 import com.google.firebase.storage.StorageReference
@@ -13,6 +15,9 @@ import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 
 class AudioStorageFirebase(private val storageRef: StorageReference) : AudioRepository {
+  /** The storage of the app: the default Firebase Storage bucket. */
+  constructor() : this(FirebaseStorage.getInstance().reference)
+
   private val audioRef = storageRef.child("audio").child("voice-note")
 
   override fun getNewUid(): String {
