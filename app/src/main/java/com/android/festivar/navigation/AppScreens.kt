@@ -7,26 +7,36 @@ package com.android.festivar.navigation
 
 // This enum defines the different screens in the app, used for navigation purposes.
 // Screens without their real implementation yet show a placeholder in the navigation graph
-enum class AppScreens {
-  Login,
-  ForgotPassword,
-  SignUp,
+// Each screen declares how it is presented, here and nowhere else; Screen is the default.
+enum class AppScreens(val presentation: ScreenPresentation = ScreenPresentation.Screen) {
+  Login(ScreenPresentation.Auth),
+  ForgotPassword(ScreenPresentation.Auth),
+  SignUp(ScreenPresentation.Auth),
   TaskOverview,
   EventsOverview,
   Profile,
-  JoinEvent,
+  JoinEvent(ScreenPresentation.Form),
   EventDetails,
-  EditEvent,
-  CreateEvent,
-  CreateTask,
-  CreateAnnouncement,
+  EditEvent(ScreenPresentation.Form),
+  CreateEvent(ScreenPresentation.Form),
+  CreateTask(ScreenPresentation.Form),
+  CreateAnnouncement(ScreenPresentation.Form),
   AnnouncementDetails,
   AnnouncementFeed,
   TaskDetails,
-  EditTask,
+  EditTask(ScreenPresentation.Form),
   MyTasks;
 
   companion object {
+    /**
+     * The screen whose route pattern is [route], as `NavDestination.route` gives it (for example
+     * "TaskDetails/{taskId}?from={from}"); null for no route or an unknown one.
+     */
+    fun fromRoute(route: String?): AppScreens? {
+      val name = route?.substringBefore('/')?.substringBefore('?')
+      return entries.firstOrNull { it.name == name }
+    }
+
     fun eventDetails(eventId: String) = "${EventDetails.name}/$eventId"
 
     fun editEvent(eventId: String) = "${EditEvent.name}/$eventId"
@@ -47,6 +57,18 @@ enum class AppScreens {
 
     fun announcementFeed(eventId: String) = "${AnnouncementFeed.name}/$eventId"
   }
+}
+
+/** How a screen is presented, declared once per screen in [AppScreens]. */
+enum class ScreenPresentation {
+  /** A regular screen; whether it shows the bottom bar is decided in `bottomBarStateFor`. */
+  Screen,
+
+  /** A form: creating or editing something, or joining an event. */
+  Form,
+
+  /** Login, sign up and password reset. */
+  Auth,
 }
 
 /** Where a task's details were opened from; it decides the selected tab of the bottom bar. */
