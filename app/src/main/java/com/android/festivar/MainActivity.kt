@@ -38,9 +38,9 @@ import com.android.festivar.navigation.bottomBarStateFor
 import com.android.festivar.navigation.event.eventGraph
 import com.android.festivar.navigation.profile.profileGraph
 import com.android.festivar.navigation.task.taskGraph
-import com.android.festivar.ui.task.details.VoiceNoteServices
 import com.android.festivar.ui.components.BottomNavigationBar
 import com.android.festivar.ui.settings.applySavedSettings
+import com.android.festivar.ui.task.details.VoiceNoteServices
 import com.android.festivar.ui.theme.AppTheme
 
 class MainActivity : AppCompatActivity() {
