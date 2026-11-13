@@ -74,6 +74,12 @@ import org.junit.runner.RunWith
  * `AuthRepositoryFirebase` and the real Firestore repositories, all talking to the Firebase
  * emulators: no fake repository and no start destination override.
  *
+ * The flow of the M2 journeys in one sentence: a new member signs up, joins the seeded event by its
+ * code, reads its join code, opens the task board with the bottom bar, adds two tasks and deletes
+ * one, checks the empty voice note on the other, takes it, finds it in My tasks and gives it back,
+ * and signs out, while a second new member opens the organizer's voice-note task read-only, takes
+ * it, marks it done and finds it still done after logging back in.
+ *
  * The member journey: sign up, join a seeded event by its code, open it, see its tasks, add one,
  * take it, sign out. The organizer journey: sign up, create an event, find it in the overview, open
  * it. The rule launches the activity before any `@Before`, so the emulators are configured and the
