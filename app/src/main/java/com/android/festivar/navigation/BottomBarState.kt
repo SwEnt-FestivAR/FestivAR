@@ -1,5 +1,6 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.navigation
 
 import com.android.festivar.ui.components.NavigationSubScreen
@@ -20,8 +21,7 @@ data class BottomBarState(
  * argument; null when the screen shows no bar (forms, authentication, unknown routes).
  */
 fun bottomBarStateFor(route: String?, from: String?): BottomBarState? {
-  val name = route?.substringBefore('/')?.substringBefore('?')
-  return when (AppScreens.entries.firstOrNull { it.name == name }) {
+  return when (AppScreens.fromRoute(route)) {
     AppScreens.EventsOverview -> BottomBarState(NavigationTab.EVENTS)
     AppScreens.EventDetails ->
         BottomBarState(NavigationTab.EVENTS, NavigationSubScreen.EVENT_DETAILS)
