@@ -15,7 +15,6 @@ import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasTestTag
-import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onChild
@@ -298,49 +297,57 @@ class EventDetailsScreenTest {
   }
 
   /**
-   * Red if the announcements row shows another announcement than the most recently updated one,
-   * e.g. the first or the last of the list.
+   * Breaks if the announcements row shows anything but its label, such as the title of an
+   * announcement, since Figma shows the label alone.
    */
   @Test
-  fun announcementsRowShowsTheTitleOfTheLatestAnnouncement() {
-    fun announcement(id: String, title: String, updatedAt: ZonedDateTime) =
-        Announcement(announcementId = id, title = title, authorId = "user", updatedAt = updatedAt)
-    val first = announcement("a1", "Gates and opening hours", eventStartDate)
-    val latest = announcement("a2", "Stage B is closed", eventStartDate.plusDays(1))
-    val last = announcement("a3", "Headliner moved", eventStartDate.plusHours(5))
+  fun announcementsRowShowsOnlyItsLabel() {
+    val announcement =
+        Announcement(
+            announcementId = "a1",
+            title = "Stage B is closed",
+            authorId = "user",
+            updatedAt = eventStartDate,
+        )
 
-    setContent(eventSameMonth.copy(announcements = listOf(first, latest, last)))
+    setContent(eventSameMonth.copy(announcements = listOf(announcement)))
 
     composeTestRule
-        .onNode(
-            hasTestTag(EventDetailsScreenTestTags.ANNOUNCEMENTS_ROW)
-                .and(hasText("Announcements"))
-                .and(hasText(latest.title))
-        )
+        .onNodeWithTag(EventDetailsScreenTestTags.ANNOUNCEMENTS_ROW)
         .assertIsDisplayed()
-    composeTestRule.onNodeWithText(first.title).assertDoesNotExist()
-    composeTestRule.onNodeWithText(last.title).assertDoesNotExist()
+        .assertTextEquals("Announcements")
+    composeTestRule.onNodeWithText(announcement.title).assertDoesNotExist()
   }
 
-  /**
-   * Red if the announcements row of an event without announcements does not say so, or if clicking
-   * it does not invoke the supplied callback exactly once.
-   */
+  /** Breaks if clicking the announcements row does not invoke the callback exactly once. */
   @Test
-  fun announcementsRowWithoutAnnouncementSaysSoAndCallsOnAnnouncementsClicked() {
+  fun clickingAnnouncementsRowCallsOnAnnouncementsClicked() {
     val onAnnouncementsClicked = mockk<() -> Unit>(relaxed = true)
 
     setContent(eventSameMonth, onAnnouncementsClicked = onAnnouncementsClicked)
 
-    composeTestRule
-        .onNode(
-            hasTestTag(EventDetailsScreenTestTags.ANNOUNCEMENTS_ROW)
-                .and(hasText("No announcements yet"))
-        )
-        .assertIsDisplayed()
-        .performClick()
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.ANNOUNCEMENTS_ROW).performClick()
 
     verify(exactly = 1) { onAnnouncementsClicked() }
+  }
+
+  /**
+   * Breaks if the announcements row is not directly under the join code and above the members row,
+   * as in Figma, for instance back above the join code.
+   */
+  @Test
+  fun announcementsRowSitsBetweenTheJoinCodeAndTheMembers() {
+    setContent(eventSameMonth)
+
+    val joinCode = composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.JOIN_CODE_ROW)
+    val announcements = composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.ANNOUNCEMENTS_ROW)
+    val members = composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.MEMBERS_CARD)
+    val joinCodeBottom = joinCode.getUnclippedBoundsInRoot().bottom
+    val announcementsBounds = announcements.getUnclippedBoundsInRoot()
+    val membersTop = members.getUnclippedBoundsInRoot().top
+
+    assertTrue(announcementsBounds.top >= joinCodeBottom)
+    assertTrue(announcementsBounds.bottom <= membersTop)
   }
 
   /** Red if clicking Back does not invoke the supplied callback exactly once. */

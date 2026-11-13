@@ -6,8 +6,6 @@ package com.android.festivar.ui.event
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
-import androidx.compose.ui.test.hasTestTag
-import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onChild
@@ -47,11 +45,9 @@ class EventDetailsPreviewsTest {
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DESCRIPTION).assertIsDisplayed()
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.SEE_TASKS_BUTTON).assertIsDisplayed()
     composeTestRule
-        .onNode(
-            hasTestTag(EventDetailsScreenTestTags.ANNOUNCEMENTS_ROW)
-                .and(hasText("Bar shifts moved"))
-        )
+        .onNodeWithTag(EventDetailsScreenTestTags.ANNOUNCEMENTS_ROW)
         .assertIsDisplayed()
+        .assertTextEquals("Announcements")
   }
 
   /** Breaks if the screen preview stops showing the Members card with its whole team. */

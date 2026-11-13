@@ -10,21 +10,19 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -53,17 +51,16 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
 import com.android.festivar.model.event.Event
-import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.event.joinCodeOf
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.EditDeleteMenu
-import com.android.festivar.ui.components.PeopleCard
+import com.android.festivar.ui.components.Hairline
+import com.android.festivar.ui.components.PeopleRow
 import com.android.festivar.ui.components.PillStyle
 import com.android.festivar.ui.components.StatusPill
 import com.android.festivar.ui.components.UserListBottomSheet
@@ -279,13 +276,26 @@ private fun EventInfo(
       }
     }
 
-    AnnouncementsRow(
-        latest = event.announcements.maxByOrNull { it.updatedAt.toInstant() },
-        onClick = onAnnouncementsClicked,
-    )
-
     JoinCodeRow(code = joinCodeOf(event))
 
+    EventLinks(event = event, onAnnouncementsClicked = onAnnouncementsClicked)
+  }
+}
+
+/**
+ * The card under the join code, as in Figma: the "Announcements" row, a hairline inset to the text,
+ * then the [MembersEntry] row.
+ */
+@Composable
+private fun EventLinks(event: Event, onAnnouncementsClicked: () -> Unit) {
+  Column(
+      modifier =
+          Modifier.fillMaxWidth()
+              .clip(RoundedCornerShape(12.dp))
+              .background(MaterialTheme.colorScheme.surfaceContainerLow)
+  ) {
+    AnnouncementsRow(onClick = onAnnouncementsClicked)
+    Hairline(modifier = Modifier.padding(start = 68.dp))
     MembersEntry(event = event)
   }
 }
@@ -304,7 +314,7 @@ private fun MembersEntry(event: Event, startOpen: Boolean = false) {
   val title = stringResource(R.string.event_details_members)
   val count = pluralStringResource(R.plurals.join_event_members, members.size, members.size)
 
-  PeopleCard(
+  PeopleRow(
       title = title,
       people = members,
       subtitle = count,
@@ -325,21 +335,17 @@ private fun MembersEntry(event: Event, startOpen: Boolean = false) {
   }
 }
 
-/**
- * Card row opening the event's announcements. Its subtitle is the title of the [latest] one, or
- * says there is none yet.
- */
+/** Row of the [EventLinks] card opening the event's announcements. */
 @Composable
-private fun AnnouncementsRow(latest: Announcement?, onClick: () -> Unit) {
+private fun AnnouncementsRow(onClick: () -> Unit) {
   Row(
       modifier =
           Modifier.fillMaxWidth()
-              .clip(RoundedCornerShape(12.dp))
-              .background(MaterialTheme.colorScheme.surfaceContainerLow)
               .clickable(onClick = onClick)
-              .padding(14.dp)
+              .padding(horizontal = 16.dp, vertical = 12.dp)
               .testTag(EventDetailsScreenTestTags.ANNOUNCEMENTS_ROW),
       verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(12.dp),
   ) {
     Box(
         contentAlignment = Alignment.Center,
@@ -351,29 +357,19 @@ private fun AnnouncementsRow(latest: Announcement?, onClick: () -> Unit) {
           painter = painterResource(R.drawable.ic_notifications),
           contentDescription = null,
           tint = MaterialTheme.colorScheme.onSurface,
-          modifier = Modifier.size(20.dp),
+          modifier = Modifier.size(24.dp),
       )
     }
-    Spacer(modifier = Modifier.width(12.dp))
-    Column(modifier = Modifier.weight(1f)) {
-      Text(
-          text = stringResource(R.string.event_details_announcements),
-          color = MaterialTheme.colorScheme.onSurface,
-          style = MaterialTheme.typography.titleSmall,
-      )
-      Text(
-          text = latest?.title ?: stringResource(R.string.event_details_no_announcements),
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-          style = MaterialTheme.typography.bodySmall,
-      )
-    }
+    Text(
+        text = stringResource(R.string.event_details_announcements),
+        modifier = Modifier.weight(1f),
+        color = MaterialTheme.colorScheme.onSurface,
+        style = MaterialTheme.typography.titleSmall,
+    )
     Icon(
-        imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
         contentDescription = null,
-        tint = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.padding(start = 8.dp),
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
     )
   }
 }
@@ -529,15 +525,6 @@ private fun previewEvent(): Event {
       startDate = eventStartDate,
       endDate = eventEndDate,
       location = "Parc de Vidy, Lausanne",
-      announcements =
-          listOf(
-              Announcement(
-                  announcementId = "a0",
-                  title = "Bar shifts moved",
-                  authorId = "user",
-                  updatedAt = eventStartDate,
-              )
-          ),
       description =
           "Our yearly association party by the lake. Three days of concerts, food stands and " +
               "games. Volunteers help with setup, bar shifts and cleanup.",
