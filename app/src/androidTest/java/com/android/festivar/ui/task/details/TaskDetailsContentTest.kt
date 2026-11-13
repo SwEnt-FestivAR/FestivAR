@@ -222,6 +222,26 @@ class TaskDetailsContentTest {
           Task("t2", "e1", "Full", maxAssign = 1, assignees = listOf(yasser), ownerId = "owner-1")
       )
 
+  private fun callbacks(
+      onTogglePlay: () -> Unit = VoiceNoteCallbacks.NoOp.onTogglePlay,
+      onDelete: () -> Unit = VoiceNoteCallbacks.NoOp.onDelete,
+      onRecordStart: () -> Unit = VoiceNoteCallbacks.NoOp.onRecordStart,
+      onRecordRelease: () -> Unit = VoiceNoteCallbacks.NoOp.onRecordRelease,
+  ) =
+      VoiceNoteCallbacks(
+          onTogglePlay = onTogglePlay,
+          onDelete = onDelete,
+          onConfirmDelete = VoiceNoteCallbacks.NoOp.onConfirmDelete,
+          onDismissDelete = VoiceNoteCallbacks.NoOp.onDismissDelete,
+          onRecordStart = onRecordStart,
+          onRecordRelease = onRecordRelease,
+          onConfirmSend = VoiceNoteCallbacks.NoOp.onConfirmSend,
+          onCancelSend = VoiceNoteCallbacks.NoOp.onCancelSend,
+          onDismissRecordingFailed = VoiceNoteCallbacks.NoOp.onDismissRecordingFailed,
+          onRetry = VoiceNoteCallbacks.NoOp.onRetry,
+          onOpenSettings = VoiceNoteCallbacks.NoOp.onOpenSettings,
+      )
+
   @Test fun doneTaskHasNoActions() = assertNoActions(task.complete())
 
   private fun assertNoActions(task: Task) {
@@ -467,23 +487,13 @@ class TaskDetailsContentTest {
   fun recordingControlsForwardTheirCallbacks() {
     var started = 0
     var released = 0
-    val callbacks =
-        VoiceNoteCallbacks.NoOp.let {
-          VoiceNoteCallbacks(
-              onTogglePlay = it.onTogglePlay,
-              onDelete = it.onDelete,
-              onConfirmDelete = it.onConfirmDelete,
-              onDismissDelete = it.onDismissDelete,
-              onRecordStart = { started++ },
-              onRecordRelease = { released++ },
-              onConfirmSend = it.onConfirmSend,
-              onCancelSend = it.onCancelSend,
-              onDismissRecordingFailed = it.onDismissRecordingFailed,
-              onRetry = it.onRetry,
-              onOpenSettings = it.onOpenSettings,
-          )
-        }
-    show(state(), voiceNote = VoiceNoteUiState(canManage = true), voiceNoteCallbacks = callbacks)
+    val voiceNoteCallbacks =
+        callbacks(onRecordStart = { started++ }, onRecordRelease = { released++ })
+    show(
+        state(),
+        voiceNote = VoiceNoteUiState(canManage = true),
+        voiceNoteCallbacks = voiceNoteCallbacks,
+    )
 
     composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).performTouchInput {
       down(center)
@@ -498,26 +508,11 @@ class TaskDetailsContentTest {
   @Test
   fun playbackControlForwardsItsCallback() {
     var toggled = 0
-    val callbacks =
-        VoiceNoteCallbacks.NoOp.let {
-          VoiceNoteCallbacks(
-              onTogglePlay = { toggled++ },
-              onDelete = it.onDelete,
-              onConfirmDelete = it.onConfirmDelete,
-              onDismissDelete = it.onDismissDelete,
-              onRecordStart = it.onRecordStart,
-              onRecordRelease = it.onRecordRelease,
-              onConfirmSend = it.onConfirmSend,
-              onCancelSend = it.onCancelSend,
-              onDismissRecordingFailed = it.onDismissRecordingFailed,
-              onRetry = it.onRetry,
-              onOpenSettings = it.onOpenSettings,
-          )
-        }
+    val voiceNoteCallbacks = callbacks(onTogglePlay = { toggled++ })
     show(
         state(ownerName = "Marie Dupont"),
         voiceNote = VoiceNoteUiState(note = previewNote),
-        voiceNoteCallbacks = callbacks,
+        voiceNoteCallbacks = voiceNoteCallbacks,
     )
 
     composeTestRule.onNodeWithTag(VoiceNoteTestTags.VOICE_NOTE_PLAY).performClick()
@@ -525,30 +520,15 @@ class TaskDetailsContentTest {
     assertEquals(1, toggled)
   }
 
-  /** Breaks if confirming note deletion does not invoke the task screen callback. */
+  /** Breaks if the trash of the note does not invoke the task screen delete callback. */
   @Test
   fun deletingControlForwardsItsCallback() {
     var deleted = 0
-    val callbacks =
-        VoiceNoteCallbacks.NoOp.let {
-          VoiceNoteCallbacks(
-              onTogglePlay = it.onTogglePlay,
-              onDelete = { deleted++ },
-              onConfirmDelete = it.onConfirmDelete,
-              onDismissDelete = it.onDismissDelete,
-              onRecordStart = it.onRecordStart,
-              onRecordRelease = it.onRecordRelease,
-              onConfirmSend = it.onConfirmSend,
-              onCancelSend = it.onCancelSend,
-              onDismissRecordingFailed = it.onDismissRecordingFailed,
-              onRetry = it.onRetry,
-              onOpenSettings = it.onOpenSettings,
-          )
-        }
+    val voiceNoteCallbacks = callbacks(onDelete = { deleted++ })
     show(
         state(),
         voiceNote = VoiceNoteUiState(note = previewNote, canManage = true),
-        voiceNoteCallbacks = callbacks,
+        voiceNoteCallbacks = voiceNoteCallbacks,
     )
 
     composeTestRule.onNodeWithTag(VoiceNoteTestTags.VOICE_NOTE_DELETE).performClick()
@@ -592,6 +572,7 @@ class TaskDetailsContentTest {
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MARK_DONE_BUTTON).assertIsDisplayed()
   }
 
+  /** Breaks if a failed playback shows no notice once the task has no buttons. */
   @Test
   fun failedPlaybackShowsItsNoticeWithoutTaskActions() {
     val failed =
