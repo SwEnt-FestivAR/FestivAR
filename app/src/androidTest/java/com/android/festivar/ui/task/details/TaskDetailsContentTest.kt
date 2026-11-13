@@ -544,6 +544,7 @@ class TaskDetailsContentTest {
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MARK_DONE_BUTTON).assertIsDisplayed()
   }
 
+  /** Breaks if an owner's record bar disappears when a completed task has no task actions. */
   @Test
   fun recordBarIsShownWithoutTaskActions() {
     show(state(task.complete()), voiceNote = VoiceNoteUiState(canManage = true))
