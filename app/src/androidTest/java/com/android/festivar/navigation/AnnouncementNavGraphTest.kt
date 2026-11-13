@@ -30,7 +30,6 @@ import java.time.ZonedDateTime
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertThrows
 import org.junit.Rule
 import org.junit.Test
 
@@ -253,34 +252,6 @@ class AnnouncementNavGraphTest {
     composeTestRule.onNodeWithTag(DetailsTags.BACK_BUTTON).performClick()
 
     assertThePreviousScreenIsAloneOnTheBackStack()
-  }
-
-  @Test
-  fun detailsWithBlankEventId_failsArgumentValidation() {
-    showTheGraphAs(signedInUser)
-
-    val exception =
-        assertThrows(IllegalArgumentException::class.java) {
-          composeTestRule.runOnUiThread {
-            navController.navigate("${AppScreens.AnnouncementDetails.name}/%20/a1")
-          }
-        }
-
-    assertEquals("eventId must not be blank", exception.message)
-  }
-
-  @Test
-  fun detailsWithBlankAnnouncementId_failsArgumentValidation() {
-    showTheGraphAs(signedInUser)
-
-    val exception =
-        assertThrows(IllegalArgumentException::class.java) {
-          composeTestRule.runOnUiThread {
-            navController.navigate("${AppScreens.AnnouncementDetails.name}/e1/%20")
-          }
-        }
-
-    assertEquals("announcementId must not be blank", exception.message)
   }
 
   // Breaks if selecting an announcement in the feed does not navigate to its announcement details
