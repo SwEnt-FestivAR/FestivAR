@@ -1,4 +1,3 @@
-// Co-authored-by: Copilot App
 // Co-authored-by: Gemini <gemini@google.com>
 package com.android.festivar.model.audio
 
