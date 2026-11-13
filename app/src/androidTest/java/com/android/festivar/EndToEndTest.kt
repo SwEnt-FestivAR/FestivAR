@@ -43,6 +43,8 @@ import com.android.festivar.ui.task.create.CreateTaskScreenTestTags
 import com.android.festivar.ui.task.details.TaskDetailsScreenTestTags
 import com.android.festivar.ui.task.mytasks.MyTasksScreenTestTags
 import com.android.festivar.ui.task.overview.TaskOverviewScreenTestTags
+import com.android.festivar.ui.voicenote.VoiceNoteRecordTestTags
+import com.android.festivar.ui.voicenote.VoiceNoteTestTags
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.firestore
@@ -72,8 +74,9 @@ import org.junit.runner.RunWith
  * event is seeded in the class level [seedTheEvent], and everything the journeys created is removed
  * in [cleanUp]. Each journey ends signed out so the next starts on the login screen.
  *
- * The M2 journey: a member joins the event, opens its task board with the bottom bar, takes a task,
- * finds it in My tasks and gives it back after the confirmation.
+ * The M2 journey: a member joins the event, sees its join code, opens its task board with the
+ * bottom bar, deletes a task they created, checks the voice note of another, takes it, finds it in
+ * My tasks and gives it back after the confirmation.
  */
 @RunWith(AndroidJUnit4::class)
 class EndToEndTest {
@@ -161,13 +164,15 @@ class EndToEndTest {
   }
 
   /**
-   * Walks the M2 path as a new member: sign up, join the seeded event, open its task board and
-   * check the bottom bar (Events nested under the tasks disc), add a task and open it, take it and
-   * see the "On this task" section, find the task in My tasks and open it from there, give it back
-   * after keeping it once, and sign out through the Profile tab. It proves the bar follows the
-   * member through the board, the task and My tasks, that taking and giving back are stored, and
-   * that the confirmation can be declined. It turns red if a tag disappears, the bar highlights the
-   * wrong tab, My tasks misses the taken task, the section outlives the give back, or the assignee
+   * Walks the M2 path as a new member: sign up, join the seeded event and read its join code, open
+   * its task board and check the bottom bar (Events nested under the tasks disc), add two tasks,
+   * delete one after declining once, open the other and check its empty voice note, take it and see
+   * the "On this task" section, find it in My tasks and open it from there, give it back after
+   * keeping it once, and sign out through the Profile tab. It proves the bar follows the member
+   * through the board, the task and My tasks, that the owner can delete, that taking and giving
+   * back are stored, and that both confirmations can be declined. It turns red if a tag disappears,
+   * the join code is wrong, the bar highlights the wrong tab, the voice note is not wired, My tasks
+   * misses the taken task, the section outlives the give back, or the deleted task or the assignee
    * is still stored at the end.
    */
   @Test
@@ -188,7 +193,11 @@ class EndToEndTest {
       composeTestRule
           .onNodeWithTag(EventDetailsScreenTestTags.EVENT_NAME)
           .assertTextEquals(event.title)
-      // To add once the event details show it: check that the join code is visible
+      // Every member sees the join code of the event they joined, the one they typed
+      composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.JOIN_CODE_ROW).assertIsDisplayed()
+      composeTestRule
+          .onNodeWithTag(EventDetailsScreenTestTags.JOIN_CODE_VALUE, useUnmergedTree = true)
+          .assertTextEquals(joinCodeOf(event))
 
       // The board: the bar nests the Events tab under the tasks disc
       composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.SEE_TASKS_BUTTON).performClick()
@@ -196,22 +205,46 @@ class EndToEndTest {
       assertTheBoardBar()
 
       // The M1 journey may have left its own task here, so the board is not assumed empty
-      composeTestRule.onNodeWithTag(TaskOverviewScreenTestTags.ADD_TASK).performClick()
-      waitUntilTagExists(CreateTaskScreenTestTags.TITLE_FIELD)
+      addTaskFromTheBoard(M2_TASK_TITLE)
+      addTaskFromTheBoard(DELETED_TASK_TITLE)
+
+      // The creator of a task can delete it: keeping it leaves it listed, confirming removes it
+      composeTestRule.onNodeWithText(DELETED_TASK_TITLE).performClick()
+      waitUntilTagExists(TaskDetailsScreenTestTags.MORE_ACTIONS_BUTTON)
+      composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MORE_ACTIONS_BUTTON).performClick()
+      waitUntilTagExists(TaskDetailsScreenTestTags.DELETE_MENU_ITEM)
+      composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.DELETE_MENU_ITEM).performClick()
+      waitUntilTagExists(TaskDetailsScreenTestTags.DELETE_DIALOG)
+      composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.DELETE_DISMISS_BUTTON).performClick()
+      waitUntilTagGone(TaskDetailsScreenTestTags.DELETE_DIALOG)
       composeTestRule
-          .onNodeWithTag(CreateTaskScreenTestTags.TITLE_FIELD)
-          .performTextInput(M2_TASK_TITLE)
-      Espresso.closeSoftKeyboard()
-      composeTestRule
-          .onNodeWithTag(CreateTaskScreenTestTags.CREATE_BUTTON)
-          .assertIsEnabled()
-          .performClick()
-      waitUntilTagExists(TaskOverviewScreenTestTags.TITLE)
-      waitUntilTextExists(M2_TASK_TITLE)
+          .onNodeWithTag(TaskDetailsScreenTestTags.TITLE)
+          .assertTextEquals(DELETED_TASK_TITLE)
+      composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MORE_ACTIONS_BUTTON).performClick()
+      waitUntilTagExists(TaskDetailsScreenTestTags.DELETE_MENU_ITEM)
+      composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.DELETE_MENU_ITEM).performClick()
+      waitUntilTagExists(TaskDetailsScreenTestTags.DELETE_CONFIRM_BUTTON)
+      composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.DELETE_CONFIRM_BUTTON).performClick()
+      // Deleting returns to the board, which keeps the other task and lists the deleted one no more
+      waitUntilTagExists(TaskOverviewScreenTestTags.ADD_TASK)
+      waitUntilTextGone(DELETED_TASK_TITLE)
+      composeTestRule.onNodeWithText(M2_TASK_TITLE).assertIsDisplayed()
 
       composeTestRule.onNodeWithText(M2_TASK_TITLE).performClick()
       waitUntilTagExists(TaskDetailsScreenTestTags.TAKE_BUTTON)
       assertTheBarNests(NavigationTab.EVENTS, NavigationSubScreen.TASK_DETAILS)
+
+      // The member created the task, so its voice note is theirs to record: the app is wired with
+      // its real voice note services, and the section is empty with the record bar ready. Nothing
+      // is recorded, as a microphone on an emulator is not reliable.
+      waitUntilTagExists(VoiceNoteRecordTestTags.RECORD_BAR)
+      composeTestRule
+          .onNodeWithTag(VoiceNoteTestTags.VOICE_NOTE_EMPTY)
+          .performScrollTo()
+          .assertIsDisplayed()
+      composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.RECORD_BAR).assertIsDisplayed()
+      composeTestRule.onNodeWithTag(VoiceNoteRecordTestTags.VOICE_NOTE_RECORD).assertIsDisplayed()
+      composeTestRule.onNodeWithTag(VoiceNoteTestTags.VOICE_NOTE_PLAY).assertDoesNotExist()
 
       // Taking the task shows who is on it
       composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.TAKE_BUTTON).performClick()
@@ -238,19 +271,11 @@ class EndToEndTest {
       waitUntilTagExists(TaskDetailsScreenTestTags.GIVE_BACK_BUTTON)
       assertTheBarNests(NavigationTab.MY_TASKS, NavigationSubScreen.TASK_DETAILS)
 
-      // To add once the owner menu exists (#399, PR #440): as the organizer, delete a task after
-      // the confirmation
-
       // Giving back asks first: keeping the task leaves it taken, confirming frees it
       composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.GIVE_BACK_BUTTON).performClick()
       waitUntilTagExists(TaskDetailsScreenTestTags.GIVE_BACK_DIALOG)
       composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.GIVE_BACK_KEEP_BUTTON).performClick()
-      composeTestRule.waitUntil(timeoutMillis = TIMEOUT) {
-        composeTestRule
-            .onAllNodesWithTag(TaskDetailsScreenTestTags.GIVE_BACK_DIALOG)
-            .fetchSemanticsNodes()
-            .isEmpty()
-      }
+      waitUntilTagGone(TaskDetailsScreenTestTags.GIVE_BACK_DIALOG)
       composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.GIVE_BACK_BUTTON).assertIsDisplayed()
       composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.GIVE_BACK_BUTTON).performClick()
       waitUntilTagExists(TaskDetailsScreenTestTags.GIVE_BACK_CONFIRM_BUTTON)
@@ -269,6 +294,11 @@ class EndToEndTest {
         val tasks = TaskRepositoryFirebase(Firebase.firestore).getAllTasks(event.eventId)
         val task = tasks.single { it.title == M2_TASK_TITLE }
         assertTrue("The task still has an assignee", task.assignees.isEmpty())
+        assertTrue("The task has a voice note nobody recorded", task.voiceNote == null)
+        assertTrue(
+            "The deleted task is still stored",
+            tasks.none { it.title == DELETED_TASK_TITLE },
+        )
         val user = UsersRepositoryFirebase(Firebase.firestore).getUser(uid)
         assertTrue("The member does not list the joined event", event.eventId in user.joinedEvents)
       }
@@ -358,6 +388,23 @@ class EndToEndTest {
     waitUntilTagExists(EventsOverviewScreenTestTags.TITLE)
   }
 
+  /**
+   * From the board, adds the task [title] through the create form and waits for it to be listed.
+   */
+  private fun addTaskFromTheBoard(title: String) {
+    composeTestRule.onNodeWithTag(TaskOverviewScreenTestTags.ADD_TASK).performClick()
+    waitUntilTagExists(CreateTaskScreenTestTags.TITLE_FIELD)
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.TITLE_FIELD).performTextInput(title)
+    // The create button sits in the bottom bar, outside the scrolling form
+    Espresso.closeSoftKeyboard()
+    composeTestRule
+        .onNodeWithTag(CreateTaskScreenTestTags.CREATE_BUTTON)
+        .assertIsEnabled()
+        .performClick()
+    waitUntilTagExists(TaskOverviewScreenTestTags.TITLE)
+    waitUntilTextExists(title)
+  }
+
   /** On the board, the bar nests the Events tab under the tasks disc. */
   private fun assertTheBoardBar() {
     composeTestRule
@@ -433,6 +480,18 @@ class EndToEndTest {
     }
   }
 
+  private fun waitUntilTagGone(tag: String, timeout: Long = TIMEOUT) {
+    composeTestRule.waitUntil(timeoutMillis = timeout) {
+      composeTestRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isEmpty()
+    }
+  }
+
+  private fun waitUntilTextGone(text: String, timeout: Long = TIMEOUT) {
+    composeTestRule.waitUntil(timeoutMillis = timeout) {
+      composeTestRule.onAllNodesWithText(text).fetchSemanticsNodes().isEmpty()
+    }
+  }
+
   private fun waitUntilTextExists(text: String, timeout: Long = TIMEOUT) {
     composeTestRule.waitUntil(timeoutMillis = timeout) {
       composeTestRule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
@@ -446,6 +505,7 @@ class EndToEndTest {
     private const val PASSWORD = "Password123!"
     private const val TASK_TITLE = "Hang the banner"
     private const val M2_TASK_TITLE = "Stack the chairs"
+    private const val DELETED_TASK_TITLE = "Fold the flags"
     private const val CREATED_EVENT_TITLE = "Vidy Afterparty"
     private val MEMBER_EMAIL = "e2e-member-${UUID.randomUUID()}@festivar.test"
     private val M2_MEMBER_EMAIL = "e2e-m2-member-${UUID.randomUUID()}@festivar.test"
