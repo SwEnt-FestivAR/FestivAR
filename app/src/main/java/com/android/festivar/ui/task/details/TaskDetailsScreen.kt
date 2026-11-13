@@ -1,3 +1,4 @@
+// Co-authored-by: Copilot App
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
@@ -49,6 +50,7 @@ import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.DeleteMenuItem
 import com.android.festivar.ui.components.EditDeleteMenu
 import com.android.festivar.ui.components.FestivarConfirmDialog
+import com.android.festivar.ui.components.FixedBottomBar
 import com.android.festivar.ui.components.PeopleCard
 import com.android.festivar.ui.components.PillStyle
 import com.android.festivar.ui.components.SectionLabel
@@ -59,6 +61,12 @@ import com.android.festivar.ui.components.formatDate
 import com.android.festivar.ui.components.formatTime
 import com.android.festivar.ui.components.peopleCount
 import com.android.festivar.ui.theme.AppTheme
+import com.android.festivar.ui.voicenote.VoiceNoteCallbacks
+import com.android.festivar.ui.voicenote.VoiceNotePlaybackNotice
+import com.android.festivar.ui.voicenote.VoiceNoteRecordBar
+import com.android.festivar.ui.voicenote.VoiceNoteSection
+import com.android.festivar.ui.voicenote.VoiceNoteUiState
+import com.android.festivar.ui.voicenote.previewNote
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
@@ -87,13 +95,14 @@ object TaskDetailsScreenTestTags {
   const val LOADING = "detailsLoading"
   const val ERROR_MESSAGE = "detailsError"
   const val ERROR_ACTION = "detailsErrorAction"
+  const val FIXED_BOTTOM_BAR = "detailsFixedBottomBar"
 }
 
 /**
  * The details of a task, where the current user can take it, give it back (after a confirmation) or
- * finish it, and everyone sees who took it in the read only "On this task" section. The task is
- * loaded each time the screen comes to the front, the first time included, so an edit shows on
- * return.
+ * finish it, listen to its voice note (its owner can also record or delete it), and everyone sees
+ * who took it in the read only "On this task" section. The task is loaded each time the screen
+ * comes to the front, the first time included, so an edit shows on return.
  *
  * @param viewModel holds the task to show and the signed-in user, and applies the actions.
  * @param onBack Called when the user taps the back button.
@@ -108,9 +117,13 @@ fun TaskDetailsScreen(
     onTaskDeleted: () -> Unit = {},
 ) {
   val state by viewModel.uiState.collectAsStateWithLifecycle()
+  val voiceNote by viewModel.voiceNote.uiState.collectAsStateWithLifecycle()
+  val voiceNoteCallbacks = rememberVoiceNoteCallbacks(viewModel.voiceNote, voiceNote.micDenied)
   LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.load() }
   TaskDetailsContent(
       state = state,
+      voiceNote = voiceNote,
+      voiceNoteCallbacks = voiceNoteCallbacks,
       onBack = onBack,
       onTake = viewModel::take,
       onGiveBack = viewModel::giveBack,
@@ -123,10 +136,11 @@ fun TaskDetailsScreen(
 }
 
 /**
- * The stateless details screen: everything it shows comes from [state]. Giving the task back first
- * asks for a confirmation; [onGiveBack] is called only once the user confirms. The "On this task"
- * section, shown once someone took the task, opens the list of people with the time each took it in
- * a sheet; nothing in it removes a person.
+ * The stateless details screen: everything it shows comes from [state] and [voiceNote]. Giving the
+ * task back first asks for a confirmation; [onGiveBack] is called only once the user confirms. The
+ * voice note is in the page, and its notices and record bar are fixed at the bottom with the
+ * buttons of the task. The "On this task" section, shown once someone took the task, opens the list
+ * of people with the time each took it in a sheet; nothing in it removes a person.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -140,6 +154,8 @@ fun TaskDetailsContent(
     onDismissError: () -> Unit = {},
     onEdit: (String) -> Unit = {},
     onDeleteTask: () -> Unit = {},
+    voiceNote: VoiceNoteUiState = VoiceNoteUiState(),
+    voiceNoteCallbacks: VoiceNoteCallbacks = VoiceNoteCallbacks.NoOp,
 ) {
   var showDeleteConfirmation by remember { mutableStateOf(false) }
 
@@ -179,8 +195,14 @@ fun TaskDetailsContent(
         )
       },
       bottomBar = {
-        if (state.hasActions)
-            Actions(state, onTake, { showGiveBackConfirmation = true }, onMarkDone)
+        if (state.hasActions || voiceNote.hasBottomContent) {
+          FixedBottomBar(modifier = Modifier.testTag(TaskDetailsScreenTestTags.FIXED_BOTTOM_BAR)) {
+            VoiceNotePlaybackNotice(voiceNote, voiceNoteCallbacks)
+            VoiceNoteRecordBar(voiceNote, voiceNoteCallbacks)
+            if (state.hasActions)
+                Actions(state, onTake, { showGiveBackConfirmation = true }, onMarkDone)
+          }
+        }
       },
   ) { padding ->
     Column(
@@ -208,7 +230,10 @@ fun TaskDetailsContent(
       }
       val task = state.task
       val status = state.status
-      if (task != null && status != null) Body(task, status) { showPeople = true }
+      if (task != null && status != null) {
+        Body(task, status) { showPeople = true }
+        VoiceNoteSection(voiceNote, voiceNoteCallbacks, state.ownerName)
+      }
     }
   }
   if (showDeleteConfirmation) {
@@ -251,6 +276,10 @@ fun TaskDetailsContent(
     PeopleSheet(taskWithPeople, onDismiss = { showPeople = false })
   }
 }
+
+/** Whether the voice note fixes something at the bottom: a failed playback or the record bar. */
+private val VoiceNoteUiState.hasBottomContent: Boolean
+  get() = playbackFailed || showRecordBar
 
 @Composable
 private fun Body(task: Task, status: TaskStatus, onOpenPeople: () -> Unit) {
@@ -341,7 +370,7 @@ private fun SubtitleText(text: String, tag: String) {
   )
 }
 
-/** The bar at the bottom: only the actions the current status allows. */
+/** The buttons at the bottom: only the actions the current status allows. */
 @Composable
 private fun Actions(
     state: TaskDetailsUiState,
@@ -349,10 +378,7 @@ private fun Actions(
     onGiveBackRequested: () -> Unit,
     onMarkDone: () -> Unit,
 ) {
-  Row(
-      Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 24.dp),
-      horizontalArrangement = Arrangement.spacedBy(12.dp),
-  ) {
+  Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
     val buttonModifier = Modifier.weight(1f).height(52.dp)
     if (state.status == TaskStatus.OPEN) {
       Button(
@@ -506,6 +532,30 @@ internal fun TaskDetailsYoursPreview() {
 @Composable
 internal fun TaskDetailsDonePreview() {
   AppTheme { TaskDetailsContent(previewState(TaskStatus.DONE)) }
+}
+
+/** The owner of a task without a note: the empty state, and the record bar at the bottom. */
+@Preview(showBackground = true, heightDp = 800)
+@Composable
+internal fun TaskDetailsVoiceNoteOwnerPreview() {
+  AppTheme {
+    TaskDetailsContent(
+        previewState(TaskStatus.YOURS),
+        voiceNote = VoiceNoteUiState(canManage = true),
+    )
+  }
+}
+
+/** A volunteer listens to the note of the owner. */
+@Preview(showBackground = true, heightDp = 800)
+@Composable
+internal fun TaskDetailsVoiceNoteVolunteerPreview() {
+  AppTheme {
+    TaskDetailsContent(
+        previewState(TaskStatus.TAKEN).copy(ownerName = "Sami Kabbaj"),
+        voiceNote = VoiceNoteUiState(note = previewNote),
+    )
+  }
 }
 
 /** The load failed: nothing to show, so the error offers Retry. */
