@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot App
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.details
 
 import com.android.festivar.model.audio.RecorderState
@@ -245,6 +246,38 @@ class VoiceNoteRecordingTest {
 
     assertEquals(RecordingStage.Idle, subject.stage.value)
     assertFalse(file.exists())
+  }
+
+  /** Breaks if a temporary file that cannot be deleted keeps the recording from being dropped. */
+  @Test
+  fun cancelSend_dropsTheRecordingWhenItsFileCannotBeDeleted() {
+    val subject = recording
+    subject.start()
+    subject.finish()
+    val file = recorder.lastAudio!!.file
+    // A non-empty directory in place of the file makes File.delete() return false
+    assertTrue(file.delete())
+    assertTrue(file.mkdir())
+    assertTrue(file.resolve("child").createNewFile())
+
+    subject.cancelSend()
+
+    assertEquals(RecordingStage.Idle, subject.stage.value)
+    assertTrue(file.exists())
+    file.deleteRecursively()
+  }
+
+  /** Breaks if dropping a recording whose file is already gone still returns to idle. */
+  @Test
+  fun cancelSend_dropsTheRecordingWhenItsFileIsAlreadyGone() {
+    val subject = recording
+    subject.start()
+    subject.finish()
+    assertTrue(recorder.lastAudio!!.file.delete())
+
+    subject.cancelSend()
+
+    assertEquals(RecordingStage.Idle, subject.stage.value)
   }
 
   /** Breaks if cancelling outside the waiting stage changes the recording workflow. */

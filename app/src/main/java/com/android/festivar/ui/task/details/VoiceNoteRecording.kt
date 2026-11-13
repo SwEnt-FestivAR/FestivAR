@@ -1,5 +1,6 @@
 // Co-authored-by: Copilot App
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.details
 
 import android.util.Log
@@ -157,7 +158,10 @@ internal class VoiceNoteRecording(
 
   /** Gives up the recording that is held: its temporary file is no longer needed. */
   private fun drop() {
-    (_stage.value as? RecordingStage.Held)?.audio?.file?.delete()
+    val file = (_stage.value as? RecordingStage.Held)?.audio?.file
+    if (file != null && file.exists() && !file.delete()) {
+      Log.w(LOG_TAG, "Could not delete the temporary recording ${file.path}")
+    }
     _stage.value = RecordingStage.Idle
   }
 }
