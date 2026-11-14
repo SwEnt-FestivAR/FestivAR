@@ -34,8 +34,8 @@ class ImageStorageFirebaseTest {
   private lateinit var folderRef: StorageReference
   private lateinit var fileRef: StorageReference
   private lateinit var repository: ImageStorageFirebase
-  private val tempFile = File.createTempFile("test_image", ".png")
-  private val storedImage = StoredImage(tempFile)
+  private lateinit var tempFile: File
+  private lateinit var storedImage: StoredImage
 
   @Before
   fun setUp() {
@@ -44,6 +44,9 @@ class ImageStorageFirebaseTest {
     imageRef = mockk()
     folderRef = mockk()
     fileRef = mockk()
+
+    tempFile = File.createTempFile("test_image", ".png")
+    storedImage = StoredImage(tempFile)
 
     every { storageRef.storage } returns firebaseStorage
     every { storageRef.child("image") } returns imageRef
