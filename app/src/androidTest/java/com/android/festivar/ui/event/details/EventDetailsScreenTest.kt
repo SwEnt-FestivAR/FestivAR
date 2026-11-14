@@ -1,4 +1,4 @@
-package com.android.festivar.ui.event
+package com.android.festivar.ui.event.details
 
 // Co-authored-by: Copilot App
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
@@ -34,9 +34,6 @@ import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
-import com.android.festivar.ui.event.details.EventDetailsScreen
-import com.android.festivar.ui.event.details.EventDetailsScreenTestTags
-import com.android.festivar.ui.event.details.EventDetailsViewModel
 import io.mockk.mockk
 import io.mockk.verify
 import java.time.ZoneId

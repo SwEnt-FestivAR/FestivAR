@@ -1,4 +1,4 @@
-package com.android.festivar.ui.event
+package com.android.festivar.ui.event.details
 
 // Co-authored-by: Copilot App
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
@@ -14,12 +14,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.android.festivar.R
-import com.android.festivar.ui.event.details.ClosedEventPreview
-import com.android.festivar.ui.event.details.EventDetailsMembersListPreview
-import com.android.festivar.ui.event.details.EventDetailsScreenPreview
-import com.android.festivar.ui.event.details.EventDetailsScreenTestTags
-import com.android.festivar.ui.event.details.FetchErrorPreview
-import com.android.festivar.ui.event.details.OwnerEventDetailsPreview
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test

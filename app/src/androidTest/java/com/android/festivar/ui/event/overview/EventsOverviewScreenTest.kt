@@ -1,6 +1,6 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
-package com.android.festivar.ui.event
+package com.android.festivar.ui.event.overview
 
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.SemanticsMatcher
@@ -33,11 +33,6 @@ import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.EmptyStateTestTags
 import com.android.festivar.ui.components.RefreshableListTestTags
-import com.android.festivar.ui.event.overview.EventsOverviewContent
-import com.android.festivar.ui.event.overview.EventsOverviewScreen
-import com.android.festivar.ui.event.overview.EventsOverviewScreenTestTags
-import com.android.festivar.ui.event.overview.EventsOverviewUIState
-import com.android.festivar.ui.event.overview.EventsOverviewViewModel
 import com.android.festivar.ui.theme.AppTheme
 import java.time.ZoneId
 import java.time.ZonedDateTime

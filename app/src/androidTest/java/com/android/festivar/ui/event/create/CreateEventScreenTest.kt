@@ -1,4 +1,4 @@
-package com.android.festivar.ui.event
+package com.android.festivar.ui.event.create
 
 // Co-authored-by: Copilot App
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
@@ -31,9 +31,6 @@ import com.android.festivar.ui.components.LONG_TEXT_MAX_LENGTH
 import com.android.festivar.ui.components.checkTheOnlyCounterIsUnder
 import com.android.festivar.ui.components.formatDate
 import com.android.festivar.ui.components.formatTime
-import com.android.festivar.ui.event.create.CreateEventScreen
-import com.android.festivar.ui.event.create.CreateEventScreenTestTags
-import com.android.festivar.ui.event.create.CreateEventViewModel
 import io.mockk.mockk
 import io.mockk.spyk
 import io.mockk.verify
