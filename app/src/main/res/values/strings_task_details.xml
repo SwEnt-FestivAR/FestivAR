@@ -12,6 +12,10 @@
     <string name="details_give_back_message">Others will be able to take “%1$s”. You can take it again if it is still free.</string>
     <string name="details_give_back_keep">Keep it</string>
     <string name="details_mark_done">Mark done</string>
+    <string name="details_mark_done_title">Mark this task as done?</string>
+    <string name="details_mark_done_message">Are you sure you want to mark “%1$s” as done?</string>
+    <string name="details_mark_done_confirm">Mark done</string>
+    <string name="details_mark_done_leave_undone">Leave undone</string>
     <string name="details_dismiss">Dismiss</string>
     <string name="details_retry">Retry</string>
     <string name="details_location">Location: %s</string>

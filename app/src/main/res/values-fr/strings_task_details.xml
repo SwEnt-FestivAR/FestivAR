@@ -12,6 +12,10 @@
     <string name="details_give_back_message">D’autres pourront prendre « %1$s ». Vous pourrez la reprendre si elle est encore libre.</string>
     <string name="details_give_back_keep">La garder</string>
     <string name="details_mark_done">Terminée</string>
+    <string name="details_mark_done_title">Marquer cette tâche comme terminée ?</string>
+    <string name="details_mark_done_message">Voulez-vous vraiment marquer « %1$s » comme terminée ?</string>
+    <string name="details_mark_done_confirm">Marquer comme terminée</string>
+    <string name="details_mark_done_leave_undone">Laisser non terminée</string>
     <string name="details_dismiss">Fermer</string>
     <string name="details_retry">Réessayer</string>
     <string name="details_location">Lieu : %s</string>
