@@ -1,4 +1,4 @@
-package com.android.festivar.ui.event
+package com.android.festivar.ui.event.create
 
 // Co-authored-by: Copilot App
 
@@ -14,8 +14,6 @@ import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.END_OF_DAY
 import com.android.festivar.ui.components.FieldError
 import com.android.festivar.ui.components.START_OF_DAY
-import com.android.festivar.ui.event.create.CreateEventUIState
-import com.android.festivar.ui.event.create.CreateEventViewModel
 import io.mockk.mockk
 import java.time.LocalDate
 import java.time.LocalTime
