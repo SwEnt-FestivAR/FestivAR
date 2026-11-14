@@ -15,6 +15,8 @@ import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
+import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.ui.components.DateTimeField
@@ -203,7 +205,14 @@ class EditEventScreenTest {
   @Test
   fun screenCallsBackWhenDiscardIsConfirmed() {
     val event = testState().event!!
-    val viewModel = EditEventViewModel(EventsRepositoryLocal(listOf(event)), { "user" })
+    val viewModel =
+        EditEventViewModel(
+            DataRepositoryLocal(
+                FakeAuthRepository(),
+                eventsRepository = EventsRepositoryLocal(listOf(event)),
+            ),
+            { "user" },
+        )
     var backCount = 0
     composeTestRule.setContent {
       AppTheme {
@@ -236,7 +245,14 @@ class EditEventScreenTest {
   @Test
   fun screenLoadsEventAndCallsSavedCallbackAfterSave() {
     val event = testState().event!!
-    val viewModel = EditEventViewModel(EventsRepositoryLocal(listOf(event)), { "user" })
+    val viewModel =
+        EditEventViewModel(
+            DataRepositoryLocal(
+                FakeAuthRepository(),
+                eventsRepository = EventsRepositoryLocal(listOf(event)),
+            ),
+            { "user" },
+        )
     var savedCount = 0
     var backCount = 0
     composeTestRule.setContent {
