@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -90,6 +89,7 @@ class CreateTaskActions(
     val onPriorityChange: (Priority) -> Unit = {},
     val onMaxAssignDecrease: () -> Unit = {},
     val onMaxAssignIncrease: () -> Unit = {},
+    val onMaxAssignChange: (String) -> Unit = {},
     val onEstimatedMinutesChange: (String) -> Unit = {},
     val onShowPicker: (DateTimeField?) -> Unit = {},
     val onDatePicked: (LocalDate) -> Unit = {},
@@ -150,7 +150,7 @@ fun CreateTaskContent(
     maxAssignError: FieldError? = null,
 ) {
   Scaffold(
-      modifier = modifier.imePadding(),
+      modifier = modifier,
       containerColor = MaterialTheme.colorScheme.background,
       topBar = { TaskFormTopBar(labels.title, actions.onBack) },
       bottomBar = {
@@ -255,6 +255,8 @@ fun CreateTaskContent(
             decreaseDescription = stringResource(R.string.create_task_max_assign_decrease),
             increaseDescription = stringResource(R.string.create_task_max_assign_increase),
             minValue = MIN_MAX_ASSIGN,
+            typeable = true,
+            onValueChange = actions.onMaxAssignChange,
             modifier = Modifier.testTag(CreateTaskScreenTestTags.MAX_ASSIGN_FIELD),
             decreaseModifier =
                 Modifier.testTag(CreateTaskScreenTestTags.MAX_ASSIGN_DECREASE_BUTTON),

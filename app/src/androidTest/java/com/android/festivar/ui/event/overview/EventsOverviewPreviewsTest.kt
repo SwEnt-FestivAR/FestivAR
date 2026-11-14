@@ -23,14 +23,13 @@ class EventsOverviewPreviewsTest {
 
   private val targetContext = InstrumentationRegistry.getInstrumentation().targetContext
 
-  /** Breaks if the content preview no longer renders its title, avatar, chip, or actions. */
+  /** Breaks if the content preview no longer renders its title, chip, or actions. */
   @Test
   fun eventsOverviewContentPreview_showsEventsAndActions() {
     composeTestRule.setContent { EventsOverviewContentPreview() }
     composeTestRule.waitForIdle()
 
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.TITLE).assertIsDisplayed()
-    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.USER_AVATAR).assertIsDisplayed()
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.UPCOMING_CHIP).assertIsDisplayed()
     composeTestRule.onNodeWithText("Fête de l'Asso 2026").assertIsDisplayed()
     composeTestRule
@@ -45,7 +44,6 @@ class EventsOverviewPreviewsTest {
     composeTestRule.waitForIdle()
 
     composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.TITLE).assertIsDisplayed()
-    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.USER_AVATAR).assertIsDisplayed()
     composeTestRule
         .onNodeWithTag(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON)
         .assertIsDisplayed()

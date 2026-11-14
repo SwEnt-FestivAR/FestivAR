@@ -17,6 +17,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.ui.theme.AppTheme
 import org.junit.Assert.assertEquals
@@ -31,7 +32,7 @@ class StepperTest {
   private var decreased = 0
 
   /** A stepper that keeps its own value, like a screen would, starting at [start]. */
-  private fun setStepper(start: Int, min: Int = 1) {
+  private fun setStepper(start: Int, min: Int = 1, typeable: Boolean = false) {
     composeTestRule.setContent {
       AppTheme {
         var value by remember { mutableIntStateOf(start) }
@@ -46,6 +47,8 @@ class StepperTest {
             decreaseDescription = "Fewer",
             increaseDescription = "More",
             minValue = min,
+            typeable = typeable,
+            onValueChange = { it.toIntOrNull()?.let { typed -> value = typed } },
             modifier = Modifier.testTag(STEPPER),
             decreaseModifier = Modifier.testTag(MINUS),
             increaseModifier = Modifier.testTag(PLUS),
@@ -118,6 +121,15 @@ class StepperTest {
     setStepper(start = 5, min = 5)
 
     composeTestRule.onNodeWithTag(MINUS).assertIsNotEnabled()
+  }
+
+  @Test
+  fun typeableStepperAcceptsTypedDigits() {
+    setStepper(start = 3, typeable = true)
+
+    composeTestRule.onNodeWithText("3").performTextReplacement("8")
+
+    checkValueIs(8)
   }
 
   private companion object {

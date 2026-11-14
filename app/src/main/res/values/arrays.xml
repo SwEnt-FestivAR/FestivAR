@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com> -->
+<resources>
+    <array name="theme_entries">
+        <item>@string/settings_default_system</item>
+        <item>@string/settings_theme_light</item>
+        <item>@string/settings_theme_dark</item>
+    </array>
+    <array name="theme_values">
+        <item>system</item>
+        <item>light</item>
+        <item>dark</item>
+    </array>
+    <array name="language_entries">
+        <item>@string/settings_default_system</item>
+        <item>@string/settings_language_light</item>
+        <item>@string/settings_language_dark</item>
+    </array>
+    <array name="language_values">
+        <item>system</item>
+        <item>fr</item>
+        <item>en</item>
+    </array>
+</resources>

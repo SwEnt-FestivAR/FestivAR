@@ -5,6 +5,7 @@ package com.android.festivar.ui.event
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 
 import android.annotation.SuppressLint
+import androidx.annotation.StringRes
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasNoClickAction
@@ -20,6 +21,7 @@ import androidx.compose.ui.test.onChild
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -29,6 +31,7 @@ import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.event.details.EventDetailsScreen
@@ -38,6 +41,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -156,6 +160,52 @@ class EventDetailsScreenTest {
         .assertTextEquals("Fri 16 to Sun 18 Oct")
   }
 
+  /** Breaks if the description is not shown as plain text under the subtitle. */
+  @Test
+  fun descriptionShowsUnderSubtitle() {
+    setContent(eventSameMonth.copy(description = "Bring a jacket."))
+
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.DESCRIPTION)
+        .assertTextEquals("Bring a jacket.")
+    val subtitleBottom =
+        composeTestRule
+            .onNodeWithTag(EventDetailsScreenTestTags.SUBTITLE)
+            .getUnclippedBoundsInRoot()
+            .bottom
+    val descriptionTop =
+        composeTestRule
+            .onNodeWithTag(EventDetailsScreenTestTags.DESCRIPTION)
+            .getUnclippedBoundsInRoot()
+            .top
+    val statTop =
+        composeTestRule
+            .onNodeWithTag(EventDetailsScreenTestTags.OPEN_TASKS_STAT)
+            .getUnclippedBoundsInRoot()
+            .top
+    assertTrue(descriptionTop >= subtitleBottom)
+    assertTrue(descriptionTop < statTop)
+  }
+
+  /** Breaks if an event without a description still shows an empty description block. */
+  @Test
+  fun descriptionIsAbsentWhenBlank() {
+    setContent(eventSameMonth.copy(description = "  "))
+
+    composeTestRule.onAllNodesWithTag(EventDetailsScreenTestTags.DESCRIPTION).assertCountEquals(0)
+  }
+
+  /** Breaks if a long description is cut off instead of reachable by scrolling. */
+  @Test
+  fun longDescriptionIsFullyReadableByScrolling() {
+    val text = (1..80).joinToString(" ") { "Line$it of the long description." }
+    setContent(eventSameMonth.copy(description = text))
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DESCRIPTION).assertTextEquals(text)
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.JOIN_CODE_ROW).performScrollTo()
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.JOIN_CODE_ROW).assertIsDisplayed()
+  }
+
   /** Breaks if an open event does not show the Open chip. */
   @Test
   fun statusChipShowsOpenForOpenEvent() {
@@ -212,29 +262,12 @@ class EventDetailsScreenTest {
   }
 
   /** Red if a fetch failure leaves event content or actions visible. */
-  @SuppressLint("ViewModelConstructorInComposable")
   @Test
   fun displaysErrorWhenEventCannotBeFetched() {
-    composeTestRule.setContent {
-      EventDetailsScreen(
-          viewModel =
-              EventDetailsViewModel(
-                  dataRepositoryWith(
-                      object : EventsRepository by EventsRepositoryLocal() {
-                        override suspend fun getEvent(eventId: String): Event {
-                          throw IllegalStateException("fetch failed")
-                        }
-                      }
-                  ),
-                  eventId = "missing",
-              ),
-          onTasksButtonClicked = {},
-          onBack = {},
-      )
-    }
-    composeTestRule.waitForIdle()
+    setContentFailingToFetch()
 
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.FETCH_ERROR).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.ANNOUNCEMENTS_ROW).assertDoesNotExist()
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.BACK_BUTTON).assertIsDisplayed()
     assertTrue(
         composeTestRule
@@ -261,6 +294,60 @@ class EventDetailsScreenTest {
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.SEE_TASKS_BUTTON).performClick()
 
     verify(exactly = 1) { onTasksButtonClicked() }
+  }
+
+  /**
+   * Breaks if the announcements row shows anything but its label, such as the title of an
+   * announcement, since Figma shows the label alone.
+   */
+  @Test
+  fun announcementsRowShowsOnlyItsLabel() {
+    val announcement =
+        Announcement(
+            announcementId = "a1",
+            title = "Stage B is closed",
+            authorId = "user",
+            updatedAt = eventStartDate,
+        )
+
+    setContent(eventSameMonth.copy(announcements = listOf(announcement)))
+
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.ANNOUNCEMENTS_ROW)
+        .assertIsDisplayed()
+        .assertTextEquals("Announcements")
+    composeTestRule.onNodeWithText(announcement.title).assertDoesNotExist()
+  }
+
+  /** Breaks if clicking the announcements row does not invoke the callback exactly once. */
+  @Test
+  fun clickingAnnouncementsRowCallsOnAnnouncementsClicked() {
+    val onAnnouncementsClicked = mockk<() -> Unit>(relaxed = true)
+
+    setContent(eventSameMonth, onAnnouncementsClicked = onAnnouncementsClicked)
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.ANNOUNCEMENTS_ROW).performClick()
+
+    verify(exactly = 1) { onAnnouncementsClicked() }
+  }
+
+  /**
+   * Breaks if the announcements row is not directly under the join code and above the members row,
+   * as in Figma, for instance back above the join code.
+   */
+  @Test
+  fun announcementsRowSitsBetweenTheJoinCodeAndTheMembers() {
+    setContent(eventSameMonth)
+
+    val joinCode = composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.JOIN_CODE_ROW)
+    val announcements = composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.ANNOUNCEMENTS_ROW)
+    val members = composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.MEMBERS_CARD)
+    val joinCodeBottom = joinCode.getUnclippedBoundsInRoot().bottom
+    val announcementsBounds = announcements.getUnclippedBoundsInRoot()
+    val membersTop = members.getUnclippedBoundsInRoot().top
+
+    assertTrue(announcementsBounds.top >= joinCodeBottom)
+    assertTrue(announcementsBounds.bottom <= membersTop)
   }
 
   /** Red if clicking Back does not invoke the supplied callback exactly once. */
@@ -345,17 +432,89 @@ class EventDetailsScreenTest {
         .assertTextEquals(joinCodeLabel(), "3F9A1C")
   }
 
+  /** Breaks if the organizer cannot open the menu with Edit event. */
+  @Test
+  fun ownerSeesMenuWithEdit() {
+    setContent(eventSameMonth)
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.MORE_ACTIONS_BUTTON).performClick()
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.EDIT_MENU_ITEM).assertIsDisplayed()
+    composeTestRule.onNodeWithText(string(R.string.event_details_edit_event)).assertIsDisplayed()
+  }
+
+  /** Breaks if a volunteer gets the menu button. */
+  @Test
+  fun volunteerSeesNoMenu() {
+    val volunteer = User(uid = "volunteer", name = "Vera V.")
+    setContent(eventSameMonth.copy(members = eventSameMonth.members + volunteer), volunteer.uid)
+
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.MORE_ACTIONS_BUTTON)
+        .assertDoesNotExist()
+  }
+
+  /** Breaks if the menu button shows while the event failed to load. */
+  @Test
+  fun noMenuWhenEventCannotBeFetched() {
+    setContentFailingToFetch()
+
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.MORE_ACTIONS_BUTTON)
+        .assertDoesNotExist()
+  }
+
+  /** Breaks if Edit event does not call the edit callback and close the menu. */
+  @Test
+  fun editMenuItemCallsOnEditAndClosesMenu() {
+    var edits = 0
+    setContent(eventSameMonth, onEditClicked = { edits++ })
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.MORE_ACTIONS_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.EDIT_MENU_ITEM).performClick()
+
+    assertEquals(1, edits)
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.EDIT_MENU_ITEM).assertDoesNotExist()
+  }
+
   /** The label of the join code row, in capitals as the screen shows it. */
-  private fun joinCodeLabel(): String =
-      InstrumentationRegistry.getInstrumentation()
-          .targetContext
-          .getString(R.string.event_details_join_code)
-          .uppercase()
+  private fun joinCodeLabel(): String = string(R.string.event_details_join_code).uppercase()
+
+  private fun string(@StringRes id: Int): String =
+      InstrumentationRegistry.getInstrumentation().targetContext.getString(id)
+
+  @SuppressLint("ViewModelConstructorInComposable")
+  private fun setContentFailingToFetch() {
+    composeTestRule.setContent {
+      EventDetailsScreen(
+          viewModel =
+              EventDetailsViewModel(
+                  dataRepositoryWith(
+                      object : EventsRepository by EventsRepositoryLocal() {
+                        override suspend fun getEvent(eventId: String): Event {
+                          throw IllegalStateException("fetch failed")
+                        }
+                      }
+                  ),
+                  eventId = "missing",
+                  currentUserId = "user",
+              ),
+          onTasksButtonClicked = {},
+          onAnnouncementsClicked = {},
+          onEditClicked = {},
+          onBack = {},
+      )
+    }
+    composeTestRule.waitForIdle()
+  }
 
   @SuppressLint("ViewModelConstructorInComposable")
   private fun setContent(
       event: Event,
+      currentUserId: String = event.ownerId,
       onTasksButtonClicked: () -> Unit = {},
+      onAnnouncementsClicked: () -> Unit = {},
+      onEditClicked: () -> Unit = {},
       onBack: () -> Unit = {},
   ) {
     composeTestRule.setContent {
@@ -364,8 +523,11 @@ class EventDetailsScreenTest {
               EventDetailsViewModel(
                   dataRepositoryWith(EventsRepositoryLocal(listOf(event))),
                   event.eventId,
+                  currentUserId,
               ),
           onTasksButtonClicked = onTasksButtonClicked,
+          onAnnouncementsClicked = onAnnouncementsClicked,
+          onEditClicked = onEditClicked,
           onBack = onBack,
       )
     }

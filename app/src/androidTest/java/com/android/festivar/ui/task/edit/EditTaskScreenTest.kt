@@ -14,6 +14,8 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.R
+import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
@@ -65,6 +67,9 @@ class EditTaskScreenTest {
           local.editTask(taskId, newValue)
         }
       }
+  // The ViewModel only reaches the tasks through the tasks repository of the DataRepository.
+  private val dataRepository =
+      DataRepositoryLocal(FakeAuthRepository(), tasksRepository = repository)
 
   private var savedCount = 0
   private var backCount = 0
@@ -77,7 +82,7 @@ class EditTaskScreenTest {
       composeTestRule.onAllNodes(hasTestTag(tag)).fetchSemanticsNodes().isNotEmpty()
 
   private fun showScreen(userId: String = "owner-1") {
-    val viewModel = EditTaskViewModel(task.taskId, { userId }, repository)
+    val viewModel = EditTaskViewModel(task.taskId, { userId }, dataRepository)
     composeTestRule.setContent {
       AppTheme {
         EditTaskScreen(
@@ -120,7 +125,7 @@ class EditTaskScreenTest {
   // Breaks if a state that has not been loaded yet shows the load error instead of the spinner.
   @Test
   fun beforeTheLoadRunsTheScreenShowsTheSpinnerNotTheLoadError() {
-    val notLoaded = EditTaskViewModel(task.taskId, { "owner-1" }, repository).uiState.value
+    val notLoaded = EditTaskViewModel(task.taskId, { "owner-1" }, dataRepository).uiState.value
     composeTestRule.setContent {
       AppTheme {
         EditTaskContent(

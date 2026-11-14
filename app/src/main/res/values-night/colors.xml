@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com> -->
+<!-- Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com> -->
 <resources>
+    <color name="settings_primary_dark">#FFD9FF3D</color>
+    <color name="settings_on_background_dark">#FFF2F4EC</color>
+    <color name="settings_on_surface_dark">#FFF2F4EC</color>
+
     <!-- Splash icon colours in dark mode. Copies of onBackgroundDark and onPrimaryContainerDark in
          ui/theme/Color.kt. -->
     <color name="splash_ink">#FFF2F4EC</color>

@@ -41,6 +41,7 @@ fun taskFormActions(
         onPriorityChange = editor::updatePriority,
         onMaxAssignDecrease = editor::decrementMaxAssign,
         onMaxAssignIncrease = editor::incrementMaxAssign,
+        onMaxAssignChange = editor::updateMaxAssign,
         onEstimatedMinutesChange = editor::updateEstimatedMinutes,
         onShowPicker = editor::showPicker,
         onDatePicked = editor::pickDate,
