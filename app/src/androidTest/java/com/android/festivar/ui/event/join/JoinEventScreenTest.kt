@@ -1,0 +1,387 @@
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+package com.android.festivar.ui.event.join
+
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertContentDescriptionEquals
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsNotFocused
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import com.android.festivar.R
+import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
+import com.android.festivar.model.event.Event
+import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.model.event.joinCodeOf
+import com.android.festivar.model.user.User
+import com.android.festivar.model.user.UsersRepositoryLocal
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import org.junit.Assert.assertEquals
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+
+@RunWith(AndroidJUnit4::class)
+class JoinEventScreenTest {
+  @get:Rule val composeTestRule = createComposeRule()
+
+  private val cardStart = ZonedDateTime.of(2026, 10, 17, 10, 0, 0, 0, ZoneId.of("Europe/Zurich"))
+  private val found = FoundEventUi("e1", "Vidy Festival", cardStart, 12)
+  private val start = ZonedDateTime.of(2030, 10, 17, 18, 0, 0, 0, ZoneId.of("UTC"))
+  private val event =
+      Event(
+          eventId = "vidy26abc",
+          ownerId = "owner",
+          title = "Vidy Festival",
+          startDate = start,
+          endDate = start.plusHours(5),
+      )
+
+  /** The app's string [id] formatted with [args], so no expected text is written out here. */
+  private fun string(id: Int, vararg args: Any): String =
+      InstrumentationRegistry.getInstrumentation().targetContext.getString(id, *args)
+
+  /** The app's plural [id] for [count]. */
+  private fun plural(id: Int, count: Int): String =
+      InstrumentationRegistry.getInstrumentation()
+          .targetContext
+          .resources
+          .getQuantityString(id, count, count)
+
+  /** Matches every node whose test tag starts with [prefix], whatever event id follows it. */
+  private fun hasTagPrefix(prefix: String) =
+      SemanticsMatcher("tag starts with $prefix") {
+        it.config.getOrNull(SemanticsProperties.TestTag)?.startsWith(prefix) == true
+      }
+
+  private fun content(
+      state: JoinEventUIState,
+      onBack: () -> Unit = {},
+      onCode: (String) -> Unit = {},
+      onJoin: (String) -> Unit = {},
+  ) {
+    composeTestRule.setContent { JoinEventContent(state, onBack, onCode, onJoin) }
+  }
+
+  /** A view model joining [event] as a stored user who is not a member yet. */
+  private fun joinViewModel(): JoinEventViewModel {
+    val user = User(uid = "u1")
+    return JoinEventViewModel(
+        user.uid,
+        DataRepositoryLocal(
+            FakeAuthRepository(),
+            eventsRepository = EventsRepositoryLocal(listOf(event)),
+            usersRepository = UsersRepositoryLocal(listOf(user)),
+        ),
+    )
+  }
+
+  private fun screen(opened: MutableList<String>) {
+    val viewModel = joinViewModel()
+    composeTestRule.setContent {
+      JoinEventScreen(viewModel = viewModel, onOpenEvent = { opened.add(it) })
+    }
+  }
+
+  @Test
+  fun typingInTheCodeFieldSendsTheTextToTheViewModel() {
+    var typed = ""
+    content(JoinEventUIState(), onCode = { typed = it })
+
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.CODE_INPUT).performTextInput("ab12")
+
+    assertEquals("ab12", typed)
+  }
+
+  @Test
+  fun aFoundEventShowsItsNameAndItsJoinButtonPassesItsId() {
+    val joins = mutableListOf<String>()
+    content(JoinEventUIState(code = "VIDY26", matches = listOf(found)), onJoin = { joins.add(it) })
+
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.result("e1")).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(JoinEventScreenTestTags.resultName("e1"), useUnmergedTree = true)
+        .assertTextEquals("Vidy Festival")
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.SEVERAL).assertDoesNotExist()
+    composeTestRule
+        .onNodeWithTag(JoinEventScreenTestTags.join("e1"))
+        .assertIsEnabled()
+        .performClick()
+    assertEquals(listOf("e1"), joins)
+  }
+
+  /** The button of the card [eventId] holding the label [label] in its unmerged children. */
+  private fun buttonWithLabel(eventId: String, label: String) =
+      composeTestRule.onNode(
+          hasTestTag(JoinEventScreenTestTags.join(eventId)).and(hasAnyDescendant(hasText(label))),
+          useUnmergedTree = true,
+      )
+
+  @Test
+  fun aMembersCardSaysTheyAreAlreadyInAndItsButtonOpensTheEventInsteadOfJoining() {
+    val joins = mutableListOf<String>()
+    content(
+        JoinEventUIState(code = "VIDY26", matches = listOf(found.copy(isMember = true))),
+        onJoin = { joins.add(it) },
+    )
+
+    composeTestRule
+        .onNodeWithTag(JoinEventScreenTestTags.alreadyMember("e1"), useUnmergedTree = true)
+        .assertTextEquals(string(R.string.join_event_already_member))
+    buttonWithLabel("e1", string(R.string.join_event_open)).assertExists()
+    buttonWithLabel("e1", string(R.string.join_event_join)).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.join("e1")).performClick()
+    assertEquals(listOf("e1"), joins)
+  }
+
+  @Test
+  fun aStrangersCardShowsNeitherTheMemberLineNorTheOpenLabel() {
+    content(JoinEventUIState(code = "VIDY26", matches = listOf(found)))
+
+    composeTestRule
+        .onNodeWithTag(JoinEventScreenTestTags.alreadyMember("e1"), useUnmergedTree = true)
+        .assertDoesNotExist()
+    buttonWithLabel("e1", string(R.string.join_event_open)).assertDoesNotExist()
+    buttonWithLabel("e1", string(R.string.join_event_join)).assertExists()
+  }
+
+  @Test
+  fun twoEventsSharingACodeShowTwoCardsAndTheTappedOneIsJoined() {
+    val joins = mutableListOf<String>()
+    val other = FoundEventUi("e2", "Vidy Afterparty", cardStart, 3)
+    content(
+        JoinEventUIState(code = "VIDY26", matches = listOf(found, other)),
+        onJoin = { joins.add(it) },
+    )
+
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.SEVERAL).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.result("e1")).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(JoinEventScreenTestTags.resultName("e2"), useUnmergedTree = true)
+        .assertTextEquals("Vidy Afterparty")
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.join("e2")).performClick()
+
+    assertEquals(listOf("e2"), joins)
+  }
+
+  @Test
+  fun anUnknownCodeShowsNotFoundAndNoJoin() {
+    content(JoinEventUIState(code = "ZZZZZZ", notFound = true))
+
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.NOT_FOUND).assertIsDisplayed()
+    composeTestRule
+        .onAllNodes(hasTagPrefix(JoinEventScreenTestTags.result("")))
+        .assertCountEquals(0)
+    composeTestRule.onAllNodes(hasTagPrefix(JoinEventScreenTestTags.join(""))).assertCountEquals(0)
+  }
+
+  @Test
+  fun joinIsDisabledWhileTheJoinIsRunning() {
+    content(JoinEventUIState(code = "VIDY26", matches = listOf(found), isJoining = true))
+
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.join("e1")).assertIsNotEnabled()
+  }
+
+  @Test
+  fun theCodeFieldIsDisabledWhileTheJoinIsRunning() {
+    content(JoinEventUIState(code = "VIDY26", matches = listOf(found), isJoining = true))
+
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.CODE_INPUT).assertIsNotEnabled()
+  }
+
+  @Test
+  fun anErrorMessageIsShownUnderTheCards() {
+    content(
+        JoinEventUIState(
+            code = "VIDY26",
+            matches = listOf(found),
+            errorRes = R.string.join_event_join_failed,
+        )
+    )
+
+    composeTestRule
+        .onNodeWithTag(JoinEventScreenTestTags.ERROR_MESSAGE)
+        .assertIsDisplayed()
+        .assertTextEquals(string(R.string.join_event_join_failed))
+  }
+
+  @Test
+  fun backCallsOnBack() {
+    var backs = 0
+    content(JoinEventUIState(), onBack = { backs++ })
+
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.BACK).performClick()
+
+    assertEquals(1, backs)
+  }
+
+  @Test
+  fun oneMemberIsWrittenInTheSingular() {
+    content(JoinEventUIState(code = "VIDY26", matches = listOf(found.copy(members = 1))))
+
+    composeTestRule
+        .onNodeWithTag(JoinEventScreenTestTags.resultLine("e1"), useUnmergedTree = true)
+        .assertTextEquals(
+            string(
+                R.string.join_event_found_line,
+                "Sat 17 Oct",
+                "10:00",
+                plural(R.plurals.join_event_members, 1),
+            )
+        )
+  }
+
+  @Test
+  fun severalMembersAreWrittenInThePlural() {
+    content(JoinEventUIState(code = "VIDY26", matches = listOf(found.copy(members = 3))))
+
+    composeTestRule
+        .onNodeWithTag(JoinEventScreenTestTags.resultLine("e1"), useUnmergedTree = true)
+        .assertTextEquals(
+            string(
+                R.string.join_event_found_line,
+                "Sat 17 Oct",
+                "10:00",
+                plural(R.plurals.join_event_members, 3),
+            )
+        )
+  }
+
+  @Test
+  fun tappingACellFocusesTheCodeField() {
+    content(JoinEventUIState())
+
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.cell(3)).performClick()
+
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.CODE_INPUT).assertIsFocused()
+  }
+
+  @Test
+  fun aFailedJoinGivesTheCodeFieldItsFocusBack() {
+    var state by mutableStateOf(JoinEventUIState(code = "VIDY26", matches = listOf(found)))
+    composeTestRule.setContent { JoinEventContent(state, {}, {}, {}) }
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.CODE_INPUT).assertIsNotFocused()
+
+    state = state.copy(isJoining = true)
+    composeTestRule.waitForIdle()
+    state = state.copy(isJoining = false, errorRes = R.string.join_event_join_failed)
+
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.CODE_INPUT).assertIsFocused()
+  }
+
+  @Test
+  fun theCodeFieldHasFocusWhenTheScreenOpens() {
+    screen(mutableListOf())
+
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.CODE_INPUT).assertIsFocused()
+  }
+
+  @Test
+  fun aValidCodeOpensTheEventOnceJoined() {
+    val opened = mutableListOf<String>()
+    screen(opened)
+
+    composeTestRule
+        .onNodeWithTag(JoinEventScreenTestTags.CODE_INPUT)
+        .performTextInput(joinCodeOf(event))
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.result(event.eventId)).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.join(event.eventId)).performClick()
+
+    composeTestRule.waitUntil(5_000) { opened.isNotEmpty() }
+    assertEquals(event.eventId, opened.first())
+  }
+
+  @Test
+  fun theEventIsOpenedExactlyOnce() {
+    val opened = mutableListOf<String>()
+    screen(opened)
+
+    composeTestRule
+        .onNodeWithTag(JoinEventScreenTestTags.CODE_INPUT)
+        .performTextInput(joinCodeOf(event))
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.join(event.eventId)).performClick()
+    composeTestRule.waitUntil(5_000) { opened.isNotEmpty() }
+    composeTestRule.waitForIdle()
+
+    assertEquals(listOf(event.eventId), opened)
+  }
+
+  @Test
+  fun leavingAndReenteringTheScreenDoesNotOpenTheEventAgain() {
+    val opened = mutableListOf<String>()
+    val viewModel = joinViewModel()
+    var shown by mutableStateOf(true)
+    composeTestRule.setContent {
+      if (shown) JoinEventScreen(viewModel = viewModel, onOpenEvent = { opened.add(it) })
+    }
+    composeTestRule
+        .onNodeWithTag(JoinEventScreenTestTags.CODE_INPUT)
+        .performTextInput(joinCodeOf(event))
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.join(event.eventId)).performClick()
+    composeTestRule.waitUntil(5_000) { opened.isNotEmpty() }
+    composeTestRule.waitForIdle()
+
+    shown = false
+    composeTestRule.waitForIdle()
+    shown = true
+    composeTestRule.waitForIdle()
+
+    assertEquals(listOf(event.eventId), opened)
+  }
+
+  @Test
+  fun eachCodeCellIsAButtonNamedByItsPosition() {
+    content(JoinEventUIState())
+
+    for (i in 0 until 6) {
+      composeTestRule
+          .onNodeWithTag(JoinEventScreenTestTags.cell(i))
+          .assertContentDescriptionEquals(string(R.string.join_event_code_cell, i + 1))
+          .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+    }
+  }
+
+  @Test
+  fun theCodeRowAndTheHiddenFieldAreDescribedForAScreenReader() {
+    composeTestRule.setContent {
+      var code by remember { mutableStateOf("") }
+      JoinEventContent(JoinEventUIState(code = code), {}, { code = it }, {})
+    }
+
+    composeTestRule
+        .onNode(hasContentDescription(string(R.string.join_event_code_empty)))
+        .assertExists()
+    composeTestRule
+        .onNode(hasContentDescription(string(R.string.join_event_code_field)))
+        .assertExists()
+
+    composeTestRule.onNodeWithTag(JoinEventScreenTestTags.CODE_INPUT).performTextInput("AB12")
+
+    composeTestRule
+        .onNode(hasContentDescription(string(R.string.join_event_code_so_far, "AB12")))
+        .assertExists()
+  }
+}
