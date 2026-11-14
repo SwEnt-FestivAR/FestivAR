@@ -1,10 +1,13 @@
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Gemini <noreply@google.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
-package com.android.festivar.navigation
+package com.android.festivar.navigation.task
 
 import androidx.navigation.NavHostController
 import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.navOptions
-import com.android.festivar.navigation.event.JoinEventNavigator
+import com.android.festivar.navigation.AppScreens
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
@@ -12,10 +15,11 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class JoinEventNavigatorTest {
+class TaskOverviewNavigatorTest {
   private val navController = mockk<NavHostController>(relaxed = true)
-  private val navigator = JoinEventNavigator(navController)
+  private val navigator = TaskOverviewNavigator(navController)
 
+  /** Turns red when back pops to a fixed route, which strands a user who came another way. */
   @Test
   fun backClickPopsBackStack() {
     navigator.onBack()
@@ -24,17 +28,20 @@ class JoinEventNavigatorTest {
   }
 
   @Test
-  fun openEventNavigatesToEventDetailsAndDropsTheJoinScreen() {
-    val options = slot<NavOptionsBuilder.() -> Unit>()
+  fun openTaskNavigatesToTaskDetails() {
+    navigator.onOpenTask("task-123")
 
-    navigator.onOpenEvent("e1")
-
-    verify { navController.navigate(AppScreens.eventDetails("e1"), capture(options)) }
-    val navOptions = navOptions(options.captured)
-    assertEquals(AppScreens.JoinEvent.name, navOptions.popUpToRoute)
-    assertTrue(navOptions.isPopUpToInclusive())
+    verify { navController.navigate(AppScreens.taskDetails("task-123")) }
   }
 
+  @Test
+  fun addTaskNavigatesToCreateTaskOfThatEvent() {
+    navigator.onAddTask("e1")
+
+    verify { navController.navigate(AppScreens.createTask("e1")) }
+  }
+
+  /** Turns red when signing out stops opening the login or leaves the overview under it. */
   @Test
   fun signedOutNavigatesToLoginAndClearsBackStack() {
     val options = slot<NavOptionsBuilder.() -> Unit>()

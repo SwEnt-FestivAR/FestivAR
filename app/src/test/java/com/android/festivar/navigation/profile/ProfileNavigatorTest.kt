@@ -1,6 +1,6 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
-package com.android.festivar.navigation
+package com.android.festivar.navigation.profile
 
 import android.content.Intent
 import androidx.navigation.NavHostController
@@ -8,7 +8,7 @@ import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.navOptions
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.MySettingsActivity
-import com.android.festivar.navigation.profile.ProfileNavigator
+import com.android.festivar.navigation.AppScreens
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -30,7 +30,7 @@ class ProfileNavigatorTest {
   fun backClickGoesBackToThePreviousScreen() {
     navigator.onBack()
 
-    verify { navController.popBackStack() }
+      verify { navController.popBackStack() }
   }
 
   @Test
@@ -39,10 +39,10 @@ class ProfileNavigatorTest {
 
     navigator.onSignedOut()
 
-    verify { navController.navigate(AppScreens.Login.name, capture(options)) }
+      verify { navController.navigate(AppScreens.Login.name, capture(options)) }
     val navOptions = navOptions(options.captured)
-    assertEquals(navController.graph.id, navOptions.popUpToId)
-    assertTrue(navOptions.isPopUpToInclusive())
+      assertEquals(navController.graph.id, navOptions.popUpToId)
+      assertTrue(navOptions.isPopUpToInclusive())
   }
 
   @Test
@@ -52,7 +52,7 @@ class ProfileNavigatorTest {
 
     settingsNavigator.onSettingsClick()
 
-    assertNotNull(launchedIntent)
+      assertNotNull(launchedIntent)
   }
 
   @Test
@@ -62,9 +62,9 @@ class ProfileNavigatorTest {
 
     navigator.onSettingsClick()
 
-    assertEquals(
-        MySettingsActivity::class.java.name,
-        shadowOf(activity).nextStartedActivity.component?.className,
-    )
+      assertEquals(
+          MySettingsActivity::class.java.name,
+          shadowOf(activity).nextStartedActivity.component?.className,
+      )
   }
 }

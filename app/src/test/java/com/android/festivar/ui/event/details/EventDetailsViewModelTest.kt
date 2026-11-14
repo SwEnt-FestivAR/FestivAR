@@ -1,4 +1,4 @@
-package com.android.festivar.ui.event
+package com.android.festivar.ui.event.details
 
 // Co-authored-by: Copilot App
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
@@ -11,7 +11,7 @@ import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.user.User
-import com.android.festivar.ui.event.details.EventDetailsViewModel
+import kotlinx.coroutines.Dispatchers
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlin.coroutines.cancellation.CancellationException
@@ -36,12 +36,12 @@ class EventDetailsViewModelTest {
 
   @Before
   fun setUp() {
-    kotlinx.coroutines.Dispatchers.setMain(dispatcher)
+    Dispatchers.setMain(dispatcher)
   }
 
   @After
   fun tearDown() {
-    kotlinx.coroutines.Dispatchers.resetMain()
+    Dispatchers.resetMain()
   }
 
   /** Red if the ViewModel does not load the event identified by its constructor argument. */

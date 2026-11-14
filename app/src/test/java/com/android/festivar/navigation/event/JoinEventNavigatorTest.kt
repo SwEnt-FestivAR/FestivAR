@@ -1,10 +1,10 @@
-// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
-package com.android.festivar.navigation
+// Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
+package com.android.festivar.navigation.event
 
 import androidx.navigation.NavHostController
 import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.navOptions
-import com.android.festivar.navigation.task.MyTasksNavigator
+import com.android.festivar.navigation.AppScreens
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
@@ -12,22 +12,29 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class MyTasksNavigatorTest {
+class JoinEventNavigatorTest {
   private val navController = mockk<NavHostController>(relaxed = true)
-  private val navigator = MyTasksNavigator(navController)
+  private val navigator = JoinEventNavigator(navController)
 
-  /**
-   * Turns red when a tapped row stops opening the details of that task, or stops telling them they
-   * were opened from My tasks.
-   */
   @Test
-  fun openTaskNavigatesToTaskDetails() {
-    navigator.onOpenTask("task-123")
+  fun backClickPopsBackStack() {
+    navigator.onBack()
 
-    verify { navController.navigate(AppScreens.taskDetails("task-123", TaskOrigin.MY_TASKS)) }
+    verify { navController.popBackStack() }
   }
 
-  /** Turns red when signing out stops opening the login or leaves My tasks under it. */
+  @Test
+  fun openEventNavigatesToEventDetailsAndDropsTheJoinScreen() {
+    val options = slot<NavOptionsBuilder.() -> Unit>()
+
+    navigator.onOpenEvent("e1")
+
+    verify { navController.navigate(AppScreens.eventDetails("e1"), capture(options)) }
+    val navOptions = navOptions(options.captured)
+    assertEquals(AppScreens.JoinEvent.name, navOptions.popUpToRoute)
+    assertTrue(navOptions.isPopUpToInclusive())
+  }
+
   @Test
   fun signedOutNavigatesToLoginAndClearsBackStack() {
     val options = slot<NavOptionsBuilder.() -> Unit>()

@@ -1,5 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
-package com.android.festivar.ui.event
+package com.android.festivar.ui.event.details
 
 import android.annotation.SuppressLint
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -25,9 +25,7 @@ import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.UserListTestTags
-import com.android.festivar.ui.event.details.EventDetailsScreen
-import com.android.festivar.ui.event.details.EventDetailsScreenTestTags
-import com.android.festivar.ui.event.details.EventDetailsViewModel
+import com.android.festivar.ui.event.MembersFixture
 import com.android.festivar.ui.theme.AppTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

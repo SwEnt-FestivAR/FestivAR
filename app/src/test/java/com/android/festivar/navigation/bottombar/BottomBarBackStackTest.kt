@@ -1,5 +1,5 @@
 // Co-authored-by: Claude Fable 5.2 <noreply@anthropic.com>
-package com.android.festivar.navigation
+package com.android.festivar.navigation.bottombar
 
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.navigation.NavHostController
@@ -7,6 +7,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.festivar.navigation.AppScreens
+import com.android.festivar.navigation.BottomBarNavigator
+import com.android.festivar.navigation.bottomBarStateFor
 import com.android.festivar.ui.components.NavigationTab
 import org.junit.Assert.assertEquals
 import org.junit.Before

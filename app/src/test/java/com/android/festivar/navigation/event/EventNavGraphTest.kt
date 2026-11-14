@@ -1,5 +1,5 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
-package com.android.festivar.navigation
+package com.android.festivar.navigation.event
 
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -16,8 +16,7 @@ import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
-import com.android.festivar.navigation.event.eventGraph
-import com.android.festivar.navigation.event.requireEventId
+import com.android.festivar.navigation.AppScreens
 import com.android.festivar.ui.event.edit.EditEventScreenTestTags
 import com.android.festivar.ui.theme.AppTheme
 import com.google.firebase.auth.FirebaseUser

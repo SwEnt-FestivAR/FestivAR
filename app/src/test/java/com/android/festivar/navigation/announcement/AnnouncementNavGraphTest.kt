@@ -1,7 +1,7 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored by: Gemini
-package com.android.festivar.navigation
+package com.android.festivar.navigation.announcement
 
 import androidx.compose.material3.Text
 import androidx.compose.ui.test.assertIsDisplayed
@@ -20,7 +20,7 @@ import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.announcement.Announcement
-import com.android.festivar.navigation.announcement.announcementGraph
+import com.android.festivar.navigation.AppScreens
 import com.android.festivar.ui.announcement.create.CreateAnnouncementScreenTestTags as Tags
 import com.android.festivar.ui.announcement.details.AnnouncementDetailsScreenTestTags as DetailsTags
 import com.android.festivar.ui.announcement.feed.AnnouncementFeedScreenTestTags as FeedTags

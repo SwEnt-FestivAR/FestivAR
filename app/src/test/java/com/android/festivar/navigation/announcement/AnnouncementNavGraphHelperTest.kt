@@ -1,7 +1,5 @@
-package com.android.festivar.navigation
+package com.android.festivar.navigation.announcement
 
-import com.android.festivar.navigation.announcement.requireAnnouncementDetailsArguments
-import com.android.festivar.navigation.announcement.requireEventId
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

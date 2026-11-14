@@ -1,7 +1,7 @@
 // Co-authored-by: Copilot App
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
-package com.android.festivar.navigation
+package com.android.festivar.navigation.task
 
 import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
@@ -29,7 +29,8 @@ import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.task.TasksRepositoryProvider
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepositoryLocal
-import com.android.festivar.navigation.task.taskGraph
+import com.android.festivar.navigation.AppScreens
+import com.android.festivar.navigation.TaskOrigin
 import com.android.festivar.ui.task.create.CreateTaskScreenTestTags
 import com.android.festivar.ui.task.details.FakeAudioRepository
 import com.android.festivar.ui.task.details.FakeVoicePlayer

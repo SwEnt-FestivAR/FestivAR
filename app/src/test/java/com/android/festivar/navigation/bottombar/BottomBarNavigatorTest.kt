@@ -1,10 +1,13 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
-package com.android.festivar.navigation
+package com.android.festivar.navigation.bottombar
 
 import androidx.navigation.NavHostController
 import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.navOptions
+import com.android.festivar.navigation.AppScreens
+import com.android.festivar.navigation.BottomBarNavigator
+import com.android.festivar.navigation.BottomBarState
 import com.android.festivar.ui.components.NavigationSubScreen
 import com.android.festivar.ui.components.NavigationTab
 import io.mockk.every

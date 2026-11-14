@@ -1,9 +1,9 @@
 // Co-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
-package com.android.festivar.navigation
+package com.android.festivar.navigation.event
 
 import androidx.navigation.NavHostController
-import com.android.festivar.navigation.event.EventDetailsNavigator
+import com.android.festivar.navigation.AppScreens
 import io.mockk.mockk
 import io.mockk.verify
 import org.junit.Test

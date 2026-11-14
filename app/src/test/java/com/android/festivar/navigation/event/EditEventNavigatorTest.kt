@@ -1,8 +1,8 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
-package com.android.festivar.navigation
+package com.android.festivar.navigation.event
 
 import androidx.navigation.NavHostController
-import com.android.festivar.navigation.event.EditEventNavigator
+import com.android.festivar.navigation.AppScreens
 import io.mockk.mockk
 import io.mockk.verify
 import org.junit.Assert.assertEquals
