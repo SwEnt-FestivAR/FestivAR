@@ -186,6 +186,8 @@ dependencies {
   implementation(libs.compose.ui.graphics)
   implementation(libs.compose.material.icons.extended)
   androidTestImplementation(libs.mockk.android)
+  // Image display
+  implementation(libs.compose)
   // Settings
   implementation(libs.androidx.preference.ktx)
   // Material Design 3
