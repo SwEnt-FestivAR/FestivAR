@@ -6,6 +6,7 @@ import com.google.firebase.storage.StorageMetadata
 import com.google.firebase.storage.StorageReference
 import java.io.File
 import java.io.IOException
+import java.net.URLConnection
 import java.net.URLDecoder
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
@@ -43,7 +44,8 @@ class ImageStorageFirebase(private val storageRef: StorageReference) : ImageStor
       val extension = storedImage.file.extension.let { if (it.isNotBlank()) ".$it" else ".png" }
       val fileName = "${getNewUid()}$extension"
       val ref = imageReference.child(subFolder).child(fileName)
-      val metadata = StorageMetadata.Builder().setContentType("image/png").build()
+      val guessedMIME = URLConnection.guessContentTypeFromName(storedImage.fileName)
+      val metadata = StorageMetadata.Builder().setContentType(guessedMIME).build()
       ref.putFile(storedImage.uri, metadata).await()
       val downloadUrl = ref.downloadUrl.await().toString()
       return downloadUrl.ifBlank {
