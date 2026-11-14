@@ -1,0 +1,90 @@
+package com.android.festivar.model.images
+
+import androidx.compose.runtime.Composable
+import androidx.core.net.toUri
+import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
+import com.bumptech.glide.integration.compose.GlideImage
+import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.StorageException
+import com.google.firebase.storage.StorageMetadata
+import com.google.firebase.storage.StorageReference
+import java.io.File
+import java.io.IOException
+import java.net.URLDecoder
+import java.util.UUID
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
+
+data class StoredImage(val file: File) {
+  val fileName: String
+    get() = file.name
+
+  val uri
+    get() = file.toUri()
+}
+
+class ImageStorageFirebase(private val storageRef: StorageReference) : ImageStorage {
+  constructor() : this(FirebaseStorage.getInstance().reference)
+
+  private val imageReference = storageRef.child("image")
+
+  override fun getNewUid(): String {
+    return UUID.randomUUID().toString()
+  }
+
+  override suspend fun upload(
+      storedImage: StoredImage,
+      subFolder: String,
+  ): String {
+    try {
+      val extension = storedImage.file.extension.let { if (it.isNotBlank()) ".$it" else ".png" }
+      val fileName = "${getNewUid()}$extension"
+      val ref = imageReference.child(subFolder).child(fileName)
+      val metadata = StorageMetadata.Builder().setContentType("image/png").build()
+      ref.putFile(storedImage.uri, metadata).await()
+      val downloadUrl = ref.downloadUrl.await().toString()
+      return downloadUrl.ifBlank {
+        throw IOException("Image upload did not return a valid download URL.")
+      }
+    } catch (e: Exception) {
+      if (e is CancellationException) throw e
+      if (e is IOException) throw e
+      throw IOException("Failed to upload image file.", e)
+    }
+  }
+
+  override suspend fun delete(imageUrl: String) {
+    if (imageUrl.isBlank()) return
+    try {
+      val ref =
+          try {
+            storageRef.storage.getReferenceFromUrl(imageUrl)
+          } catch (_: IllegalArgumentException) {
+            // getReferenceFromUrl rejects emulator URLs, so we read the object path ourselves.
+            val pathPart = imageUrl.substringAfter("/o/").substringBefore("?")
+            val decodedPath = withContext(IO) { URLDecoder.decode(pathPart, "UTF-8") }
+            require(decodedPath.startsWith("image/")) { "Not an image URL: $imageUrl" }
+            storageRef.storage.reference.child(decodedPath)
+          }
+      ref.delete().await()
+    } catch (e: Exception) {
+      if (e is CancellationException) throw e
+      if (e is StorageException && e.errorCode == StorageException.ERROR_OBJECT_NOT_FOUND) {
+        // Deleting a non-existent file is not an issue.
+        return
+      }
+      throw IOException("Failed to delete image from storage.", e)
+    }
+  }
+
+  @OptIn(ExperimentalGlideComposeApi::class)
+  @Composable
+  override fun GetImageComposableFromUrl(imageUrl: String, contentDescription: String) {
+    GlideImage(
+        model = imageUrl,
+        contentDescription = contentDescription,
+    )
+  }
+}
