@@ -1,9 +1,8 @@
 [versions]
 agp = "9.3.0"
-compose = "1.0.0-beta10"
+glide-compose = "1.0.0-beta10"
 composeBomVersion = "2026.09.00"
 firebaseBom = "34.19.0"
-firebaseUiStorage = "10.0.0"
 kotlin = "2.3.0"
 coreKtx = "1.19.0"
 coreSplashscreen = "1.2.0"
@@ -33,7 +32,7 @@ androidx-compose-bom-v20260900 = { module = "androidx.compose:compose-bom", vers
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "coreSplashscreen" }
 androidx-preference-ktx = { module = "androidx.preference:preference-ktx", version.ref = "preference" }
-compose = { module = "com.github.bumptech.glide:compose", version.ref = "compose" }
+glide-compose = { module = "com.github.bumptech.glide:compose", version.ref = "glide-compose" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
