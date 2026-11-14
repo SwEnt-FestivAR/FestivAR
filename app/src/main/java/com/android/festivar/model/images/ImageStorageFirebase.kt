@@ -44,7 +44,7 @@ class ImageStorageFirebase(private val storageRef: StorageReference) : ImageStor
       val extension = storedImage.file.extension.let { if (it.isNotBlank()) ".$it" else ".png" }
       val fileName = "${getNewUid()}$extension"
       val ref = imageReference.child(subFolder).child(fileName)
-      val guessedMIME = URLConnection.guessContentTypeFromName(storedImage.fileName)
+      val guessedMIME = URLConnection.guessContentTypeFromName(storedImage.fileName) ?: "image/png"
       val metadata = StorageMetadata.Builder().setContentType(guessedMIME).build()
       ref.putFile(storedImage.uri, metadata).await()
       val downloadUrl = ref.downloadUrl.await().toString()
