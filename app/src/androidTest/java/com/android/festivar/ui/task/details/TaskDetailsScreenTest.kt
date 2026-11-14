@@ -30,6 +30,7 @@ import java.time.ZonedDateTime
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -165,6 +166,21 @@ class TaskDetailsScreenTest {
     assertBadge("Open")
     val saved = runBlocking { repository.getTask(task.taskId) }
     assertEquals(emptyList<String>(), saved.assignees.map { it.uid })
+  }
+
+  // Breaks if confirming mark done does not reach the ViewModel or complete the stored task.
+  @Test
+  fun confirmingMarkDoneThroughTheViewModelCompletesTheStoredTask() {
+    showScreen()
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.TAKE_BUTTON).performClick()
+    composeTestRule.waitUntil(5_000) { exists(TaskDetailsScreenTestTags.MARK_DONE_BUTTON) }
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MARK_DONE_BUTTON).performClick()
+    composeTestRule.waitUntil(5_000) { exists(TaskDetailsScreenTestTags.MARK_DONE_CONFIRM_BUTTON) }
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MARK_DONE_CONFIRM_BUTTON).performClick()
+    composeTestRule.waitUntil(5_000) { exists(TaskDetailsScreenTestTags.STATUS_BADGE) }
+    assertBadge("Done")
+    val saved = runBlocking { repository.getTask(task.taskId) }
+    assertTrue(saved.completed)
   }
 
   // Breaks if taking the task through the ViewModel does not put the taker on the section.
