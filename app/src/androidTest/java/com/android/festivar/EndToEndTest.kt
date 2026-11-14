@@ -497,6 +497,8 @@ class EndToEndTest {
     waitUntilTagExists(TaskDetailsScreenTestTags.MARK_DONE_BUTTON)
     assertTheStatusIs(R.string.details_status_yours)
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MARK_DONE_BUTTON).performClick()
+    waitUntilTagExists(TaskDetailsScreenTestTags.MARK_DONE_CONFIRM_BUTTON)
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MARK_DONE_CONFIRM_BUTTON).performClick()
     waitUntilTagGone(TaskDetailsScreenTestTags.MARK_DONE_BUTTON)
     assertTheStatusIs(R.string.details_status_done)
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.GIVE_BACK_BUTTON).assertDoesNotExist()
