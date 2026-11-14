@@ -1,10 +1,6 @@
 package com.android.festivar.model.images
 
-import androidx.compose.runtime.Composable
 import androidx.core.net.toUri
-import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
-import com.bumptech.glide.integration.compose.GlideImage
-import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageException
 import com.google.firebase.storage.StorageMetadata
 import com.google.firebase.storage.StorageReference
@@ -28,8 +24,6 @@ data class StoredImage(val file: File) {
 
 /** Firebase implementation of [ImageStorage] managing image uploads, deletions, and rendering. */
 class ImageStorageFirebase(private val storageRef: StorageReference) : ImageStorage {
-  constructor() : this(FirebaseStorage.getInstance().reference)
-
   private val imageReference = storageRef.child("image")
 
   /** Generates a unique identifier string using UUID. */
@@ -86,12 +80,9 @@ class ImageStorageFirebase(private val storageRef: StorageReference) : ImageStor
     }
   }
 
-  @OptIn(ExperimentalGlideComposeApi::class)
-  @Composable
-  override fun GetImageComposableFromUrl(imageUrl: String, contentDescription: String) {
-    GlideImage(
-        model = imageUrl,
-        contentDescription = contentDescription,
-    )
-  }
+  /**
+   * To show an image, you should use the Glide library, like this : GlideImage( model = imageUrl,
+   * contentDescription = contentDescription, ) This comment can be removed when you do, it's just
+   * an explanation
+   */
 }

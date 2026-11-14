@@ -1,7 +1,5 @@
 package com.android.festivar.model.images
 
-import androidx.compose.runtime.Composable
-
 interface ImageStorage {
   /** Generates and returns a new unique identifier for an Image item. */
   fun getNewUid(): String
@@ -23,13 +21,4 @@ interface ImageStorage {
    * @throws IOException if the storage cannot be reached or refuses the deletion.
    */
   suspend fun delete(imageUrl: String)
-
-  /**
-   * Creates a composable for an image URL This function can probably be replaced only with a
-   * GlideImage call, mostly here to try it
-   *
-   * @param imageUrl The URL of the image to display
-   * @param contentDescription A text description of the image
-   */
-  @Composable fun GetImageComposableFromUrl(imageUrl: String, contentDescription: String)
 }
