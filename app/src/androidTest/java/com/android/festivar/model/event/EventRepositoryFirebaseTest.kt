@@ -387,6 +387,35 @@ class EventRepositoryFirebaseTest {
     assertEquals(event.copy(announcements = listOf(a1, a3)), repository.getEvent(event.eventId))
   }
 
+  @Test
+  fun setAnnouncementPinned_preservesTheLatestAnnouncementFields() = runBlocking {
+    val original = fullAnnouncement.copy(pinned = false)
+    repository.addEvent(event.copy(announcements = listOf(original)))
+    val editedElsewhere = original.copy(title = "Updated elsewhere", content = "New details")
+    repository.editAnnouncement(event.eventId, editedElsewhere)
+
+    val pinned = repository.setAnnouncementPinned(event.eventId, original.announcementId, true)
+
+    assertEquals(editedElsewhere.copy(pinned = true), pinned)
+    assertEquals(listOf(pinned), repository.getEvent(event.eventId).announcements)
+  }
+
+  @Test
+  fun setAnnouncementPinned_missingEventOrAnnouncementThrowsAndChangesNothing() = runBlocking {
+    assertThrowsOfType<NoSuchElementException> {
+      repository.setAnnouncementPinned(event.eventId, "a1", true)
+    }
+    assertFalse(eventDocument().get().await().exists())
+
+    val stored = announcement("a1")
+    repository.addEvent(event.copy(announcements = listOf(stored)))
+    assertThrowsOfType<IllegalArgumentException> {
+      repository.setAnnouncementPinned(event.eventId, "missing", true)
+    }
+
+    assertEquals(listOf(stored), repository.getEvent(event.eventId).announcements)
+  }
+
   /** Red if editing or deleting an unknown id succeeds, adds it or changes the stored ones. */
   @Test
   fun editAndDeleteAnnouncement_withAnUnknownIdThrow_andChangeNothing() = runBlocking {

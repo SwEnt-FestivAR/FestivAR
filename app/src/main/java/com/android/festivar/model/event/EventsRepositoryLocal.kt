@@ -79,6 +79,20 @@ class EventsRepositoryLocal(initialEvents: List<Event> = emptyList()) : EventsRe
     editEvent(eventId, getEvent(eventId).editAnnouncement(announcement))
   }
 
+  override suspend fun setAnnouncementPinned(
+      eventId: String,
+      announcementId: String,
+      pinned: Boolean,
+  ): Announcement {
+    val event = getEvent(eventId)
+    val announcement =
+        event.announcements.firstOrNull { it.announcementId == announcementId }
+            ?: throw IllegalArgumentException("This announcement is not in the event.")
+    val updated = announcement.copy(pinned = pinned)
+    editEvent(eventId, event.editAnnouncement(updated))
+    return updated
+  }
+
   override suspend fun deleteAnnouncement(eventId: String, announcementId: String) {
     editEvent(eventId, getEvent(eventId).removeAnnouncement(announcementId))
   }

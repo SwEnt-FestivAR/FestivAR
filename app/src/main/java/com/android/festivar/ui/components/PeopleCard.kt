@@ -1,5 +1,6 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Fable 5.2 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.components
 
 import androidx.compose.foundation.background
@@ -38,6 +39,8 @@ object PeopleCardTestTags {
 /**
  * A card for a group of [people]: their avatars, a [title] ("On this task", "Members"), how many
  * they are, and a chevron. Tapping it calls [onClick], which usually opens their list.
+ *
+ * @param subtitle The line below the [title], by default the number of [people] ("3 people").
  */
 @Composable
 fun PeopleCard(
@@ -45,13 +48,35 @@ fun PeopleCard(
     people: List<User>,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    subtitle: String = peopleCount(people.size),
+) {
+  PeopleRow(
+      title = title,
+      people = people,
+      onClick = onClick,
+      modifier =
+          modifier.background(
+              MaterialTheme.colorScheme.surfaceContainerLow,
+              MaterialTheme.shapes.medium,
+          ),
+      subtitle = subtitle,
+  )
+}
+
+/**
+ * The content of a [PeopleCard] without its background, for a row that sits in a card shared with
+ * other rows. It takes the same parameters as [PeopleCard], all of them given by the caller.
+ */
+@Composable
+fun PeopleRow(
+    title: String,
+    people: List<User>,
+    onClick: () -> Unit,
+    modifier: Modifier,
+    subtitle: String,
 ) {
   Row(
-      modifier
-          .fillMaxWidth()
-          .background(MaterialTheme.colorScheme.surfaceContainerLow, MaterialTheme.shapes.medium)
-          .clickable(onClick = onClick)
-          .padding(16.dp),
+      modifier.fillMaxWidth().clickable(onClick = onClick).padding(16.dp),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(12.dp),
   ) {
@@ -59,7 +84,7 @@ fun PeopleCard(
     Column(Modifier.weight(1f)) {
       Text(title, style = MaterialTheme.typography.titleMedium)
       Text(
-          peopleCount(people.size),
+          subtitle,
           style = MaterialTheme.typography.bodyMedium,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
           modifier = Modifier.testTag(PeopleCardTestTags.COUNT),

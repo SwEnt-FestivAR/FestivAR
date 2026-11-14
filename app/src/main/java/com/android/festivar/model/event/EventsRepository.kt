@@ -120,6 +120,25 @@ interface EventsRepository {
   suspend fun editAnnouncement(eventId: String, announcement: Announcement)
 
   /**
+   * Sets an announcement's pinned state without replacing its other fields.
+   *
+   * Besides the exceptions documented below, implementations backed by a remote storage may throw
+   * other exceptions when the storage cannot be reached or holds invalid data.
+   *
+   * @param eventId The unique identifier of the [Event] containing the [Announcement].
+   * @param announcementId The unique identifier of the [Announcement] to update.
+   * @param pinned The new pinned state.
+   * @return The updated [Announcement].
+   * @throws IllegalArgumentException if the [Announcement] is not in the [Event].
+   * @throws NoSuchElementException if the [Event] is not found.
+   */
+  suspend fun setAnnouncementPinned(
+      eventId: String,
+      announcementId: String,
+      pinned: Boolean,
+  ): Announcement
+
+  /**
    * Deletes an [Announcement] from an [Event] item of the repository.
    *
    * Besides the exceptions documented below, implementations backed by a remote storage may throw

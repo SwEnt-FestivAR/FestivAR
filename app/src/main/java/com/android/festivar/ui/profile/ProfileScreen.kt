@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -16,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -55,6 +55,7 @@ import com.android.festivar.ui.components.NoticeSnackbar
 object ProfileScreenTestTags {
   const val TITLE = "profileTitle"
   const val BACK = "profileBack"
+  const val SETTINGS = "profileSettings"
   const val LOADING = "profileLoading"
   const val AVATAR = "profileAvatar"
   const val SURNAME_FIELD = "profileSurnameField"
@@ -94,6 +95,7 @@ fun ProfileScreen(
     profileViewModel: ProfileViewModel,
     onBack: () -> Unit = {},
     onSignedOut: () -> Unit = {},
+    onSettingsClick: () -> Unit = {},
     credentialManager: CredentialManager = CredentialManager.create(LocalContext.current),
 ) {
 
@@ -138,6 +140,17 @@ fun ProfileScreen(
                   Icon(
                       Icons.AutoMirrored.Filled.ArrowBack,
                       contentDescription = stringResource(R.string.profile_back),
+                  )
+                }
+              },
+              actions = {
+                IconButton(
+                    onClick = onSettingsClick,
+                    Modifier.testTag(ProfileScreenTestTags.SETTINGS),
+                ) {
+                  Icon(
+                      Icons.Default.Settings,
+                      contentDescription = stringResource(R.string.title_activity_settings),
                   )
                 }
               },
@@ -231,7 +244,7 @@ internal fun ProfileScreenContent(
     modifier: Modifier = Modifier,
 ) {
   Column(
-      modifier = modifier.fillMaxSize().imePadding().padding(16.dp),
+      modifier = modifier.fillMaxSize().padding(16.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
   ) {
     // Until the profile is loaded there is nothing to show or edit.

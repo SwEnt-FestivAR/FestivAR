@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Remove
@@ -26,12 +28,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -63,6 +70,8 @@ private val LabelFontSize = 12.sp
  * @param decreaseDescription Accessibility description of the minus button.
  * @param increaseDescription Accessibility description of the plus button.
  * @param minValue The lowest number, where the minus button is disabled.
+ * @param typeable Whether the number can be entered with the keyboard.
+ * @param onValueChange Called with typed digits.
  */
 @Composable
 fun FestivarStepper(
@@ -75,10 +84,13 @@ fun FestivarStepper(
     enabled: Boolean = true,
     modifier: Modifier = Modifier,
     minValue: Int = 1,
+    typeable: Boolean = false,
+    onValueChange: (String) -> Unit = {},
     decreaseModifier: Modifier = Modifier,
     increaseModifier: Modifier = Modifier,
 ) {
   val colors = MaterialTheme.colorScheme
+  var typedValue by remember(value) { mutableStateOf(value.toString()) }
   Box(
       modifier =
           modifier.fillMaxWidth().semantics {
@@ -103,13 +115,32 @@ fun FestivarStepper(
             onClick = onDecrease,
             modifier = decreaseModifier,
         )
-        Text(
-            text = value.toString(),
-            style = MaterialTheme.typography.bodyLarge,
-            color = colors.onSurface,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.weight(1f),
-        )
+        if (typeable) {
+          BasicTextField(
+              value = typedValue,
+              onValueChange = {
+                val digits = it.filter(Char::isDigit)
+                typedValue = digits
+                onValueChange(digits)
+              },
+              singleLine = true,
+              keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+              textStyle =
+                  MaterialTheme.typography.bodyLarge.copy(
+                      color = colors.onSurface,
+                      textAlign = TextAlign.Center,
+                  ),
+              modifier = Modifier.weight(1f),
+          )
+        } else {
+          Text(
+              text = value.toString(),
+              style = MaterialTheme.typography.bodyLarge,
+              color = colors.onSurface,
+              textAlign = TextAlign.Center,
+              modifier = Modifier.weight(1f),
+          )
+        }
         StepperButton(
             icon = Icons.Rounded.Add,
             description = increaseDescription,

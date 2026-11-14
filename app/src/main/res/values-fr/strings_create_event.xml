@@ -11,4 +11,5 @@
     <string name="create_event_field_notes">Notes pour l’équipe, facultatives</string>
     <string name="create_event_button">Créer l’événement</string>
     <string name="create_event_error_save_failed">Impossible de créer l’événement.</string>
+    <string name="create_event_discard_title">Abandonner cet événement ?</string>
 </resources>

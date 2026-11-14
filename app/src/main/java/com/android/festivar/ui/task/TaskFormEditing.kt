@@ -29,6 +29,9 @@ interface TaskFormEditor {
   /** Removes one from the number of people the task needs, down to [MIN_MAX_ASSIGN]. */
   fun decrementMaxAssign()
 
+  /** Sets the number of people the task needs from typed digits. */
+  fun updateMaxAssign(text: String)
+
   /**
    * Sets the estimated time, in minutes. Anything but digits is dropped, and at most
    * [MAX_ESTIMATED_DIGITS] digits are kept, so that the number always fits in an `Int`.
@@ -88,6 +91,13 @@ internal class TaskFormEditing : TaskFormEditor {
 
   override fun decrementMaxAssign() = applyEdit {
     it.copy(maxAssign = (it.maxAssign - 1).coerceAtLeast(MIN_MAX_ASSIGN))
+  }
+
+  override fun updateMaxAssign(text: String) {
+    text
+        .toIntOrNull()
+        ?.takeIf { it >= MIN_MAX_ASSIGN }
+        ?.let { value -> applyEdit { it.copy(maxAssign = value) } }
   }
 
   override fun updateEstimatedMinutes(text: String) = applyEdit {

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com> -->
+<resources>
+    <string name="title_activity_settings">Paramètres</string>
+    <string name="settings_cat_acc">Paramètres du compte</string>
+    <string name="settings_theme">Thème</string>
+    <string name="settings_default_system">Système</string>
+    <string name="settings_theme_light">Clair</string>
+    <string name="settings_theme_dark">Sombre</string>
+    <string name="settings_switch_example">Exemple</string>
+    <string name="settings_language">Langue</string>
+    <string name="settings_cat_app">Paramètres de l\'app</string>
+    <string name="settings_delete_acc">Supprimer le compte</string>
+</resources>

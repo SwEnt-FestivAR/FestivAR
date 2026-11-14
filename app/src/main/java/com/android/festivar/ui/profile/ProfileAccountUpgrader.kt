@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -90,7 +89,6 @@ fun UpgradeBottomSheetContent(
         modifier =
             Modifier.background(MaterialTheme.colorScheme.surface)
                 .padding(horizontal = 12.dp, vertical = 12.dp)
-                .imePadding()
                 .verticalScroll(rememberScrollState()),
         buttonText = stringResource(R.string.profile_upgrade),
     )
@@ -105,7 +103,6 @@ fun UpgradeBottomSheetContent(
         modifier =
             Modifier.testTag(LoginScreenTestTags.GOOGLE_BUTTON)
                 .padding(horizontal = 12.dp, vertical = 12.dp)
-                .imePadding()
                 .verticalScroll(rememberScrollState()),
     )
   }

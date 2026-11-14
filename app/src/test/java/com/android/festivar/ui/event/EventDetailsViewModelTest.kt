@@ -2,6 +2,7 @@ package com.android.festivar.ui.event
 
 // Co-authored-by: Copilot App
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 
 import com.android.festivar.R
 import com.android.festivar.model.authentication.FakeAuthRepository
@@ -9,6 +10,7 @@ import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.model.user.User
 import com.android.festivar.ui.event.details.EventDetailsViewModel
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -21,7 +23,9 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -48,6 +52,7 @@ class EventDetailsViewModelTest {
         EventDetailsViewModel(
             dataRepositoryWith(EventsRepositoryLocal(listOf(event))),
             event.eventId,
+            "owner",
         )
     viewModel.fetchEvent()
 
@@ -69,6 +74,7 @@ class EventDetailsViewModelTest {
                 }
             ),
             eventId = "missing",
+            currentUserId = "owner",
         )
 
     viewModel.fetchEvent()
@@ -90,7 +96,7 @@ class EventDetailsViewModelTest {
             return event
           }
         }
-    val viewModel = EventDetailsViewModel(dataRepositoryWith(repository), event.eventId)
+    val viewModel = EventDetailsViewModel(dataRepositoryWith(repository), event.eventId, "owner")
 
     viewModel.fetchEvent()
     advanceUntilIdle()
@@ -114,7 +120,7 @@ class EventDetailsViewModelTest {
             return event
           }
         }
-    val viewModel = EventDetailsViewModel(dataRepositoryWith(repository), event.eventId)
+    val viewModel = EventDetailsViewModel(dataRepositoryWith(repository), event.eventId, "owner")
     viewModel.fetchEvent()
 
     advanceUntilIdle()
@@ -141,12 +147,83 @@ class EventDetailsViewModelTest {
                 }
             ),
             eventId = "event-1",
+            currentUserId = "owner",
         )
     viewModel.fetchEvent()
     advanceUntilIdle()
 
     assertNull(viewModel.uiState.value.event)
     assertNull(viewModel.uiState.value.errorMsg)
+  }
+
+  /** Breaks if the organizer of the event is not recognised, so they never get the menu. */
+  @Test
+  fun ownerOfTheEventIsTheOwner() = runTest {
+    val event = testEvent("event-1")
+    val viewModel =
+        EventDetailsViewModel(
+            dataRepositoryWith(EventsRepositoryLocal(listOf(event))),
+            event.eventId,
+            event.ownerId,
+        )
+    viewModel.fetchEvent()
+    advanceUntilIdle()
+
+    assertTrue(viewModel.uiState.value.isOwner)
+  }
+
+  /** Breaks if a volunteer is treated as the organizer and gets the menu. */
+  @Test
+  fun anotherUserIsNotTheOwner() = runTest {
+    val event = testEvent("event-1")
+    val viewModel =
+        EventDetailsViewModel(
+            dataRepositoryWith(EventsRepositoryLocal(listOf(event))),
+            event.eventId,
+            "volunteer",
+        )
+    viewModel.fetchEvent()
+    advanceUntilIdle()
+
+    assertFalse(viewModel.uiState.value.isOwner)
+  }
+
+  /** Breaks if nobody signed in is treated as the organizer. */
+  @Test
+  fun signedOutUserIsNotTheOwner() = runTest {
+    val event = testEvent("event-1")
+    val viewModel =
+        EventDetailsViewModel(
+            dataRepositoryWith(EventsRepositoryLocal(listOf(event))),
+            event.eventId,
+            "",
+        )
+    viewModel.fetchEvent()
+    advanceUntilIdle()
+
+    assertFalse(viewModel.uiState.value.isOwner)
+  }
+
+  /** Breaks if a failed reload keeps the organizer's rights over an event that is not shown. */
+  @Test
+  fun failedRefetchRemovesOwnership() = runTest {
+    var shouldFail = false
+    val event = testEvent("event-1")
+    val repository =
+        object : EventsRepository by EventsRepositoryLocal(listOf(event)) {
+          override suspend fun getEvent(eventId: String): Event {
+            if (shouldFail) throw IllegalStateException("fetch failed")
+            return event
+          }
+        }
+    val viewModel = EventDetailsViewModel(dataRepositoryWith(repository), event.eventId, "owner")
+    viewModel.fetchEvent()
+    advanceUntilIdle()
+    shouldFail = true
+    viewModel.fetchEvent()
+    advanceUntilIdle()
+
+    assertFalse(viewModel.uiState.value.isOwner)
   }
 
   private fun dataRepositoryWith(eventsRepository: EventsRepository) =
@@ -163,6 +240,7 @@ class EventDetailsViewModelTest {
         title = "Test event",
         startDate = start,
         endDate = start.plusHours(2),
+        members = listOf(User(uid = "owner"), User(uid = "volunteer")),
     )
   }
 }

@@ -34,6 +34,7 @@ fun NavGraphBuilder.profileGraph(navController: NavHostController, dataRepositor
             },
         onBack = navigator.onBack,
         onSignedOut = navigator.onSignedOut,
+        onSettingsClick = navigator.onSettingsClick,
     )
   }
 }

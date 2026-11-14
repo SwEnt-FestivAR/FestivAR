@@ -3,11 +3,11 @@ package com.android.festivar.ui.event.create
 // Co-authored-by: Copilot App
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -39,6 +39,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.R
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.DateTimeRange
+import com.android.festivar.ui.components.FestivarDiscardDialog
 import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.event.EventFields
 import com.android.festivar.ui.event.EventFieldsTestTags
@@ -62,6 +63,9 @@ object CreateEventScreenTestTags {
   const val CREATE_BUTTON = "createButton"
   const val SAVING_INDICATOR = "createEventSaving"
   const val SAVE_ERROR = "createEventSaveError"
+  const val DISCARD_DIALOG = "createEventDiscardDialog"
+  const val DISCARD_BUTTON = "createEventDiscardButton"
+  const val KEEP_EDITING_BUTTON = "createEventKeepEditingButton"
 }
 
 private val createEventFieldTags =
@@ -104,13 +108,15 @@ fun CreateEventScreen(
     onCreated: () -> Unit = {},
 ) {
   val uiState by viewModel.uiState.collectAsState()
+  LaunchedEffect(uiState.isDiscarded) { if (uiState.isDiscarded) onBack() }
   LaunchedEffect(uiState.createdEventId) { if (uiState.createdEventId != null) onCreated() }
+  BackHandler(onBack = viewModel::requestDiscard)
 
   CreateEventContent(
       state = uiState,
       actions =
           CreateEventActions(
-              onBack = onBack,
+              onBack = viewModel::requestDiscard,
               onNameChange = viewModel::updateName,
               onShowPicker = viewModel::showPicker,
               onVenueChange = viewModel::updateVenue,
@@ -121,6 +127,17 @@ fun CreateEventScreen(
           ),
       modifier = modifier,
   )
+
+  if (uiState.showDiscardConfirmation) {
+    FestivarDiscardDialog(
+        title = stringResource(R.string.create_event_discard_title),
+        onConfirm = viewModel::confirmDiscard,
+        onDismiss = viewModel::cancelDiscard,
+        modifier = Modifier.testTag(CreateEventScreenTestTags.DISCARD_DIALOG),
+        confirmModifier = Modifier.testTag(CreateEventScreenTestTags.DISCARD_BUTTON),
+        dismissModifier = Modifier.testTag(CreateEventScreenTestTags.KEEP_EDITING_BUTTON),
+    )
+  }
 }
 
 /**
@@ -135,7 +152,7 @@ fun CreateEventContent(
     modifier: Modifier = Modifier,
 ) {
   Scaffold(
-      modifier = modifier.imePadding(),
+      modifier = modifier,
       containerColor = MaterialTheme.colorScheme.background,
       topBar = { CreateEventTopBar(onBack = actions.onBack) },
       bottomBar = {
