@@ -3,6 +3,8 @@ package com.android.festivar.ui.event.edit
 // Co-authored-by: Copilot App
 
 import com.android.festivar.R
+import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
@@ -485,7 +487,12 @@ class EditEventViewModelTest {
             delay(100)
           }
         }
-    viewModel = EditEventViewModel(repository, { signedInUserId }, saveTimeoutMs = 10)
+    viewModel =
+        EditEventViewModel(
+            DataRepositoryLocal(FakeAuthRepository(), eventsRepository = repository),
+            { signedInUserId },
+            saveTimeoutMs = 10,
+        )
     viewModel.fetchEvent(initialEvent.eventId)
     advanceUntilIdle()
     viewModel.updateName("Updated festival")
@@ -619,5 +626,8 @@ class EditEventViewModelTest {
   }
 
   private fun createViewModel(repository: EventsRepository) =
-      EditEventViewModel(repository, { signedInUserId })
+      EditEventViewModel(
+          DataRepositoryLocal(FakeAuthRepository(), eventsRepository = repository),
+          { signedInUserId },
+      )
 }
