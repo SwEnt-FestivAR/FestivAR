@@ -17,6 +17,7 @@ import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 
+/** Represents an image file ready for upload. */
 data class StoredImage(val file: File) {
   val fileName: String
     get() = file.name
@@ -25,15 +26,21 @@ data class StoredImage(val file: File) {
     get() = file.toUri()
 }
 
+/** Firebase implementation of [ImageStorage] managing image uploads, deletions, and rendering. */
 class ImageStorageFirebase(private val storageRef: StorageReference) : ImageStorage {
   constructor() : this(FirebaseStorage.getInstance().reference)
 
   private val imageReference = storageRef.child("image")
 
+  /** Generates a unique identifier string using UUID. */
   override fun getNewUid(): String {
     return UUID.randomUUID().toString()
   }
 
+  /**
+   * Uploads a [storedImage] to the specified [subFolder] in Firebase Storage and returns its
+   * download URL.
+   */
   override suspend fun upload(
       storedImage: StoredImage,
       subFolder: String,

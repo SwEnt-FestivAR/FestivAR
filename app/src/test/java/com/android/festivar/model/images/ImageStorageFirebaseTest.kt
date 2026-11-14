@@ -58,6 +58,7 @@ class ImageStorageFirebaseTest {
     repository = ImageStorageFirebase(storageRef)
   }
 
+  // Breaks if UIDs generated are empty, null, or identical.
   @Test
   fun getNewUid_generatesUniqueId() {
     val uid1 = repository.getNewUid()
@@ -69,6 +70,7 @@ class ImageStorageFirebaseTest {
     assertNotEquals(uid1, uid2)
   }
 
+  // Breaks if successful upload fails to return expected download URL.
   @Test
   fun upload_success() = runTest {
     val expectedUrl =
@@ -90,6 +92,7 @@ class ImageStorageFirebaseTest {
     verify { fileRef.putFile(storedImage.uri, any()) }
   }
 
+  // Breaks if upload failure does not throw IOException.
   @Test
   fun upload_failure_throwsIOException() {
     val uploadTask: UploadTask = mockk()
@@ -105,6 +108,7 @@ class ImageStorageFirebaseTest {
     }
   }
 
+  // Breaks if blank download URL does not throw IOException.
   @Test
   fun upload_blankUrlReturned_throwsIOException() {
     val uploadTask: UploadTask = mockk()
@@ -124,6 +128,7 @@ class ImageStorageFirebaseTest {
     assertEquals("Image upload did not return a valid download URL.", exception.message)
   }
 
+  // Breaks if upload cancellation does not propagate CancellationException.
   @Test
   fun upload_cancellation_propagatesCancellationException() {
     val uploadTask: UploadTask = mockk()
@@ -139,6 +144,7 @@ class ImageStorageFirebaseTest {
     }
   }
 
+  // Breaks if valid image deletion fails.
   @Test
   fun delete_success() = runTest {
     val imageUrl =
@@ -151,6 +157,7 @@ class ImageStorageFirebaseTest {
     verify { fileRef.delete() }
   }
 
+  // Breaks if emulator storage URL deletion fails.
   @Test
   fun delete_emulatorUrl_success() = runTest {
     val emulatorUrl = "http://10.0.2.2:9199/v0/b/bucket/o/image%2Fprofile%2F12345.png?alt=media"
@@ -167,6 +174,7 @@ class ImageStorageFirebaseTest {
     verify { fileRef.delete() }
   }
 
+  // Breaks if invalid URL deletion does not throw IOException.
   @Test
   fun delete_invalidUrl_throwsIOException() = runTest {
     val invalidUrl = "https://example.com/image.png"
@@ -176,6 +184,7 @@ class ImageStorageFirebaseTest {
     assertThrows(IOException::class.java) { runBlocking { repository.delete(invalidUrl) } }
   }
 
+  // Breaks if blank URL deletion attempts storage access.
   @Test
   fun delete_blankUrl_doesNothing() = runTest {
     repository.delete("")
@@ -184,6 +193,7 @@ class ImageStorageFirebaseTest {
     verify(exactly = 0) { firebaseStorage.getReferenceFromUrl(any()) }
   }
 
+  // Breaks if deleting non-existent object throws an exception.
   @Test
   fun delete_notFound_doesNotThrow() = runTest {
     val imageUrl =
@@ -197,6 +207,7 @@ class ImageStorageFirebaseTest {
     verify { fileRef.delete() }
   }
 
+  // Breaks if deletion error does not throw IOException.
   @Test
   fun delete_failure_throwsIOException() {
     val imageUrl =
@@ -206,6 +217,7 @@ class ImageStorageFirebaseTest {
     assertThrows(IOException::class.java) { runBlocking { repository.delete(imageUrl) } }
   }
 
+  // Breaks if deletion cancellation does not propagate CancellationException.
   @Test
   fun delete_cancellation_propagatesCancellationException() {
     val imageUrl =
