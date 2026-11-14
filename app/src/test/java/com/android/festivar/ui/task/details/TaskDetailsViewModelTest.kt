@@ -383,6 +383,42 @@ class TaskDetailsViewModelTest {
     assertEquals(TaskStatus.DONE, vm.uiState.value.status)
   }
 
+  @Test
+  fun requestMarkDone_showsTheMarkDoneConfirmation() {
+    val vm = viewModel(task(assignees = listOf(me)))
+    vm.requestMarkDone()
+    assertTrue(vm.uiState.value.showMarkDoneConfirmation)
+    assertFalse(stored().completed)
+  }
+
+  @Test
+  fun dismissMarkDoneConfirmation_hidesTheConfirmationWithoutCompleting() {
+    val vm = viewModel(task(assignees = listOf(me)))
+    vm.requestMarkDone()
+    assertTrue(vm.uiState.value.showMarkDoneConfirmation)
+    vm.dismissMarkDoneConfirmation()
+    assertFalse(vm.uiState.value.showMarkDoneConfirmation)
+    assertFalse(stored().completed)
+  }
+
+  @Test
+  fun markDone_clearsConfirmationAndCompletesTheTask() {
+    val vm = viewModel(task(assignees = listOf(me)))
+    vm.requestMarkDone()
+    assertTrue(vm.uiState.value.showMarkDoneConfirmation)
+    vm.markDone()
+    assertFalse(vm.uiState.value.showMarkDoneConfirmation)
+    assertTrue(stored().completed)
+    assertEquals(TaskStatus.DONE, vm.uiState.value.status)
+  }
+
+  @Test
+  fun requestMarkDone_whenNotAllowed_doesNothing() {
+    val vm = viewModel(task())
+    vm.requestMarkDone()
+    assertFalse(vm.uiState.value.showMarkDoneConfirmation)
+  }
+
   // Breaks if markDone() reads the task again: it already knows the completed version.
   @Test
   fun markDone_showsTheCompletedTaskWithoutReadingItAgain() {
