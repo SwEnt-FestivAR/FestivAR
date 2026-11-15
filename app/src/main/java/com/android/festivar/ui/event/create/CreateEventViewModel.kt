@@ -228,6 +228,9 @@ class CreateEventViewModel(
     Log.w(TAG, "Creating the event failed, checking whether it was stored", error)
     val alreadySaved =
         try {
+          // Note: Firebase throws an error when the event doesn't exist, so this is fine,
+          // but if a mock or stub sends null instead of throwing, alreadySaved would be true
+          // even though the value is null (keep in mind if testing that behavior).
           withTimeout(saveTimeoutMs) { dataRepository.eventsRepository.getEvent(eventId) }
           true
         } catch (e: TimeoutCancellationException) {
