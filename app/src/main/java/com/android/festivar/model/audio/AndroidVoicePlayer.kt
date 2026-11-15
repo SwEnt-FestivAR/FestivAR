@@ -47,18 +47,15 @@ class AndroidVoicePlayer(context: Context) : VoicePlayer {
   private val _state = MutableStateFlow<PlayerState>(PlayerState.Idle)
   override val state: StateFlow<PlayerState> = _state.asStateFlow()
 
-  /** The player of the note being played or loaded, or null when there is none. */
-  private var current: MediaPlayer? = null
-
-  /** Whether [current] has finished loading: before that it cannot be paused or started. */
-  private var prepared = false
+  /** The player of the note being played, with how far its loading went. */
+  private var current: Current? = null
 
   override fun play(audioUrl: String) {
     freeCurrent()
     _state.value = PlayerState.Playing(audioUrl)
 
     val player = MediaPlayer()
-    current = player
+    current = Current.Loading(player)
     player.setAudioAttributes(
         AudioAttributes.Builder()
             .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
@@ -66,7 +63,7 @@ class AndroidVoicePlayer(context: Context) : VoicePlayer {
             .build()
     )
     player.setOnPreparedListener {
-      prepared = true
+      current = Current.Ready(player)
       // Paused while loading: stay ready, and start when resume() is called.
       if (_state.value is PlayerState.Playing) it.start()
     }
@@ -83,52 +80,58 @@ class AndroidVoicePlayer(context: Context) : VoicePlayer {
       player.setDataSource(appContext, audioUrl.toUri())
       player.prepareAsync()
     } catch (e: IOException) {
-      fail(audioUrl, e)
+      fail(audioUrl, "Cannot load the voice note", e)
     } catch (e: RuntimeException) {
-      fail(audioUrl, e)
+      fail(audioUrl, "Cannot load the voice note", e)
     }
   }
 
   override fun pause() {
     val playing = _state.value as? PlayerState.Playing ?: return
-    if (changePlayback(playing.audioUrl) { pause() }) {
+    val refusal = "The player refused to pause the voice note"
+    if (changePlayback(playing.audioUrl, refusal) { pause() }) {
       _state.value = PlayerState.Paused(playing.audioUrl)
     }
   }
 
   override fun resume() {
     val paused = _state.value as? PlayerState.Paused ?: return
-    if (changePlayback(paused.audioUrl) { start() }) {
+    val refusal = "The player refused to resume the voice note"
+    if (changePlayback(paused.audioUrl, refusal) { start() }) {
       _state.value = PlayerState.Playing(paused.audioUrl)
     }
   }
 
-  override fun stop() {
-    freeCurrent()
-    _state.value = PlayerState.Idle
-  }
+  override fun stop() = finish(PlayerState.Idle)
 
   override fun release() = stop()
 
   /**
    * Applies [action] to the current player once it has finished loading. Before that there is
    * nothing to apply: the prepared listener decides from the state. Returns false, and fails the
-   * note, if the player is in a state that refuses the action.
+   * note, if the player is in a state that refuses the action, with [refusal] as the logged reason.
    */
-  private fun changePlayback(audioUrl: String, action: MediaPlayer.() -> Unit): Boolean {
-    val player = current ?: return false
-    if (!prepared) return true
-    return try {
-      player.action()
-      true
-    } catch (e: IllegalStateException) {
-      fail(audioUrl, e)
-      false
-    }
-  }
+  private fun changePlayback(
+      audioUrl: String,
+      refusal: String,
+      action: MediaPlayer.() -> Unit,
+  ): Boolean =
+      when (val note = current) {
+        null -> false
+        is Current.Loading -> true
+        is Current.Ready ->
+            try {
+              note.player.action()
+              true
+            } catch (e: IllegalStateException) {
+              fail(audioUrl, refusal, e)
+              false
+            }
+      }
 
-  private fun fail(audioUrl: String, cause: Exception) {
-    Log.e(LOG_TAG, "Error loading the voice note", cause)
+  /** Logs why the note failed, then frees its player and moves to [PlayerState.Failed]. */
+  private fun fail(audioUrl: String, reason: String, cause: Exception) {
+    Log.e(LOG_TAG, reason, cause)
     finish(PlayerState.Failed(audioUrl))
   }
 
@@ -139,9 +142,15 @@ class AndroidVoicePlayer(context: Context) : VoicePlayer {
   }
 
   private fun freeCurrent() {
-    current?.release()
+    current?.player?.release()
     current = null
-    prepared = false
+  }
+
+  /** The player of the note: none, loading (it cannot be paused or started yet) or ready. */
+  private sealed class Current(val player: MediaPlayer) {
+    class Loading(player: MediaPlayer) : Current(player)
+
+    class Ready(player: MediaPlayer) : Current(player)
   }
 
   private companion object {
