@@ -22,7 +22,16 @@ Our app proposes itself as a centralized event maker and manager, allowing to pr
 The main organizers will have the ability to access a map of the location and place elements on it.
 This will allow the association's volunteers to know where every table, marquees and every other structure
 should be placed. Moreover, it allows to schedule events, to dispatch roles between all the volunteers
-and to assign them tasks. A true event manager. As a secondary feature, some parts can be viewable trough an AR simulation.
+and to assign them tasks. A true event manager. As a secondary feature, some parts can be viewable through an AR simulation.
+
+
+---
+
+<p align="center">
+  <a href="https://swent-festivar.github.io/Dashboard/" title="Open the FestivAR Dashboard">
+    <img src="https://capsule-render.vercel.app/api?type=rect&color=gradient&customColorList=12,20,24&height=110&text=%F0%9F%93%8A%20FestivAR%20Dashboard&fontSize=38&fontColor=ffffff&fontAlignY=42&desc=Live%20project%20metrics%20%E2%80%A2%20Click%20to%20explore%20%E2%86%92&descSize=15&descAlignY=72&animation=fadeIn" alt="FestivAR Dashboard: click to open" width="100%"/>
+  </a>
+</p>
 
 ---
 
@@ -67,8 +76,10 @@ Don't forget to delete branches after merging in main.
 - New feature: feature/feature-name (ex: feature/map-screen)
 - Bugfix: bugfix/issue-number (ex: bugfix/issue-67)
 - Improvements: improvement/short-desc (ex: improvement/refactor)
+- Refactors: refactor/short-desc (ex: refactor/organize-files) (only for pure refactorings that have no impact on code, != from improvements)
 - Trying things: experiment/desc (ex: experiment/ar-view)
 - Tests creation: test/what-is-tested (ex: test/map-gps-loc)
+
 
 ---
 
