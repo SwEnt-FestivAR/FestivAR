@@ -7,7 +7,6 @@ import com.google.firebase.storage.StorageReference
 import java.io.File
 import java.io.IOException
 import java.net.URLConnection
-import java.net.URLDecoder
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers.IO
@@ -43,7 +42,7 @@ class ImageStorageFirebase(private val storageRef: StorageReference) : ImageStor
     try {
       val extension = storedImage.file.extension.let { if (it.isNotBlank()) ".$it" else ".png" }
       val fileName = "${getNewUid()}$extension"
-      val ref = imageReference.child(subFolder).child(fileName)
+      val ref = imageReference.child(subFolder.trim('/')).child(fileName)
       val guessedMIME = URLConnection.guessContentTypeFromName(storedImage.fileName) ?: "image/png"
       val metadata = StorageMetadata.Builder().setContentType(guessedMIME).build()
       ref.putFile(storedImage.uri, metadata).await()
@@ -67,7 +66,7 @@ class ImageStorageFirebase(private val storageRef: StorageReference) : ImageStor
           } catch (_: IllegalArgumentException) {
             // getReferenceFromUrl rejects emulator URLs, so we read the object path ourselves.
             val pathPart = imageUrl.substringAfter("/o/").substringBefore("?")
-            val decodedPath = withContext(IO) { URLDecoder.decode(pathPart, "UTF-8") }
+            val decodedPath = withContext(IO) { android.net.Uri.decode(pathPart) }
             require(decodedPath.startsWith("image/")) { "Not an image URL: $imageUrl" }
             storageRef.storage.reference.child(decodedPath)
           }
