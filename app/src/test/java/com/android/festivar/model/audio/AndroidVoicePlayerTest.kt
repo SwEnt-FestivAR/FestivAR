@@ -15,15 +15,36 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Shadows.shadowOf
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.Implementation
+import org.robolectric.annotation.Implements
 import org.robolectric.shadows.ShadowMediaPlayer
 import org.robolectric.shadows.ShadowMediaPlayer.State
 import org.robolectric.shadows.util.DataSource
+
+/**
+ * Robolectric's fake [MediaPlayer] that also counts its [release] calls. The state of the fake
+ * cannot tell whether the player freed it: a test that puts the fake in its released state itself
+ * would pass either way.
+ */
+@Implements(MediaPlayer::class)
+class ReleaseCountingShadowMediaPlayer : ShadowMediaPlayer() {
+  var releaseCount = 0
+    private set
+
+  @Implementation
+  protected override fun _release() {
+    releaseCount++
+    super._release()
+  }
+}
 
 /**
  * [AndroidVoicePlayer] on Robolectric's fake [android.media.MediaPlayer], which reports prepared,
  * completed and error like a real one. The tests look at the fake of each note through [players].
  */
 @RunWith(AndroidJUnit4::class)
+@Config(shadows = [ReleaseCountingShadowMediaPlayer::class])
 class AndroidVoicePlayerTest {
   private val context = ApplicationProvider.getApplicationContext<Context>()
   private val first = "https://example.com/first.m4a"
@@ -56,6 +77,14 @@ class AndroidVoicePlayerTest {
   fun tearDown() {
     ShadowMediaPlayer.resetStaticState()
   }
+
+  private fun ShadowMediaPlayer.releaseCount() =
+      (this as ReleaseCountingShadowMediaPlayer).releaseCount
+
+  private fun reportError() =
+      players
+          .single()
+          .invokeErrorListener(MediaPlayer.MEDIA_ERROR_UNKNOWN, MediaPlayer.MEDIA_ERROR_IO)
 
   private fun idle(duration: Duration = Duration.ZERO) =
       shadowOf(Looper.getMainLooper()).idleFor(duration)
@@ -96,7 +125,7 @@ class AndroidVoicePlayerTest {
     player.play(first)
     idle()
 
-    players.single().invokeErrorListener(1, 0)
+    reportError()
 
     assertEquals(PlayerState.Failed(first), player.state.value)
     assertEquals(State.END, players.single().state)
@@ -144,7 +173,7 @@ class AndroidVoicePlayerTest {
   fun play_afterAFailureStartsAgain() {
     player.play(first)
     idle()
-    players.single().invokeErrorListener(1, 0)
+    reportError()
 
     player.play(first)
     idle()
@@ -375,7 +404,7 @@ class AndroidVoicePlayerTest {
     player.pause()
 
     assertEquals(PlayerState.Failed(first), player.state.value)
-    assertEquals(State.END, players.single().state)
+    assertEquals(1, players.single().releaseCount())
   }
 
   /** Breaks if a start refused by the MediaPlayer leaves the note Paused instead of Failed. */
@@ -391,7 +420,7 @@ class AndroidVoicePlayerTest {
     player.resume()
 
     assertEquals(PlayerState.Failed(first), player.state.value)
-    assertEquals(State.END, players.single().state)
+    assertEquals(1, players.single().releaseCount())
   }
 
   /** Breaks if a player error while paused leaves the state Paused. */
@@ -401,7 +430,7 @@ class AndroidVoicePlayerTest {
     idle()
     player.pause()
 
-    players.single().invokeErrorListener(1, 0)
+    reportError()
 
     assertEquals(PlayerState.Failed(first), player.state.value)
     assertEquals(State.END, players.single().state)
