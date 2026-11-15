@@ -104,8 +104,7 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, dataRepository:
     val navigator = EditEventNavigator(navController, eventId)
     EditEventScreen(
         eventId = eventId,
-        viewModel =
-            viewModel { EditEventViewModel(dataRepository.eventsRepository, currentUserId) },
+        viewModel = viewModel { EditEventViewModel(dataRepository, currentUserId) },
         onBack = navigator.onBack,
         onSaved = navigator.onSaved,
     )

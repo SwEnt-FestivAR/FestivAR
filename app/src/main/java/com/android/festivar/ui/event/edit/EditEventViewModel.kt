@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.annotation.StringRes
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
+import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.ui.components.DateTimeField
@@ -171,10 +172,11 @@ data class EditEventUIState(
 }
 
 class EditEventViewModel(
-    private val eventsRepository: EventsRepository,
+    private val dataRepository: DataRepository,
     private val currentUserId: () -> String,
     private val saveTimeoutMs: Long = SAVE_TIMEOUT_MS,
 ) : EventFormViewModel<EditEventUIState>(EditEventUIState()) {
+  private val eventsRepository: EventsRepository = dataRepository.eventsRepository
   val uiState: StateFlow<EditEventUIState> = formState
   private var loadJob: Job? = null
 
