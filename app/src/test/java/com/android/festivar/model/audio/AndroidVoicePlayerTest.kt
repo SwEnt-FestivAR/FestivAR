@@ -50,6 +50,12 @@ class AndroidVoicePlayerTest {
   private val first = "https://example.com/first.m4a"
   private val second = "https://example.com/second.m4a"
 
+  /** A note that never finishes loading within the timeout. */
+  private val stalled = "https://example.com/stalled.m4a"
+
+  /** A note that finishes loading, but only after half of the timeout. */
+  private val slow = "https://example.com/slow.m4a"
+
   /** The fake players created so far, oldest first: one per note played. */
   private val players = mutableListOf<ShadowMediaPlayer>()
 
@@ -60,12 +66,9 @@ class AndroidVoicePlayerTest {
 
   @Before
   fun setUp() {
-    listOf(first, second).forEach {
-      ShadowMediaPlayer.addMediaInfo(
-          DataSource.toDataSource(context, it.toUri()),
-          ShadowMediaPlayer.MediaInfo(DURATION_MS, 0),
-      )
-    }
+    listOf(first, second).forEach { addNote(it, preparationDelayMs = 0) }
+    addNote(stalled, preparationDelayMs = NEVER_LOADS_MS)
+    addNote(slow, preparationDelayMs = SLOW_LOAD_MS)
     ShadowMediaPlayer.setCreateListener { real, created ->
       mediaPlayers += real
       players += created
@@ -80,6 +83,17 @@ class AndroidVoicePlayerTest {
 
   private fun ShadowMediaPlayer.releaseCount() =
       (this as ReleaseCountingShadowMediaPlayer).releaseCount
+
+  private fun reportError() =
+      players
+          .single()
+          .invokeErrorListener(MediaPlayer.MEDIA_ERROR_UNKNOWN, MediaPlayer.MEDIA_ERROR_IO)
+
+  private fun addNote(url: String, preparationDelayMs: Int) =
+      ShadowMediaPlayer.addMediaInfo(
+          DataSource.toDataSource(context, url.toUri()),
+          ShadowMediaPlayer.MediaInfo(DURATION_MS, preparationDelayMs),
+      )
 
   private fun idle(duration: Duration = Duration.ZERO) =
       shadowOf(Looper.getMainLooper()).idleFor(duration)
@@ -120,9 +134,7 @@ class AndroidVoicePlayerTest {
     player.play(first)
     idle()
 
-    players
-        .single()
-        .invokeErrorListener(MediaPlayer.MEDIA_ERROR_UNKNOWN, MediaPlayer.MEDIA_ERROR_IO)
+    reportError()
 
     assertEquals(PlayerState.Failed(first), player.state.value)
     assertEquals(State.END, players.single().state)
@@ -170,9 +182,7 @@ class AndroidVoicePlayerTest {
   fun play_afterAFailureStartsAgain() {
     player.play(first)
     idle()
-    players
-        .single()
-        .invokeErrorListener(MediaPlayer.MEDIA_ERROR_UNKNOWN, MediaPlayer.MEDIA_ERROR_IO)
+    reportError()
 
     player.play(first)
     idle()
@@ -391,6 +401,58 @@ class AndroidVoicePlayerTest {
     assertEquals(State.STARTED, players[1].state)
   }
 
+  /** Breaks if a note that never finishes loading stays Playing, or its player is not freed. */
+  @Test
+  fun play_failsAndFreesThePlayerWhenTheNoteDoesNotLoadInTime() {
+    player.play(stalled)
+
+    idle(Duration.ofMillis(TIMEOUT_MS - 1))
+    assertEquals(PlayerState.Playing(stalled), player.state.value)
+
+    idle(Duration.ofMillis(1))
+
+    assertEquals(PlayerState.Failed(stalled), player.state.value)
+    assertEquals(1, players.single().releaseCount())
+
+    player.play(first)
+    idle(Duration.ofMillis(TIMEOUT_MS + MARGIN_MS))
+
+    assertEquals(PlayerState.Playing(first), player.state.value)
+  }
+
+  /** Breaks if pausing a note that is still loading hides that it never loads. */
+  @Test
+  fun pause_whileLoadingStillFailsTheNoteWhenItDoesNotLoadInTime() {
+    player.play(stalled)
+    player.pause()
+
+    idle(Duration.ofMillis(TIMEOUT_MS))
+
+    assertEquals(PlayerState.Failed(stalled), player.state.value)
+  }
+
+  /** Breaks if the loading timeout still fails a note that was ready in time. */
+  @Test
+  fun play_aNoteReadyInTimeIsNotFailedByTheTimeout() {
+    player.play(slow)
+
+    idle(Duration.ofMillis(TIMEOUT_MS + MARGIN_MS))
+
+    assertEquals(PlayerState.Playing(slow), player.state.value)
+    assertEquals(State.STARTED, players.single().state)
+  }
+
+  /** Breaks if a stopped note is still failed by the timeout of its loading. */
+  @Test
+  fun stop_whileLoadingCancelsTheTimeout() {
+    player.play(stalled)
+
+    player.stop()
+    idle(Duration.ofMillis(TIMEOUT_MS + MARGIN_MS))
+
+    assertEquals(PlayerState.Idle, player.state.value)
+  }
+
   /** Breaks if a pause refused by the MediaPlayer leaves the note Playing instead of Failed. */
   @Test
   fun pause_failsAndFreesThePlayerWhenThePlayerRefusesIt() {
@@ -429,9 +491,7 @@ class AndroidVoicePlayerTest {
     idle()
     player.pause()
 
-    players
-        .single()
-        .invokeErrorListener(MediaPlayer.MEDIA_ERROR_UNKNOWN, MediaPlayer.MEDIA_ERROR_IO)
+    reportError()
 
     assertEquals(PlayerState.Failed(first), player.state.value)
     assertEquals(State.END, players.single().state)
@@ -439,5 +499,15 @@ class AndroidVoicePlayerTest {
 
   private companion object {
     const val DURATION_MS = 14_000
+    const val TIMEOUT_MS = AndroidVoicePlayer.LOAD_TIMEOUT_MS
+
+    /** Longer than the timeout: the note would never load. */
+    const val NEVER_LOADS_MS = 60_000
+
+    /** Loads after half of the timeout: in time, but late enough to need the timer cancelled. */
+    const val SLOW_LOAD_MS = 5_000
+
+    /** Time past an event, to be sure that nothing else fires after it. */
+    const val MARGIN_MS = 1_000L
   }
 }
