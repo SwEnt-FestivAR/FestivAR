@@ -2,6 +2,8 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.components
 
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -185,6 +187,7 @@ fun FestivarDateTimeRow(
     dateTag: String,
     dateErrorTag: String,
     timeTag: String,
+    enabled: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
   Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = modifier.fillMaxWidth()) {
@@ -193,6 +196,7 @@ fun FestivarDateTimeRow(
           value = date?.let(::formatDate).orEmpty(),
           label = dateLabel,
           onClick = onDateClick,
+          enabled = enabled,
           isError = dateError != null,
           modifier = Modifier.testTag(dateTag),
       )
@@ -203,6 +207,7 @@ fun FestivarDateTimeRow(
         onClick = onTimeClick,
         // As in Figma, an error marks the whole row; its message stays under the date.
         isError = dateError != null,
+        enabled = enabled,
         modifier = Modifier.weight(1f).testTag(timeTag),
     )
   }
