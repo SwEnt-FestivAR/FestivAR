@@ -7,7 +7,7 @@ import com.android.festivar.model.audio.VoicePlayer
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * Listening to the voice note of the task: one button plays it and stops it.
+ * Listening to the voice note of the task: one button plays, pauses and resumes it.
  *
  * @param player plays the audio.
  * @param noteUrl where the voice note of the task is, or `null` if the task has none.
@@ -21,12 +21,12 @@ internal class VoiceNotePlayback(
     get() = player.state
 
   /**
-   * Plays or resumes the voice note, or stops it if it is playing. Does nothing if no note exists.
+   * Plays or resumes the voice note, or pauses it if it is playing. Does nothing if no note exists.
    */
   fun toggle() {
     val url = noteUrl() ?: return
     when (player.state.value) {
-      is PlayerState.Playing -> if (isOn(url)) player.stop() else player.play(url)
+      is PlayerState.Playing -> if (isOn(url)) player.pause() else player.play(url)
       is PlayerState.Paused -> if (isOn(url)) player.resume() else player.play(url)
       else -> player.play(url)
     }

@@ -126,7 +126,7 @@ internal constructor(
     if (recording?.hasFailedSend == true) recording.retrySend() else playback?.toggle()
   }
 
-  /** Plays the voice note, or stops it if it is playing. */
+  /** Plays the voice note, or pauses/resumes it. */
   fun togglePlay() {
     playback?.toggle()
   }

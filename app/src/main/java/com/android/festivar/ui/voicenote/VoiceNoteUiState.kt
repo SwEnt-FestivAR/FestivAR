@@ -111,7 +111,7 @@ data class VoiceNoteUiState(
  * [NoOp].
  */
 class VoiceNoteCallbacks(
-    /** Plays the note, or stops it if it is playing. */
+    /** Plays the note, or pauses/resumes it. */
     val onTogglePlay: () -> Unit,
     /** The owner taps the trash: asks to confirm the deletion. */
     val onDelete: () -> Unit,
