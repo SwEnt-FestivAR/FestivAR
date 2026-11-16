@@ -2,6 +2,8 @@
 // Co-authored by Copilot
 package com.android.festivar.ui.profile
 
+import android.content.ContentResolver
+import android.net.Uri
 import com.android.festivar.R
 import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.datarepository.DataRepositoryLocal
@@ -14,6 +16,7 @@ import com.google.firebase.auth.FirebaseUser
 import io.mockk.every
 import io.mockk.mockk
 import java.io.File
+import kotlin.io.path.createTempDirectory
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -127,6 +130,7 @@ class ProfileViewModelTest {
                   imageStorage = imageStorage,
               ),
           uId = uId,
+          ioDispatcher = testDispatcher,
       )
 
   /** Test that the UI state is loading until the user is fetched, then fills the fields. */
@@ -399,6 +403,84 @@ class ProfileViewModelTest {
     assertEquals(expected, viewModel.uiState.value.user)
     assertFalse(viewModel.uiState.value.isSaving)
     assertNull(viewModel.uiState.value.errorMsg)
+  }
+
+  @Test
+  fun updateProfilePictureFromUriShowsErrorWhenUriCannotBeRead() = runTest {
+    val resolver = mockk<ContentResolver>()
+    val uri = mockk<Uri>()
+    every { resolver.getType(uri) } returns null
+    every { resolver.openInputStream(uri) } returns null
+    val viewModel = createViewModel()
+
+    advanceUntilIdle()
+    viewModel.updateProfilePicture(
+        uri,
+        resolver,
+        createTempDirectory("profile-picker-test-").toFile(),
+    )
+    repeat(100) {
+      Thread.sleep(10)
+      advanceUntilIdle()
+      if (!viewModel.uiState.value.isSaving) return@repeat
+    }
+
+    assertEquals(R.string.profile_picture_save_failed, viewModel.uiState.value.errorMsg)
+    assertFalse(viewModel.uiState.value.isSaving)
+  }
+
+  @Test
+  fun updateProfilePictureShowsErrorWhenUploadFails() = runTest {
+    val imageStorage = RecordingImageStorage(uploadError = RuntimeException("offline"))
+    val viewModel = createViewModel(imageStorage = imageStorage)
+
+    advanceUntilIdle()
+    viewModel.updateProfilePicture(StoredImage(File("new-picture.png")))
+    advanceUntilIdle()
+
+    assertEquals(R.string.profile_picture_save_failed, viewModel.uiState.value.errorMsg)
+    assertFalse(viewModel.uiState.value.isSaving)
+  }
+
+  @Test
+  fun updateProfilePictureShowsErrorWhenUserUpdateFails() = runTest {
+    val repository =
+        RecordingUsersRepository(
+            listOf(sara),
+            editError = RuntimeException("offline"),
+        )
+    val imageStorage = RecordingImageStorage()
+    val viewModel = createViewModel(repository = repository, imageStorage = imageStorage)
+
+    advanceUntilIdle()
+    viewModel.updateProfilePicture(StoredImage(File("new-picture.png")))
+    advanceUntilIdle()
+
+    assertEquals(R.string.profile_picture_save_failed, viewModel.uiState.value.errorMsg)
+    assertEquals(listOf("https://example.com/new-picture.png"), imageStorage.deletedUrls)
+    assertFalse(viewModel.uiState.value.isSaving)
+  }
+
+  @Test
+  fun updateProfilePictureReportsOldPictureDeletionFailureAfterSaving() = runTest {
+    val user = sara.copy(profilePictureUrl = "https://example.com/old-picture.png")
+    val imageStorage = RecordingImageStorage(deleteError = RuntimeException("offline"))
+    val viewModel =
+        createViewModel(
+            repository = RecordingUsersRepository(listOf(user)),
+            imageStorage = imageStorage,
+        )
+
+    advanceUntilIdle()
+    viewModel.updateProfilePicture(StoredImage(File("new-picture.png")))
+    advanceUntilIdle()
+
+    assertEquals(R.string.profile_picture_save_failed, viewModel.uiState.value.errorMsg)
+    assertEquals(
+        user.copy(profilePictureUrl = "https://example.com/new-picture.png"),
+        viewModel.uiState.value.user,
+    )
+    assertFalse(viewModel.uiState.value.isSaving)
   }
 
   /** Test that saving does nothing when there is nothing to save. */

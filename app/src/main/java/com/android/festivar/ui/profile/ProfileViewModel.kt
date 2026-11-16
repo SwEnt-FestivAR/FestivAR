@@ -22,6 +22,7 @@ import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import java.io.File
 import java.io.FileOutputStream
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -122,6 +123,7 @@ data class ProfileUIState(
 class ProfileViewModel(
     private val dataRepository: DataRepository,
     private val uId: String,
+    private val ioDispatcher: CoroutineDispatcher = IO,
 ) : ViewModel() {
 
   private val repository: UsersRepository = dataRepository.usersRepository
@@ -224,7 +226,7 @@ class ProfileViewModel(
     viewModelScope.launch {
       try {
         val storedImage =
-            withContext(IO) {
+            withContext(ioDispatcher) {
               val extension =
                   MimeTypeMap.getSingleton().getExtensionFromMimeType(contentResolver.getType(uri))
                       ?: "jpg"
