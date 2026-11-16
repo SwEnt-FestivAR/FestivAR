@@ -291,6 +291,7 @@ fun TaskDetailsContent(
         modifier = Modifier.testTag(TaskDetailsScreenTestTags.MARK_DONE_DIALOG),
         confirmModifier = Modifier.testTag(TaskDetailsScreenTestTags.MARK_DONE_CONFIRM_BUTTON),
         dismissModifier = Modifier.testTag(TaskDetailsScreenTestTags.MARK_DONE_DISMISS_BUTTON),
+        destructive = false,
     )
   }
   val taskWithPeople = state.task
