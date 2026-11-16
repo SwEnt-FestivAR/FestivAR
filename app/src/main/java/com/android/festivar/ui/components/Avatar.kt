@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -17,6 +18,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -24,6 +27,9 @@ import androidx.compose.ui.unit.dp
 import com.android.festivar.R
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.theme.AppTheme
+import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
+import com.bumptech.glide.integration.compose.GlideImage
+import com.bumptech.glide.integration.compose.placeholder
 
 object AvatarTestTags {
   const val PERSON_ICON = "avatarPersonIcon"
@@ -50,7 +56,7 @@ internal fun initials(user: User): String? {
 }
 
 /**
- * Round avatar of the design, showing the [initials] of the [user], or a person icon if none.
+ * Round avatar of the design, showing the user's profile picture, [initials], or a person icon.
  *
  * @param user The [User] shown by the avatar.
  * @param modifier The [Modifier] applied to the avatar, before its default 32.dp size, so that a
@@ -58,8 +64,11 @@ internal fun initials(user: User): String? {
  * @param onClick Called when the user clicks on the avatar. Not clickable if `null`.
  */
 @Composable
+@OptIn(ExperimentalGlideComposeApi::class)
 fun Avatar(user: User, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
   val initials = initials(user)
+  val profilePictureUrl = user.profilePictureUrl
+  val isPreview = LocalInspectionMode.current
   Box(
       contentAlignment = Alignment.Center,
       modifier =
@@ -70,20 +79,36 @@ fun Avatar(user: User, modifier: Modifier = Modifier, onClick: (() -> Unit)? = n
               .border(2.dp, MaterialTheme.colorScheme.surfaceContainerLowest, CircleShape)
               .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
   ) {
-    if (initials == null) {
-      Icon(
-          painter = painterResource(R.drawable.ic_person),
-          contentDescription = "User avatar",
-          tint = MaterialTheme.colorScheme.onSurfaceVariant,
-          modifier = Modifier.size(20.dp).testTag(AvatarTestTags.PERSON_ICON),
+    if (!profilePictureUrl.isNullOrBlank()) {
+      GlideImage(
+          model = profilePictureUrl,
+          contentDescription = "User profile picture",
+          contentScale = ContentScale.Crop,
+          failure = placeholder { AvatarFallback(initials) },
+          loading = if (isPreview) placeholder(R.drawable.app_logo) else null,
+          modifier = Modifier.fillMaxSize(),
       )
     } else {
-      Text(
-          text = initials,
-          style = MaterialTheme.typography.labelMedium,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-      )
+      AvatarFallback(initials)
     }
+  }
+}
+
+@Composable
+private fun AvatarFallback(initials: String?) {
+  if (initials == null) {
+    Icon(
+        painter = painterResource(R.drawable.ic_person),
+        contentDescription = "User avatar",
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.size(20.dp).testTag(AvatarTestTags.PERSON_ICON),
+    )
+  } else {
+    Text(
+        text = initials,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
   }
 }
 
@@ -96,5 +121,20 @@ private fun AvatarPreview() {
       Avatar(user = User("u2", name = "Sara"))
       Avatar(user = User("u3"))
     }
+  }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun AvatarProfilePicturePreview() {
+  AppTheme {
+    Avatar(
+        user =
+            User(
+                uid = "u4",
+                profilePictureUrl = "android.resource://com.android.festivar/drawable/app_logo",
+            ),
+        modifier = Modifier.padding(8.dp).size(96.dp),
+    )
   }
 }
