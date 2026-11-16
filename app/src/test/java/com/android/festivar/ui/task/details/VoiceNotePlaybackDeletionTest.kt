@@ -66,6 +66,26 @@ class VoiceNotePlaybackDeletionTest {
     assertEquals(1, player.played.size)
   }
 
+  /**
+   * Breaks if toggling a different active note stops or resumes it instead of playing this note.
+   */
+  @Test
+  fun playback_togglePlaysTheNoteWhenAnotherNoteIsPlayingOrPaused() {
+    val subject = VoiceNotePlayback(player) { note.audioUrl }
+
+    player.play("other")
+    subject.toggle()
+    player.play("other")
+    player.pause()
+    subject.toggle()
+
+    assertEquals(
+        listOf("other", note.audioUrl, "other", note.audioUrl),
+        player.played,
+    )
+    assertEquals(PlayerState.Playing(note.audioUrl), player.state.value)
+  }
+
   /** Breaks if playback tries to play when the task has no note. */
   @Test
   fun playback_toggleDoesNothingWithoutANote() {
