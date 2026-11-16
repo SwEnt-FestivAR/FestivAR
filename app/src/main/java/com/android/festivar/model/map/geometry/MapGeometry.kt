@@ -22,8 +22,15 @@ import kotlin.math.sqrt
 /** The radius of the Earth taken as a sphere, in metres. */
 const val EARTH_RADIUS_METERS = 6_371_000.0
 
-/** Below this, in metres or square metres, two values are taken as equal. */
-private const val EPSILON = 1e-9
+/** Two places closer than this, a micrometre, are taken as the same place. */
+private const val TOLERANCE_METERS = 1e-6
+
+/**
+ * Below this, relative to the lengths involved, an area or a turn is taken as none. Rounding leaves
+ * about a billionth of a square metre on corners a few kilometres from the origin, so a fixed
+ * threshold would miss them.
+ */
+private const val RELATIVE_TOLERANCE = 1e-9
 
 /**
  * Where [position] is in metres from [origin].
@@ -88,7 +95,7 @@ fun polygonArea(polygon: List<LocalPosition>): Double = abs(signedArea(polygon))
 fun polygonCentroid(polygon: List<LocalPosition>): LocalPosition {
   require(polygon.isNotEmpty()) { "An empty polygon has no centroid." }
   val area = signedArea(polygon)
-  if (abs(area) < EPSILON) {
+  if (abs(area) <= RELATIVE_TOLERANCE * squaredEdgeLengths(polygon)) {
     return LocalPosition(
         polygon.sumOf { it.x } / polygon.size,
         polygon.sumOf { it.y } / polygon.size,
@@ -133,10 +140,12 @@ fun isSimplePolygon(polygon: List<LocalPosition>): Boolean {
     val a = polygon[i]
     val b = polygon[(i + 1) % size]
     val c = polygon[(i + 2) % size]
-    if (distanceMeters(a, b) < EPSILON) return false
+    if (distanceMeters(a, b) < TOLERANCE_METERS) return false
     // The next edge starts at b: it must not come back over this one.
     val foldsBack = (a.x - b.x) * (c.x - b.x) + (a.y - b.y) * (c.y - b.y) > 0
-    if (abs(cross(a, b, c)) < EPSILON && foldsBack) return false
+    val onOneLine =
+        abs(cross(a, b, c)) <= RELATIVE_TOLERANCE * distanceMeters(a, b) * distanceMeters(b, c)
+    if (onOneLine && foldsBack) return false
     for (j in i + 2 until size) {
       if (i == 0 && j == size - 1) continue // the last edge shares a corner with the first
       if (segmentsTouch(a, b, polygon[j], polygon[(j + 1) % size])) return false
@@ -261,13 +270,20 @@ private fun signedArea(polygon: List<LocalPosition>): Double {
   return sum / 2
 }
 
+/** The sum of the squared lengths of the edges of [polygon]: the scale its area is judged at. */
+private fun squaredEdgeLengths(polygon: List<LocalPosition>): Double {
+  var sum = 0.0
+  forEachEdge(polygon) { a, b -> sum += (b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y) }
+  return sum
+}
+
 /** Positive when [c] is to the left of the line from [a] to [b], zero when it is on it. */
 private fun cross(a: LocalPosition, b: LocalPosition, c: LocalPosition): Double =
     (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
 
 /** Whether [point] is on the segment from [a] to [b], ends included. */
 private fun isOnSegment(a: LocalPosition, b: LocalPosition, point: LocalPosition): Boolean =
-    distanceToSegment(point, a, b) < EPSILON
+    distanceToSegment(point, a, b) < TOLERANCE_METERS
 
 /** Whether the segments [a] to [b] and [c] to [d] have at least one point in common. */
 private fun segmentsTouch(

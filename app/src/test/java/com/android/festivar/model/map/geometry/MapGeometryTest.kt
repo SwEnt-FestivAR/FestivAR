@@ -190,6 +190,17 @@ class MapGeometryTest {
     )
   }
 
+  // Breaks if "no area" is judged with a fixed threshold: far from the origin rounding leaves a
+  // billionth of a square metre on these four corners on one line, and dividing by it sends the
+  // centroid off the line, to (1820, 2276).
+  @Test
+  fun theCentroidWithoutAreaFarFromTheOriginIsTheAverageOfTheCorners() {
+    val onOneLine =
+        listOf(at(2479.8, 2844.6), at(2603.0, 3317.1), at(2726.2, 3789.6), at(2849.4, 4262.1))
+
+    assertPosition(at(2664.6, 3553.35), polygonCentroid(onOneLine), delta = 1e-6)
+  }
+
   // Breaks if an empty polygon returns a made up centre.
   @Test
   fun anEmptyPolygonHasNoCentroid() {
@@ -288,6 +299,21 @@ class MapGeometryTest {
   fun anOutlineThatFoldsBackIsNotSimple() {
     assertFalse(isSimplePolygon(listOf(at(0.0, 0.0), at(10.0, 0.0), at(5.0, 0.0), at(5.0, 5.0))))
     assertFalse(isSimplePolygon(listOf(at(0.0, 0.0), at(2.0, 2.0), at(4.0, 4.0))))
+  }
+
+  // Breaks if "on one line" is judged with a fixed threshold: a few kilometres from the origin
+  // rounding leaves about a billionth of a square metre on three corners that are on one line.
+  @Test
+  fun anOutlineThatFoldsBackFarFromTheOriginIsNotSimple() {
+    val onOneLine = listOf(at(2587.3, 2365.7), at(4294.1, 3886.9), at(3440.7, 3126.3))
+
+    assertFalse(isSimplePolygon(onOneLine))
+  }
+
+  // Breaks if a thin but real triangle far from the origin is taken for a line.
+  @Test
+  fun aThinTriangleFarFromTheOriginIsSimple() {
+    assertTrue(isSimplePolygon(listOf(at(2587.3, 2365.7), at(4294.1, 3886.9), at(3440.7, 3126.4))))
   }
 
   // Breaks if a corner recorded twice in a row is accepted.
