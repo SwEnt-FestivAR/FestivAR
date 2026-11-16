@@ -28,9 +28,10 @@ private const val EPSILON = 1e-9
 /**
  * Where [position] is in metres from [origin].
  *
- * The Earth is taken as flat around the origin (an equirectangular projection). At the scale of a
- * site, a few kilometres, the error is a few centimetres per kilometre. It is not meant for an
- * origin close to a pole, nor for a site that crosses the antimeridian (longitude 180).
+ * The Earth is taken as flat around the origin (an equirectangular projection). The error grows
+ * with the square of the distance: at the latitude of Lausanne it is about 3 cm at 1 km from the
+ * origin and under a metre at 5 km. It is not meant for an origin close to a pole, nor for a site
+ * that crosses the antimeridian (longitude 180).
  */
 fun toLocal(origin: GeoPosition, position: GeoPosition): LocalPosition {
   val x =
