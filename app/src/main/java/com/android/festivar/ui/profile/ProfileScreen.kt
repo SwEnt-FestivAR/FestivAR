@@ -2,6 +2,8 @@
 // Co-authored by Copilot
 package com.android.festivar.ui.profile
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -15,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -58,6 +61,7 @@ object ProfileScreenTestTags {
   const val SETTINGS = "profileSettings"
   const val LOADING = "profileLoading"
   const val AVATAR = "profileAvatar"
+  const val EDIT_PROFILE_PICTURE_BUTTON = "profileEditPictureButton"
   const val SURNAME_FIELD = "profileSurnameField"
   const val NAME_FIELD = "profileNameField"
   const val EMAIL = "profileEmail"
@@ -102,6 +106,12 @@ fun ProfileScreen(
   val profileUIState by profileViewModel.uiState.collectAsState()
   val context = LocalContext.current
   val snackbarHostState = remember { SnackbarHostState() }
+  val photoPicker =
+      rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let {
+          profileViewModel.updateProfilePicture(it, context.contentResolver, context.cacheDir)
+        }
+      }
   // SheetState is Compose UI state, so it stays local; visibility belongs in ProfileUIState.
   val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -162,6 +172,7 @@ fun ProfileScreen(
           onSurnameChange = profileViewModel::updateSurname,
           onNameChange = profileViewModel::updateName,
           onSaveClick = profileViewModel::saveChanges,
+          onEditProfilePictureClick = { photoPicker.launch("image/*") },
           onSignOutClick = {
             if (profileUIState.isUserAnonymous) {
               profileViewModel.showSignOutWarning()
@@ -238,6 +249,7 @@ internal fun ProfileScreenContent(
     onSurnameChange: (String) -> Unit,
     onNameChange: (String) -> Unit,
     onSaveClick: () -> Unit,
+    onEditProfilePictureClick: () -> Unit,
     onSignOutClick: () -> Unit,
     onRetryClick: () -> Unit,
     onUpgradeClick: () -> Unit,
@@ -282,8 +294,28 @@ internal fun ProfileScreenContent(
       // The avatar shows the saved user, so its initials only change once the changes are saved.
       // The email is shown under it and cannot be edited.
       uiState.user.let { user ->
-        Box(modifier = Modifier.testTag(ProfileScreenTestTags.AVATAR)) {
+        Box(
+            modifier = Modifier.testTag(ProfileScreenTestTags.AVATAR),
+            contentAlignment = Alignment.BottomEnd,
+        ) {
           Avatar(user = user, modifier = Modifier.size(96.dp))
+          IconButton(
+              onClick = onEditProfilePictureClick,
+              enabled = !uiState.isSaving,
+              modifier =
+                  Modifier.size(28.dp).testTag(ProfileScreenTestTags.EDIT_PROFILE_PICTURE_BUTTON),
+              colors =
+                  androidx.compose.material3.IconButtonDefaults.iconButtonColors(
+                      containerColor = MaterialTheme.colorScheme.primary,
+                      contentColor = MaterialTheme.colorScheme.onPrimary,
+                  ),
+          ) {
+            Icon(
+                imageVector = Icons.Default.Create,
+                contentDescription = stringResource(R.string.profile_edit_picture),
+                modifier = Modifier.size(16.dp),
+            )
+          }
         }
         Spacer(modifier = Modifier.height(16.dp))
         Text(
