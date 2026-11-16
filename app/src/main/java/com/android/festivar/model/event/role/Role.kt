@@ -13,7 +13,7 @@ enum class Role(val permissions: Set<Permission>) {
     CAN_CREATE_TASK,
     CAN_SEE_ANNOUNCEMENT,
   )),
-  TEAM_MANAGER(setOf(
+  TEAM_LEAD(setOf(
     CAN_SEE_TASK,
     CAN_EDIT_OWN_TASK,
     CAN_DELETE_OWN_TASK,
