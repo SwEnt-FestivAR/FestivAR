@@ -273,6 +273,7 @@ class VoiceNotePlaybackDeletionTest {
     controller.togglePlay()
 
     assertEquals(listOf(note.audioUrl), player.played)
+    assertEquals(1, player.resumed)
     assertEquals(PlayerState.Playing(note.audioUrl), player.state.value)
   }
 
