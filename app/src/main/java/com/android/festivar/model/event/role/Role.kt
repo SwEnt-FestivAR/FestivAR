@@ -1,15 +1,31 @@
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.event.role
 
-import com.android.festivar.model.event.role.Permission.*
+import com.android.festivar.model.event.role.Permission.CAN_ASSIGN_TASK
+import com.android.festivar.model.event.role.Permission.CAN_CREATE_ANNOUNCEMENT
+import com.android.festivar.model.event.role.Permission.CAN_CREATE_TASK
+import com.android.festivar.model.event.role.Permission.CAN_DELETE_ANNOUNCEMENT
+import com.android.festivar.model.event.role.Permission.CAN_DELETE_OWN_ANNOUNCEMENT
+import com.android.festivar.model.event.role.Permission.CAN_DELETE_OWN_TASK
+import com.android.festivar.model.event.role.Permission.CAN_DELETE_TASK
+import com.android.festivar.model.event.role.Permission.CAN_EDIT_ANNOUNCEMENT
+import com.android.festivar.model.event.role.Permission.CAN_EDIT_EVENT
+import com.android.festivar.model.event.role.Permission.CAN_EDIT_OWN_ANNOUNCEMENT
+import com.android.festivar.model.event.role.Permission.CAN_EDIT_OWN_TASK
+import com.android.festivar.model.event.role.Permission.CAN_EDIT_TASK
+import com.android.festivar.model.event.role.Permission.CAN_KICK_MEMBER
+import com.android.festivar.model.event.role.Permission.CAN_MANAGE_ROLES
+import com.android.festivar.model.event.role.Permission.CAN_SEE_ANNOUNCEMENT
+import com.android.festivar.model.event.role.Permission.CAN_SEE_TASK
 
 /**
  * The [Role] enum class represents all actual existing roles that are attributed within an
  * [com.android.festivar.model.event.Event]. Each role has its own set of [Permission] that
- * represents what that member having this [Role] is allowed to do in the
+ * represents what a member having this [Role] is allowed to do in the
  * [com.android.festivar.model.event.Event].
  *
  * For the permissions such as having the right to kick, to manage the role, to assign, if the
- * [Role] has that [Permission], he can apply that right only to the roles that it dominates.
+ * [Role] has that [Permission], it can apply that right only to the roles that it dominates.
  * Domination here is defined as a strict domination over the other [Role].
  *
  * @param permissions The set of permissions, of accesses that the role has within an
@@ -17,21 +33,21 @@ import com.android.festivar.model.event.role.Permission.*
  */
 enum class Role(val permissions: Set<Permission>) {
 
-  // A visitor of the event, he can only see the event details (to a certain extent) and can see
-  // the announcements.
+  // A visitor of the event. They can only see the event details (to a certain extent) and the
+  // announcements.
   VISITOR(VISITOR_PERMISSIONS),
-  // A staff member of the event, the lowest grade of a staff of the event. He can be managed by
-  // anyone
-  // and only interacts in the task he is assigned to and
+  // A staff member of the event, the lowest grade of staff. They can see the tasks, create new
+  // ones, and edit or delete only the tasks they own.
   STAFF(STAFF_PERMISSIONS),
-  // A team leader, he manages his own subteam of staff within the event for specific areas or
-  // subjects within the event (the team lead for the workshop at 11AM for example).
+  // A team leader, who coordinates the staff for specific areas or subjects within the event (the
+  // team lead for the workshop at 11AM for example). They can edit, delete and assign every task
+  // of the event, and publish announcements.
   TEAM_LEAD(TEAM_LEAD_PERMISSIONS),
   // A more general staff manager that manages the team leads and has more control on every task
   // and announcement.
   STAFF_MANAGER(STAFF_MANAGER_PERMISSIONS),
-  // An administrator of the event that has all rights at the exception of deleting the event and
-  // having or transferring its ownership.
+  // An administrator of the event, who has all rights except deleting the event and owning or
+  // transferring its ownership.
   ADMIN(ADMIN_PERMISSIONS),
   // The unique owner of the event that has all rights on it.
   OWNER(Permission.entries.toSet());
@@ -84,8 +100,8 @@ enum class Role(val permissions: Set<Permission>) {
    * Returns whether this can kick a member out of the [com.android.festivar.model.event.Event].
    *
    * @param that The [Role] of the [com.android.festivar.model.user.User] this tries to kick.
-   * @return true if this can kick the [com.android.festivar.model.user.User] (needs to dominate his
-   *   [Role] and have the according [Permission]), false otherwise.
+   * @return true if this can kick the [com.android.festivar.model.user.User] (needs to dominate
+   *   their [Role] and have the according [Permission]), false otherwise.
    */
   fun canKick(that: Role): Boolean {
     return permissions.contains(CAN_KICK_MEMBER) && dominates(that)
