@@ -151,6 +151,7 @@ class ProfileScreenTest {
             ProfileScreenTestTags.TITLE,
             ProfileScreenTestTags.BACK,
             ProfileScreenTestTags.AVATAR,
+            ProfileScreenTestTags.EDIT_PROFILE_PICTURE_BUTTON,
             ProfileScreenTestTags.EMAIL,
             ProfileScreenTestTags.SURNAME_FIELD,
             ProfileScreenTestTags.NAME_FIELD,

@@ -2,8 +2,11 @@
 // Co-authored by Copilot
 package com.android.festivar.ui.profile
 
+import android.content.ContentResolver
 import android.content.Context
+import android.net.Uri
 import android.util.Log
+import android.webkit.MimeTypeMap
 import androidx.annotation.StringRes
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
@@ -16,12 +19,16 @@ import com.android.festivar.model.images.StoredImage
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
+import java.io.File
+import java.io.FileOutputStream
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private const val LOG_TAG = "ProfileViewModel"
 
@@ -202,54 +209,91 @@ class ProfileViewModel(
    * to the new one.
    */
   fun updateProfilePicture(storedImage: StoredImage) {
-    val state = _uiState.value
-    val original = state.user ?: return
-    if (state.isLoading || state.isSaving || state.signedOut || state.isSigningOut) return
+    if (!canUpdateProfilePicture()) return
 
     _uiState.update { it.copy(isSaving = true, errorMsg = null) }
 
-    viewModelScope.launch {
-      var newPictureUrl: String? = null
-      try {
-        newPictureUrl = imageStorage.upload(storedImage, "pfp")
-        val updatedUser = original.copy(profilePictureUrl = newPictureUrl)
-        repository.editUser(uId, updatedUser)
+    viewModelScope.launch { saveProfilePicture(storedImage) }
+  }
 
-        val oldPictureUrl = original.profilePictureUrl
-        var oldPictureDeletionFailed = false
-        if (!oldPictureUrl.isNullOrBlank() && oldPictureUrl != newPictureUrl) {
-          try {
-            imageStorage.delete(oldPictureUrl)
-          } catch (e: CancellationException) {
-            throw e
-          } catch (e: Exception) {
-            Log.e(LOG_TAG, "Error deleting old profile picture for user $uId", e)
-            oldPictureDeletionFailed = true
-          }
-        }
-        _uiState.update {
-          it.copy(
-              user = updatedUser,
-              isSaving = false,
-              errorMsg =
-                  if (oldPictureDeletionFailed) R.string.profile_picture_save_failed else null,
-          )
-        }
+  /** Copies the selected content URI and saves it as the user's profile picture. */
+  fun updateProfilePicture(uri: Uri, contentResolver: ContentResolver, cacheDir: File) {
+    if (!canUpdateProfilePicture()) return
+
+    _uiState.update { it.copy(isSaving = true, errorMsg = null) }
+    viewModelScope.launch {
+      try {
+        val storedImage =
+            withContext(IO) {
+              val extension =
+                  MimeTypeMap.getSingleton().getExtensionFromMimeType(contentResolver.getType(uri))
+                      ?: "jpg"
+              val file = File.createTempFile("profile-picture-", ".$extension", cacheDir)
+              contentResolver.openInputStream(uri)?.use { input ->
+                FileOutputStream(file).use { output -> input.copyTo(output) }
+              } ?: error("Unable to read selected profile picture.")
+              StoredImage(file)
+            }
+        saveProfilePicture(storedImage)
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
-        Log.e(LOG_TAG, "Error saving profile picture for user $uId", e)
-        newPictureUrl?.let { uploadedUrl ->
-          try {
-            imageStorage.delete(uploadedUrl)
-          } catch (cleanupError: Exception) {
-            Log.e(LOG_TAG, "Error cleaning up profile picture for user $uId", cleanupError)
-          }
-        }
+        Log.e(LOG_TAG, "Unable to read selected profile picture", e)
         _uiState.update {
           it.copy(isSaving = false, errorMsg = R.string.profile_picture_save_failed)
         }
       }
+    }
+  }
+
+  private fun canUpdateProfilePicture(): Boolean {
+    val state = _uiState.value
+    return state.user != null &&
+        !state.isLoading &&
+        !state.isSaving &&
+        !state.signedOut &&
+        !state.isSigningOut
+  }
+
+  private suspend fun saveProfilePicture(storedImage: StoredImage) {
+    val original = requireNotNull(_uiState.value.user)
+    var newPictureUrl: String? = null
+    try {
+      newPictureUrl = imageStorage.upload(storedImage, "pfp")
+      val updatedUser = original.copy(profilePictureUrl = newPictureUrl)
+      repository.editUser(uId, updatedUser)
+
+      val oldPictureUrl = original.profilePictureUrl
+      var oldPictureDeletionFailed = false
+      if (!oldPictureUrl.isNullOrBlank() && oldPictureUrl != newPictureUrl) {
+        try {
+          imageStorage.delete(oldPictureUrl)
+        } catch (e: CancellationException) {
+          throw e
+        } catch (e: Exception) {
+          Log.e(LOG_TAG, "Error deleting old profile picture for user $uId", e)
+          oldPictureDeletionFailed = true
+        }
+      }
+      _uiState.update {
+        it.copy(
+            user = updatedUser,
+            isSaving = false,
+            errorMsg = if (oldPictureDeletionFailed) R.string.profile_picture_save_failed else null,
+        )
+      }
+    } catch (e: CancellationException) {
+      throw e
+    } catch (e: Exception) {
+      Log.e(LOG_TAG, "Error saving profile picture for user $uId", e)
+      newPictureUrl?.let { uploadedUrl ->
+        try {
+          imageStorage.delete(uploadedUrl)
+        } catch (cleanupError: Exception) {
+          Log.e(LOG_TAG, "Error cleaning up profile picture for user $uId", cleanupError)
+        }
+      }
+      _uiState.update { it.copy(isSaving = false, errorMsg = R.string.profile_picture_save_failed) }
     }
   }
 
