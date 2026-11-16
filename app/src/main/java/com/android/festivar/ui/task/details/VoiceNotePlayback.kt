@@ -20,10 +20,16 @@ internal class VoiceNotePlayback(
   val state: StateFlow<PlayerState>
     get() = player.state
 
-  /** Plays the voice note, or stops it if it is playing. Does nothing if the task has none. */
+  /**
+   * Plays or resumes the voice note, or stops it if it is playing. Does nothing if no note exists.
+   */
   fun toggle() {
     val url = noteUrl() ?: return
-    if (isOn(url)) player.stop() else player.play(url)
+    when (player.state.value) {
+      is PlayerState.Playing -> if (isOn(url)) player.stop() else player.play(url)
+      is PlayerState.Paused -> if (isOn(url)) player.resume() else player.play(url)
+      else -> player.play(url)
+    }
   }
 
   /** Stops the note at [url] if the player is playing it or holding it paused. */

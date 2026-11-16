@@ -548,16 +548,16 @@ class TaskDetailsViewModelVoiceNoteTest {
     assertEquals(1, player.played.size)
   }
 
-  /** Breaks if tapping a paused note plays it again from the start instead of stopping it. */
+  /** Breaks if tapping a paused note restarts it instead of resuming it. */
   @Test
-  fun togglePlay_onAPausedNote_stopsIt() {
+  fun togglePlay_onAPausedNote_resumesIt() {
     val vm = viewModel(task(note), volunteer)
     vm.voiceNote.togglePlay()
     player.pause()
 
     vm.voiceNote.togglePlay()
 
-    assertEquals(PlayerState.Idle, vm.section.player)
+    assertEquals(PlayerState.Playing(note.audioUrl), vm.section.player)
     assertEquals(1, player.played.size)
   }
 
