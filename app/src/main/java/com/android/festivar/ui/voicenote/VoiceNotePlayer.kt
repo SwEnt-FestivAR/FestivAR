@@ -11,8 +11,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
@@ -71,7 +71,7 @@ private val waveform =
  *
  * @param duration The length of the voice note.
  * @param isPlaying Whether it plays now, which changes the icon of the button.
- * @param onTogglePlay Plays the note, or stops it if it is playing.
+ * @param onTogglePlay Plays the note, or pauses/resumes it.
  * @param enabled Whether the button can be pressed. It is not for a recording that is not uploaded
  *   yet, which has nothing to play.
  * @param trailing An action at the end of the card, `null` if there is none. The card is narrower
@@ -124,7 +124,7 @@ internal fun VoiceNoteDeleteButton(onClick: () -> Unit) {
   }
 }
 
-/** The lime round button that plays the note, or stops it while it plays. */
+/** The lime round button that plays, pauses or resumes the note. */
 @Composable
 private fun PlayButton(isPlaying: Boolean, enabled: Boolean, onClick: () -> Unit) {
   FilledIconButton(
@@ -140,9 +140,9 @@ private fun PlayButton(isPlaying: Boolean, enabled: Boolean, onClick: () -> Unit
           ),
   ) {
     Icon(
-        if (isPlaying) Icons.Filled.Stop else Icons.Filled.PlayArrow,
+        if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
         contentDescription =
-            stringResource(if (isPlaying) R.string.voice_note_stop else R.string.voice_note_play),
+            stringResource(if (isPlaying) R.string.voice_note_pause else R.string.voice_note_play),
     )
   }
 }
