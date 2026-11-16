@@ -4,8 +4,7 @@ import com.android.festivar.model.event.role.Permission.*
 
 enum class Role(val permissions: Set<Permission>) {
   VISITOR(setOf(
-    CAN_SEE_TASK,
-    CAN_SEE_ANNOUNCEMENT
+    CAN_SEE_ANNOUNCEMENT,
   )),
   STAFF(setOf(
     CAN_SEE_TASK,
@@ -18,8 +17,6 @@ enum class Role(val permissions: Set<Permission>) {
     CAN_DELETE_TASK,
     CAN_CREATE_TASK,
     CAN_SEE_ANNOUNCEMENT,
-    CAN_EDIT_ANNOUNCEMENT,
-    CAN_DELETE_ANNOUNCEMENT,
     CAN_CREATE_ANNOUNCEMENT,
   )),
   STAFF_MANAGER(setOf(
