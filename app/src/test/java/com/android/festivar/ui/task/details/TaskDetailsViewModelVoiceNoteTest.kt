@@ -534,9 +534,9 @@ class TaskDetailsViewModelVoiceNoteTest {
 
   // Playing
 
-  /** Breaks if the play button does not play the note, or does not stop it the second time. */
+  /** Breaks if the play button does not play the note, or does not pause it the second time. */
   @Test
-  fun togglePlay_playsTheNoteThenStopsIt() {
+  fun togglePlay_playsTheNoteThenPausesIt() {
     val vm = viewModel(task(note), volunteer)
 
     vm.voiceNote.togglePlay()
@@ -545,6 +545,7 @@ class TaskDetailsViewModelVoiceNoteTest {
     vm.voiceNote.togglePlay()
 
     assertFalse(vm.section.isPlaying)
+    assertEquals(PlayerState.Paused(note.audioUrl), vm.section.player)
     assertEquals(1, player.played.size)
   }
 

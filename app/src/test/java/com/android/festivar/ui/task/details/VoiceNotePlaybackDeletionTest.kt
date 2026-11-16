@@ -51,9 +51,9 @@ class VoiceNotePlaybackDeletionTest {
           Dispatchers.Unconfined + CoroutineExceptionHandler { _, _ -> },
       )
 
-  /** Breaks if playback cannot start or stop the current note. */
+  /** Breaks if playback cannot start or pause the current note. */
   @Test
-  fun playback_togglePlaysThenStopsTheCurrentNote() {
+  fun playback_togglePlaysThenPausesTheCurrentNote() {
     val subject = VoiceNotePlayback(player) { note.audioUrl }
 
     subject.toggle()
@@ -62,7 +62,7 @@ class VoiceNotePlaybackDeletionTest {
 
     subject.toggle()
 
-    assertEquals(PlayerState.Idle, subject.state.value)
+    assertEquals(PlayerState.Paused(note.audioUrl), subject.state.value)
     assertEquals(1, player.played.size)
   }
 
