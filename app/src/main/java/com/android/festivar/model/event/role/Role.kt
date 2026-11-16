@@ -77,4 +77,8 @@ enum class Role(val permissions: Set<Permission>) {
   fun canManageTo(from: Role, to: Role): Boolean{
     return permissions.contains(CAN_MANAGE_ROLES) && dominates(from) && dominates(to)
   }
+
+  fun canKick(that: Role): Boolean{
+    return dominates(that)
+  }
 }
