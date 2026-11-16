@@ -12,6 +12,7 @@ import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.datarepository.DataRepository
+import com.android.festivar.model.images.StoredImage
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
@@ -118,6 +119,7 @@ class ProfileViewModel(
 
   private val repository: UsersRepository = dataRepository.usersRepository
   private val authRepository: AuthRepository = dataRepository.authRepository
+  private val imageStorage = dataRepository.imageStorage
 
   private val _uiState = MutableStateFlow(ProfileUIState())
   val uiState: StateFlow<ProfileUIState> = _uiState.asStateFlow()
@@ -191,6 +193,62 @@ class ProfileViewModel(
       } catch (e: Exception) {
         Log.e(LOG_TAG, "Error saving user $uId", e)
         _uiState.update { it.copy(isSaving = false, errorMsg = R.string.profile_save_failed) }
+      }
+    }
+  }
+
+  /**
+   * Uploads and saves a new profile picture. The previous picture is deleted after the user points
+   * to the new one.
+   */
+  fun updateProfilePicture(storedImage: StoredImage) {
+    val state = _uiState.value
+    val original = state.user ?: return
+    if (state.isLoading || state.isSaving || state.signedOut || state.isSigningOut) return
+
+    _uiState.update { it.copy(isSaving = true, errorMsg = null) }
+
+    viewModelScope.launch {
+      var newPictureUrl: String? = null
+      try {
+        newPictureUrl = imageStorage.upload(storedImage, "pfp")
+        val updatedUser = original.copy(profilePictureUrl = newPictureUrl)
+        repository.editUser(uId, updatedUser)
+
+        val oldPictureUrl = original.profilePictureUrl
+        var oldPictureDeletionFailed = false
+        if (!oldPictureUrl.isNullOrBlank() && oldPictureUrl != newPictureUrl) {
+          try {
+            imageStorage.delete(oldPictureUrl)
+          } catch (e: CancellationException) {
+            throw e
+          } catch (e: Exception) {
+            Log.e(LOG_TAG, "Error deleting old profile picture for user $uId", e)
+            oldPictureDeletionFailed = true
+          }
+        }
+        _uiState.update {
+          it.copy(
+              user = updatedUser,
+              isSaving = false,
+              errorMsg =
+                  if (oldPictureDeletionFailed) R.string.profile_picture_save_failed else null,
+          )
+        }
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        Log.e(LOG_TAG, "Error saving profile picture for user $uId", e)
+        newPictureUrl?.let { uploadedUrl ->
+          try {
+            imageStorage.delete(uploadedUrl)
+          } catch (cleanupError: Exception) {
+            Log.e(LOG_TAG, "Error cleaning up profile picture for user $uId", cleanupError)
+          }
+        }
+        _uiState.update {
+          it.copy(isSaving = false, errorMsg = R.string.profile_picture_save_failed)
+        }
       }
     }
   }

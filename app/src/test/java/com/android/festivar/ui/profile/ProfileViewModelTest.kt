@@ -5,12 +5,15 @@ package com.android.festivar.ui.profile
 import com.android.festivar.R
 import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.datarepository.DataRepositoryLocal
+import com.android.festivar.model.images.ImageStorage
+import com.android.festivar.model.images.StoredImage
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryLocal
 import com.google.firebase.auth.FirebaseUser
 import io.mockk.every
 import io.mockk.mockk
+import java.io.File
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -64,6 +67,28 @@ class ProfileViewModelTest {
     }
   }
 
+  private class RecordingImageStorage(
+      private val uploadedUrl: String = "https://example.com/new-picture.png",
+      var uploadError: Exception? = null,
+      var deleteError: Exception? = null,
+  ) : ImageStorage {
+    val uploadedImages = mutableListOf<Pair<StoredImage, String>>()
+    val deletedUrls = mutableListOf<String>()
+
+    override fun getNewUid(): String = "image-id"
+
+    override suspend fun upload(storedImage: StoredImage, subFolder: String): String {
+      uploadedImages += storedImage to subFolder
+      uploadError?.let { throw it }
+      return uploadedUrl
+    }
+
+    override suspend fun delete(imageUrl: String) {
+      deletedUrls += imageUrl
+      deleteError?.let { throw it }
+    }
+  }
+
   private val testDispatcher = StandardTestDispatcher()
 
   private val sara =
@@ -91,6 +116,7 @@ class ProfileViewModelTest {
   private fun createViewModel(
       repository: UsersRepository = RecordingUsersRepository(listOf(sara)),
       authRepository: FakeAuthRepository = this.authRepository,
+      imageStorage: ImageStorage = RecordingImageStorage(),
       uId: String = sara.uid,
   ): ProfileViewModel =
       ProfileViewModel(
@@ -98,6 +124,7 @@ class ProfileViewModelTest {
               DataRepositoryLocal(
                   authRepository = authRepository,
                   usersRepository = repository,
+                  imageStorage = imageStorage,
               ),
           uId = uId,
       )
@@ -346,6 +373,32 @@ class ProfileViewModelTest {
     assertFalse(state.isSaving)
     assertNull(state.errorMsg)
     assertFalse(state.canSave)
+  }
+
+  @Test
+  fun updateProfilePictureReplacesAndDeletesPreviousPicture() = runTest {
+    val user = sara.copy(profilePictureUrl = "https://example.com/old-picture.png")
+    val repository = RecordingUsersRepository(listOf(user))
+    val imageStorage = RecordingImageStorage()
+    val viewModel =
+        createViewModel(
+            repository = repository,
+            imageStorage = imageStorage,
+            uId = user.uid,
+        )
+    advanceUntilIdle()
+
+    val storedImage = StoredImage(File("new-picture.png"))
+    viewModel.updateProfilePicture(storedImage)
+    advanceUntilIdle()
+
+    val expected = user.copy(profilePictureUrl = "https://example.com/new-picture.png")
+    assertEquals(listOf(storedImage to "pfp"), imageStorage.uploadedImages)
+    assertEquals(listOf(user.profilePictureUrl), imageStorage.deletedUrls)
+    assertEquals(listOf(expected), repository.editedUsers)
+    assertEquals(expected, viewModel.uiState.value.user)
+    assertFalse(viewModel.uiState.value.isSaving)
+    assertNull(viewModel.uiState.value.errorMsg)
   }
 
   /** Test that saving does nothing when there is nothing to save. */
