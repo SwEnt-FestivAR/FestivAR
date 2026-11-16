@@ -10,6 +10,7 @@
     <string name="profile_load_failed">Impossible de charger votre profil.</string>
     <string name="profile_save_failed">Impossible de mettre à jour votre profil.</string>
     <string name="profile_picture_save_failed">Impossible de mettre à jour votre photo de profil</string>
+    <string name="profile_edit_picture">Modifier la photo de profil</string>
     <string name="profile_sign_out_failed">Impossible de se déconnecter.</string>
     <string name="profile_invalid_name_chars">Utilisez au moins une lettre, et uniquement des lettres, espaces, traits d’union et apostrophes.</string>
     <string name="profile_anon_upgrade">Passez à un compte complet</string>
