@@ -19,83 +19,20 @@ enum class Role(val permissions: Set<Permission>) {
 
   // A visitor of the event, he can only see the event details (to a certain extent) and can see
   // the announcements.
-  VISITOR(
-      setOf(
-          CAN_SEE_ANNOUNCEMENT,
-      )
-  ),
+  VISITOR(VISITOR_PERMISSIONS),
   // A staff member of the event, the lowest grade of a staff of the event. He can be managed by
   // anyone
   // and only interacts in the task he is assigned to and
-  STAFF(
-      setOf(
-          CAN_SEE_TASK,
-          CAN_EDIT_OWN_TASK,
-          CAN_DELETE_OWN_TASK,
-          CAN_CREATE_TASK,
-          CAN_SEE_ANNOUNCEMENT,
-      )
-  ),
+  STAFF(STAFF_PERMISSIONS),
   // A team leader, he manages his own subteam of staff within the event for specific areas or
   // subjects within the event (the team lead for the workshop at 11AM for example).
-  TEAM_LEAD(
-      setOf(
-          CAN_SEE_TASK,
-          CAN_EDIT_OWN_TASK,
-          CAN_DELETE_OWN_TASK,
-          CAN_EDIT_TASK,
-          CAN_DELETE_TASK,
-          CAN_CREATE_TASK,
-          CAN_ASSIGN_TASK,
-          CAN_SEE_ANNOUNCEMENT,
-          CAN_EDIT_OWN_ANNOUNCEMENT,
-          CAN_DELETE_OWN_ANNOUNCEMENT,
-          CAN_CREATE_ANNOUNCEMENT,
-      )
-  ),
+  TEAM_LEAD(TEAM_LEAD_PERMISSIONS),
   // A more general staff manager that manages the team leads and has more control on every task
   // and announcement.
-  STAFF_MANAGER(
-      setOf(
-          CAN_SEE_TASK,
-          CAN_EDIT_OWN_TASK,
-          CAN_DELETE_OWN_TASK,
-          CAN_EDIT_TASK,
-          CAN_DELETE_TASK,
-          CAN_CREATE_TASK,
-          CAN_ASSIGN_TASK,
-          CAN_SEE_ANNOUNCEMENT,
-          CAN_EDIT_OWN_ANNOUNCEMENT,
-          CAN_DELETE_OWN_ANNOUNCEMENT,
-          CAN_EDIT_ANNOUNCEMENT,
-          CAN_DELETE_ANNOUNCEMENT,
-          CAN_CREATE_ANNOUNCEMENT,
-          CAN_EDIT_EVENT,
-          CAN_MANAGE_ROLES,
-      )
-  ),
+  STAFF_MANAGER(STAFF_MANAGER_PERMISSIONS),
   // An administrator of the event that has all rights at the exception of deleting the event and
   // having or transferring its ownership.
-  ADMIN(
-      setOf(
-          CAN_SEE_TASK,
-          CAN_EDIT_OWN_TASK,
-          CAN_DELETE_OWN_TASK,
-          CAN_EDIT_TASK,
-          CAN_DELETE_TASK,
-          CAN_CREATE_TASK,
-          CAN_ASSIGN_TASK,
-          CAN_SEE_ANNOUNCEMENT,
-          CAN_EDIT_OWN_ANNOUNCEMENT,
-          CAN_DELETE_OWN_ANNOUNCEMENT,
-          CAN_EDIT_ANNOUNCEMENT,
-          CAN_DELETE_ANNOUNCEMENT,
-          CAN_CREATE_ANNOUNCEMENT,
-          CAN_EDIT_EVENT,
-          CAN_MANAGE_ROLES,
-          CAN_KICK_MEMBER,
-      )
-  ),
+  ADMIN(ADMIN_PERMISSIONS),
   // The unique owner of the event that has all rights on it.
   OWNER(Permission.entries.toSet());
 
@@ -154,3 +91,36 @@ enum class Role(val permissions: Set<Permission>) {
     return permissions.contains(CAN_KICK_MEMBER) && dominates(that)
   }
 }
+
+private val VISITOR_PERMISSIONS = setOf(CAN_SEE_ANNOUNCEMENT)
+
+private val STAFF_PERMISSIONS =
+    VISITOR_PERMISSIONS +
+        setOf(
+            CAN_SEE_TASK,
+            CAN_EDIT_OWN_TASK,
+            CAN_DELETE_OWN_TASK,
+            CAN_CREATE_TASK,
+        )
+
+private val TEAM_LEAD_PERMISSIONS =
+    STAFF_PERMISSIONS +
+        setOf(
+            CAN_EDIT_TASK,
+            CAN_DELETE_TASK,
+            CAN_ASSIGN_TASK,
+            CAN_EDIT_OWN_ANNOUNCEMENT,
+            CAN_DELETE_OWN_ANNOUNCEMENT,
+            CAN_CREATE_ANNOUNCEMENT,
+        )
+
+private val STAFF_MANAGER_PERMISSIONS =
+    TEAM_LEAD_PERMISSIONS +
+        setOf(
+            CAN_EDIT_ANNOUNCEMENT,
+            CAN_DELETE_ANNOUNCEMENT,
+            CAN_EDIT_EVENT,
+            CAN_MANAGE_ROLES,
+        )
+
+private val ADMIN_PERMISSIONS = STAFF_MANAGER_PERMISSIONS + setOf(CAN_KICK_MEMBER)
