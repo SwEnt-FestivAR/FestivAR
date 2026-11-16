@@ -78,7 +78,14 @@ enum class Role(val permissions: Set<Permission>) {
     return permissions.contains(CAN_MANAGE_ROLES) && dominates(from) && dominates(to)
   }
 
-  fun canKick(that: Role): Boolean{
-    return dominates(that)
+  /**
+   * Returns whether this can kick a member out of the [com.android.festivar.model.event.Event].
+   *
+   * @param that The [Role] of the [com.android.festivar.model.user.User] this tries to kick.
+   * @return true if this can kick the [com.android.festivar.model.user.User] (needs to dominate his
+   *   [Role] and have the according [Permission]), false otherwise.
+   */
+  fun canKick(that: Role): Boolean {
+    return permissions.contains(CAN_KICK_MEMBER) && dominates(that)
   }
 }
