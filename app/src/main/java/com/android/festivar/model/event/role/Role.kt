@@ -92,8 +92,10 @@ enum class Role(val permissions: Set<Permission>) {
   }
 }
 
+/** The permissions for the VISITOR [Role]. */
 private val VISITOR_PERMISSIONS = setOf(CAN_SEE_ANNOUNCEMENT)
 
+/** The permissions for the STAFF [Role]. */
 private val STAFF_PERMISSIONS =
     VISITOR_PERMISSIONS +
         setOf(
@@ -103,6 +105,7 @@ private val STAFF_PERMISSIONS =
             CAN_CREATE_TASK,
         )
 
+/** The permissions for the TEAM_LEAD [Role]. */
 private val TEAM_LEAD_PERMISSIONS =
     STAFF_PERMISSIONS +
         setOf(
@@ -114,6 +117,7 @@ private val TEAM_LEAD_PERMISSIONS =
             CAN_CREATE_ANNOUNCEMENT,
         )
 
+/** The permissions for the STAFF_MANAGER [Role]. */
 private val STAFF_MANAGER_PERMISSIONS =
     TEAM_LEAD_PERMISSIONS +
         setOf(
@@ -123,4 +127,5 @@ private val STAFF_MANAGER_PERMISSIONS =
             CAN_MANAGE_ROLES,
         )
 
+/** The permissions for the ADMIN [Role]. */
 private val ADMIN_PERMISSIONS = STAFF_MANAGER_PERMISSIONS + setOf(CAN_KICK_MEMBER)
