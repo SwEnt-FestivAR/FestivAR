@@ -43,6 +43,16 @@ jobs:
             exit 1
           fi
 
+      - name: Write the Maps API key
+        env:
+          MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
+        run: |
+          if [ -n "$MAPS_API_KEY" ]; then
+            echo "MAPS_API_KEY=$MAPS_API_KEY" >> local.properties
+          else
+            echo "::warning::The MAPS_API_KEY secret is not set, the map will show no tiles."
+          fi
+
       - name: Build debug APK
         env:
           ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/festivar-ci.jks
