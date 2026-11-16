@@ -263,6 +263,19 @@ class VoiceNotePlaybackDeletionTest {
     assertFalse(controller.uiState.value.showDeleteConfirm)
   }
 
+  /** Breaks if toggling a paused note restarts it instead of resuming its position. */
+  @Test
+  fun controller_resumesPausedPlaybackWithoutRestartingTheNote() {
+    val controller = VoiceNoteController(scope, host, services)
+
+    controller.togglePlay()
+    player.pause()
+    controller.togglePlay()
+
+    assertEquals(listOf(note.audioUrl), player.played)
+    assertEquals(PlayerState.Playing(note.audioUrl), player.state.value)
+  }
+
   /** Breaks if permission state or resource release is not routed by the controller. */
   @Test
   fun controller_routesMicrophonePermissionAndRelease() {
