@@ -8,6 +8,7 @@ import org.junit.Test
 
 class ImageStorageLocalTest {
 
+  // Breaks if local upload stops returning the source image URI.
   @Test
   fun upload_returnsImageUri() = runTest {
     val file = File.createTempFile("avatar", ".png").apply { deleteOnExit() }

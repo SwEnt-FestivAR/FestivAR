@@ -9,10 +9,12 @@ class ImageStorageLocalTest {
 
   private val storage = ImageStorageLocal()
 
+  // Breaks if local image IDs are no longer unique.
   @Test
   fun getNewUid_returnsUniqueIds() {
     assertNotEquals(storage.getNewUid(), storage.getNewUid())
   }
 
+  // Breaks if local deletion starts throwing for an image URL.
   @Test fun delete_doesNotThrow() = runTest { storage.delete("file://avatar.png") }
 }

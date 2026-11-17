@@ -17,6 +17,7 @@ class AvatarPreviewsTest {
 
   @get:Rule val composeTestRule = createComposeRule()
 
+  // Breaks if the fallback preview loses initials or the person icon.
   @Test
   fun avatarPreview_showsAllAvatarFallbacks() {
     composeTestRule.setContent { AvatarPreview() }
@@ -28,6 +29,7 @@ class AvatarPreviewsTest {
         .assertIsDisplayed()
   }
 
+  // Breaks if the profile-picture preview stops composing the Glide image.
   @Test
   fun profilePicturePreview_showsProfilePicture() {
     composeTestRule.setContent { AvatarProfilePicturePreview() }
