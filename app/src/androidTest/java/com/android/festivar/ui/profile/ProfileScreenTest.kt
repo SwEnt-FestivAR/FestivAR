@@ -108,6 +108,7 @@ class ProfileScreenTest {
       onSignedOut: () -> Unit = {},
       onSettingsClick: () -> Unit = {},
       credentialManager: CredentialManager = mockk(relaxed = true),
+      launchPhotoPicker: ((String) -> Unit)? = null,
       waitForLoad: Boolean = true,
   ): ProfileViewModel {
     val viewModel =
@@ -126,6 +127,7 @@ class ProfileScreenTest {
           onSignedOut = onSignedOut,
           credentialManager = credentialManager,
           onSettingsClick = onSettingsClick,
+          launchPhotoPicker = launchPhotoPicker,
       )
     }
     if (waitForLoad) waitForTag(ProfileScreenTestTags.AVATAR)
@@ -169,6 +171,17 @@ class ProfileScreenTest {
     composeTestRule.onNodeWithTag(ProfileScreenTestTags.SETTINGS).assertIsDisplayed().performClick()
 
     assertTrue(settingsClicked)
+  }
+
+  // Breaks if editing the profile picture stops requesting image content.
+  @Test
+  fun editProfilePictureRequestsImages() {
+    var requestedMimeType: String? = null
+    setProfile(launchPhotoPicker = { requestedMimeType = it })
+
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.EDIT_PROFILE_PICTURE_BUTTON).performClick()
+
+    assertEquals("image/*", requestedMimeType)
   }
 
   /** Turns red when the avatar stops being shown at its large size of 96.dp. */

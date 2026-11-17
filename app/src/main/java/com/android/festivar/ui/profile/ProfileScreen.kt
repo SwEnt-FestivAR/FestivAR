@@ -101,6 +101,7 @@ fun ProfileScreen(
     onSignedOut: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     credentialManager: CredentialManager = CredentialManager.create(LocalContext.current),
+    launchPhotoPicker: ((String) -> Unit)? = null,
 ) {
 
   val profileUIState by profileViewModel.uiState.collectAsState()
@@ -112,6 +113,7 @@ fun ProfileScreen(
           profileViewModel.updateProfilePicture(it, context.contentResolver, context.cacheDir)
         }
       }
+  val launchPicker = launchPhotoPicker ?: { mimeType -> photoPicker.launch(mimeType) }
   // SheetState is Compose UI state, so it stays local; visibility belongs in ProfileUIState.
   val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -172,7 +174,7 @@ fun ProfileScreen(
           onSurnameChange = profileViewModel::updateSurname,
           onNameChange = profileViewModel::updateName,
           onSaveClick = profileViewModel::saveChanges,
-          onEditProfilePictureClick = { photoPicker.launch("image/*") },
+          onEditProfilePictureClick = { launchPicker("image/*") },
           onSignOutClick = {
             if (profileUIState.isUserAnonymous) {
               profileViewModel.showSignOutWarning()
