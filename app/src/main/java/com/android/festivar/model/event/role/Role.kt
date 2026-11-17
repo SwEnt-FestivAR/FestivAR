@@ -119,6 +119,9 @@ private val STAFF_PERMISSIONS =
             CAN_EDIT_OWN_TASK,
             CAN_DELETE_OWN_TASK,
             CAN_CREATE_TASK,
+            Permission.CAN_TAKE_TASK,
+            Permission.CAN_MARK_TASK_DONE,
+            Permission.CAN_SEE_MEMBERS,
         )
 
 /** The permissions for the TEAM_LEAD [Role]. */

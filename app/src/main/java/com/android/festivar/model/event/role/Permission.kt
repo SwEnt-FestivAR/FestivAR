@@ -5,12 +5,18 @@ package com.android.festivar.model.event.role
  * An enum class that represents all the permissions that can be attributed to a [Role] within an
  * [com.android.festivar.model.event.Event] in the FestivAR app.
  *
- * A permission ending in `_OWN_` only applies to the objects the member owns, while the matching
+ * A permission containing `_OWN_` only applies to the objects the member owns, while the matching
  * permission without `_OWN_` applies to every object of the event.
  */
 enum class Permission {
+  /** See members list. */
+  CAN_SEE_MEMBERS,
   /** See the tasks of the event. */
   CAN_SEE_TASK,
+  /** Take the tasks of the event. */
+  CAN_TAKE_TASK,
+  /** Mark the tasks of the event as done. */
+  CAN_MARK_TASK_DONE,
   /** Edit the tasks the member owns. */
   CAN_EDIT_OWN_TASK,
   /** Delete the tasks the member owns. */
