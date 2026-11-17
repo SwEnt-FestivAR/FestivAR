@@ -12,6 +12,7 @@ import java.io.IOException
 import java.time.Duration
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -457,6 +458,177 @@ class AndroidVoicePlayerTest {
 
     assertEquals(PlayerState.Failed(first), player.state.value)
     assertEquals(State.END, players.single().state)
+  }
+
+  /** Breaks if the position does not move while the note plays. */
+  @Test
+  fun position_movesWhilePlaying() {
+    player.play(first)
+    idle()
+
+    idle(Duration.ofMillis(2_000))
+    val early = player.position.value
+    idle(Duration.ofMillis(1_000))
+
+    assertTrue(early >= Duration.ofMillis(1_900))
+    assertTrue(player.position.value >= early + Duration.ofMillis(900))
+  }
+
+  /** Breaks if the position moves while paused, or is lost on pause and resume. */
+  @Test
+  fun position_isKeptWhilePausedAndContinuesOnResume() {
+    player.play(first)
+    idle(Duration.ofMillis(2_000))
+    player.pause()
+    val pausedAt = player.position.value
+
+    idle(Duration.ofMillis(3_000))
+    assertEquals(pausedAt, player.position.value)
+    assertTrue(pausedAt >= Duration.ofMillis(1_900))
+
+    player.resume()
+    idle(Duration.ofMillis(1_000))
+
+    assertTrue(player.position.value >= pausedAt + Duration.ofMillis(900))
+  }
+
+  /** Breaks if stop keeps the old position or length. */
+  @Test
+  fun position_isResetWhenTheNoteStops() {
+    player.play(first)
+    idle(Duration.ofMillis(2_000))
+
+    player.stop()
+
+    assertEquals(Duration.ZERO, player.position.value)
+  }
+
+  /** Breaks if the position stays at the end of a note that finished. */
+  @Test
+  fun position_isResetWhenTheNoteEnds() {
+    player.play(first)
+    idle(Duration.ofMillis(DURATION_MS + 1_000L))
+
+    assertEquals(Duration.ZERO, player.position.value)
+  }
+
+  /** Breaks if the position is not updated within about 100 ms of the note starting. */
+  @Test
+  fun position_isUpdatedAboutEvery100Milliseconds() {
+    player.play(first)
+    idle()
+
+    idle(Duration.ofMillis(100))
+    val after100 = player.position.value
+    idle(Duration.ofMillis(100))
+
+    assertTrue(after100 > Duration.ZERO)
+    assertTrue(player.position.value > after100)
+  }
+
+  /** Breaks if pausing does not read the exact position when it falls between two updates. */
+  @Test
+  fun pause_readsTheExactPositionBetweenTwoUpdates() {
+    player.play(first)
+    idle(Duration.ofMillis(2_025))
+
+    player.pause()
+
+    assertEquals(
+        Duration.ofMillis(mediaPlayers.single().currentPosition.toLong()),
+        player.position.value,
+    )
+    assertTrue(player.position.value > Duration.ofMillis(2_000))
+  }
+
+  /** Breaks if a note resumed while it is still loading never reports its position. */
+  @Test
+  fun position_movesWhenResumedWhileStillLoading() {
+    player.play(first)
+    player.pause()
+    player.resume()
+
+    idle(Duration.ofMillis(1_000))
+
+    assertTrue(player.position.value >= Duration.ofMillis(500))
+  }
+
+  /** Breaks if a failed note keeps its position. */
+  @Test
+  fun position_isResetWhenTheNoteFails() {
+    player.play(first)
+    idle(Duration.ofMillis(2_000))
+
+    players.single().invokeErrorListener(1, 0)
+
+    assertEquals(Duration.ZERO, player.position.value)
+  }
+
+  /** Breaks if the position stops following the player after a seek. */
+  @Test
+  fun seekTo_thenThePositionKeepsFollowingThePlayer() {
+    player.play(first)
+    idle()
+    player.seekTo(Duration.ofSeconds(10))
+
+    idle(Duration.ofSeconds(1))
+
+    assertTrue(player.position.value >= Duration.ofMillis(10_900))
+  }
+
+  /** Breaks if seekTo does not move the position of a playing note. */
+  @Test
+  fun seekTo_movesThePositionWhilePlaying() {
+    player.play(first)
+    idle()
+
+    player.seekTo(Duration.ofSeconds(10))
+
+    assertEquals(Duration.ofSeconds(10), player.position.value)
+    assertEquals(PlayerState.Playing(first), player.state.value)
+    // The fake MediaPlayer completes a seek when the looper runs.
+    idle(Duration.ofMillis(100))
+    assertTrue(mediaPlayers.single().currentPosition >= 10_000)
+  }
+
+  /** Breaks if seekTo on a paused note moves the position back or resumes the note. */
+  @Test
+  fun seekTo_movesThePositionWhilePausedAndStaysPaused() {
+    player.play(first)
+    idle(Duration.ofMillis(2_000))
+    player.pause()
+
+    player.seekTo(Duration.ofSeconds(5))
+    idle(Duration.ofSeconds(1))
+
+    assertEquals(Duration.ofSeconds(5), player.position.value)
+    assertEquals(PlayerState.Paused(first), player.state.value)
+  }
+
+  /** Breaks if seekTo goes before the start or after the end of the note. */
+  @Test
+  fun seekTo_isClampedToTheNote() {
+    player.play(first)
+    idle()
+
+    player.seekTo(Duration.ofSeconds(100))
+    assertEquals(Duration.ofMillis(DURATION_MS.toLong()), player.position.value)
+
+    player.seekTo(Duration.ofSeconds(-5))
+    assertEquals(Duration.ZERO, player.position.value)
+  }
+
+  /** Breaks if seekTo while loading or with nothing playing changes anything or crashes. */
+  @Test
+  fun seekTo_doesNothingWhileLoadingOrWhenNothingPlays() {
+    player.seekTo(Duration.ofSeconds(5))
+    assertEquals(Duration.ZERO, player.position.value)
+
+    player.play(first)
+    player.seekTo(Duration.ofSeconds(5))
+
+    assertEquals(Duration.ZERO, player.position.value)
+    assertEquals(PlayerState.Playing(first), player.state.value)
   }
 
   private companion object {
