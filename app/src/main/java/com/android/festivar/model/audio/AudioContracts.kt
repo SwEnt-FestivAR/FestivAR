@@ -170,6 +170,13 @@ interface VoicePlayer {
   /** The current state. [PlayerState.Idle] again when a note ends. */
   val state: StateFlow<PlayerState>
 
+  /**
+   * How far into the note the player is, about every 50 to 100 ms while playing. It keeps its value
+   * while paused, and is [Duration.ZERO] when the state is [PlayerState.Idle] or
+   * [PlayerState.Failed].
+   */
+  val position: StateFlow<Duration>
+
   /** Plays the note at [audioUrl], stopping any other one. */
   fun play(audioUrl: String)
 
@@ -190,6 +197,13 @@ interface VoicePlayer {
    * note again from the beginning. Does nothing if nothing is playing.
    */
   fun stop()
+
+  /**
+   * Moves the note to [position], clamped between the start and the end of the note, whether it is
+   * playing or paused; the state does not change. Does nothing while the note is loading or when
+   * nothing is playing.
+   */
+  fun seekTo(position: Duration)
 
   /** Frees the underlying player. The instance must not be used afterwards. */
   fun release()

@@ -123,6 +123,9 @@ class FakeVoicePlayer : VoicePlayer {
   private val _state = MutableStateFlow<PlayerState>(PlayerState.Idle)
   override val state: StateFlow<PlayerState> = _state
 
+  private val _position = MutableStateFlow(Duration.ZERO)
+  override val position: StateFlow<Duration> = _position
+
   /** The URLs asked to play, in order. */
   val played = mutableListOf<String>()
 
@@ -148,6 +151,12 @@ class FakeVoicePlayer : VoicePlayer {
 
   override fun stop() {
     _state.value = PlayerState.Idle
+    _position.value = Duration.ZERO
+  }
+
+  override fun seekTo(position: Duration) {
+    if (_state.value is PlayerState.Idle || _state.value is PlayerState.Failed) return
+    _position.value = position
   }
 
   override fun release() {
