@@ -1,8 +1,10 @@
 // Co-authored-by: Claude Fable 5.2 <noreply@anthropic.com>
 package com.android.festivar.ui.announcement
 
+import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.event.announcement.AnnouncementPriority
 import com.android.festivar.ui.components.FieldError
+import java.time.ZonedDateTime
 
 /**
  * How long a save of an announcement may last before it is reported as failed. Shared by the create
@@ -15,8 +17,8 @@ internal const val ANNOUNCEMENT_SAVE_TIMEOUT_MS = 15_000L
  * the field rules. It has no saving or error flags, which belong to the state of each screen. The
  * Create announcement form does not use it yet.
  *
- * @property title The title as typed, trimmed when the announcement is saved.
- * @property content The body of the announcement as typed, trimmed when it is saved.
+ * @property title The title as typed. It is saved as [trimmedTitle].
+ * @property content The body of the announcement as typed. It is saved as [trimmedContent].
  * @property priority How urgent the announcement is. [AnnouncementPriority.INFO] by default.
  * @property titleEdited Whether the title was edited, so that an empty one is reported.
  * @property contentEdited Whether the content was edited, so that an empty one is reported.
@@ -42,6 +44,50 @@ data class AnnouncementFormState(
   /** Whether the form can be saved: the title and the content are both required. */
   val isValid: Boolean
     get() = title.isNotBlank() && content.isNotBlank()
+
+  /** The title as it is saved, without the spaces around it. */
+  val trimmedTitle: String
+    get() = title.trim()
+
+  /** The content as it is saved, without the spaces around it. */
+  val trimmedContent: String
+    get() = content.trim()
+
+  /**
+   * Builds the [Announcement] described by this form, with its title and content trimmed.
+   *
+   * @param announcementId The id of the new announcement.
+   * @param authorId The uid of the user publishing the announcement, who becomes its author.
+   * @param updatedAt The time the announcement is published.
+   * @throws IllegalArgumentException if the title or the content is blank, or if [announcementId]
+   *   or [authorId] is blank.
+   */
+  fun toAnnouncement(
+      announcementId: String,
+      authorId: String,
+      updatedAt: ZonedDateTime,
+  ): Announcement {
+    require(isValid) { "The form is not valid." }
+    return Announcement(
+        announcementId = announcementId,
+        title = trimmedTitle,
+        authorId = authorId,
+        content = trimmedContent,
+        priority = priority,
+        updatedAt = updatedAt,
+    )
+  }
+
+  /**
+   * Whether [announcement] holds what this form saves, for example a copy read back after a failed
+   * save. Only the fields the form sets are compared: full equality would also compare the time
+   * zone of [Announcement.updatedAt], the links and the pin, so a copy read back from a remote
+   * store would always differ.
+   */
+  fun matches(announcement: Announcement): Boolean =
+      announcement.title == trimmedTitle &&
+          announcement.content == trimmedContent &&
+          announcement.priority == priority
 }
 
 /** The setters an announcement form screen needs, shared by the create and edit ViewModels. */
