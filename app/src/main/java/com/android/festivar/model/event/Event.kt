@@ -2,9 +2,10 @@
 package com.android.festivar.model.event
 
 import com.android.festivar.model.event.announcement.Announcement
+import com.android.festivar.model.event.role.Permission
+import com.android.festivar.model.event.role.Role
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
-import com.android.festivar.model.event.role.Role
 import java.time.ZonedDateTime
 
 /** The maximum number of [Announcement] items an [Event] can have. */
@@ -35,6 +36,8 @@ val DEFAULT_ROLE = Role.VISITOR
  * - [eventId] is not blank;
  * - [ownerId] identifies one of the members;
  * - a [User] is a joined member at most once, identified by its [User.uid] (no duplicates);
+ * - every member has exactly one [Role] in [roles], and only members have one;
+ * - the owner has the [Role.OWNER], and nobody else has it;
  * - a [Task] is unique in the event (no duplicates);
  * - an [Announcement] is unique in the event, identified by its [Announcement.announcementId] (no
  *   duplicates);
@@ -52,8 +55,8 @@ val DEFAULT_ROLE = Role.VISITOR
  * @property tasks Tasks that are related, that belong to the [Event].
  * @property closed Whether the [Event] is still ongoing or not.
  * @property announcements Announcements shared with the members of the [Event].
- * @property roles The [Role] of each member of the [Event], by their [User.uid]. Every member has
- *   an entry.
+ * @property roles The [Role] of each member of the [Event], by their [User.uid]. By default, only
+ *   the owner, with the [Role.OWNER].
  */
 data class Event(
     val eventId: String,
@@ -61,7 +64,7 @@ data class Event(
     val title: String,
     val description: String = "",
     val members: List<User> = listOf(User(ownerId)),
-    val roles: Map<String, Role> = emptyMap(),
+    val roles: Map<String, Role> = mapOf(ownerId to Role.OWNER),
     val startDate: ZonedDateTime,
     val endDate: ZonedDateTime,
     val location: String = "",
@@ -77,6 +80,13 @@ data class Event(
     require(tasks.map { it.taskId }.distinct().size == tasks.size) { "A task is duplicated." }
     require(members.distinctBy { it.uid }.size == members.size) { "A user is registered twice." }
     require(members.any { it.uid == ownerId }) { "The owner must be a member." }
+    require(roles.keys == members.map { it.uid }.toSet()) {
+      "Every member must have exactly one role, and only members can have one."
+    }
+    require(roles[ownerId] == Role.OWNER) { "The owner must have the OWNER role." }
+    require(roles.values.count { it == Role.OWNER } == 1) {
+      "Only the owner can have the OWNER role."
+    }
     require(announcements.distinctBy { it.announcementId }.size == announcements.size) {
       "An announcement is duplicated."
     }
@@ -218,6 +228,101 @@ data class Event(
    */
   fun announcementOrNull(announcementId: String): Announcement? {
     return announcements.announcementOrNull(announcementId)
+  }
+
+  /**
+   * Finds the [Role] of a member of the [Event]. The keys of [roles] are exactly the members, so a
+   * user without an entry in [roles] is not a member.
+   *
+   * @param userId The [User.uid] of the member whose [Role] is searched.
+   * @return The [Role] of the member, as stored in [roles].
+   * @throws IllegalArgumentException If [userId] is not a member of the event.
+   */
+  fun roleOf(userId: String): Role {
+    return requireNotNull(roles[userId]) { "This user is not a member of the event." }
+  }
+
+  /**
+   * Tells whether a member of the [Event] is allowed to do an action, that is whether their [Role]
+   * has [permission].
+   *
+   * @param userId The [User.uid] of the member who wants to act.
+   * @param permission The [Permission] needed for the action.
+   * @return `true` if the [Role] of the member has [permission], `false` otherwise.
+   * @throws IllegalArgumentException If [userId] is not a member of the event.
+   */
+  fun canAct(userId: String, permission: Permission): Boolean {
+    return roleOf(userId).hasPermission(permission)
+  }
+
+  /**
+   * Changes the [Role] of a member of the [Event] by returning a version of `this` where the member
+   * [userId] has [newRole] in [roles].
+   *
+   * The member [actorId] who makes the change must be allowed to, as decided by [canSetRole]: their
+   * [Role] must have [Permission.CAN_MANAGE_ROLES] and strictly dominate both the current [Role] of
+   * [userId] and [newRole]. So nobody can change their own [Role], change the [Role] of the owner,
+   * or give the [Role.OWNER].
+   *
+   * @param actorId The [User.uid] of the member who changes the [Role].
+   * @param userId The [User.uid] of the member whose [Role] is changed.
+   * @param newRole The [Role] that [userId] gets.
+   * @return The [Event] but with [newRole] as the [Role] of [userId].
+   * @throws IllegalArgumentException If [actorId] or [userId] is not a member of the event, or if
+   *   [actorId] is not allowed to make this change.
+   */
+  fun setRole(actorId: String, userId: String, newRole: Role): Event {
+    require(canSetRole(actorId, userId, newRole)) {
+      "This member cannot give this role to this user."
+    }
+    return copy(roles = roles + (userId to newRole))
+  }
+
+  /**
+   * Kicks a member out of the [Event] by returning a version of `this` without them, as
+   * [removeMember] does.
+   *
+   * The member [actorId] who kicks must be allowed to, as decided by [canKick]: their [Role] must
+   * have [Permission.CAN_KICK_MEMBER] and strictly dominate the [Role] of [userId]. So nobody can
+   * kick themselves or the owner. A member who leaves the event on their own uses
+   * [removeMember] instead.
+   *
+   * @param actorId The [User.uid] of the member who kicks.
+   * @param userId The [User.uid] of the member who is kicked.
+   * @return The [Event] but without [userId] in [members] and in [roles].
+   * @throws IllegalArgumentException If [actorId] or [userId] is not a member of the event, or if
+   *   [actorId] is not allowed to kick [userId].
+   */
+  fun kickMember(actorId: String, userId: String): Event {
+    require(canKick(actorId, userId)) { "This member cannot kick this user." }
+    return removeMember(userId)
+  }
+
+  /**
+   * Gives the ownership of the [Event] to another member by returning a version of `this` where
+   * [newOwnerId] is the [ownerId] with the [Role.OWNER], and the previous owner [actorId] gets the
+   * [Role.ADMIN].
+   *
+   * Only a member whose [Role] has [Permission.CAN_TRANSFER_OWNERSHIP], that is the owner, can do
+   * it.
+   *
+   * @param actorId The [User.uid] of the owner who gives the ownership.
+   * @param newOwnerId The [User.uid] of the member who becomes the owner.
+   * @return The [Event] but with [newOwnerId] as its owner and [actorId] as an admin.
+   * @throws IllegalArgumentException If [actorId] or [newOwnerId] is not a member of the event, if
+   *   [actorId] is not allowed to transfer the ownership, or if [newOwnerId] is [actorId].
+   */
+  fun transferOwnership(actorId: String, newOwnerId: String): Event {
+    require(canAct(actorId, Permission.CAN_TRANSFER_OWNERSHIP)) {
+      "This member cannot transfer the ownership of the event."
+    }
+    require(newOwnerId != actorId) { "This member already owns the event." }
+    // Only for its check: the new owner must be a member.
+    roleOf(newOwnerId)
+    return copy(
+        ownerId = newOwnerId,
+        roles = roles + (newOwnerId to Role.OWNER) + (actorId to Role.ADMIN),
+    )
   }
 }
 
