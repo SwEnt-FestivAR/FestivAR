@@ -61,7 +61,7 @@ class MapGeometryTest {
 
     for (origin in origins) {
       for (point in points) {
-        assertPosition(point, toLocal(origin, toGeo(origin, point)), delta = 0.01)
+        assertPosition(point, toLocal(origin, toGeo(origin, point)), delta = 1e-6)
       }
     }
   }
@@ -73,6 +73,19 @@ class MapGeometryTest {
     assertThrows(IllegalArgumentException::class.java) {
       toGeo(GeoPosition(90.0, 0.0), at(1.0, 0.0))
     }
+  }
+
+  // Breaks if a site next to longitude 180 is refused: 100 m east of 179.9995 is a real place, on
+  // the other side of the antimeridian.
+  @Test
+  fun aSiteAcrossTheAntimeridianIsConverted() {
+    val origin = GeoPosition(0.0, 179.9995)
+
+    val east = toGeo(origin, at(100.0, 0.0))
+
+    assertEquals(-179.9996, east.longitude, 1e-4)
+    assertPosition(at(100.0, 0.0), toLocal(origin, east), delta = 1e-6)
+    assertPosition(at(-100.0, 0.0), toLocal(east, origin), delta = 1e-6)
   }
 
   // ---------------------------------------------------------------------------------------------
@@ -117,6 +130,15 @@ class MapGeometryTest {
     assertEquals(90.0, normalizeDegrees(450.0), 0.0)
     assertEquals(270.0, normalizeDegrees(-90.0), 0.0)
     assertEquals(359.5, normalizeDegrees(-720.5), 1e-9)
+  }
+
+  // Breaks if an angle that is not a number is passed on as NaN instead of being refused.
+  @Test
+  fun anAngleThatIsNotFiniteIsRefused() {
+    for (angle in listOf(Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY)) {
+      val exception = assertThrows(IllegalArgumentException::class.java) { normalizeDegrees(angle) }
+      assertEquals("The angle must be finite.", exception.message)
+    }
   }
 
   // ---------------------------------------------------------------------------------------------
