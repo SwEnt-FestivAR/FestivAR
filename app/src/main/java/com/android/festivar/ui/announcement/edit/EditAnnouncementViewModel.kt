@@ -233,10 +233,12 @@ private constructor(
         storedCopy(form, e)
       }
 
-  // It starts from the latest stored copy, not the one loaded when the screen opened, so a pin
-  // toggled or a link changed since then is kept (writing the loaded copy is the lost update of
-  // https://github.com/SwEnt-FestivAR/FestivAR/issues/186 for tasks). Only the three form fields
-  // are applied. It is inside the try on purpose, since it depends on a fresh read.
+  /**
+   * Applies the three form fields to the latest stored copy and saves it. It starts from the latest
+   * stored copy, not the one loaded when the screen opened, so a pin toggled or a link changed
+   * since then is kept. It runs inside the try of the save on purpose, since it depends on a fresh
+   * read.
+   */
   private suspend fun editLatest(form: AnnouncementFormState): Announcement {
     val latest =
         eventsRepository.getEvent(eventId).announcementOrNull(announcementId)
@@ -261,8 +263,10 @@ private constructor(
   private fun Announcement.matches(form: AnnouncementFormState): Boolean =
       title == form.title.trim() && content == form.content.trim() && priority == form.priority
 
-  // A failed save may still have reached the server (for example a timeout): read the announcement
-  // back and return it if it holds the edit.
+  /**
+   * A failed save may still have reached the server (for example a timeout): reads the announcement
+   * back and returns it if it holds the edit.
+   */
   private suspend fun storedCopy(form: AnnouncementFormState, e: Exception): Announcement? {
     Log.w(TAG, "Editing the announcement failed, checking whether it was stored", e)
     return try {
