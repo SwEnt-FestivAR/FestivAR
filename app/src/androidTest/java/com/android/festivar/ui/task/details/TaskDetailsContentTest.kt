@@ -2,6 +2,7 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.festivar.ui.task.details
 
 import androidx.compose.ui.test.assertCountEquals
@@ -82,6 +83,8 @@ class TaskDetailsContentTest {
       onTake: () -> Unit = {},
       onGiveBack: () -> Unit = {},
       onMarkDone: () -> Unit = {},
+      onConfirmMarkDone: () -> Unit = onMarkDone,
+      onDismissMarkDone: () -> Unit = {},
       onRetry: () -> Unit = {},
       onDismissError: () -> Unit = {},
       onBack: () -> Unit = {},
@@ -92,14 +95,16 @@ class TaskDetailsContentTest {
   ) = composeTestRule.setContent {
     TaskDetailsContent(
         state,
-        onBack,
-        onTake,
-        onGiveBack,
-        onMarkDone,
-        onRetry,
-        onDismissError,
-        onEdit,
-        onDeleteTask,
+        onBack = onBack,
+        onTake = onTake,
+        onGiveBack = onGiveBack,
+        onMarkDone = onMarkDone,
+        onConfirmMarkDone = onConfirmMarkDone,
+        onDismissMarkDone = onDismissMarkDone,
+        onRetry = onRetry,
+        onDismissError = onDismissError,
+        onEdit = onEdit,
+        onDeleteTask = onDeleteTask,
         voiceNote = voiceNote,
         voiceNoteCallbacks = voiceNoteCallbacks,
     )
@@ -143,14 +148,58 @@ class TaskDetailsContentTest {
   @Test
   fun yourTaskOffersGiveBackAndMarkDone() {
     var givenBack = 0
+    var requestedMarkDone = 0
     var done = 0
-    show(state(), onGiveBack = { givenBack++ }, onMarkDone = { done++ })
+    show(
+        state(),
+        onGiveBack = { givenBack++ },
+        onMarkDone = { requestedMarkDone++ },
+        onConfirmMarkDone = { done++ },
+    )
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.GIVE_BACK_BUTTON).performClick()
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.GIVE_BACK_CONFIRM_BUTTON).performClick()
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MARK_DONE_BUTTON).performClick()
     assertEquals(1, givenBack)
-    assertEquals(1, done)
+    assertEquals(1, requestedMarkDone)
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.TAKE_BUTTON).assertDoesNotExist()
+  }
+
+  // Breaks if state requesting mark done confirmation does not show the dialog.
+  @Test
+  fun markDoneConfirmationDialogIsDisplayedWhenRequested() {
+    show(state().copy(showMarkDoneConfirmation = true))
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MARK_DONE_DIALOG).assertIsDisplayed()
+  }
+
+  // Breaks if confirming mark done does not call onConfirmMarkDone.
+  @Test
+  fun confirmingMarkDoneCallsOnConfirmMarkDone() {
+    var confirmed = 0
+    show(state().copy(showMarkDoneConfirmation = true), onConfirmMarkDone = { confirmed++ })
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MARK_DONE_CONFIRM_BUTTON).performClick()
+    assertEquals(1, confirmed)
+  }
+
+  // Breaks if dismissing mark done does not call onDismissMarkDone.
+  @Test
+  fun leavingItUndoneCallsOnDismissMarkDone() {
+    var dismissed = 0
+    show(state().copy(showMarkDoneConfirmation = true), onDismissMarkDone = { dismissed++ })
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MARK_DONE_DISMISS_BUTTON).performClick()
+    assertEquals(1, dismissed)
+  }
+
+  // Breaks if the mark done dialog does not say which task is marked done.
+  @Test
+  fun theMarkDoneDialogNamesTheTask() {
+    show(state().copy(showMarkDoneConfirmation = true))
+    composeTestRule
+        .onNode(
+            hasTestTag(TaskDetailsScreenTestTags.MARK_DONE_DIALOG)
+                .and(hasAnyDescendant(hasText(task.title, substring = true))),
+            useUnmergedTree = true,
+        )
+        .assertExists()
   }
 
   // Breaks if tapping Give it back changes the task before the user has confirmed.
