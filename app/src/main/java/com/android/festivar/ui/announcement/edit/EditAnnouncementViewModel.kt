@@ -203,14 +203,11 @@ private constructor(
     viewModelScope.launch {
       val saved: Announcement? =
           try {
-            withTimeout(saveTimeoutMs) { editLatest(form) }
-          } catch (e: TimeoutCancellationException) {
-            storedCopy(form, e)
+            editOrStoredCopy(form)
           } catch (e: CancellationException) {
+            // Also reached when the read-back is cancelled, so the form never stays in saving.
             _uiState.update { it.copy(isSaving = false) }
             throw e
-          } catch (e: Exception) {
-            storedCopy(form, e)
           }
       _uiState.update {
         if (saved != null) it.copy(announcement = saved, isSaving = false, isSaved = true)
@@ -218,6 +215,23 @@ private constructor(
       }
     }
   }
+
+  /**
+   * Saves [form], or reads the announcement back when the save failed. A cancellation is rethrown
+   * from the save and from the read-back alike, for [save] to handle in one place.
+   *
+   * @return The stored announcement, or null if the edit is not stored.
+   */
+  private suspend fun editOrStoredCopy(form: AnnouncementFormState): Announcement? =
+      try {
+        withTimeout(saveTimeoutMs) { editLatest(form) }
+      } catch (e: TimeoutCancellationException) {
+        storedCopy(form, e)
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        storedCopy(form, e)
+      }
 
   // It starts from the latest stored copy, not the one loaded when the screen opened, so a pin
   // toggled or a link changed since then is kept (writing the loaded copy is the lost update of

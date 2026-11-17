@@ -592,6 +592,28 @@ class EditAnnouncementViewModelTest {
     assertNull(state.errorMsg)
   }
 
+  // Breaks if only the write is guarded against cancellation, so a save cancelled while the
+  // announcement is read back after a failed write leaves the form saving.
+  @Test
+  fun aSaveCancelledDuringTheReadBackClearsSavingAndShowsNoError() {
+    val never = CompletableDeferred<Unit>()
+    repo.beforeEdit = { throw IllegalStateException("offline") }
+    repo.beforeRead = { if (repo.edits > 0) never.await() }
+    val vm = loadedViewModel()
+    vm.updateTitle("Doors open")
+    vm.save()
+    idle()
+    assertTrue(vm.uiState.value.isSaving)
+
+    vm.viewModelScope.cancel()
+    idle()
+
+    val state = vm.uiState.value
+    assertFalse(state.isSaving)
+    assertFalse(state.isSaved)
+    assertNull(state.errorMsg)
+  }
+
   // Breaks if CancellationException falls into the generic catch of load, so a cancelled load shows
   // a load error the user did not cause.
   @Test
