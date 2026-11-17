@@ -78,7 +78,16 @@ class AudioStorageFirebaseTest {
 
   /** Uploads a voice note of the signed-in user and returns its storage reference. */
   private suspend fun uploadVoiceNote(taskId: String) =
-      Firebase.storage.getReferenceFromUrl(repository.upload(audio, taskId))
+      referenceOf(repository.upload(audio, taskId))
+
+  /** Storage rejects emulator download URLs in getReferenceFromUrl, so the path is read by hand. */
+  private fun referenceOf(downloadUrl: String) =
+      try {
+        Firebase.storage.getReferenceFromUrl(downloadUrl)
+      } catch (e: IllegalArgumentException) {
+        val pathPart = downloadUrl.substringAfter("/o/").substringBefore("?")
+        Firebase.storage.reference.child(URLDecoder.decode(pathPart, "UTF-8"))
+      }
 
   /**
    * Breaks if the Storage rules let a signed-in user who does not own the task overwrite its voice
@@ -197,14 +206,7 @@ class AudioStorageFirebaseTest {
     repository.delete(downloadUrl)
 
     // Check that the file is deleted after the first delete
-    val ref =
-        try {
-          Firebase.storage.getReferenceFromUrl(downloadUrl)
-        } catch (e: IllegalArgumentException) {
-          val pathPart = downloadUrl.substringAfter("/o/").substringBefore("?")
-          val decodedPath = URLDecoder.decode(pathPart, "UTF-8")
-          Firebase.storage.reference.child(decodedPath)
-        }
+    val ref = referenceOf(downloadUrl)
     val exception =
         assertThrows(StorageException::class.java) { runBlocking { ref.metadata.await() } }
     assertEquals(StorageException.ERROR_OBJECT_NOT_FOUND, exception.errorCode)
