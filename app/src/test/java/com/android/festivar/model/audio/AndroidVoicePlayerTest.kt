@@ -90,6 +90,21 @@ class AndroidVoicePlayerTest {
     assertEquals(State.END, players.single().state)
   }
 
+  /** Breaks if replaying a completed note keeps its old player or position. */
+  @Test
+  fun play_afterTheNoteEndsStartsAgainFromTheBeginning() {
+    player.play(first)
+    idle(Duration.ofMillis(DURATION_MS + 1_000L))
+
+    player.play(first)
+    idle()
+
+    assertEquals(PlayerState.Playing(first), player.state.value)
+    assertEquals(2, players.size)
+    assertEquals(State.STARTED, players[1].state)
+    assertEquals(0, mediaPlayers[1].currentPosition)
+  }
+
   /** Breaks if a player error does not give Failed and free the player. */
   @Test
   fun play_failsAndFreesThePlayerWhenThePlayerReportsAnError() {

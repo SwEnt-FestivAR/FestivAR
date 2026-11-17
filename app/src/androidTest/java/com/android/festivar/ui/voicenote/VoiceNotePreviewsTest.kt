@@ -36,10 +36,12 @@ class VoiceNotePreviewsTest {
 
   /** Breaks if the playing preview no longer offers to stop the note. */
   @Test
-  fun ownerPlayingPreview_showsTheStopButton() {
+  fun ownerPlayingPreview_showsThePauseButton() {
     composeTestRule.setContent { VoiceNoteOwnerPlayingPreview() }
 
-    composeTestRule.onNodeWithContentDescription(text(R.string.voice_note_stop)).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithContentDescription(text(R.string.voice_note_pause))
+        .assertIsDisplayed()
   }
 
   /** Breaks if the empty preview no longer shows the empty state. */
@@ -112,10 +114,12 @@ class VoiceNotePreviewsTest {
 
   /** Breaks if the playing preview of the player no longer offers to stop the note. */
   @Test
-  fun playerPlayingPreview_showsTheStopButton() {
+  fun playerPlayingPreview_showsThePauseButton() {
     composeTestRule.setContent { VoiceNotePlayerPlayingPreview() }
 
-    composeTestRule.onNodeWithContentDescription(text(R.string.voice_note_stop)).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithContentDescription(text(R.string.voice_note_pause))
+        .assertIsDisplayed()
   }
 
   /** Breaks if the preview of the player with the trash no longer shows the trash. */

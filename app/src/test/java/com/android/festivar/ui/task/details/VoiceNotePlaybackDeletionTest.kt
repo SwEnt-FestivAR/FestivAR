@@ -51,9 +51,9 @@ class VoiceNotePlaybackDeletionTest {
           Dispatchers.Unconfined + CoroutineExceptionHandler { _, _ -> },
       )
 
-  /** Breaks if playback cannot start or stop the current note. */
+  /** Breaks if playback cannot start or pause the current note. */
   @Test
-  fun playback_togglePlaysThenStopsTheCurrentNote() {
+  fun playback_togglePlaysThenPausesTheCurrentNote() {
     val subject = VoiceNotePlayback(player) { note.audioUrl }
 
     subject.toggle()
@@ -62,8 +62,28 @@ class VoiceNotePlaybackDeletionTest {
 
     subject.toggle()
 
-    assertEquals(PlayerState.Idle, subject.state.value)
+    assertEquals(PlayerState.Paused(note.audioUrl), subject.state.value)
     assertEquals(1, player.played.size)
+  }
+
+  /**
+   * Breaks if toggling a different active note stops or resumes it instead of playing this note.
+   */
+  @Test
+  fun playback_togglePlaysTheNoteWhenAnotherNoteIsPlayingOrPaused() {
+    val subject = VoiceNotePlayback(player) { note.audioUrl }
+
+    player.play("other")
+    subject.toggle()
+    player.play("other")
+    player.pause()
+    subject.toggle()
+
+    assertEquals(
+        listOf("other", note.audioUrl, "other", note.audioUrl),
+        player.played,
+    )
+    assertEquals(PlayerState.Playing(note.audioUrl), player.state.value)
   }
 
   /** Breaks if playback tries to play when the task has no note. */
@@ -261,6 +281,20 @@ class VoiceNotePlaybackDeletionTest {
     assertFalse(controller.uiState.value.isPlaying)
     assertEquals(PlayerState.Idle, player.state.value)
     assertFalse(controller.uiState.value.showDeleteConfirm)
+  }
+
+  /** Breaks if toggling a paused note restarts it instead of resuming its position. */
+  @Test
+  fun controller_resumesPausedPlaybackWithoutRestartingTheNote() {
+    val controller = VoiceNoteController(scope, host, services)
+
+    controller.togglePlay()
+    player.pause()
+    controller.togglePlay()
+
+    assertEquals(listOf(note.audioUrl), player.played)
+    assertEquals(1, player.resumed)
+    assertEquals(PlayerState.Playing(note.audioUrl), player.state.value)
   }
 
   /** Breaks if permission state or resource release is not routed by the controller. */
