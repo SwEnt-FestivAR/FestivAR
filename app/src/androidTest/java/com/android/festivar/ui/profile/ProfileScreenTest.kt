@@ -2,7 +2,15 @@
 // Co-authored by Copilot
 package com.android.festivar.ui.profile
 
+import android.app.Activity
+import android.content.Intent
+import android.net.Uri
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.LocalActivityResultRegistryOwner
+import androidx.activity.result.ActivityResultRegistry
+import androidx.activity.result.contract.ActivityResultContract
 import androidx.annotation.StringRes
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier.Companion.any
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -14,7 +22,7 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertWidthIsEqualTo
-import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -58,7 +66,8 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 class ProfileScreenTest {
-  @get:Rule val composeTestRule = createComposeRule()
+  @get:Rule val composeTestRule = createAndroidComposeRule<ComponentActivity>()
+  private val activityResultRegistry = TestActivityResultRegistry()
 
   private val yasser = User(uid = ME, name = "Ameur", surname = "Yasser", email = "yasser@epfl.ch")
 
@@ -121,14 +130,21 @@ class ProfileScreenTest {
             uId = ME,
         )
     composeTestRule.setContent {
-      ProfileScreen(
-          profileViewModel = viewModel,
-          onBack = onBack,
-          onSignedOut = onSignedOut,
-          credentialManager = credentialManager,
-          onSettingsClick = onSettingsClick,
-          launchPhotoPicker = launchPhotoPicker,
-      )
+      CompositionLocalProvider(
+          LocalActivityResultRegistryOwner provides
+              object : androidx.activity.result.ActivityResultRegistryOwner {
+                override val activityResultRegistry = this@ProfileScreenTest.activityResultRegistry
+              },
+      ) {
+        ProfileScreen(
+            profileViewModel = viewModel,
+            onBack = onBack,
+            onSignedOut = onSignedOut,
+            credentialManager = credentialManager,
+            onSettingsClick = onSettingsClick,
+            launchPhotoPicker = launchPhotoPicker,
+        )
+      }
     }
     if (waitForLoad) waitForTag(ProfileScreenTestTags.AVATAR)
     return viewModel
@@ -143,6 +159,24 @@ class ProfileScreenTest {
 
   private fun string(@StringRes id: Int) =
       InstrumentationRegistry.getInstrumentation().targetContext.getString(id)
+
+  private class TestActivityResultRegistry : ActivityResultRegistry() {
+    private var requestCode: Int? = null
+
+    override fun <I, O> onLaunch(
+        requestCode: Int,
+        contract: ActivityResultContract<I, O>,
+        input: I,
+        options: androidx.core.app.ActivityOptionsCompat?,
+    ) {
+      this.requestCode = requestCode
+    }
+
+    fun dispatchGetContentResult(uri: Uri?) {
+      val intent = uri?.let { Intent().setData(it) }
+      dispatchResult(requireNotNull(requestCode), Activity.RESULT_OK, intent)
+    }
+  }
 
   /** Turns red when the title, the back arrow, the avatar, a field or a button disappears. */
   @Test
@@ -182,6 +216,33 @@ class ProfileScreenTest {
     composeTestRule.onNodeWithTag(ProfileScreenTestTags.EDIT_PROFILE_PICTURE_BUTTON).performClick()
 
     assertEquals("image/*", requestedMimeType)
+  }
+
+  // Breaks if a selected URI stops reaching ProfileViewModel.
+  @Test
+  fun selectedProfilePictureIsForwardedToViewModel() {
+    val viewModel = setProfile()
+
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.EDIT_PROFILE_PICTURE_BUTTON).performClick()
+    activityResultRegistry.dispatchGetContentResult(Uri.parse("content://profile-picture"))
+
+    composeTestRule.waitUntil(5_000) {
+      viewModel.uiState.value.errorMsg == R.string.profile_picture_save_failed
+    }
+    assertEquals(R.string.profile_picture_save_failed, viewModel.uiState.value.errorMsg)
+  }
+
+  // Breaks if cancelling the picker starts a profile-picture update.
+  @Test
+  fun cancelledProfilePicturePickerDoesNothing() {
+    val viewModel = setProfile()
+
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.EDIT_PROFILE_PICTURE_BUTTON).performClick()
+    activityResultRegistry.dispatchGetContentResult(null)
+    composeTestRule.waitForIdle()
+
+    assertFalse(viewModel.uiState.value.isSaving)
+    assertEquals(null, viewModel.uiState.value.errorMsg)
   }
 
   /** Turns red when the avatar stops being shown at its large size of 96.dp. */
