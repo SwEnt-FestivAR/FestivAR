@@ -48,7 +48,7 @@ class AndroidVoicePlayer(context: Context) : VoicePlayer {
   override val state: StateFlow<PlayerState> = _state.asStateFlow()
 
   /** The player of the note being played, with how far its loading went. */
-  private var current: Current? = null
+  private var current: Current = Current.None
 
   override fun play(audioUrl: String) {
     freeCurrent()
@@ -80,9 +80,9 @@ class AndroidVoicePlayer(context: Context) : VoicePlayer {
       player.setDataSource(appContext, audioUrl.toUri())
       player.prepareAsync()
     } catch (e: IOException) {
-      fail(audioUrl, "Cannot load the voice note", e)
+      fail(audioUrl, LOAD_FAILURE, e)
     } catch (e: RuntimeException) {
-      fail(audioUrl, "Cannot load the voice note", e)
+      fail(audioUrl, LOAD_FAILURE, e)
     }
   }
 
@@ -117,7 +117,7 @@ class AndroidVoicePlayer(context: Context) : VoicePlayer {
       action: MediaPlayer.() -> Unit,
   ): Boolean =
       when (val note = current) {
-        null -> false
+        Current.None -> false
         is Current.Loading -> true
         is Current.Ready ->
             try {
@@ -142,18 +142,23 @@ class AndroidVoicePlayer(context: Context) : VoicePlayer {
   }
 
   private fun freeCurrent() {
-    current?.player?.release()
-    current = null
+    current.player?.release()
+    current = Current.None
   }
 
   /** The player of the note: none, loading (it cannot be paused or started yet) or ready. */
-  private sealed class Current(val player: MediaPlayer) {
-    class Loading(player: MediaPlayer) : Current(player)
+  private sealed class Current {
+    open val player: MediaPlayer? = null
 
-    class Ready(player: MediaPlayer) : Current(player)
+    object None : Current()
+
+    class Loading(override val player: MediaPlayer) : Current()
+
+    class Ready(override val player: MediaPlayer) : Current()
   }
 
   private companion object {
     const val LOG_TAG = "AndroidVoicePlayer"
+    const val LOAD_FAILURE = "Cannot load the voice note"
   }
 }
