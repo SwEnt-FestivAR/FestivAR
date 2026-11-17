@@ -55,8 +55,8 @@ data class EditAnnouncementUiState(
   val hasChanges: Boolean
     get() =
         announcement != null &&
-            (form.title.trim() != announcement.title.trim() ||
-                form.content.trim() != announcement.content.trim() ||
+            (form.trimmedTitle != announcement.title.trim() ||
+                form.trimmedContent != announcement.content.trim() ||
                 form.priority != announcement.priority)
 
   /** Whether going back must ask first: a saved edit has nothing left to lose. */
@@ -233,17 +233,12 @@ class EditAnnouncementViewModel(
     val at = if (now.isBefore(latest.updatedAt)) latest.updatedAt else now
     val edited =
         latest
-            .editTitle(form.title.trim(), at)
-            .editContent(form.content.trim(), at)
+            .editTitle(form.trimmedTitle, at)
+            .editContent(form.trimmedContent, at)
             .editPriority(form.priority, at)
     eventsRepository.editAnnouncement(eventId, edited)
     return edited
   }
-
-  // Compares only the fields the form sets. Full equality would also compare the time zone of
-  // updatedAt, so a copy read back from a remote store would differ.
-  private fun Announcement.matches(form: AnnouncementFormState): Boolean =
-      title == form.title.trim() && content == form.content.trim() && priority == form.priority
 
   /**
    * A failed save may still have reached the server (for example a timeout): reads the announcement
@@ -254,7 +249,7 @@ class EditAnnouncementViewModel(
     return try {
       withTimeout(saveTimeoutMs) {
         eventsRepository.getEvent(eventId).announcementOrNull(announcementId)?.takeIf {
-          it.matches(form)
+          form.matches(it)
         }
       }
     } catch (_: TimeoutCancellationException) {
