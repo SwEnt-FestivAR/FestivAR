@@ -15,7 +15,7 @@ import com.android.festivar.model.event.role.Permission.CAN_EDIT_OWN_TASK
 import com.android.festivar.model.event.role.Permission.CAN_EDIT_TASK
 import com.android.festivar.model.event.role.Permission.CAN_KICK_MEMBER
 import com.android.festivar.model.event.role.Permission.CAN_MANAGE_ROLES
-import com.android.festivar.model.event.role.Permission.CAN_MARK_TASK_DONE
+import com.android.festivar.model.event.role.Permission.CAN_MARK_TAKEN_TASK_DONE
 import com.android.festivar.model.event.role.Permission.CAN_SEE_ANNOUNCEMENT
 import com.android.festivar.model.event.role.Permission.CAN_SEE_MEMBERS
 import com.android.festivar.model.event.role.Permission.CAN_SEE_TASK
@@ -53,7 +53,7 @@ class RoleTest {
                 CAN_DELETE_OWN_TASK,
                 CAN_CREATE_TASK,
                 CAN_TAKE_TASK,
-                CAN_MARK_TASK_DONE,
+                CAN_MARK_TAKEN_TASK_DONE,
                 CAN_SEE_MEMBERS,
             )
     val teamLead =
