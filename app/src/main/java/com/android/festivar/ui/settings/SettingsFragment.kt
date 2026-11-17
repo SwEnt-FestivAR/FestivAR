@@ -19,7 +19,7 @@ import com.android.festivar.R
  *
  * Supports two-way synchronization with Android system-level per-app language settings.
  */
-class SettingsFragment : PreferenceFragmentCompat() {
+open class SettingsFragment : PreferenceFragmentCompat() {
   override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
     setPreferencesFromResource(R.xml.preferences, rootKey)
 
