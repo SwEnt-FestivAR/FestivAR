@@ -17,6 +17,7 @@ import io.mockk.every
 import io.mockk.mockk
 import java.io.File
 import kotlin.io.path.createTempDirectory
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -429,6 +430,25 @@ class ProfileViewModelTest {
     assertFalse(viewModel.uiState.value.isSaving)
   }
 
+  // Breaks if URI-copy cancellation is converted into a profile-picture error.
+  @Test
+  fun updateProfilePictureFromUriPropagatesCancellation() = runTest {
+    val resolver = mockk<ContentResolver>()
+    val uri = mockk<Uri>()
+    every { resolver.getType(uri) } throws CancellationException("cancelled")
+    val viewModel = createViewModel()
+
+    advanceUntilIdle()
+    viewModel.updateProfilePicture(
+        uri,
+        resolver,
+        createTempDirectory("profile-picker-test-").toFile(),
+    )
+    advanceUntilIdle()
+
+    assertNull(viewModel.uiState.value.errorMsg)
+  }
+
   @Test
   fun updateProfilePictureShowsErrorWhenUploadFails() = runTest {
     val imageStorage = RecordingImageStorage(uploadError = RuntimeException("offline"))
@@ -480,6 +500,43 @@ class ProfileViewModelTest {
         user.copy(profilePictureUrl = "https://example.com/new-picture.png"),
         viewModel.uiState.value.user,
     )
+    assertFalse(viewModel.uiState.value.isSaving)
+  }
+
+  // Breaks if cancellation while deleting the old picture is swallowed or shown as an error.
+  @Test
+  fun updateProfilePicturePropagatesOldPictureDeletionCancellation() = runTest {
+    val user = sara.copy(profilePictureUrl = "https://example.com/old-picture.png")
+    val imageStorage = RecordingImageStorage(deleteError = CancellationException("cancelled"))
+    val repository = RecordingUsersRepository(listOf(user))
+    val viewModel = createViewModel(repository = repository, imageStorage = imageStorage)
+
+    advanceUntilIdle()
+    viewModel.updateProfilePicture(StoredImage(File("new-picture.png")))
+    advanceUntilIdle()
+
+    assertEquals(1, repository.editedUsers.size)
+    assertTrue(viewModel.uiState.value.isSaving)
+    assertNull(viewModel.uiState.value.errorMsg)
+  }
+
+  // Breaks if cleanup failures hide the original profile-picture save error.
+  @Test
+  fun updateProfilePictureReportsCleanupDeletionFailure() = runTest {
+    val repository =
+        RecordingUsersRepository(
+            listOf(sara),
+            editError = RuntimeException("offline"),
+        )
+    val imageStorage = RecordingImageStorage(deleteError = RuntimeException("cleanup offline"))
+    val viewModel = createViewModel(repository = repository, imageStorage = imageStorage)
+
+    advanceUntilIdle()
+    viewModel.updateProfilePicture(StoredImage(File("new-picture.png")))
+    advanceUntilIdle()
+
+    assertEquals(R.string.profile_picture_save_failed, viewModel.uiState.value.errorMsg)
+    assertEquals(listOf("https://example.com/new-picture.png"), imageStorage.deletedUrls)
     assertFalse(viewModel.uiState.value.isSaving)
   }
 
