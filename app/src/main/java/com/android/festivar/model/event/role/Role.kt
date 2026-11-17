@@ -39,12 +39,12 @@ enum class Role(val permissions: Set<Permission>) {
   // A visitor of the event. They can only see the event details (to a certain extent) and the
   // announcements.
   VISITOR(VISITOR_PERMISSIONS),
-  // A staff member of the event, the lowest grade of staff. They can see the tasks, create new
-  // ones, and edit or delete only the tasks they own.
+  // A staff member of the event, the lowest grade of staff. They can see the members and the
+  // tasks, take tasks and mark the ones they took as done, but cannot create tasks.
   STAFF(STAFF_PERMISSIONS),
   // A team leader, who coordinates the staff for specific areas or subjects within the event (the
-  // team lead for the workshop at 11AM for example). They can edit, delete and assign every task
-  // of the event, and publish announcements.
+  // team lead for the workshop at 11AM for example). They can create, edit, delete and assign
+  // every task of the event, and publish announcements.
   TEAM_LEAD(TEAM_LEAD_PERMISSIONS),
   // A more general staff manager that manages the team leads and has more control on every task
   // and announcement.
@@ -119,9 +119,6 @@ private val STAFF_PERMISSIONS =
     VISITOR_PERMISSIONS +
         setOf(
             CAN_SEE_TASK,
-            CAN_EDIT_OWN_TASK,
-            CAN_DELETE_OWN_TASK,
-            CAN_CREATE_TASK,
             CAN_TAKE_TASK,
             CAN_MARK_TAKEN_TASK_DONE,
             CAN_SEE_MEMBERS,
@@ -131,6 +128,9 @@ private val STAFF_PERMISSIONS =
 private val TEAM_LEAD_PERMISSIONS =
     STAFF_PERMISSIONS +
         setOf(
+            CAN_EDIT_OWN_TASK,
+            CAN_DELETE_OWN_TASK,
+            CAN_CREATE_TASK,
             CAN_EDIT_TASK,
             CAN_DELETE_TASK,
             CAN_ASSIGN_TASK,
