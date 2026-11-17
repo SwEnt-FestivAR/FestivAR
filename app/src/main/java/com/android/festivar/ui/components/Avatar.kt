@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.ui.components
 
 import androidx.compose.foundation.background
@@ -33,6 +34,7 @@ import com.bumptech.glide.integration.compose.placeholder
 
 object AvatarTestTags {
   const val PERSON_ICON = "avatarPersonIcon"
+  const val PROFILE_PICTURE = "avatarProfilePicture"
 }
 
 /**
@@ -86,7 +88,7 @@ fun Avatar(user: User, modifier: Modifier = Modifier, onClick: (() -> Unit)? = n
           contentScale = ContentScale.Crop,
           failure = placeholder { AvatarFallback(initials) },
           loading = if (isPreview) placeholder(R.drawable.app_logo) else null,
-          modifier = Modifier.fillMaxSize(),
+          modifier = Modifier.fillMaxSize().testTag(AvatarTestTags.PROFILE_PICTURE),
       )
     } else {
       AvatarFallback(initials)
@@ -114,7 +116,7 @@ private fun AvatarFallback(initials: String?) {
 
 @Preview(showBackground = true)
 @Composable
-private fun AvatarPreview() {
+internal fun AvatarPreview() {
   AppTheme {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(8.dp)) {
       Avatar(user = User("u1", name = "Alice", surname = "Keller"))
@@ -126,7 +128,7 @@ private fun AvatarPreview() {
 
 @Preview(showBackground = true)
 @Composable
-private fun AvatarProfilePicturePreview() {
+internal fun AvatarProfilePicturePreview() {
   AppTheme {
     Avatar(
         user =
