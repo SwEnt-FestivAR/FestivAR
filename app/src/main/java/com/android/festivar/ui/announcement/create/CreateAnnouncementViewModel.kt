@@ -227,9 +227,7 @@ class CreateAnnouncementViewModel(
         try {
           withTimeout(saveTimeoutMs) {
             val stored =
-                eventsRepository.getEvent(eventId).announcements.firstOrNull {
-                  it.announcementId == announcement.announcementId
-                }
+                eventsRepository.getEvent(eventId).announcementOrNull(announcement.announcementId)
             if (stored != null && !stored.sameFormAs(announcement)) {
               // The stored author stays: a retry by another user never changes who published it.
               eventsRepository.editAnnouncement(
