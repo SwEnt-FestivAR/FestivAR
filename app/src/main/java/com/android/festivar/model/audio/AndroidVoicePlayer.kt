@@ -107,9 +107,10 @@ class AndroidVoicePlayer(context: Context) : VoicePlayer {
   override fun release() = stop()
 
   /**
-   * Applies [action] to the current player once it has finished loading. Before that there is
-   * nothing to apply: the prepared listener decides from the state. Returns false, and fails the
-   * note, if the player is in a state that refuses the action, with [refusal] as the logged reason.
+   * Applies [action] to the current player once it has finished loading, and returns whether the
+   * state may change. With no player it returns false. While the player is loading there is nothing
+   * to apply, so it returns true: the prepared listener decides from the state. If the ready player
+   * refuses the action, it fails the note with [refusal] as the logged reason and returns false.
    */
   private fun changePlayback(
       audioUrl: String,
@@ -150,7 +151,7 @@ class AndroidVoicePlayer(context: Context) : VoicePlayer {
   private sealed class Current {
     open val player: MediaPlayer? = null
 
-    object None : Current()
+    data object None : Current()
 
     class Loading(override val player: MediaPlayer) : Current()
 
