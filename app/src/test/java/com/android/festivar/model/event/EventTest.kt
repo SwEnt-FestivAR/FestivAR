@@ -9,6 +9,7 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertFalse
+import junit.framework.TestCase.assertNull
 import junit.framework.TestCase.assertTrue
 import org.junit.Assert.assertThrows
 import org.junit.Test
@@ -480,6 +481,25 @@ class EventTest {
     val event = eventWith(announcements = listOf(announcement("a1")))
 
     assertInvalid(announcementNotInEventMessage) { event.removeAnnouncement("unknown") }
+  }
+
+  /** announcementOrNull finds the one with the given id among several. */
+  @Test
+  fun announcementOrNull_returnsTheOneWithTheGivenId() {
+    val event =
+        eventWith(
+            announcements = listOf(announcement("a1"), announcement("a2"), announcement("a3"))
+        )
+
+    assertEquals(announcement("a2"), event.announcementOrNull("a2"))
+  }
+
+  /** announcementOrNull returns null for an id that is not in the event. */
+  @Test
+  fun announcementOrNull_isNull_whenItIsNotInEvent() {
+    val event = eventWith(announcements = listOf(announcement("a1")))
+
+    assertNull(event.announcementOrNull("unknown"))
   }
 
   // **************************************************************************************//
