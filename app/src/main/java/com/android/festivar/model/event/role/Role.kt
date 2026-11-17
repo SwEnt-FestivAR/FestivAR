@@ -15,11 +15,11 @@ import com.android.festivar.model.event.role.Permission.CAN_EDIT_OWN_TASK
 import com.android.festivar.model.event.role.Permission.CAN_EDIT_TASK
 import com.android.festivar.model.event.role.Permission.CAN_KICK_MEMBER
 import com.android.festivar.model.event.role.Permission.CAN_MANAGE_ROLES
+import com.android.festivar.model.event.role.Permission.CAN_MARK_TASK_DONE
 import com.android.festivar.model.event.role.Permission.CAN_SEE_ANNOUNCEMENT
+import com.android.festivar.model.event.role.Permission.CAN_SEE_MEMBERS
 import com.android.festivar.model.event.role.Permission.CAN_SEE_TASK
 import com.android.festivar.model.event.role.Permission.CAN_TAKE_TASK
-import com.android.festivar.model.event.role.Permission.CAN_MARK_TASK_DONE
-import com.android.festivar.model.event.role.Permission.CAN_SEE_MEMBERS
 
 /**
  * The [Role] enum class represents all actual existing roles that are attributed within an

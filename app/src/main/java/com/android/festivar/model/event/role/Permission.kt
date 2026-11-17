@@ -7,6 +7,10 @@ package com.android.festivar.model.event.role
  *
  * A permission containing `_OWN_` only applies to the objects the member owns, while the matching
  * permission without `_OWN_` applies to every object of the event.
+ *
+ * There is no permission such as `CAN_SEE_EVENT` because the permissions and roles are meant to be
+ * for members of the event, so they, by default, have access to the event, and should be able to
+ * see its details, otherwise, there is no point to be member of it.
  */
 enum class Permission {
   /** See members list. */
@@ -15,8 +19,8 @@ enum class Permission {
   CAN_SEE_TASK,
   /** Take the tasks of the event. */
   CAN_TAKE_TASK,
-  /** Mark the tasks of the event as done. */
-  CAN_MARK_TASK_DONE,
+  /** Mark the taken task of the event as done. */
+  CAN_MARK_TAKEN_TASK_DONE,
   /** Edit the tasks the member owns. */
   CAN_EDIT_OWN_TASK,
   /** Delete the tasks the member owns. */
@@ -27,7 +31,7 @@ enum class Permission {
   CAN_DELETE_TASK,
   /** Create a new task in the event. */
   CAN_CREATE_TASK,
-  /** Assign a task to a member whose [Role] the member's [Role] dominates. */
+  /** Assign a task to another member whose [Role] the member's [Role] dominates. */
   CAN_ASSIGN_TASK,
   /** See the announcements of the event. */
   CAN_SEE_ANNOUNCEMENT,
