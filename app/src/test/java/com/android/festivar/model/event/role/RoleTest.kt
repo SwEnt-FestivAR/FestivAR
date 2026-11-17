@@ -15,8 +15,11 @@ import com.android.festivar.model.event.role.Permission.CAN_EDIT_OWN_TASK
 import com.android.festivar.model.event.role.Permission.CAN_EDIT_TASK
 import com.android.festivar.model.event.role.Permission.CAN_KICK_MEMBER
 import com.android.festivar.model.event.role.Permission.CAN_MANAGE_ROLES
+import com.android.festivar.model.event.role.Permission.CAN_MARK_TASK_DONE
 import com.android.festivar.model.event.role.Permission.CAN_SEE_ANNOUNCEMENT
+import com.android.festivar.model.event.role.Permission.CAN_SEE_MEMBERS
 import com.android.festivar.model.event.role.Permission.CAN_SEE_TASK
+import com.android.festivar.model.event.role.Permission.CAN_TAKE_TASK
 import com.android.festivar.model.event.role.Role.ADMIN
 import com.android.festivar.model.event.role.Role.OWNER
 import com.android.festivar.model.event.role.Role.STAFF
@@ -41,8 +44,18 @@ class RoleTest {
   /** The expected permissions of every role, written here as the specification of the roles. */
   private val expectedPermissions: Map<Role, Set<Permission>> = run {
     val visitor = setOf(CAN_SEE_ANNOUNCEMENT)
+    // Seeing the members starts at STAFF on purpose: a visitor cannot see who is in the event.
     val staff =
-        visitor + setOf(CAN_SEE_TASK, CAN_EDIT_OWN_TASK, CAN_DELETE_OWN_TASK, CAN_CREATE_TASK)
+        visitor +
+            setOf(
+                CAN_SEE_TASK,
+                CAN_EDIT_OWN_TASK,
+                CAN_DELETE_OWN_TASK,
+                CAN_CREATE_TASK,
+                CAN_TAKE_TASK,
+                CAN_MARK_TASK_DONE,
+                CAN_SEE_MEMBERS,
+            )
     val teamLead =
         staff +
             setOf(
