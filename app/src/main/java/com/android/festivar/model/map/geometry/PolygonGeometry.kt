@@ -78,17 +78,30 @@ fun isSimplePolygon(polygon: List<LocalPosition>): Boolean {
     val b = polygon[(i + 1) % size]
     val c = polygon[(i + 2) % size]
     if (distanceMeters(a, b) < TOLERANCE_METERS) return false
-    // The next edge starts at b: it must not come back over this one.
-    val foldsBack = (a.x - b.x) * (c.x - b.x) + (a.y - b.y) * (c.y - b.y) > 0
-    val onOneLine =
-        abs(cross(a, b, c)) <= RELATIVE_TOLERANCE * distanceMeters(a, b) * distanceMeters(b, c)
-    if (onOneLine && foldsBack) return false
-    for (j in i + 2 until size) {
-      if (i == 0 && j == size - 1) continue // the last edge shares a corner with the first
-      if (segmentsTouch(a, b, polygon[j], polygon[(j + 1) % size])) return false
-    }
+    if (foldsBack(a, b, c) || touchesALaterEdge(polygon, i)) return false
   }
   return true
+}
+
+/** Whether the edge from [b] to [c] comes back over the edge from [a] to [b] that it follows. */
+private fun foldsBack(a: LocalPosition, b: LocalPosition, c: LocalPosition): Boolean {
+  val turnsBack = (a.x - b.x) * (c.x - b.x) + (a.y - b.y) * (c.y - b.y) > 0
+  val onOneLine =
+      abs(cross(a, b, c)) <= RELATIVE_TOLERANCE * distanceMeters(a, b) * distanceMeters(b, c)
+  return onOneLine && turnsBack
+}
+
+/**
+ * Whether the edge starting at corner [index] of [polygon] touches or crosses an edge that comes
+ * after it and shares no corner with it.
+ */
+private fun touchesALaterEdge(polygon: List<LocalPosition>, index: Int): Boolean {
+  val size = polygon.size
+  val a = polygon[index]
+  val b = polygon[(index + 1) % size]
+  // The edge closing the polygon shares a corner with the first one.
+  val last = if (index == 0) size - 2 else size - 1
+  return (index + 2..last).any { j -> segmentsTouch(a, b, polygon[j], polygon[(j + 1) % size]) }
 }
 
 /**
