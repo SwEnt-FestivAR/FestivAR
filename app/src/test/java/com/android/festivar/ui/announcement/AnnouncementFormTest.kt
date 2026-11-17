@@ -21,7 +21,7 @@ import org.junit.Test
  * [AnnouncementFormState.matches], and of the default setters of [AnnouncementFormEditor] over a
  * plain state, without a ViewModel.
  */
-class AnnouncementFormEditingTest {
+class AnnouncementFormTest {
   private val publishedAt = ZonedDateTime.of(2026, 7, 4, 16, 0, 0, 0, ZoneId.of("Europe/Zurich"))
   private val state = MutableStateFlow(AnnouncementFormState())
   private val editing =
