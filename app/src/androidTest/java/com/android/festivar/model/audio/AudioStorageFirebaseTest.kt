@@ -154,11 +154,12 @@ class AudioStorageFirebaseTest {
 
   /** Breaks if the Storage rules stop letting the task owner replace their own voice note. */
   @Test
-  fun theTaskOwnerCanOverwriteTheirVoiceNote() = runBlocking {
-    val ref = uploadVoiceNote(createOwnedTask())
+  fun theTaskOwnerCanOverwriteTheirVoiceNote() =
+      runBlocking<Unit> {
+        val ref = uploadVoiceNote(createOwnedTask())
 
-    ref.putBytes(ByteArray(4), audioMetadata).await()
-  }
+        ref.putBytes(ByteArray(4), audioMetadata).await()
+      }
 
   /** Breaks if the Storage rules accept a file that is not audio, even from the task owner. */
   @Test
