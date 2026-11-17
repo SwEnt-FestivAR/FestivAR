@@ -90,36 +90,25 @@ data class AnnouncementFormState(
           announcement.priority == priority
 }
 
-/** The setters an announcement form screen needs, shared by the create and edit ViewModels. */
+/**
+ * The setters an announcement form screen needs, shared by the create and edit ViewModels. A
+ * ViewModel implements only [applyEdit]; the setters are written once, here.
+ */
 interface AnnouncementFormEditor {
+  /**
+   * Applies a change of a form field. The implementing ViewModel decides how the change reaches its
+   * state, and when it is ignored.
+   */
+  fun applyEdit(change: (AnnouncementFormState) -> AnnouncementFormState)
+
   /** Sets the title and marks it as edited, so that an empty title is reported. */
-  fun updateTitle(title: String)
+  fun updateTitle(title: String) = applyEdit { it.copy(title = title, titleEdited = true) }
 
   /** Sets the content and marks it as edited, so that an empty content is reported. */
-  fun updateContent(content: String)
-
-  /** Sets the priority. */
-  fun updatePriority(priority: AnnouncementPriority)
-}
-
-/**
- * The one implementation of [AnnouncementFormEditor], over a form it does not own: the owning
- * ViewModel decides how a change reaches its state, and when it is ignored.
- */
-internal class AnnouncementFormEditing : AnnouncementFormEditor {
-  /**
-   * Applies a change of a form field. Set by the owning ViewModel in its init, before any setter
-   * runs.
-   */
-  lateinit var applyEdit: ((AnnouncementFormState) -> AnnouncementFormState) -> Unit
-
-  override fun updateTitle(title: String) = applyEdit { it.copy(title = title, titleEdited = true) }
-
-  override fun updateContent(content: String) = applyEdit {
+  fun updateContent(content: String) = applyEdit {
     it.copy(content = content, contentEdited = true)
   }
 
-  override fun updatePriority(priority: AnnouncementPriority) = applyEdit {
-    it.copy(priority = priority)
-  }
+  /** Sets the priority. */
+  fun updatePriority(priority: AnnouncementPriority) = applyEdit { it.copy(priority = priority) }
 }

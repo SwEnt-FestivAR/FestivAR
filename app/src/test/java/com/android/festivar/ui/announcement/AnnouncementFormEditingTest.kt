@@ -18,14 +18,17 @@ import org.junit.Test
 
 /**
  * Tests of the field rules, trimming, [AnnouncementFormState.toAnnouncement] and
- * [AnnouncementFormState.matches], and of [AnnouncementFormEditing] over a plain state, without a
- * ViewModel.
+ * [AnnouncementFormState.matches], and of the default setters of [AnnouncementFormEditor] over a
+ * plain state, without a ViewModel.
  */
 class AnnouncementFormEditingTest {
   private val publishedAt = ZonedDateTime.of(2026, 7, 4, 16, 0, 0, 0, ZoneId.of("Europe/Zurich"))
   private val state = MutableStateFlow(AnnouncementFormState())
   private val editing =
-      AnnouncementFormEditing().also { it.applyEdit = { change -> state.update(change) } }
+      object : AnnouncementFormEditor {
+        override fun applyEdit(change: (AnnouncementFormState) -> AnnouncementFormState) =
+            state.update(change)
+      }
 
   // Applies one setter and checks that only the expected fields changed.
   private fun assertOnly(
