@@ -12,7 +12,7 @@ import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.event.announcement.AnnouncementPriority
-import com.android.festivar.ui.announcement.create.CreateAnnouncementUiState
+import com.android.festivar.ui.announcement.AnnouncementFormState
 import com.android.festivar.ui.components.FieldError
 import java.time.Clock
 import java.time.Duration
@@ -137,7 +137,7 @@ class EditAnnouncementViewModelTest {
     vm.save()
 
     val state = vm.uiState.value
-    assertEquals(CreateAnnouncementUiState(), state.form)
+    assertEquals(AnnouncementFormState(), state.form)
     assertNull(state.announcement)
     assertFalse(state.hasChanges)
     assertFalse(state.canSave)
