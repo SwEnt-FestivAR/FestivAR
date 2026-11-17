@@ -98,4 +98,73 @@ class SettingsFragmentTest {
             as SettingsFragment
     fragment.onCreatePreferences(null, null)
   }
+
+  @Test
+  fun settingsFragmentSyncsWithAppLocalesOnCreate() {
+    AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("fr"))
+    val activity = Robolectric.buildActivity(MySettingsActivity::class.java).setup().get()
+    val fragment =
+        activity.supportFragmentManager.findFragmentById(R.id.settings_container)
+            as SettingsFragment
+    val preference = fragment.findPreference<DropDownPreference>("language")
+
+    assertEquals("fr", preference?.value)
+
+    // Reset application locales
+    AppCompatDelegate.setApplicationLocales(LocaleListCompat.getEmptyLocaleList())
+  }
+
+  @Test
+  fun applySavedSettingsSyncsSystemLocaleToPreferences() {
+    AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("en"))
+    val activity = Robolectric.buildActivity(MySettingsActivity::class.java).setup().get()
+    PreferenceManager.getDefaultSharedPreferences(activity).edit().clear().commit()
+
+    applySavedSettings(activity)
+
+    val prefs = PreferenceManager.getDefaultSharedPreferences(activity)
+    assertEquals("en", prefs.getString("language", null))
+
+    // Reset application locales
+    AppCompatDelegate.setApplicationLocales(LocaleListCompat.getEmptyLocaleList())
+  }
+
+  @Test
+  fun settingsFragmentDefaultsToSystemWhenLocalesAreEmpty() {
+    AppCompatDelegate.setApplicationLocales(LocaleListCompat.getEmptyLocaleList())
+    val activity = Robolectric.buildActivity(MySettingsActivity::class.java).setup().get()
+    val fragment =
+        activity.supportFragmentManager.findFragmentById(R.id.settings_container)
+            as SettingsFragment
+    val preference = fragment.findPreference<DropDownPreference>("language")
+
+    assertEquals("system", preference?.value)
+  }
+
+  @Test
+  fun settingsFragmentReflectsNonEmptyLocalesOnCreate() {
+    AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("en"))
+    val activity = Robolectric.buildActivity(MySettingsActivity::class.java).setup().get()
+    val fragment =
+        activity.supportFragmentManager.findFragmentById(R.id.settings_container)
+            as SettingsFragment
+    val preference = fragment.findPreference<DropDownPreference>("language")
+
+    assertEquals("en", preference?.value)
+    AppCompatDelegate.setApplicationLocales(LocaleListCompat.getEmptyLocaleList())
+  }
+
+  @Test
+  fun applySavedSettingsWithSystemOrDefaultLanguage() {
+    val activity = Robolectric.buildActivity(MySettingsActivity::class.java).setup().get()
+    PreferenceManager.getDefaultSharedPreferences(activity)
+        .edit()
+        .putString("language", "system")
+        .commit()
+    AppCompatDelegate.setApplicationLocales(LocaleListCompat.getEmptyLocaleList())
+
+    applySavedSettings(activity)
+
+    assertEquals(LocaleListCompat.getEmptyLocaleList(), AppCompatDelegate.getApplicationLocales())
+  }
 }
