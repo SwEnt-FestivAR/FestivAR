@@ -4,10 +4,17 @@ package com.android.festivar.model.event
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
+import com.android.festivar.model.event.role.Role
 import java.time.ZonedDateTime
 
 /** The maximum number of [Announcement] items an [Event] can have. */
 const val MAX_ANNOUNCEMENTS_PER_EVENT = 100
+
+/**
+ * The [Role] given to a user who joins an [Event]. Everyone who joins an [Event] becomes one of its
+ * members, simple visitors included: a visitor is a member with this [Role].
+ */
+val DEFAULT_ROLE = Role.VISITOR
 
 /**
  * Represents an [Event] in the FestivAR application. An [Event] is the core element of the
@@ -45,6 +52,8 @@ const val MAX_ANNOUNCEMENTS_PER_EVENT = 100
  * @property tasks Tasks that are related, that belong to the [Event].
  * @property closed Whether the [Event] is still ongoing or not.
  * @property announcements Announcements shared with the members of the [Event].
+ * @property roles The [Role] of each member of the [Event], by their [User.uid]. Every member has
+ *   an entry.
  */
 data class Event(
     val eventId: String,
@@ -52,6 +61,7 @@ data class Event(
     val title: String,
     val description: String = "",
     val members: List<User> = listOf(User(ownerId)),
+    val roles: Map<String, Role> = emptyMap(),
     val startDate: ZonedDateTime,
     val endDate: ZonedDateTime,
     val location: String = "",
@@ -99,7 +109,7 @@ data class Event(
 
   /**
    * Adds a new [User] to the [Event] by returning a version of `this` with [user] added to the
-   * [members] list.
+   * [members] list, with the [DEFAULT_ROLE] in [roles].
    *
    * @param user The [User] that is going to join `this`, to be added to [members] list.
    * @return The [Event] but with [user] added to it.
@@ -107,12 +117,13 @@ data class Event(
    */
   fun addMember(user: User): Event {
     require(members.none { it.uid == user.uid }) { "This user is already registered in the event." }
-    return copy(members = members + user)
+    return copy(members = members + user, roles = roles + (user.uid to DEFAULT_ROLE))
   }
 
   /**
    * Removes a member [User] from the [Event] by returning a version of `this` with the user removed
-   * from the [members] list. The member is identified by the [userId].
+   * from the [members] list and their [Role] removed from [roles]. The member is identified by the
+   * [userId].
    *
    * @param userId The identifier of the [User] that is going to be removed from `this`, from
    *   [members] list.
@@ -123,7 +134,7 @@ data class Event(
     require(members.any { it.uid == userId }) { "This user is not a member of the event." }
     require(userId != ownerId) { "The event owner cannot be removed." }
 
-    return copy(members = members.filterNot { it.uid == userId })
+    return copy(members = members.filterNot { it.uid == userId }, roles = roles - userId)
   }
 
   /**
