@@ -1,3 +1,5 @@
+<!-- Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com> -->
+
 # AGENTS.md
 
 Durable rules for any AI agent working in this repository. Read this before acting.
@@ -19,6 +21,7 @@ A Kotlin/Android Festival manager app (`com.android.festivar`), built with an **
 
 - The feature works and matches its acceptance criteria (the milestone's tests).
 - **All new code comes with unit tests.**
+- **Every test has a KDoc that starts with "Breaks if"** and says, in one sentence, what break in the production code turns the test red (e.g. `/** Breaks if a paused note restarts from the beginning. */`). Write it before the test body.
 - `./gradlew check` is green (unit tests + lint) and `./gradlew ktfmtCheck` passes (formatting) before you submit.
 - Features covered by instrumented tests (under `androidTest/`, e.g. the Firestore repository) must also pass `./gradlew connectedDebugAndroidTest`, with an Android emulator and the Firebase emulator running.
 
