@@ -19,8 +19,8 @@ import com.android.festivar.model.user.User
  * @param userId The [User.uid] of the member who wants to edit [task].
  * @param task The [Task] to edit.
  * @return `true` if the member can edit [task], `false` otherwise.
- * @throws IllegalArgumentException If [task] is linked to a different event, or if [userId] is
- *   not a member of the event.
+ * @throws IllegalArgumentException If [task] is linked to a different event, or if [userId] is not
+ *   a member of the event.
  */
 fun Event.canEditTask(userId: String, task: Task): Boolean {
   requireTaskOfThisEvent(task)
@@ -35,8 +35,8 @@ fun Event.canEditTask(userId: String, task: Task): Boolean {
  * @param userId The [User.uid] of the member who wants to delete [task].
  * @param task The [Task] to delete.
  * @return `true` if the member can delete [task], `false` otherwise.
- * @throws IllegalArgumentException If [task] is linked to a different event, or if [userId] is
- *   not a member of the event.
+ * @throws IllegalArgumentException If [task] is linked to a different event, or if [userId] is not
+ *   a member of the event.
  */
 fun Event.canDeleteTask(userId: String, task: Task): Boolean {
   requireTaskOfThisEvent(task)
@@ -50,8 +50,8 @@ fun Event.canDeleteTask(userId: String, task: Task): Boolean {
  * @param userId The [User.uid] of the member who wants to mark [task] as done.
  * @param task The [Task] to mark as done.
  * @return `true` if the member can mark [task] as done, `false` otherwise.
- * @throws IllegalArgumentException If [task] is linked to a different event, or if [userId] is
- *   not a member of the event.
+ * @throws IllegalArgumentException If [task] is linked to a different event, or if [userId] is not
+ *   a member of the event.
  */
 fun Event.canMarkTaskDone(userId: String, task: Task): Boolean {
   requireTaskOfThisEvent(task)
@@ -118,10 +118,10 @@ fun Event.canDeleteAnnouncement(userId: String, announcement: Announcement): Boo
 }
 
 /**
- * Tells whether a member can change the [Role] of another member, as decided by
- * [Role.canManageTo]: their [Role] must have [Permission.CAN_MANAGE_ROLES] and strictly dominate
- * both the current [Role] of [userId] and [newRole]. So nobody can change their own [Role], change
- * the [Role] of the owner, or give the [Role.OWNER].
+ * Tells whether a member can change the [Role] of another member, as decided by [Role.canManageTo]:
+ * their [Role] must have [Permission.CAN_MANAGE_ROLES] and strictly dominate both the current
+ * [Role] of [userId] and [newRole]. So nobody can change their own [Role], change the [Role] of the
+ * owner, or give the [Role.OWNER].
  *
  * @param actorId The [User.uid] of the member who wants to change the [Role].
  * @param userId The [User.uid] of the member whose [Role] would change.
@@ -134,9 +134,9 @@ fun Event.canSetRole(actorId: String, userId: String, newRole: Role): Boolean {
 }
 
 /**
- * Tells whether a member can kick another member out of the [Event], as decided by
- * [Role.canKick]: their [Role] must have [Permission.CAN_KICK_MEMBER] and strictly dominate the
- * [Role] of [userId]. So nobody can kick themselves or the owner.
+ * Tells whether a member can kick another member out of the [Event], as decided by [Role.canKick]:
+ * their [Role] must have [Permission.CAN_KICK_MEMBER] and strictly dominate the [Role] of [userId].
+ * So nobody can kick themselves or the owner.
  *
  * @param actorId The [User.uid] of the member who wants to kick.
  * @param userId The [User.uid] of the member who would be kicked.

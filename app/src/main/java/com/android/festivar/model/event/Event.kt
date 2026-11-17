@@ -284,8 +284,8 @@ data class Event(
    *
    * The member [actorId] who kicks must be allowed to, as decided by [canKick]: their [Role] must
    * have [Permission.CAN_KICK_MEMBER] and strictly dominate the [Role] of [userId]. So nobody can
-   * kick themselves or the owner. A member who leaves the event on their own uses
-   * [removeMember] instead.
+   * kick themselves or the owner. A member who leaves the event on their own uses [removeMember]
+   * instead.
    *
    * @param actorId The [User.uid] of the member who kicks.
    * @param userId The [User.uid] of the member who is kicked.
