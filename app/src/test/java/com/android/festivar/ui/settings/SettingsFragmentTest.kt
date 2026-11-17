@@ -8,8 +8,8 @@ import androidx.core.os.LocaleListCompat
 import androidx.preference.DropDownPreference
 import androidx.preference.PreferenceManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.android.festivar.MySettingsActivity
 import com.android.festivar.R
+import com.android.festivar.SettingsActivity
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
@@ -52,7 +52,7 @@ class SettingsFragmentTest {
 
   @Test
   fun changingThemePreferenceAppliesSelectedNightMode() {
-    val activity = Robolectric.buildActivity(MySettingsActivity::class.java).setup().get()
+    val activity = Robolectric.buildActivity(SettingsActivity::class.java).setup().get()
     val fragment =
         activity.supportFragmentManager.findFragmentById(R.id.settings_container)
             as SettingsFragment
@@ -67,7 +67,7 @@ class SettingsFragmentTest {
 
   @Test
   fun changingLanguagePreferenceAppliesSelectedLocale() {
-    val activity = Robolectric.buildActivity(MySettingsActivity::class.java).setup().get()
+    val activity = Robolectric.buildActivity(SettingsActivity::class.java).setup().get()
     val fragment =
         activity.supportFragmentManager.findFragmentById(R.id.settings_container)
             as SettingsFragment
@@ -82,7 +82,7 @@ class SettingsFragmentTest {
 
   @Test
   fun savedPreferencesApplyWithoutOpeningSettings() {
-    val activity = Robolectric.buildActivity(MySettingsActivity::class.java).setup().get()
+    val activity = Robolectric.buildActivity(SettingsActivity::class.java).setup().get()
     PreferenceManager.getDefaultSharedPreferences(activity)
         .edit()
         .putString("theme", "dark")
@@ -97,7 +97,7 @@ class SettingsFragmentTest {
 
   @Test
   fun settingsFragmentWithNullPreferencesInSharedPreferences() {
-    val activity = Robolectric.buildActivity(MySettingsActivity::class.java).setup().get()
+    val activity = Robolectric.buildActivity(SettingsActivity::class.java).setup().get()
     PreferenceManager.getDefaultSharedPreferences(activity).edit().clear().commit()
 
     val fragment =
@@ -109,7 +109,7 @@ class SettingsFragmentTest {
   @Test
   fun settingsFragmentSyncsWithAppLocalesOnCreate() {
     AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("fr"))
-    val activity = Robolectric.buildActivity(MySettingsActivity::class.java).setup().get()
+    val activity = Robolectric.buildActivity(SettingsActivity::class.java).setup().get()
     val fragment =
         activity.supportFragmentManager.findFragmentById(R.id.settings_container)
             as SettingsFragment
@@ -124,7 +124,7 @@ class SettingsFragmentTest {
   @Test
   fun applySavedSettingsSyncsSystemLocaleToPreferences() {
     AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("en"))
-    val activity = Robolectric.buildActivity(MySettingsActivity::class.java).setup().get()
+    val activity = Robolectric.buildActivity(SettingsActivity::class.java).setup().get()
     PreferenceManager.getDefaultSharedPreferences(activity).edit().clear().commit()
 
     applySavedSettings(activity)
@@ -139,7 +139,7 @@ class SettingsFragmentTest {
   @Test
   fun settingsFragmentDefaultsToSystemWhenLocalesAreEmpty() {
     AppCompatDelegate.setApplicationLocales(LocaleListCompat.getEmptyLocaleList())
-    val activity = Robolectric.buildActivity(MySettingsActivity::class.java).setup().get()
+    val activity = Robolectric.buildActivity(SettingsActivity::class.java).setup().get()
     val fragment =
         activity.supportFragmentManager.findFragmentById(R.id.settings_container)
             as SettingsFragment
@@ -151,7 +151,7 @@ class SettingsFragmentTest {
   @Test
   fun settingsFragmentReflectsNonEmptyLocalesOnCreate() {
     AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("en"))
-    val activity = Robolectric.buildActivity(MySettingsActivity::class.java).setup().get()
+    val activity = Robolectric.buildActivity(SettingsActivity::class.java).setup().get()
     val fragment =
         activity.supportFragmentManager.findFragmentById(R.id.settings_container)
             as SettingsFragment
@@ -163,7 +163,7 @@ class SettingsFragmentTest {
 
   @Test
   fun applySavedSettingsWithSystemOrDefaultLanguage() {
-    val activity = Robolectric.buildActivity(MySettingsActivity::class.java).setup().get()
+    val activity = Robolectric.buildActivity(SettingsActivity::class.java).setup().get()
     PreferenceManager.getDefaultSharedPreferences(activity)
         .edit()
         .putString("language", "system")
@@ -177,7 +177,7 @@ class SettingsFragmentTest {
 
   @Test
   fun settingsFragmentWithNullLanguagePreference() {
-    val activity = Robolectric.buildActivity(MySettingsActivity::class.java).setup().get()
+    val activity = Robolectric.buildActivity(SettingsActivity::class.java).setup().get()
     val fragment = NullLanguageSettingsFragment()
     activity.supportFragmentManager
         .beginTransaction()
@@ -188,7 +188,7 @@ class SettingsFragmentTest {
   @Test
   fun applySavedSettingsWithUnsupportedLocale() {
     AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("de"))
-    val activity = Robolectric.buildActivity(MySettingsActivity::class.java).setup().get()
+    val activity = Robolectric.buildActivity(SettingsActivity::class.java).setup().get()
     PreferenceManager.getDefaultSharedPreferences(activity).edit().clear().commit()
 
     applySavedSettings(activity)
@@ -210,7 +210,7 @@ class SettingsFragmentTest {
     every { mockLocale.language } returns (null as String?)
 
     try {
-      val activity = Robolectric.buildActivity(MySettingsActivity::class.java).setup().get()
+      val activity = Robolectric.buildActivity(SettingsActivity::class.java).setup().get()
       val fragment =
           activity.supportFragmentManager.findFragmentById(R.id.settings_container)
               as SettingsFragment
@@ -223,7 +223,7 @@ class SettingsFragmentTest {
 
   @Test
   fun applySavedSettingsWithNullPreferenceString() {
-    val activity = Robolectric.buildActivity(MySettingsActivity::class.java).setup().get()
+    val activity = Robolectric.buildActivity(SettingsActivity::class.java).setup().get()
     val mockPrefs = mockk<SharedPreferences>(relaxed = true)
     every { mockPrefs.getString("theme", "system") } returns "system"
     every { mockPrefs.contains("language") } returns true
@@ -249,7 +249,7 @@ class SettingsFragmentTest {
     every { mockLocale.language } returns (null as String?)
 
     try {
-      applySavedSettings(Robolectric.buildActivity(MySettingsActivity::class.java).setup().get())
+      applySavedSettings(Robolectric.buildActivity(SettingsActivity::class.java).setup().get())
     } finally {
       unmockkStatic(AppCompatDelegate::class)
     }

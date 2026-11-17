@@ -13,7 +13,7 @@ import org.robolectric.Robolectric
 class SettingsActivityTest {
   @Test
   fun settingsActivityUsesSettingsLayoutAndFragment() {
-    val activity = Robolectric.buildActivity(MySettingsActivity::class.java).setup().get()
+    val activity = Robolectric.buildActivity(SettingsActivity::class.java).setup().get()
 
     assertNotNull(activity.findViewById(R.id.settings_container))
     assertTrue(
@@ -24,7 +24,7 @@ class SettingsActivityTest {
 
   @Test
   fun settingsActivityNavigateUpFinishesActivity() {
-    val activity = Robolectric.buildActivity(MySettingsActivity::class.java).setup().get()
+    val activity = Robolectric.buildActivity(SettingsActivity::class.java).setup().get()
 
     assertTrue(activity.onSupportNavigateUp())
     assertTrue(activity.isFinishing)
