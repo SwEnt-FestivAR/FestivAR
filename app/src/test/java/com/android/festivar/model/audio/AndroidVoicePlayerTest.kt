@@ -4,6 +4,7 @@ package com.android.festivar.model.audio
 import android.content.Context
 import android.media.MediaPlayer
 import android.os.Looper
+import android.util.Log
 import androidx.core.net.toUri
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -18,6 +19,7 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.Implementation
 import org.robolectric.annotation.Implements
+import org.robolectric.shadows.ShadowLog
 import org.robolectric.shadows.ShadowMediaPlayer
 import org.robolectric.shadows.ShadowMediaPlayer.State
 import org.robolectric.shadows.util.DataSource
@@ -81,6 +83,9 @@ class AndroidVoicePlayerTest {
   private fun ShadowMediaPlayer.releaseCount() =
       (this as ReleaseCountingShadowMediaPlayer).releaseCount
 
+  private fun lastLoggedError() =
+      ShadowLog.getLogs().last { it.tag == "AndroidVoicePlayer" && it.type == Log.ERROR }.msg
+
   private fun reportError() =
       players
           .single()
@@ -131,7 +136,7 @@ class AndroidVoicePlayerTest {
     assertEquals(State.END, players.single().state)
   }
 
-  /** Breaks if an IOException while loading is not turned into Failed. */
+  /** Breaks if an IOException while loading is not turned into Failed, with a loading reason. */
   @Test
   fun play_failsWhenTheNoteCannotBeLoaded() {
     ShadowMediaPlayer.addException(DataSource.toDataSource(context, first.toUri()), IOException())
@@ -140,6 +145,7 @@ class AndroidVoicePlayerTest {
 
     assertEquals(PlayerState.Failed(first), player.state.value)
     assertEquals(State.END, players.single().state)
+    assertEquals("Cannot load the voice note", lastLoggedError())
   }
 
   /** Breaks if a URL the player cannot use crashes instead of giving Failed. */
@@ -392,7 +398,7 @@ class AndroidVoicePlayerTest {
     assertEquals(State.STARTED, players[1].state)
   }
 
-  /** Breaks if a pause refused by the MediaPlayer leaves the note Playing instead of Failed. */
+  /** Breaks if a refused pause leaves the note Playing, or is logged as another failure. */
   @Test
   fun pause_failsAndFreesThePlayerWhenThePlayerRefusesIt() {
     player.play(first)
@@ -405,9 +411,10 @@ class AndroidVoicePlayerTest {
 
     assertEquals(PlayerState.Failed(first), player.state.value)
     assertEquals(1, players.single().releaseCount())
+    assertEquals("The player refused to pause the voice note", lastLoggedError())
   }
 
-  /** Breaks if a start refused by the MediaPlayer leaves the note Paused instead of Failed. */
+  /** Breaks if a refused start leaves the note Paused, or is logged as another failure. */
   @Test
   fun resume_failsAndFreesThePlayerWhenThePlayerRefusesIt() {
     player.play(first)
@@ -421,6 +428,7 @@ class AndroidVoicePlayerTest {
 
     assertEquals(PlayerState.Failed(first), player.state.value)
     assertEquals(1, players.single().releaseCount())
+    assertEquals("The player refused to resume the voice note", lastLoggedError())
   }
 
   /** Breaks if a player error while paused leaves the state Paused. */
