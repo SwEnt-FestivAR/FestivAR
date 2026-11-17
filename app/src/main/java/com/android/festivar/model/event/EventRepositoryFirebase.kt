@@ -120,7 +120,7 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
           }
           val announcements = readAnnouncements(snapshot)
           val current =
-              announcements.firstOrNull { it.announcementId == announcementId }
+              announcements.announcementOrNull(announcementId)
                   ?: throw IllegalArgumentException("This announcement is not in the event.")
           val updated = current.copy(pinned = pinned)
           transaction.update(
