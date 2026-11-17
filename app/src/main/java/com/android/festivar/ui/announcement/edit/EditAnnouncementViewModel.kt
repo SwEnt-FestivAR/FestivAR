@@ -10,7 +10,6 @@ import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.ui.announcement.ANNOUNCEMENT_SAVE_TIMEOUT_MS
-import com.android.festivar.ui.announcement.AnnouncementFormEditing
 import com.android.festivar.ui.announcement.AnnouncementFormEditor
 import com.android.festivar.ui.announcement.AnnouncementFormState
 import java.time.Clock
@@ -98,33 +97,14 @@ private const val TAG = "EditAnnouncementViewModel"
  * @param saveTimeoutMs How long a save may last before it is reported as failed. A failed save is
  *   followed by a read under the same timeout.
  */
-class EditAnnouncementViewModel
-private constructor(
+class EditAnnouncementViewModel(
     private val eventId: String,
     private val announcementId: String,
     private val currentUserId: () -> String,
     private val dataRepository: DataRepository,
-    private val clock: Clock,
-    private val saveTimeoutMs: Long,
-    private val formEditing: AnnouncementFormEditing,
-) : ViewModel(), AnnouncementFormEditor by formEditing {
-
-  constructor(
-      eventId: String,
-      announcementId: String,
-      currentUserId: () -> String,
-      dataRepository: DataRepository,
-      clock: Clock = Clock.systemDefaultZone(),
-      saveTimeoutMs: Long = ANNOUNCEMENT_SAVE_TIMEOUT_MS,
-  ) : this(
-      eventId,
-      announcementId,
-      currentUserId,
-      dataRepository,
-      clock,
-      saveTimeoutMs,
-      AnnouncementFormEditing(),
-  )
+    private val clock: Clock = Clock.systemDefaultZone(),
+    private val saveTimeoutMs: Long = ANNOUNCEMENT_SAVE_TIMEOUT_MS,
+) : ViewModel(), AnnouncementFormEditor {
 
   private val eventsRepository: EventsRepository = dataRepository.eventsRepository
 
@@ -171,16 +151,18 @@ private constructor(
     }
   }
 
-  // A finished form ignores every change, since the screen leaves on save.
-  private fun edit(change: (AnnouncementFormState) -> AnnouncementFormState) = _uiState.update {
-    if (it.announcement == null || it.isSaved) it else it.copy(form = change(it.form))
-  }
+  /**
+   * Applies a change of a form field, for the setters of [AnnouncementFormEditor]. A form that is
+   * not loaded yet, or already saved, ignores every change, since the screen leaves on save.
+   */
+  override fun applyEdit(change: (AnnouncementFormState) -> AnnouncementFormState) =
+      _uiState.update {
+        if (it.announcement == null || it.isSaved) it else it.copy(form = change(it.form))
+      }
 
   init {
     require(eventId.isNotBlank()) { "eventId must not be blank" }
     require(announcementId.isNotBlank()) { "announcementId must not be blank" }
-    // The form setters come from AnnouncementFormEditing.
-    formEditing.applyEdit = ::edit
   }
 
   /**

@@ -206,8 +206,13 @@ data class Event(
    *   with this id.
    */
   fun announcementOrNull(announcementId: String): Announcement? {
-    return announcements.firstOrNull { it.announcementId == announcementId }
+    return announcements.announcementOrNull(announcementId)
   }
+}
+
+/** [Event.announcementOrNull] on the list alone, also used by EventRepositoryFirebase. */
+internal fun List<Announcement>.announcementOrNull(announcementId: String): Announcement? {
+  return firstOrNull { it.announcementId == announcementId }
 }
 
 /** [Event.addAnnouncement] on the list alone, also used by EventRepositoryFirebase. */
