@@ -4,6 +4,7 @@ package com.android.festivar.ui.profile
 
 import android.content.ContentResolver
 import android.net.Uri
+import android.webkit.MimeTypeMap
 import com.android.festivar.R
 import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.datarepository.DataRepositoryLocal
@@ -15,6 +16,9 @@ import com.android.festivar.model.user.UsersRepositoryLocal
 import com.google.firebase.auth.FirebaseUser
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkStatic
+import io.mockk.unmockkStatic
+import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.RandomAccessFile
 import kotlin.io.path.createTempDirectory
@@ -431,6 +435,33 @@ class ProfileViewModelTest {
     assertEquals(R.string.profile_picture_save_failed, viewModel.uiState.value.errorMsg)
     assertFalse(viewModel.uiState.value.isSaving)
     assertTrue(cacheDir.listFiles().orEmpty().isEmpty())
+  }
+
+  @Test
+  fun updateProfilePictureFromUriRejectsCopiedPictureOver10Mb() = runTest {
+    val resolver = mockk<ContentResolver>()
+    val uri = mockk<Uri>()
+    val cacheDir = createTempDirectory("profile-picker-large-test-").toFile()
+    val bytes = ByteArray(10 * 1024 * 1024 + 1)
+    val mimeTypeMap = mockk<MimeTypeMap>()
+    mockkStatic(MimeTypeMap::class)
+    every { MimeTypeMap.getSingleton() } returns mimeTypeMap
+    every { mimeTypeMap.getExtensionFromMimeType("image/png") } returns "png"
+    every { resolver.getType(uri) } returns "image/png"
+    every { resolver.openInputStream(uri) } returns ByteArrayInputStream(bytes)
+    val viewModel = createViewModel()
+
+    try {
+      advanceUntilIdle()
+      viewModel.updateProfilePicture(uri, resolver, cacheDir)
+      advanceUntilIdle()
+
+      assertEquals(R.string.profile_picture_too_large, viewModel.uiState.value.errorMsg)
+      assertFalse(viewModel.uiState.value.isSaving)
+      assertTrue(cacheDir.listFiles().orEmpty().isEmpty())
+    } finally {
+      unmockkStatic(MimeTypeMap::class)
+    }
   }
 
   @Test
