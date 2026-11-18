@@ -4,6 +4,7 @@ package com.android.festivar.model.datarepository
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
+import com.android.festivar.model.event.canKick
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.user.User
@@ -328,17 +329,21 @@ interface DataRepository {
    * removed from the members, the roles and the assignees of each [Task] of the event, and the
    * event and its tasks are removed from their [User].
    *
-   * This function does not check who kicks: like the other operations, it relies on its caller to
-   * check that the member who kicks is allowed to, with [Event.canKick], and on the Firestore rules
-   * to refuse it otherwise.
+   * Before any write, it checks with [Event.canKick] that [actorId] is allowed to kick [userId]:
+   * their [com.android.festivar.model.event.role.Role] must have the permission to kick and be
+   * strictly above the one of [userId]. The Firestore rules check it again on the server.
    *
    * @param eventId The identifier of the [Event].
+   * @param actorId The [User.uid] of the member who kicks.
    * @param userId The [User.uid] of the member who is kicked.
    * @throws NoSuchElementException If the event or the user does not exist.
-   * @throws IllegalArgumentException If the user is not a member of the event or is its owner.
+   * @throws IllegalArgumentException If [actorId] or [userId] is not a member of the event, or if
+   *   [actorId] is not allowed to kick [userId]. Nothing is written then.
    * @throws DataInconsistencyException If a write failed and could not be fully undone.
    */
-  suspend fun kickMember(eventId: String, userId: String) {
+  suspend fun kickMember(eventId: String, actorId: String, userId: String) {
+    val event = eventsRepository.getEvent(eventId)
+    require(event.canKick(actorId, userId)) { "This member cannot kick this user." }
     quitEvent(eventId, userId)
   }
 

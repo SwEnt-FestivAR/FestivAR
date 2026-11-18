@@ -4,6 +4,7 @@ package com.android.festivar.model.datarepository
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.model.event.role.Role
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
@@ -511,10 +512,10 @@ class DataRepositoryLocalTest {
 
   // ********************************* kickMember ********************************* //
 
-  /** Red if a kick does not clean up like quitEvent, or leaves the role of the kicked member. */
+  /** Breaks if a kick does not clean up like quitEvent, or leaves the role of the kicked member. */
   @Test
   fun kickMember_removesTheMemberAndTheirRoleLikeQuitEvent() = runTest {
-    dataRepository.kickMember("e1", "bob")
+    dataRepository.kickMember("e1", "alice", "bob")
 
     assertEquals(listOf("alice"), memberIds("e1"))
     assertEquals(setOf("alice"), eventsRepository.getEvent("e1").roles.keys)
@@ -522,11 +523,27 @@ class DataRepositoryLocalTest {
     assertUser("bob", listOf("e2"), listOf("t2"))
   }
 
-  /** Breaks if the owner of an event can be kicked out of it. */
+  /** Breaks if the owner of an event can be kicked out of it, even by an admin. */
   @Test
   fun kickMember_theEventOwner_throwsAndChangesNothing() = runTest {
+    // bob owns e1 and alice is its admin, who has the permission to kick.
+    eventsRepository.editEvent("e1", e1WithBobAsOwner)
+
     assertFailsWithoutChanges(IllegalArgumentException::class.java) {
-      dataRepository.kickMember("e1", "alice")
+      dataRepository.kickMember("e1", "alice", "bob")
+    }
+  }
+
+  /** Breaks if a member whose role cannot kick is still able to kick a lower member. */
+  @Test
+  fun kickMember_byAMemberWithoutThePermission_throwsAndChangesNothing() = runTest {
+    // bob is a staff manager, above carla but without the permission to kick.
+    dataRepository.joinEvent("e1", "carla")
+    val event = eventsRepository.getEvent("e1")
+    eventsRepository.editEvent("e1", event.setRole("alice", "bob", Role.STAFF_MANAGER))
+
+    assertFailsWithoutChanges(IllegalArgumentException::class.java) {
+      dataRepository.kickMember("e1", "bob", "carla")
     }
   }
 
