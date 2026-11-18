@@ -17,4 +17,6 @@
     <string name="event_details_announcements">Announcements</string>
     <string name="event_details_more_actions">More event actions</string>
     <string name="event_details_edit_event">Edit event</string>
+    <string name="event_details_change_role_failed">Could not change the role. Please try again.</string>
+    <string name="event_details_kick_failed">Could not kick this member. Please try again.</string>
 </resources>
