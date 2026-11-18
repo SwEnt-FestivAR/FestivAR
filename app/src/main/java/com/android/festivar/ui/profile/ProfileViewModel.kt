@@ -24,6 +24,7 @@ import java.io.FileOutputStream
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -232,6 +233,7 @@ class ProfileViewModel(
 
     _uiState.update { it.copy(isSaving = true, errorMsg = null) }
     viewModelScope.launch {
+      var temporaryFile: File? = null
       try {
         val extension =
             MimeTypeMap.getSingleton().getExtensionFromMimeType(contentResolver.getType(uri))
@@ -260,6 +262,7 @@ class ProfileViewModel(
             it.copy(isSaving = false, errorMsg = R.string.profile_picture_too_large)
           }
         } else {
+          temporaryFile = storedImage.file
           saveProfilePicture(storedImage)
         }
       } catch (e: CancellationException) {
@@ -268,6 +271,14 @@ class ProfileViewModel(
         Log.e(LOG_TAG, "Unable to read selected profile picture", e)
         _uiState.update {
           it.copy(isSaving = false, errorMsg = R.string.profile_picture_save_failed)
+        }
+      } finally {
+        temporaryFile?.let { file ->
+          withContext(NonCancellable + ioDispatcher) {
+            if (file.exists() && !file.delete()) {
+              Log.w(LOG_TAG, "Could not delete temporary profile picture ${file.path}")
+            }
+          }
         }
       }
     }

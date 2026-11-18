@@ -411,6 +411,7 @@ class ProfileViewModelTest {
   fun updateProfilePictureFromUriShowsErrorWhenUriCannotBeRead() = runTest {
     val resolver = mockk<ContentResolver>()
     val uri = mockk<Uri>()
+    val cacheDir = createTempDirectory("profile-picker-test-").toFile()
     every { resolver.getType(uri) } returns null
     every { resolver.openInputStream(uri) } returns null
     val viewModel = createViewModel()
@@ -419,7 +420,7 @@ class ProfileViewModelTest {
     viewModel.updateProfilePicture(
         uri,
         resolver,
-        createTempDirectory("profile-picker-test-").toFile(),
+        cacheDir,
     )
     repeat(100) {
       Thread.sleep(10)
@@ -429,6 +430,7 @@ class ProfileViewModelTest {
 
     assertEquals(R.string.profile_picture_save_failed, viewModel.uiState.value.errorMsg)
     assertFalse(viewModel.uiState.value.isSaving)
+    assertTrue(cacheDir.listFiles().orEmpty().isEmpty())
   }
 
   @Test
