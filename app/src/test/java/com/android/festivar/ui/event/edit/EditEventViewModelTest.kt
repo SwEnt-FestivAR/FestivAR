@@ -359,13 +359,8 @@ class EditEventViewModelTest {
             title = "New task",
             ownerId = "organizer",
         )
-    eventsRepository.editEvent(
-        initialEvent.eventId,
-        initialEvent.copy(
-            members = listOf(User("member-1"), joinedMember),
-            tasks = listOf(addedTask),
-        ),
-    )
+    val changedElsewhere = initialEvent.addMember(joinedMember).copy(tasks = listOf(addedTask))
+    eventsRepository.editEvent(initialEvent.eventId, changedElsewhere)
 
     viewModel.saveChanges()
     advanceUntilIdle()
@@ -373,6 +368,7 @@ class EditEventViewModelTest {
     val saved = eventsRepository.getEvent(initialEvent.eventId)
     assertEquals("Updated festival", saved.title)
     assertEquals(listOf(User("member-1"), joinedMember), saved.members)
+    assertEquals(changedElsewhere.roles, saved.roles)
     assertEquals(listOf(addedTask), saved.tasks)
   }
 

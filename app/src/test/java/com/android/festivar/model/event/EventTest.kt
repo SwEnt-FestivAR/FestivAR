@@ -3,6 +3,8 @@
 package com.android.festivar.model.event
 
 import com.android.festivar.model.event.announcement.Announcement
+import com.android.festivar.model.event.role.Permission
+import com.android.festivar.model.event.role.Role
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import java.time.ZoneId
@@ -38,11 +40,22 @@ class EventTest {
   private val announcementAlreadyInEventMessage = "This announcement is already in the event."
   private val announcementNotInEventMessage = "This announcement is not in the event."
 
+  // Messages of the rules on the roles and of the functions that change them.
+  private val rolesMessage =
+      "Every member must have exactly one role, and only members can have one."
+  private val ownerRoleMessage = "The owner must have the OWNER role."
+  private val onlyOwnerMessage = "Only the owner can have the OWNER role."
+  private val setRoleMessage = "This member cannot give this role to this user."
+  private val kickMessage = "This member cannot kick this user."
+  private val transferMessage = "This member cannot transfer the ownership of the event."
+  private val alreadyOwnerMessage = "This member already owns the event."
+
   private val start = ZonedDateTime.of(2026, 7, 1, 14, 0, 0, 0, ZoneId.of("Europe/Zurich"))
 
   private val alice = User("alice")
   private val bob = User("bob")
   private val outsider = User("outsider")
+  private val carla = User("carla")
 
   /** Builds a valid task of the event "e1" with the given identifier. */
   private fun task(taskId: String): Task =
@@ -249,7 +262,10 @@ class EventTest {
 
     val result = event.addMember(bob)
 
-    assertEquals(event.copy(members = listOf(alice, bob)), result)
+    assertEquals(
+        event.copy(members = listOf(alice, bob), roles = event.roles + (bob.uid to DEFAULT_ROLE)),
+        result,
+    )
     assertEquals(listOf(alice), event.members)
   }
 
@@ -268,7 +284,7 @@ class EventTest {
 
     val result = event.removeMember(alice.uid)
 
-    assertEquals(event.copy(members = listOf(bob)), result)
+    assertEquals(event.copy(members = listOf(bob), roles = event.roles - alice.uid), result)
     assertEquals(listOf(alice, bob), event.members)
   }
 
@@ -314,7 +330,7 @@ class EventTest {
 
     val result = event.removeMember("u1")
 
-    assertEquals(event.copy(members = listOf(alice, bob)), result)
+    assertEquals(event.copy(members = listOf(alice, bob), roles = event.roles - "u1"), result)
     assertEquals(listOf(alice, sara, bob), event.members)
   }
 
@@ -543,5 +559,182 @@ class EventTest {
 
     assertTrue(event.isPast(endInLondon))
     assertFalse(event.isPast(endInLondon.minusNanos(1)))
+  }
+
+  // **************************************************************************************//
+  // roles
+  // **************************************************************************************//
+
+  /** An event owned by alice, with the other members of [roles] and their given [Role]s. */
+  private fun eventWithRoles(vararg roles: Pair<User, Role>): Event =
+      eventWith(members = listOf(alice) + roles.map { it.first })
+          .copy(
+              roles = mapOf(alice.uid to Role.OWNER) + roles.associate { it.first.uid to it.second }
+          )
+
+  /** Red if the default roles stop giving OWNER to the owner and the default role to the others. */
+  @Test
+  fun init_givesTheOwnerRoleToTheOwnerAndTheDefaultRoleToTheOthers_byDefault() {
+    val event = eventWith(members = listOf(alice, bob))
+
+    assertEquals(mapOf(alice.uid to Role.OWNER, bob.uid to DEFAULT_ROLE), event.roles)
+    assertEquals(Role.VISITOR, DEFAULT_ROLE)
+  }
+
+  /** A member without a role and a role for a user who is not a member are both refused. */
+  @Test
+  fun init_fails_whenTheRolesAreNotExactlyTheMembers() {
+    val event = eventWith(members = listOf(alice, bob))
+
+    assertInvalid(rolesMessage) { event.copy(roles = mapOf(alice.uid to Role.OWNER)) }
+    assertInvalid(rolesMessage) { event.copy(roles = event.roles + (outsider.uid to Role.STAFF)) }
+  }
+
+  /** Breaks if the owner can have another role than OWNER, even by changing the owner alone. */
+  @Test
+  fun init_fails_whenTheOwnerHasNotTheOwnerRole() {
+    val event = eventWith(members = listOf(alice, bob))
+
+    assertInvalid(ownerRoleMessage) {
+      event.copy(roles = mapOf(alice.uid to Role.ADMIN, bob.uid to DEFAULT_ROLE))
+    }
+    assertInvalid(ownerRoleMessage) { event.copy(ownerId = bob.uid) }
+  }
+
+  /** Breaks if a second member can have the OWNER role. */
+  @Test
+  fun init_fails_whenAnotherMemberHasTheOwnerRole() {
+    assertInvalid(onlyOwnerMessage) { eventWithRoles(bob to Role.OWNER) }
+  }
+
+  /** roleOf finds the role of each member, the owner included. */
+  @Test
+  fun roleOf_returnsTheRoleOfEachMember() {
+    val event = eventWithRoles(bob to Role.STAFF, carla to Role.ADMIN)
+
+    assertEquals(Role.OWNER, event.roleOf(alice.uid))
+    assertEquals(Role.STAFF, event.roleOf(bob.uid))
+    assertEquals(Role.ADMIN, event.roleOf(carla.uid))
+  }
+
+  /** roleOf and canAct refuse a user who is not a member. */
+  @Test
+  fun roleOfAndCanAct_fail_forANonMember() {
+    val event = eventWithRoles(bob to Role.STAFF)
+
+    assertInvalid(notMemberMessage) { event.roleOf(outsider.uid) }
+    assertInvalid(notMemberMessage) { event.canAct(outsider.uid, Permission.CAN_SEE_TASK) }
+  }
+
+  /** canAct follows the permissions of the role of the member. */
+  @Test
+  fun canAct_followsThePermissionsOfTheRole() {
+    val event = eventWithRoles(bob to Role.STAFF)
+
+    assertTrue(event.canAct(bob.uid, Permission.CAN_SEE_TASK))
+    assertFalse(event.canAct(bob.uid, Permission.CAN_CREATE_TASK))
+    assertTrue(event.canAct(alice.uid, Permission.CAN_DELETE_EVENT))
+  }
+
+  /** setRole changes only the role of the given member and does not change the original. */
+  @Test
+  fun setRole_changesOnlyTheRoleOfTheMember() {
+    val event = eventWithRoles(bob to Role.VISITOR, carla to Role.STAFF)
+
+    val result = event.setRole(alice.uid, bob.uid, Role.TEAM_LEAD)
+
+    assertEquals(event.copy(roles = event.roles + (bob.uid to Role.TEAM_LEAD)), result)
+    assertEquals(Role.VISITOR, event.roleOf(bob.uid))
+  }
+
+  /**
+   * setRole refuses a member without the permission, a role or a member they do not dominate, a
+   * change of their own role, of the owner's role and the OWNER role.
+   */
+  @Test
+  fun setRole_fails_whenTheMemberIsNotAllowed() {
+    val event =
+        eventWithRoles(bob to Role.STAFF_MANAGER, carla to Role.VISITOR, outsider to Role.ADMIN)
+
+    // carla, a visitor, has no right to manage the roles.
+    assertInvalid(setRoleMessage) { event.setRole(carla.uid, bob.uid, Role.VISITOR) }
+    // bob does not dominate the new role, nor the current role of an admin.
+    assertInvalid(setRoleMessage) { event.setRole(bob.uid, carla.uid, Role.STAFF_MANAGER) }
+    assertInvalid(setRoleMessage) { event.setRole(bob.uid, outsider.uid, Role.VISITOR) }
+    // Nobody changes their own role, the role of the owner or gives the OWNER role.
+    assertInvalid(setRoleMessage) { event.setRole(bob.uid, bob.uid, Role.STAFF) }
+    assertInvalid(setRoleMessage) { event.setRole(outsider.uid, alice.uid, Role.VISITOR) }
+    assertInvalid(setRoleMessage) { event.setRole(alice.uid, carla.uid, Role.OWNER) }
+  }
+
+  /** setRole refuses an actor or a member who is not a member of the event. */
+  @Test
+  fun setRole_fails_forANonMember() {
+    val event = eventWithRoles(bob to Role.STAFF)
+
+    assertInvalid(notMemberMessage) { event.setRole(outsider.uid, bob.uid, Role.VISITOR) }
+    assertInvalid(notMemberMessage) { event.setRole(alice.uid, outsider.uid, Role.VISITOR) }
+  }
+
+  /** kickMember removes the member and their role, like removeMember. */
+  @Test
+  fun kickMember_removesTheMemberAndTheirRole() {
+    val event = eventWithRoles(bob to Role.ADMIN, carla to Role.STAFF)
+
+    assertEquals(event.removeMember(carla.uid), event.kickMember(bob.uid, carla.uid))
+    assertEquals(event.removeMember(bob.uid), event.kickMember(alice.uid, bob.uid))
+  }
+
+  /**
+   * kickMember refuses a member without the permission, a member they do not strictly dominate,
+   * themselves and the owner.
+   */
+  @Test
+  fun kickMember_fails_whenTheMemberIsNotAllowed() {
+    val dave = User("dave")
+    val event =
+        eventWithRoles(
+            bob to Role.ADMIN,
+            carla to Role.STAFF_MANAGER,
+            outsider to Role.ADMIN,
+            dave to Role.VISITOR,
+        )
+
+    // carla dominates dave, but can only manage the roles, not kick.
+    assertInvalid(kickMessage) { event.kickMember(carla.uid, dave.uid) }
+    assertInvalid(kickMessage) { event.kickMember(bob.uid, outsider.uid) }
+    assertInvalid(kickMessage) { event.kickMember(bob.uid, bob.uid) }
+    assertInvalid(kickMessage) { event.kickMember(bob.uid, alice.uid) }
+  }
+
+  /** transferOwnership makes the new owner OWNER and the previous one ADMIN, and nothing else. */
+  @Test
+  fun transferOwnership_swapsTheOwnerAndMakesThePreviousOneAdmin() {
+    val event = eventWithRoles(bob to Role.STAFF, carla to Role.VISITOR)
+
+    val result = event.transferOwnership(alice.uid, bob.uid)
+
+    assertEquals(
+        event.copy(
+            ownerId = bob.uid,
+            roles =
+                mapOf(alice.uid to Role.ADMIN, bob.uid to Role.OWNER, carla.uid to Role.VISITOR),
+        ),
+        result,
+    )
+  }
+
+  /**
+   * transferOwnership refuses anyone but the owner, a transfer to the owner themselves and a new
+   * owner who is not a member.
+   */
+  @Test
+  fun transferOwnership_fails_whenNotAllowed() {
+    val event = eventWithRoles(bob to Role.ADMIN)
+
+    assertInvalid(transferMessage) { event.transferOwnership(bob.uid, bob.uid) }
+    assertInvalid(alreadyOwnerMessage) { event.transferOwnership(alice.uid, alice.uid) }
+    assertInvalid(notMemberMessage) { event.transferOwnership(alice.uid, outsider.uid) }
+    assertInvalid(notMemberMessage) { event.transferOwnership(outsider.uid, bob.uid) }
   }
 }

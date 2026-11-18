@@ -81,6 +81,9 @@ class DataRepositoryLocalTest {
           endDate = start.plusHours(4),
       )
 
+  /** `e1` once its ownership went to bob, so that alice can quit it. */
+  private val e1WithBobAsOwner = e1.transferOwnership(alice.uid, bob.uid)
+
   /** A task of `e1` that is not stored yet, owned by bob and assigned to alice. */
   private val t3 =
       Task(
@@ -306,7 +309,7 @@ class DataRepositoryLocalTest {
   @Test
   fun deleteTask_ownerNoLongerListingIt_deletesItAnyway() = runTest {
     // alice, the owner of t1, loses it from her tasks when she quits e1.
-    eventsRepository.editEvent("e1", e1.copy(ownerId = bob.uid))
+    eventsRepository.editEvent("e1", e1WithBobAsOwner)
     dataRepository.quitEvent("e1", "alice")
 
     dataRepository.deleteTask("t1")
@@ -359,7 +362,7 @@ class DataRepositoryLocalTest {
   @Test
   fun createEvent_unknownMember_throwsAndChangesNothing() = runTest {
     assertFailsWithoutChanges(NoSuchElementException::class.java) {
-      dataRepository.createEvent(e3.copy(members = listOf(alice, User("unknown"))))
+      dataRepository.createEvent(e3.removeMember(carla.uid).addMember(User("unknown")))
     }
   }
 
@@ -463,7 +466,7 @@ class DataRepositoryLocalTest {
 
   @Test
   fun quitEvent_byATaskOwner_keepsTheOwnerButRemovesTheTaskFromTheirTasks() = runTest {
-    eventsRepository.editEvent("e1", e1.copy(ownerId = bob.uid))
+    eventsRepository.editEvent("e1", e1WithBobAsOwner)
     dataRepository.quitEvent("e1", "alice")
 
     assertEquals(listOf("bob"), memberIds("e1"))
@@ -504,6 +507,27 @@ class DataRepositoryLocalTest {
   fun quitEvent_failingWrite_isUndone() = runTest {
     assertRollsBack("bob") { quitEvent("e1", "bob") }
     assertRollsBackWhenTaskEditFails { quitEvent("e1", "bob") }
+  }
+
+  // ********************************* kickMember ********************************* //
+
+  /** Red if a kick does not clean up like quitEvent, or leaves the role of the kicked member. */
+  @Test
+  fun kickMember_removesTheMemberAndTheirRoleLikeQuitEvent() = runTest {
+    dataRepository.kickMember("e1", "bob")
+
+    assertEquals(listOf("alice"), memberIds("e1"))
+    assertEquals(setOf("alice"), eventsRepository.getEvent("e1").roles.keys)
+    assertAssignees("t1", emptyList())
+    assertUser("bob", listOf("e2"), listOf("t2"))
+  }
+
+  /** Breaks if the owner of an event can be kicked out of it. */
+  @Test
+  fun kickMember_theEventOwner_throwsAndChangesNothing() = runTest {
+    assertFailsWithoutChanges(IllegalArgumentException::class.java) {
+      dataRepository.kickMember("e1", "alice")
+    }
   }
 
   // ********************************* joinTask ********************************* //

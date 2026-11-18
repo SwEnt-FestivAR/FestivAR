@@ -55,8 +55,8 @@ val DEFAULT_ROLE = Role.VISITOR
  * @property tasks Tasks that are related, that belong to the [Event].
  * @property closed Whether the [Event] is still ongoing or not.
  * @property announcements Announcements shared with the members of the [Event].
- * @property roles The [Role] of each member of the [Event], by their [User.uid]. By default, only
- *   the owner, with the [Role.OWNER].
+ * @property roles The [Role] of each member of the [Event], by their [User.uid]. By default, the
+ *   owner has the [Role.OWNER] and every other member of [members] has the [DEFAULT_ROLE].
  */
 data class Event(
     val eventId: String,
@@ -64,7 +64,9 @@ data class Event(
     val title: String,
     val description: String = "",
     val members: List<User> = listOf(User(ownerId)),
-    val roles: Map<String, Role> = mapOf(ownerId to Role.OWNER),
+    val roles: Map<String, Role> = members.associate {
+      it.uid to if (it.uid == ownerId) Role.OWNER else DEFAULT_ROLE
+    },
     val startDate: ZonedDateTime,
     val endDate: ZonedDateTime,
     val location: String = "",

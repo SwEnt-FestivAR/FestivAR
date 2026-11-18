@@ -8,6 +8,7 @@ import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.model.event.role.Role
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryLocal
@@ -348,8 +349,7 @@ class JoinEventViewModelTest {
 
   @Test
   fun aMemberMissingTheEventOnTheUserSideOpensItAndOnlyTheUserSideIsRepaired() {
-    val withAda =
-        CountingEvents(EventsRepositoryLocal(listOf(fete.copy(members = listOf(sami, ada)))))
+    val withAda = CountingEvents(EventsRepositoryLocal(listOf(fete.addMember(ada))))
     val viewModel = viewModel(userId = ada.uid, eventsRepository = withAda)
     viewModel.setCode("FETE20")
     assertTrue(viewModel.uiState.value.matches.single().isMember)
@@ -637,6 +637,7 @@ class JoinEventViewModelTest {
             ownerId = "other-owner",
             title = "Fete bis",
             members = listOf(User("other-owner")),
+            roles = mapOf("other-owner" to Role.OWNER),
         )
     val colliding = EventsRepositoryLocal(listOf(fete, bis, noel))
     val viewModel = viewModel(eventsRepository = colliding)
