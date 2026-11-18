@@ -200,8 +200,8 @@ interface VoicePlayer {
 
   /**
    * Moves the note to [position], clamped between the start and the end of the note, whether it is
-   * playing or paused; the state does not change. Does nothing while the note is loading or when
-   * nothing is playing.
+   * playing or paused; the state does not change. Does nothing while the note is loading, when
+   * nothing is playing, or when the length of the note is unknown.
    */
   fun seekTo(position: Duration)
 
