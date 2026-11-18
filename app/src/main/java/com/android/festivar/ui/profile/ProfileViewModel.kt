@@ -1,12 +1,11 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored by Copilot
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.festivar.ui.profile
 
-import android.content.Context
 import android.util.Log
 import androidx.annotation.StringRes
-import androidx.credentials.CredentialManager
-import androidx.credentials.GetCredentialRequest
+import androidx.credentials.Credential
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
@@ -14,7 +13,6 @@ import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
-import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -276,19 +274,28 @@ class ProfileViewModel(
     upgradeAccount("email") { authRepository.signUpWithEmailAndPassword(email, password) }
   }
 
-  fun upgradeWithGoogle(context: Context, credentialManager: CredentialManager) {
+  fun startGoogleUpgrade(): Boolean {
     val state = _uiState.value
-    if (state.isUpgrading || !state.isUserAnonymous) return
-
+    if (state.isUpgrading || !state.isUserAnonymous) return false
     _uiState.update { it.copy(isUpgrading = true, errorMsg = null) }
-    upgradeAccount("Google") {
-      val signInWithGoogleOption =
-          GetSignInWithGoogleOption.Builder(context.getString(R.string.default_web_client_id))
-              .build()
-      val request =
-          GetCredentialRequest.Builder().addCredentialOption(signInWithGoogleOption).build()
-      val credential = credentialManager.getCredential(context, request).credential
-      authRepository.signInWithGoogle(credential)
+    return true
+  }
+
+  fun upgradeWithGoogle(credential: Credential) {
+    val state = _uiState.value
+    if (!state.isUserAnonymous) {
+      _uiState.update { it.copy(isUpgrading = false) }
+      return
+    }
+    upgradeAccount("Google") { authRepository.signInWithGoogle(credential) }
+  }
+
+  fun handleGoogleUpgradeError(e: Exception? = null) {
+    if (e != null) {
+      Log.e(LOG_TAG, "Error upgrading account with Google", e)
+    }
+    _uiState.update {
+      it.copy(isUpgrading = false, errorMsg = R.string.profile_anon_upgrade_failed)
     }
   }
 

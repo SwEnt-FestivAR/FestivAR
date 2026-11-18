@@ -1,5 +1,6 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored by Copilot
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.festivar.ui.profile
 
 import androidx.compose.foundation.layout.Box
@@ -35,6 +36,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,6 +45,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
 import com.android.festivar.R
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.Avatar
@@ -50,6 +53,9 @@ import com.android.festivar.ui.components.FestivarConfirmDialog
 import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.components.NoticeSnackbar
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 
 /** Tags that the UI tests use to find the elements of the profile screen. */
 object ProfileScreenTestTags {
@@ -101,6 +107,8 @@ fun ProfileScreen(
 
   val profileUIState by profileViewModel.uiState.collectAsState()
   val context = LocalContext.current
+  val coroutineScope = rememberCoroutineScope()
+  val webClientId = stringResource(R.string.default_web_client_id)
   val snackbarHostState = remember { SnackbarHostState() }
   // SheetState is Compose UI state, so it stays local; visibility belongs in ProfileUIState.
   val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -177,7 +185,26 @@ fun ProfileScreen(
           onPasswordChange = profileViewModel::updatePassword,
           onLoginClick = profileViewModel::upgradeWithEmail,
           onTogglePasswordVisibility = profileViewModel::togglePasswordVisibility,
-          onGoogleUpgrade = { profileViewModel.upgradeWithGoogle(context, credentialManager) },
+          onGoogleUpgrade = {
+            coroutineScope.launch {
+              if (profileViewModel.startGoogleUpgrade()) {
+                try {
+                  val signInWithGoogleOption =
+                      GetSignInWithGoogleOption.Builder(webClientId).build()
+                  val request =
+                      GetCredentialRequest.Builder()
+                          .addCredentialOption(signInWithGoogleOption)
+                          .build()
+                  val result = credentialManager.getCredential(context, request)
+                  profileViewModel.upgradeWithGoogle(result.credential)
+                } catch (e: CancellationException) {
+                  throw e
+                } catch (e: Exception) {
+                  profileViewModel.handleGoogleUpgradeError(e)
+                }
+              }
+            }
+          },
           snackbarHostState = snackbarHostState,
       )
     }

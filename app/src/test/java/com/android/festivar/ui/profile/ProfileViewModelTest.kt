@@ -1,7 +1,9 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored by Copilot
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.festivar.ui.profile
 
+import androidx.credentials.Credential
 import com.android.festivar.R
 import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.datarepository.DataRepositoryLocal
@@ -791,5 +793,36 @@ class ProfileViewModelTest {
     assertFalse(state.showUpgradeSheet)
     assertFalse(state.isUserAnonymous)
     assertEquals(R.string.profile_load_failed, state.errorMsg)
+  }
+
+  /** Breaks if upgradeWithGoogle does not sign in with Google and update user state on success. */
+  @Test
+  fun upgradeWithGoogleSuccessUpdatesState() = runTest {
+    val firebaseUser = mockk<FirebaseUser> { every { isAnonymous } returns false }
+    val authRepo =
+        object : FakeAuthRepository() {
+          private var user: FirebaseUser? = mockk { every { isAnonymous } returns true }
+          override val currentUser: FirebaseUser?
+            get() = user
+
+          override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> {
+            user = firebaseUser
+            return Result.success(firebaseUser)
+          }
+        }
+    val credential = mockk<Credential>()
+    val viewModel =
+        createViewModel(
+            repository = RecordingUsersRepository(listOf(sara)),
+            authRepository = authRepo,
+        )
+    advanceUntilIdle()
+
+    viewModel.upgradeWithGoogle(credential)
+    advanceUntilIdle()
+
+    assertNull(viewModel.uiState.value.errorMsg)
+    assertFalse(viewModel.uiState.value.isUpgrading)
+    assertFalse(viewModel.uiState.value.isUserAnonymous)
   }
 }

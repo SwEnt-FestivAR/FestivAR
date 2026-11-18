@@ -1,4 +1,5 @@
 // Co-authored by Copilot
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.festivar.ui.profile
 
 import androidx.compose.foundation.background
