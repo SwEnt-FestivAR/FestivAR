@@ -5,8 +5,6 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.navigation.task
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraphBuilder
@@ -17,6 +15,7 @@ import androidx.navigation.navArgument
 import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.user.User
 import com.android.festivar.navigation.AppScreens
+import com.android.festivar.navigation.RequireSignedIn
 import com.android.festivar.navigation.TaskOrigin
 import com.android.festivar.ui.task.create.CreateTaskScreen
 import com.android.festivar.ui.task.create.CreateTaskViewModel
@@ -48,26 +47,23 @@ fun NavGraphBuilder.taskGraph(
       arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
   ) { backStackEntry ->
     val navigator = TaskOverviewNavigator(navController)
-    val firebaseUser = dataRepository.authRepository.currentUser
-    if (firebaseUser == null) {
-      // Nobody is signed in, so there is nobody whose tasks to mark as mine
-      LaunchedEffect(Unit) { navigator.onSignedOut() }
-      return@composable
+    RequireSignedIn(navController, dataRepository) { firebaseUser ->
+      // Checked once signed in, so a signed-out user on a blank route still reaches the login
+      val eventId =
+          requireNotNull(backStackEntry.arguments?.getString("eventId")) {
+            "eventId argument is required"
+          }
+      require(eventId.isNotBlank()) { "eventId must not be blank" }
+      TaskOverviewScreen(
+          viewModel =
+              viewModel(key = "$eventId:${firebaseUser.uid}") {
+                TaskOverviewViewModel(eventId, firebaseUser.uid, dataRepository)
+              },
+          onBack = navigator.onBack,
+          onOpenTask = navigator.onOpenTask,
+          onAddTask = { navigator.onAddTask(eventId) },
+      )
     }
-    val eventId =
-        requireNotNull(backStackEntry.arguments?.getString("eventId")) {
-          "eventId argument is required"
-        }
-    require(eventId.isNotBlank()) { "eventId must not be blank" }
-    TaskOverviewScreen(
-        viewModel =
-            viewModel(key = "$eventId:${firebaseUser.uid}") {
-              TaskOverviewViewModel(eventId, firebaseUser.uid, dataRepository)
-            },
-        onBack = navigator.onBack,
-        onOpenTask = navigator.onOpenTask,
-        onAddTask = { navigator.onAddTask(eventId) },
-    )
   }
   // The route carries the id of the event the new task belongs to.
   composable(
@@ -78,17 +74,18 @@ fun NavGraphBuilder.taskGraph(
         requireNotNull(backStackEntry.arguments?.getString("eventId")) {
           "eventId argument is required"
         }
-    // Asked at each tap on "Create task". Blank when nobody is signed in: the view model then
-    // refuses to save (redirect left to #261).
-    val currentUserId: () -> String = { dataRepository.authRepository.currentUser?.uid.orEmpty() }
     // Leaving the screen, whether the task was created or not, goes back to the task overview.
     val leave: () -> Unit = { navController.popBackStack() }
-    // No key needed: the view model is scoped to this back stack entry, which has its own eventId.
-    CreateTaskScreen(
-        viewModel = viewModel { CreateTaskViewModel(eventId, currentUserId, dataRepository) },
-        onBack = leave,
-        onTaskCreated = leave,
-    )
+    RequireSignedIn(navController, dataRepository) { firebaseUser ->
+      // No key needed: the view model is scoped to this back stack entry, which has its own
+      // eventId.
+      CreateTaskScreen(
+          viewModel =
+              viewModel { CreateTaskViewModel(eventId, { firebaseUser.uid }, dataRepository) },
+          onBack = leave,
+          onTaskCreated = leave,
+      )
+    }
   }
   composable(
       route = "${AppScreens.TaskDetails.name}/{taskId}?from={from}",
@@ -103,88 +100,62 @@ fun NavGraphBuilder.taskGraph(
           ),
   ) { backStackEntry ->
     val taskId = backStackEntry.arguments?.getString("taskId") ?: ""
-    val firebaseUser = dataRepository.authRepository.currentUser
     val navigator = TaskDetailsNavigator(navController)
-
-    if (firebaseUser == null) {
-      RedirectToLogin(navController)
-      return@composable
+    RequireSignedIn(navController, dataRepository) { firebaseUser ->
+      val currentUser =
+          remember(firebaseUser) {
+            User(
+                uid = firebaseUser.uid,
+                name = firebaseUser.displayName.orEmpty(),
+                email = firebaseUser.email.orEmpty(),
+            )
+          }
+      TaskDetailsScreen(
+          viewModel =
+              viewModel(key = "$taskId:${currentUser.uid}") {
+                TaskDetailsViewModel(taskId, currentUser, dataRepository, voiceNoteServices())
+              },
+          onBack = navigator.onBack,
+          onEdit = navigator.onEdit,
+          onTaskDeleted = navigator.onTaskDeleted,
+      )
     }
-
-    val currentUser =
-        remember(firebaseUser) {
-          User(
-              uid = firebaseUser.uid,
-              name = firebaseUser.displayName.orEmpty(),
-              email = firebaseUser.email.orEmpty(),
-          )
-        }
-
-    TaskDetailsScreen(
-        viewModel =
-            viewModel(key = "$taskId:${currentUser.uid}") {
-              TaskDetailsViewModel(taskId, currentUser, dataRepository, voiceNoteServices())
-            },
-        onBack = navigator.onBack,
-        onEdit = navigator.onEdit,
-        onTaskDeleted = navigator.onTaskDeleted,
-    )
   }
   // Reached through AppScreens.editTask(taskId), from the details of a task its owner opened.
   composable(
       route = "${AppScreens.EditTask.name}/{taskId}",
       arguments = listOf(navArgument("taskId") { type = NavType.StringType }),
   ) { backStackEntry ->
-    if (dataRepository.authRepository.currentUser == null) {
-      RedirectToLogin(navController)
-      return@composable
-    }
-    val taskId =
-        requireNotNull(backStackEntry.arguments?.getString("taskId")) {
-          "taskId argument is required"
-        }
-    require(taskId.isNotBlank()) { "taskId must not be blank" }
-    // Read at load, and again at save, so a sign out in between refuses the save.
-    val currentUserId: () -> String = { dataRepository.authRepository.currentUser?.uid.orEmpty() }
     // Leaving the screen, whether the edit was saved or not, goes back to the task details.
     val leave: () -> Unit = { navController.popBackStack() }
-    // No key needed: the view model is scoped to this back stack entry, which has its own taskId.
-    EditTaskScreen(
-        viewModel = viewModel { EditTaskViewModel(taskId, currentUserId, dataRepository) },
-        onBack = leave,
-        onSaved = leave,
-    )
+    RequireSignedIn(navController, dataRepository) { firebaseUser ->
+      // Checked once signed in, so a signed-out user on a blank route still reaches the login
+      val taskId =
+          requireNotNull(backStackEntry.arguments?.getString("taskId")) {
+            "taskId argument is required"
+          }
+      require(taskId.isNotBlank()) { "taskId must not be blank" }
+      // No key needed: the view model is scoped to this back stack entry, which has its own taskId.
+      EditTaskScreen(
+          viewModel = viewModel { EditTaskViewModel(taskId, { firebaseUser.uid }, dataRepository) },
+          onBack = leave,
+          onSaved = leave,
+      )
+    }
   }
 
   // Every task the signed-in user has taken, across their events. Its tab on the bottom bar opens
   // it.
   composable(AppScreens.MyTasks.name) {
     val navigator = MyTasksNavigator(navController)
-    val firebaseUser = dataRepository.authRepository.currentUser
-    if (firebaseUser == null) {
-      // Nobody is signed in, so there is nobody whose tasks to show
-      LaunchedEffect(Unit) { navigator.onSignedOut() }
-      return@composable
-    }
-    MyTasksScreen(
-        viewModel =
-            viewModel(key = firebaseUser.uid) {
-              MyTasksViewModel(firebaseUser.uid, dataRepository)
-            },
-        onOpenTask = navigator.onOpenTask,
-    )
-  }
-}
-
-/**
- * Opens the login and clears the back stack, so back cannot return to a task screen that needs a
- * signed-in user. The caller returns right after, drawing nothing else.
- */
-@Composable
-private fun RedirectToLogin(navController: NavHostController) {
-  LaunchedEffect(Unit) {
-    navController.navigate(AppScreens.Login.name) {
-      popUpTo(navController.graph.id) { inclusive = true }
+    RequireSignedIn(navController, dataRepository) { firebaseUser ->
+      MyTasksScreen(
+          viewModel =
+              viewModel(key = firebaseUser.uid) {
+                MyTasksViewModel(firebaseUser.uid, dataRepository)
+              },
+          onOpenTask = navigator.onOpenTask,
+      )
     }
   }
 }
