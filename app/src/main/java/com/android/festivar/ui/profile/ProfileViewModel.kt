@@ -15,6 +15,7 @@ import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
+import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -299,8 +300,15 @@ class ProfileViewModel(
       try {
         operation()
             .fold(
-                onSuccess = {
-                  _uiState.update { it.copy(isUpgrading = false, showUpgradeSheet = false) }
+                onSuccess = { upgradedUser ->
+                  val isAnonymous = (upgradedUser as? FirebaseUser)?.isAnonymous ?: false
+                  _uiState.update {
+                    it.copy(
+                        isUpgrading = false,
+                        showUpgradeSheet = false,
+                        isUserAnonymous = isAnonymous,
+                    )
+                  }
                   getUserInformation()
                 },
                 onFailure = { e ->

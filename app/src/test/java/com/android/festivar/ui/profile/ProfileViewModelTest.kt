@@ -761,4 +761,35 @@ class ProfileViewModelTest {
     assertEquals(0, authRepo.signUpCallCount)
     assertNull(viewModel.uiState.value.errorMsg)
   }
+
+  /**
+   * Breaks if upgrading an account does not close the sheet and update the guest flag when profile
+   * reload fails.
+   */
+  @Test
+  fun upgradeSuccessWithReloadFailureClosesSheetAndUpdatesGuestFlag() = runTest {
+    val initialUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+    val upgradedUser = mockk<FirebaseUser> { every { isAnonymous } returns false }
+    val authRepo =
+        object : FakeAuthRepository() {
+          override val currentUser = initialUser
+        }
+    authRepo.signUpResult = Result.success(upgradedUser)
+    val usersRepo = RecordingUsersRepository(listOf(sara))
+    val viewModel = createViewModel(repository = usersRepo, authRepository = authRepo)
+    advanceUntilIdle()
+    assertTrue(viewModel.uiState.value.isUserAnonymous)
+
+    usersRepo.getError = RuntimeException("Load failed")
+    viewModel.showUpgradeSheet()
+    viewModel.updateEmail("sara@epfl.ch")
+    viewModel.updatePassword("secret123")
+    viewModel.upgradeWithEmail()
+    advanceUntilIdle()
+
+    val state = viewModel.uiState.value
+    assertFalse(state.showUpgradeSheet)
+    assertFalse(state.isUserAnonymous)
+    assertEquals(R.string.profile_load_failed, state.errorMsg)
+  }
 }
