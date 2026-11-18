@@ -1,149 +1,114 @@
 // Co-authored-by: Claude Fable 5.2 <noreply@anthropic.com>
 package com.android.festivar.ui.announcement
 
-import androidx.activity.compose.BackHandler
-import androidx.annotation.StringRes
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.stringResource
-import com.android.festivar.R
+import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.event.announcement.AnnouncementPriority
-import com.android.festivar.ui.announcement.create.CreateAnnouncementContent
-import com.android.festivar.ui.components.FestivarDiscardDialog
+import com.android.festivar.ui.components.FieldError
+import java.time.ZonedDateTime
 
 /**
- * The texts that differ between the forms built on [CreateAnnouncementContent].
- *
- * @property title The title in the top bar.
- * @property submit The text of the button at the bottom.
- * @property submitting The content description of the spinner shown in the button during a save.
+ * How long a save of an announcement may last before it is reported as failed. Shared by the create
+ * and edit ViewModels.
  */
-data class AnnouncementFormLabels(
-    @StringRes val title: Int,
-    @StringRes val submit: Int,
-    @StringRes val submitting: Int,
-)
+internal const val ANNOUNCEMENT_SAVE_TIMEOUT_MS = 15_000L
 
 /**
- * The test tags of a form built on [CreateAnnouncementContent]. Each screen passes its own, so a
- * test of one screen never finds a node of the other.
+ * The part of an announcement form shared by the create and edit screens: what the user types, plus
+ * the field rules. It has no saving or error flags, which belong to the state of each screen. The
+ * Create announcement form does not use it yet.
  *
- * @property title The title in the top bar.
- * @property submitButton The button at the bottom.
- * @property savingIndicator The spinner shown in the button during a save.
- * @property priorityChip Gives the tag of the chip of a priority.
+ * @property title The title as typed. It is saved as [trimmedTitle].
+ * @property content The body of the announcement as typed. It is saved as [trimmedContent].
+ * @property priority How urgent the announcement is. [AnnouncementPriority.INFO] by default.
+ * @property titleEdited Whether the title was edited, so that an empty one is reported.
+ * @property contentEdited Whether the content was edited, so that an empty one is reported.
  */
-data class AnnouncementFormTags(
-    val backButton: String,
-    val title: String,
-    val titleField: String,
-    val titleError: String,
-    val descriptionField: String,
-    val descriptionError: String,
-    val priorityLabel: String,
-    val saveError: String,
-    val submitButton: String,
-    val savingIndicator: String,
-    val discardDialog: String,
-    val keepEditingButton: String,
-    val discardButton: String,
-    val priorityChip: (AnnouncementPriority) -> String,
-)
-
-/**
- * Back handling of the announcement forms: going back, by the system or by the top bar button
- * passed to [content] as `requestBack`, asks first in the discard dialog when [needsConfirmation].
- *
- * @param isSaving Gives whether a save is running, asked when back is pressed. Back does nothing
- *   meanwhile.
- * @param needsConfirmation Gives whether leaving would lose something, asked when back is pressed.
- * @param onBack Called when the user leaves, at once or after confirming the discard.
- * @param dialogTitle The question the discard dialog asks.
- * @param tags Gives the tags of the discard dialog and of its two buttons.
- * @param dialogMessage What the discard dialog says is lost.
- */
-@Composable
-internal fun AnnouncementFormBackHandling(
-    isSaving: () -> Boolean,
-    needsConfirmation: () -> Boolean,
-    onBack: () -> Unit,
-    @StringRes dialogTitle: Int,
-    tags: AnnouncementFormTags,
-    @StringRes dialogMessage: Int = R.string.discard_message,
-    content: @Composable (requestBack: () -> Unit) -> Unit,
+data class AnnouncementFormState(
+    val title: String = "",
+    val content: String = "",
+    val priority: AnnouncementPriority = AnnouncementPriority.INFO,
+    val titleEdited: Boolean = false,
+    val contentEdited: Boolean = false,
 ) {
-  var askToDiscard by rememberSaveable { mutableStateOf(false) }
-  // Back does nothing during a save: leaving would not undo a write that has started, so the
-  // announcement could still be published after the user chose to discard it.
-  // Both are read when back is pressed, not at composition: a back that comes right after a state
-  // change, before the next recomposition, would otherwise act on the old values.
-  val requestBack: () -> Unit = {
-    if (!isSaving()) {
-      if (needsConfirmation()) askToDiscard = true else onBack()
-    }
-  }
-  // Stays enabled during a save, as a disabled handler would let system back close the screen.
-  BackHandler(onBack = requestBack)
+  /**
+   * The title error. It only appears once the title has been edited, so that an untouched form does
+   * not start with an error.
+   */
+  val titleError: FieldError?
+    get() = if (titleEdited && title.isBlank()) FieldError.EMPTY_ANNOUNCEMENT_TITLE else null
 
-  content(requestBack)
+  /** The content error. Like [titleError], it only appears once the content has been edited. */
+  val contentError: FieldError?
+    get() = if (contentEdited && content.isBlank()) FieldError.EMPTY_ANNOUNCEMENT_CONTENT else null
 
-  if (askToDiscard) {
-    FestivarDiscardDialog(
-        title = stringResource(dialogTitle),
-        message = stringResource(dialogMessage),
-        onConfirm = {
-          askToDiscard = false
-          onBack()
-        },
-        onDismiss = { askToDiscard = false },
-        modifier = Modifier.testTag(tags.discardDialog),
-        confirmModifier = Modifier.testTag(tags.discardButton),
-        dismissModifier = Modifier.testTag(tags.keepEditingButton),
+  /** Whether the form can be saved: the title and the content are both required. */
+  val isValid: Boolean
+    get() = title.isNotBlank() && content.isNotBlank()
+
+  /** The title as it is saved, without the spaces around it. */
+  val trimmedTitle: String
+    get() = title.trim()
+
+  /** The content as it is saved, without the spaces around it. */
+  val trimmedContent: String
+    get() = content.trim()
+
+  /**
+   * Builds the [Announcement] described by this form, with its title and content trimmed.
+   *
+   * @param announcementId The id of the new announcement.
+   * @param authorId The uid of the user publishing the announcement, who becomes its author.
+   * @param updatedAt The time the announcement is published.
+   * @throws IllegalArgumentException if the title or the content is blank, or if [announcementId]
+   *   or [authorId] is blank.
+   */
+  fun toAnnouncement(
+      announcementId: String,
+      authorId: String,
+      updatedAt: ZonedDateTime,
+  ): Announcement {
+    require(isValid) { "The form is not valid." }
+    return Announcement(
+        announcementId = announcementId,
+        title = trimmedTitle,
+        authorId = authorId,
+        content = trimmedContent,
+        priority = priority,
+        updatedAt = updatedAt,
     )
   }
+
+  /**
+   * Whether [announcement] holds what this form saves, for example a copy read back after a failed
+   * save. Only the fields the form sets are compared: full equality would also compare the time
+   * zone of [Announcement.updatedAt], the links and the pin, so a copy read back from a remote
+   * store would always differ.
+   */
+  fun matches(announcement: Announcement): Boolean =
+      announcement.title == trimmedTitle &&
+          announcement.content == trimmedContent &&
+          announcement.priority == priority
 }
 
-/** The top bar of the announcement forms: the back button and the [title]. */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-internal fun AnnouncementFormTopBar(
-    @StringRes title: Int,
-    onBack: () -> Unit,
-    tags: AnnouncementFormTags,
-) {
-  TopAppBar(
-      title = {
-        Text(
-            text = stringResource(title),
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.testTag(tags.title),
-        )
-      },
-      navigationIcon = {
-        IconButton(onClick = onBack, modifier = Modifier.testTag(tags.backButton)) {
-          Icon(
-              Icons.AutoMirrored.Rounded.ArrowBack,
-              contentDescription = stringResource(R.string.create_announcement_back),
-          )
-        }
-      },
-      colors =
-          TopAppBarDefaults.topAppBarColors(
-              containerColor = MaterialTheme.colorScheme.background,
-          ),
-  )
+/**
+ * The setters an announcement form screen needs, shared by the create and edit ViewModels. A
+ * ViewModel implements only [applyEdit]; the setters are written once, here.
+ */
+interface AnnouncementFormEditor {
+  /**
+   * Applies a change of a form field. The implementing ViewModel decides how the change reaches its
+   * state, and when it is ignored.
+   */
+  fun applyEdit(change: (AnnouncementFormState) -> AnnouncementFormState)
+
+  /** Sets the title and marks it as edited, so that an empty title is reported. */
+  fun updateTitle(title: String) = applyEdit { it.copy(title = title, titleEdited = true) }
+
+  /** Sets the content and marks it as edited, so that an empty content is reported. */
+  fun updateContent(content: String) = applyEdit {
+    it.copy(content = content, contentEdited = true)
+  }
+
+  /** Sets the priority. */
+  fun updatePriority(priority: AnnouncementPriority) = applyEdit { it.copy(priority = priority) }
 }

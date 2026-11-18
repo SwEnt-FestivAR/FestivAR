@@ -30,6 +30,7 @@ import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.event.announcement.AnnouncementPriority
 import com.android.festivar.ui.announcement.AnnouncementFormBackHandling
 import com.android.festivar.ui.announcement.AnnouncementFormLabels
+import com.android.festivar.ui.announcement.AnnouncementFormState
 import com.android.festivar.ui.announcement.AnnouncementFormTags
 import com.android.festivar.ui.announcement.AnnouncementFormTopBar
 import com.android.festivar.ui.announcement.create.CreateAnnouncementActions
@@ -170,15 +171,7 @@ fun EditAnnouncementContent(
           }
       state.announcement != null ->
           CreateAnnouncementContent(
-              // The ViewModel never sets the form's own isSaving, isPublished and errorMsg. Copying
-              // them from the screen state is what locks the inputs, shows the spinner in the
-              // button and shows the save error.
-              state =
-                  state.form.copy(
-                      isSaving = state.isSaving,
-                      isPublished = state.isSaved,
-                      errorMsg = state.errorMsg,
-                  ),
+              state = state.toCreateForm(),
               actions = actions,
               labels = editAnnouncementLabels,
               tags = editAnnouncementTags,
@@ -194,6 +187,23 @@ fun EditAnnouncementContent(
     }
   }
 }
+
+/**
+ * The state of the Create announcement form showing this edit. The form fields come from
+ * [EditAnnouncementUiState.form]; the saving, saved and error flags come from the screen state,
+ * which is what locks the inputs, shows the spinner in the button and shows the save error.
+ */
+private fun EditAnnouncementUiState.toCreateForm(): CreateAnnouncementUiState =
+    CreateAnnouncementUiState(
+        title = form.title,
+        content = form.content,
+        priority = form.priority,
+        titleEdited = form.titleEdited,
+        contentEdited = form.contentEdited,
+        isSaving = isSaving,
+        isPublished = isSaved,
+        errorMsg = errorMsg,
+    )
 
 /** The form's top bar over [content] centered, for the states without a form. */
 @Composable
@@ -247,7 +257,7 @@ private val previewAnnouncement =
     )
 
 private val previewForm =
-    CreateAnnouncementUiState(
+    AnnouncementFormState(
         title = previewAnnouncement.title,
         content = previewAnnouncement.content,
         priority = AnnouncementPriority.URGENT,

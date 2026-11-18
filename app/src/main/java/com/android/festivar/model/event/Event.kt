@@ -197,6 +197,22 @@ data class Event(
   fun removeAnnouncement(announcementId: String): Event {
     return copy(announcements = announcements.withoutAnnouncement(announcementId))
   }
+
+  /**
+   * Finds an [Announcement] of the [Event] by its [Announcement.announcementId].
+   *
+   * @param announcementId The identifier of the [Announcement] to find in the [announcements] list.
+   * @return The [Announcement] of [announcementId], or `null` when the event has no announcement
+   *   with this id.
+   */
+  fun announcementOrNull(announcementId: String): Announcement? {
+    return announcements.announcementOrNull(announcementId)
+  }
+}
+
+/** [Event.announcementOrNull] on the list alone, also used by EventRepositoryFirebase. */
+internal fun List<Announcement>.announcementOrNull(announcementId: String): Announcement? {
+  return firstOrNull { it.announcementId == announcementId }
 }
 
 /** [Event.addAnnouncement] on the list alone, also used by EventRepositoryFirebase. */
