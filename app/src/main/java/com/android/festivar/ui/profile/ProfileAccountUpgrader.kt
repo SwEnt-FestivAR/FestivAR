@@ -75,7 +75,11 @@ fun UpgradeBottomSheetContent(
     onGoogleUpgrade: () -> Unit,
 ) {
   Column(
-      modifier = Modifier.fillMaxWidth().padding(24.dp),
+      modifier =
+          Modifier.fillMaxWidth()
+              .verticalScroll(rememberScrollState())
+              .padding(24.dp)
+              .padding(horizontal = 12.dp, vertical = 12.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
   ) {
     EmailLoginForm(
@@ -87,24 +91,18 @@ fun UpgradeBottomSheetContent(
         onPasswordChange = onPasswordChange,
         onLoginClick = onLoginClick,
         onTogglePasswordVisibility = onTogglePasswordVisibility,
-        modifier =
-            Modifier.background(MaterialTheme.colorScheme.surface)
-                .padding(horizontal = 12.dp, vertical = 12.dp)
-                .verticalScroll(rememberScrollState()),
+        modifier = Modifier.background(MaterialTheme.colorScheme.surface),
         buttonText = stringResource(R.string.profile_upgrade),
     )
 
-    OrSeparator(Modifier.padding(horizontal = 12.dp))
+    OrSeparator(Modifier.padding(horizontal = 12.dp, vertical = 12.dp))
 
     SignInButton(
         onClick = onGoogleUpgrade,
         enabled = !uiState.isUpgrading,
         showGoogle = true,
         text = stringResource(R.string.login_continue_with_google),
-        modifier =
-            Modifier.testTag(LoginScreenTestTags.GOOGLE_BUTTON)
-                .padding(horizontal = 12.dp, vertical = 12.dp)
-                .verticalScroll(rememberScrollState()),
+        modifier = Modifier.testTag(LoginScreenTestTags.GOOGLE_BUTTON),
     )
   }
 }
