@@ -346,6 +346,9 @@ class EditEventViewModelTest {
     assertEquals("Updated festival", eventsRepository.getEvent(initialEvent.eventId).title)
   }
 
+  /**
+   * Breaks if saving the form drops the members, roles or tasks added elsewhere while it was open.
+   */
   @Test
   fun saveChangesPreservesMembersAndTasksAddedWhileFormWasOpen() = runTest {
     viewModel.fetchEvent(initialEvent.eventId)
@@ -359,13 +362,8 @@ class EditEventViewModelTest {
             title = "New task",
             ownerId = "organizer",
         )
-    eventsRepository.editEvent(
-        initialEvent.eventId,
-        initialEvent.copy(
-            members = listOf(User("member-1"), joinedMember),
-            tasks = listOf(addedTask),
-        ),
-    )
+    val changedElsewhere = initialEvent.addMember(joinedMember).copy(tasks = listOf(addedTask))
+    eventsRepository.editEvent(initialEvent.eventId, changedElsewhere)
 
     viewModel.saveChanges()
     advanceUntilIdle()
@@ -373,6 +371,7 @@ class EditEventViewModelTest {
     val saved = eventsRepository.getEvent(initialEvent.eventId)
     assertEquals("Updated festival", saved.title)
     assertEquals(listOf(User("member-1"), joinedMember), saved.members)
+    assertEquals(changedElsewhere.roles, saved.roles)
     assertEquals(listOf(addedTask), saved.tasks)
   }
 
