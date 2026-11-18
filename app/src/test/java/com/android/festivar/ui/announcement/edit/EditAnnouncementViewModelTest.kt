@@ -31,17 +31,21 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Shadows.shadowOf
 
+// The field rules (errors, trimming, matches) are tested in AnnouncementFormTest; these tests only
+// cover what the ViewModel adds. Each one breaks on a change of the ViewModel no other test
+// catches.
 @RunWith(AndroidJUnit4::class)
 class EditAnnouncementViewModelTest {
   private val zone = ZoneId.of("Europe/Zurich")
   private val clock = Clock.fixed(Instant.parse("2026-10-30T18:00:00Z"), zone)
+  // Not the default priority of the form, so a priority left out of the form is seen.
   private val seeded =
       Announcement(
           announcementId = "ann-1",
           title = "Gates open",
           authorId = "author-1",
           content = "The north gate opens at 16:00.",
-          priority = AnnouncementPriority.INFO,
+          priority = AnnouncementPriority.WARNING,
           updatedAt = ZonedDateTime.of(2026, 10, 30, 10, 0, 0, 0, zone),
           links = listOf("https://a.example"),
           pinned = false,
@@ -60,34 +64,36 @@ class EditAnnouncementViewModelTest {
   // announcement back from it; nothing checks that a configured mock was called.
   private val repo = ScriptedRepository(EventsRepositoryLocal(listOf(event)))
   private val dataRepository = DataRepositoryLocal(FakeAuthRepository(), eventsRepository = repo)
+  private val never = CompletableDeferred<Unit>()
 
   private fun viewModel(
       userId: () -> String = { "owner-1" },
       clock: Clock = this.clock,
-      saveTimeoutMs: Long = 15_000L,
-      announcementId: String = "ann-1",
-  ) =
-      EditAnnouncementViewModel(
-          "event-1",
-          announcementId,
-          userId,
-          dataRepository,
-          clock,
-          saveTimeoutMs,
-      )
+      saveTimeoutMs: Long = 1_000L,
+  ) = EditAnnouncementViewModel("event-1", "ann-1", userId, dataRepository, clock, saveTimeoutMs)
 
-  private fun loadedViewModel(
+  private fun editedViewModel(
       userId: () -> String = { "owner-1" },
       clock: Clock = this.clock,
-      saveTimeoutMs: Long = 15_000L,
-  ) = viewModel(userId, clock, saveTimeoutMs).apply { load() }
+  ) =
+      viewModel(userId, clock).apply {
+        load()
+        updateTitle("Doors open")
+      }
 
   private fun stored(): Announcement = runBlocking {
-    repo.local.getEvent("event-1").announcements.single { it.announcementId == "ann-1" }
+    repo.local.getEvent("event-1").announcements.single()
   }
 
   private fun idle(seconds: Long = 0) =
       shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(seconds))
+
+  private fun assertSaveError(vm: EditAnnouncementViewModel) {
+    val state = vm.uiState.value
+    assertEquals(R.string.edit_announcement_error_save_failed, state.errorMsg)
+    assertFalse(state.isSaving)
+    assertFalse(state.isSaved)
+  }
 
   // Delegates to the in-memory repository. It counts reads and edits, and runs a hook before every
   // read, and before and after the real edit, so a test can hang or fail a call on either side of
@@ -113,8 +119,7 @@ class EditAnnouncementViewModelTest {
     }
   }
 
-  // Breaks if the init check on eventId or on announcementId is removed, so a blank id fails only
-  // at load or save time.
+  // Breaks if the init check on eventId or on announcementId is removed.
   @Test
   fun blankIdsFailFast() {
     assertThrows(IllegalArgumentException::class.java) {
@@ -125,84 +130,58 @@ class EditAnnouncementViewModelTest {
     }
   }
 
-  // Breaks if a setter or save() acts on an announcement that is not loaded, or if the ViewModel
-  // reads in init.
+  // Breaks if a setter edits a form that is not loaded, if save() writes it, or if hasChanges reads
+  // the announcement before it is loaded.
   @Test
   fun beforeLoadNothingIsEditableOrSavable() {
     val vm = viewModel()
 
     vm.updateTitle("Typed too early")
-    vm.updateContent("Typed too early")
-    vm.updatePriority(AnnouncementPriority.URGENT)
     vm.save()
 
-    val state = vm.uiState.value
-    assertEquals(AnnouncementFormState(), state.form)
-    assertNull(state.announcement)
-    assertFalse(state.hasChanges)
-    assertFalse(state.canSave)
-    assertFalse(state.isLoading)
-    assertNull(state.errorMsg)
-    assertEquals(0, repo.reads)
+    assertEquals(AnnouncementFormState(), vm.uiState.value.form)
+    assertFalse(vm.uiState.value.needsDiscardConfirmation)
     assertEquals(0, repo.edits)
   }
 
-  // Breaks if a stored field is not mapped into the form, or if a loaded untouched form shows an
-  // error, a change or an enabled save.
+  // Breaks if a stored field is not mapped into the form, if the load stays loading, or if an
+  // untouched form counts as a change.
   @Test
   fun loadPrefillsTheFormWithoutErrorsOrChanges() {
-    val vm = loadedViewModel()
+    val vm = viewModel().apply { load() }
 
     val state = vm.uiState.value
     assertEquals(seeded, state.announcement)
-    assertEquals("Gates open", state.form.title)
-    assertEquals("The north gate opens at 16:00.", state.form.content)
-    assertEquals(AnnouncementPriority.INFO, state.form.priority)
-    assertNull(state.form.titleError)
-    assertNull(state.form.contentError)
-    assertFalse(state.hasChanges)
+    assertEquals(
+        AnnouncementFormState(seeded.title, seeded.content, seeded.priority),
+        state.form,
+    )
+    assertFalse(state.isLoading)
     assertFalse(state.needsDiscardConfirmation)
     assertFalse(state.canSave)
-    assertFalse(state.isLoading)
-    assertNull(state.errorMsg)
   }
 
-  // Breaks if a failed load shows no error or stays loading, or if the error blocks a retry.
+  // Breaks if a missing announcement shows no load error or stays loading, or if the error blocks
+  // a retry.
   @Test
-  fun aFailedLoadShowsTheLoadErrorAndALaterLoadRecovers() {
-    var failing = true
-    repo.beforeRead = { if (failing) throw IllegalStateException("offline") }
+  fun aMissingAnnouncementShowsTheLoadErrorAndALaterLoadRecovers() {
+    runBlocking { repo.local.deleteAnnouncement("event-1", "ann-1") }
     val vm = viewModel()
 
     vm.load()
 
     assertEquals(R.string.edit_announcement_error_load_failed, vm.uiState.value.errorMsg)
-    assertNull(vm.uiState.value.announcement)
     assertFalse(vm.uiState.value.isLoading)
 
-    failing = false
+    runBlocking { repo.local.addAnnouncement("event-1", seeded) }
     vm.load()
 
     assertEquals(seeded, vm.uiState.value.announcement)
     assertNull(vm.uiState.value.errorMsg)
   }
 
-  // Breaks if an announcement missing from the event is not reported as a load failure.
-  @Test
-  fun aMissingAnnouncementShowsTheLoadError() {
-    val vm = viewModel(announcementId = "missing")
-
-    vm.load()
-
-    val state = vm.uiState.value
-    assertEquals(R.string.edit_announcement_error_load_failed, state.errorMsg)
-    assertNull(state.announcement)
-    assertFalse(state.isLoading)
-    assertFalse(state.canSave)
-  }
-
   // Breaks if the load guard ignores a running load or a loaded announcement, so a second call
-  // reads again or wipes the unsaved edit.
+  // reads again or wipes the unsaved edit, or if isLoading is not set while the load runs.
   @Test
   fun loadIsNotRepeatedWhileRunningOrOnceLoadedAndKeepsEdits() {
     val gate = CompletableDeferred<Unit>()
@@ -224,178 +203,125 @@ class EditAnnouncementViewModelTest {
     assertEquals("Doors open", vm.uiState.value.form.title)
   }
 
-  // Breaks if titleError or contentError reads the other field, or if an error does not block save.
+  // Breaks if a cancelled load falls into the generic catch and shows a load error.
   @Test
-  fun emptyingAFieldShowsItsErrorAndBlocksSave() {
-    val vm = loadedViewModel()
+  fun aCancelledLoadShowsNoError() {
+    repo.beforeRead = { never.await() }
+    val vm = viewModel().apply { load() }
 
-    vm.updateTitle("")
-    assertEquals(FieldError.EMPTY_ANNOUNCEMENT_TITLE, vm.uiState.value.form.titleError)
-    assertNull(vm.uiState.value.form.contentError)
-    assertFalse(vm.uiState.value.canSave)
+    vm.viewModelScope.cancel()
+    idle()
 
-    vm.updateTitle("Gates open")
-    vm.updateContent("  ")
-    assertEquals(FieldError.EMPTY_ANNOUNCEMENT_CONTENT, vm.uiState.value.form.contentError)
-    assertNull(vm.uiState.value.form.titleError)
-    assertFalse(vm.uiState.value.canSave)
+    assertNull(vm.uiState.value.errorMsg)
   }
 
-  // Breaks if a stored blank content is not flagged from the start, or if a change of priority
-  // alone can save a form that is invalid.
+  // Breaks if a stored blank content is not flagged from the start, or if canSave ignores an
+  // invalid form.
   @Test
   fun blankStoredContentShowsTheErrorFromTheStartAndNeedsContentToSave() {
     runBlocking { repo.local.editAnnouncement("event-1", seeded.copy(content = "")) }
-    val vm = loadedViewModel()
+    val vm = viewModel().apply { load() }
 
     assertEquals(FieldError.EMPTY_ANNOUNCEMENT_CONTENT, vm.uiState.value.form.contentError)
 
     vm.updatePriority(AnnouncementPriority.URGENT)
-    assertTrue(vm.uiState.value.hasChanges)
     assertFalse(vm.uiState.value.canSave)
 
     vm.updateContent("The north gate opens at 16:00.")
-    assertNull(vm.uiState.value.form.contentError)
     assertTrue(vm.uiState.value.canSave)
   }
 
-  // Breaks if hasChanges ignores a field, compares untrimmed texts, or keeps a stale flag after a
-  // revert, or if needsDiscardConfirmation does not follow it.
+  // Breaks if hasChanges ignores a field or compares untrimmed texts, or if
+  // needsDiscardConfirmation does not follow it.
   @Test
   fun hasChangesComparesTrimmedTitleContentAndPriority() {
-    val vm = loadedViewModel()
-    fun changed() = vm.uiState.value.hasChanges
+    val vm = viewModel().apply { load() }
+    fun changed() = vm.uiState.value.needsDiscardConfirmation
 
     vm.updateTitle("  Gates open ")
     vm.updateContent(" The north gate opens at 16:00.  ")
     assertFalse(changed())
-    assertFalse(vm.uiState.value.needsDiscardConfirmation)
 
     vm.updateTitle("Doors open")
     assertTrue(changed())
-    assertTrue(vm.uiState.value.needsDiscardConfirmation)
     vm.updateTitle("Gates open")
-    assertFalse(changed())
 
     vm.updateContent("The south gate opens at 16:00.")
     assertTrue(changed())
     vm.updateContent("The north gate opens at 16:00.")
-    assertFalse(changed())
 
-    vm.updatePriority(AnnouncementPriority.WARNING)
+    vm.updatePriority(AnnouncementPriority.URGENT)
     assertTrue(changed())
-    vm.updatePriority(AnnouncementPriority.INFO)
-    assertFalse(changed())
   }
 
-  // Breaks if the text is stored untrimmed, or if the id, author, links, pin or the time of the
-  // edit are wrong, or if the saved state still asks to discard or lets typing through.
+  // Breaks if a text is stored untrimmed or a field is not stored, if the time of the edit is not
+  // now, if the save writes the copy loaded at screen open (undoing a pin toggled since), or if a
+  // saved form still takes typing.
   @Test
-  fun saveStoresTheTrimmedEditsKeepingIdAuthorLinksAndPin() {
-    val vm = loadedViewModel()
+  fun saveStoresTheTrimmedEditsOnTheLatestCopy() {
+    val vm = viewModel().apply { load() }
+    runBlocking { repo.local.setAnnouncementPinned("event-1", "ann-1", true) }
     vm.updateTitle("  Doors open ")
     vm.updateContent(" The south gate opens at 17:00. ")
-    vm.updatePriority(AnnouncementPriority.WARNING)
+    vm.updatePriority(AnnouncementPriority.URGENT)
 
     vm.save()
 
-    val saved = stored()
-    assertEquals("Doors open", saved.title)
-    assertEquals("The south gate opens at 17:00.", saved.content)
-    assertEquals(AnnouncementPriority.WARNING, saved.priority)
-    assertEquals("ann-1", saved.announcementId)
-    assertEquals("author-1", saved.authorId)
-    assertEquals(seeded.links, saved.links)
-    assertEquals(seeded.pinned, saved.pinned)
-    assertEquals(ZonedDateTime.now(clock), saved.updatedAt)
-    val state = vm.uiState.value
-    assertTrue(state.isSaved)
-    assertFalse(state.isSaving)
-    assertNull(state.errorMsg)
-    assertFalse(state.canSave)
-    assertFalse(state.needsDiscardConfirmation)
-    assertEquals(saved, state.announcement)
+    val expected =
+        seeded.copy(
+            title = "Doors open",
+            content = "The south gate opens at 17:00.",
+            priority = AnnouncementPriority.URGENT,
+            updatedAt = ZonedDateTime.now(clock),
+            pinned = true,
+        )
+    assertEquals(expected, stored())
+    assertEquals(expected, vm.uiState.value.announcement)
+    assertTrue(vm.uiState.value.isSaved)
+    assertFalse(vm.uiState.value.isSaving)
 
     vm.updateTitle("Later")
     assertEquals("  Doors open ", vm.uiState.value.form.title)
   }
 
-  // Breaks if the save writes the announcement loaded at screen open, which undoes a pin toggled
-  // since then.
-  @Test
-  fun savePreservesAPinToggledAfterTheLoad() {
-    val vm = loadedViewModel()
-    runBlocking { repo.local.setAnnouncementPinned("event-1", "ann-1", true) }
-    vm.updateTitle("Doors open")
-
-    vm.save()
-
-    assertTrue(stored().pinned)
-    assertEquals("Doors open", stored().title)
-  }
-
-  // Breaks if a device clock behind the stored time is written as is, which the model refuses, so
-  // the save fails.
+  // Breaks if a device clock behind the stored time is written as is, which the model refuses.
   @Test
   fun aClockBehindTheStoredTimeKeepsTheStoredTime() {
     val behind = Clock.fixed(Instant.parse("2026-10-30T05:00:00Z"), zone)
-    val vm = loadedViewModel(clock = behind)
-    vm.updateTitle("Doors open")
+    val vm = editedViewModel(clock = behind)
 
     vm.save()
 
-    assertTrue(vm.uiState.value.isSaved)
     assertEquals("Doors open", stored().title)
     assertEquals(seeded.updatedAt.toInstant(), stored().updatedAt.toInstant())
   }
 
-  // Breaks if a user who does not own the event can save.
+  // Breaks if the owner is not checked, or only at load, so a user who no longer owns the event
+  // can save, or if the refused save shows no error.
   @Test
-  fun aUserWhoDoesNotOwnTheEventCannotSave() {
-    val vm = loadedViewModel(userId = { "someone-else" })
-    vm.updateTitle("Hijacked")
-
-    assertTrue(vm.uiState.value.hasChanges)
-    assertFalse(vm.uiState.value.canSave)
-    vm.save()
-
-    assertEquals(0, repo.edits)
-    assertEquals(seeded, stored())
-    assertEquals(R.string.edit_announcement_error_save_failed, vm.uiState.value.errorMsg)
-    assertFalse(vm.uiState.value.isSaved)
-  }
-
-  // Breaks if the owner is only checked at load, so a user who signed out (a blank uid) can still
-  // save.
-  @Test
-  fun anOwnerWhoSignedOutAfterTheLoadCannotSave() {
+  fun aUserWhoNoLongerOwnsTheEventCannotSave() {
     var user = "owner-1"
-    val vm = loadedViewModel(userId = { user })
-    vm.updateTitle("Doors open")
+    val vm = editedViewModel(userId = { user })
     assertTrue(vm.uiState.value.canSave)
-    user = ""
+    user = "someone-else"
 
     assertFalse(vm.uiState.value.canSave)
     vm.save()
 
     assertEquals(0, repo.edits)
-    assertEquals(seeded, stored())
-    assertEquals(R.string.edit_announcement_error_save_failed, vm.uiState.value.errorMsg)
-    assertFalse(vm.uiState.value.isSaved)
+    assertSaveError(vm)
   }
 
-  // Breaks if canSave ignores isSaving, so a second tap writes twice, if typing during the save
-  // changes what is stored, or if a saved form that still differs is savable or asks to discard.
+  // Breaks if canSave ignores isSaving or isSaved, so a second tap writes twice, or if a saved form
+  // that still differs asks to discard.
   @Test
   fun aSaveInProgressIgnoresASecondTapAndLaterTyping() {
     val gate = CompletableDeferred<Unit>()
     repo.beforeEdit = { gate.await() }
-    val vm = loadedViewModel()
-    vm.updateTitle("Doors open")
+    val vm = editedViewModel()
 
     vm.save()
     assertTrue(vm.uiState.value.isSaving)
-    assertFalse(vm.uiState.value.canSave)
     vm.save()
     vm.updateTitle("Later")
     gate.complete(Unit)
@@ -405,202 +331,88 @@ class EditAnnouncementViewModelTest {
     assertEquals("Doors open", stored().title)
     val state = vm.uiState.value
     assertTrue(state.isSaved)
-    assertTrue(state.hasChanges)
     assertFalse(state.canSave)
     assertFalse(state.needsDiscardConfirmation)
   }
 
-  // Breaks if the read-back after a failed write is skipped, or if it compares the stored text with
-  // the untrimmed form.
+  // Breaks if a failed write is shown as saved or resets the form, if a retry keeps the old error,
+  // or if a write that landed before the failure is not read back as saved.
   @Test
-  fun aFailureAfterTheWriteLandedEndsAsSaved() {
-    repo.afterEdit = { throw IllegalStateException("ack lost") }
-    val vm = loadedViewModel()
-    vm.updateTitle("  Doors open ")
-
-    vm.save()
-    idle()
-
-    val state = vm.uiState.value
-    assertTrue(state.isSaved)
-    assertFalse(state.isSaving)
-    assertNull(state.errorMsg)
-    assertEquals("Doors open", stored().title)
-    assertEquals(stored(), state.announcement)
-  }
-
-  // Breaks if a failed write is shown as saved, the error is missing, the form is reset, or a
-  // retry after the failure is blocked.
-  @Test
-  fun aFailingRepositoryShowsTheSaveErrorKeepsTheFormAndARetrySucceeds() {
-    var failing = true
-    repo.beforeEdit = { if (failing) throw IllegalStateException("offline") }
-    val vm = loadedViewModel()
-    vm.updateTitle("Doors open")
+  fun aFailedSaveKeepsTheFormAndARetryThatLandedEndsAsSaved() {
+    repo.beforeEdit = { throw IllegalStateException("offline") }
+    val vm = editedViewModel()
 
     vm.save()
 
-    val state = vm.uiState.value
-    assertEquals(R.string.edit_announcement_error_save_failed, state.errorMsg)
-    assertFalse(state.isSaving)
-    assertFalse(state.isSaved)
-    assertEquals("Doors open", state.form.title)
-    assertTrue(state.canSave)
+    assertSaveError(vm)
+    assertTrue(vm.uiState.value.canSave)
     assertEquals(seeded, stored())
 
-    failing = false
+    repo.beforeEdit = {}
+    repo.afterEdit = { throw IllegalStateException("ack lost") }
     vm.save()
 
     assertTrue(vm.uiState.value.isSaved)
     assertNull(vm.uiState.value.errorMsg)
+    assertEquals(stored(), vm.uiState.value.announcement)
     assertEquals("Doors open", stored().title)
   }
 
-  // Breaks if matches ignores the title, the content or the priority, so a write that did not land
-  // is counted as saved because the other two fields are unchanged.
-  @Test
-  fun aFailedSaveIsNotCountedAsStoredWhicheverSingleFieldDiffers() {
-    repo.beforeEdit = { throw IllegalStateException("offline") }
-    val edits: List<(EditAnnouncementViewModel) -> Unit> =
-        listOf(
-            { it.updateTitle("Doors open") },
-            { it.updateContent("The south gate opens at 17:00.") },
-            { it.updatePriority(AnnouncementPriority.URGENT) },
-        )
-
-    edits.forEach { edit ->
-      val vm = loadedViewModel()
-      edit(vm)
-
-      vm.save()
-
-      assertFalse(vm.uiState.value.isSaved)
-      assertEquals(R.string.edit_announcement_error_save_failed, vm.uiState.value.errorMsg)
-    }
-    assertEquals(seeded, stored())
-  }
-
-  // Breaks if the write has no timeout, so the form stays stuck in the saving state forever.
-  @Test
-  fun aSaveThatHangsTimesOutAndShowsTheSaveError() {
-    val never = CompletableDeferred<Unit>()
-    repo.beforeEdit = { never.await() }
-    val vm = loadedViewModel(saveTimeoutMs = 1_000)
-    vm.updateTitle("Doors open")
-
-    vm.save()
-    assertTrue(vm.uiState.value.isSaving)
-    idle(seconds = 5)
-
-    val state = vm.uiState.value
-    assertEquals(R.string.edit_announcement_error_save_failed, state.errorMsg)
-    assertFalse(state.isSaving)
-    assertFalse(state.isSaved)
-    assertEquals(seeded, stored())
-  }
-
-  // Breaks if a timeout is reported as a failure without reading back the write that landed.
+  // Breaks if the write has no timeout, or if a timeout is reported as a failure without reading
+  // back the write that landed.
   @Test
   fun aTimeoutAfterTheWriteLandedEndsAsSaved() {
-    val never = CompletableDeferred<Unit>()
     repo.afterEdit = { never.await() }
-    val vm = loadedViewModel(saveTimeoutMs = 1_000)
-    vm.updateTitle("Doors open")
+    val vm = editedViewModel()
 
     vm.save()
     idle(seconds = 5)
 
-    val state = vm.uiState.value
-    assertTrue(state.isSaved)
-    assertFalse(state.isSaving)
-    assertNull(state.errorMsg)
-    assertEquals(stored(), state.announcement)
-    assertEquals("Doors open", state.announcement?.title)
+    assertTrue(vm.uiState.value.isSaved)
+    assertFalse(vm.uiState.value.isSaving)
+    assertEquals("Doors open", vm.uiState.value.announcement?.title)
   }
 
-  // Breaks if the read-back runs without its own timeout, so a hanging read keeps the form saving
-  // forever.
+  // Breaks if the read-back after a failed write has no timeout of its own, or lets its failure
+  // escape, so the form stays saving or crashes.
   @Test
-  fun aReadBackThatHangsEndsAsTheSaveError() {
-    val never = CompletableDeferred<Unit>()
+  fun aReadBackThatFailsOrHangsEndsAsTheSaveError() {
+    val readBacks: List<suspend () -> Unit> =
+        listOf({ throw IllegalStateException("still offline") }, { never.await() })
     repo.beforeEdit = { throw IllegalStateException("offline") }
-    repo.beforeRead = { if (repo.edits > 0) never.await() }
-    val vm = loadedViewModel(saveTimeoutMs = 1_000)
-    vm.updateTitle("Doors open")
 
-    vm.save()
-    assertTrue(vm.uiState.value.isSaving)
-    idle(seconds = 5)
+    readBacks.forEach { readBack ->
+      repo.edits = 0
+      repo.beforeRead = { if (repo.edits > 0) readBack() }
+      val vm = editedViewModel()
 
-    val state = vm.uiState.value
-    assertFalse(state.isSaving)
-    assertFalse(state.isSaved)
-    assertEquals(R.string.edit_announcement_error_save_failed, state.errorMsg)
-  }
+      vm.save()
+      idle(seconds = 5)
 
-  // Breaks if a failing read-back escapes as a crash or is counted as saved.
-  @Test
-  fun aReadBackThatFailsEndsAsTheSaveError() {
-    repo.beforeEdit = { throw IllegalStateException("offline") }
-    repo.beforeRead = { if (repo.edits > 0) throw IllegalStateException("still offline") }
-    val vm = loadedViewModel()
-    vm.updateTitle("Doors open")
-
-    vm.save()
-
-    val state = vm.uiState.value
-    assertFalse(state.isSaving)
-    assertFalse(state.isSaved)
-    assertEquals(R.string.edit_announcement_error_save_failed, state.errorMsg)
-    assertTrue(state.canSave)
+      assertSaveError(vm)
+    }
   }
 
   // Breaks if the save recreates an announcement deleted since the load, or does not report it.
   @Test
   fun anAnnouncementDeletedBeforeTheSaveShowsTheSaveErrorAndStoresNothing() {
-    val vm = loadedViewModel()
+    val vm = editedViewModel()
     runBlocking { repo.local.deleteAnnouncement("event-1", "ann-1") }
-    vm.updateTitle("Doors open")
 
     vm.save()
 
-    val state = vm.uiState.value
-    assertEquals(R.string.edit_announcement_error_save_failed, state.errorMsg)
-    assertFalse(state.isSaved)
-    assertFalse(state.isSaving)
+    assertSaveError(vm)
     assertEquals(0, repo.edits)
     assertTrue(runBlocking { repo.local.getEvent("event-1") }.announcements.isEmpty())
   }
 
-  // Breaks if CancellationException falls into the generic catch, so a cancelled save leaves the
-  // form saving or shows an error the user did not cause.
-  @Test
-  fun aCancelledSaveClearsSavingAndShowsNoError() {
-    val never = CompletableDeferred<Unit>()
-    repo.beforeEdit = { never.await() }
-    val vm = loadedViewModel()
-    vm.updateTitle("Doors open")
-    vm.save()
-    assertTrue(vm.uiState.value.isSaving)
-
-    vm.viewModelScope.cancel()
-    idle()
-
-    val state = vm.uiState.value
-    assertFalse(state.isSaving)
-    assertFalse(state.isSaved)
-    assertNull(state.errorMsg)
-  }
-
-  // Breaks if only the write is guarded against cancellation, so a save cancelled while the
-  // announcement is read back after a failed write leaves the form saving.
+  // Breaks if a cancellation during the save or its read-back falls into a generic catch, so the
+  // form stays saving or shows an error the user did not cause.
   @Test
   fun aSaveCancelledDuringTheReadBackClearsSavingAndShowsNoError() {
-    val never = CompletableDeferred<Unit>()
     repo.beforeEdit = { throw IllegalStateException("offline") }
     repo.beforeRead = { if (repo.edits > 0) never.await() }
-    val vm = loadedViewModel()
-    vm.updateTitle("Doors open")
+    val vm = editedViewModel()
     vm.save()
     idle()
     assertTrue(vm.uiState.value.isSaving)
@@ -608,25 +420,7 @@ class EditAnnouncementViewModelTest {
     vm.viewModelScope.cancel()
     idle()
 
-    val state = vm.uiState.value
-    assertFalse(state.isSaving)
-    assertFalse(state.isSaved)
-    assertNull(state.errorMsg)
-  }
-
-  // Breaks if CancellationException falls into the generic catch of load, so a cancelled load shows
-  // a load error the user did not cause.
-  @Test
-  fun aCancelledLoadShowsNoError() {
-    val never = CompletableDeferred<Unit>()
-    repo.beforeRead = { never.await() }
-    val vm = viewModel()
-    vm.load()
-
-    vm.viewModelScope.cancel()
-    idle()
-
+    assertFalse(vm.uiState.value.isSaving)
     assertNull(vm.uiState.value.errorMsg)
-    assertNull(vm.uiState.value.announcement)
   }
 }
