@@ -1,10 +1,8 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.announcement.create
 
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -41,10 +39,9 @@ import com.android.festivar.ui.announcement.AnnouncementFormTopBar
 import com.android.festivar.ui.announcement.announcementPriorityLabelRes
 import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.components.FestivarFieldWithError
+import com.android.festivar.ui.components.FestivarPrioritySelector
 import com.android.festivar.ui.components.FestivarTextField
-import com.android.festivar.ui.components.FilterChip
 import com.android.festivar.ui.components.LONG_TEXT_MAX_LENGTH
-import com.android.festivar.ui.components.SectionLabel
 import com.android.festivar.ui.theme.AppTheme
 
 object CreateAnnouncementScreenTestTags {
@@ -208,11 +205,15 @@ fun CreateAnnouncementContent(
             modifier = Modifier.heightIn(min = 96.dp).testTag(tags.descriptionField),
         )
       }
-      AnnouncementPrioritySelector(
+      FestivarPrioritySelector(
+          priorities = AnnouncementPriority.entries,
           selected = state.priority,
           onSelect = actions.onPriorityChange,
+          label = stringResource(R.string.create_announcement_field_priority),
+          chipLabelRes = ::announcementPriorityLabelRes,
           enabled = state.isEditable,
-          tags = tags,
+          labelModifier = Modifier.testTag(tags.priorityLabel),
+          chipModifier = { Modifier.testTag(tags.priorityChip(it)) },
       )
     }
   }
@@ -263,39 +264,6 @@ private fun PublishBar(
         )
       } else {
         Text(text = stringResource(labels.submit), style = MaterialTheme.typography.labelLarge)
-      }
-    }
-  }
-}
-
-/**
- * Titled row of chips to pick an [AnnouncementPriority]; [selected] is the current one. The chips
- * ignore taps unless [enabled].
- */
-@Composable
-private fun AnnouncementPrioritySelector(
-    selected: AnnouncementPriority,
-    onSelect: (AnnouncementPriority) -> Unit,
-    enabled: Boolean,
-    tags: AnnouncementFormTags,
-) {
-  Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-    SectionLabel(
-        stringResource(R.string.create_announcement_field_priority),
-        modifier = Modifier.testTag(tags.priorityLabel),
-    )
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.horizontalScroll(rememberScrollState()),
-    ) {
-      AnnouncementPriority.entries.forEach { priority ->
-        FilterChip(
-            label = stringResource(announcementPriorityLabelRes(priority)),
-            selected = priority == selected,
-            onClick = { onSelect(priority) },
-            enabled = enabled,
-            modifier = Modifier.testTag(tags.priorityChip(priority)),
-        )
       }
     }
   }

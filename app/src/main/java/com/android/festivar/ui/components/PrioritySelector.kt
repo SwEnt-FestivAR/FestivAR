@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.components
 
 import androidx.annotation.StringRes
@@ -29,28 +30,41 @@ fun priorityLabelRes(priority: Priority): Int =
     }
 
 /**
- * Titled row of chips to pick a [Priority]; [selected] is the current one. The title is the
+ * Titled row of chips to pick one of [priorities]; [selected] is the current one. The title is the
  * design's [SectionLabel] and the chips are the design's [FilterChip] without a count. Pass a test
- * tag through [modifier].
+ * tag through [modifier], [labelModifier] or [chipModifier].
+ *
+ * @param label The title above the chips.
+ * @param chipLabelRes Gives the string resource that names a priority on its chip.
+ * @param enabled Whether the chips react to taps.
+ * @param labelModifier Applied to the title.
+ * @param chipModifier Gives the modifier of the chip of a priority.
  */
 @Composable
-fun FestivarPrioritySelector(
-    selected: Priority,
-    onSelect: (Priority) -> Unit,
+fun <T> FestivarPrioritySelector(
+    priorities: List<T>,
+    selected: T,
+    onSelect: (T) -> Unit,
     label: String,
+    chipLabelRes: (T) -> Int,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    labelModifier: Modifier = Modifier,
+    chipModifier: (T) -> Modifier = { Modifier },
 ) {
   Column(modifier = modifier) {
-    SectionLabel(label)
+    SectionLabel(label, modifier = labelModifier)
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.horizontalScroll(rememberScrollState()),
     ) {
-      Priority.entries.forEach { priority ->
+      priorities.forEach { priority ->
         FilterChip(
-            label = stringResource(priorityLabelRes(priority)),
+            label = stringResource(chipLabelRes(priority)),
             selected = priority == selected,
             onClick = { onSelect(priority) },
+            enabled = enabled,
+            modifier = chipModifier(priority),
         )
       }
     }
@@ -62,9 +76,11 @@ fun FestivarPrioritySelector(
 internal fun FestivarPrioritySelectorPreview() {
   AppTheme {
     FestivarPrioritySelector(
+        priorities = Priority.entries,
         selected = Priority.HIGH,
         onSelect = {},
         label = "Priority",
+        chipLabelRes = ::priorityLabelRes,
         modifier = Modifier.padding(16.dp),
     )
   }

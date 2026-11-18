@@ -1,7 +1,9 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.components
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -12,6 +14,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.task.Priority
 import com.android.festivar.ui.theme.AppTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -33,10 +36,21 @@ class PrioritySelectorTest {
 
   private fun label(priority: Priority): String = labels.getValue(priority)
 
-  private fun setSelector(selected: Priority, onSelect: (Priority) -> Unit = {}) {
+  private fun setSelector(
+      selected: Priority,
+      enabled: Boolean = true,
+      onSelect: (Priority) -> Unit = {},
+  ) {
     composeTestRule.setContent {
       AppTheme {
-        FestivarPrioritySelector(selected = selected, onSelect = onSelect, label = "Priority")
+        FestivarPrioritySelector(
+            priorities = Priority.entries,
+            selected = selected,
+            onSelect = onSelect,
+            label = "Priority",
+            chipLabelRes = ::priorityLabelRes,
+            enabled = enabled,
+        )
       }
     }
   }
@@ -74,5 +88,20 @@ class PrioritySelectorTest {
     composeTestRule.onNodeWithText(label(Priority.URGENT)).performScrollTo().performClick()
 
     assertEquals(Priority.URGENT, picked)
+  }
+
+  /** Breaks if the chips still react to taps when the selector is disabled. */
+  @Test
+  fun aDisabledSelectorIgnoresTaps() {
+    var picked: Priority? = null
+    setSelector(Priority.NONE, enabled = false) { picked = it }
+
+    composeTestRule
+        .onNodeWithText(label(Priority.URGENT))
+        .performScrollTo()
+        .assertIsNotEnabled()
+        .performClick()
+
+    assertNull(picked)
   }
 }

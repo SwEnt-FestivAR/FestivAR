@@ -43,6 +43,7 @@ import com.android.festivar.ui.components.FestivarStepper
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.components.FieldError
 import com.android.festivar.ui.components.LONG_TEXT_MAX_LENGTH
+import com.android.festivar.ui.components.priorityLabelRes
 import com.android.festivar.ui.task.DiscardTaskDialog
 import com.android.festivar.ui.task.TaskFormBackHandling
 import com.android.festivar.ui.task.TaskFormLabels
@@ -240,9 +241,11 @@ fun CreateTaskContent(
           timeTag = CreateTaskScreenTestTags.END_TIME_FIELD,
       )
       FestivarPrioritySelector(
+          priorities = Priority.entries,
           selected = state.priority,
           onSelect = actions.onPriorityChange,
           label = stringResource(R.string.create_task_field_priority),
+          chipLabelRes = ::priorityLabelRes,
           modifier =
               Modifier.padding(bottom = 8.dp).testTag(CreateTaskScreenTestTags.PRIORITY_SELECTOR),
       )
