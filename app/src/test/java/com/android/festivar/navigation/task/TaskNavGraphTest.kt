@@ -3,9 +3,6 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.navigation.task
 
-import android.content.Context
-import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
@@ -16,10 +13,8 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.android.festivar.R
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
@@ -125,19 +120,24 @@ class TaskNavGraphTest {
     assertEquals("event-1", saved.eventId)
   }
 
+  /** Breaks if a signed-out user can still open the Create task screen. */
   @Test
-  fun createTaskRoute_withNobodySignedIn_savesNothingAndShowsTheSaveError() {
-    openCreateTaskRoute(mockk<AuthRepository> { every { currentUser } returns null })
+  fun createTaskRoute_withNobodySignedIn_sendsTheUserToTheLogin() {
+    lateinit var navController: NavHostController
+    val authRepository = mockk<AuthRepository> { every { currentUser } returns null }
+    composeTestRule.setContent {
+      AppTheme {
+        navController = rememberNavController()
+        NavHost(navController, startDestination = AppScreens.createTask("event-1")) {
+          composable(AppScreens.Login.name) {}
+          taskGraph(navController, dataRepository(authRepository))
+        }
+      }
+    }
     composeTestRule.waitForIdle()
 
-    val message =
-        ApplicationProvider.getApplicationContext<Context>()
-            .getString(R.string.create_task_error_save_failed)
-    composeTestRule
-        .onNodeWithTag(CreateTaskScreenTestTags.SAVE_ERROR)
-        .assertIsDisplayed()
-        .assertTextEquals(message)
-    assertTrue(runBlocking { repository.getAllTasks("event-1") }.isEmpty())
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.TITLE_FIELD).assertDoesNotExist()
+    assertEquals(AppScreens.Login.name, navController.currentDestination?.route)
   }
 
   // The [route] is opened on top of a "start" screen, to see where leaving goes back to.
