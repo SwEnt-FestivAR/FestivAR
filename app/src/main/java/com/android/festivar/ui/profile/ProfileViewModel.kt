@@ -32,6 +32,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 private const val LOG_TAG = "ProfileViewModel"
+private const val MAX_PROFILE_PICTURE_SIZE_BYTES = 10L * 1024L * 1024L
+
+internal fun isProfilePictureTooLarge(sizeBytes: Long): Boolean =
+    sizeBytes > MAX_PROFILE_PICTURE_SIZE_BYTES
 
 /**
  * Represents the UI state of the Profile screen.
@@ -212,6 +216,10 @@ class ProfileViewModel(
    */
   fun updateProfilePicture(storedImage: StoredImage) {
     if (!canUpdateProfilePicture()) return
+    if (isProfilePictureTooLarge(storedImage.file.length())) {
+      _uiState.update { it.copy(errorMsg = R.string.profile_picture_too_large) }
+      return
+    }
 
     _uiState.update { it.copy(isSaving = true, errorMsg = null) }
 
@@ -225,18 +233,35 @@ class ProfileViewModel(
     _uiState.update { it.copy(isSaving = true, errorMsg = null) }
     viewModelScope.launch {
       try {
-        val storedImage =
+        val extension =
+            MimeTypeMap.getSingleton().getExtensionFromMimeType(contentResolver.getType(uri))
+                ?: "jpg"
+        val storedImage: StoredImage? =
             withContext(ioDispatcher) {
-              val extension =
-                  MimeTypeMap.getSingleton().getExtensionFromMimeType(contentResolver.getType(uri))
-                      ?: "jpg"
               val file = File.createTempFile("profile-picture-", ".$extension", cacheDir)
-              contentResolver.openInputStream(uri)?.use { input ->
-                FileOutputStream(file).use { output -> input.copyTo(output) }
-              } ?: error("Unable to read selected profile picture.")
-              StoredImage(file)
+              try {
+                val input =
+                    contentResolver.openInputStream(uri)
+                        ?: error("Unable to read selected profile picture.")
+                input.use { FileOutputStream(file).use { output -> input.copyTo(output) } }
+                if (isProfilePictureTooLarge(file.length())) {
+                  file.delete()
+                  null
+                } else {
+                  StoredImage(file)
+                }
+              } catch (e: Exception) {
+                file.delete()
+                throw e
+              }
             }
-        saveProfilePicture(storedImage)
+        if (storedImage == null) {
+          _uiState.update {
+            it.copy(isSaving = false, errorMsg = R.string.profile_picture_too_large)
+          }
+        } else {
+          saveProfilePicture(storedImage)
+        }
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {

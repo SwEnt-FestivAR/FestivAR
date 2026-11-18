@@ -16,6 +16,7 @@ import com.google.firebase.auth.FirebaseUser
 import io.mockk.every
 import io.mockk.mockk
 import java.io.File
+import java.io.RandomAccessFile
 import kotlin.io.path.createTempDirectory
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -428,6 +429,28 @@ class ProfileViewModelTest {
 
     assertEquals(R.string.profile_picture_save_failed, viewModel.uiState.value.errorMsg)
     assertFalse(viewModel.uiState.value.isSaving)
+  }
+
+  @Test
+  fun profilePictureSizeLimitRejectsOnlyPicturesOver10Mb() {
+    assertFalse(isProfilePictureTooLarge(10L * 1024L * 1024L))
+    assertTrue(isProfilePictureTooLarge(10L * 1024L * 1024L + 1L))
+  }
+
+  @Test
+  fun updateProfilePictureRejectsPicturesOver10Mb() = runTest {
+    val sourceFile = kotlin.io.path.createTempFile("large-profile-picture-", ".png").toFile()
+    RandomAccessFile(sourceFile, "rw").use { it.setLength(10L * 1024L * 1024L + 1L) }
+    val imageStorage = RecordingImageStorage()
+    val viewModel = createViewModel(imageStorage = imageStorage)
+
+    advanceUntilIdle()
+    viewModel.updateProfilePicture(StoredImage(sourceFile))
+    advanceUntilIdle()
+
+    assertEquals(R.string.profile_picture_too_large, viewModel.uiState.value.errorMsg)
+    assertFalse(viewModel.uiState.value.isSaving)
+    assertTrue(imageStorage.uploadedImages.isEmpty())
   }
 
   // Breaks if URI-copy cancellation is converted into a profile-picture error.
