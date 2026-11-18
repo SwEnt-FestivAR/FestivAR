@@ -1,9 +1,12 @@
 // Co-authored-by: Gemini
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.authentication
 
 import androidx.credentials.Credential
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 
 open class FakeAuthRepository(
     override val currentUser: FirebaseUser? = null,
@@ -26,6 +29,8 @@ open class FakeAuthRepository(
     var signOutBehavior: (suspend () -> Result<Unit>)? = null,
     var signUpCallCount: Int = 0,
 ) : AuthRepository {
+
+  override val currentUserFlow: Flow<FirebaseUser?> = flowOf(currentUser)
 
   var resetResult: Result<Unit>
     get() = forgotPasswordResult

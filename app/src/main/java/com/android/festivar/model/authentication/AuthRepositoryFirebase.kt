@@ -1,5 +1,6 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.authentication
 
 import android.util.Log
@@ -15,6 +16,9 @@ import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.auth
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 
 // Logs tag
@@ -27,6 +31,13 @@ class AuthRepositoryFirebase(
 ) : AuthRepository {
   override val currentUser: FirebaseUser?
     get() = firebaseAuth.currentUser
+
+  // Firebase calls the listener once on registration, so the first emission is the current state.
+  override val currentUserFlow: Flow<FirebaseUser?> = callbackFlow {
+    val listener = FirebaseAuth.AuthStateListener { trySend(it.currentUser) }
+    firebaseAuth.addAuthStateListener(listener)
+    awaitClose { firebaseAuth.removeAuthStateListener(listener) }
+  }
 
   override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> =
       try {
