@@ -62,14 +62,12 @@ class AndroidVoicePlayer(context: Context) : VoicePlayer {
   private val handler = Handler(Looper.getMainLooper())
 
   /** Reads the position of the playing note, then schedules itself again. */
-  private val positionTicker =
-      object : Runnable {
-        override fun run() {
-          if (_state.value !is PlayerState.Playing) return
-          readPosition()
-          handler.postDelayed(this, POSITION_INTERVAL_MS)
-        }
-      }
+  private val positionTicker = Runnable {
+    if (_state.value is PlayerState.Playing) {
+      readPosition()
+      startTicker()
+    }
+  }
 
   /** The player of the note being played, with how far its loading went. */
   private var current: Current = Current.None
