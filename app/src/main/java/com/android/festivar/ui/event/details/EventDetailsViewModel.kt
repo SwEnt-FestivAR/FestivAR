@@ -117,7 +117,7 @@ class EventDetailsViewModel(
    * loading error too.
    */
   fun fetchEvent() {
-      if (_uiState.value.isUpdating) return
+    if (_uiState.value.isUpdating) return
     viewModelScope.launch {
       _uiState.update { EventDetailsUIState() }
       try {
