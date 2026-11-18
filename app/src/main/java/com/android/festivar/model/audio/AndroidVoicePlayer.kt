@@ -39,9 +39,9 @@ import kotlinx.coroutines.flow.asStateFlow
  * once it is ready. The length of the note is not exposed: the caller has it in the stored voice
  * note.
  *
- * **Loading timeout.** A note that is not ready 10 seconds after [play] (a stalled connection, for
- * example) fails like any other loading problem, whether it is playing or paused meanwhile, so it
- * never stays silent forever.
+ * **Loading timeout.** A note that is not ready 10 seconds after it starts loading (a stalled
+ * connection, for example) fails like any other loading problem, whether it is playing or paused
+ * meanwhile, so it never stays silent forever.
  *
  * **Audio.** The note is declared as speech played as media (media volume). The player does not
  * request audio focus: a note is a few seconds long and the user starts it deliberately.
