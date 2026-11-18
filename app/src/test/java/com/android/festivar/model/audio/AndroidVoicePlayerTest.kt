@@ -697,6 +697,19 @@ class AndroidVoicePlayerTest {
     assertEquals(PlayerState.Idle, player.state.value)
   }
 
+  /** Breaks if the timeout of a replaced note fails the note that replaced it. */
+  @Test
+  fun play_aSecondNoteIsNotFailedByTheFirstNotesTimeout() {
+    stallLoading()
+    player.play(first)
+    player.play(second)
+    idle()
+
+    idle(Duration.ofMillis(AFTER_TIMEOUT_MS))
+
+    assertEquals(PlayerState.Playing(second), player.state.value)
+  }
+
   /** Breaks if a note paused while it is stuck loading stays Paused for ever. */
   @Test
   fun pause_whileLoadingStillFailsWhenTheNoteDoesNotLoadInTime() {
