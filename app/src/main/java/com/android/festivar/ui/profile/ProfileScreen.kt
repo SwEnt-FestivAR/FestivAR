@@ -350,12 +350,12 @@ internal fun ProfileScreenContent(
     if (uiState.isUserAnonymous) {
       Button(
           onClick = onUpgradeClick,
-          enabled = !uiState.isUpgrading,
+          enabled = true,
           shape = RoundedCornerShape(12.dp),
           modifier =
               Modifier.fillMaxWidth().height(48.dp).testTag(ProfileScreenTestTags.UPGRADE_BUTTON),
       ) {
-        if (uiState.isUpgrading) {
+        if (uiState.isLoading) {
           CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
         } else {
           Text(

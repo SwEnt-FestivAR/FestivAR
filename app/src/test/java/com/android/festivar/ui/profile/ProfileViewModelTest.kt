@@ -822,7 +822,7 @@ class ProfileViewModelTest {
     advanceUntilIdle()
 
     assertNull(viewModel.uiState.value.errorMsg)
-    assertFalse(viewModel.uiState.value.isUpgrading)
+    assertFalse(viewModel.uiState.value.isLoading)
     assertFalse(viewModel.uiState.value.isUserAnonymous)
   }
 }

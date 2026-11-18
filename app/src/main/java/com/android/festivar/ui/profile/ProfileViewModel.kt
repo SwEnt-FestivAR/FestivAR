@@ -57,7 +57,6 @@ data class ProfileUIState(
     val email: String = "",
     val password: String = "",
     val isPasswordVisible: Boolean = false,
-    val isUpgrading: Boolean = false,
     val showUpgradeSheet: Boolean = false,
     val showSignOutWarning: Boolean = false,
 ) {
@@ -261,7 +260,7 @@ class ProfileViewModel(
   /** Upgrades the anonymous account with email and password. */
   fun upgradeWithEmail() {
     val state = _uiState.value
-    if (state.isUpgrading || !state.isUserAnonymous) return
+    if (state.isLoading || !state.isUserAnonymous) return
     if (state.email.isBlank() || state.password.isBlank()) {
       _uiState.update { it.copy(errorMsg = R.string.profile_anon_upgrade_failed) }
       return
@@ -270,21 +269,21 @@ class ProfileViewModel(
     val email = state.email.trim()
     val password = state.password
 
-    _uiState.update { it.copy(isUpgrading = true, errorMsg = null) }
+    _uiState.update { it.copy(isLoading = true, errorMsg = null) }
     upgradeAccount("email") { authRepository.signUpWithEmailAndPassword(email, password) }
   }
 
   fun startGoogleUpgrade(): Boolean {
     val state = _uiState.value
-    if (state.isUpgrading || !state.isUserAnonymous) return false
-    _uiState.update { it.copy(isUpgrading = true, errorMsg = null) }
+    if (state.isLoading || !state.isUserAnonymous) return false
+    _uiState.update { it.copy(isLoading = true, errorMsg = null) }
     return true
   }
 
   fun upgradeWithGoogle(credential: Credential) {
     val state = _uiState.value
     if (!state.isUserAnonymous) {
-      _uiState.update { it.copy(isUpgrading = false) }
+      _uiState.update { it.copy(isLoading = false) }
       return
     }
     upgradeAccount("Google") { authRepository.signInWithGoogle(credential) }
@@ -294,9 +293,7 @@ class ProfileViewModel(
     if (e != null) {
       Log.e(LOG_TAG, "Error upgrading account with Google", e)
     }
-    _uiState.update {
-      it.copy(isUpgrading = false, errorMsg = R.string.profile_anon_upgrade_failed)
-    }
+    _uiState.update { it.copy(isLoading = false, errorMsg = R.string.profile_anon_upgrade_failed) }
   }
 
   private fun upgradeAccount(
@@ -311,7 +308,7 @@ class ProfileViewModel(
                   val isAnonymous = (upgradedUser as? FirebaseUser)?.isAnonymous ?: false
                   _uiState.update {
                     it.copy(
-                        isUpgrading = false,
+                        isLoading = false,
                         showUpgradeSheet = false,
                         isUserAnonymous = isAnonymous,
                     )
@@ -321,7 +318,7 @@ class ProfileViewModel(
                 onFailure = { e ->
                   Log.e(LOG_TAG, "Error upgrading account with $method", e)
                   _uiState.update {
-                    it.copy(isUpgrading = false, errorMsg = R.string.profile_anon_upgrade_failed)
+                    it.copy(isLoading = false, errorMsg = R.string.profile_anon_upgrade_failed)
                   }
                 },
             )
@@ -330,7 +327,7 @@ class ProfileViewModel(
       } catch (e: Exception) {
         Log.e(LOG_TAG, "Error upgrading account with $method", e)
         _uiState.update {
-          it.copy(isUpgrading = false, errorMsg = R.string.profile_anon_upgrade_failed)
+          it.copy(isLoading = false, errorMsg = R.string.profile_anon_upgrade_failed)
         }
       }
     }
