@@ -80,7 +80,7 @@ fun UpgradeBottomSheetContent(
     EmailLoginForm(
         email = uiState.email,
         password = uiState.password,
-        isLoading = uiState.isLoading,
+        isLoading = uiState.isUpgrading,
         isPasswordVisible = uiState.isPasswordVisible,
         onEmailChange = onEmailChange,
         onPasswordChange = onPasswordChange,
@@ -97,7 +97,7 @@ fun UpgradeBottomSheetContent(
 
     SignInButton(
         onClick = onGoogleUpgrade,
-        enabled = !uiState.isLoading,
+        enabled = !uiState.isUpgrading,
         showGoogle = true,
         text = stringResource(R.string.login_continue_with_google),
         modifier =

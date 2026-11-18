@@ -117,13 +117,6 @@ fun ProfileScreen(
   // Leaves the screen once the sign-out succeeded.
   LaunchedEffect(profileUIState.signedOut) { if (profileUIState.signedOut) onSignedOut() }
 
-  // Closes bottom sheet once upgrade/linking succeeded.
-  LaunchedEffect(profileUIState.isUserAnonymous) {
-    if (!profileUIState.isUserAnonymous && profileUIState.isUpgrading) {
-      profileViewModel.hideUpgradeSheet()
-    }
-  }
-
   Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
         topBar = {
@@ -175,7 +168,7 @@ fun ProfileScreen(
       )
     }
 
-    if (profileUIState.isUpgrading) {
+    if (profileUIState.showUpgradeSheet) {
       UpgradeBottomSheet(
           onUpgradeCancel = profileViewModel::hideUpgradeSheet,
           sheetState = sheetState,
@@ -204,7 +197,7 @@ fun ProfileScreen(
       )
     }
 
-    if (!profileUIState.isUpgrading) {
+    if (!profileUIState.showUpgradeSheet) {
       SnackbarHost(
           hostState = snackbarHostState,
           modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
@@ -330,12 +323,12 @@ internal fun ProfileScreenContent(
     if (uiState.isUserAnonymous) {
       Button(
           onClick = onUpgradeClick,
-          enabled = true,
+          enabled = !uiState.isUpgrading,
           shape = RoundedCornerShape(12.dp),
           modifier =
               Modifier.fillMaxWidth().height(48.dp).testTag(ProfileScreenTestTags.UPGRADE_BUTTON),
       ) {
-        if (uiState.isSaving) {
+        if (uiState.isUpgrading) {
           CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
         } else {
           Text(

@@ -609,6 +609,10 @@ class ProfileViewModelTest {
     assertFalse(viewModel.uiState.value.isPasswordVisible)
   }
 
+  /**
+   * Breaks if showing or hiding the upgrade sheet does not correctly toggle sheet visibility or
+   * reset credentials.
+   */
   @Test
   fun upgradeSheetStateIncludesVisibilityAndCredentialReset() = runTest {
     val viewModel = createViewModel()
@@ -617,10 +621,10 @@ class ProfileViewModelTest {
     viewModel.updateEmail("test@example.com")
     viewModel.updatePassword("password")
     viewModel.showUpgradeSheet()
-    assertTrue(viewModel.uiState.value.isUpgrading)
+    assertTrue(viewModel.uiState.value.showUpgradeSheet)
 
     viewModel.hideUpgradeSheet()
-    assertFalse(viewModel.uiState.value.isUpgrading)
+    assertFalse(viewModel.uiState.value.showUpgradeSheet)
     assertEquals("", viewModel.uiState.value.email)
     assertEquals("", viewModel.uiState.value.password)
   }

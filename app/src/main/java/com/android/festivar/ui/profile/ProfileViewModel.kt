@@ -41,7 +41,8 @@ private const val LOG_TAG = "ProfileViewModel"
  *   operation when the disconnection is occurred.
  * @property isSigningOut Whether the [User] is currently in the process of signing out, it blocks
  *   any other operation while trying to disconnect the [User].
- * @property isUpgrading Whether the account upgrade bottom sheet is visible.
+ * @property isUpgrading Whether the account upgrade is currently in progress.
+ * @property showUpgradeSheet Whether the account upgrade bottom sheet is visible.
  * @property showSignOutWarning Whether the anonymous-account sign-out warning is visible.
  */
 data class ProfileUIState(
@@ -58,6 +59,7 @@ data class ProfileUIState(
     val password: String = "",
     val isPasswordVisible: Boolean = false,
     val isUpgrading: Boolean = false,
+    val showUpgradeSheet: Boolean = false,
     val showSignOutWarning: Boolean = false,
 ) {
   /**
@@ -239,12 +241,12 @@ class ProfileViewModel(
 
   /** Shows the account upgrade bottom sheet. */
   fun showUpgradeSheet() {
-    _uiState.update { it.copy(isUpgrading = true) }
+    _uiState.update { it.copy(showUpgradeSheet = true) }
   }
 
   /** Hides the account upgrade bottom sheet and clears its credentials. */
   fun hideUpgradeSheet() {
-    _uiState.update { it.copy(isUpgrading = false, email = "", password = "") }
+    _uiState.update { it.copy(showUpgradeSheet = false, email = "", password = "") }
   }
 
   /** Shows the warning displayed before an anonymous account signs out. */
@@ -260,7 +262,7 @@ class ProfileViewModel(
   /** Upgrades the anonymous account with email and password. */
   fun upgradeWithEmail() {
     val state = _uiState.value
-    if (state.isLoading || !state.isUserAnonymous) return
+    if (state.isUpgrading || !state.isUserAnonymous) return
     if (state.email.isBlank() || state.password.isBlank()) {
       _uiState.update { it.copy(errorMsg = R.string.profile_anon_upgrade_failed) }
       return
@@ -269,15 +271,15 @@ class ProfileViewModel(
     val email = state.email.trim()
     val password = state.password
 
-    _uiState.update { it.copy(isLoading = true, errorMsg = null) }
+    _uiState.update { it.copy(isUpgrading = true, errorMsg = null) }
     upgradeAccount("email") { authRepository.signUpWithEmailAndPassword(email, password) }
   }
 
   fun upgradeWithGoogle(context: Context, credentialManager: CredentialManager) {
     val state = _uiState.value
-    if (state.isLoading || !state.isUserAnonymous) return
+    if (state.isUpgrading || !state.isUserAnonymous) return
 
-    _uiState.update { it.copy(isLoading = true, errorMsg = null) }
+    _uiState.update { it.copy(isUpgrading = true, errorMsg = null) }
     upgradeAccount("Google") {
       val signInWithGoogleOption =
           GetSignInWithGoogleOption.Builder(context.getString(R.string.default_web_client_id))
@@ -298,13 +300,13 @@ class ProfileViewModel(
         operation()
             .fold(
                 onSuccess = {
-                  _uiState.update { it.copy(isLoading = false) }
+                  _uiState.update { it.copy(isUpgrading = false, showUpgradeSheet = false) }
                   getUserInformation()
                 },
                 onFailure = { e ->
                   Log.e(LOG_TAG, "Error upgrading account with $method", e)
                   _uiState.update {
-                    it.copy(isLoading = false, errorMsg = R.string.profile_anon_upgrade_failed)
+                    it.copy(isUpgrading = false, errorMsg = R.string.profile_anon_upgrade_failed)
                   }
                 },
             )
@@ -313,7 +315,7 @@ class ProfileViewModel(
       } catch (e: Exception) {
         Log.e(LOG_TAG, "Error upgrading account with $method", e)
         _uiState.update {
-          it.copy(isLoading = false, errorMsg = R.string.profile_anon_upgrade_failed)
+          it.copy(isUpgrading = false, errorMsg = R.string.profile_anon_upgrade_failed)
         }
       }
     }
