@@ -2,7 +2,7 @@
 package com.android.festivar.model.map
 
 /** Finds places from what a user typed. */
-interface LocationRepository {
+fun interface LocationRepository {
 
   /**
    * The places that match [query], the most relevant first. The list is empty when nothing matches

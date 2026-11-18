@@ -6,12 +6,10 @@ import com.android.festivar.model.map.geometry.GeoPosition
 import java.io.IOException
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.HttpUrl
@@ -60,14 +58,16 @@ class NominatimLocationRepository(
             .build()
     val request = Request.Builder().url(url).header("User-Agent", USER_AGENT).build()
     waitForOurTurn()
-    return client.newCall(request).await().use { response ->
-      if (!response.isSuccessful) throw IOException("Nominatim answered ${response.code}.")
-      withContext(Dispatchers.IO) { parseLocations(response.body.string()) }
-    }
+    return parseLocations(client.newCall(request).awaitBody())
   }
 
-  /** The answer to this call. Cancelling the search cancels the request. */
-  private suspend fun Call.await(): Response = suspendCancellableCoroutine { continuation ->
+  /**
+   * The body of the answer to this call, read on the thread of OkHttp so that the caller is never
+   * blocked. Cancelling the search cancels the request.
+   *
+   * @throws IOException if the service cannot be reached or answers with an error.
+   */
+  private suspend fun Call.awaitBody(): String = suspendCancellableCoroutine { continuation ->
     continuation.invokeOnCancellation { cancel() }
     enqueue(
         object : Callback {
@@ -76,7 +76,15 @@ class NominatimLocationRepository(
           }
 
           override fun onResponse(call: Call, response: Response) {
-            continuation.resume(response) { _, _, _ -> response.close() }
+            try {
+              val body = response.use {
+                if (!it.isSuccessful) throw IOException("Nominatim answered ${it.code}.")
+                it.body.string()
+              }
+              continuation.resume(body)
+            } catch (e: IOException) {
+              continuation.resumeWithException(e)
+            }
           }
         }
     )
