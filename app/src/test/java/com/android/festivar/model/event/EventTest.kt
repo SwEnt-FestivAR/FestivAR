@@ -254,7 +254,8 @@ class EventTest {
   }
 
   /**
-   * addMember adds the user at the end, keeps every other field and does not change the original.
+   * Breaks if addMember does not add the user at the end with DEFAULT_ROLE, changes another field
+   * or changes the original.
    */
   @Test
   fun addMember_addsUserAtTheEnd() {
@@ -277,7 +278,7 @@ class EventTest {
     assertInvalid(alreadyMemberMessage) { event.addMember(User("same")) }
   }
 
-  /** removeMember removes only the user with the given id and does not change the original. */
+  /** Breaks if removeMember removes another user or their role, or changes the original. */
   @Test
   fun removeMember_removesOnlyTheGivenUser() {
     val event = eventWith(members = listOf(alice, bob), ownerId = bob.uid)
@@ -322,7 +323,7 @@ class EventTest {
     assertInvalid(alreadyMemberMessage) { event.addMember(User("u1")) }
   }
 
-  /** removeMember removes the member with the given uid, whatever its names. */
+  /** Breaks if removeMember misses the member or role with the given uid because of their names. */
   @Test
   fun removeMember_removesTheMemberWithTheSameUid() {
     val sara = User("u1", name = "Sara", surname = "Keller")
@@ -572,7 +573,7 @@ class EventTest {
               roles = mapOf(alice.uid to Role.OWNER) + roles.associate { it.first.uid to it.second }
           )
 
-  /** Red if the default roles stop giving OWNER to the owner and the default role to the others. */
+  /** Breaks if the default roles stop giving OWNER to the owner and DEFAULT_ROLE to the others. */
   @Test
   fun init_givesTheOwnerRoleToTheOwnerAndTheDefaultRoleToTheOthers_byDefault() {
     val event = eventWith(members = listOf(alice, bob))
@@ -581,7 +582,7 @@ class EventTest {
     assertEquals(Role.VISITOR, DEFAULT_ROLE)
   }
 
-  /** A member without a role and a role for a user who is not a member are both refused. */
+  /** Breaks if an event accepts a member without a role, or a role for a non-member. */
   @Test
   fun init_fails_whenTheRolesAreNotExactlyTheMembers() {
     val event = eventWith(members = listOf(alice, bob))
@@ -607,7 +608,7 @@ class EventTest {
     assertInvalid(onlyOwnerMessage) { eventWithRoles(bob to Role.OWNER) }
   }
 
-  /** roleOf finds the role of each member, the owner included. */
+  /** Breaks if roleOf returns another role than the stored one for a member, the owner included. */
   @Test
   fun roleOf_returnsTheRoleOfEachMember() {
     val event = eventWithRoles(bob to Role.STAFF, carla to Role.ADMIN)
@@ -617,7 +618,7 @@ class EventTest {
     assertEquals(Role.ADMIN, event.roleOf(carla.uid))
   }
 
-  /** roleOf and canAct refuse a user who is not a member. */
+  /** Breaks if roleOf or canAct answers for a user who is not a member instead of refusing them. */
   @Test
   fun roleOfAndCanAct_fail_forANonMember() {
     val event = eventWithRoles(bob to Role.STAFF)
@@ -626,7 +627,7 @@ class EventTest {
     assertInvalid(notMemberMessage) { event.canAct(outsider.uid, Permission.CAN_SEE_TASK) }
   }
 
-  /** canAct follows the permissions of the role of the member. */
+  /** Breaks if canAct answers something else than the permissions of the member's role. */
   @Test
   fun canAct_followsThePermissionsOfTheRole() {
     val event = eventWithRoles(bob to Role.STAFF)
@@ -636,7 +637,7 @@ class EventTest {
     assertTrue(event.canAct(alice.uid, Permission.CAN_DELETE_EVENT))
   }
 
-  /** setRole changes only the role of the given member and does not change the original. */
+  /** Breaks if setRole changes another role than the one of the given member, or the original. */
   @Test
   fun setRole_changesOnlyTheRoleOfTheMember() {
     val event = eventWithRoles(bob to Role.VISITOR, carla to Role.STAFF)
@@ -648,8 +649,8 @@ class EventTest {
   }
 
   /**
-   * setRole refuses a member without the permission, a role or a member they do not dominate, a
-   * change of their own role, of the owner's role and the OWNER role.
+   * Breaks if setRole accepts a member without the permission, a role or a member they do not
+   * dominate, a change of their own role or of the owner's role, or giving the OWNER role.
    */
   @Test
   fun setRole_fails_whenTheMemberIsNotAllowed() {
@@ -667,7 +668,7 @@ class EventTest {
     assertInvalid(setRoleMessage) { event.setRole(alice.uid, carla.uid, Role.OWNER) }
   }
 
-  /** setRole refuses an actor or a member who is not a member of the event. */
+  /** Breaks if setRole accepts an actor or a target who is not a member of the event. */
   @Test
   fun setRole_fails_forANonMember() {
     val event = eventWithRoles(bob to Role.STAFF)
@@ -676,7 +677,7 @@ class EventTest {
     assertInvalid(notMemberMessage) { event.setRole(alice.uid, outsider.uid, Role.VISITOR) }
   }
 
-  /** kickMember removes the member and their role, like removeMember. */
+  /** Breaks if kickMember does not remove the member and their role exactly like removeMember. */
   @Test
   fun kickMember_removesTheMemberAndTheirRole() {
     val event = eventWithRoles(bob to Role.ADMIN, carla to Role.STAFF)
@@ -686,8 +687,8 @@ class EventTest {
   }
 
   /**
-   * kickMember refuses a member without the permission, a member they do not strictly dominate,
-   * themselves and the owner.
+   * Breaks if kickMember accepts a member without the permission, or kicking a member they do not
+   * strictly dominate, themselves or the owner.
    */
   @Test
   fun kickMember_fails_whenTheMemberIsNotAllowed() {
@@ -707,7 +708,7 @@ class EventTest {
     assertInvalid(kickMessage) { event.kickMember(bob.uid, alice.uid) }
   }
 
-  /** transferOwnership makes the new owner OWNER and the previous one ADMIN, and nothing else. */
+  /** Breaks if transferOwnership does more than making the new owner OWNER and the old ADMIN. */
   @Test
   fun transferOwnership_swapsTheOwnerAndMakesThePreviousOneAdmin() {
     val event = eventWithRoles(bob to Role.STAFF, carla to Role.VISITOR)
@@ -725,8 +726,8 @@ class EventTest {
   }
 
   /**
-   * transferOwnership refuses anyone but the owner, a transfer to the owner themselves and a new
-   * owner who is not a member.
+   * Breaks if transferOwnership accepts anyone but the owner, a transfer to the owner themselves or
+   * a new owner who is not a member.
    */
   @Test
   fun transferOwnership_fails_whenNotAllowed() {

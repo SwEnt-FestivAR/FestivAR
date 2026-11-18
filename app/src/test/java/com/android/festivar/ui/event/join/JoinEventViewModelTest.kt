@@ -347,6 +347,9 @@ class JoinEventViewModelTest {
     )
   }
 
+  /**
+   * Breaks if a member whose user lost the event cannot open it, or if the event is written again.
+   */
   @Test
   fun aMemberMissingTheEventOnTheUserSideOpensItAndOnlyTheUserSideIsRepaired() {
     val withAda = CountingEvents(EventsRepositoryLocal(listOf(fete.addMember(ada))))
@@ -628,6 +631,7 @@ class JoinEventViewModelTest {
     assertEquals("X", viewModel.uiState.value.code)
   }
 
+  /** Breaks if events sharing a join code are not all listed, or joining one changes the other. */
   @Test
   fun twoEventsSharingACodeAreBothListedAndJoiningOneLeavesTheOtherAlone() {
     // fete2026 and fete2026-bis both give FETE20.

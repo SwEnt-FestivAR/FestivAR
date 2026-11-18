@@ -346,6 +346,9 @@ class EditEventViewModelTest {
     assertEquals("Updated festival", eventsRepository.getEvent(initialEvent.eventId).title)
   }
 
+  /**
+   * Breaks if saving the form drops the members, roles or tasks added elsewhere while it was open.
+   */
   @Test
   fun saveChangesPreservesMembersAndTasksAddedWhileFormWasOpen() = runTest {
     viewModel.fetchEvent(initialEvent.eventId)

@@ -307,6 +307,7 @@ class DataRepositoryLocalTest {
     assertEquals(t2, tasksRepository.getTask("t2"))
   }
 
+  /** Breaks if a task cannot be deleted once its owner no longer lists it in their tasks. */
   @Test
   fun deleteTask_ownerNoLongerListingIt_deletesItAnyway() = runTest {
     // alice, the owner of t1, loses it from her tasks when she quits e1.
@@ -360,6 +361,7 @@ class DataRepositoryLocalTest {
     }
   }
 
+  /** Breaks if an event with a member who does not exist is created, even partly. */
   @Test
   fun createEvent_unknownMember_throwsAndChangesNothing() = runTest {
     assertFailsWithoutChanges(NoSuchElementException::class.java) {
@@ -465,6 +467,9 @@ class DataRepositoryLocalTest {
     assertUser("carla", emptyList(), emptyList())
   }
 
+  /**
+   * Breaks if a member who quits loses the ownership of their tasks, or keeps them in their tasks.
+   */
   @Test
   fun quitEvent_byATaskOwner_keepsTheOwnerButRemovesTheTaskFromTheirTasks() = runTest {
     eventsRepository.editEvent("e1", e1WithBobAsOwner)

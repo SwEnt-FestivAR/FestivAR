@@ -77,9 +77,9 @@ class EventPermissionHandlerTest {
   // ---------------------------------------------------------------------------------------- //
 
   /**
-   * Editing and deleting a task follows the permissions on every task: a team lead can, a staff
-   * member cannot, even on a task they own. No current role has the `_OWN_` task permissions
-   * without the ones on every task, so owning a task never adds a right on its own.
+   * Breaks if editing or deleting a task stops following the permissions on every task: a team lead
+   * can, a staff member cannot, even on a task they own. No current role has the `_OWN_` task
+   * permissions without the ones on every task, so owning a task never adds a right on its own.
    */
   @Test
   fun canEditAndDeleteTask_followThePermissionsOnEveryTask() {
@@ -93,7 +93,7 @@ class EventPermissionHandlerTest {
     assertFalse(event.canEditTask(visitor.uid, othersTask))
   }
 
-  /** A member can mark a task as done only when assigned to it and allowed by their role. */
+  /** Breaks if a member can mark a task as done without being assigned to it or allowed to. */
   @Test
   fun canMarkTaskDone_needsToBeAssignedAndTheRolePermission() {
     assertTrue(event.canMarkTaskDone(staff.uid, task(owner.uid, assignees = listOf(staff))))
@@ -101,7 +101,7 @@ class EventPermissionHandlerTest {
     assertFalse(event.canMarkTaskDone(visitor.uid, task(owner.uid, assignees = listOf(visitor))))
   }
 
-  /** Every task check refuses a task of another event and a user who is not a member. */
+  /** Breaks if a task check answers for a task of another event or a user who is not a member. */
   @Test
   fun taskChecks_fail_forATaskOfAnotherEventOrANonMember() {
     val otherEventTask = task(ownerId = lead.uid).copy(eventId = "e2")
@@ -115,8 +115,8 @@ class EventPermissionHandlerTest {
   }
 
   /**
-   * A member assigns a task only with the permission and to a member strictly below them: not to
-   * themselves, an equal or a higher role.
+   * Breaks if a member can assign a task without the permission, or to themselves, an equal or a
+   * higher role instead of only to a member strictly below them.
    */
   @Test
   fun canAssignTask_needsThePermissionAndToDominateTheAssignee() {
@@ -133,8 +133,8 @@ class EventPermissionHandlerTest {
   // ---------------------------------------------------------------------------------------- //
 
   /**
-   * A team lead edits and deletes only the announcements they wrote, a staff manager every one, and
-   * a staff member none, even their own.
+   * Breaks if a team lead can edit or delete announcements they did not write, a staff manager
+   * cannot edit or delete every one, or a staff member can edit theirs.
    */
   @Test
   fun canEditAndDeleteAnnouncement_followTheOwnAndTheAnyPermissions() {
@@ -150,7 +150,7 @@ class EventPermissionHandlerTest {
     assertFalse(event.canEditAnnouncement(staff.uid, staffNews))
   }
 
-  /** Every announcement check refuses one that is not in the event and a non-member. */
+  /** Breaks if an announcement check answers for one not in the event or for a non-member. */
   @Test
   fun announcementChecks_fail_forAnAnnouncementNotInTheEventOrANonMember() {
     val checks: List<(String, Announcement) -> Boolean> =
@@ -167,8 +167,8 @@ class EventPermissionHandlerTest {
   // ---------------------------------------------------------------------------------------- //
 
   /**
-   * A role can be changed only with the permission, by a member strictly above both the current and
-   * the new role.
+   * Breaks if a role can be changed without the permission, or by a member who is not strictly
+   * above both the current and the new role.
    */
   @Test
   fun canSetRole_needsThePermissionAndToDominateBothRoles() {
@@ -179,7 +179,7 @@ class EventPermissionHandlerTest {
     assertInvalid(notMemberMessage) { event.canSetRole(manager.uid, outsider.uid, Role.STAFF) }
   }
 
-  /** A member can be kicked only with the permission, by a member strictly above them. */
+  /** Breaks if a member can be kicked without the permission, or by a member not above them. */
   @Test
   fun canKick_needsThePermissionAndToDominateTheMember() {
     assertTrue(event.canKick(admin.uid, manager.uid))

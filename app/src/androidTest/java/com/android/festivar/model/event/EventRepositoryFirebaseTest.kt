@@ -83,6 +83,7 @@ class EventRepositoryFirebaseTest {
     assertNotEquals(first, second)
   }
 
+  /** Breaks if an event field, its roles included, is not written to Firestore as expected. */
   @Test
   fun toFirestoreData_serializesEventFields() {
     val data = invokeToFirestoreData(event)
@@ -141,6 +142,7 @@ class EventRepositoryFirebaseTest {
     }
   }
 
+  /** Breaks if getEventsForUser returns an event the user is not a member of, or misses one. */
   @Test
   fun getEventsForUser_returnsOnlyMatchingEvents() = runBlocking {
     val otherEvent =
@@ -315,7 +317,7 @@ class EventRepositoryFirebaseTest {
 
   // --------------------------------------- roles ------------------------------------------ //
 
-  /** Red if addEvent or editEvent do not write the roles, so a role change vanishes on save. */
+  /** Breaks if addEvent or editEvent do not write the roles, so a role change vanishes on save. */
   @Test
   fun addEventAndEditEvent_saveTheRoles() = runBlocking {
     val created = event.addMember(User("user-2", "Alex", "Lee"))
@@ -345,8 +347,8 @@ class EventRepositoryFirebaseTest {
   }
 
   /**
-   * TEMPORARY, like repairRoles in EventRepositoryFirebase: delete it with it. Red if an event
-   * saved before roles were stored can no longer be read.
+   * Breaks if an event saved before roles were stored can no longer be read. TEMPORARY, like
+   * repairRoles in EventRepositoryFirebase: delete it with it.
    */
   @Test
   fun getEvent_withoutRoles_givesOwnerToTheOwnerAndTheDefaultRoleToTheOthers() = runBlocking {
@@ -361,8 +363,9 @@ class EventRepositoryFirebaseTest {
   }
 
   /**
-   * TEMPORARY, like repairRoles in EventRepositoryFirebase: delete it with it. Red if roles out of
-   * sync with the members, as an older version of the app writes them, make the event unreadable.
+   * Breaks if roles out of sync with the members, as an older version of the app writes them, make
+   * the event unreadable. TEMPORARY, like repairRoles in EventRepositoryFirebase: delete them
+   * together.
    */
   @Test
   fun getEvent_repairsRolesOutOfSyncWithTheMembers() = runBlocking {
@@ -383,7 +386,7 @@ class EventRepositoryFirebaseTest {
     )
   }
 
-  /** Red if malformed stored roles are read with made-up values, or if the error is unclear. */
+  /** Breaks if malformed stored roles are read with made-up values, or if the error is unclear. */
   @Test
   fun malformedStoredRoles_areRefused_namingTheEvent() = runBlocking {
     val invalid = "Invalid role data for event ${event.eventId}"
