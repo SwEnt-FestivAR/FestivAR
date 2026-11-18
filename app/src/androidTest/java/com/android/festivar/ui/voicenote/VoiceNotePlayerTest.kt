@@ -132,9 +132,9 @@ class VoiceNotePlayerTest {
     confirmVerified(onTogglePlay)
   }
 
-  /** Breaks if tapping the stop button of a playing note does not call onTogglePlay once. */
+  /** Breaks if tapping the pause button of a playing note does not call onTogglePlay once. */
   @Test
-  fun stopButtonCallsOnTogglePlay() {
+  fun pauseButtonCallsOnTogglePlay() {
     show(isPlaying = true)
     tag(VoiceNoteTestTags.VOICE_NOTE_PLAY).performClick()
     verify(exactly = 1) { onTogglePlay() }
@@ -148,11 +148,13 @@ class VoiceNotePlayerTest {
     composeTestRule.onNodeWithContentDescription(text(R.string.voice_note_play)).assertIsDisplayed()
   }
 
-  /** Breaks if the button does not offer to stop the note while it plays. */
+  /** Breaks if the button does not offer to pause the note while it plays. */
   @Test
-  fun playingButtonOffersToStop() {
+  fun playingButtonOffersToPause() {
     show(isPlaying = true)
-    composeTestRule.onNodeWithContentDescription(text(R.string.voice_note_stop)).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithContentDescription(text(R.string.voice_note_pause))
+        .assertIsDisplayed()
   }
 
   /** Breaks if tapping the trash does not call its onClick exactly once. */

@@ -126,6 +126,8 @@ class FakeVoicePlayer : VoicePlayer {
   /** The URLs asked to play, in order. */
   val played = mutableListOf<String>()
 
+  var resumed = 0
+
   var released = false
 
   override fun play(audioUrl: String) {
@@ -140,6 +142,7 @@ class FakeVoicePlayer : VoicePlayer {
 
   override fun resume() {
     val paused = _state.value as? PlayerState.Paused ?: return
+    resumed++
     _state.value = PlayerState.Playing(paused.audioUrl)
   }
 

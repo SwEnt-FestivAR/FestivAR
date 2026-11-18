@@ -1,3 +1,5 @@
+<!-- Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com> -->
+
 # AGENTS.md
 
 Durable rules for any AI agent working in this repository. Read this before acting.
@@ -19,6 +21,7 @@ A Kotlin/Android Festival manager app (`com.android.festivar`), built with an **
 
 - The feature works and matches its acceptance criteria (the milestone's tests).
 - **All new code comes with unit tests.**
+- **Every test has a KDoc that starts with "Breaks if"** and says, in one sentence, what break in the production code turns the test red (e.g. `/** Breaks if a paused note restarts from the beginning. */`). Write it before the test body.
 - `./gradlew check` is green (unit tests + lint) and `./gradlew ktfmtCheck` passes (formatting) before you submit.
 - Features covered by instrumented tests (under `androidTest/`, e.g. the Firestore repository) must also pass `./gradlew connectedDebugAndroidTest`, with an Android emulator and the Firebase emulator running.
 
@@ -27,6 +30,7 @@ A Kotlin/Android Festival manager app (`com.android.festivar`), built with an **
 - Make one **bounded, reviewable** change per PR. If it sprawls across unrelated files, split it.
 - Read the failing tests carefully and iterate until `./gradlew check` passes.
 - Stage only the files you changed; never `git add .` or `git add -A` (it can pull in local config like `local.properties`).
+- **Never force push** (`--force`, `--force-with-lease`, `+branch`), on any branch. If a push is rejected or a rebase/amend would need one, stop and ask the human which alternative to use (merge the base branch in, add a new commit, or push to a new branch and open a new PR).
 - Commit with an imperative subject of at most 50 characters, capitalized (e.g. `Add user authentication`). Add a body wrapped at 72 characters when the subject is not enough.
 - **Acknowledge your contributors** at the top of the file: credit the AI that wrote it with a `Co-authored-by` line. An AI agent is a contributor, so credit it.
 
