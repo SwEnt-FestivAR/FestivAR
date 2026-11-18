@@ -227,18 +227,29 @@ fun ProfileScreen(
     }
 
     if (!profileUIState.showUpgradeSheet) {
-      SnackbarHost(
-          hostState = snackbarHostState,
+      ProfileErrorSnackbar(
+          snackbarHostState = snackbarHostState,
           modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
-      ) { data ->
-        NoticeSnackbar(
-            message = data.visuals.message,
-            actionLabel = "",
-            onAction = {},
-            modifier = Modifier.testTag(ProfileScreenTestTags.ERROR_MESSAGE),
-        )
-      }
+      )
     }
+  }
+}
+
+@Composable
+internal fun ProfileErrorSnackbar(
+    snackbarHostState: SnackbarHostState,
+    modifier: Modifier = Modifier,
+) {
+  SnackbarHost(
+      hostState = snackbarHostState,
+      modifier = modifier,
+  ) { data ->
+    NoticeSnackbar(
+        message = data.visuals.message,
+        actionLabel = "",
+        onAction = {},
+        modifier = Modifier.testTag(ProfileScreenTestTags.ERROR_MESSAGE),
+    )
   }
 }
 
