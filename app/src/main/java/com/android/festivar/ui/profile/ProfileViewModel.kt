@@ -247,13 +247,13 @@ class ProfileViewModel(
                         ?: error("Unable to read selected profile picture.")
                 input.use { FileOutputStream(file).use { output -> input.copyTo(output) } }
                 if (isProfilePictureTooLarge(file.length())) {
-                  file.delete()
+                  deleteTemporaryProfilePicture(file)
                   null
                 } else {
                   StoredImage(file)
                 }
               } catch (e: Exception) {
-                file.delete()
+                deleteTemporaryProfilePicture(file)
                 throw e
               }
             }
@@ -274,13 +274,15 @@ class ProfileViewModel(
         }
       } finally {
         temporaryFile?.let { file ->
-          withContext(NonCancellable + ioDispatcher) {
-            if (file.exists() && !file.delete()) {
-              Log.w(LOG_TAG, "Could not delete temporary profile picture ${file.path}")
-            }
-          }
+          withContext(NonCancellable + ioDispatcher) { deleteTemporaryProfilePicture(file) }
         }
       }
+    }
+  }
+
+  private fun deleteTemporaryProfilePicture(file: File) {
+    if (file.exists() && !file.delete()) {
+      Log.w(LOG_TAG, "Could not delete temporary profile picture ${file.path}")
     }
   }
 
