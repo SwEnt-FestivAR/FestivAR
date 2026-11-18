@@ -612,35 +612,94 @@ class ProfileViewModelTest {
   }
 
   /**
+<<<<<<< HEAD
    * Breaks if showing or hiding the upgrade sheet does not correctly toggle sheet visibility or
    * reset credentials.
+=======
+   * Breaks if showing or hiding the upgrade sheet does not correctly toggle activeDialog or reset
+   * credentials.
+>>>>>>> a6146cbc (refactor(profile): consolidate dialog management)
    */
   @Test
   fun upgradeSheetStateIncludesVisibilityAndCredentialReset() = runTest {
-    val viewModel = createViewModel()
+    val firebaseUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+    val authRepo =
+        object : FakeAuthRepository() {
+          override val currentUser = firebaseUser
+        }
+    val viewModel = createViewModel(authRepository = authRepo)
     advanceUntilIdle()
 
     viewModel.updateEmail("test@example.com")
     viewModel.updatePassword("password")
     viewModel.showUpgradeSheet()
-    assertTrue(viewModel.uiState.value.showUpgradeSheet)
+    assertEquals(ProfileDialog.UPGRADE_SHEET, viewModel.uiState.value.activeDialog)
 
     viewModel.hideUpgradeSheet()
-    assertFalse(viewModel.uiState.value.showUpgradeSheet)
+    assertNull(viewModel.uiState.value.activeDialog)
     assertEquals("", viewModel.uiState.value.email)
     assertEquals("", viewModel.uiState.value.password)
   }
 
+  /**
+   * Breaks if showing or hiding the sign out warning does not toggle activeDialog for anonymous
+   * users.
+   */
   @Test
   fun signOutWarningStateToggles() = runTest {
-    val viewModel = createViewModel()
+    val firebaseUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+    val authRepo =
+        object : FakeAuthRepository() {
+          override val currentUser = firebaseUser
+        }
+    val viewModel = createViewModel(authRepository = authRepo)
     advanceUntilIdle()
 
     viewModel.showSignOutWarning()
-    assertTrue(viewModel.uiState.value.showSignOutWarning)
+    assertEquals(ProfileDialog.SIGN_OUT_WARNING, viewModel.uiState.value.activeDialog)
 
     viewModel.hideSignOutWarning()
-    assertFalse(viewModel.uiState.value.showSignOutWarning)
+    assertNull(viewModel.uiState.value.activeDialog)
+  }
+
+  /** Breaks if guest dialogs can be opened for a non-anonymous user. */
+  @Test
+  fun guestDialogsIgnoredWhenUserIsNotAnonymous() = runTest {
+    val firebaseUser = mockk<FirebaseUser> { every { isAnonymous } returns false }
+    val authRepo =
+        object : FakeAuthRepository() {
+          override val currentUser = firebaseUser
+        }
+    val viewModel = createViewModel(authRepository = authRepo)
+    advanceUntilIdle()
+
+    viewModel.showUpgradeSheet()
+    assertNull(viewModel.uiState.value.activeDialog)
+
+    viewModel.showSignOutWarning()
+    assertNull(viewModel.uiState.value.activeDialog)
+  }
+
+  /** Breaks if activeDialog is not cleared when a user is no longer anonymous. */
+  @Test
+  fun guestDialogClearedWhenUserNoLongerAnonymous() = runTest {
+    var isAnon = true
+    val firebaseUser = mockk<FirebaseUser> { every { isAnonymous } answers { isAnon } }
+    val authRepo =
+        object : FakeAuthRepository() {
+          override val currentUser = firebaseUser
+        }
+    val viewModel = createViewModel(authRepository = authRepo)
+    advanceUntilIdle()
+
+    viewModel.showUpgradeSheet()
+    assertEquals(ProfileDialog.UPGRADE_SHEET, viewModel.uiState.value.activeDialog)
+
+    isAnon = false
+    viewModel.getUserInformation()
+    advanceUntilIdle()
+
+    assertNull(viewModel.uiState.value.activeDialog)
   }
 
   @Test

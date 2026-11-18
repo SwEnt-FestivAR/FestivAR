@@ -23,6 +23,12 @@ import kotlinx.coroutines.launch
 
 private const val LOG_TAG = "ProfileViewModel"
 
+/** Represents an overlay dialog that can be shown to a guest user on the profile screen. */
+enum class ProfileDialog {
+  UPGRADE_SHEET,
+  SIGN_OUT_WARNING,
+}
+
 /**
  * Represents the UI state of the Profile screen.
  *
@@ -40,8 +46,7 @@ private const val LOG_TAG = "ProfileViewModel"
  *   operation when the disconnection is occurred.
  * @property isSigningOut Whether the [User] is currently in the process of signing out, it blocks
  *   any other operation while trying to disconnect the [User].
- * @property showUpgradeSheet Whether the account upgrade bottom sheet is visible.
- * @property showSignOutWarning Whether the anonymous-account sign-out warning is visible.
+ * @property activeDialog The active guest dialog shown on the screen, or null.
  */
 data class ProfileUIState(
     val user: User? = null,
@@ -56,8 +61,7 @@ data class ProfileUIState(
     val email: String = "",
     val password: String = "",
     val isPasswordVisible: Boolean = false,
-    val showUpgradeSheet: Boolean = false,
-    val showSignOutWarning: Boolean = false,
+    val activeDialog: ProfileDialog? = null,
 ) {
   /**
    * Whether the Save changes button can be pressed: the profile is loaded, no save is running, no
@@ -236,24 +240,32 @@ class ProfileViewModel(
     _uiState.update { it.copy(isPasswordVisible = !it.isPasswordVisible) }
   }
 
-  /** Shows the account upgrade bottom sheet. */
+  /** Shows the account upgrade bottom sheet if the account is anonymous. */
   fun showUpgradeSheet() {
-    _uiState.update { it.copy(showUpgradeSheet = true) }
+    if (!_uiState.value.isUserAnonymous) return
+    _uiState.update { it.copy(activeDialog = ProfileDialog.UPGRADE_SHEET) }
   }
 
   /** Hides the account upgrade bottom sheet and clears its credentials. */
   fun hideUpgradeSheet() {
-    _uiState.update { it.copy(showUpgradeSheet = false, email = "", password = "") }
+    _uiState.update {
+      val dialog = if (it.activeDialog == ProfileDialog.UPGRADE_SHEET) null else it.activeDialog
+      it.copy(activeDialog = dialog, email = "", password = "")
+    }
   }
 
   /** Shows the warning displayed before an anonymous account signs out. */
   fun showSignOutWarning() {
-    _uiState.update { it.copy(showSignOutWarning = true) }
+    if (!_uiState.value.isUserAnonymous) return
+    _uiState.update { it.copy(activeDialog = ProfileDialog.SIGN_OUT_WARNING) }
   }
 
   /** Hides the anonymous-account sign-out warning. */
   fun hideSignOutWarning() {
-    _uiState.update { it.copy(showSignOutWarning = false) }
+    _uiState.update {
+      val dialog = if (it.activeDialog == ProfileDialog.SIGN_OUT_WARNING) null else it.activeDialog
+      it.copy(activeDialog = dialog)
+    }
   }
 
   /** Upgrades the anonymous account with email and password. */
@@ -303,6 +315,7 @@ class ProfileViewModel(
       try {
         operation()
             .fold(
+<<<<<<< HEAD
                 onSuccess = { upgradedUser ->
                   val isAnonymous = (upgradedUser as? FirebaseUser)?.isAnonymous ?: false
                   _uiState.update {
@@ -310,6 +323,15 @@ class ProfileViewModel(
                         isLoading = false,
                         showUpgradeSheet = false,
                         isUserAnonymous = isAnonymous,
+=======
+                onSuccess = {
+                  val isAnonymous = authRepository.currentUser?.isAnonymous == true
+                  _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        isUserAnonymous = isAnonymous,
+                        activeDialog = if (isAnonymous) it.activeDialog else null,
+>>>>>>> a6146cbc (refactor(profile): consolidate dialog management)
                     )
                   }
                   getUserInformation()
@@ -352,6 +374,7 @@ class ProfileViewModel(
               surname = user.surname,
               isLoading = false,
               isUserAnonymous = isAnonymous,
+              activeDialog = if (isAnonymous) it.activeDialog else null,
           )
         }
       } catch (e: CancellationException) {
