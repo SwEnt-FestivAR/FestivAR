@@ -612,13 +612,11 @@ class ProfileViewModelTest {
   }
 
   /**
-<<<<<<< HEAD
-   * Breaks if showing or hiding the upgrade sheet does not correctly toggle sheet visibility or
-   * reset credentials.
-=======
+   * <<<<<<< HEAD Breaks if showing or hiding the upgrade sheet does not correctly toggle sheet
+   * visibility or reset credentials.
+   * =======
    * Breaks if showing or hiding the upgrade sheet does not correctly toggle activeDialog or reset
-   * credentials.
->>>>>>> a6146cbc (refactor(profile): consolidate dialog management)
+   * credentials. >>>>>>> a6146cbc (refactor(profile): consolidate dialog management)
    */
   @Test
   fun upgradeSheetStateIncludesVisibilityAndCredentialReset() = runTest {
@@ -722,12 +720,25 @@ class ProfileViewModelTest {
     assertEquals(R.string.profile_anon_upgrade_failed, viewModel.uiState.value.errorMsg)
   }
 
+  /**
+   * Breaks if upgrading with email does not invoke sign-up with typed credentials and refresh user
+   * state when account is anonymous.
+   */
   @Test
   fun upgradeWithEmailSuccessRefreshesUser() = runTest {
-    val firebaseUser = mockk<FirebaseUser> { every { isAnonymous } returns false }
+    var isAnon = true
+    val firebaseUser = mockk<FirebaseUser> { every { isAnonymous } answers { isAnon } }
     val authRepo =
         object : FakeAuthRepository() {
           override val currentUser = firebaseUser
+
+          override suspend fun signUpWithEmailAndPassword(
+              email: String,
+              password: String,
+          ): Result<FirebaseUser> {
+            isAnon = false
+            return super.signUpWithEmailAndPassword(email, password)
+          }
         }
     authRepo.signUpResult = Result.success(firebaseUser)
     val viewModel =
@@ -736,14 +747,18 @@ class ProfileViewModelTest {
             authRepository = authRepo,
         )
     advanceUntilIdle()
+    assertTrue(viewModel.uiState.value.isUserAnonymous)
 
     viewModel.updateEmail("sara@epfl.ch")
     viewModel.updatePassword("secret123")
     viewModel.upgradeWithEmail()
     advanceUntilIdle()
 
+    assertEquals(1, authRepo.signUpCallCount)
+    assertEquals("sara@epfl.ch" to "secret123", authRepo.lastSignUpCredentials)
     assertNull(viewModel.uiState.value.errorMsg)
     assertFalse(viewModel.uiState.value.isLoading)
+    assertFalse(viewModel.uiState.value.isUserAnonymous)
   }
 
   @Test
@@ -849,7 +864,7 @@ class ProfileViewModelTest {
     advanceUntilIdle()
 
     val state = viewModel.uiState.value
-    assertFalse(state.showUpgradeSheet)
+    assertNull(state.activeDialog)
     assertFalse(state.isUserAnonymous)
     assertEquals(R.string.profile_load_failed, state.errorMsg)
   }

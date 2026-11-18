@@ -289,6 +289,10 @@ class ProfileScreenTest {
     assertEquals("user@example.com" to "password", authRepository.lastSignUpCredentials)
   }
 
+  /**
+   * Breaks if upgrading the account with Google shows an upgrade error message despite Google
+   * sign-in succeeding.
+   */
   @Test
   fun googleUpgradeButtonRequestsCredentialAndUpgradesAccount() {
     val credentialManager = mockk<CredentialManager>()
@@ -311,6 +315,9 @@ class ProfileScreenTest {
     composeTestRule.onNodeWithTag(LoginScreenTestTags.GOOGLE_BUTTON).performClick()
 
     composeTestRule.waitUntil(5_000) { googleUpgradeCalled }
+    composeTestRule
+        .onNodeWithText(string(R.string.profile_anon_upgrade_failed))
+        .assertDoesNotExist()
   }
 
   /**

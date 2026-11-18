@@ -315,23 +315,15 @@ class ProfileViewModel(
       try {
         operation()
             .fold(
-<<<<<<< HEAD
                 onSuccess = { upgradedUser ->
-                  val isAnonymous = (upgradedUser as? FirebaseUser)?.isAnonymous ?: false
-                  _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        showUpgradeSheet = false,
-                        isUserAnonymous = isAnonymous,
-=======
-                onSuccess = {
-                  val isAnonymous = authRepository.currentUser?.isAnonymous == true
+                  val isAnonymous =
+                      (upgradedUser as? FirebaseUser)?.isAnonymous
+                          ?: (authRepository.currentUser?.isAnonymous == true)
                   _uiState.update {
                     it.copy(
                         isLoading = false,
                         isUserAnonymous = isAnonymous,
                         activeDialog = if (isAnonymous) it.activeDialog else null,
->>>>>>> a6146cbc (refactor(profile): consolidate dialog management)
                     )
                   }
                   getUserInformation()
