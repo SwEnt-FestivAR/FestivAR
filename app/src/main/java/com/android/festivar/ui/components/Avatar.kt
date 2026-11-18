@@ -106,11 +106,13 @@ private fun AvatarFallback(initials: String?) {
         modifier = Modifier.size(20.dp).testTag(AvatarTestTags.PERSON_ICON),
     )
   } else {
-    Text(
-        text = initials,
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+      Text(
+          text = initials,
+          style = MaterialTheme.typography.labelMedium,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
+    }
   }
 }
 
