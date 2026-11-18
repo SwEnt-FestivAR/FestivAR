@@ -1,13 +1,14 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.navigation.profile
 
-import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.navigation.AppScreens
+import com.android.festivar.navigation.RequireSignedIn
 import com.android.festivar.ui.profile.ProfileScreen
 import com.android.festivar.ui.profile.ProfileViewModel
 
@@ -15,26 +16,13 @@ import com.android.festivar.ui.profile.ProfileViewModel
 fun NavGraphBuilder.profileGraph(navController: NavHostController, dataRepository: DataRepository) {
   composable(route = AppScreens.Profile.name) {
     val navigator = ProfileNavigator(navController)
-
-    // If the uid is null, then no one is connected and consequently you should be at the
-    // login screen.
-    val uid = dataRepository.authRepository.currentUser?.uid
-    if (uid == null) {
-      LaunchedEffect(Unit) { navigator.onSignedOut() }
-      return@composable
+    RequireSignedIn(navController, dataRepository) { firebaseUser ->
+      ProfileScreen(
+          profileViewModel = viewModel { ProfileViewModel(dataRepository, uId = firebaseUser.uid) },
+          onBack = navigator.onBack,
+          onSignedOut = navigator.onSignedOut,
+          onSettingsClick = navigator.onSettingsClick,
+      )
     }
-
-    ProfileScreen(
-        profileViewModel =
-            viewModel {
-              ProfileViewModel(
-                  dataRepository = dataRepository,
-                  uId = uid,
-              )
-            },
-        onBack = navigator.onBack,
-        onSignedOut = navigator.onSignedOut,
-        onSettingsClick = navigator.onSettingsClick,
-    )
   }
 }
