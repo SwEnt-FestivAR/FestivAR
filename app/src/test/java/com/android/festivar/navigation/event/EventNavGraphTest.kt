@@ -13,7 +13,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
@@ -48,10 +48,9 @@ class EventNavGraphTest {
     val dataRepository =
         DataRepositoryLocal(
             authRepository =
-                mockk<AuthRepository> {
-                  every { currentUser } returns
-                      mockk<FirebaseUser> { every { uid } returns "owner-1" }
-                },
+                FakeAuthRepository(
+                    currentUser = mockk<FirebaseUser> { every { uid } returns "owner-1" }
+                ),
             eventsRepository = EventsRepositoryLocal(listOf(event)),
         )
     lateinit var navController: NavHostController
@@ -109,7 +108,7 @@ class EventNavGraphTest {
     val firebaseUser = mockk<FirebaseUser> { every { uid } returns event.ownerId }
     val dataRepository =
         DataRepositoryLocal(
-            authRepository = mockk<AuthRepository> { every { currentUser } returns firebaseUser },
+            authRepository = FakeAuthRepository(currentUser = firebaseUser),
             eventsRepository = EventsRepositoryLocal(listOf(event)),
         )
     lateinit var navController: NavHostController
