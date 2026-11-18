@@ -127,6 +127,13 @@ fun ProfileScreen(
   // Leaves the screen once the sign-out succeeded.
   LaunchedEffect(profileUIState.signedOut) { if (profileUIState.signedOut) onSignedOut() }
 
+  // Closes bottom sheet once upgrade/linking succeeded.
+  LaunchedEffect(profileUIState.isUserAnonymous) {
+    if (!profileUIState.isUserAnonymous && profileUIState.showUpgradeSheet) {
+      profileViewModel.hideUpgradeSheet()
+    }
+  }
+
   Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
         topBar = {

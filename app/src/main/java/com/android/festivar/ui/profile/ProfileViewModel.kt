@@ -40,7 +40,6 @@ private const val LOG_TAG = "ProfileViewModel"
  *   operation when the disconnection is occurred.
  * @property isSigningOut Whether the [User] is currently in the process of signing out, it blocks
  *   any other operation while trying to disconnect the [User].
- * @property isUpgrading Whether the account upgrade is currently in progress.
  * @property showUpgradeSheet Whether the account upgrade bottom sheet is visible.
  * @property showSignOutWarning Whether the anonymous-account sign-out warning is visible.
  */
