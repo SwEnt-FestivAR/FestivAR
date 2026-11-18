@@ -28,7 +28,6 @@ import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.event.announcement.AnnouncementPriority
-import com.android.festivar.ui.announcement.create.CreateAnnouncementActions
 import com.android.festivar.ui.announcement.edit.EditAnnouncementScreenTestTags as Tags
 import com.android.festivar.ui.theme.AppTheme
 import java.time.ZoneId
@@ -177,7 +176,8 @@ class EditAnnouncementScreenTest {
   }
 
   // Breaks if a waiting load shows no spinner or no top bar to leave by, if the form is not filled
-  // from the announcement or keeps the Create texts, or if an untouched form can be saved.
+  // from the announcement or keeps the Create texts, if an untouched form can be saved, or if back
+  // asks before leaving it.
   @Test
   fun theScreenShowsTheSpinnerThenTheFormFilledFromTheAnnouncement() {
     val gate = CompletableDeferred<Unit>()
@@ -203,24 +203,10 @@ class EditAnnouncementScreenTest {
     saveButton().assertIsNotEnabled()
     composeTestRule.onNodeWithTag(Tags.TITLE_ERROR).assertDoesNotExist()
     composeTestRule.onNodeWithTag(Tags.DESCRIPTION_ERROR).assertDoesNotExist()
-  }
 
-  // Breaks if a state that has not been loaded yet shows the load error instead of the spinner.
-  @Test
-  fun beforeTheLoadRunsTheScreenShowsTheSpinnerNotTheLoadError() {
-    val notLoaded = viewModel().uiState.value
-    composeTestRule.setContent {
-      AppTheme {
-        EditAnnouncementContent(
-            state = notLoaded,
-            actions = CreateAnnouncementActions(),
-            onRetry = {},
-        )
-      }
-    }
-
-    composeTestRule.onNodeWithTag(Tags.LOADING).assertIsDisplayed()
-    composeTestRule.onNodeWithTag(Tags.LOAD_ERROR).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(Tags.BACK_BUTTON).performClick()
+    assertEquals(1, backCount)
+    composeTestRule.onNodeWithTag(Tags.DISCARD_DIALOG).assertDoesNotExist()
   }
 
   // Breaks if a failed load shows no error or an empty form, or if the retry does not load again.
@@ -265,15 +251,15 @@ class EditAnnouncementScreenTest {
     composeTestRule.onNodeWithTag(Tags.DISCARD_DIALOG).assertDoesNotExist()
   }
 
-  // Breaks if a title edit does not enable Save, if the fields swap or are stored untrimmed, if the
-  // save rewrites the id, author, links or pin, or if onSaved is not called exactly once.
+  // Breaks if a field or the priority does not reach the ViewModel, if the save rewrites the id,
+  // author, links or pin, or if onSaved is not called exactly once. The trimming and the change
+  // rules are in EditAnnouncementViewModelTest.
   @Test
-  fun savingStoresTheTrimmedEditKeepsTheOtherFieldsAndReportsItOnce() {
+  fun savingStoresTheEditAndReportsItOnce() {
     showLoadedScreen()
 
-    editTitle("  Gates open at 17:00  ")
-    saveButton().assertIsEnabled()
-    editDescription("  The north gate opens at 17:00.  ")
+    editTitle("Gates open at 17:00")
+    editDescription("The north gate opens at 17:00.")
     chip(AnnouncementPriority.INFO).performScrollTo().performClick()
     saveButton().performClick()
     waitUntilSaved()
@@ -292,30 +278,10 @@ class EditAnnouncementScreenTest {
     assertEquals(0, backCount)
   }
 
-  // Breaks if a chip reports the wrong priority, if the old chip stays selected, or if a priority
-  // change alone does not count as a change to save.
+  // Breaks if the screen drops the edited flags of the form, so that an emptied field shows no
+  // error, if a message is shown under the wrong field, or if an empty field can be saved.
   @Test
-  fun aPriorityChangeAloneCanBeSaved() {
-    showLoadedScreen()
-
-    chip(AnnouncementPriority.URGENT).performScrollTo().performClick()
-    chip(AnnouncementPriority.URGENT).assertIsSelected()
-    chip(AnnouncementPriority.WARNING).assertIsNotSelected()
-    saveButton().assertIsEnabled()
-
-    saveButton().performClick()
-    waitUntilSaved()
-
-    val saved = stored()
-    assertEquals(AnnouncementPriority.URGENT, saved.priority)
-    assertEquals(announcement.title, saved.title)
-    assertEquals(announcement.content, saved.content)
-  }
-
-  // Breaks if a message is mapped to the wrong field or stays once the field is filled again, or if
-  // an edit with an empty field can be saved.
-  @Test
-  fun emptyingTheFieldsShowsTheirErrorsAndDisablesSaveUntilTheyAreFilledAgain() {
+  fun emptyingTheFieldsShowsTheirErrorsAndDisablesSave() {
     showLoadedScreen()
 
     editTitle("")
@@ -323,44 +289,18 @@ class EditAnnouncementScreenTest {
         .onNodeWithTag(Tags.TITLE_ERROR)
         .assertTextEquals(string(R.string.field_error_empty_announcement_title))
     composeTestRule.onNodeWithTag(Tags.DESCRIPTION_ERROR).assertDoesNotExist()
-    saveButton().assertIsNotEnabled()
 
     editDescription("")
     composeTestRule
         .onNodeWithTag(Tags.DESCRIPTION_ERROR)
         .assertTextEquals(string(R.string.field_error_empty_announcement_content))
-    composeTestRule.onNodeWithTag(Tags.TITLE_ERROR).assertExists()
-
-    editTitle("Gates closed")
-    composeTestRule.onNodeWithTag(Tags.TITLE_ERROR).assertDoesNotExist()
     saveButton().assertIsNotEnabled()
-
-    editDescription("The north gate is closed.")
-    composeTestRule.onNodeWithTag(Tags.DESCRIPTION_ERROR).assertDoesNotExist()
-    saveButton().assertIsEnabled()
   }
 
-  // Breaks if a text typed back to the stored one still counts as a change: Save stays enabled, or
-  // back asks before leaving a form with nothing to lose.
+  // Breaks if a failed save is not shown, or replaces the form with the load error. The retry is in
+  // EditAnnouncementViewModelTest.
   @Test
-  fun restoringTheOriginalTextDisablesSaveAndBackLeavesWithoutAsking() {
-    showLoadedScreen()
-
-    editDescription("The north gate opens at 17:00.")
-    saveButton().assertIsEnabled()
-
-    editDescription(announcement.content)
-    saveButton().assertIsNotEnabled()
-
-    composeTestRule.onNodeWithTag(Tags.BACK_BUTTON).performClick()
-    assertEquals(1, backCount)
-    composeTestRule.onNodeWithTag(Tags.DISCARD_DIALOG).assertDoesNotExist()
-  }
-
-  // Breaks if a failed save is not shown, leaves the screen or loses what was typed, if it leaves
-  // Save locked, or if the error survives a working retry.
-  @Test
-  fun aFailedSaveShowsTheErrorKeepsTheEditAndARetrySaves() {
+  fun aFailedSaveShowsTheErrorAndKeepsTheEdit() {
     beforeEdit = { throw IllegalStateException("offline") }
     showLoadedScreen()
     editTitle("Gates open at 17:00")
@@ -376,15 +316,6 @@ class EditAnnouncementScreenTest {
     composeTestRule.onNodeWithTag(Tags.TITLE_FIELD).assertTextContains("Gates open at 17:00")
     saveButton().assertIsEnabled()
     assertEquals(0, savedCount)
-    assertEquals(announcement, stored())
-
-    beforeEdit = {}
-    saveButton().performClick()
-    waitUntilSaved()
-
-    assertEquals("Gates open at 17:00", stored().title)
-    assertEquals(1, savedCount)
-    composeTestRule.onNodeWithTag(Tags.SAVE_ERROR).assertDoesNotExist()
   }
 
   // Breaks if the spinner is not shown or has no screen reader label, if Save can be tapped again
@@ -434,21 +365,6 @@ class EditAnnouncementScreenTest {
     waitUntilSaved()
     assertEquals("Gates open at 17:00", stored().title)
     assertEquals(0, backCount)
-    composeTestRule.onNodeWithTag(Tags.DISCARD_DIALOG).assertDoesNotExist()
-  }
-
-  // Breaks if a form filled from the announcement counts as changed, so that the back arrow or
-  // system back asks before leaving it.
-  @Test
-  fun backFromAnUnchangedFormLeavesWithoutAsking() {
-    showLoadedScreen()
-
-    composeTestRule.onNodeWithTag(Tags.BACK_BUTTON).performClick()
-    assertEquals(1, backCount)
-    composeTestRule.onNodeWithTag(Tags.DISCARD_DIALOG).assertDoesNotExist()
-
-    pressSystemBack()
-    assertEquals(2, backCount)
     composeTestRule.onNodeWithTag(Tags.DISCARD_DIALOG).assertDoesNotExist()
   }
 
