@@ -312,8 +312,8 @@ class EditAnnouncementViewModelTest {
     assertSaveError(vm)
   }
 
-  // Breaks if canSave ignores isSaving or isSaved, so a second tap writes twice, or if a saved form
-  // that still differs asks to discard.
+  // Breaks if canSave ignores isSaving or isSaved, so a second tap writes twice, if typing during
+  // the save changes the form, or if a saved form that still differs asks to discard.
   @Test
   fun aSaveInProgressIgnoresASecondTapAndLaterTyping() {
     val gate = CompletableDeferred<Unit>()
@@ -324,6 +324,7 @@ class EditAnnouncementViewModelTest {
     assertTrue(vm.uiState.value.isSaving)
     vm.save()
     vm.updateTitle("Later")
+    assertEquals("Doors open", vm.uiState.value.form.title)
     gate.complete(Unit)
     idle()
 

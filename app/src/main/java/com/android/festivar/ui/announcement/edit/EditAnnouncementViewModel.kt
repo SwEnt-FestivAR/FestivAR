@@ -106,6 +106,11 @@ class EditAnnouncementViewModel(
     private val saveTimeoutMs: Long = ANNOUNCEMENT_SAVE_TIMEOUT_MS,
 ) : ViewModel(), AnnouncementFormEditor {
 
+  init {
+    require(eventId.isNotBlank()) { "eventId must not be blank" }
+    require(announcementId.isNotBlank()) { "announcementId must not be blank" }
+  }
+
   private val eventsRepository: EventsRepository = dataRepository.eventsRepository
 
   private val _uiState = MutableStateFlow(EditAnnouncementUiState())
@@ -153,17 +158,14 @@ class EditAnnouncementViewModel(
 
   /**
    * Applies a change of a form field, for the setters of [AnnouncementFormEditor]. A form that is
-   * not loaded yet, or already saved, ignores every change, since the screen leaves on save.
+   * not loaded yet, being saved or already saved ignores every change, since the screen leaves on
+   * save.
    */
   override fun applyEdit(change: (AnnouncementFormState) -> AnnouncementFormState) =
       _uiState.update {
-        if (it.announcement == null || it.isSaved) it else it.copy(form = change(it.form))
+        if (it.announcement == null || it.isSaving || it.isSaved) it
+        else it.copy(form = change(it.form))
       }
-
-  init {
-    require(eventId.isNotBlank()) { "eventId must not be blank" }
-    require(announcementId.isNotBlank()) { "announcementId must not be blank" }
-  }
 
   /**
    * Saves the edited announcement. Does nothing unless [EditAnnouncementUiState.canSave]; a loaded
