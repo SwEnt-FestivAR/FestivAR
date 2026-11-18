@@ -24,7 +24,7 @@ class PathGeometryTest {
   // simplifyPath
   // ---------------------------------------------------------------------------------------------
 
-  // Breaks if points that add no shape are kept: a straight walk is its two ends.
+  /** Breaks if points that add no shape are kept: a straight walk is its two ends. */
   @Test
   fun pointsOnAStraightLineAreRemoved() {
     val walk = listOf(at(0.0, 0.0), at(1.0, 0.02), at(2.0, -0.03), at(3.0, 0.01), at(4.0, 0.0))
@@ -32,7 +32,7 @@ class PathGeometryTest {
     assertEquals(listOf(at(0.0, 0.0), at(4.0, 0.0)), simplifyPath(walk, toleranceMeters = 0.5))
   }
 
-  // Breaks if a real corner is removed, or the order of the points changes.
+  /** Breaks if a real corner is removed, or the order of the points changes. */
   @Test
   fun aCornerIsKept() {
     val walk = listOf(at(0.0, 0.0), at(5.0, 0.1), at(10.0, 0.0), at(10.1, 5.0), at(10.0, 10.0))
@@ -43,7 +43,7 @@ class PathGeometryTest {
     )
   }
 
-  // Breaks if a point exactly at the tolerance is kept, or one just beyond it is removed.
+  /** Breaks if a point exactly at the tolerance is kept, or one just beyond it is removed. */
   @Test
   fun thePointAtTheToleranceIsRemovedAndTheOneBeyondIsKept() {
     val atTolerance = listOf(at(0.0, 0.0), at(5.0, 1.0), at(10.0, 0.0))
@@ -53,7 +53,7 @@ class PathGeometryTest {
     assertEquals(beyond, simplifyPath(beyond, toleranceMeters = 1.0))
   }
 
-  // Breaks if a tolerance of zero removes anything but the points exactly on the line.
+  /** Breaks if a tolerance of zero removes anything but the points exactly on the line. */
   @Test
   fun aToleranceOfZeroOnlyRemovesWhatIsExactlyOnTheLine() {
     val walk = listOf(at(0.0, 0.0), at(5.0, 0.0), at(10.0, 0.0), at(10.0, 0.5), at(20.0, 0.0))
@@ -64,8 +64,10 @@ class PathGeometryTest {
     )
   }
 
-  // Breaks if a walk that comes back to its start collapses: its two ends are at the same place, so
-  // the distance is taken to that point.
+  /**
+   * Breaks if a walk that comes back to its start collapses: its two ends are at the same place, so
+   * the distance is taken to that point.
+   */
   @Test
   fun aWalkBackToItsStartKeepsItsShape() {
     val loop = listOf(at(0.0, 0.0), at(10.0, 0.0), at(10.0, 10.0), at(0.0, 10.0), at(0.0, 0.0))
@@ -73,7 +75,7 @@ class PathGeometryTest {
     assertEquals(loop, simplifyPath(loop, toleranceMeters = 1.0))
   }
 
-  // Breaks if a path too short to simplify is changed.
+  /** Breaks if a path too short to simplify is changed. */
   @Test
   fun aPathOfTwoPointsOrFewerIsReturnedAsIs() {
     val two = listOf(at(0.0, 0.0), at(4.0, 0.0))
@@ -82,7 +84,9 @@ class PathGeometryTest {
     assertEquals(emptyList<LocalPosition>(), simplifyPath(emptyList(), toleranceMeters = 1.0))
   }
 
-  // Breaks if a long recording overflows the stack: ten thousand points on a zigzag are all kept.
+  /**
+   * Breaks if a long recording overflows the stack: ten thousand points on a zigzag are all kept.
+   */
   @Test
   fun aLongPathIsSimplifiedWithoutOverflow() {
     val zigzag = List(10_000) { at(it.toDouble(), if (it % 2 == 0) 0.0 else 5.0) }
@@ -90,7 +94,7 @@ class PathGeometryTest {
     assertEquals(zigzag, simplifyPath(zigzag, toleranceMeters = 1.0))
   }
 
-  // Breaks if a negative or undefined tolerance is accepted.
+  /** Breaks if a negative or undefined tolerance is accepted. */
   @Test
   fun aNegativeToleranceIsRefused() {
     assertInvalid("The tolerance cannot be negative.") { simplifyPath(square, -0.1) }
@@ -104,7 +108,7 @@ class PathGeometryTest {
   private fun sample(x: Double, y: Double, accuracy: Double) =
       GpsSample(toGeo(lausanne, at(x, y)), accuracy)
 
-  // Breaks if an imprecise sample is kept, or one exactly at the limit is dropped.
+  /** Breaks if an imprecise sample is kept, or one exactly at the limit is dropped. */
   @Test
   fun impreciseSamplesAreDropped() {
     val good = sample(0.0, 0.0, 4.0)
@@ -121,9 +125,10 @@ class PathGeometryTest {
     )
   }
 
-  // Breaks if the distance is measured from the previous sample instead of the last one kept:
-  // three samples one metre apart never leave each other, yet the third is two metres from the
-  // first.
+  /**
+   * Breaks if the distance is measured from the previous sample instead of the last one kept: three
+   * samples one metre apart never leave each other, yet the third is two metres from the first.
+   */
   @Test
   fun aSampleTooCloseToTheLastKeptOneIsDropped() {
     val first = sample(0.0, 0.0, 3.0)
@@ -141,7 +146,7 @@ class PathGeometryTest {
     )
   }
 
-  // Breaks if an imprecise sample counts as the last one kept and hides the good one after it.
+  /** Breaks if an imprecise sample counts as the last one kept and hides the good one after it. */
   @Test
   fun aDroppedSampleDoesNotCountAsThePreviousOne() {
     val first = sample(0.0, 0.0, 3.0)
@@ -158,7 +163,7 @@ class PathGeometryTest {
     )
   }
 
-  // Breaks if the first good sample needs a previous one, or an empty recording fails.
+  /** Breaks if the first good sample needs a previous one, or an empty recording fails. */
   @Test
   fun theFirstGoodSampleIsAlwaysKept() {
     val only = sample(0.0, 0.0, 3.0)
@@ -167,7 +172,7 @@ class PathGeometryTest {
     assertEquals(emptyList<GpsSample>(), filterGpsSamples(emptyList(), 10.0, 1.0))
   }
 
-  // Breaks if a negative or undefined limit is accepted.
+  /** Breaks if a negative or undefined limit is accepted. */
   @Test
   fun negativeLimitsAreRefused() {
     assertInvalid("The maximum accuracy cannot be negative.") {
