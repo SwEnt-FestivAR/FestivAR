@@ -1,7 +1,6 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.announcement.create
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -15,27 +14,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -45,8 +34,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
 import com.android.festivar.model.event.announcement.AnnouncementPriority
+import com.android.festivar.ui.announcement.AnnouncementFormBackHandling
+import com.android.festivar.ui.announcement.AnnouncementFormLabels
+import com.android.festivar.ui.announcement.AnnouncementFormTags
+import com.android.festivar.ui.announcement.AnnouncementFormTopBar
 import com.android.festivar.ui.announcement.announcementPriorityLabelRes
-import com.android.festivar.ui.components.FestivarDiscardDialog
 import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.components.FestivarFieldWithError
 import com.android.festivar.ui.components.FestivarTextField
@@ -73,6 +65,32 @@ object CreateAnnouncementScreenTestTags {
   /** Test tag of the chip of [priority]. */
   fun priorityChip(priority: AnnouncementPriority) = "createAnnouncementPriority_${priority.name}"
 }
+
+// The tags and texts of the form when it creates an announcement, its defaults.
+private val createAnnouncementTags =
+    AnnouncementFormTags(
+        backButton = CreateAnnouncementScreenTestTags.BACK_BUTTON,
+        title = CreateAnnouncementScreenTestTags.TITLE,
+        titleField = CreateAnnouncementScreenTestTags.TITLE_FIELD,
+        titleError = CreateAnnouncementScreenTestTags.TITLE_ERROR,
+        descriptionField = CreateAnnouncementScreenTestTags.DESCRIPTION_FIELD,
+        descriptionError = CreateAnnouncementScreenTestTags.DESCRIPTION_ERROR,
+        priorityLabel = CreateAnnouncementScreenTestTags.PRIORITY_LABEL,
+        saveError = CreateAnnouncementScreenTestTags.SAVE_ERROR,
+        submitButton = CreateAnnouncementScreenTestTags.PUBLISH_BUTTON,
+        savingIndicator = CreateAnnouncementScreenTestTags.SAVING_INDICATOR,
+        discardDialog = CreateAnnouncementScreenTestTags.DISCARD_DIALOG,
+        keepEditingButton = CreateAnnouncementScreenTestTags.KEEP_EDITING_BUTTON,
+        discardButton = CreateAnnouncementScreenTestTags.DISCARD_BUTTON,
+        priorityChip = CreateAnnouncementScreenTestTags::priorityChip,
+    )
+
+private val createAnnouncementLabels =
+    AnnouncementFormLabels(
+        title = R.string.create_announcement,
+        submit = R.string.create_announcement_publish,
+        submitting = R.string.create_announcement_publishing,
+    )
 
 /**
  * What the user can do on the Create announcement screen. Lets [CreateAnnouncementContent] stay
@@ -102,87 +120,62 @@ fun CreateAnnouncementScreen(
 ) {
   val state by viewModel.uiState.collectAsState()
 
-  var askToDiscard by rememberSaveable { mutableStateOf(false) }
-  // Back does nothing during a save: leaving would not undo a write that has started, so the
-  // announcement could still be published after the user chose to discard it.
-  val requestBack: () -> Unit = {
-    if (!state.isSaving) {
-      if (state.needsDiscardConfirmation) askToDiscard = true else onBack()
-    }
-  }
-  // Stays enabled during a save, as a disabled handler would let system back close the screen.
-  BackHandler(onBack = requestBack)
-
   // The latest callback is called, even if the caller passed a new one during the save.
   val currentOnPublished by rememberUpdatedState(onPublished)
   LaunchedEffect(state.isPublished) { if (state.isPublished) currentOnPublished() }
 
-  CreateAnnouncementContent(
-      state = state,
-      actions =
-          CreateAnnouncementActions(
-              onBack = requestBack,
-              onTitleChange = viewModel::updateTitle,
-              onContentChange = viewModel::updateContent,
-              onPriorityChange = viewModel::updatePriority,
-              onPublish = viewModel::publish,
-          ),
-      modifier = modifier,
-  )
-
-  if (askToDiscard) {
-    FestivarDiscardDialog(
-        title = stringResource(R.string.create_announcement_discard_title),
-        onConfirm = {
-          askToDiscard = false
-          onBack()
-        },
-        onDismiss = { askToDiscard = false },
-        modifier = Modifier.testTag(CreateAnnouncementScreenTestTags.DISCARD_DIALOG),
-        confirmModifier = Modifier.testTag(CreateAnnouncementScreenTestTags.DISCARD_BUTTON),
-        dismissModifier = Modifier.testTag(CreateAnnouncementScreenTestTags.KEEP_EDITING_BUTTON),
+  AnnouncementFormBackHandling(
+      isSaving = { state.isSaving },
+      needsConfirmation = { state.needsDiscardConfirmation },
+      onBack = onBack,
+      dialogTitle = R.string.create_announcement_discard_title,
+      tags = createAnnouncementTags,
+  ) { requestBack ->
+    CreateAnnouncementContent(
+        state = state,
+        actions =
+            CreateAnnouncementActions(
+                onBack = requestBack,
+                onTitleChange = viewModel::updateTitle,
+                onContentChange = viewModel::updateContent,
+                onPriorityChange = viewModel::updatePriority,
+                onPublish = viewModel::publish,
+            ),
+        modifier = modifier,
     )
   }
 }
 
-/** Stateless Create announcement screen: draws [state] and reports user input through [actions]. */
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Stateless Create announcement screen: draws [state] and reports user input through [actions]. The
+ * Edit announcement screen draws its form with it as well.
+ *
+ * @param labels The top bar title, the button text and the description of its spinner.
+ * @param tags The test tags of the form's nodes.
+ * @param canSubmit Whether the button at the bottom can be pressed.
+ */
 @Composable
 fun CreateAnnouncementContent(
     state: CreateAnnouncementUiState,
     actions: CreateAnnouncementActions,
     modifier: Modifier = Modifier,
+    labels: AnnouncementFormLabels = createAnnouncementLabels,
+    tags: AnnouncementFormTags = createAnnouncementTags,
+    canSubmit: Boolean = state.canPublish,
 ) {
   Scaffold(
       modifier = modifier,
       containerColor = MaterialTheme.colorScheme.background,
-      topBar = {
-        TopAppBar(
-            title = {
-              Text(
-                  text = stringResource(R.string.create_announcement),
-                  style = MaterialTheme.typography.titleLarge,
-                  modifier = Modifier.testTag(CreateAnnouncementScreenTestTags.TITLE),
-              )
-            },
-            navigationIcon = {
-              IconButton(
-                  onClick = actions.onBack,
-                  modifier = Modifier.testTag(CreateAnnouncementScreenTestTags.BACK_BUTTON),
-              ) {
-                Icon(
-                    Icons.AutoMirrored.Rounded.ArrowBack,
-                    contentDescription = stringResource(R.string.create_announcement_back),
-                )
-              }
-            },
-            colors =
-                TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                ),
+      topBar = { AnnouncementFormTopBar(labels.title, actions.onBack, tags) },
+      bottomBar = {
+        PublishBar(
+            state = state,
+            onPublish = actions.onPublish,
+            labels = labels,
+            tags = tags,
+            canSubmit = canSubmit,
         )
       },
-      bottomBar = { PublishBar(state = state, onPublish = actions.onPublish) },
   ) { padding ->
     Column(
         modifier =
@@ -192,20 +185,17 @@ fun CreateAnnouncementContent(
                 .padding(start = 20.dp, top = 12.dp, end = 20.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-      FestivarFieldWithError(state.titleError, CreateAnnouncementScreenTestTags.TITLE_ERROR) {
+      FestivarFieldWithError(state.titleError, tags.titleError) {
         FestivarTextField(
             value = state.title,
             onValueChange = actions.onTitleChange,
             label = stringResource(R.string.create_announcement_field_title),
             enabled = state.isEditable,
             isError = state.titleError != null,
-            modifier = Modifier.testTag(CreateAnnouncementScreenTestTags.TITLE_FIELD),
+            modifier = Modifier.testTag(tags.titleField),
         )
       }
-      FestivarFieldWithError(
-          state.contentError,
-          CreateAnnouncementScreenTestTags.DESCRIPTION_ERROR,
-      ) {
+      FestivarFieldWithError(state.contentError, tags.descriptionError) {
         FestivarTextField(
             value = state.content,
             onValueChange = actions.onContentChange,
@@ -215,35 +205,38 @@ fun CreateAnnouncementContent(
             maxLength = LONG_TEXT_MAX_LENGTH,
             showCounter = true,
             isError = state.contentError != null,
-            modifier =
-                Modifier.heightIn(min = 96.dp)
-                    .testTag(CreateAnnouncementScreenTestTags.DESCRIPTION_FIELD),
+            modifier = Modifier.heightIn(min = 96.dp).testTag(tags.descriptionField),
         )
       }
       AnnouncementPrioritySelector(
           selected = state.priority,
           onSelect = actions.onPriorityChange,
           enabled = state.isEditable,
+          tags = tags,
       )
     }
   }
 }
 
-/** The bottom of the screen: the save error, when there is one, above the "Publish" button. */
+/** The bottom of the screen: the save error, when there is one, above the submit button. */
 @Composable
-private fun PublishBar(state: CreateAnnouncementUiState, onPublish: () -> Unit) {
+private fun PublishBar(
+    state: CreateAnnouncementUiState,
+    onPublish: () -> Unit,
+    labels: AnnouncementFormLabels,
+    tags: AnnouncementFormTags,
+    canSubmit: Boolean,
+) {
   Column {
     state.errorMsg?.let {
       FestivarFieldError(
           message = stringResource(it),
-          modifier =
-              Modifier.padding(horizontal = 20.dp)
-                  .testTag(CreateAnnouncementScreenTestTags.SAVE_ERROR),
+          modifier = Modifier.padding(horizontal = 20.dp).testTag(tags.saveError),
       )
     }
     Button(
         onClick = onPublish,
-        enabled = state.canPublish,
+        enabled = canSubmit,
         shape = RoundedCornerShape(12.dp),
         // As in Figma, the disabled button is the beige of the hairlines with dark text; Material
         // would draw it grey with faded text.
@@ -256,23 +249,20 @@ private fun PublishBar(state: CreateAnnouncementUiState, onPublish: () -> Unit) 
             Modifier.fillMaxWidth()
                 .padding(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 24.dp)
                 .height(52.dp)
-                .testTag(CreateAnnouncementScreenTestTags.PUBLISH_BUTTON),
+                .testTag(tags.submitButton),
     ) {
       if (state.isSaving) {
-        val publishing = stringResource(R.string.create_announcement_publishing)
+        val publishing = stringResource(labels.submitting)
         CircularProgressIndicator(
             modifier =
                 Modifier.size(16.dp)
                     .semantics { contentDescription = publishing }
-                    .testTag(CreateAnnouncementScreenTestTags.SAVING_INDICATOR),
+                    .testTag(tags.savingIndicator),
             color = MaterialTheme.colorScheme.onSurface,
             strokeWidth = 2.dp,
         )
       } else {
-        Text(
-            text = stringResource(R.string.create_announcement_publish),
-            style = MaterialTheme.typography.labelLarge,
-        )
+        Text(text = stringResource(labels.submit), style = MaterialTheme.typography.labelLarge)
       }
     }
   }
@@ -287,11 +277,12 @@ private fun AnnouncementPrioritySelector(
     selected: AnnouncementPriority,
     onSelect: (AnnouncementPriority) -> Unit,
     enabled: Boolean,
+    tags: AnnouncementFormTags,
 ) {
   Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
     SectionLabel(
         stringResource(R.string.create_announcement_field_priority),
-        modifier = Modifier.testTag(CreateAnnouncementScreenTestTags.PRIORITY_LABEL),
+        modifier = Modifier.testTag(tags.priorityLabel),
     )
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -303,7 +294,7 @@ private fun AnnouncementPrioritySelector(
             selected = priority == selected,
             onClick = { onSelect(priority) },
             enabled = enabled,
-            modifier = Modifier.testTag(CreateAnnouncementScreenTestTags.priorityChip(priority)),
+            modifier = Modifier.testTag(tags.priorityChip(priority)),
         )
       }
     }
