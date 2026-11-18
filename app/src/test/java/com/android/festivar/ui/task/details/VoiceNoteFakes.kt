@@ -136,6 +136,7 @@ class FakeVoicePlayer : VoicePlayer {
   override fun play(audioUrl: String) {
     played += audioUrl
     _state.value = PlayerState.Playing(audioUrl)
+    _position.value = Duration.ZERO
   }
 
   override fun pause() {
@@ -166,6 +167,7 @@ class FakeVoicePlayer : VoicePlayer {
   /** Simulates a note that cannot be played. */
   fun fail(audioUrl: String) {
     _state.value = PlayerState.Failed(audioUrl)
+    _position.value = Duration.ZERO
   }
 }
 

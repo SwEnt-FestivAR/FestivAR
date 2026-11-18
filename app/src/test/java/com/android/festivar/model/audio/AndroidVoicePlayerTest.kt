@@ -35,6 +35,12 @@ class ReleaseCountingShadowMediaPlayer : ShadowMediaPlayer() {
   var releaseCount = 0
     private set
 
+  /** Makes the fake report a length of -1, like a real player does for a note it cannot measure. */
+  var lengthUnknown = false
+
+  @Implementation
+  protected override fun getDuration(): Int = if (lengthUnknown) -1 else super.getDuration()
+
   @Implementation
   protected override fun _release() {
     releaseCount++
@@ -492,7 +498,7 @@ class AndroidVoicePlayerTest {
     assertTrue(player.position.value >= pausedAt + Duration.ofMillis(900))
   }
 
-  /** Breaks if stop keeps the old position or length. */
+  /** Breaks if stop keeps the old position. */
   @Test
   fun position_isResetWhenTheNoteStops() {
     player.play(first)
@@ -616,6 +622,19 @@ class AndroidVoicePlayerTest {
 
     player.seekTo(Duration.ofSeconds(-5))
     assertEquals(Duration.ZERO, player.position.value)
+  }
+
+  /** Breaks if seekTo on a note of unknown length crashes or moves the position. */
+  @Test
+  fun seekTo_doesNothingWhenTheLengthIsUnknown() {
+    player.play(first)
+    (players.single() as ReleaseCountingShadowMediaPlayer).lengthUnknown = true
+    idle()
+
+    player.seekTo(Duration.ofSeconds(5))
+
+    assertEquals(Duration.ZERO, player.position.value)
+    assertEquals(PlayerState.Playing(first), player.state.value)
   }
 
   /** Breaks if seekTo while loading or with nothing playing changes anything or crashes. */
