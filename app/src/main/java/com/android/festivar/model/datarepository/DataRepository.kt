@@ -5,8 +5,8 @@ package com.android.festivar.model.datarepository
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
-import com.android.festivar.model.images.ImageStorage
 import com.android.festivar.model.event.canKick
+import com.android.festivar.model.images.ImageStorage
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.user.User
