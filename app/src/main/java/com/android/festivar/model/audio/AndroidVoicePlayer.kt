@@ -140,6 +140,8 @@ class AndroidVoicePlayer(context: Context) : VoicePlayer {
           else -> return
         }
     changePlayback(audioUrl, "The player refused to seek the voice note") {
+      // A note of unknown length reports -1, and there is nothing to seek in.
+      if (duration <= 0) return@changePlayback
       val target = position.toMillis().coerceIn(0, duration.toLong()).toInt()
       seekTo(target)
       _position.value = Duration.ofMillis(target.toLong())
