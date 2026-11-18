@@ -324,6 +324,25 @@ interface DataRepository {
   }
 
   /**
+   * Kicks a member out of an [Event], with exactly the same cleanup as [quitEvent]: the member is
+   * removed from the members, the roles and the assignees of each [Task] of the event, and the
+   * event and its tasks are removed from their [User].
+   *
+   * This function does not check who kicks: like the other operations, it relies on its caller to
+   * check that the member who kicks is allowed to, with [Event.canKick], and on the Firestore rules
+   * to refuse it otherwise.
+   *
+   * @param eventId The identifier of the [Event].
+   * @param userId The [User.uid] of the member who is kicked.
+   * @throws NoSuchElementException If the event or the user does not exist.
+   * @throws IllegalArgumentException If the user is not a member of the event or is its owner.
+   * @throws DataInconsistencyException If a write failed and could not be fully undone.
+   */
+  suspend fun kickMember(eventId: String, userId: String) {
+    quitEvent(eventId, userId)
+  }
+
+  /**
    * Adds a [User] to the assignees of a [Task], in the task and in its [Event], and the task to the
    * user's [User.tasksAssigned]. If the user already lists the task (for example its owner), their
    * [User.tasksAssigned] is left unchanged.
