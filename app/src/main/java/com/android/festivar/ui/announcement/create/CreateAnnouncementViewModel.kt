@@ -10,6 +10,7 @@ import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.event.announcement.AnnouncementPriority
+import com.android.festivar.ui.announcement.ANNOUNCEMENT_SAVE_TIMEOUT_MS
 import com.android.festivar.ui.components.FieldError
 import java.time.Clock
 import java.time.ZonedDateTime
@@ -120,8 +121,6 @@ data class CreateAnnouncementUiState(
 
 private const val TAG = "CreateAnnouncementViewModel"
 
-private const val SAVE_TIMEOUT_MS = 15_000L
-
 /** The message shown when the announcement could not be saved, whatever the cause. */
 @StringRes private val SAVE_FAILED_MESSAGE = R.string.create_announcement_error_save_failed
 
@@ -144,7 +143,7 @@ class CreateAnnouncementViewModel(
     private val currentUserId: () -> String,
     private val dataRepository: DataRepository,
     private val clock: Clock = Clock.systemDefaultZone(),
-    private val saveTimeoutMs: Long = SAVE_TIMEOUT_MS,
+    private val saveTimeoutMs: Long = ANNOUNCEMENT_SAVE_TIMEOUT_MS,
 ) : ViewModel() {
 
   private val eventsRepository: EventsRepository = dataRepository.eventsRepository
@@ -228,9 +227,7 @@ class CreateAnnouncementViewModel(
         try {
           withTimeout(saveTimeoutMs) {
             val stored =
-                eventsRepository.getEvent(eventId).announcements.firstOrNull {
-                  it.announcementId == announcement.announcementId
-                }
+                eventsRepository.getEvent(eventId).announcementOrNull(announcement.announcementId)
             if (stored != null && !stored.sameFormAs(announcement)) {
               // The stored author stays: a retry by another user never changes who published it.
               eventsRepository.editAnnouncement(

@@ -215,14 +215,16 @@ class VoiceNoteSectionTest {
   @Test
   fun playButtonChangesWhilePlaying() {
     show(VoiceNoteUiState(note = note, player = PlayerState.Playing(note.audioUrl)))
-    composeTestRule.onNodeWithContentDescription(text(R.string.voice_note_stop)).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithContentDescription(text(R.string.voice_note_pause))
+        .assertIsDisplayed()
   }
 
-  /** Breaks if tapping the stop button of a playing note does not call onTogglePlay once. */
+  /** Breaks if tapping the pause button of a playing note does not call onTogglePlay once. */
   @Test
   fun pauseTogglesThroughTheCallback() {
     show(VoiceNoteUiState(note = note, player = PlayerState.Playing(note.audioUrl)))
-    composeTestRule.onNodeWithContentDescription(text(R.string.voice_note_stop)).performClick()
+    composeTestRule.onNodeWithContentDescription(text(R.string.voice_note_pause)).performClick()
     verify(exactly = 1) { onTogglePlay() }
     assertNoOtherCall()
   }
