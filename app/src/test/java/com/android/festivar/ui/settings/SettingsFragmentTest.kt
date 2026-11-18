@@ -82,6 +82,7 @@ class SettingsFragmentTest {
 
   @Test
   fun savedPreferencesApplyWithoutOpeningSettings() {
+    AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("fr"))
     val activity = Robolectric.buildActivity(MySettingsActivity::class.java).setup().get()
     PreferenceManager.getDefaultSharedPreferences(activity)
         .edit()
@@ -93,6 +94,23 @@ class SettingsFragmentTest {
 
     assertEquals(AppCompatDelegate.MODE_NIGHT_YES, AppCompatDelegate.getDefaultNightMode())
     assertEquals(LocaleListCompat.forLanguageTags("fr"), AppCompatDelegate.getApplicationLocales())
+    AppCompatDelegate.setApplicationLocales(LocaleListCompat.getEmptyLocaleList())
+  }
+
+  @Test
+  fun resetToSystemClearsStoredLanguagePreferenceAndAppliesSystemLocale() {
+    val activity = Robolectric.buildActivity(MySettingsActivity::class.java).setup().get()
+    PreferenceManager.getDefaultSharedPreferences(activity)
+        .edit()
+        .putString("language", "fr")
+        .commit()
+    AppCompatDelegate.setApplicationLocales(LocaleListCompat.getEmptyLocaleList())
+
+    applySavedSettings(activity)
+
+    val prefs = PreferenceManager.getDefaultSharedPreferences(activity)
+    assertEquals("system", prefs.getString("language", null))
+    assertEquals(LocaleListCompat.getEmptyLocaleList(), AppCompatDelegate.getApplicationLocales())
   }
 
   @Test
