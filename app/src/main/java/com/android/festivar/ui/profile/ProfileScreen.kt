@@ -102,11 +102,13 @@ fun ProfileScreen(
     onBack: () -> Unit = {},
     onSignedOut: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
-    credentialManager: CredentialManager = CredentialManager.create(LocalContext.current),
+    credentialManager: CredentialManager? = null,
 ) {
 
   val profileUIState by profileViewModel.uiState.collectAsState()
   val context = LocalContext.current
+  val rememberedCredentialManager =
+      credentialManager ?: remember(context) { CredentialManager.create(context) }
   val coroutineScope = rememberCoroutineScope()
   val webClientId = stringResource(R.string.default_web_client_id)
   val snackbarHostState = remember { SnackbarHostState() }
@@ -195,7 +197,7 @@ fun ProfileScreen(
                       GetCredentialRequest.Builder()
                           .addCredentialOption(signInWithGoogleOption)
                           .build()
-                  val result = credentialManager.getCredential(context, request)
+                  val result = rememberedCredentialManager.getCredential(context, request)
                   profileViewModel.upgradeWithGoogle(result.credential)
                 } catch (e: CancellationException) {
                   throw e
