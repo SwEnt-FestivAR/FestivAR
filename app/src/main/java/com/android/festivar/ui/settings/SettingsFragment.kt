@@ -70,7 +70,7 @@ internal fun applySavedSettings(context: Context) {
 
   // Synchronize OS-level locale changes (from Android System Settings) back to SharedPreferences.
   val currentLocales = AppCompatDelegate.getApplicationLocales()
-  if (!currentLocales.isEmpty) {
+  if (!currentLocales.isEmpty) { // Checks if android settings are default/system
     val lang = currentLocales[0]?.language
     if (lang == "fr" || lang == "en") {
       preferences.edit { putString("language", lang) }
