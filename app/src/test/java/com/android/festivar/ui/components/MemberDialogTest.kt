@@ -2,21 +2,24 @@
 package com.android.festivar.ui.components
 
 import androidx.compose.material3.Text
-import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.height
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.theme.AppTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.annotation.GraphicsMode
 
 /** Unit tests of [MemberDialog]. */
 @RunWith(AndroidJUnit4::class)
@@ -98,12 +101,27 @@ class MemberDialogTest {
     assertEquals(0, tapped)
   }
 
-  /** Breaks if the dialog shows a button when it has no action. */
+  /** Breaks if a label too long for one line is not wrapped, or makes the buttons uneven. */
   @Test
-  fun withoutActionsShowsNoButton() {
-    setMemberDialog()
+  @GraphicsMode(GraphicsMode.Mode.NATIVE) // Measures the real text, so that the label wraps.
+  fun aLongLabelWrapsAndKeepsBothButtonsTheSameHeight() {
+    val long = "Change the role of this member"
+    setMemberDialog(
+        actions =
+            listOf(
+                MemberDialogAction(long, {}),
+                MemberDialogAction("Kick", {}, destructive = true),
+            )
+    )
 
-    composeTestRule.onAllNodesWithText("Change role").assertCountEquals(0)
-    composeTestRule.onAllNodesWithText("Kick").assertCountEquals(0)
+    val longBounds =
+        composeTestRule.onNodeWithTag(MemberDialogTestTags.action(long)).getUnclippedBoundsInRoot()
+    val kickBounds =
+        composeTestRule
+            .onNodeWithTag(MemberDialogTestTags.action("Kick"))
+            .getUnclippedBoundsInRoot()
+
+    assertTrue(longBounds.height > 48.dp)
+    assertEquals(longBounds.height, kickBounds.height)
   }
 }
