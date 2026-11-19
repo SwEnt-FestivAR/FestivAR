@@ -103,7 +103,7 @@ class AndroidVoiceRecorder(context: Context) : VoiceRecorder {
       deleteFile(recording.file)
       throw VoiceRecorderException(problem)
     }
-    return Audio(recording.file, duration, downsampleWaveform(recording.amplitudes))
+    return Audio(recording.file, duration, toWaveformBars(recording.amplitudes))
   }
 
   override fun cancel() {

@@ -16,7 +16,7 @@ internal const val MAX_AMPLITUDE = Short.MAX_VALUE.toInt()
  * visible. With fewer samples than bars, neighbouring bars repeat a sample. No sample at all, as
  * when the level could never be read, gives no bars, so that it is not mistaken for silence.
  */
-internal fun downsampleWaveform(amplitudes: List<Int>): List<Float> {
+internal fun toWaveformBars(amplitudes: List<Int>): List<Float> {
   if (amplitudes.isEmpty()) return emptyList()
 
   return List(WAVEFORM_BAR_COUNT) { bar ->
