@@ -35,6 +35,7 @@ class DateRangePickerTest {
   private fun show(
       start: LocalDate? = null,
       end: LocalDate? = null,
+      allowPast: Boolean = false,
   ) {
     composeTestRule.setContent {
       AppTheme {
@@ -43,6 +44,7 @@ class DateRangePickerTest {
             initialEnd = end,
             onConfirm = { saved.add(it) },
             onDismiss = { dismissals++ },
+            allowPast = allowPast,
             today = today,
         )
       }
@@ -133,6 +135,15 @@ class DateRangePickerTest {
     composeTestRule.onNodeWithText("1 day", substring = true).assertIsDisplayed()
   }
 
+  /** Breaks if a day before today can be selected when past days are not allowed. */
+  @Test
+  fun aPastDayCannotBeSelected() {
+    show()
+    tap(LocalDate.of(2026, 11, 17))
+    composeTestRule.onNodeWithTag(DateRangePickerTestTags.CLEAR_BUTTON).assertDoesNotExist()
+    composeTestRule.onNodeWithText("Tap a start day, then an end day").assertIsDisplayed()
+  }
+
   /** Breaks if today itself is refused, which would leave nothing to pick for a same-day event. */
   @Test
   fun todayCanBeSelected() {
@@ -140,6 +151,15 @@ class DateRangePickerTest {
     tap(today)
     composeTestRule.onNodeWithTag(DateRangePickerTestTags.CLEAR_BUTTON).assertExists()
     composeTestRule.onNodeWithText("Wed 18 Nov", substring = true).assertIsDisplayed()
+  }
+
+  /** Breaks if the parameter for the edit screens does not open the past days. */
+  @Test
+  fun aPastDayCanBeSelectedWhenPastDaysAreAllowed() {
+    show(allowPast = true)
+    tap(LocalDate.of(2026, 11, 17))
+    composeTestRule.onNodeWithTag(DateRangePickerTestTags.CLEAR_BUTTON).assertExists()
+    composeTestRule.onNodeWithText("Tue 17 Nov", substring = true).assertIsDisplayed()
   }
 
   /** Breaks if the dialog ignores the dates it is opened with or loses their end. */
@@ -202,6 +222,22 @@ class DateRangePickerTest {
         .onNodeWithText("Mon 28 Dec 2026 to Sun 3 Jan 2027", substring = true)
         .assertIsDisplayed()
     composeTestRule.onNodeWithText("7 days", substring = true).assertIsDisplayed()
+  }
+
+  /** Breaks if a range that starts in the past opens selected while past days are refused. */
+  @Test
+  fun aPastRangeOpensEmptyWhenPastDaysAreRefused() {
+    show(start = LocalDate.of(2026, 11, 10), end = LocalDate.of(2026, 11, 12))
+    composeTestRule.onNodeWithText("Tap a start day, then an end day").assertIsDisplayed()
+    composeTestRule.onNodeWithTag(DateRangePickerTestTags.CLEAR_BUTTON).assertDoesNotExist()
+  }
+
+  /** Breaks if a past range is dropped when past days are allowed, as on the edit screens. */
+  @Test
+  fun aPastRangeOpensSelectedWhenPastDaysAreAllowed() {
+    show(start = LocalDate.of(2026, 11, 10), end = LocalDate.of(2026, 11, 12), allowPast = true)
+    composeTestRule.onNodeWithText("Tue 10 to Thu 12 Nov", substring = true).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(DateRangePickerTestTags.CLEAR_BUTTON).assertExists()
   }
 
   /** Breaks if Clear leaves a day selected or keeps itself on screen. */
