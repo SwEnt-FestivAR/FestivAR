@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.components
 
 import androidx.compose.ui.test.assertCountEquals
@@ -49,10 +50,10 @@ class ComponentPreviewsTest {
     composeTestRule.onNodeWithText("Cancel").assertIsDisplayed()
   }
 
-  // The priority selector preview renders without crashing and shows its label and a priority.
+  // The chip selector preview renders without crashing and shows its label and an option.
   @Test
-  fun prioritySelectorPreview_showsTheSelector() {
-    composeTestRule.setContent { FestivarPrioritySelectorPreview() }
+  fun chipSelectorPreview_showsTheSelector() {
+    composeTestRule.setContent { FestivarChipSelectorPreview() }
 
     composeTestRule.onNodeWithText("PRIORITY").assertIsDisplayed()
     composeTestRule.onNodeWithText("High").assertIsDisplayed()

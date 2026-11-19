@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.datarepository
 
@@ -7,6 +8,7 @@ import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.canKick
+import com.android.festivar.model.images.ImageStorage
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.user.User
@@ -43,6 +45,7 @@ interface DataRepository {
   val eventsRepository: EventsRepository
   val usersRepository: UsersRepository
   val audioRepository: AudioRepository
+  val imageStorage: ImageStorage
 
   /**
    * Runs every undo, even if some fail, without being canceled by the calling coroutine.
