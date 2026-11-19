@@ -10,7 +10,7 @@ class WaveformTest {
   /** Breaks if the number of bars depends on how many samples were taken. */
   @Test
   fun downsampleWaveform_alwaysGivesTheFixedNumberOfBars() {
-    listOf(0, 1, 5, WAVEFORM_BAR_COUNT, 41, 1_000).forEach { count ->
+    listOf(1, 5, WAVEFORM_BAR_COUNT, 41, 1_000).forEach { count ->
       assertEquals(WAVEFORM_BAR_COUNT, downsampleWaveform(List(count) { 100 }).size)
     }
   }
@@ -24,11 +24,16 @@ class WaveformTest {
     assertEquals(1f, bars.max(), 0f)
   }
 
-  /** Breaks if a silent or empty recording gives a bar above zero or crashes. */
+  /** Breaks if a silent recording gives a bar above zero or fewer bars than the others. */
   @Test
-  fun downsampleWaveform_givesSilentBarsForSilenceAndForNoSample() {
+  fun downsampleWaveform_givesSilentBarsForSilence() {
     assertEquals(List(WAVEFORM_BAR_COUNT) { 0f }, downsampleWaveform(List(80) { 0 }))
-    assertEquals(List(WAVEFORM_BAR_COUNT) { 0f }, downsampleWaveform(emptyList()))
+  }
+
+  /** Breaks if a recording without any sample looks like silence instead of an unknown level. */
+  @Test
+  fun downsampleWaveform_givesNoBarForNoSample() {
+    assertEquals(emptyList<Float>(), downsampleWaveform(emptyList()))
   }
 
   /** Breaks if a short loud sound is averaged away instead of staying visible in its bar. */

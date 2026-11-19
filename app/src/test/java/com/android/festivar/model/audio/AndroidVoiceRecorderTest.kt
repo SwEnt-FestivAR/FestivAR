@@ -5,6 +5,7 @@ package com.android.festivar.model.audio
 import android.content.Context
 import android.media.MediaRecorder
 import android.os.Looper
+import android.util.Log
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.mockk.every
@@ -34,6 +35,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import org.robolectric.shadows.ShadowLog
 
 /**
  * The recorder on a [MediaRecorder] replaced by MockK, under Robolectric, whose own recorder cannot
@@ -397,7 +399,10 @@ class AndroidVoiceRecorderTest {
     assertEquals(List(WAVEFORM_BAR_COUNT / 2) { 0f }, bars.drop(WAVEFORM_BAR_COUNT / 2))
   }
 
-  /** Breaks if an amplitude that cannot be read ends the recording or leaves bars out. */
+  /**
+   * Breaks if an amplitude that cannot be read ends the recording, or gives bars that look like
+   * silence.
+   */
   @Test
   fun stop_survivesAnAmplitudeThatCannotBeRead() {
     amplitudeFailure = IllegalStateException("not recording")
@@ -405,9 +410,32 @@ class AndroidVoiceRecorderTest {
 
     val audio = recorder.stop()
 
-    assertEquals(WAVEFORM_BAR_COUNT, audio.waveform.size)
+    assertEquals(emptyList<Float>(), audio.waveform)
     assertTrue(audio.file.exists())
   }
+
+  /** Breaks if a recorder that cannot tell its level logs a stack trace on every tick. */
+  @Test
+  fun amplitudeThatCannotBeRead_isLoggedOnlyOncePerRecording() {
+    ShadowLog.clear()
+    amplitudeFailure = IllegalStateException("not recording")
+
+    record(tickMillis * 5)
+
+    assertEquals(1, amplitudeWarnings())
+
+    recorder.cancel()
+    record(tickMillis * 5)
+
+    assertEquals(2, amplitudeWarnings())
+  }
+
+  private fun amplitudeWarnings() =
+      ShadowLog.getLogs().count {
+        it.tag == "AndroidVoiceRecorder" &&
+            it.type == Log.WARN &&
+            it.msg == "Error reading the amplitude"
+      }
 
   /** Breaks if a stop with no recording is not refused as a wrong call. */
   @Test
@@ -573,6 +601,23 @@ class AndroidVoiceRecorderTest {
     assertEquals(1, stops)
     assertDropped()
     assertCanRecordAgain()
+  }
+
+  /**
+   * Breaks if a level that cannot be read when resuming fails the resume, or leaves the recording
+   * without its timer.
+   */
+  @Test
+  fun resume_succeedsWhenTheAmplitudeCannotBeRead() {
+    record(tickMillis * 2)
+    recorder.pause()
+    amplitudeFailure = IllegalStateException("not recording")
+
+    recorder.resume()
+
+    assertEquals(recordingOf(tickMillis * 2), recorder.state.value)
+    advance(tickMillis)
+    assertEquals(recordingOf(tickMillis * 3), recorder.state.value)
   }
 
   /** Breaks if the timer does not update the state exactly once per tick. */
