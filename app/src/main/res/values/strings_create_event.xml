@@ -12,4 +12,5 @@
     <string name="create_event_button">Create event</string>
     <string name="create_event_error_save_failed">Unable to create the event.</string>
     <string name="create_event_discard_title">Discard this event?</string>
+    <string name="create_event_add_image">Add an image</string>
 </resources>

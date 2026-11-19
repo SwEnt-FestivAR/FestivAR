@@ -6,7 +6,9 @@ package com.android.festivar.ui.event.create
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,8 +19,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardColors
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -32,9 +38,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -68,6 +80,7 @@ object CreateEventScreenTestTags {
   const val DISCARD_DIALOG = "createEventDiscardDialog"
   const val DISCARD_BUTTON = "createEventDiscardButton"
   const val KEEP_EDITING_BUTTON = "createEventKeepEditingButton"
+  const val IMAGE_SELECT_BUTTON = "imageSelectButton"
 }
 
 private val createEventFieldTags =
@@ -173,6 +186,11 @@ fun CreateEventContent(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 12.dp),
     ) {
+      ImageSelector(
+          modifier =
+              Modifier.padding(top = 5.dp).testTag(CreateEventScreenTestTags.IMAGE_SELECT_BUTTON)
+      )
+      Spacer(modifier = Modifier.height(14.dp))
       EventFields(
           name = state.name,
           nameError = state.nameError,
@@ -247,6 +265,56 @@ private fun CreateEventSaveBar(
             style = MaterialTheme.typography.labelLarge,
         )
       }
+    }
+  }
+}
+
+@Composable
+fun ImageSelector(
+    modifier: Modifier = Modifier,
+) {
+  // Source - https://stackoverflow.com/a/67039676
+  // Posted by Gabriele Mariotti, modified by community. See post 'Timeline' for change history
+  // Retrieved 2026-11-19, License - CC BY-SA 4.0
+
+  val stroke =
+      Stroke(
+          width = 5f,
+          pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f),
+      )
+  val outlineColor = MaterialTheme.colorScheme.outline
+
+  Card(
+      modifier =
+          modifier.drawBehind {
+            drawRoundRect(
+                color = outlineColor,
+                style = stroke,
+                cornerRadius = CornerRadius(12.dp.toPx()),
+            )
+          },
+      colors =
+          CardColors(
+              containerColor = MaterialTheme.colorScheme.outlineVariant,
+              contentColor = MaterialTheme.colorScheme.onSurface,
+              disabledContainerColor = MaterialTheme.colorScheme.outlineVariant,
+              disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+          ),
+  ) {
+    Column(
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+      Icon(
+          imageVector = Icons.Outlined.CameraAlt,
+          contentDescription = "Camera icon",
+          modifier = Modifier.fillMaxWidth(1f).padding(20.dp),
+      )
+      Text(
+          modifier = Modifier.fillMaxWidth(1f).padding(bottom = 20.dp),
+          text = stringResource(R.string.create_event_add_image),
+          textAlign = TextAlign.Center,
+      )
     }
   }
 }
