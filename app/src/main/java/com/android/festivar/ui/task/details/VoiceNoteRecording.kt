@@ -132,7 +132,14 @@ internal class VoiceNoteRecording(
       var url: String? = null
       try {
         url = services.storage.upload(held.audio, task.taskId)
-        val note = VoiceNote(services.newId(), url, held.audio.duration, services.now())
+        val note =
+            VoiceNote(
+                services.newId(),
+                url,
+                held.audio.duration,
+                services.now(),
+                waveform = held.audio.waveform,
+            )
         val updated = task.attachVoiceNote(note, host.state.value.currentUserId)
         host.saveTask(updated)
         drop()

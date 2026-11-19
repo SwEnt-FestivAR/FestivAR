@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.audio
 
 import android.content.Context
@@ -44,6 +45,8 @@ class AndroidVoiceRecorder(context: Context) : VoiceRecorder {
           val newRecorder = newRecorder().also { recorder = it }
           startRecorder(newRecorder, newFile)
           ActiveRecording(newRecorder, newFile, runningSince = SystemClock.elapsedRealtime())
+              // The first reading of a recorder is always 0, which is no sample.
+              .also { readAmplitude(it) }
         } catch (e: Exception) {
           // Includes the IllegalStateException of a busy MediaRecorder, which is not a wrong call.
           recorder?.let { release(it) }
@@ -69,6 +72,8 @@ class AndroidVoiceRecorder(context: Context) : VoiceRecorder {
     val recording = current
     check(recording != null && recording.isPaused) { "No paused recording to resume." }
     changeRecorder(recording, "The recording could not be resumed.") { recording.recorder.resume() }
+    // The first reading after a pause still holds the peak from before it: drop it.
+    readAmplitude(recording)
     recording.runningSince = SystemClock.elapsedRealtime()
     _state.value = RecorderState.Recording(recording.recordedBefore)
     launchTimer(recording)
@@ -98,7 +103,7 @@ class AndroidVoiceRecorder(context: Context) : VoiceRecorder {
       deleteFile(recording.file)
       throw VoiceRecorderException(problem)
     }
-    return Audio(recording.file, duration)
+    return Audio(recording.file, duration, downsampleWaveform(recording.amplitudes))
   }
 
   override fun cancel() {
@@ -151,10 +156,20 @@ class AndroidVoiceRecorder(context: Context) : VoiceRecorder {
     recording.timer = timerScope.launch {
       while (isActive) {
         delay(TICK_INTERVAL_MILLIS)
+        readAmplitude(recording)?.let { recording.amplitudes += it }
         _state.value = RecorderState.Recording(elapsed(recording))
       }
     }
   }
+
+  /** The loudest amplitude since the last reading, or null if the recorder cannot tell. */
+  private fun readAmplitude(recording: ActiveRecording): Int? =
+      try {
+        recording.recorder.maxAmplitude
+      } catch (e: RuntimeException) {
+        Log.w(LOG_TAG, "Error reading the amplitude", e)
+        null
+      }
 
   /** The time recorded so far by the [recording], without the time it spent paused. */
   private fun elapsed(recording: ActiveRecording): Duration {
@@ -210,6 +225,8 @@ class AndroidVoiceRecorder(context: Context) : VoiceRecorder {
    * @property runningSince When it last started or resumed, or null while it is paused.
    * @property recordedBefore The time recorded before [runningSince].
    * @property timer The timer of the current run. It is cancelled while the recording is paused.
+   * @property amplitudes One amplitude per tick of the timer, so none for paused time. The time
+   *   since the last tick, up to one tick, is not sampled.
    */
   private class ActiveRecording(
       val recorder: MediaRecorder,
@@ -217,6 +234,7 @@ class AndroidVoiceRecorder(context: Context) : VoiceRecorder {
       var runningSince: Long?,
       var recordedBefore: Duration = Duration.ZERO,
       var timer: Job? = null,
+      val amplitudes: MutableList<Int> = mutableListOf(),
   ) {
     val isPaused: Boolean
       get() = runningSince == null
