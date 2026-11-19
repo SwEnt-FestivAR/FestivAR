@@ -5,16 +5,20 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.unit.width
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -194,6 +198,19 @@ class DateRangePickerTest {
     composeTestRule.onNodeWithTag(DateRangePickerTestTags.SUMMARY).performClick()
     composeTestRule.onNodeWithTag(DateRangePickerTestTags.CLEAR_BUTTON).assertDoesNotExist()
     composeTestRule.onNodeWithText("Tap a start day, then an end day").assertIsDisplayed()
+  }
+
+  /**
+   * Breaks if the last column of the calendar is cut off on a phone narrower than Material's
+   * calendar, as most phones are: the Saturday cell would then be narrower than the Sunday one.
+   */
+  @Test
+  @Config(qualifiers = "en-rUS-w360dp-h640dp")
+  fun theWholeCalendarFitsOnANarrowScreen() {
+    show()
+    val sunday = composeTestRule.onNode(cellOf(LocalDate.of(2026, 11, 22))).getBoundsInRoot()
+    val saturday = composeTestRule.onNode(cellOf(LocalDate.of(2026, 11, 28))).getBoundsInRoot()
+    assertEquals(sunday.width.value, saturday.width.value, 0.1f)
   }
 
   /** Breaks if the calendar moves when a first day is chosen, because the summary changes size. */
