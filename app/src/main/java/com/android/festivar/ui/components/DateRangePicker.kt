@@ -77,8 +77,9 @@ private const val DISABLED_ALPHA = 0.38f
  *   calendar opens on its month, or on today's.
  * @param initialEnd The last day selected when the dialog opens: the start when `null` or before
  *   [initialStart]. Ignored without [initialStart].
- * @param onConfirm Called with the first and the last day when the user saves. Never called while
- *   no day is selected.
+ * @param onConfirm Called with the first and the last day when the user saves, or with `null` when
+ *   no day is chosen: the dates are removed. Dates are never required, they are both filled or
+ *   none.
  * @param onDismiss Called when the user goes back, which discards the choice.
  * @param allowPast Whether days before [today] can be chosen, for the screens that edit an event. A
  *   range that starts before [today] opens empty when they cannot. Read when the dialog opens.
@@ -91,7 +92,7 @@ private const val DISABLED_ALPHA = 0.38f
 fun FestivarDateRangePickerDialog(
     initialStart: LocalDate?,
     initialEnd: LocalDate?,
-    onConfirm: (start: LocalDate, end: LocalDate) -> Unit,
+    onConfirm: (range: Pair<LocalDate, LocalDate>?) -> Unit,
     onDismiss: () -> Unit,
     allowPast: Boolean = false,
     today: LocalDate = LocalDate.now(),
@@ -125,8 +126,8 @@ fun FestivarDateRangePickerDialog(
         DateRangeSummary(start, end)
         DateRangeCalendar(state, Modifier.weight(1f))
         FixedBottomBar {
-          DateRangeSaveButton(enabled = start != null) {
-            if (start != null && end != null) onConfirm(start, end)
+          DateRangeSaveButton {
+            onConfirm(if (start != null && end != null) start to end else null)
           }
         }
       }
@@ -288,20 +289,17 @@ private fun calendarColors(): DatePickerColors {
   )
 }
 
-/** The lime button that saves the days; it fades while no day is chosen. */
+/** The lime button that saves the days, or no dates while no day is chosen. */
 @Composable
-private fun DateRangeSaveButton(enabled: Boolean, onClick: () -> Unit) {
+private fun DateRangeSaveButton(onClick: () -> Unit) {
   val scheme = MaterialTheme.colorScheme
   Button(
       onClick = onClick,
-      enabled = enabled,
       shape = RoundedCornerShape(12.dp),
       colors =
           ButtonDefaults.buttonColors(
               containerColor = scheme.primary,
               contentColor = scheme.onPrimary,
-              disabledContainerColor = scheme.primary.copy(alpha = DISABLED_ALPHA),
-              disabledContentColor = scheme.onPrimary.copy(alpha = DISABLED_ALPHA),
           ),
       modifier = Modifier.fillMaxWidth().height(52.dp).testTag(DateRangePickerTestTags.SAVE_BUTTON),
   ) {
@@ -319,7 +317,7 @@ internal fun FestivarDateRangePickerDialogPreview() {
     FestivarDateRangePickerDialog(
         initialStart = LocalDate.now().plusDays(9),
         initialEnd = LocalDate.now().plusDays(15),
-        onConfirm = { _, _ -> },
+        onConfirm = {},
         onDismiss = {},
     )
   }
@@ -332,7 +330,7 @@ internal fun FestivarDateRangePickerDialogPastAllowedPreview() {
     FestivarDateRangePickerDialog(
         initialStart = LocalDate.now().minusDays(3),
         initialEnd = LocalDate.now().plusDays(2),
-        onConfirm = { _, _ -> },
+        onConfirm = {},
         onDismiss = {},
         allowPast = true,
     )
