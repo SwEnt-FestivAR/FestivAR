@@ -2,6 +2,7 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.components
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,16 @@ import androidx.compose.ui.unit.dp
 import com.android.festivar.model.task.Priority
 import com.android.festivar.ui.task.priorityLabelRes
 import com.android.festivar.ui.theme.AppTheme
+
+/**
+ * Gives the string resource that names an option of a [FestivarChipSelector]. A function type
+ * cannot carry `@StringRes` on its result, so this interface does: the label is marked as a string
+ * resource for lint, and a function reference such as `::priorityLabelRes` still fits.
+ */
+fun interface OptionLabelRes<T> {
+  /** The string resource that names [option] on its chip. */
+  @StringRes fun of(option: T): Int
+}
 
 /**
  * Titled single-choice row of chips: one chip per entry of [options], and the chip of [selected] is
@@ -39,7 +50,7 @@ fun <T : Enum<T>> FestivarChipSelector(
     selected: T,
     onSelect: (T) -> Unit,
     label: String,
-    optionLabelRes: (T) -> Int,
+    optionLabelRes: OptionLabelRes<T>,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     labelModifier: Modifier = Modifier,
@@ -53,7 +64,7 @@ fun <T : Enum<T>> FestivarChipSelector(
     ) {
       options.forEach { option ->
         FilterChip(
-            label = stringResource(optionLabelRes(option)),
+            label = stringResource(optionLabelRes.of(option)),
             selected = option == selected,
             onClick = { onSelect(option) },
             enabled = enabled,
