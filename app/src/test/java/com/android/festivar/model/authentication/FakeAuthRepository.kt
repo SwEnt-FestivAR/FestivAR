@@ -53,7 +53,10 @@ open class FakeAuthRepository(
   override suspend fun signOut(): Result<Unit> {
     signOutCount++
     signOutGate?.await()
-    return signOutBehavior?.invoke() ?: signOutResult
+    val result = signOutBehavior?.invoke() ?: signOutResult
+    // Like Firebase, a successful sign-out leaves nobody signed in.
+    if (result.isSuccess) currentUserState.value = null
+    return result
   }
 
   override suspend fun forgotPassword(email: String): Result<Unit> {
