@@ -34,17 +34,4 @@ class SettingsActivityTest {
     assertTrue(activity.onSupportNavigateUp())
     assertTrue(activity.isFinishing)
   }
-
-  /**
-   * Breaks if a raw color primary value in the theme fails to fall back to typedValue.data for
-   * tinting.
-   */
-  @Test
-  fun settingsActivityWithRawColorPrimaryThemeUsesTypedValueData() {
-    val controller = Robolectric.buildActivity(SettingsActivity::class.java)
-    controller.get().setTheme(R.style.Theme_Test_RawColorPrimary)
-    val activity = controller.setup().get()
-
-    assertNotNull(activity.findViewById(R.id.settings_container))
-  }
 }

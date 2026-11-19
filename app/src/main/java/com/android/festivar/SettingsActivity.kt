@@ -3,10 +3,8 @@ package com.android.festivar
 
 import android.content.pm.ActivityInfo
 import android.os.Bundle
-import android.util.TypedValue
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
-import androidx.core.content.ContextCompat
 import com.android.festivar.ui.settings.SettingsFragment
 
 class SettingsActivity : AppCompatActivity() {
@@ -29,16 +27,6 @@ class SettingsActivity : AppCompatActivity() {
     val actionBar = requireNotNull(supportActionBar)
     actionBar.setDisplayHomeAsUpEnabled(true)
     actionBar.setDisplayShowHomeEnabled(true)
-
-    val typedValue = TypedValue()
-    theme.resolveAttribute(android.R.attr.textColorPrimary, typedValue, true)
-    val color =
-        if (typedValue.resourceId != 0) {
-          ContextCompat.getColor(this, typedValue.resourceId)
-        } else {
-          typedValue.data
-        }
-    toolbar.navigationIcon?.setTint(color)
 
     // Optional: Explicitly set title if needed (otherwise fetched from Manifest label)
     // supportActionBar?.title = getString(R.string.title_activity_settings)
