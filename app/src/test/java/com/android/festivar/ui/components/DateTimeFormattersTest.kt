@@ -27,6 +27,7 @@ class DateTimeFormattersTest {
     assertEquals("Fri 16", formatDay(LocalDate.of(2026, 10, 16)))
   }
 
+  /** Breaks if a range repeats the month or the year its two days share. */
   @Test
   fun formatDateRange_omitsWhatTheTwoDaysShare() {
     val day = LocalDate.of(2026, 11, 27)
