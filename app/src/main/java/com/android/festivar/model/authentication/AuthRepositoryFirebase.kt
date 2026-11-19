@@ -32,10 +32,14 @@ class AuthRepositoryFirebase(
   override val currentUser: FirebaseUser?
     get() = firebaseAuth.currentUser
 
+  // Cold: each collector registers its own listener, and nothing listens while nobody collects.
   // Firebase calls the listener once on registration, so the first emission is the current state.
   override val currentUserFlow: Flow<FirebaseUser?> = callbackFlow {
+    // Firebase calls this on its own thread, outside a coroutine, so it cannot suspend: trySend
+    // is used instead of send.
     val listener = FirebaseAuth.AuthStateListener { trySend(it.currentUser) }
     firebaseAuth.addAuthStateListener(listener)
+    // Runs when the collector is cancelled, so the listener does not leak.
     awaitClose { firebaseAuth.removeAuthStateListener(listener) }
   }
 
