@@ -302,13 +302,14 @@ class ProfileScreenTest {
     coEvery { credentialManager.getCredential(any(), any<GetCredentialRequest>()) } returns response
     every { response.credential } returns credential
     var googleUpgradeCalled = false
+    val upgradedUser = mockk<FirebaseUser> { every { isAnonymous } returns false }
     val authRepository =
         object :
             FakeAuthRepository(
                 currentUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
             ) {
           override suspend fun signInWithGoogle(receivedCredential: Credential) =
-              Result.success(mockk<FirebaseUser>()).also { googleUpgradeCalled = true }
+              Result.success(upgradedUser).also { googleUpgradeCalled = true }
         }
     setProfile(authRepository = authRepository, credentialManager = credentialManager)
 
