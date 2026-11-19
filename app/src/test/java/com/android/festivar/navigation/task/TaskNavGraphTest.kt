@@ -16,6 +16,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
@@ -110,7 +111,7 @@ class TaskNavGraphTest {
   @Test
   fun createTaskRoute_makesTheSignedInUserTheOwnerOfTheTask() {
     val user = mockk<FirebaseUser> { every { uid } returns "owner-1" }
-    openCreateTaskRoute(mockk<AuthRepository> { every { currentUser } returns user })
+    openCreateTaskRoute(FakeAuthRepository(currentUser = user))
     composeTestRule.waitUntil(timeoutMillis = 5_000) {
       runBlocking { repository.getAllTasks("event-1") }.isNotEmpty()
     }
@@ -124,7 +125,7 @@ class TaskNavGraphTest {
   @Test
   fun createTaskRoute_withNobodySignedIn_sendsTheUserToTheLogin() {
     lateinit var navController: NavHostController
-    val authRepository = mockk<AuthRepository> { every { currentUser } returns null }
+    val authRepository = FakeAuthRepository(currentUser = null)
     composeTestRule.setContent {
       AppTheme {
         navController = rememberNavController()
@@ -164,7 +165,7 @@ class TaskNavGraphTest {
 
   private fun signedInAs(userId: String): AuthRepository {
     val user = mockk<FirebaseUser> { every { uid } returns userId }
-    return mockk<AuthRepository> { every { currentUser } returns user }
+    return FakeAuthRepository(currentUser = user)
   }
 
   private fun hasRecordButton() =
@@ -186,7 +187,7 @@ class TaskNavGraphTest {
           every { displayName } returns "Owner"
           every { email } returns "owner@festivar.ch"
         }
-    val auth = mockk<AuthRepository> { every { currentUser } returns user }
+    val auth = FakeAuthRepository(currentUser = user)
     openOnTopOfStart(AppScreens.taskDetails("task-1"), auth, voiceNoteServices = voiceNoteServices)
     composeTestRule.waitUntil(timeoutMillis = 5_000) {
       composeTestRule
@@ -220,7 +221,10 @@ class TaskNavGraphTest {
   @Test
   fun createTaskRoute_backButton_returnsToThePreviousScreen() {
     val navController =
-        openOnTopOfStart(AppScreens.createTask("event-1"), mockk<AuthRepository>(relaxed = true))
+        openOnTopOfStart(
+            AppScreens.createTask("event-1"),
+            FakeAuthRepository(currentUser = mockk(relaxed = true)),
+        )
 
     composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.BACK_BUTTON).performClick()
     composeTestRule.waitForIdle()
@@ -277,7 +281,7 @@ class TaskNavGraphTest {
   fun taskDetailsRoute_fromMyTasks_opensTheDetailsAndKeepsTheOrigin() {
     runBlocking { repository.addTask(Task("t1", "event-1", "Old title", ownerId = "owner-1")) }
     val user = mockk<FirebaseUser>(relaxed = true) { every { uid } returns "owner-1" }
-    val authRepository = mockk<AuthRepository> { every { currentUser } returns user }
+    val authRepository = FakeAuthRepository(currentUser = user)
     lateinit var navController: NavHostController
     composeTestRule.setContent {
       AppTheme {
@@ -341,7 +345,7 @@ class TaskNavGraphTest {
     val navController =
         openOnTopOfStart(
             AppScreens.MyTasks.name,
-            mockk<AuthRepository> { every { currentUser } returns user },
+            FakeAuthRepository(currentUser = user),
             ownerTasks = listOf("t1"),
         )
     val route = { navController.currentBackStackEntry?.destination?.route }
