@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.event.details
 
 import android.annotation.SuppressLint
@@ -42,7 +43,7 @@ class EventDetailsMembersTest {
   private val lea = MembersFixture.lea
   private val sara = MembersFixture.sara
 
-  /** The organizer is listed last on purpose: the sheet must still put them first. */
+  /** The owner is listed last on purpose: the sheet must still put them first. */
   private val event = MembersFixture.eventOf(lea, sara, organizer)
 
   @SuppressLint("ViewModelConstructorInComposable")
@@ -57,7 +58,8 @@ class EventDetailsMembersTest {
                         eventsRepository = EventsRepositoryLocal(listOf(event)),
                     ),
                     event.eventId,
-                    currentUserId = lea.uid,
+                    // The owner, who can see the members.
+                    currentUserId = organizer.uid,
                 ),
             onBack = {},
             onTasksButtonClicked = {},
@@ -144,9 +146,9 @@ class EventDetailsMembersTest {
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.MEMBERS_CARD).assertIsDisplayed()
   }
 
-  /** Breaks if the list has several groups, or leaves out or doubles a member. */
+  /** Breaks if the list is not grouped by role, or leaves out or doubles a member. */
   @Test
-  fun theListIsOneSingleListWithEveryMemberOnce() {
+  fun theListGroupsEveryMemberOnceUnderTheirRole() {
     setContent(event)
 
     openMembers()
@@ -155,12 +157,13 @@ class EventDetailsMembersTest {
     event.members.forEach {
       composeTestRule.onNodeWithTag(UserListTestTags.row(it.uid)).assertIsDisplayed()
     }
-    composeTestRule.onAllNodes(isCategoryHeader).assertCountEquals(0)
+    // The owner, and the two other members who have the default role.
+    composeTestRule.onAllNodes(isCategoryHeader).assertCountEquals(2)
   }
 
-  /** Breaks if the organizer is not pinned above the volunteers, which keep their order. */
+  /** Breaks if the owner is not pinned above the other members, which keep their order. */
   @Test
-  fun theOrganizerIsPinnedAtTheTopThenTheVolunteers() {
+  fun theOwnerIsPinnedAtTheTopThenTheOtherMembers() {
     setContent(event)
 
     openMembers()
@@ -176,18 +179,18 @@ class EventDetailsMembersTest {
   }
 
   /**
-   * Breaks if a row shows anything but the avatar and the name, plus the Organizer tag on the
-   * organizer only, e.g. an availability or a role under a name.
+   * Breaks if a row shows anything but the avatar, the name, the number of tasks of the member and
+   * the badge of their role.
    */
   @Test
-  fun eachRowShowsOnlyTheAvatarTheNameAndTheOrganizerTag() {
+  fun eachRowShowsTheAvatarTheNameTheTaskCountAndTheRole() {
     setContent(event)
 
     openMembers()
 
-    assertEquals(listOf("OR", "Olivia Roy", "Organizer"), textsInRow(organizer))
-    assertEquals(listOf("LM", "Léa Martin"), textsInRow(lea))
-    assertEquals(listOf("SK", "Sara Keller"), textsInRow(sara))
+    assertEquals(listOf("OR", "Olivia Roy", "0 tasks", "Owner"), textsInRow(organizer))
+    assertEquals(listOf("LM", "Léa Martin", "0 tasks", "Visitor"), textsInRow(lea))
+    assertEquals(listOf("SK", "Sara Keller", "0 tasks", "Visitor"), textsInRow(sara))
   }
 
   /** The texts shown in the row of [user], in the order they are drawn. */

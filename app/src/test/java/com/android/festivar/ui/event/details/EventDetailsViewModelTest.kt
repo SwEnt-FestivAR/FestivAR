@@ -156,9 +156,9 @@ class EventDetailsViewModelTest {
     assertNull(viewModel.uiState.value.errorMsg)
   }
 
-  /** Breaks if the organizer of the event is not recognised, so they never get the menu. */
+  /** Breaks if the owner of the event cannot edit it, so they never get the menu. */
   @Test
-  fun ownerOfTheEventIsTheOwner() = runTest {
+  fun ownerOfTheEventCanEditIt() = runTest {
     val event = testEvent("event-1")
     val viewModel =
         EventDetailsViewModel(
@@ -169,12 +169,12 @@ class EventDetailsViewModelTest {
     viewModel.fetchEvent()
     advanceUntilIdle()
 
-    assertTrue(viewModel.uiState.value.isOwner)
+    assertTrue(viewModel.uiState.value.permissions.canEditEvent)
   }
 
-  /** Breaks if a volunteer is treated as the organizer and gets the menu. */
+  /** Breaks if a user who is not a member of the event can edit it and gets the menu. */
   @Test
-  fun anotherUserIsNotTheOwner() = runTest {
+  fun anotherUserCannotEditIt() = runTest {
     val event = testEvent("event-1")
     val viewModel =
         EventDetailsViewModel(
@@ -185,12 +185,12 @@ class EventDetailsViewModelTest {
     viewModel.fetchEvent()
     advanceUntilIdle()
 
-    assertFalse(viewModel.uiState.value.isOwner)
+    assertFalse(viewModel.uiState.value.permissions.canEditEvent)
   }
 
-  /** Breaks if nobody signed in is treated as the organizer. */
+  /** Breaks if nobody signed in can edit the event. */
   @Test
-  fun signedOutUserIsNotTheOwner() = runTest {
+  fun signedOutUserCannotEditIt() = runTest {
     val event = testEvent("event-1")
     val viewModel =
         EventDetailsViewModel(
@@ -201,12 +201,12 @@ class EventDetailsViewModelTest {
     viewModel.fetchEvent()
     advanceUntilIdle()
 
-    assertFalse(viewModel.uiState.value.isOwner)
+    assertFalse(viewModel.uiState.value.permissions.canEditEvent)
   }
 
-  /** Breaks if a failed reload keeps the organizer's rights over an event that is not shown. */
+  /** Breaks if a failed reload keeps the owner's rights over an event that is not shown. */
   @Test
-  fun failedRefetchRemovesOwnership() = runTest {
+  fun failedRefetchRemovesThePermissions() = runTest {
     var shouldFail = false
     val event = testEvent("event-1")
     val repository =
@@ -223,7 +223,7 @@ class EventDetailsViewModelTest {
     viewModel.fetchEvent()
     advanceUntilIdle()
 
-    assertFalse(viewModel.uiState.value.isOwner)
+    assertFalse(viewModel.uiState.value.permissions.canEditEvent)
   }
 
   private fun dataRepositoryWith(eventsRepository: EventsRepository) =
