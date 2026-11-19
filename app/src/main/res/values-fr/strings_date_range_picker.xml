@@ -1,0 +1,14 @@
+<!-- Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com> -->
+<resources>
+    <string name="date_range_picker_title">Choisir les dates</string>
+    <string name="date_range_picker_back">Retour</string>
+    <string name="date_range_picker_clear">Effacer</string>
+    <string name="date_range_picker_save">Enregistrer les dates</string>
+    <string name="date_range_picker_hint">Touchez un premier jour, puis un dernier jour</string>
+    <string name="date_range_join">%1$s au %2$s</string>
+    <plurals name="date_range_picker_days">
+        <item quantity="one">%d jour</item>
+        <item quantity="many">%d jours</item>
+        <item quantity="other">%d jours</item>
+    </plurals>
+</resources>
