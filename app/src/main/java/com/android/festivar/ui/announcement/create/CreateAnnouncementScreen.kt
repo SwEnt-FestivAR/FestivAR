@@ -37,7 +37,7 @@ object CreateAnnouncementScreenTestTags {
   fun priorityChip(priority: AnnouncementPriority) = "createAnnouncementPriority_${priority.name}"
 }
 
-// The tags and texts of the form when it creates an announcement.
+/** The test tags of the form when it creates an announcement. */
 private val createAnnouncementTags =
     AnnouncementFormTags(
         backButton = CreateAnnouncementScreenTestTags.BACK_BUTTON,
@@ -56,6 +56,7 @@ private val createAnnouncementTags =
         priorityChip = CreateAnnouncementScreenTestTags::priorityChip,
     )
 
+/** The texts of the form when it creates an announcement. */
 private val createAnnouncementLabels =
     AnnouncementFormLabels(
         title = R.string.create_announcement,

@@ -128,8 +128,10 @@ class CreateAnnouncementScreenTest {
     publishButton().performClick()
   }
 
-  // Breaks if a part of the design is missing, if the empty form starts with an error, another
-  // default priority, or a Publish button that can be tapped, or if back asks before leaving it.
+  /**
+   * Breaks if a part of the design is missing, if the empty form starts with an error, another
+   * default priority, or a Publish button that can be tapped, or if back asks before leaving it.
+   */
   @Test
   fun anEmptyFormShowsTheDesignWithInfoSelectedAndBackLeaves() {
     composeTestRule.onNodeWithTag(Tags.TITLE).assertTextEquals(string(R.string.create_announcement))
@@ -160,8 +162,10 @@ class CreateAnnouncementScreenTest {
     assertEquals(1, backCount)
   }
 
-  // Breaks if the fields swap their values, a chip reports the wrong priority, the button does not
-  // publish what the form shows, or the inputs can still be edited once it is published.
+  /**
+   * Breaks if the fields swap their values, a chip reports the wrong priority, the button does not
+   * publish what the form shows, or the inputs can still be edited once it is published.
+   */
   @Test
   fun publishingSavesTheFormAndReportsItOnce() {
     typeTitle("Stage B is closed")
@@ -183,11 +187,13 @@ class CreateAnnouncementScreenTest {
     inputs().forEach { it.assertIsNotEnabled() }
   }
 
-  // Breaks if the screen does not pass a running save to the form (no spinner with the Publishing
-  // label, Publish or the inputs still enabled), if either back leaves or asks during the save,
-  // which could publish an announcement the user chose to discard, if the back handler is turned
-  // off so that system back closes the activity, or if the save reports success early, stops, or
-  // lets a back pressed during it fire once it ends.
+  /**
+   * Breaks if the screen does not pass a running save to the form (no spinner with the Publishing
+   * label, Publish or the inputs still enabled), if either back leaves or asks during the save,
+   * which could publish an announcement the user chose to discard, if the back handler is turned
+   * off so that system back closes the activity, or if the save reports success early, stops, or
+   * lets a back pressed during it fire once it ends.
+   */
   @Test
   fun aRunningSaveLocksTheFormAndBackUntilItFinishes() {
     val gate = CompletableDeferred<Unit>()
@@ -214,8 +220,10 @@ class CreateAnnouncementScreenTest {
     composeTestRule.onNodeWithTag(Tags.DISCARD_DIALOG).assertDoesNotExist()
   }
 
-  // Breaks if the screen does not pass its save error to the form, if a failed save leaves the
-  // screen, or if the error survives a working retry.
+  /**
+   * Breaks if the screen does not pass its save error to the form, if a failed save leaves the
+   * screen, or if the error survives a working retry.
+   */
   @Test
   fun aFailedSaveShowsTheErrorAndARetryPublishes() {
     beforeAdd = { throw IllegalStateException("offline") }
@@ -239,8 +247,10 @@ class CreateAnnouncementScreenTest {
     composeTestRule.onNodeWithTag(Tags.SAVE_ERROR).assertDoesNotExist()
   }
 
-  // Breaks if the screen does not pass its edited state or its dialog title to the back handling,
-  // or if "Discard" does not leave without publishing.
+  /**
+   * Breaks if the screen does not pass its edited state or its dialog title to the back handling,
+   * or if "Discard" does not leave without publishing.
+   */
   @Test
   fun systemBackFromAnEditedFormAsksWithTheCreateTitleAndDiscardLeaves() {
     typeTitle("Stage B")
