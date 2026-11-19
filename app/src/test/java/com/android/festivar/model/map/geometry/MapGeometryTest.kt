@@ -66,12 +66,25 @@ class MapGeometryTest {
     }
   }
 
-  // Breaks if a result that is not on Earth is returned instead of being refused. Next to a pole
-  // one metre east is more than a full turn of longitude.
+  /**
+   * Breaks if a result more than half a turn of longitude from the origin is returned instead of
+   * being refused: next to a pole one metre east is more than a full turn.
+   */
   @Test
-  fun toGeoRefusesAResultThatIsNotOnEarth() {
+  fun toGeoRefusesMoreThanHalfATurnOfLongitude() {
     assertThrows(IllegalArgumentException::class.java) {
       toGeo(GeoPosition(90.0, 0.0), at(1.0, 0.0))
+    }
+  }
+
+  /**
+   * Breaks if a result past a pole is returned instead of being refused: 100 m north of latitude
+   * 89.9999 is beyond 90 degrees, which a GeoPosition cannot hold.
+   */
+  @Test
+  fun toGeoRefusesAResultPastAPole() {
+    assertThrows(IllegalArgumentException::class.java) {
+      toGeo(GeoPosition(89.9999, 0.0), at(0.0, 100.0))
     }
   }
 
