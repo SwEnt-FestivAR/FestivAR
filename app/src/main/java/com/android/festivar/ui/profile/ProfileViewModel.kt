@@ -1,12 +1,11 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored by Copilot
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.festivar.ui.profile
 
-import android.content.Context
 import android.util.Log
 import androidx.annotation.StringRes
-import androidx.credentials.CredentialManager
-import androidx.credentials.GetCredentialRequest
+import androidx.credentials.Credential
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
@@ -14,7 +13,7 @@ import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
-import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
+import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,6 +22,12 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 private const val LOG_TAG = "ProfileViewModel"
+
+/** Represents an overlay dialog that can be shown to a guest user on the profile screen. */
+enum class ProfileDialog {
+  UPGRADE_SHEET,
+  SIGN_OUT_WARNING,
+}
 
 /**
  * Represents the UI state of the Profile screen.
@@ -41,8 +46,7 @@ private const val LOG_TAG = "ProfileViewModel"
  *   operation when the disconnection is occurred.
  * @property isSigningOut Whether the [User] is currently in the process of signing out, it blocks
  *   any other operation while trying to disconnect the [User].
- * @property isUpgrading Whether the account upgrade bottom sheet is visible.
- * @property showSignOutWarning Whether the anonymous-account sign-out warning is visible.
+ * @property activeDialog The active guest dialog shown on the screen, or null.
  */
 data class ProfileUIState(
     val user: User? = null,
@@ -57,8 +61,7 @@ data class ProfileUIState(
     val email: String = "",
     val password: String = "",
     val isPasswordVisible: Boolean = false,
-    val isUpgrading: Boolean = false,
-    val showSignOutWarning: Boolean = false,
+    val activeDialog: ProfileDialog? = null,
 ) {
   /**
    * Whether the Save changes button can be pressed: the profile is loaded, no save is running, no
@@ -237,24 +240,32 @@ class ProfileViewModel(
     _uiState.update { it.copy(isPasswordVisible = !it.isPasswordVisible) }
   }
 
-  /** Shows the account upgrade bottom sheet. */
+  /** Shows the account upgrade bottom sheet if the account is anonymous. */
   fun showUpgradeSheet() {
-    _uiState.update { it.copy(isUpgrading = true) }
+    if (!_uiState.value.isUserAnonymous) return
+    _uiState.update { it.copy(activeDialog = ProfileDialog.UPGRADE_SHEET) }
   }
 
   /** Hides the account upgrade bottom sheet and clears its credentials. */
   fun hideUpgradeSheet() {
-    _uiState.update { it.copy(isUpgrading = false, email = "", password = "") }
+    _uiState.update {
+      val dialog = if (it.activeDialog == ProfileDialog.UPGRADE_SHEET) null else it.activeDialog
+      it.copy(activeDialog = dialog, email = "", password = "")
+    }
   }
 
   /** Shows the warning displayed before an anonymous account signs out. */
   fun showSignOutWarning() {
-    _uiState.update { it.copy(showSignOutWarning = true) }
+    if (!_uiState.value.isUserAnonymous) return
+    _uiState.update { it.copy(activeDialog = ProfileDialog.SIGN_OUT_WARNING) }
   }
 
   /** Hides the anonymous-account sign-out warning. */
   fun hideSignOutWarning() {
-    _uiState.update { it.copy(showSignOutWarning = false) }
+    _uiState.update {
+      val dialog = if (it.activeDialog == ProfileDialog.SIGN_OUT_WARNING) null else it.activeDialog
+      it.copy(activeDialog = dialog)
+    }
   }
 
   /** Upgrades the anonymous account with email and password. */
@@ -273,20 +284,27 @@ class ProfileViewModel(
     upgradeAccount("email") { authRepository.signUpWithEmailAndPassword(email, password) }
   }
 
-  fun upgradeWithGoogle(context: Context, credentialManager: CredentialManager) {
+  fun startGoogleUpgrade(): Boolean {
     val state = _uiState.value
-    if (state.isLoading || !state.isUserAnonymous) return
-
+    if (state.isLoading || !state.isUserAnonymous) return false
     _uiState.update { it.copy(isLoading = true, errorMsg = null) }
-    upgradeAccount("Google") {
-      val signInWithGoogleOption =
-          GetSignInWithGoogleOption.Builder(context.getString(R.string.default_web_client_id))
-              .build()
-      val request =
-          GetCredentialRequest.Builder().addCredentialOption(signInWithGoogleOption).build()
-      val credential = credentialManager.getCredential(context, request).credential
-      authRepository.signInWithGoogle(credential)
+    return true
+  }
+
+  fun upgradeWithGoogle(credential: Credential) {
+    val state = _uiState.value
+    if (!state.isUserAnonymous) {
+      _uiState.update { it.copy(isLoading = false) }
+      return
     }
+    upgradeAccount("Google") { authRepository.signInWithGoogle(credential) }
+  }
+
+  fun handleGoogleUpgradeError(e: Exception? = null) {
+    if (e != null) {
+      Log.e(LOG_TAG, "Error upgrading account with Google", e)
+    }
+    _uiState.update { it.copy(isLoading = false, errorMsg = R.string.profile_anon_upgrade_failed) }
   }
 
   private fun upgradeAccount(
@@ -297,8 +315,17 @@ class ProfileViewModel(
       try {
         operation()
             .fold(
-                onSuccess = {
-                  _uiState.update { it.copy(isLoading = false) }
+                onSuccess = { upgradedUser ->
+                  val isAnonymous =
+                      (upgradedUser as? FirebaseUser)?.isAnonymous
+                          ?: (authRepository.currentUser?.isAnonymous == true)
+                  _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        isUserAnonymous = isAnonymous,
+                        activeDialog = if (isAnonymous) it.activeDialog else null,
+                    )
+                  }
                   getUserInformation()
                 },
                 onFailure = { e ->
@@ -339,6 +366,7 @@ class ProfileViewModel(
               surname = user.surname,
               isLoading = false,
               isUserAnonymous = isAnonymous,
+              activeDialog = if (isAnonymous) it.activeDialog else null,
           )
         }
       } catch (e: CancellationException) {

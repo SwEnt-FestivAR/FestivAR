@@ -1,7 +1,9 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored by Copilot
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.festivar.ui.profile
 
+import androidx.credentials.Credential
 import com.android.festivar.R
 import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.datarepository.DataRepositoryLocal
@@ -609,32 +611,93 @@ class ProfileViewModelTest {
     assertFalse(viewModel.uiState.value.isPasswordVisible)
   }
 
+  /**
+   * <<<<<<< HEAD Breaks if showing or hiding the upgrade sheet does not correctly toggle sheet
+   * visibility or reset credentials.
+   * =======
+   * Breaks if showing or hiding the upgrade sheet does not correctly toggle activeDialog or reset
+   * credentials. >>>>>>> a6146cbc (refactor(profile): consolidate dialog management)
+   */
   @Test
   fun upgradeSheetStateIncludesVisibilityAndCredentialReset() = runTest {
-    val viewModel = createViewModel()
+    val firebaseUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+    val authRepo =
+        object : FakeAuthRepository() {
+          override val currentUser = firebaseUser
+        }
+    val viewModel = createViewModel(authRepository = authRepo)
     advanceUntilIdle()
 
     viewModel.updateEmail("test@example.com")
     viewModel.updatePassword("password")
     viewModel.showUpgradeSheet()
-    assertTrue(viewModel.uiState.value.isUpgrading)
+    assertEquals(ProfileDialog.UPGRADE_SHEET, viewModel.uiState.value.activeDialog)
 
     viewModel.hideUpgradeSheet()
-    assertFalse(viewModel.uiState.value.isUpgrading)
+    assertNull(viewModel.uiState.value.activeDialog)
     assertEquals("", viewModel.uiState.value.email)
     assertEquals("", viewModel.uiState.value.password)
   }
 
+  /**
+   * Breaks if showing or hiding the sign out warning does not toggle activeDialog for anonymous
+   * users.
+   */
   @Test
   fun signOutWarningStateToggles() = runTest {
-    val viewModel = createViewModel()
+    val firebaseUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+    val authRepo =
+        object : FakeAuthRepository() {
+          override val currentUser = firebaseUser
+        }
+    val viewModel = createViewModel(authRepository = authRepo)
     advanceUntilIdle()
 
     viewModel.showSignOutWarning()
-    assertTrue(viewModel.uiState.value.showSignOutWarning)
+    assertEquals(ProfileDialog.SIGN_OUT_WARNING, viewModel.uiState.value.activeDialog)
 
     viewModel.hideSignOutWarning()
-    assertFalse(viewModel.uiState.value.showSignOutWarning)
+    assertNull(viewModel.uiState.value.activeDialog)
+  }
+
+  /** Breaks if guest dialogs can be opened for a non-anonymous user. */
+  @Test
+  fun guestDialogsIgnoredWhenUserIsNotAnonymous() = runTest {
+    val firebaseUser = mockk<FirebaseUser> { every { isAnonymous } returns false }
+    val authRepo =
+        object : FakeAuthRepository() {
+          override val currentUser = firebaseUser
+        }
+    val viewModel = createViewModel(authRepository = authRepo)
+    advanceUntilIdle()
+
+    viewModel.showUpgradeSheet()
+    assertNull(viewModel.uiState.value.activeDialog)
+
+    viewModel.showSignOutWarning()
+    assertNull(viewModel.uiState.value.activeDialog)
+  }
+
+  /** Breaks if activeDialog is not cleared when a user is no longer anonymous. */
+  @Test
+  fun guestDialogClearedWhenUserNoLongerAnonymous() = runTest {
+    var isAnon = true
+    val firebaseUser = mockk<FirebaseUser> { every { isAnonymous } answers { isAnon } }
+    val authRepo =
+        object : FakeAuthRepository() {
+          override val currentUser = firebaseUser
+        }
+    val viewModel = createViewModel(authRepository = authRepo)
+    advanceUntilIdle()
+
+    viewModel.showUpgradeSheet()
+    assertEquals(ProfileDialog.UPGRADE_SHEET, viewModel.uiState.value.activeDialog)
+
+    isAnon = false
+    viewModel.getUserInformation()
+    advanceUntilIdle()
+
+    assertNull(viewModel.uiState.value.activeDialog)
   }
 
   @Test
@@ -657,12 +720,25 @@ class ProfileViewModelTest {
     assertEquals(R.string.profile_anon_upgrade_failed, viewModel.uiState.value.errorMsg)
   }
 
+  /**
+   * Breaks if upgrading with email does not invoke sign-up with typed credentials and refresh user
+   * state when account is anonymous.
+   */
   @Test
   fun upgradeWithEmailSuccessRefreshesUser() = runTest {
-    val firebaseUser = mockk<FirebaseUser> { every { isAnonymous } returns false }
+    var isAnon = true
+    val firebaseUser = mockk<FirebaseUser> { every { isAnonymous } answers { isAnon } }
     val authRepo =
         object : FakeAuthRepository() {
           override val currentUser = firebaseUser
+
+          override suspend fun signUpWithEmailAndPassword(
+              email: String,
+              password: String,
+          ): Result<FirebaseUser> {
+            isAnon = false
+            return super.signUpWithEmailAndPassword(email, password)
+          }
         }
     authRepo.signUpResult = Result.success(firebaseUser)
     val viewModel =
@@ -671,14 +747,18 @@ class ProfileViewModelTest {
             authRepository = authRepo,
         )
     advanceUntilIdle()
+    assertTrue(viewModel.uiState.value.isUserAnonymous)
 
     viewModel.updateEmail("sara@epfl.ch")
     viewModel.updatePassword("secret123")
     viewModel.upgradeWithEmail()
     advanceUntilIdle()
 
+    assertEquals(1, authRepo.signUpCallCount)
+    assertEquals("sara@epfl.ch" to "secret123", authRepo.lastSignUpCredentials)
     assertNull(viewModel.uiState.value.errorMsg)
     assertFalse(viewModel.uiState.value.isLoading)
+    assertFalse(viewModel.uiState.value.isUserAnonymous)
   }
 
   @Test
@@ -756,5 +836,188 @@ class ProfileViewModelTest {
 
     assertEquals(0, authRepo.signUpCallCount)
     assertNull(viewModel.uiState.value.errorMsg)
+  }
+
+  /**
+   * Breaks if upgrading an account does not close the sheet and update the guest flag when profile
+   * reload fails.
+   */
+  @Test
+  fun upgradeSuccessWithReloadFailureClosesSheetAndUpdatesGuestFlag() = runTest {
+    val initialUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+    val upgradedUser = mockk<FirebaseUser> { every { isAnonymous } returns false }
+    val authRepo =
+        object : FakeAuthRepository() {
+          override val currentUser = initialUser
+        }
+    authRepo.signUpResult = Result.success(upgradedUser)
+    val usersRepo = RecordingUsersRepository(listOf(sara))
+    val viewModel = createViewModel(repository = usersRepo, authRepository = authRepo)
+    advanceUntilIdle()
+    assertTrue(viewModel.uiState.value.isUserAnonymous)
+
+    usersRepo.getError = RuntimeException("Load failed")
+    viewModel.showUpgradeSheet()
+    viewModel.updateEmail("sara@epfl.ch")
+    viewModel.updatePassword("secret123")
+    viewModel.upgradeWithEmail()
+    advanceUntilIdle()
+
+    val state = viewModel.uiState.value
+    assertNull(state.activeDialog)
+    assertFalse(state.isUserAnonymous)
+    assertEquals(R.string.profile_load_failed, state.errorMsg)
+  }
+
+  /** Breaks if upgradeWithGoogle does not sign in with Google and update user state on success. */
+  @Test
+  fun upgradeWithGoogleSuccessUpdatesState() = runTest {
+    val firebaseUser = mockk<FirebaseUser> { every { isAnonymous } returns false }
+    val authRepo =
+        object : FakeAuthRepository() {
+          private var user: FirebaseUser? = mockk { every { isAnonymous } returns true }
+          override val currentUser: FirebaseUser?
+            get() = user
+
+          override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> {
+            user = firebaseUser
+            return Result.success(firebaseUser)
+          }
+        }
+    val credential = mockk<Credential>()
+    val viewModel =
+        createViewModel(
+            repository = RecordingUsersRepository(listOf(sara)),
+            authRepository = authRepo,
+        )
+    advanceUntilIdle()
+
+    viewModel.upgradeWithGoogle(credential)
+    advanceUntilIdle()
+
+    assertNull(viewModel.uiState.value.errorMsg)
+    assertFalse(viewModel.uiState.value.isLoading)
+    assertFalse(viewModel.uiState.value.isUserAnonymous)
+  }
+
+  /** Breaks if upgradeWithGoogle attempts to upgrade when the user is not anonymous. */
+  @Test
+  fun upgradeWithGoogleIgnoredWhenNotAnonymous() = runTest {
+    var signInCalled = false
+    val authRepo =
+        object : FakeAuthRepository() {
+          override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> {
+            signInCalled = true
+            return Result.failure(RuntimeException("Should not be called"))
+          }
+        }
+    val viewModel =
+        createViewModel(
+            repository = RecordingUsersRepository(listOf(sara)),
+            authRepository = authRepo,
+        )
+    advanceUntilIdle()
+    assertFalse(viewModel.uiState.value.isUserAnonymous)
+
+    viewModel.upgradeWithGoogle(mockk())
+    advanceUntilIdle()
+
+    assertFalse(signInCalled)
+    assertFalse(viewModel.uiState.value.isLoading)
+  }
+
+  /**
+   * Breaks if handleGoogleUpgradeError with an exception does not update UI state error message.
+   */
+  @Test
+  fun handleGoogleUpgradeErrorWithExceptionSetsErrorMsg() = runTest {
+    val viewModel = createViewModel()
+    advanceUntilIdle()
+
+    viewModel.handleGoogleUpgradeError(RuntimeException("Google error"))
+
+    assertEquals(R.string.profile_anon_upgrade_failed, viewModel.uiState.value.errorMsg)
+    assertFalse(viewModel.uiState.value.isLoading)
+  }
+
+  /**
+   * Breaks if handleGoogleUpgradeError with null exception does not update UI state error message.
+   */
+  @Test
+  fun handleGoogleUpgradeErrorWithNullSetsErrorMsg() = runTest {
+    val viewModel = createViewModel()
+    advanceUntilIdle()
+
+    viewModel.handleGoogleUpgradeError(null)
+
+    assertEquals(R.string.profile_anon_upgrade_failed, viewModel.uiState.value.errorMsg)
+    assertFalse(viewModel.uiState.value.isLoading)
+  }
+
+  /**
+   * Breaks if upgradeAccount does not preserve activeDialog when the upgraded user remains
+   * anonymous.
+   */
+  @Test
+  fun upgradeAccountWithStillAnonymousUserKeepsActiveDialog() = runTest {
+    val stillAnonUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+    val authRepo =
+        object : FakeAuthRepository() {
+          override val currentUser: FirebaseUser = stillAnonUser
+
+          override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> {
+            return Result.success(stillAnonUser)
+          }
+        }
+    val viewModel =
+        createViewModel(
+            repository = RecordingUsersRepository(listOf(sara)),
+            authRepository = authRepo,
+        )
+    advanceUntilIdle()
+    assertTrue(viewModel.uiState.value.isUserAnonymous)
+    viewModel.showUpgradeSheet()
+    assertEquals(ProfileDialog.UPGRADE_SHEET, viewModel.uiState.value.activeDialog)
+
+    viewModel.upgradeWithGoogle(mockk())
+    advanceUntilIdle()
+
+    assertTrue(viewModel.uiState.value.isUserAnonymous)
+    assertEquals(ProfileDialog.UPGRADE_SHEET, viewModel.uiState.value.activeDialog)
+    assertFalse(viewModel.uiState.value.isLoading)
+  }
+
+  /**
+   * Breaks if upgradeAccount does not fall back to authRepository.currentUser when upgradedUser is
+   * not a FirebaseUser.
+   */
+  @Test
+  fun upgradeAccountFallsBackToCurrentUserWhenUpgradedUserNotFirebaseUser() = runTest {
+    val anonUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+    val authRepo =
+        object : FakeAuthRepository() {
+          override val currentUser: FirebaseUser = anonUser
+
+          @Suppress("UNCHECKED_CAST")
+          override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> {
+            return Result.success("NotAFirebaseUser") as Result<FirebaseUser>
+          }
+        }
+    val viewModel =
+        createViewModel(
+            repository = RecordingUsersRepository(listOf(sara)),
+            authRepository = authRepo,
+        )
+    advanceUntilIdle()
+    assertTrue(viewModel.uiState.value.isUserAnonymous)
+    viewModel.showUpgradeSheet()
+    assertEquals(ProfileDialog.UPGRADE_SHEET, viewModel.uiState.value.activeDialog)
+
+    viewModel.upgradeWithGoogle(mockk())
+    advanceUntilIdle()
+
+    assertTrue(viewModel.uiState.value.isUserAnonymous)
+    assertEquals(ProfileDialog.UPGRADE_SHEET, viewModel.uiState.value.activeDialog)
+    assertFalse(viewModel.uiState.value.isLoading)
   }
 }

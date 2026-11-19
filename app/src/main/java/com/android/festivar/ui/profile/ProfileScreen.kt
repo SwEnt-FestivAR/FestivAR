@@ -1,5 +1,6 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored by Copilot
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.festivar.ui.profile
 
 import androidx.compose.foundation.layout.Box
@@ -35,6 +36,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,6 +45,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
 import com.android.festivar.R
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.Avatar
@@ -50,6 +53,9 @@ import com.android.festivar.ui.components.FestivarConfirmDialog
 import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.components.NoticeSnackbar
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 
 /** Tags that the UI tests use to find the elements of the profile screen. */
 object ProfileScreenTestTags {
@@ -96,11 +102,15 @@ fun ProfileScreen(
     onBack: () -> Unit = {},
     onSignedOut: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
-    credentialManager: CredentialManager = CredentialManager.create(LocalContext.current),
+    credentialManager: CredentialManager? = null,
 ) {
 
   val profileUIState by profileViewModel.uiState.collectAsState()
   val context = LocalContext.current
+  val rememberedCredentialManager =
+      credentialManager ?: remember(context) { CredentialManager.create(context) }
+  val coroutineScope = rememberCoroutineScope()
+  val webClientId = stringResource(R.string.default_web_client_id)
   val snackbarHostState = remember { SnackbarHostState() }
   // SheetState is Compose UI state, so it stays local; visibility belongs in ProfileUIState.
   val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -116,13 +126,6 @@ fun ProfileScreen(
 
   // Leaves the screen once the sign-out succeeded.
   LaunchedEffect(profileUIState.signedOut) { if (profileUIState.signedOut) onSignedOut() }
-
-  // Closes bottom sheet once upgrade/linking succeeded.
-  LaunchedEffect(profileUIState.isUserAnonymous) {
-    if (!profileUIState.isUserAnonymous && profileUIState.isUpgrading) {
-      profileViewModel.hideUpgradeSheet()
-    }
-  }
 
   Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
@@ -175,48 +178,78 @@ fun ProfileScreen(
       )
     }
 
-    if (profileUIState.isUpgrading) {
-      UpgradeBottomSheet(
-          onUpgradeCancel = profileViewModel::hideUpgradeSheet,
-          sheetState = sheetState,
-          uiState = profileUIState,
-          onEmailChange = profileViewModel::updateEmail,
-          onPasswordChange = profileViewModel::updatePassword,
-          onLoginClick = profileViewModel::upgradeWithEmail,
-          onTogglePasswordVisibility = profileViewModel::togglePasswordVisibility,
-          onGoogleUpgrade = { profileViewModel.upgradeWithGoogle(context, credentialManager) },
-          snackbarHostState = snackbarHostState,
-      )
-    }
-
-    if (profileUIState.showSignOutWarning && profileUIState.isUserAnonymous) {
-      FestivarConfirmDialog(
-          title = stringResource(R.string.login_warning),
-          message = stringResource(R.string.profile_anon_sign_out_warning),
-          confirmText = stringResource(R.string.action_continue_anyway),
-          dismissText = stringResource(R.string.action_cancel),
-          onConfirm = {
-            profileViewModel.hideSignOutWarning()
-            profileViewModel.signOut()
-          },
-          onDismiss = profileViewModel::hideSignOutWarning,
-          destructive = true,
-      )
-    }
-
-    if (!profileUIState.isUpgrading) {
-      SnackbarHost(
-          hostState = snackbarHostState,
-          modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
-      ) { data ->
-        NoticeSnackbar(
-            message = data.visuals.message,
-            actionLabel = "",
-            onAction = {},
-            modifier = Modifier.testTag(ProfileScreenTestTags.ERROR_MESSAGE),
+    when (profileUIState.activeDialog) {
+      ProfileDialog.UPGRADE_SHEET -> {
+        UpgradeBottomSheet(
+            onUpgradeCancel = profileViewModel::hideUpgradeSheet,
+            sheetState = sheetState,
+            uiState = profileUIState,
+            onEmailChange = profileViewModel::updateEmail,
+            onPasswordChange = profileViewModel::updatePassword,
+            onLoginClick = profileViewModel::upgradeWithEmail,
+            onTogglePasswordVisibility = profileViewModel::togglePasswordVisibility,
+            onGoogleUpgrade = {
+              coroutineScope.launch {
+                if (profileViewModel.startGoogleUpgrade()) {
+                  try {
+                    val signInWithGoogleOption =
+                        GetSignInWithGoogleOption.Builder(webClientId).build()
+                    val request =
+                        GetCredentialRequest.Builder()
+                            .addCredentialOption(signInWithGoogleOption)
+                            .build()
+                    val result = rememberedCredentialManager.getCredential(context, request)
+                    profileViewModel.upgradeWithGoogle(result.credential)
+                  } catch (e: CancellationException) {
+                    throw e
+                  } catch (e: Exception) {
+                    profileViewModel.handleGoogleUpgradeError(e)
+                  }
+                }
+              }
+            },
+            snackbarHostState = snackbarHostState,
+        )
+      }
+      ProfileDialog.SIGN_OUT_WARNING -> {
+        FestivarConfirmDialog(
+            title = stringResource(R.string.login_warning),
+            message = stringResource(R.string.profile_anon_sign_out_warning),
+            confirmText = stringResource(R.string.action_continue_anyway),
+            dismissText = stringResource(R.string.action_cancel),
+            onConfirm = {
+              profileViewModel.hideSignOutWarning()
+              profileViewModel.signOut()
+            },
+            onDismiss = profileViewModel::hideSignOutWarning,
+            destructive = true,
+        )
+      }
+      null -> {
+        ProfileErrorSnackbar(
+            snackbarHostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
         )
       }
     }
+  }
+}
+
+@Composable
+internal fun ProfileErrorSnackbar(
+    snackbarHostState: SnackbarHostState,
+    modifier: Modifier = Modifier,
+) {
+  SnackbarHost(
+      hostState = snackbarHostState,
+      modifier = modifier,
+  ) { data ->
+    NoticeSnackbar(
+        message = data.visuals.message,
+        actionLabel = "",
+        onAction = {},
+        modifier = Modifier.testTag(ProfileScreenTestTags.ERROR_MESSAGE),
+    )
   }
 }
 
@@ -335,7 +368,7 @@ internal fun ProfileScreenContent(
           modifier =
               Modifier.fillMaxWidth().height(48.dp).testTag(ProfileScreenTestTags.UPGRADE_BUTTON),
       ) {
-        if (uiState.isSaving) {
+        if (uiState.isLoading) {
           CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
         } else {
           Text(
