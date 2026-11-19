@@ -113,6 +113,7 @@ class TaskNavGraphTest {
     composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.CREATE_BUTTON).performClick()
   }
 
+  /** Breaks if creating a task from the route does not assign the signed-in user as its owner. */
   @Test
   fun createTaskRoute_makesTheSignedInUserTheOwnerOfTheTask() {
     val user = mockk<FirebaseUser> { every { uid } returns "owner-1" }
@@ -126,6 +127,10 @@ class TaskNavGraphTest {
     assertEquals("event-1", saved.eventId)
   }
 
+  /**
+   * Breaks if submitting the create task form with no signed-in user saves the task or fails to
+   * show the save error.
+   */
   @Test
   fun createTaskRoute_withNobodySignedIn_savesNothingAndShowsTheSaveError() {
     openCreateTaskRoute(mockk<AuthRepository> { every { currentUser } returns null })
@@ -218,6 +223,10 @@ class TaskNavGraphTest {
     assertTrue(!hasRecordButton())
   }
 
+  /**
+   * Breaks if tapping the back button on the create task screen fails to return to the previous
+   * screen.
+   */
   @Test
   fun createTaskRoute_backButton_returnsToThePreviousScreen() {
     val navController =
@@ -229,6 +238,10 @@ class TaskNavGraphTest {
     assertEquals("start", navController.currentBackStackEntry?.destination?.route)
   }
 
+  /**
+   * Breaks if double tapping the back button on the create task screen pops more than once from the
+   * back stack.
+   */
   @Test
   fun createTaskRoute_doubleTapBackPopsOnlyOnce() {
     val navController =
@@ -245,6 +258,10 @@ class TaskNavGraphTest {
     assertTrue(navController.previousBackStackEntry == null)
   }
 
+  /**
+   * Breaks if successfully creating a task does not return to the previous screen or assign the
+   * owner.
+   */
   @Test
   fun createTaskRoute_afterTheTaskIsCreated_returnsToThePreviousScreen() {
     val navController = openOnTopOfStart(AppScreens.createTask("event-1"), signedInAs("owner-1"))
@@ -273,7 +290,7 @@ class TaskNavGraphTest {
     return navController
   }
 
-  // Breaks if the edit route does not save as the signed-in owner or does not leave once saved.
+  /** Breaks if the edit route does not save as the signed-in owner or does not leave once saved. */
   @Test
   fun editTaskRoute_afterTheEditIsSaved_returnsToThePreviousScreen() {
     val navController = openEditTaskOnTopOfStart()
@@ -288,8 +305,10 @@ class TaskNavGraphTest {
     assertEquals("New title", runBlocking { repository.getTask("t1") }.title)
   }
 
-  // Breaks if the optional origin argument does not parse, so a task opened from My tasks has no
-  // destination.
+  /**
+   * Breaks if the optional origin argument does not parse, so a task opened from My tasks has no
+   * destination.
+   */
   @Test
   fun taskDetailsRoute_fromMyTasks_opensTheDetailsAndKeepsTheOrigin() {
     runBlocking { repository.addTask(Task("t1", "event-1", "Old title", ownerId = "owner-1")) }
@@ -323,7 +342,7 @@ class TaskNavGraphTest {
     )
   }
 
-  // Breaks if back from an unchanged edit form does not pop the edit route.
+  /** Breaks if back from an unchanged edit form does not pop the edit route. */
   @Test
   fun editTaskRoute_back_returnsToThePreviousScreen() {
     val navController = openEditTaskOnTopOfStart()
@@ -335,10 +354,11 @@ class TaskNavGraphTest {
     assertEquals("Old title", runBlocking { repository.getTask("t1") }.title)
   }
 
-  // Breaks if the My tasks route stops showing the signed-in user's tasks, if a tapped row stops
-  // opening the details of that task as opened from My tasks, or if the arrow or the system back of
-  // the details stops
-  // returning to My tasks.
+  /**
+   * Breaks if the My tasks route stops showing the signed-in user's tasks, if a tapped row stops
+   * opening the details of that task as opened from My tasks, or if the arrow or the system back of
+   * the details stops returning to My tasks.
+   */
   @Test
   fun myTasksRoute_aRowOpensItsTaskDetailsAndBackReturns() {
     val owner = User("owner-1")
