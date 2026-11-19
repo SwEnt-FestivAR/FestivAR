@@ -25,11 +25,13 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -72,8 +74,11 @@ private const val DISABLED_ALPHA = 0.38f
  * @param onConfirm Called with the first and the last day when the user saves. Never called while
  *   no day is selected.
  * @param onDismiss Called when the user goes back, which discards the choice.
- * @param today The month shown while nothing is selected. The ring around today is drawn by
- *   Material from the system date.
+ * @param allowPast Whether days before [today] can be chosen, for the screens that edit an event. A
+ *   range that starts before [today] opens empty when they cannot. Read when the dialog opens.
+ * @param today The first day that can be chosen unless [allowPast], and the month shown while
+ *   nothing is selected. Read when the dialog opens. The ring around today is drawn by Material
+ *   from the system date.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,15 +87,18 @@ fun FestivarDateRangePickerDialog(
     initialEnd: LocalDate?,
     onConfirm: (start: LocalDate, end: LocalDate) -> Unit,
     onDismiss: () -> Unit,
+    allowPast: Boolean = false,
     today: LocalDate = LocalDate.now(),
 ) {
-  val first = initialStart
+  // The calendar refuses these days, so a range that starts on one of them opens empty.
+  val first = initialStart?.takeIf { allowPast || !it.isBefore(today) }
   val last = first?.let { day -> initialEnd?.takeIf { !it.isBefore(day) } ?: day }
   val state =
       rememberDateRangePickerState(
           initialSelectedStartDateMillis = first?.toPickerMillis(),
           initialSelectedEndDateMillis = last?.toPickerMillis(),
           initialDisplayedMonthMillis = (first ?: today).toPickerMillis(),
+          selectableDates = remember { selectableDays(today, allowPast) },
       )
   val start = state.selectedStartDateMillis?.toPickerDate()
   // The calendar leaves the end empty after one tap; for the form that day is also the end.
@@ -119,6 +127,17 @@ fun FestivarDateRangePickerDialog(
     }
   }
 }
+
+/** The days the calendar accepts: all of them when [allowPast], else [today] and the later ones. */
+@OptIn(ExperimentalMaterial3Api::class)
+private fun selectableDays(today: LocalDate, allowPast: Boolean) =
+    object : SelectableDates {
+      // The calendar works in UTC milliseconds.
+      override fun isSelectableDate(utcTimeMillis: Long) =
+          allowPast || !utcTimeMillis.toPickerDate().isBefore(today)
+
+      override fun isSelectableYear(year: Int) = allowPast || year >= today.year
+    }
 
 @Composable
 private fun DateRangePickerTopBar(showClear: Boolean, onBack: () -> Unit, onClear: () -> Unit) {
