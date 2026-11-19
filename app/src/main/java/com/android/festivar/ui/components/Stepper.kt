@@ -1,6 +1,8 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.components
 
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -79,6 +81,7 @@ fun FestivarStepper(
     onIncrease: () -> Unit,
     decreaseDescription: String,
     increaseDescription: String,
+    enabled: Boolean = true,
     modifier: Modifier = Modifier,
     minValue: Int = 1,
     typeable: Boolean = false,
@@ -108,7 +111,7 @@ fun FestivarStepper(
         StepperButton(
             icon = Icons.Rounded.Remove,
             description = decreaseDescription,
-            enabled = value > minValue,
+            enabled = enabled && value > minValue,
             onClick = onDecrease,
             modifier = decreaseModifier,
         )
@@ -141,7 +144,7 @@ fun FestivarStepper(
         StepperButton(
             icon = Icons.Rounded.Add,
             description = increaseDescription,
-            enabled = true,
+            enabled = enabled,
             onClick = onIncrease,
             modifier = increaseModifier,
         )

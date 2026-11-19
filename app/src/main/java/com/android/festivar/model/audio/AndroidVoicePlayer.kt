@@ -4,9 +4,12 @@ package com.android.festivar.model.audio
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.MediaPlayer
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.core.net.toUri
 import java.io.IOException
+import java.time.Duration
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,6 +33,16 @@ import kotlinx.coroutines.flow.asStateFlow
  * while the note is still loading just changes the state: the prepared listener starts the note
  * only if the state is still [PlayerState.Playing] when it is ready.
  *
+ * **Position.** While the note plays, [position] is read from [MediaPlayer.getCurrentPosition]
+ * every [POSITION_INTERVAL_MS] on the main thread. It is read once more on pause so it is exact,
+ * kept while paused, and back to zero when the note stops, ends or fails. [seekTo] moves the note
+ * once it is ready. The length of the note is not exposed: the caller has it in the stored voice
+ * note.
+ *
+ * **Loading timeout.** A note that is not ready 10 seconds after it starts loading (a stalled
+ * connection, for example) fails like any other loading problem, whether it is playing or paused
+ * meanwhile, so it never stays silent forever.
+ *
  * **Audio.** The note is declared as speech played as media (media volume). The player does not
  * request audio focus: a note is a few seconds long and the user starts it deliberately.
  *
@@ -47,8 +60,26 @@ class AndroidVoicePlayer(context: Context) : VoicePlayer {
   private val _state = MutableStateFlow<PlayerState>(PlayerState.Idle)
   override val state: StateFlow<PlayerState> = _state.asStateFlow()
 
+  private val _position = MutableStateFlow(Duration.ZERO)
+  override val position: StateFlow<Duration> = _position.asStateFlow()
+
+  private val handler = Handler(Looper.getMainLooper())
+
+  /** Reads the position of the playing note, then schedules itself again. */
+  private val positionTicker = Runnable {
+    if (_state.value is PlayerState.Playing) {
+      readPosition()
+      startTicker()
+    }
+  }
+
   /** The player of the note being played, with how far its loading went. */
   private var current: Current = Current.None
+
+  /**
+   * Fails the note being loaded; scheduled by [play], cancelled when the note is ready or freed.
+   */
+  private var loadTimeout: Runnable? = null
 
   override fun play(audioUrl: String) {
     freeCurrent()
@@ -63,9 +94,13 @@ class AndroidVoicePlayer(context: Context) : VoicePlayer {
             .build()
     )
     player.setOnPreparedListener {
+      cancelLoadTimeout()
       current = Current.Ready(player)
       // Paused while loading: stay ready, and start when resume() is called.
-      if (_state.value is PlayerState.Playing) it.start()
+      if (_state.value is PlayerState.Playing) {
+        it.start()
+        startTicker()
+      }
     }
     player.setOnCompletionListener { finish(PlayerState.Idle) }
     player.setOnErrorListener { _, what, extra ->
@@ -79,6 +114,7 @@ class AndroidVoicePlayer(context: Context) : VoicePlayer {
     try {
       player.setDataSource(appContext, audioUrl.toUri())
       player.prepareAsync()
+      scheduleLoadTimeout(audioUrl)
     } catch (e: IOException) {
       fail(audioUrl, LOAD_FAILURE, e)
     } catch (e: RuntimeException) {
@@ -90,6 +126,8 @@ class AndroidVoicePlayer(context: Context) : VoicePlayer {
     val playing = _state.value as? PlayerState.Playing ?: return
     val refusal = "The player refused to pause the voice note"
     if (changePlayback(playing.audioUrl, refusal) { pause() }) {
+      stopTicker()
+      readPosition()
       _state.value = PlayerState.Paused(playing.audioUrl)
     }
   }
@@ -99,6 +137,23 @@ class AndroidVoicePlayer(context: Context) : VoicePlayer {
     val refusal = "The player refused to resume the voice note"
     if (changePlayback(paused.audioUrl, refusal) { start() }) {
       _state.value = PlayerState.Playing(paused.audioUrl)
+      if (current is Current.Ready) startTicker()
+    }
+  }
+
+  override fun seekTo(position: Duration) {
+    val audioUrl =
+        when (val state = _state.value) {
+          is PlayerState.Playing -> state.audioUrl
+          is PlayerState.Paused -> state.audioUrl
+          else -> return
+        }
+    changePlayback(audioUrl, "The player refused to seek the voice note") {
+      // A note of unknown length reports -1, and there is nothing to seek in.
+      if (duration <= 0) return@changePlayback
+      val target = position.toMillis().coerceIn(0, duration.toLong()).toInt()
+      seekTo(target)
+      _position.value = Duration.ofMillis(target.toLong())
     }
   }
 
@@ -131,7 +186,7 @@ class AndroidVoicePlayer(context: Context) : VoicePlayer {
       }
 
   /** Logs why the note failed, then frees its player and moves to [PlayerState.Failed]. */
-  private fun fail(audioUrl: String, reason: String, cause: Exception) {
+  private fun fail(audioUrl: String, reason: String, cause: Exception?) {
     Log.e(LOG_TAG, reason, cause)
     finish(PlayerState.Failed(audioUrl))
   }
@@ -142,9 +197,35 @@ class AndroidVoicePlayer(context: Context) : VoicePlayer {
     _state.value = result
   }
 
+  private fun startTicker() {
+    handler.removeCallbacks(positionTicker)
+    handler.postDelayed(positionTicker, POSITION_INTERVAL_MS)
+  }
+
+  private fun stopTicker() = handler.removeCallbacks(positionTicker)
+
+  private fun readPosition() {
+    val note = current as? Current.Ready ?: return
+    _position.value = Duration.ofMillis(note.player.currentPosition.toLong())
+  }
+
+  private fun scheduleLoadTimeout(audioUrl: String) {
+    val timeout = Runnable { fail(audioUrl, LOAD_TIMEOUT, null) }
+    loadTimeout = timeout
+    handler.postDelayed(timeout, LOAD_TIMEOUT_MS)
+  }
+
+  private fun cancelLoadTimeout() {
+    loadTimeout?.let(handler::removeCallbacks)
+    loadTimeout = null
+  }
+
   private fun freeCurrent() {
+    stopTicker()
+    cancelLoadTimeout()
     current.player?.release()
     current = Current.None
+    _position.value = Duration.ZERO
   }
 
   /** The player of the note: none, loading (it cannot be paused or started yet) or ready. */
@@ -161,5 +242,8 @@ class AndroidVoicePlayer(context: Context) : VoicePlayer {
   private companion object {
     const val LOG_TAG = "AndroidVoicePlayer"
     const val LOAD_FAILURE = "Cannot load the voice note"
+    const val POSITION_INTERVAL_MS = 50L
+    const val LOAD_TIMEOUT = "The voice note did not load in time"
+    const val LOAD_TIMEOUT_MS = 10_000L
   }
 }

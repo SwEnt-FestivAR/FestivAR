@@ -1,4 +1,5 @@
 <!-- Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com> -->
+<!--Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com> -->
 <resources>
     <string name="profile_title">Profile</string>
     <string name="profile_back">Back</string>
@@ -9,6 +10,9 @@
     <string name="profile_retry">Retry</string>
     <string name="profile_load_failed">Unable to load your profile.</string>
     <string name="profile_save_failed">Unable to update your profile.</string>
+    <string name="profile_picture_save_failed">Unable to update your profile picture.</string>
+    <string name="profile_picture_too_large">Profile pictures must be 10 MB or smaller.</string>
+    <string name="profile_edit_picture">Edit profile picture</string>
     <string name="profile_sign_out_failed">Unable to sign out.</string>
     <string name="profile_invalid_name_chars">Use at least one letter, and only letters, spaces, hyphens and apostrophes.</string>
     <string name="profile_anon_upgrade">Upgrade to a full account</string>

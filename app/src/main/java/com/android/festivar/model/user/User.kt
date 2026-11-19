@@ -21,6 +21,7 @@ import com.android.festivar.model.task.Task
  * @property email The user's email address.
  * @property joinedEvents EventIds of events the user has joined.
  * @property tasksAssigned TaskIds of tasks assigned to the user.
+ * @property profilePictureUrl The URL of the user's profile picture, if available.
  */
 data class User(
     val uid: String,
@@ -29,6 +30,7 @@ data class User(
     val email: String = "",
     val joinedEvents: List<String> = emptyList(),
     val tasksAssigned: List<String> = emptyList(),
+    val profilePictureUrl: String? = null,
 ) {
 
   init {

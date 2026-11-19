@@ -98,6 +98,7 @@ class UsersRepositoryFirebase(
         "email" to user.email,
         "joinedEvents" to user.joinedEvents,
         "tasksAssigned" to user.tasksAssigned,
+        "profilePictureUrl" to user.profilePictureUrl,
     )
   }
 
@@ -110,6 +111,7 @@ class UsersRepositoryFirebase(
         email = document.getString("email") ?: "",
         joinedEvents = document.stringList("joinedEvents"),
         tasksAssigned = document.stringList("tasksAssigned"),
+        profilePictureUrl = document.getString("profilePictureUrl"),
     )
   }
 

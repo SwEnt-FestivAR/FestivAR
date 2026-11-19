@@ -6,6 +6,7 @@ import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.model.event.role.Role
 import com.android.festivar.model.user.User
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -125,6 +126,7 @@ class EventsOverviewViewModelTest {
           ownerId = "other-owner",
           title = "Satellite Quiz",
           members = listOf(User("other-owner")),
+          roles = mapOf("other-owner" to Role.OWNER),
       )
 
   @Before
