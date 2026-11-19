@@ -41,10 +41,13 @@ import kotlinx.coroutines.flow.StateFlow
  *
  * @property file The local file handle of the audio recording.
  * @property duration Length of the recording.
+ * @property waveform The loudness of the recording as [WAVEFORM_BAR_COUNT] bars between 0 and 1, or
+ *   empty when it is not known. Paused time has no bar.
  */
 data class Audio(
     val file: File,
     val duration: Duration,
+    val waveform: List<Float> = emptyList(),
 ) {
   val fileName: String
     get() = file.name
@@ -112,8 +115,9 @@ interface VoiceRecorder {
   fun resume()
 
   /**
-   * Stops the recording, even if it is paused, and returns it. The caller then owns the temporary
-   * file (see [Audio]). If the recording is unusable, the recorder deletes the file and throws.
+   * Stops the recording, even if it is paused, and returns it with its waveform. The caller then
+   * owns the temporary file (see [Audio]). If the recording is unusable, the recorder deletes the
+   * file and throws.
    *
    * @throws IllegalStateException if nothing is being recorded.
    * @throws VoiceRecorderException if the recording is unusable (for example too short).
