@@ -17,6 +17,7 @@ import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.google.firebase.auth.FirebaseUser
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Rule
@@ -120,5 +121,29 @@ class RequireSignedInTest {
     composeTestRule.waitForIdle()
 
     composeTestRule.onNodeWithTag(contentTag).assertTextEquals("user-2")
+  }
+
+  /** Breaks if a sign-out through the auth repository does not send the user to the login. */
+  @Test
+  fun aSuccessfulSignOutThroughTheRepositorySendsTheUserToTheLogin() {
+    open(mockk<FirebaseUser> { every { uid } returns "user-1" })
+
+    runBlocking { authRepository.signOut() }
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(contentTag).assertDoesNotExist()
+    assertEquals(AppScreens.Login.name, navController.currentDestination?.route)
+  }
+
+  /** Breaks if a failed sign-out is taken as a sign-out and removes the route. */
+  @Test
+  fun aFailedSignOutThroughTheRepositoryKeepsTheRoute() {
+    open(mockk<FirebaseUser> { every { uid } returns "user-1" })
+    authRepository.signOutResult = Result.failure(IllegalStateException("offline"))
+
+    runBlocking { authRepository.signOut() }
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(contentTag).assertTextEquals("user-1")
   }
 }
