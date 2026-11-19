@@ -17,6 +17,7 @@ import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.google.firebase.auth.FirebaseUser
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Rule
@@ -33,9 +34,11 @@ class RequireSignedInTest {
   private val loginTag = "login"
   private lateinit var navController: NavHostController
 
+  private lateinit var authRepository: FakeAuthRepository
+
   private fun open(user: FirebaseUser?) {
-    val dataRepository =
-        DataRepositoryLocal(authRepository = FakeAuthRepository(currentUser = user))
+    authRepository = FakeAuthRepository(currentUser = user)
+    val dataRepository = DataRepositoryLocal(authRepository = authRepository)
     composeTestRule.setContent {
       navController = rememberNavController()
       // Starts on a plain screen, so the stack has an entry that the redirect must also clear
@@ -85,5 +88,66 @@ class RequireSignedInTest {
     open(null)
 
     assertNull(navController.previousBackStackEntry)
+  }
+
+  /** Breaks if a sign-out while the route is open is not noticed, leaving the route on screen. */
+  @Test
+  fun aSignOutWhileTheRouteIsOpenSendsTheUserToTheLogin() {
+    open(mockk<FirebaseUser> { every { uid } returns "user-1" })
+
+    composeTestRule.runOnUiThread { authRepository.setCurrentUser(null) }
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(contentTag).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(loginTag).assertExists()
+    assertEquals(AppScreens.Login.name, navController.currentDestination?.route)
+  }
+
+  /** Breaks if a sign-out redirect leaves the route reachable with back. */
+  @Test
+  fun aSignOutWhileTheRouteIsOpenClearsTheBackStack() {
+    open(mockk<FirebaseUser> { every { uid } returns "user-1" })
+
+    composeTestRule.runOnUiThread { authRepository.setCurrentUser(null) }
+    composeTestRule.waitForIdle()
+
+    assertNull(navController.previousBackStackEntry)
+  }
+
+  /** Breaks if the route keeps the user it opened with after another user signs in. */
+  @Test
+  fun anotherUserSigningInWhileTheRouteIsOpenIsHandedToIt() {
+    open(mockk<FirebaseUser> { every { uid } returns "user-1" })
+
+    composeTestRule.runOnUiThread {
+      authRepository.setCurrentUser(mockk<FirebaseUser> { every { uid } returns "user-2" })
+    }
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(contentTag).assertTextEquals("user-2")
+  }
+
+  /** Breaks if a sign-out through the auth repository does not send the user to the login. */
+  @Test
+  fun aSuccessfulSignOutThroughTheRepositorySendsTheUserToTheLogin() {
+    open(mockk<FirebaseUser> { every { uid } returns "user-1" })
+
+    runBlocking { authRepository.signOut() }
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(contentTag).assertDoesNotExist()
+    assertEquals(AppScreens.Login.name, navController.currentDestination?.route)
+  }
+
+  /** Breaks if a failed sign-out is taken as a sign-out and removes the route. */
+  @Test
+  fun aFailedSignOutThroughTheRepositoryKeepsTheRoute() {
+    open(mockk<FirebaseUser> { every { uid } returns "user-1" })
+    authRepository.signOutResult = Result.failure(IllegalStateException("offline"))
+
+    runBlocking { authRepository.signOut() }
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(contentTag).assertTextEquals("user-1")
   }
 }

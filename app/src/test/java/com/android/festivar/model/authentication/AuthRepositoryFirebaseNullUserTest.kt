@@ -1,6 +1,7 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored by Gemini
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.authentication
 
 import android.os.Bundle
@@ -22,9 +23,17 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
+import io.mockk.slot
 import io.mockk.verify
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
@@ -707,6 +716,56 @@ class AuthRepositoryFirebaseNullUserTest {
         runBlocking { repository.signInWithGoogle(credential) }
       }
     }
+  }
+
+  // Starts collecting the flow of [repository] and returns what it emitted so far.
+  @OptIn(ExperimentalCoroutinesApi::class)
+  private fun TestScope.collectUsers(
+      repository: AuthRepositoryFirebase
+  ): Pair<Job, List<FirebaseUser?>> {
+    val emitted = mutableListOf<FirebaseUser?>()
+    val job =
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+          repository.currentUserFlow.toList(emitted)
+        }
+    return job to emitted
+  }
+
+  /** Breaks if the flow does not emit the current user first, then each later sign-out. */
+  @Test
+  fun currentUserFlow_emitsTheCurrentUserThenNullOnSignOut() = runTest {
+    val user = mockk<FirebaseUser>()
+    val signedIn = mockk<FirebaseAuth> { every { currentUser } returns user }
+    val signedOut = mockk<FirebaseAuth> { every { currentUser } returns null }
+    val listener = slot<FirebaseAuth.AuthStateListener>()
+    val auth = mockk<FirebaseAuth>()
+    every { auth.addAuthStateListener(capture(listener)) } answers
+        {
+          listener.captured.onAuthStateChanged(signedIn)
+        }
+    every { auth.removeAuthStateListener(any()) } just Runs
+
+    val (job, emitted) = collectUsers(newRepository(auth))
+    listener.captured.onAuthStateChanged(signedOut)
+
+    assertEquals(listOf(user, null), emitted)
+    job.cancel()
+    job.join()
+  }
+
+  /** Breaks if the auth listener is left registered once nobody collects the flow. */
+  @Test
+  fun currentUserFlow_removesTheListenerWhenCollectionIsCancelled() = runTest {
+    val listener = slot<FirebaseAuth.AuthStateListener>()
+    val auth = mockk<FirebaseAuth>()
+    every { auth.addAuthStateListener(capture(listener)) } just Runs
+    every { auth.removeAuthStateListener(any()) } just Runs
+
+    val (job, _) = collectUsers(newRepository(auth))
+    job.cancel()
+    job.join()
+
+    verify(exactly = 1) { auth.removeAuthStateListener(listener.captured) }
   }
 
   // A local users repository keeps the default Firestore one, unavailable here, from being built.
