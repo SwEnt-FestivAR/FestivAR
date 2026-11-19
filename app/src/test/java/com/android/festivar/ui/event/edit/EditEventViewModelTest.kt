@@ -3,6 +3,8 @@ package com.android.festivar.ui.event.edit
 // Co-authored-by: Copilot App
 
 import com.android.festivar.R
+import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
@@ -344,6 +346,9 @@ class EditEventViewModelTest {
     assertEquals("Updated festival", eventsRepository.getEvent(initialEvent.eventId).title)
   }
 
+  /**
+   * Breaks if saving the form drops the members, roles or tasks added elsewhere while it was open.
+   */
   @Test
   fun saveChangesPreservesMembersAndTasksAddedWhileFormWasOpen() = runTest {
     viewModel.fetchEvent(initialEvent.eventId)
@@ -357,13 +362,8 @@ class EditEventViewModelTest {
             title = "New task",
             ownerId = "organizer",
         )
-    eventsRepository.editEvent(
-        initialEvent.eventId,
-        initialEvent.copy(
-            members = listOf(User("member-1"), joinedMember),
-            tasks = listOf(addedTask),
-        ),
-    )
+    val changedElsewhere = initialEvent.addMember(joinedMember).copy(tasks = listOf(addedTask))
+    eventsRepository.editEvent(initialEvent.eventId, changedElsewhere)
 
     viewModel.saveChanges()
     advanceUntilIdle()
@@ -371,6 +371,7 @@ class EditEventViewModelTest {
     val saved = eventsRepository.getEvent(initialEvent.eventId)
     assertEquals("Updated festival", saved.title)
     assertEquals(listOf(User("member-1"), joinedMember), saved.members)
+    assertEquals(changedElsewhere.roles, saved.roles)
     assertEquals(listOf(addedTask), saved.tasks)
   }
 
@@ -485,7 +486,12 @@ class EditEventViewModelTest {
             delay(100)
           }
         }
-    viewModel = EditEventViewModel(repository, { signedInUserId }, saveTimeoutMs = 10)
+    viewModel =
+        EditEventViewModel(
+            DataRepositoryLocal(FakeAuthRepository(), eventsRepository = repository),
+            { signedInUserId },
+            saveTimeoutMs = 10,
+        )
     viewModel.fetchEvent(initialEvent.eventId)
     advanceUntilIdle()
     viewModel.updateName("Updated festival")
@@ -619,5 +625,8 @@ class EditEventViewModelTest {
   }
 
   private fun createViewModel(repository: EventsRepository) =
-      EditEventViewModel(repository, { signedInUserId })
+      EditEventViewModel(
+          DataRepositoryLocal(FakeAuthRepository(), eventsRepository = repository),
+          { signedInUserId },
+      )
 }

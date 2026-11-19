@@ -2,6 +2,7 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.festivar.ui.task.details
 
 import androidx.compose.foundation.layout.Arrangement
@@ -92,6 +93,9 @@ object TaskDetailsScreenTestTags {
   const val GIVE_BACK_CONFIRM_BUTTON = "detailsGiveBackConfirmButton"
   const val GIVE_BACK_KEEP_BUTTON = "detailsGiveBackKeepButton"
   const val MARK_DONE_BUTTON = "detailsMarkDoneButton"
+  const val MARK_DONE_DIALOG = "detailsMarkDoneDialog"
+  const val MARK_DONE_CONFIRM_BUTTON = "detailsMarkDoneConfirmButton"
+  const val MARK_DONE_DISMISS_BUTTON = "detailsMarkDoneDismissButton"
   const val LOADING = "detailsLoading"
   const val ERROR_MESSAGE = "detailsError"
   const val ERROR_ACTION = "detailsErrorAction"
@@ -127,7 +131,9 @@ fun TaskDetailsScreen(
       onBack = onBack,
       onTake = viewModel::take,
       onGiveBack = viewModel::giveBack,
-      onMarkDone = viewModel::markDone,
+      onMarkDone = viewModel::requestMarkDone,
+      onConfirmMarkDone = viewModel::markDone,
+      onDismissMarkDone = viewModel::dismissMarkDoneConfirmation,
       onDeleteTask = { viewModel.deleteTask(onTaskDeleted) },
       onRetry = viewModel::load,
       onDismissError = viewModel::clearError,
@@ -150,6 +156,8 @@ fun TaskDetailsContent(
     onTake: () -> Unit = {},
     onGiveBack: () -> Unit = {},
     onMarkDone: () -> Unit = {},
+    onConfirmMarkDone: () -> Unit = onMarkDone,
+    onDismissMarkDone: () -> Unit = {},
     onRetry: () -> Unit = {},
     onDismissError: () -> Unit = {},
     onEdit: (String) -> Unit = {},
@@ -269,6 +277,21 @@ fun TaskDetailsContent(
         modifier = Modifier.testTag(TaskDetailsScreenTestTags.GIVE_BACK_DIALOG),
         confirmModifier = Modifier.testTag(TaskDetailsScreenTestTags.GIVE_BACK_CONFIRM_BUTTON),
         dismissModifier = Modifier.testTag(TaskDetailsScreenTestTags.GIVE_BACK_KEEP_BUTTON),
+    )
+  }
+  val taskToMarkDone = state.task
+  if (state.showMarkDoneConfirmation && taskToMarkDone != null) {
+    FestivarConfirmDialog(
+        title = stringResource(R.string.details_mark_done_title),
+        message = stringResource(R.string.details_mark_done_message, taskToMarkDone.title),
+        confirmText = stringResource(R.string.details_mark_done_confirm),
+        dismissText = stringResource(R.string.details_mark_done_leave_undone),
+        onConfirm = onConfirmMarkDone,
+        onDismiss = onDismissMarkDone,
+        modifier = Modifier.testTag(TaskDetailsScreenTestTags.MARK_DONE_DIALOG),
+        confirmModifier = Modifier.testTag(TaskDetailsScreenTestTags.MARK_DONE_CONFIRM_BUTTON),
+        dismissModifier = Modifier.testTag(TaskDetailsScreenTestTags.MARK_DONE_DISMISS_BUTTON),
+        destructive = false,
     )
   }
   val taskWithPeople = state.task

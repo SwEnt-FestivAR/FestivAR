@@ -3,6 +3,8 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.ui.components
 
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+
 import androidx.annotation.StringRes
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction

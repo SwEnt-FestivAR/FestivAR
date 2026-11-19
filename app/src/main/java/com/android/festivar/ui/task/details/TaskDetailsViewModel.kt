@@ -2,6 +2,7 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.festivar.ui.task.details
 
 import android.util.Log
@@ -50,6 +51,8 @@ enum class TaskStatus {
  * @property errorMsg the string resource of the last failure, or null.
  * @property ownerName the name of the owner of [task], who is credited with its voice note. Blank
  *   when the current user is the owner, when the task has no voice note, or if it is unknown.
+ * @property showMarkDoneConfirmation true while asking for confirmation before marking the task
+ *   done.
  */
 data class TaskDetailsUiState(
     val currentUserId: String,
@@ -58,6 +61,7 @@ data class TaskDetailsUiState(
     val isUpdating: Boolean = false,
     @StringRes val errorMsg: Int? = null,
     val ownerName: String = "",
+    val showMarkDoneConfirmation: Boolean = false,
 ) {
   /** The badge of [task], computed from it so the two cannot differ; null while [task] is null. */
   val status: TaskStatus?
@@ -201,13 +205,30 @@ class TaskDetailsViewModel(
         repository.getTask(taskId)
       }
 
+  /**
+   * Shows the confirmation dialog before completing the task. Does nothing unless the task is
+   * yours.
+   */
+  fun requestMarkDone() {
+    if (_uiState.value.canMarkDone) {
+      _uiState.update { it.copy(showMarkDoneConfirmation = true) }
+    }
+  }
+
+  /** Dismisses the mark done confirmation dialog without completing the task. */
+  fun dismissMarkDoneConfirmation() {
+    _uiState.update { it.copy(showMarkDoneConfirmation = false) }
+  }
+
   /** Completes the task. Does nothing unless the task is yours. */
-  fun markDone() =
-      saveIf({ it.canMarkDone }) {
-        val completedTask = it.complete()
-        repository.editTask(taskId, completedTask)
-        completedTask
-      }
+  fun markDone() {
+    _uiState.update { it.copy(showMarkDoneConfirmation = false) }
+    saveIf({ it.canMarkDone }) {
+      val completedTask = it.complete()
+      repository.editTask(taskId, completedTask)
+      completedTask
+    }
+  }
 
   /** Deletes the task. Does nothing unless the current user owns it. */
   fun deleteTask(onDeleted: () -> Unit = {}) {
