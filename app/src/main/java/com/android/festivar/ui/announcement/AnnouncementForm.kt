@@ -15,7 +15,7 @@ internal const val ANNOUNCEMENT_SAVE_TIMEOUT_MS = 15_000L
 /**
  * The part of an announcement form shared by the create and edit screens: what the user types, plus
  * the field rules. It has no saving or error flags, which belong to the state of each screen. The
- * Create announcement form does not use it yet.
+ * Create announcement ViewModel does not use it yet: its screen builds one to draw the shared form.
  *
  * @property title The title as typed. It is saved as [trimmedTitle].
  * @property content The body of the announcement as typed. It is saved as [trimmedContent].

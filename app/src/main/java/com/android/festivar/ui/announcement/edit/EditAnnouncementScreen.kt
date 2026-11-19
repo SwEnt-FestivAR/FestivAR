@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Fable 5.2 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.announcement.edit
 
 import androidx.annotation.StringRes
@@ -28,14 +29,13 @@ import androidx.compose.ui.unit.dp
 import com.android.festivar.R
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.event.announcement.AnnouncementPriority
+import com.android.festivar.ui.announcement.AnnouncementFormActions
 import com.android.festivar.ui.announcement.AnnouncementFormBackHandling
+import com.android.festivar.ui.announcement.AnnouncementFormContent
 import com.android.festivar.ui.announcement.AnnouncementFormLabels
 import com.android.festivar.ui.announcement.AnnouncementFormState
 import com.android.festivar.ui.announcement.AnnouncementFormTags
 import com.android.festivar.ui.announcement.AnnouncementFormTopBar
-import com.android.festivar.ui.announcement.create.CreateAnnouncementActions
-import com.android.festivar.ui.announcement.create.CreateAnnouncementContent
-import com.android.festivar.ui.announcement.create.CreateAnnouncementUiState
 import com.android.festivar.ui.theme.AppTheme
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
@@ -126,12 +126,12 @@ fun EditAnnouncementScreen(
     EditAnnouncementContent(
         state = state,
         actions =
-            CreateAnnouncementActions(
+            AnnouncementFormActions(
                 onBack = requestBack,
                 onTitleChange = viewModel::updateTitle,
                 onContentChange = viewModel::updateContent,
                 onPriorityChange = viewModel::updatePriority,
-                onPublish = viewModel::save,
+                onSubmit = viewModel::save,
             ),
         onRetry = viewModel::load,
         modifier = modifier,
@@ -140,17 +140,17 @@ fun EditAnnouncementScreen(
 }
 
 /**
- * Stateless Edit announcement screen: the Create announcement form filled with the announcement
+ * Stateless Edit announcement screen: the shared announcement form filled with the announcement
  * once it is loaded, the load error with a retry when a load failed, a short notice instead of the
  * form for a user who is not the organizer of the event, and otherwise a spinner.
  *
- * @param actions The form's input; `onPublish` saves the edit.
+ * @param actions The form's input; `onSubmit` saves the edit.
  * @param onRetry Loads the announcement again after a failed load.
  */
 @Composable
 fun EditAnnouncementContent(
     state: EditAnnouncementUiState,
-    actions: CreateAnnouncementActions,
+    actions: AnnouncementFormActions,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -170,12 +170,17 @@ fun EditAnnouncementContent(
             )
           }
       state.announcement != null ->
-          CreateAnnouncementContent(
-              state = state.toCreateForm(),
+          // The saving and saved flags come from the screen state: they lock the inputs, show the
+          // spinner in the button, and keep a saved form final.
+          AnnouncementFormContent(
+              form = state.form,
+              isSaving = state.isSaving,
+              isEditable = !state.isSaving && !state.isSaved,
+              canSubmit = state.canSave,
+              errorMsg = state.errorMsg,
               actions = actions,
               labels = editAnnouncementLabels,
               tags = editAnnouncementTags,
-              canSubmit = state.canSave,
           )
       loadError != null && !state.isLoading ->
           NoForm(actions.onBack) { LoadError(loadError, onRetry) }
@@ -187,23 +192,6 @@ fun EditAnnouncementContent(
     }
   }
 }
-
-/**
- * The state of the Create announcement form showing this edit. The form fields come from
- * [EditAnnouncementUiState.form]; the saving, saved and error flags come from the screen state,
- * which is what locks the inputs, shows the spinner in the button and shows the save error.
- */
-private fun EditAnnouncementUiState.toCreateForm(): CreateAnnouncementUiState =
-    CreateAnnouncementUiState(
-        title = form.title,
-        content = form.content,
-        priority = form.priority,
-        titleEdited = form.titleEdited,
-        contentEdited = form.contentEdited,
-        isSaving = isSaving,
-        isPublished = isSaved,
-        errorMsg = errorMsg,
-    )
 
 /** The form's top bar over [content] centered, for the states without a form. */
 @Composable
@@ -273,7 +261,7 @@ private val previewLoaded =
 @Composable
 private fun EditAnnouncementPreview(state: EditAnnouncementUiState) {
   AppTheme {
-    EditAnnouncementContent(state = state, actions = CreateAnnouncementActions(), onRetry = {})
+    EditAnnouncementContent(state = state, actions = AnnouncementFormActions(), onRetry = {})
   }
 }
 
