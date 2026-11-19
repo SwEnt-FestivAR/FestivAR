@@ -37,9 +37,9 @@ import com.android.festivar.ui.announcement.AnnouncementFormLabels
 import com.android.festivar.ui.announcement.AnnouncementFormTags
 import com.android.festivar.ui.announcement.AnnouncementFormTopBar
 import com.android.festivar.ui.announcement.announcementPriorityLabelRes
+import com.android.festivar.ui.components.FestivarChipSelector
 import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.components.FestivarFieldWithError
-import com.android.festivar.ui.components.FestivarPrioritySelector
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.components.LONG_TEXT_MAX_LENGTH
 import com.android.festivar.ui.theme.AppTheme
@@ -205,12 +205,12 @@ fun CreateAnnouncementContent(
             modifier = Modifier.heightIn(min = 96.dp).testTag(tags.descriptionField),
         )
       }
-      FestivarPrioritySelector(
-          priorities = AnnouncementPriority.entries,
+      FestivarChipSelector(
+          options = AnnouncementPriority.entries,
           selected = state.priority,
           onSelect = actions.onPriorityChange,
           label = stringResource(R.string.create_announcement_field_priority),
-          chipLabelRes = ::announcementPriorityLabelRes,
+          optionLabelRes = ::announcementPriorityLabelRes,
           enabled = state.isEditable,
           labelModifier = Modifier.testTag(tags.priorityLabel),
           chipModifier = { Modifier.testTag(tags.priorityChip(it)) },

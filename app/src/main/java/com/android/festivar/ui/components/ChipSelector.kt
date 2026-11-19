@@ -2,7 +2,6 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.components
 
-import androidx.annotation.StringRes
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,39 +13,33 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.android.festivar.R
 import com.android.festivar.model.task.Priority
+import com.android.festivar.ui.task.priorityLabelRes
 import com.android.festivar.ui.theme.AppTheme
 
-/** The string resource that names [priority] on screen. */
-@StringRes
-fun priorityLabelRes(priority: Priority): Int =
-    when (priority) {
-      Priority.NONE -> R.string.priority_none
-      Priority.LOW -> R.string.priority_low
-      Priority.MEDIUM -> R.string.priority_medium
-      Priority.HIGH -> R.string.priority_high
-      Priority.URGENT -> R.string.priority_urgent
-    }
-
 /**
- * Titled row of chips to pick one of [priorities]; [selected] is the current one. The title is the
- * design's [SectionLabel] and the chips are the design's [FilterChip] without a count. Pass a test
- * tag through [modifier], [labelModifier] or [chipModifier].
+ * Titled single-choice row of chips: one chip per entry of [options], and the chip of [selected] is
+ * the selected one. The title is the design's [SectionLabel] and the chips are the design's
+ * [FilterChip] without a count. The options are enum entries, so comparing an option with
+ * [selected] is an identity comparison. Pass a test tag through [modifier], [labelModifier] or
+ * [chipModifier].
  *
+ * @param options The choices, one chip each, in this order.
+ * @param selected The current choice.
+ * @param onSelect Called with the option whose chip was tapped.
  * @param label The title above the chips.
- * @param chipLabelRes Gives the string resource that names a priority on its chip.
+ * @param optionLabelRes Gives the string resource that names an option on its chip.
  * @param enabled Whether the chips react to taps.
  * @param labelModifier Applied to the title.
- * @param chipModifier Gives the modifier of the chip of a priority.
+ * @param chipModifier Gives the modifier of the chip of an option.
  */
 @Composable
-fun <T> FestivarPrioritySelector(
-    priorities: List<T>,
+fun <T : Enum<T>> FestivarChipSelector(
+    options: List<T>,
     selected: T,
     onSelect: (T) -> Unit,
     label: String,
-    chipLabelRes: (T) -> Int,
+    optionLabelRes: (T) -> Int,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     labelModifier: Modifier = Modifier,
@@ -58,13 +51,13 @@ fun <T> FestivarPrioritySelector(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.horizontalScroll(rememberScrollState()),
     ) {
-      priorities.forEach { priority ->
+      options.forEach { option ->
         FilterChip(
-            label = stringResource(chipLabelRes(priority)),
-            selected = priority == selected,
-            onClick = { onSelect(priority) },
+            label = stringResource(optionLabelRes(option)),
+            selected = option == selected,
+            onClick = { onSelect(option) },
             enabled = enabled,
-            modifier = chipModifier(priority),
+            modifier = chipModifier(option),
         )
       }
     }
@@ -73,14 +66,14 @@ fun <T> FestivarPrioritySelector(
 
 @Preview(showBackground = true)
 @Composable
-internal fun FestivarPrioritySelectorPreview() {
+internal fun FestivarChipSelectorPreview() {
   AppTheme {
-    FestivarPrioritySelector(
-        priorities = Priority.entries,
+    FestivarChipSelector(
+        options = Priority.entries,
         selected = Priority.HIGH,
         onSelect = {},
         label = "Priority",
-        chipLabelRes = ::priorityLabelRes,
+        optionLabelRes = ::priorityLabelRes,
         modifier = Modifier.padding(16.dp),
     )
   }

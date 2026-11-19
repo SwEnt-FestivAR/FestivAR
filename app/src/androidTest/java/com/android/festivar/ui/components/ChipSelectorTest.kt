@@ -11,7 +11,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import com.android.festivar.model.task.Priority
+import com.android.festivar.ui.task.priorityLabelRes
 import com.android.festivar.ui.theme.AppTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -19,22 +21,18 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
+/**
+ * Behaviour of the generic chip selector, shown here with the task priorities. Which label names
+ * which priority is checked in `TaskPriorityUiTest`.
+ */
 @RunWith(AndroidJUnit4::class)
-class PrioritySelectorTest {
+class ChipSelectorTest {
   @get:Rule val composeTestRule = createComposeRule()
 
-  // The labels the user must see, written out here and not taken from the production mapping
-  // (`priorityLabelRes`), so that a wrong mapping fails these tests.
-  private val labels =
-      mapOf(
-          Priority.NONE to "None",
-          Priority.LOW to "Low",
-          Priority.MEDIUM to "Medium",
-          Priority.HIGH to "High",
-          Priority.URGENT to "Urgent",
-      )
-
-  private fun label(priority: Priority): String = labels.getValue(priority)
+  private fun label(priority: Priority): String =
+      InstrumentationRegistry.getInstrumentation()
+          .targetContext
+          .getString(priorityLabelRes(priority))
 
   private fun setSelector(
       selected: Priority,
@@ -43,24 +41,23 @@ class PrioritySelectorTest {
   ) {
     composeTestRule.setContent {
       AppTheme {
-        FestivarPrioritySelector(
-            priorities = Priority.entries,
+        FestivarChipSelector(
+            options = Priority.entries,
             selected = selected,
             onSelect = onSelect,
             label = "Priority",
-            chipLabelRes = ::priorityLabelRes,
+            optionLabelRes = ::priorityLabelRes,
             enabled = enabled,
         )
       }
     }
   }
 
+  /** Breaks if the title is missing or if an option gets no chip. */
   @Test
-  fun showsTheLabelAndEveryPriority() {
+  fun showsTheLabelAndEveryOption() {
     setSelector(Priority.NONE)
 
-    // A new priority must get its label here too.
-    assertEquals(Priority.entries.toSet(), labels.keys)
     composeTestRule.onNodeWithText("PRIORITY").assertIsDisplayed()
     // The chips are in a horizontally scrolling row: the last ones can be off screen on a narrow
     // device, so each one is scrolled into view first.
@@ -69,19 +66,21 @@ class PrioritySelectorTest {
     }
   }
 
+  /** Breaks if another chip than the selected option's, or more than one, is marked selected. */
   @Test
-  fun onlyTheSelectedPriorityIsMarkedSelected() {
+  fun onlyTheSelectedOptionIsMarkedSelected() {
     setSelector(Priority.HIGH)
 
-    // Off-screen chips are scrolled into view first (see showsTheLabelAndEveryPriority).
+    // Off-screen chips are scrolled into view first (see showsTheLabelAndEveryOption).
     Priority.entries.forEach {
       val chip = composeTestRule.onNodeWithText(label(it)).performScrollTo()
       if (it == Priority.HIGH) chip.assertIsSelected() else chip.assertIsNotSelected()
     }
   }
 
+  /** Breaks if a tap reports another option than the one whose chip was tapped. */
   @Test
-  fun tappingAPriorityReportsIt() {
+  fun tappingAnOptionReportsIt() {
     var picked: Priority? = null
     setSelector(Priority.NONE) { picked = it }
 
