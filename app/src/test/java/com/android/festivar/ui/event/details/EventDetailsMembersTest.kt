@@ -20,11 +20,13 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.android.festivar.model.authentication.FakeAuthRepository
-import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
+import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.model.event.role.Role
 import com.android.festivar.model.user.User
+import com.android.festivar.ui.components.MemberDialogTestTags
+import com.android.festivar.ui.components.OptionPickerDialogTestTags
 import com.android.festivar.ui.components.UserListTestTags
 import com.android.festivar.ui.event.MembersFixture
 import com.android.festivar.ui.theme.AppTheme
@@ -46,20 +48,21 @@ class EventDetailsMembersTest {
   /** The owner is listed last on purpose: the sheet must still put them first. */
   private val event = MembersFixture.eventOf(lea, sara, organizer)
 
+  /** Shows [event], stored in [eventsRepository], to [currentUserId]: the owner by default. */
   @SuppressLint("ViewModelConstructorInComposable")
-  private fun setContent(event: Event) {
+  private fun setContent(
+      event: Event,
+      currentUserId: String = organizer.uid,
+      eventsRepository: EventsRepository = EventsRepositoryLocal(listOf(event)),
+  ) {
     composeTestRule.setContent {
       AppTheme {
         EventDetailsScreen(
             viewModel =
                 EventDetailsViewModel(
-                    DataRepositoryLocal(
-                        authRepository = FakeAuthRepository(),
-                        eventsRepository = EventsRepositoryLocal(listOf(event)),
-                    ),
+                    MembersFixture.dataRepositoryWith(event, eventsRepository),
                     event.eventId,
-                    // The owner, who can see the members.
-                    currentUserId = organizer.uid,
+                    currentUserId,
                 ),
             onBack = {},
             onTasksButtonClicked = {},
@@ -193,11 +196,143 @@ class EventDetailsMembersTest {
     assertEquals(listOf("SK", "Sara Keller", "0 tasks", "Visitor"), textsInRow(sara))
   }
 
-  /** The texts shown in the row of [user], in the order they are drawn. */
-  private fun textsInRow(user: User): List<String> =
+  // ******************************* Roles ******************************* //
+
+  private val rolesEvent =
+      MembersFixture.eventWithRoles(lea to Role.STAFF_MANAGER, sara to Role.VISITOR)
+
+  /** Breaks if a visitor sees the tasks, the members or the menu of the event. */
+  @Test
+  fun aVisitorSeesNeitherTheTasksNorTheMembersNorTheMenu() {
+    setContent(rolesEvent, currentUserId = sara.uid)
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.EVENT_NAME).assertIsDisplayed()
+    listOf(
+            EventDetailsScreenTestTags.OPEN_TASKS_STAT,
+            EventDetailsScreenTestTags.SEE_TASKS_BUTTON,
+            EventDetailsScreenTestTags.MEMBERS_CARD,
+            EventDetailsScreenTestTags.MORE_ACTIONS_BUTTON,
+        )
+        .forEach { composeTestRule.onAllNodesWithTag(it).assertCountEquals(0) }
+  }
+
+  /**
+   * Breaks if the dialog of a member does not show them, their role and tasks, then the actions.
+   */
+  @Test
+  fun tappingAMemberShowsTheirRoleTheirTasksAndTheActionsOnThem() {
+    setContent(rolesEvent)
+
+    openMemberDialogOf(sara)
+
+    assertEquals(
+        listOf("SK", "Sara Keller", "Visitor", "0 tasks", "Change role", "Kick"),
+        textsIn(MemberDialogTestTags.DIALOG),
+    )
+  }
+
+  /** Breaks if a staff manager is offered to kick, or any action on the owner, above them. */
+  @Test
+  fun aStaffManagerIsOnlyOfferedWhatTheirRoleAllows() {
+    setContent(rolesEvent, currentUserId = lea.uid)
+
+    openMemberDialogOf(sara)
+    assertEquals(listOf("Change role"), actionsShown())
+    composeTestRule.onNodeWithTag(MemberDialogTestTags.CLOSE_BUTTON).performClick()
+    tap(UserListTestTags.row(organizer.uid))
+
+    composeTestRule.onNodeWithTag(MemberDialogTestTags.DIALOG).assertIsDisplayed()
+    assertEquals(emptyList<String>(), actionsShown())
+  }
+
+  /**
+   * Breaks if a role is saved before it is confirmed, cancelling does not go back to the roles, or
+   * the confirmed role is not shown with every dialog closed.
+   */
+  @Test
+  fun aNewRoleIsSavedOnlyOnceConfirmedAndCancellingGoesBack() {
+    setContent(rolesEvent)
+    openMemberDialogOf(sara)
+
+    tap(MemberDialogTestTags.action("Change role"))
+    assertEquals(
+        listOf("Change the role of Sara", "Admin", "Staff manager", "Team lead", "Staff", "Visitor")
+            .plus("Current"),
+        textsIn(OptionPickerDialogTestTags.DIALOG),
+    )
+    composeTestRule.onNodeWithText("Team lead").performClick()
+    composeTestRule.onNodeWithText("Cancel").performClick()
+    composeTestRule.onNodeWithText("Team lead").performClick()
+    assertEquals("Visitor", textsInRow(sara).last())
+    tap(EventDetailsScreenTestTags.CHANGE_ROLE_CONFIRM)
+
+    assertEquals("Team lead", textsInRow(sara).last())
+    listOf(EventDetailsScreenTestTags.CHANGE_ROLE_CONFIRM, MemberDialogTestTags.DIALOG).forEach {
+      composeTestRule.onAllNodesWithTag(it).assertCountEquals(0)
+    }
+  }
+
+  /**
+   * Breaks if a member is kicked before it is confirmed, cancelling does not go back to their
+   * dialog, or they stay in the list once confirmed.
+   */
+  @Test
+  fun aMemberIsKickedOnlyOnceConfirmedAndCancellingGoesBack() {
+    setContent(rolesEvent)
+    openMemberDialogOf(sara)
+
+    tap(MemberDialogTestTags.action("Kick"))
+    composeTestRule.onNodeWithText("Cancel").performClick()
+    tap(MemberDialogTestTags.action("Kick"))
+    composeTestRule.onNodeWithText("Kick Sara Keller?").assertIsDisplayed()
+    composeTestRule.onNodeWithTag(UserListTestTags.row(sara.uid)).assertExists()
+    tap(EventDetailsScreenTestTags.KICK_CONFIRM)
+
+    composeTestRule.onAllNodesWithTag(UserListTestTags.row(sara.uid)).assertCountEquals(0)
+    composeTestRule.onAllNodesWithTag(MemberDialogTestTags.DIALOG).assertCountEquals(0)
+  }
+
+  /** Breaks if a failed kick is not reported, or its error cannot be dismissed. */
+  @Test
+  fun aFailedKickShowsAnErrorUntilItIsDismissed() {
+    setContent(rolesEvent, eventsRepository = MembersFixture.failingToSave(rolesEvent))
+    openMemberDialogOf(sara)
+
+    tap(MemberDialogTestTags.action("Kick"))
+    tap(EventDetailsScreenTestTags.KICK_CONFIRM)
+    composeTestRule.onNodeWithText("Could not kick this member. Please try again.").assertExists()
+    composeTestRule.onNodeWithTag(UserListTestTags.row(sara.uid)).assertExists()
+    composeTestRule.onNodeWithText("Dismiss").performClick()
+
+    composeTestRule.onAllNodesWithTag(EventDetailsScreenTestTags.ACTION_ERROR).assertCountEquals(0)
+  }
+
+  private fun openMemberDialogOf(user: User) {
+    openMembers()
+    tap(UserListTestTags.row(user.uid))
+  }
+
+  private fun tap(tag: String) {
+    composeTestRule.onNodeWithTag(tag).performClick()
+    composeTestRule.waitForIdle()
+  }
+
+  /** The labels of the buttons of the open member dialog. */
+  private fun actionsShown() =
+      listOf("Change role", "Kick").filter {
+        composeTestRule
+            .onAllNodesWithTag(MemberDialogTestTags.action(it))
+            .fetchSemanticsNodes()
+            .isNotEmpty()
+      }
+
+  private fun textsInRow(user: User) = textsIn(UserListTestTags.row(user.uid))
+
+  /** The texts shown in the node tagged [tag], in the order they are drawn. */
+  private fun textsIn(tag: String): List<String> =
       composeTestRule
           .onAllNodes(
-              hasAnyAncestor(hasTestTag(UserListTestTags.row(user.uid))) and
+              hasAnyAncestor(hasTestTag(tag)) and
                   SemanticsMatcher.keyIsDefined(SemanticsProperties.Text),
               useUnmergedTree = true,
           )
