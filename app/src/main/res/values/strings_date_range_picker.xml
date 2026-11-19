@@ -1,0 +1,13 @@
+<!-- Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com> -->
+<resources>
+    <string name="date_range_picker_title">Select dates</string>
+    <string name="date_range_picker_back">Navigate back</string>
+    <string name="date_range_picker_clear">Clear</string>
+    <string name="date_range_picker_save">Save dates</string>
+    <string name="date_range_picker_hint">Tap a start day, then an end day</string>
+    <!-- How many days are chosen, after the days, e.g. "Fri 27 Nov to Wed 2 Dec · 6 days" -->
+    <plurals name="date_range_picker_days">
+        <item quantity="one">%d day</item>
+        <item quantity="other">%d days</item>
+    </plurals>
+</resources>
