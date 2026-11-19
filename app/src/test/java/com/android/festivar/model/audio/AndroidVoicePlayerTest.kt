@@ -4,6 +4,7 @@ package com.android.festivar.model.audio
 import android.content.Context
 import android.media.MediaPlayer
 import android.os.Looper
+import android.util.Log
 import androidx.core.net.toUri
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -11,19 +12,48 @@ import java.io.IOException
 import java.time.Duration
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Shadows.shadowOf
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.Implementation
+import org.robolectric.annotation.Implements
+import org.robolectric.shadows.ShadowLog
 import org.robolectric.shadows.ShadowMediaPlayer
 import org.robolectric.shadows.ShadowMediaPlayer.State
 import org.robolectric.shadows.util.DataSource
+
+/**
+ * Robolectric's fake [MediaPlayer] that also counts its [release] calls. The state of the fake
+ * cannot tell whether the player freed it: a test that puts the fake in its released state itself
+ * would pass either way.
+ */
+@Implements(MediaPlayer::class)
+class ReleaseCountingShadowMediaPlayer : ShadowMediaPlayer() {
+  var releaseCount = 0
+    private set
+
+  /** Makes the fake report a length of -1, like a real player does for a note it cannot measure. */
+  var lengthUnknown = false
+
+  @Implementation
+  protected override fun getDuration(): Int = if (lengthUnknown) -1 else super.getDuration()
+
+  @Implementation
+  protected override fun _release() {
+    releaseCount++
+    super._release()
+  }
+}
 
 /**
  * [AndroidVoicePlayer] on Robolectric's fake [android.media.MediaPlayer], which reports prepared,
  * completed and error like a real one. The tests look at the fake of each note through [players].
  */
 @RunWith(AndroidJUnit4::class)
+@Config(shadows = [ReleaseCountingShadowMediaPlayer::class])
 class AndroidVoicePlayerTest {
   private val context = ApplicationProvider.getApplicationContext<Context>()
   private val first = "https://example.com/first.m4a"
@@ -56,6 +86,24 @@ class AndroidVoicePlayerTest {
   fun tearDown() {
     ShadowMediaPlayer.resetStaticState()
   }
+
+  private fun ShadowMediaPlayer.releaseCount() =
+      (this as ReleaseCountingShadowMediaPlayer).releaseCount
+
+  private fun lastLoggedError() =
+      ShadowLog.getLogs().last { it.tag == "AndroidVoicePlayer" && it.type == Log.ERROR }.msg
+
+  private fun reportError() =
+      players
+          .single()
+          .invokeErrorListener(MediaPlayer.MEDIA_ERROR_UNKNOWN, MediaPlayer.MEDIA_ERROR_IO)
+
+  /** Makes the fake take far longer than the timeout to load [first], like a stalled connection. */
+  private fun stallLoading() =
+      ShadowMediaPlayer.addMediaInfo(
+          DataSource.toDataSource(context, first.toUri()),
+          ShadowMediaPlayer.MediaInfo(DURATION_MS, STALLED_MS),
+      )
 
   private fun idle(duration: Duration = Duration.ZERO) =
       shadowOf(Looper.getMainLooper()).idleFor(duration)
@@ -90,19 +138,34 @@ class AndroidVoicePlayerTest {
     assertEquals(State.END, players.single().state)
   }
 
+  /** Breaks if replaying a completed note keeps its old player or position. */
+  @Test
+  fun play_afterTheNoteEndsStartsAgainFromTheBeginning() {
+    player.play(first)
+    idle(Duration.ofMillis(DURATION_MS + 1_000L))
+
+    player.play(first)
+    idle()
+
+    assertEquals(PlayerState.Playing(first), player.state.value)
+    assertEquals(2, players.size)
+    assertEquals(State.STARTED, players[1].state)
+    assertEquals(0, mediaPlayers[1].currentPosition)
+  }
+
   /** Breaks if a player error does not give Failed and free the player. */
   @Test
   fun play_failsAndFreesThePlayerWhenThePlayerReportsAnError() {
     player.play(first)
     idle()
 
-    players.single().invokeErrorListener(1, 0)
+    reportError()
 
     assertEquals(PlayerState.Failed(first), player.state.value)
     assertEquals(State.END, players.single().state)
   }
 
-  /** Breaks if an IOException while loading is not turned into Failed. */
+  /** Breaks if an IOException while loading is not turned into Failed, with a loading reason. */
   @Test
   fun play_failsWhenTheNoteCannotBeLoaded() {
     ShadowMediaPlayer.addException(DataSource.toDataSource(context, first.toUri()), IOException())
@@ -111,6 +174,7 @@ class AndroidVoicePlayerTest {
 
     assertEquals(PlayerState.Failed(first), player.state.value)
     assertEquals(State.END, players.single().state)
+    assertEquals("Cannot load the voice note", lastLoggedError())
   }
 
   /** Breaks if a URL the player cannot use crashes instead of giving Failed. */
@@ -144,7 +208,7 @@ class AndroidVoicePlayerTest {
   fun play_afterAFailureStartsAgain() {
     player.play(first)
     idle()
-    players.single().invokeErrorListener(1, 0)
+    reportError()
 
     player.play(first)
     idle()
@@ -363,7 +427,7 @@ class AndroidVoicePlayerTest {
     assertEquals(State.STARTED, players[1].state)
   }
 
-  /** Breaks if a pause refused by the MediaPlayer leaves the note Playing instead of Failed. */
+  /** Breaks if a refused pause leaves the note Playing, or is logged as another failure. */
   @Test
   fun pause_failsAndFreesThePlayerWhenThePlayerRefusesIt() {
     player.play(first)
@@ -375,10 +439,11 @@ class AndroidVoicePlayerTest {
     player.pause()
 
     assertEquals(PlayerState.Failed(first), player.state.value)
-    assertEquals(State.END, players.single().state)
+    assertEquals(1, players.single().releaseCount())
+    assertEquals("The player refused to pause the voice note", lastLoggedError())
   }
 
-  /** Breaks if a start refused by the MediaPlayer leaves the note Paused instead of Failed. */
+  /** Breaks if a refused start leaves the note Paused, or is logged as another failure. */
   @Test
   fun resume_failsAndFreesThePlayerWhenThePlayerRefusesIt() {
     player.play(first)
@@ -391,7 +456,8 @@ class AndroidVoicePlayerTest {
     player.resume()
 
     assertEquals(PlayerState.Failed(first), player.state.value)
-    assertEquals(State.END, players.single().state)
+    assertEquals(1, players.single().releaseCount())
+    assertEquals("The player refused to resume the voice note", lastLoggedError())
   }
 
   /** Breaks if a player error while paused leaves the state Paused. */
@@ -401,13 +467,243 @@ class AndroidVoicePlayerTest {
     idle()
     player.pause()
 
-    players.single().invokeErrorListener(1, 0)
+    reportError()
 
     assertEquals(PlayerState.Failed(first), player.state.value)
     assertEquals(State.END, players.single().state)
   }
 
+  /** Breaks if the position is not updated about every 100 ms, or stops moving while playing. */
+  @Test
+  fun position_isUpdatedAboutEvery100MillisecondsWhilePlaying() {
+    player.play(first)
+    idle()
+
+    idle(Duration.ofMillis(100))
+    val after100 = player.position.value
+    idle(Duration.ofMillis(100))
+    val after200 = player.position.value
+    idle(Duration.ofMillis(2_000))
+
+    assertTrue(after100 > Duration.ZERO)
+    assertTrue(after200 > after100)
+    assertTrue(player.position.value >= after200 + Duration.ofMillis(1_900))
+  }
+
+  /** Breaks if the position moves while paused, or is lost on pause and resume. */
+  @Test
+  fun position_isKeptWhilePausedAndContinuesOnResume() {
+    player.play(first)
+    idle(Duration.ofMillis(2_000))
+    player.pause()
+    val pausedAt = player.position.value
+
+    idle(Duration.ofMillis(3_000))
+    assertEquals(pausedAt, player.position.value)
+    assertTrue(pausedAt >= Duration.ofMillis(1_900))
+
+    player.resume()
+    idle(Duration.ofMillis(1_000))
+
+    assertTrue(player.position.value >= pausedAt + Duration.ofMillis(900))
+  }
+
+  /** Breaks if stop keeps the old position. */
+  @Test
+  fun position_isResetWhenTheNoteStops() {
+    player.play(first)
+    idle(Duration.ofMillis(2_000))
+
+    player.stop()
+
+    assertEquals(Duration.ZERO, player.position.value)
+  }
+
+  /** Breaks if the position stays at the end of a note that finished. */
+  @Test
+  fun position_isResetWhenTheNoteEnds() {
+    player.play(first)
+    idle(Duration.ofMillis(DURATION_MS + 1_000L))
+
+    assertEquals(Duration.ZERO, player.position.value)
+  }
+
+  /** Breaks if pausing does not read the exact position when it falls between two updates. */
+  @Test
+  fun pause_readsTheExactPositionBetweenTwoUpdates() {
+    player.play(first)
+    idle(Duration.ofMillis(2_025))
+
+    player.pause()
+
+    assertEquals(
+        Duration.ofMillis(mediaPlayers.single().currentPosition.toLong()),
+        player.position.value,
+    )
+    assertTrue(player.position.value > Duration.ofMillis(2_000))
+  }
+
+  /** Breaks if a failed note keeps its position. */
+  @Test
+  fun position_isResetWhenTheNoteFails() {
+    player.play(first)
+    idle(Duration.ofMillis(2_000))
+
+    players.single().invokeErrorListener(1, 0)
+
+    assertEquals(Duration.ZERO, player.position.value)
+  }
+
+  /** Breaks if seekTo does not move a playing note, or the position stops following it after. */
+  @Test
+  fun seekTo_movesAPlayingNoteAndThePositionKeepsFollowingIt() {
+    player.play(first)
+    idle()
+
+    player.seekTo(Duration.ofSeconds(10))
+
+    assertEquals(Duration.ofSeconds(10), player.position.value)
+    assertEquals(PlayerState.Playing(first), player.state.value)
+    idle(Duration.ofSeconds(1))
+    assertTrue(player.position.value >= Duration.ofMillis(10_900))
+  }
+
+  /** Breaks if seekTo on a paused note moves the position back or resumes the note. */
+  @Test
+  fun seekTo_movesThePositionWhilePausedAndStaysPaused() {
+    player.play(first)
+    idle(Duration.ofMillis(2_000))
+    player.pause()
+
+    player.seekTo(Duration.ofSeconds(5))
+    idle(Duration.ofSeconds(1))
+
+    assertEquals(Duration.ofSeconds(5), player.position.value)
+    assertEquals(PlayerState.Paused(first), player.state.value)
+  }
+
+  /** Breaks if seekTo goes before the start or after the end of the note. */
+  @Test
+  fun seekTo_isClampedToTheNote() {
+    player.play(first)
+    idle()
+
+    player.seekTo(Duration.ofSeconds(100))
+    assertEquals(Duration.ofMillis(DURATION_MS.toLong()), player.position.value)
+
+    player.seekTo(Duration.ofSeconds(-5))
+    assertEquals(Duration.ZERO, player.position.value)
+  }
+
+  /** Breaks if seekTo on a note of unknown length crashes or moves the position. */
+  @Test
+  fun seekTo_doesNothingWhenTheLengthIsUnknown() {
+    player.play(first)
+    (players.single() as ReleaseCountingShadowMediaPlayer).lengthUnknown = true
+    idle()
+
+    player.seekTo(Duration.ofSeconds(5))
+
+    assertEquals(Duration.ZERO, player.position.value)
+    assertEquals(PlayerState.Playing(first), player.state.value)
+  }
+
+  /** Breaks if seekTo while loading or with nothing playing changes anything or crashes. */
+  @Test
+  fun seekTo_doesNothingWhileLoadingOrWhenNothingPlays() {
+    player.seekTo(Duration.ofSeconds(5))
+    assertEquals(Duration.ZERO, player.position.value)
+
+    player.play(first)
+    player.seekTo(Duration.ofSeconds(5))
+
+    assertEquals(Duration.ZERO, player.position.value)
+    assertEquals(PlayerState.Playing(first), player.state.value)
+  }
+
+  /** Breaks if a note that does not load within 10 seconds stays Playing or keeps its player. */
+  @Test
+  fun play_failsAndFreesThePlayerWhenTheNoteDoesNotLoadInTime() {
+    stallLoading()
+    player.play(first)
+
+    idle(Duration.ofMillis(TIMEOUT_MS - 1))
+    assertEquals(PlayerState.Playing(first), player.state.value)
+
+    idle(Duration.ofMillis(1))
+
+    assertEquals(PlayerState.Failed(first), player.state.value)
+    assertEquals(1, players.single().releaseCount())
+    assertEquals("The voice note did not load in time", lastLoggedError())
+  }
+
+  /** Breaks if a note that is ready in time is failed by the timeout afterwards. */
+  @Test
+  fun play_aNoteReadyInTimeIsNotFailedByTheTimeout() {
+    player.play(first)
+    idle()
+
+    idle(Duration.ofMillis(AFTER_TIMEOUT_MS))
+
+    assertEquals(PlayerState.Playing(first), player.state.value)
+    assertEquals(State.STARTED, players.single().state)
+  }
+
+  /** Breaks if a note paused while it loaded, then ready in time, is failed by the timeout. */
+  @Test
+  fun pause_whileLoadingThenReadyInTimeIsNotFailedByTheTimeout() {
+    player.play(first)
+    player.pause()
+    idle()
+
+    idle(Duration.ofMillis(AFTER_TIMEOUT_MS))
+
+    assertEquals(PlayerState.Paused(first), player.state.value)
+    assertEquals(State.PREPARED, players.single().state)
+  }
+
+  /** Breaks if a stopped note is later reported as Failed by its timeout. */
+  @Test
+  fun stop_whileLoadingCancelsTheTimeout() {
+    stallLoading()
+    player.play(first)
+    player.stop()
+
+    idle(Duration.ofMillis(AFTER_TIMEOUT_MS))
+
+    assertEquals(PlayerState.Idle, player.state.value)
+  }
+
+  /** Breaks if the timeout of a replaced note fails the note that replaced it. */
+  @Test
+  fun play_aSecondNoteIsNotFailedByTheFirstNotesTimeout() {
+    stallLoading()
+    player.play(first)
+    player.play(second)
+    idle()
+
+    idle(Duration.ofMillis(AFTER_TIMEOUT_MS))
+
+    assertEquals(PlayerState.Playing(second), player.state.value)
+  }
+
+  /** Breaks if a note paused while it is stuck loading stays Paused for ever. */
+  @Test
+  fun pause_whileLoadingStillFailsWhenTheNoteDoesNotLoadInTime() {
+    stallLoading()
+    player.play(first)
+    player.pause()
+
+    idle(Duration.ofMillis(TIMEOUT_MS))
+
+    assertEquals(PlayerState.Failed(first), player.state.value)
+    assertEquals(1, players.single().releaseCount())
+  }
+
   private companion object {
     const val DURATION_MS = 14_000
+    const val STALLED_MS = 1_000_000
+    const val TIMEOUT_MS = 10_000L
+    const val AFTER_TIMEOUT_MS = 11_000L
   }
 }

@@ -54,8 +54,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
+import com.android.festivar.model.event.DEFAULT_ROLE
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.joinCodeOf
+import com.android.festivar.model.event.role.Role
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.EditDeleteMenu
@@ -522,6 +524,10 @@ private fun previewEvent(): Event {
       ownerId = PREVIEW_OWNER_ID,
       title = "Fête de l'Asso 2026",
       members = previewMembers,
+      roles =
+          previewMembers.associate {
+            it.uid to if (it.uid == PREVIEW_OWNER_ID) Role.OWNER else DEFAULT_ROLE
+          },
       startDate = eventStartDate,
       endDate = eventEndDate,
       location = "Parc de Vidy, Lausanne",

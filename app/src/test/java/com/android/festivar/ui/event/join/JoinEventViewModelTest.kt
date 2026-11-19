@@ -8,6 +8,7 @@ import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.model.event.role.Role
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryLocal
@@ -346,10 +347,12 @@ class JoinEventViewModelTest {
     )
   }
 
+  /**
+   * Breaks if a member whose user lost the event cannot open it, or if the event is written again.
+   */
   @Test
   fun aMemberMissingTheEventOnTheUserSideOpensItAndOnlyTheUserSideIsRepaired() {
-    val withAda =
-        CountingEvents(EventsRepositoryLocal(listOf(fete.copy(members = listOf(sami, ada)))))
+    val withAda = CountingEvents(EventsRepositoryLocal(listOf(fete.addMember(ada))))
     val viewModel = viewModel(userId = ada.uid, eventsRepository = withAda)
     viewModel.setCode("FETE20")
     assertTrue(viewModel.uiState.value.matches.single().isMember)
@@ -628,6 +631,7 @@ class JoinEventViewModelTest {
     assertEquals("X", viewModel.uiState.value.code)
   }
 
+  /** Breaks if events sharing a join code are not all listed, or joining one changes the other. */
   @Test
   fun twoEventsSharingACodeAreBothListedAndJoiningOneLeavesTheOtherAlone() {
     // fete2026 and fete2026-bis both give FETE20.
@@ -637,6 +641,7 @@ class JoinEventViewModelTest {
             ownerId = "other-owner",
             title = "Fete bis",
             members = listOf(User("other-owner")),
+            roles = mapOf("other-owner" to Role.OWNER),
         )
     val colliding = EventsRepositoryLocal(listOf(fete, bis, noel))
     val viewModel = viewModel(eventsRepository = colliding)
