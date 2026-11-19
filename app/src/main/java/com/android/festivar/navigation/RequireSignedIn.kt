@@ -4,7 +4,6 @@ package com.android.festivar.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.remember
 import androidx.navigation.NavHostController
 import com.android.festivar.model.datarepository.DataRepository
 import com.google.firebase.auth.FirebaseUser
@@ -31,8 +30,7 @@ fun RequireSignedIn(
   // Cold flow: collecting starts when the route is drawn and is cancelled when it leaves the
   // composition. Reading the state below makes the gate recompose on each change.
   val currentUser =
-      remember(authRepository) { authRepository.currentUserFlow }
-          .collectAsState(initial = authRepository.currentUser)
+      authRepository.currentUserFlow.collectAsState(initial = authRepository.currentUser)
   // One read per composition, into a local so the null check below smart-casts: `.value` could
   // change between two reads. A later change recomposes the gate and takes a new snapshot.
   val firebaseUser = currentUser.value
