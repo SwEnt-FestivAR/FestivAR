@@ -70,15 +70,25 @@ internal fun applySavedSettings(context: Context) {
 
   // Synchronize OS-level locale changes (from Android System Settings) back to SharedPreferences.
   val currentLocales = AppCompatDelegate.getApplicationLocales()
-  if (!currentLocales.isEmpty) {
+  if (!currentLocales.isEmpty) { // Checks if android settings are default/system
     val lang = currentLocales[0]?.language
     if (lang == "fr" || lang == "en") {
       preferences.edit { putString("language", lang) }
+      applyLanguagePreference(lang)
+    } else {
+      if (preferences.contains("language")) {
+        applyLanguagePreference(preferences.getString("language", "system") ?: "system")
+      }
     }
-  }
-
-  if (preferences.contains("language")) {
-    applyLanguagePreference(preferences.getString("language", "system") ?: "system")
+  } else {
+    // When application locales are empty (system default or reset to system),
+    // if SharedPreferences holds a stale stored "en" or "fr" preference, synchronize it to "system"
+    // so it does not override the system setting.
+    val savedLang = preferences.getString("language", "system")
+    if (preferences.contains("language") && (savedLang == "fr" || savedLang == "en")) {
+      preferences.edit { putString("language", "system") }
+    }
+    applyLanguagePreference("system")
   }
 }
 

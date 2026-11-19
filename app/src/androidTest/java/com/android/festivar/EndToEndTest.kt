@@ -1,6 +1,7 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.festivar
 
 import android.util.Log
@@ -497,6 +498,8 @@ class EndToEndTest {
     waitUntilTagExists(TaskDetailsScreenTestTags.MARK_DONE_BUTTON)
     assertTheStatusIs(R.string.details_status_yours)
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MARK_DONE_BUTTON).performClick()
+    waitUntilTagExists(TaskDetailsScreenTestTags.MARK_DONE_CONFIRM_BUTTON)
+    composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.MARK_DONE_CONFIRM_BUTTON).performClick()
     waitUntilTagGone(TaskDetailsScreenTestTags.MARK_DONE_BUTTON)
     assertTheStatusIs(R.string.details_status_done)
     composeTestRule.onNodeWithTag(TaskDetailsScreenTestTags.GIVE_BACK_BUTTON).assertDoesNotExist()

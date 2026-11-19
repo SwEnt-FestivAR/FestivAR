@@ -1,6 +1,7 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.festivar.ui.task.details
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -381,6 +382,42 @@ class TaskDetailsViewModelTest {
     vm.markDone()
     assertTrue(stored().completed)
     assertEquals(TaskStatus.DONE, vm.uiState.value.status)
+  }
+
+  @Test
+  fun requestMarkDone_showsTheMarkDoneConfirmation() {
+    val vm = viewModel(task(assignees = listOf(me)))
+    vm.requestMarkDone()
+    assertTrue(vm.uiState.value.showMarkDoneConfirmation)
+    assertFalse(stored().completed)
+  }
+
+  @Test
+  fun dismissMarkDoneConfirmation_hidesTheConfirmationWithoutCompleting() {
+    val vm = viewModel(task(assignees = listOf(me)))
+    vm.requestMarkDone()
+    assertTrue(vm.uiState.value.showMarkDoneConfirmation)
+    vm.dismissMarkDoneConfirmation()
+    assertFalse(vm.uiState.value.showMarkDoneConfirmation)
+    assertFalse(stored().completed)
+  }
+
+  @Test
+  fun markDone_clearsConfirmationAndCompletesTheTask() {
+    val vm = viewModel(task(assignees = listOf(me)))
+    vm.requestMarkDone()
+    assertTrue(vm.uiState.value.showMarkDoneConfirmation)
+    vm.markDone()
+    assertFalse(vm.uiState.value.showMarkDoneConfirmation)
+    assertTrue(stored().completed)
+    assertEquals(TaskStatus.DONE, vm.uiState.value.status)
+  }
+
+  @Test
+  fun requestMarkDone_whenNotAllowed_doesNothing() {
+    val vm = viewModel(task())
+    vm.requestMarkDone()
+    assertFalse(vm.uiState.value.showMarkDoneConfirmation)
   }
 
   // Breaks if markDone() reads the task again: it already knows the completed version.

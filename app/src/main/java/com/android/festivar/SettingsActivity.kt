@@ -1,6 +1,7 @@
 // Co-authored-by: Gemini <noreply@google.com>
 package com.android.festivar
 
+import android.content.pm.ActivityInfo
 import android.os.Bundle
 import android.util.TypedValue
 import androidx.appcompat.app.AppCompatActivity
@@ -11,6 +12,13 @@ import com.android.festivar.ui.settings.SettingsFragment
 class SettingsActivity : AppCompatActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
+
+    // Source - https://stackoverflow.com/q/73598309
+    // Posted by Alix Blaine
+    // Retrieved 2026-11-05, License - CC BY-SA 4.0
+
+    this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
+
     setContentView(R.layout.activity_settings)
 
     // 1. Set up the Toolbar as the ActionBar
