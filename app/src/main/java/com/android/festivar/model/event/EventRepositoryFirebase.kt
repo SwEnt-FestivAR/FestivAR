@@ -4,6 +4,7 @@ package com.android.festivar.model.event
 
 import android.util.Log
 import com.android.festivar.model.event.announcement.Announcement
+import com.android.festivar.model.event.role.Role
 import com.android.festivar.model.task.TaskRepositoryFirebase
 import com.android.festivar.model.user.UsersRepositoryFirebase
 import com.google.firebase.firestore.DocumentSnapshot
@@ -16,6 +17,7 @@ import kotlinx.coroutines.tasks.await
 private const val EVENT_COLLECTION_PATH = "events"
 private const val TAG = "EventRepositoryFirebase"
 private const val ANNOUNCEMENTS_FIELD = "announcements"
+private const val ROLES_FIELD = "roles"
 
 class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsRepository {
 
@@ -172,6 +174,57 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
     }
   }
 
+  /**
+   * Reads the roles exactly as they are stored. An absent or null field reads as no role at all,
+   * while any other invalid value is refused, so that an event is never read with made-up roles.
+   *
+   * @param document The stored event.
+   * @return The stored roles, by user id.
+   * @throws IllegalArgumentException If the stored roles are not a map from a user id to the name
+   *   of a [Role].
+   */
+  private fun readRoles(document: DocumentSnapshot): Map<String, Role> {
+    val stored = document.get(ROLES_FIELD) ?: return emptyMap()
+    val invalid = "Invalid role data for event ${document.id}"
+    val map = stored as? Map<*, *> ?: throw IllegalArgumentException("$invalid.")
+    return map.entries.associate { (userId, role) ->
+      require(userId is String && role is String) { "$invalid: $userId=$role." }
+      val storedRole =
+          Role.entries.firstOrNull { it.name == role }
+              ?: throw IllegalArgumentException("$invalid: unknown role '$role'.")
+      userId to storedRole
+    }
+  }
+
+  /**
+   * TEMPORARY, while the database still holds events written before roles existed or by an older
+   * version of the app, which changed `members` without `roles`. Repairs the stored roles so that
+   * they match the members again, instead of making the event unreadable:
+   * - the owner always gets the [Role.OWNER];
+   * - a member without a role, or with the [Role.OWNER] without being the owner, gets the
+   *   [DEFAULT_ROLE];
+   * - the role of a user who is not a member anymore is dropped.
+   *
+   * To remove it once the database is cleared: delete this function and read the roles with
+   * `readRoles(document)` alone in [documentToEvent]. A stored event whose roles do not match its
+   * members is then refused by [Event].
+   *
+   * @param stored The roles as stored, from [readRoles].
+   * @param ownerId The [Event.ownerId] of the stored event.
+   * @param memberIds The [com.android.festivar.model.user.User.uid] of every member of the event.
+   * @return One role for each member, with the [Role.OWNER] for the owner alone.
+   */
+  private fun repairRoles(
+      stored: Map<String, Role>,
+      ownerId: String,
+      memberIds: List<String>,
+  ): Map<String, Role> {
+    return memberIds.associateWith { userId ->
+      if (userId == ownerId) Role.OWNER
+      else stored[userId]?.takeIf { it != Role.OWNER } ?: DEFAULT_ROLE
+    }
+  }
+
   private fun toFirestoreData(event: Event): Map<String, Any?> {
     return mapOf(
         "eventId" to event.eventId,
@@ -179,6 +232,7 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
         "title" to event.title,
         "description" to event.description,
         "members" to event.members.map { it.uid },
+        ROLES_FIELD to event.roles.mapValues { it.value.name },
         "startDate" to event.startDate.toString(),
         "endDate" to event.endDate.toString(),
         "location" to event.location,
@@ -218,6 +272,8 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
                 ?: throw IllegalArgumentException("Event '${document.id}' has missing title"),
         description = document.getString("description") ?: "",
         members = members,
+        // TEMPORARY repair, see repairRoles: `roles = readRoles(document)` once it is removed.
+        roles = repairRoles(readRoles(document), ownerId, members.map { it.uid }),
         startDate = ZonedDateTime.parse(document.getString("startDate")),
         endDate = ZonedDateTime.parse(document.getString("endDate")),
         location = document.getString("location") ?: "",
