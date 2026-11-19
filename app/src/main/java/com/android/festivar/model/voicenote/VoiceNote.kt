@@ -25,7 +25,8 @@ import java.time.format.DateTimeParseException
  * @property duration Length of the recording.
  * @property createdAt When the note was recorded.
  * @property waveform The loudness of the recording as bars between 0 and 1, taken while recording.
- *   Empty for a note stored before waveforms existed.
+ *   Empty when the level is not known: for a note stored before waveforms existed, and for a
+ *   recording whose level could not be read. An empty waveform means unknown, not silence.
  */
 data class VoiceNote(
     val id: String,
