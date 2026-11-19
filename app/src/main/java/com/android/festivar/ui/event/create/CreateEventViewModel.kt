@@ -4,12 +4,16 @@ package com.android.festivar.ui.event.create
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 
+import android.content.ContentResolver
+import android.net.Uri
 import android.util.Log
+import android.webkit.MimeTypeMap
 import androidx.annotation.StringRes
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
 import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.event.Event
+import com.android.festivar.model.images.StoredImage
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.DateTimeRange
@@ -21,15 +25,24 @@ import com.android.festivar.ui.event.computeStartDateTime
 import com.android.festivar.ui.event.isEventFormValid
 import com.android.festivar.ui.event.validateEventName
 import com.android.festivar.ui.event.validateStartDate
+import com.android.festivar.ui.profile.isProfilePictureTooLarge
+import java.io.File
+import java.io.FileOutputStream
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+
+private const val LOG_TAG = "CreateEventViewModel"
 
 /**
  * UI state of the create event form.
@@ -105,6 +118,7 @@ data class CreateEventUIState(
         startDate = startDateTime!!,
         endDate = endDateTime!!,
         location = venue,
+        imageUrl = imageUrl ?: "",
     )
   }
 }
@@ -125,9 +139,12 @@ class CreateEventViewModel(
     private val dataRepository: DataRepository,
     private val userId: String = "",
     private val saveTimeoutMs: Long = SAVE_TIMEOUT_MS,
+    private val ioDispatcher: CoroutineDispatcher = IO,
 ) : EventFormViewModel<CreateEventUIState>(CreateEventUIState()) {
   val uiState: StateFlow<CreateEventUIState> = formState
   private var pendingEventId: String? = null
+
+  private val imageStorage = dataRepository.imageStorage
 
   /** Whether leaving the form would discard any entered event details. */
   val needsDiscardConfirmation: Boolean
@@ -249,6 +266,99 @@ class CreateEventViewModel(
     updateState {
       if (alreadySaved) it.copy(isSaving = false, createdEventId = eventId)
       else it.copy(isSaving = false, errorMsg = R.string.create_event_error_save_failed)
+    }
+  }
+
+  private fun deleteTemporaryImage(file: File) {
+    if (file.exists() && !file.delete()) {
+      Log.w(LOG_TAG, "Could not delete temporary image ${file.path}")
+    }
+  }
+
+  private suspend fun saveImage(storedImage: StoredImage) {
+    val oldImageUrl = uiState.value.imageUrl
+    var newImageUrl: String? = null
+    try {
+      newImageUrl = imageStorage.upload(storedImage, "events")
+      var oldImageDeletionFailed = false
+      if (!oldImageUrl.isNullOrBlank() && oldImageUrl != newImageUrl) {
+        try {
+          imageStorage.delete(oldImageUrl)
+        } catch (e: CancellationException) {
+          throw e
+        } catch (e: Exception) {
+          Log.e(LOG_TAG, "Error deleting old event image", e)
+          oldImageDeletionFailed = true
+        }
+      }
+      updateState {
+        it.copy(
+            imageUrl = newImageUrl,
+            isSaving = false,
+            errorMsg =
+                if (oldImageDeletionFailed) R.string.create_event_error_save_failed else null,
+        )
+      }
+    } catch (e: CancellationException) {
+      throw e
+    } catch (e: Exception) {
+      Log.e(LOG_TAG, "Error saving event image", e)
+      newImageUrl?.let { uploadedUrl ->
+        try {
+          imageStorage.delete(uploadedUrl)
+        } catch (cleanupError: Exception) {
+          Log.e(LOG_TAG, "Error cleaning up event image", cleanupError)
+        }
+      }
+      updateState { it.copy(isSaving = false, errorMsg = R.string.create_event_error_save_failed) }
+    }
+  }
+
+  @OptIn(ExperimentalStdlibApi::class)
+  fun updateImage(uri: Uri, contentResolver: ContentResolver, cacheDir: File) {
+    updateState { it.copy(isSaving = true, errorMsg = null) }
+    viewModelScope.launch {
+      var temporaryFile: File? = null
+      try {
+        val extension =
+            MimeTypeMap.getSingleton().getExtensionFromMimeType(contentResolver.getType(uri))
+                ?: "jpg"
+        val storedImage: StoredImage? =
+            withContext(ioDispatcher) {
+              val file = File.createTempFile("temp-event-image-", ".$extension", cacheDir)
+              try {
+                val input =
+                    contentResolver.openInputStream(uri) ?: error("Unable to read selected image.")
+                input.use { FileOutputStream(file).use { output -> input.copyTo(output) } }
+                if (isProfilePictureTooLarge(file.length())) {
+                  deleteTemporaryImage(file)
+                  null
+                } else {
+                  StoredImage(file)
+                }
+              } catch (e: Exception) {
+                deleteTemporaryImage(file)
+                throw e
+              }
+            }
+        if (storedImage == null) {
+          updateState { it.copy(isSaving = false, errorMsg = R.string.profile_picture_too_large) }
+        } else {
+          temporaryFile = storedImage.file
+          saveImage(storedImage)
+        }
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        Log.e(LOG_TAG, "Unable to read selected image", e)
+        updateState {
+          it.copy(isSaving = false, errorMsg = R.string.create_event_error_save_failed)
+        }
+      } finally {
+        temporaryFile?.let { file ->
+          withContext(NonCancellable + ioDispatcher) { deleteTemporaryImage(file) }
+        }
+      }
     }
   }
 }

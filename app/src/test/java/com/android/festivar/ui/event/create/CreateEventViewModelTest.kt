@@ -76,6 +76,17 @@ class CreateEventViewModelTest {
     assertEquals("Bring the stage equipment", state.notes)
   }
 
+  /** Breaks if the created event does not include the uploaded image URL. */
+  @Test
+  fun toEventIncludesImageUrl() {
+    fillAllFields()
+    val event =
+        viewModel.uiState.value
+            .copy(imageUrl = "https://example.com/image.png")
+            .toEvent("event-1", creator)
+    assertEquals("https://example.com/image.png", event.imageUrl)
+  }
+
   /** Red if any date/time picker fails to update its field or close afterward. */
   @Test
   fun pickerActionsUpdateAndCloseThePicker() {
