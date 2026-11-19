@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Fable 5.2 <noreply@anthropic.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.announcement.edit
 
 import androidx.activity.ComponentActivity
@@ -45,8 +46,9 @@ private const val UI_WAIT_TIMEOUT = 5_000L
 
 /**
  * The Edit announcement screen on its ViewModel and an in-memory repository: what it shows while
- * loading, loaded, failed and for a user who is not the organizer, what a save stores, and when
- * going back asks first. The rules themselves are unit tested in `EditAnnouncementViewModelTest`.
+ * loading, loaded, failed and for a user who is not the organizer, what a save stores, and that it
+ * passes its state, texts and actions to the shared form. The rules themselves are unit tested in
+ * `EditAnnouncementViewModelTest`, and the shared form in `AnnouncementFormUiTest`.
  */
 class EditAnnouncementScreenTest {
   // The same rule as CreateAnnouncementScreenTest, not the v2 one: the screen collects the state at
@@ -278,26 +280,8 @@ class EditAnnouncementScreenTest {
     assertEquals(0, backCount)
   }
 
-  // Breaks if the screen drops the edited flags of the form, so that an emptied field shows no
-  // error, if a message is shown under the wrong field, or if an empty field can be saved.
-  @Test
-  fun emptyingTheFieldsShowsTheirErrorsAndDisablesSave() {
-    showLoadedScreen()
-
-    editTitle("")
-    composeTestRule
-        .onNodeWithTag(Tags.TITLE_ERROR)
-        .assertTextEquals(string(R.string.field_error_empty_announcement_title))
-    composeTestRule.onNodeWithTag(Tags.DESCRIPTION_ERROR).assertDoesNotExist()
-
-    editDescription("")
-    composeTestRule
-        .onNodeWithTag(Tags.DESCRIPTION_ERROR)
-        .assertTextEquals(string(R.string.field_error_empty_announcement_content))
-    saveButton().assertIsNotEnabled()
-  }
-
-  // Breaks if a failed save is not shown, or replaces the form with the load error. The retry is in
+  // Breaks if the screen does not pass its save error to the form, if it replaces the form with the
+  // load error, or if a failed save locks Save or loses the edit. The retry is in
   // EditAnnouncementViewModelTest.
   @Test
   fun aFailedSaveShowsTheErrorAndKeepsTheEdit() {
@@ -318,15 +302,17 @@ class EditAnnouncementScreenTest {
     assertEquals(0, savedCount)
   }
 
-  // Breaks if the spinner is not shown or has no screen reader label, if Save can be tapped again
-  // or an input edited during the save, or if the save reports success early or never finishes.
+  // Breaks if the screen does not pass a running save to the form (spinner, Save and inputs), if
+  // either back acts during the save, if the back handler is turned off so that system back closes
+  // the activity, or if the save reports success early, stops, or lets a back pressed during it
+  // fire
+  // once it ends.
   @Test
-  fun aRunningSaveShowsTheIndicatorAndLocksTheForm() {
+  fun aRunningSaveLocksTheFormAndBackUntilItFinishes() {
     val gate = CompletableDeferred<Unit>()
     beforeEdit = { gate.await() }
     showLoadedScreen()
     editTitle("Gates open at 17:00")
-
     saveButton().performClick()
 
     composeTestRule
@@ -334,72 +320,37 @@ class EditAnnouncementScreenTest {
         .assertContentDescriptionEquals(string(R.string.edit_announcement_saving))
     saveButton().assertIsNotEnabled()
     inputs().forEach { it.assertIsNotEnabled() }
-    assertEquals(0, savedCount)
-    assertEquals(announcement, stored())
-
-    gate.complete(Unit)
-    waitUntilSaved()
-    assertEquals(1, savedCount)
-    assertEquals("Gates open at 17:00", stored().title)
-  }
-
-  // Breaks if either back leaves or asks during the save, also right after the tap, before the
-  // screen is redrawn, if the back handler is turned off so that system back closes the activity,
-  // or if a back pressed during the save fires once it ends.
-  @Test
-  fun backDoesNothingDuringARunningSaveAndTheSaveFinishes() {
-    val gate = CompletableDeferred<Unit>()
-    beforeEdit = { gate.await() }
-    showLoadedScreen()
-    editTitle("Gates open at 17:00")
-    saveButton().performClick()
-
     pressSystemBack()
     composeTestRule.onNodeWithTag(Tags.BACK_BUTTON).performClick()
 
     assertEquals(0, backCount)
+    assertEquals(0, savedCount)
+    assertEquals(announcement, stored())
     assertFalse(composeTestRule.activity.isFinishing)
     composeTestRule.onNodeWithTag(Tags.DISCARD_DIALOG).assertDoesNotExist()
 
     gate.complete(Unit)
     waitUntilSaved()
+    assertEquals(1, savedCount)
     assertEquals("Gates open at 17:00", stored().title)
     assertEquals(0, backCount)
     composeTestRule.onNodeWithTag(Tags.DISCARD_DIALOG).assertDoesNotExist()
   }
 
-  // Breaks if the back arrow leaves an edited form, if the dialog asks with other texts than this
-  // screen's, or if "Keep editing" leaves or loses the text.
+  // Breaks if the screen does not pass its edited state or its dialog texts to the back handling,
+  // or if "Discard" does not leave or stores a part of the edit.
   @Test
-  fun backFromAnEditedFormAsksAndKeepEditingStays() {
+  fun systemBackFromAnEditedFormAsksWithTheEditTextsAndDiscardLeaves() {
     showLoadedScreen()
     editTitle("Gates open at 17:00")
 
-    composeTestRule.onNodeWithTag(Tags.BACK_BUTTON).performClick()
-    composeTestRule.onNodeWithTag(Tags.DISCARD_DIALOG).assertIsDisplayed()
+    pressSystemBack()
     composeTestRule
         .onNodeWithText(string(R.string.edit_announcement_discard_title))
         .assertIsDisplayed()
     composeTestRule
         .onNodeWithText(string(R.string.edit_announcement_discard_message))
         .assertIsDisplayed()
-    assertEquals(0, backCount)
-
-    composeTestRule.onNodeWithTag(Tags.KEEP_EDITING_BUTTON).performClick()
-    composeTestRule.onNodeWithTag(Tags.DISCARD_DIALOG).assertDoesNotExist()
-    composeTestRule.onNodeWithTag(Tags.TITLE_FIELD).assertTextContains("Gates open at 17:00")
-    assertEquals(0, backCount)
-  }
-
-  // Breaks if the system back button skips the question, if "Discard" does not leave or leaves
-  // twice, or if discarding stores a part of the edit.
-  @Test
-  fun systemBackFromAnEditedFormAsksAndDiscardLeavesTheAnnouncementAsStored() {
-    showLoadedScreen()
-    editTitle("Gates open at 17:00")
-
-    pressSystemBack()
-    composeTestRule.onNodeWithTag(Tags.DISCARD_DIALOG).assertIsDisplayed()
     assertEquals(0, backCount)
 
     composeTestRule.onNodeWithTag(Tags.DISCARD_BUTTON).performClick()
