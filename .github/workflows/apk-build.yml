@@ -43,6 +43,16 @@ jobs:
             exit 1
           fi
 
+      - name: Write the Maps API key
+        env:
+          MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
+        run: |
+          if [ -n "$MAPS_API_KEY" ]; then
+            echo "MAPS_API_KEY=$MAPS_API_KEY" >> local.properties
+          else
+            echo "::warning::The MAPS_API_KEY secret is not set, the map will show no tiles."
+          fi
+
       - name: Build debug APK
         env:
           ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/festivar-ci.jks
@@ -50,6 +60,15 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: ./gradlew assembleDebug
+
+      - name: Check the Maps key reached the manifest
+        env:
+          MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
+        run: |
+          if [ -n "$MAPS_API_KEY" ] && grep -rq DEFAULT_API_KEY app/build/intermediates/merged_manifests/debug; then
+            echo "::error::The merged manifest still holds the placeholder key, the secrets plugin did not apply."
+            exit 1
+          fi
 
       - name: Upload APK
         uses: actions/upload-artifact@v5

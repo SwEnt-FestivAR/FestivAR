@@ -3,6 +3,7 @@
 // Co-authored-by: Gemini <noreply@google.com>
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.navigation.task
 
 import androidx.compose.runtime.Composable
@@ -82,7 +83,9 @@ fun NavGraphBuilder.taskGraph(
     // refuses to save (redirect left to #261).
     val currentUserId: () -> String = { dataRepository.authRepository.currentUser?.uid.orEmpty() }
     // Leaving the screen, whether the task was created or not, goes back to the task overview.
-    val leave: () -> Unit = { navController.popBackStack() }
+    val leave: () -> Unit = {
+      if (navController.currentBackStackEntry == backStackEntry) navController.popBackStack()
+    }
     // No key needed: the view model is scoped to this back stack entry, which has its own eventId.
     CreateTaskScreen(
         viewModel = viewModel { CreateTaskViewModel(eventId, currentUserId, dataRepository) },

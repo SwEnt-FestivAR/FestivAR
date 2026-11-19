@@ -1,5 +1,6 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.ui.task.create
 
 import androidx.compose.ui.test.assert
@@ -23,6 +24,7 @@ import com.android.festivar.ui.components.LONG_TEXT_MAX_LENGTH
 import com.android.festivar.ui.components.checkTheOnlyCounterIsUnder
 import java.time.Duration
 import java.time.LocalDate
+import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -236,6 +238,27 @@ class CreateTaskScreenInstrumentedTest : CreateTaskTest() {
     composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.SAVE_ERROR).assertDoesNotExist()
     assertEquals(titleOnlyForm.title, savedTasks().single().title)
     assertEquals(1, createdCount)
+  }
+
+  @Test
+  fun savingBlocksBackAndDisablesInputsUntilSaveFinishes() {
+    addTaskGate = CompletableDeferred()
+    composeTestRule.enterCreateTaskDetails(titleOnlyForm)
+    composeTestRule.clickOnCreate()
+
+    composeTestRule.waitUntil(UI_WAIT_TIMEOUT) { viewModel.uiState.value.isSaving }
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.TITLE_FIELD).assertIsNotEnabled()
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.DESCRIPTION_FIELD).assertIsNotEnabled()
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.BACK_BUTTON).performClick()
+    Espresso.pressBack()
+    composeTestRule.waitForIdle()
+
+    assertEquals(0, backCount)
+    assertTrue(viewModel.uiState.value.isSaving)
+
+    addTaskGate?.complete(Unit)
+    composeTestRule.waitUntil(UI_WAIT_TIMEOUT) { createdCount == 1 }
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.TITLE_FIELD).assertIsEnabled()
   }
 
   @Test
