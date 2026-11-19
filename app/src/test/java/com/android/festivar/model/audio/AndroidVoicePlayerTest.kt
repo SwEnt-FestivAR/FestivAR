@@ -685,6 +685,19 @@ class AndroidVoicePlayerTest {
     assertEquals(State.STARTED, players.single().state)
   }
 
+  /** Breaks if a note paused while it loaded, then ready in time, is failed by the timeout. */
+  @Test
+  fun pause_whileLoadingThenReadyInTimeIsNotFailedByTheTimeout() {
+    player.play(first)
+    player.pause()
+    idle()
+
+    idle(Duration.ofMillis(AFTER_TIMEOUT_MS))
+
+    assertEquals(PlayerState.Paused(first), player.state.value)
+    assertEquals(State.PREPARED, players.single().state)
+  }
+
   /** Breaks if a stopped note is later reported as Failed by its timeout. */
   @Test
   fun stop_whileLoadingCancelsTheTimeout() {
