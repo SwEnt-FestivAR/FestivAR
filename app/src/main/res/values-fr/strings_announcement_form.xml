@@ -1,0 +1,7 @@
+<!-- Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com> -->
+<resources>
+    <string name="announcement_form_back">Retour</string>
+    <string name="announcement_form_field_title">Titre</string>
+    <string name="announcement_form_field_description">Description</string>
+    <string name="announcement_form_field_priority">Priorité</string>
+</resources>

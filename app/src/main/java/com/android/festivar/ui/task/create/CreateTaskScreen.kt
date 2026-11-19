@@ -35,11 +35,11 @@ import com.android.festivar.R
 import com.android.festivar.model.task.Priority
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.DateTimeRange
+import com.android.festivar.ui.components.FestivarChipSelector
 import com.android.festivar.ui.components.FestivarDateTimePickerDialog
 import com.android.festivar.ui.components.FestivarDateTimeRow
 import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.components.FestivarFieldWithError
-import com.android.festivar.ui.components.FestivarPrioritySelector
 import com.android.festivar.ui.components.FestivarStepper
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.components.FieldError
@@ -48,6 +48,7 @@ import com.android.festivar.ui.task.DiscardTaskDialog
 import com.android.festivar.ui.task.TaskFormBackHandling
 import com.android.festivar.ui.task.TaskFormLabels
 import com.android.festivar.ui.task.TaskFormTopBar
+import com.android.festivar.ui.task.priorityLabelRes
 import com.android.festivar.ui.task.taskFormActions
 import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
@@ -246,10 +247,12 @@ fun CreateTaskContent(
           dateErrorTag = CreateTaskScreenTestTags.END_DATE_ERROR,
           timeTag = CreateTaskScreenTestTags.END_TIME_FIELD,
       )
-      FestivarPrioritySelector(
+      FestivarChipSelector(
+          options = Priority.entries,
           selected = state.priority,
           onSelect = actions.onPriorityChange,
           label = stringResource(R.string.create_task_field_priority),
+          optionLabelRes = ::priorityLabelRes,
           enabled = !state.isSaving,
           modifier =
               Modifier.padding(bottom = 8.dp).testTag(CreateTaskScreenTestTags.PRIORITY_SELECTOR),
