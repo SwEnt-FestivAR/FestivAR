@@ -430,6 +430,19 @@ class AndroidVoiceRecorderTest {
     assertEquals(2, amplitudeWarnings())
   }
 
+  /** Breaks if a pause and resume inside one recording log the unreadable amplitude again. */
+  @Test
+  fun amplitudeThatCannotBeRead_isNotLoggedAgainAfterAResume() {
+    ShadowLog.clear()
+    amplitudeFailure = IllegalStateException("not recording")
+    record(tickMillis * 2)
+    recorder.pause()
+    recorder.resume()
+    advance(tickMillis * 2)
+
+    assertEquals(1, amplitudeWarnings())
+  }
+
   private fun amplitudeWarnings() =
       ShadowLog.getLogs().count {
         it.tag == "AndroidVoiceRecorder" &&
