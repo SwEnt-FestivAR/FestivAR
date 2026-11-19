@@ -38,9 +38,10 @@ class MainActivityManifestTest {
   }
 
   /**
-   * Breaks if the Maps API key meta-data leaves the manifest or the build stops filling it: the
-   * Maps SDK reads its key there, and a map crashes at start without it. The value is the
-   * placeholder DEFAULT_API_KEY unless local.properties holds a real key.
+   * Breaks if the Maps API key meta-data leaves the manifest or is left empty: the Maps SDK reads
+   * its key there, and a map crashes at start without it. The value is the key of local.properties
+   * when there is one and the placeholder DEFAULT_API_KEY otherwise, so this cannot tell whether
+   * the secrets plugin works; the APK workflow checks that.
    */
   @Test
   fun theMapsApiKeyIsDeclaredInTheManifest() {
