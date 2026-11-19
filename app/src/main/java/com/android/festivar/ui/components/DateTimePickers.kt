@@ -5,6 +5,7 @@ package com.android.festivar.ui.components
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.AlertDialog
@@ -23,6 +24,10 @@ import androidx.compose.material3.TimePickerDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
@@ -31,12 +36,15 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
 import com.android.festivar.ui.theme.AppTheme
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
+import java.time.temporal.ChronoUnit
 
 /** The date picker works in UTC milliseconds; this is the value that shows [this] date. */
 internal fun LocalDate.toPickerMillis(): Long =
@@ -128,7 +136,48 @@ data class DateTimeRange(
     val startTime: LocalTime? = null,
     val endDate: LocalDate? = null,
     val endTime: LocalTime? = null,
-)
+) {
+  /**
+   * This range with [time] as its start time. The end moves with it so that the duration is kept,
+   * possibly onto the next day. A range that is incomplete, or whose end is not after its start,
+   * keeps its end.
+   */
+  fun withStartTime(time: LocalTime): DateTimeRange {
+    val start = startDate?.atTime(startTime ?: return copy(startTime = time))
+    val end = endDate?.atTime(endTime ?: return copy(startTime = time))
+    if (start == null || end == null || !end.isAfter(start)) return copy(startTime = time)
+    val newEnd = start.toLocalDate().atTime(time).plus(Duration.between(start, end))
+    return copy(startTime = time, endDate = newEnd.toLocalDate(), endTime = newEnd.toLocalTime())
+  }
+
+  /**
+   * [FieldError.END_BEFORE_START] when the range is one day and its end time is not after its start
+   * time, else `null`. The range picker only lets a range end on or after its start, so this is the
+   * only error left on the times.
+   */
+  fun timesError(): FieldError? {
+    val sameDay = startDate != null && startDate == endDate
+    val inOrder = startTime == null || endTime == null || endTime.isAfter(startTime)
+    return if (sameDay && !inOrder) FieldError.END_BEFORE_START else null
+  }
+
+  companion object {
+    /** How long the prefilled range lasts. */
+    private val DEFAULT_DURATION: Duration = Duration.ofHours(2)
+
+    /** The range a new form starts with: from the next full hour after [now], for two hours. */
+    fun prefilled(now: LocalDateTime = LocalDateTime.now()): DateTimeRange {
+      val start = now.truncatedTo(ChronoUnit.HOURS).plusHours(1)
+      val end = start.plus(DEFAULT_DURATION)
+      return DateTimeRange(
+          startDate = start.toLocalDate(),
+          startTime = start.toLocalTime(),
+          endDate = end.toLocalDate(),
+          endTime = end.toLocalTime(),
+      )
+    }
+  }
+}
 
 /** Default start time when a date is selected without an explicit time. */
 val START_OF_DAY: LocalTime = LocalTime.MIDNIGHT
@@ -210,6 +259,97 @@ fun FestivarDateTimeRow(
         enabled = enabled,
         modifier = Modifier.weight(1f).testTag(timeTag),
     )
+  }
+}
+
+/** Test tags of [FestivarDatesRow]. */
+object DatesRowTestTags {
+  const val DATES_FIELD = "datesRowDatesField"
+  const val START_TIME_FIELD = "datesRowStartTimeField"
+  const val END_TIME_FIELD = "datesRowEndTimeField"
+  const val TIMES_ERROR = "datesRowTimesError"
+}
+
+/**
+ * The days and times of a form: one Dates field that opens the range picker, and the Start time and
+ * End time fields side by side. Changing the start time moves the end time with it, and an end that
+ * is not after the start on a one-day range marks both times and shows its message under them.
+ *
+ * @param range The current days and times; the form owns it.
+ * @param onRangeChange Called with the new range after a picker is confirmed.
+ */
+@Composable
+fun FestivarDatesRow(
+    range: DateTimeRange,
+    onRangeChange: (DateTimeRange) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+  // START_DATE stands for the Dates field: the range picker sets both days.
+  var openPicker by rememberSaveable { mutableStateOf<DateTimeField?>(null) }
+  val timesError = range.timesError()
+
+  Column(verticalArrangement = Arrangement.spacedBy(14.dp), modifier = modifier.fillMaxWidth()) {
+    FestivarPickerField(
+        value = range.startDate?.let { formatDateRange(it, range.endDate ?: it) }.orEmpty(),
+        label = stringResource(R.string.dates_row_dates),
+        onClick = { openPicker = DateTimeField.START_DATE },
+        enabled = enabled,
+        modifier = Modifier.testTag(DatesRowTestTags.DATES_FIELD),
+    )
+    FestivarFieldWithError(timesError, DatesRowTestTags.TIMES_ERROR) {
+      Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+        FestivarPickerField(
+            value = range.startTime?.let(::formatTime).orEmpty(),
+            label = stringResource(R.string.dates_row_start_time),
+            onClick = { openPicker = DateTimeField.START_TIME },
+            enabled = enabled,
+            isError = timesError != null,
+            modifier = Modifier.weight(1f).testTag(DatesRowTestTags.START_TIME_FIELD),
+        )
+        FestivarPickerField(
+            value = range.endTime?.let(::formatTime).orEmpty(),
+            label = stringResource(R.string.dates_row_end_time),
+            onClick = { openPicker = DateTimeField.END_TIME },
+            enabled = enabled,
+            isError = timesError != null,
+            modifier = Modifier.weight(1f).testTag(DatesRowTestTags.END_TIME_FIELD),
+        )
+      }
+    }
+  }
+
+  when (openPicker) {
+    DateTimeField.START_DATE ->
+        FestivarDateRangePickerDialog(
+            initialStart = range.startDate,
+            initialEnd = range.endDate,
+            onConfirm = { days ->
+              // Saving no days clears both days; the times stay.
+              onRangeChange(range.copy(startDate = days?.first, endDate = days?.second))
+              openPicker = null
+            },
+            onDismiss = { openPicker = null },
+        )
+    DateTimeField.START_TIME ->
+        FestivarTimePickerDialog(
+            initial = range.startTime,
+            onConfirm = {
+              onRangeChange(range.withStartTime(it))
+              openPicker = null
+            },
+            onDismiss = { openPicker = null },
+        )
+    DateTimeField.END_TIME ->
+        FestivarTimePickerDialog(
+            initial = range.endTime ?: range.startTime,
+            onConfirm = {
+              onRangeChange(range.copy(endTime = it))
+              openPicker = null
+            },
+            onDismiss = { openPicker = null },
+        )
+    else -> Unit
   }
 }
 
