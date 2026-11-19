@@ -44,6 +44,7 @@ import com.google.firebase.auth.FirebaseUser
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import java.util.concurrent.CancellationException
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -317,6 +318,54 @@ class ProfileScreenTest {
     composeTestRule.onNodeWithTag(LoginScreenTestTags.GOOGLE_BUTTON).performClick()
 
     composeTestRule.waitUntil(5_000) { googleUpgradeCalled }
+    composeTestRule
+        .onNodeWithText(string(R.string.profile_anon_upgrade_failed))
+        .assertDoesNotExist()
+  }
+
+  /**
+   * Breaks if upgrading with Google catches a CredentialManager exception and does not show an
+   * error snackbar.
+   */
+  @Test
+  fun googleUpgradeButtonFailureShowsErrorSnackbar() {
+    val credentialManager = mockk<CredentialManager>()
+    coEvery { credentialManager.getCredential(any(), any<GetCredentialRequest>()) } throws
+        RuntimeException("Credential fetch failed")
+
+    val authRepository =
+        object :
+            FakeAuthRepository(
+                currentUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+            ) {}
+    setProfile(authRepository = authRepository, credentialManager = credentialManager)
+
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.UPGRADE_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.GOOGLE_BUTTON).performClick()
+
+    composeTestRule.onNodeWithText(string(R.string.profile_anon_upgrade_failed)).assertIsDisplayed()
+  }
+
+  /**
+   * Breaks if upgrading with Google catches a CancellationException instead of rethrowing it,
+   * showing an error message when cancelled.
+   */
+  @Test
+  fun googleUpgradeButtonCancellationDoesNotShowErrorSnackbar() {
+    val credentialManager = mockk<CredentialManager>()
+    coEvery { credentialManager.getCredential(any(), any<GetCredentialRequest>()) } throws
+        CancellationException("User cancelled credential picker")
+
+    val authRepository =
+        object :
+            FakeAuthRepository(
+                currentUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+            ) {}
+    setProfile(authRepository = authRepository, credentialManager = credentialManager)
+
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.UPGRADE_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.GOOGLE_BUTTON).performClick()
+
     composeTestRule
         .onNodeWithText(string(R.string.profile_anon_upgrade_failed))
         .assertDoesNotExist()
