@@ -26,8 +26,9 @@ class SettingsActivity : AppCompatActivity() {
     setSupportActionBar(toolbar)
 
     // 2. Enable the back arrow
-    supportActionBar?.setDisplayHomeAsUpEnabled(true)
-    supportActionBar?.setDisplayShowHomeEnabled(true)
+    val actionBar = requireNotNull(supportActionBar)
+    actionBar.setDisplayHomeAsUpEnabled(true)
+    actionBar.setDisplayShowHomeEnabled(true)
 
     val typedValue = TypedValue()
     theme.resolveAttribute(android.R.attr.textColorPrimary, typedValue, true)
