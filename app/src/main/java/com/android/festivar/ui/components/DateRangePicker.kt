@@ -210,7 +210,7 @@ private fun DateRangeSummary(start: LocalDate?, end: LocalDate?) {
       val count = ChronoUnit.DAYS.between(start, end).toInt() + 1
       val counted = pluralStringResource(R.plurals.date_range_picker_days, count, count)
       Text(
-          formatDateRange(start, end),
+          formatDateRange(start, end, stringResource(R.string.date_range_join)),
           style = MaterialTheme.typography.labelLarge,
           color = MaterialTheme.colorScheme.onSurface,
           maxLines = 1,

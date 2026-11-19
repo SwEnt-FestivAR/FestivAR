@@ -12,6 +12,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class DateTimeFormattersTest {
+  private val join = "%1\$s to %2\$s"
+
   @Test
   fun formatDate_usesShortWeekdayDayAndMonth() {
     assertEquals("Sat 17 Oct", formatDate(LocalDate.of(2026, 10, 17)))
@@ -32,12 +34,12 @@ class DateTimeFormattersTest {
   fun formatDateRange_omitsWhatTheTwoDaysShare() {
     val day = LocalDate.of(2026, 11, 27)
 
-    assertEquals("Fri 27 Nov", formatDateRange(day, day))
-    assertEquals("Fri 27 to Sun 29 Nov", formatDateRange(day, LocalDate.of(2026, 11, 29)))
-    assertEquals("Fri 27 Nov to Wed 2 Dec", formatDateRange(day, LocalDate.of(2026, 12, 2)))
+    assertEquals("Fri 27 Nov", formatDateRange(day, day, join))
+    assertEquals("Fri 27 to Sun 29 Nov", formatDateRange(day, LocalDate.of(2026, 11, 29), join))
+    assertEquals("Fri 27 Nov to Wed 2 Dec", formatDateRange(day, LocalDate.of(2026, 12, 2), join))
     assertEquals(
         "Fri 27 Nov 2026 to Sat 2 Jan 2027",
-        formatDateRange(day, LocalDate.of(2027, 1, 2)),
+        formatDateRange(day, LocalDate.of(2027, 1, 2), join),
     )
   }
 
@@ -58,7 +60,8 @@ class DateTimeFormattersTest {
                 title = "Event",
                 startDate = start,
                 endDate = sameDayEnd,
-            )
+            ),
+            join,
         ),
     )
     assertEquals(
@@ -70,7 +73,8 @@ class DateTimeFormattersTest {
                 title = "Event",
                 startDate = start,
                 endDate = sameMonthEnd,
-            )
+            ),
+            join,
         ),
     )
     assertEquals(
@@ -82,7 +86,8 @@ class DateTimeFormattersTest {
                 title = "Event",
                 startDate = start,
                 endDate = sameYearDifferentMonthEnd,
-            )
+            ),
+            join,
         ),
     )
     assertEquals(
@@ -94,7 +99,8 @@ class DateTimeFormattersTest {
                 title = "Event",
                 startDate = start,
                 endDate = differentYearEnd,
-            )
+            ),
+            join,
         ),
     )
   }
