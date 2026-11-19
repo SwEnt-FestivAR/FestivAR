@@ -27,6 +27,7 @@ import org.junit.runner.RunWith
 class RequireSignedInTest {
   @get:Rule val composeTestRule = createComposeRule()
 
+  private val startRoute = "start"
   private val routeThatNeedsAUser = "needsAUser"
   private val contentTag = "content"
   private val loginTag = "login"
@@ -37,7 +38,9 @@ class RequireSignedInTest {
         DataRepositoryLocal(authRepository = FakeAuthRepository(currentUser = user))
     composeTestRule.setContent {
       navController = rememberNavController()
-      NavHost(navController, startDestination = routeThatNeedsAUser) {
+      // Starts on a plain screen, so the stack has an entry that the redirect must also clear
+      NavHost(navController, startDestination = startRoute) {
+        composable(startRoute) {}
         composable(routeThatNeedsAUser) {
           RequireSignedIn(navController, dataRepository) { signedIn ->
             Text(signedIn.uid, Modifier.testTag(contentTag))
@@ -46,6 +49,7 @@ class RequireSignedInTest {
         composable(AppScreens.Login.name) { Text("login", Modifier.testTag(loginTag)) }
       }
     }
+    composeTestRule.runOnIdle { navController.navigate(routeThatNeedsAUser) }
     composeTestRule.waitForIdle()
   }
 
