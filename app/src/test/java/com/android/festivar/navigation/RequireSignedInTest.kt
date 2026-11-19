@@ -32,9 +32,11 @@ class RequireSignedInTest {
   private val loginTag = "login"
   private lateinit var navController: NavHostController
 
+  private lateinit var authRepository: FakeAuthRepository
+
   private fun open(user: FirebaseUser?) {
-    val dataRepository =
-        DataRepositoryLocal(authRepository = FakeAuthRepository(currentUser = user))
+    authRepository = FakeAuthRepository(currentUser = user)
+    val dataRepository = DataRepositoryLocal(authRepository = authRepository)
     composeTestRule.setContent {
       navController = rememberNavController()
       NavHost(navController, startDestination = routeThatNeedsAUser) {
@@ -81,5 +83,42 @@ class RequireSignedInTest {
     open(null)
 
     assertNull(navController.previousBackStackEntry)
+  }
+
+  /** Breaks if a sign-out while the route is open is not noticed, leaving the route on screen. */
+  @Test
+  fun aSignOutWhileTheRouteIsOpenSendsTheUserToTheLogin() {
+    open(mockk<FirebaseUser> { every { uid } returns "user-1" })
+
+    composeTestRule.runOnUiThread { authRepository.setCurrentUser(null) }
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(contentTag).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(loginTag).assertExists()
+    assertEquals(AppScreens.Login.name, navController.currentDestination?.route)
+  }
+
+  /** Breaks if a sign-out redirect leaves the route reachable with back. */
+  @Test
+  fun aSignOutWhileTheRouteIsOpenClearsTheBackStack() {
+    open(mockk<FirebaseUser> { every { uid } returns "user-1" })
+
+    composeTestRule.runOnUiThread { authRepository.setCurrentUser(null) }
+    composeTestRule.waitForIdle()
+
+    assertNull(navController.previousBackStackEntry)
+  }
+
+  /** Breaks if the route keeps the user it opened with after another user signs in. */
+  @Test
+  fun anotherUserSigningInWhileTheRouteIsOpenIsHandedToIt() {
+    open(mockk<FirebaseUser> { every { uid } returns "user-1" })
+
+    composeTestRule.runOnUiThread {
+      authRepository.setCurrentUser(mockk<FirebaseUser> { every { uid } returns "user-2" })
+    }
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(contentTag).assertTextEquals("user-2")
   }
 }

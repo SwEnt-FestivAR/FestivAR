@@ -141,6 +141,35 @@ class TaskNavGraphTest {
     assertEquals(AppScreens.Login.name, navController.currentDestination?.route)
   }
 
+  /**
+   * Breaks if signing out on the Create task screen leaves the form on screen, so it can be saved.
+   */
+  @Test
+  fun createTaskRoute_whenTheUserSignsOutOnTheScreen_sendsTheUserToTheLoginAndRemovesTheForm() {
+    lateinit var navController: NavHostController
+    val authRepository =
+        FakeAuthRepository(currentUser = mockk<FirebaseUser> { every { uid } returns "owner-1" })
+    composeTestRule.setContent {
+      AppTheme {
+        navController = rememberNavController()
+        NavHost(navController, startDestination = AppScreens.createTask("event-1")) {
+          composable(AppScreens.Login.name) {}
+          taskGraph(navController, dataRepository(authRepository))
+        }
+      }
+    }
+    composeTestRule
+        .onNodeWithTag(CreateTaskScreenTestTags.TITLE_FIELD)
+        .performTextInput("Run power to stage")
+
+    composeTestRule.runOnUiThread { authRepository.setCurrentUser(null) }
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.TITLE_FIELD).assertDoesNotExist()
+    assertEquals(AppScreens.Login.name, navController.currentDestination?.route)
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.CREATE_BUTTON).assertDoesNotExist()
+  }
+
   // The [route] is opened on top of a "start" screen, to see where leaving goes back to.
   private fun openOnTopOfStart(
       route: String,
