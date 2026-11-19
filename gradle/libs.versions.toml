@@ -29,7 +29,9 @@ preference = "1.2.1"
 mapsCompose = "9.0.1"
 playServicesMaps = "20.0.0"
 secretsGradlePlugin = "2.0.1"
+okhttp = "5.5.0"
 [libraries]
+okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "coreSplashscreen" }
 androidx-preference-ktx = { module = "androidx.preference:preference-ktx", version.ref = "preference" }

@@ -19,6 +19,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.AppTheme"
+        android:localeConfig="@xml/locale_config"
         tools:targetApi="31">
         <meta-data
             android:name="com.google.android.geo.API_KEY"
@@ -27,7 +28,7 @@
             android:name=".SecondActivity"
             android:exported="false"
             android:label="@string/title_activity_second" />
-        <activity android:name=".MySettingsActivity"
+        <activity android:name=".SettingsActivity"
             android:exported="true"
             android:theme="@style/Theme.App.Settings"
             android:label="@string/title_activity_settings" />

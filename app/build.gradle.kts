@@ -182,6 +182,7 @@ dependencies {
   implementation(libs.material)
   implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation(libs.androidx.lifecycle.runtime.compose)
+  implementation(libs.okhttp)
   implementation(platform(libs.compose.bom))
   testImplementation(libs.junit)
   testImplementation(libs.mockk)

@@ -7,7 +7,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.navOptions
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.android.festivar.MySettingsActivity
+import com.android.festivar.SettingsActivity
 import com.android.festivar.navigation.AppScreens
 import io.mockk.every
 import io.mockk.mockk
@@ -57,13 +57,13 @@ class ProfileNavigatorTest {
 
   @Test
   fun settingsClickStartsSettingsActivityFromNavigatorContext() {
-    val activity = Robolectric.buildActivity(MySettingsActivity::class.java).setup().get()
+    val activity = Robolectric.buildActivity(SettingsActivity::class.java).setup().get()
     every { navController.context } returns activity
 
     navigator.onSettingsClick()
 
     assertEquals(
-        MySettingsActivity::class.java.name,
+        SettingsActivity::class.java.name,
         shadowOf(activity).nextStartedActivity.component?.className,
     )
   }
