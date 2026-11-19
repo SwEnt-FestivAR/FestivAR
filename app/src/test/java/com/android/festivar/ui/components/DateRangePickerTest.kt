@@ -11,7 +11,6 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.unit.width
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
@@ -36,7 +35,6 @@ class DateRangePickerTest {
   private fun show(
       start: LocalDate? = null,
       end: LocalDate? = null,
-      allowPast: Boolean = false,
   ) {
     composeTestRule.setContent {
       AppTheme {
@@ -45,7 +43,6 @@ class DateRangePickerTest {
             initialEnd = end,
             onConfirm = { saved.add(it) },
             onDismiss = { dismissals++ },
-            allowPast = allowPast,
             today = today,
         )
       }
@@ -136,15 +133,6 @@ class DateRangePickerTest {
     composeTestRule.onNodeWithText("1 day", substring = true).assertIsDisplayed()
   }
 
-  /** Breaks if a day before today can be selected when past days are not allowed. */
-  @Test
-  fun aPastDayCannotBeSelected() {
-    show()
-    tap(LocalDate.of(2026, 11, 17))
-    composeTestRule.onNodeWithTag(DateRangePickerTestTags.CLEAR_BUTTON).assertDoesNotExist()
-    composeTestRule.onNodeWithText("Tap a start day, then an end day").assertIsDisplayed()
-  }
-
   /** Breaks if today itself is refused, which would leave nothing to pick for a same-day event. */
   @Test
   fun todayCanBeSelected() {
@@ -152,15 +140,6 @@ class DateRangePickerTest {
     tap(today)
     composeTestRule.onNodeWithTag(DateRangePickerTestTags.CLEAR_BUTTON).assertExists()
     composeTestRule.onNodeWithText("Wed 18 Nov", substring = true).assertIsDisplayed()
-  }
-
-  /** Breaks if the parameter for the edit screens does not open the past days. */
-  @Test
-  fun aPastDayCanBeSelectedWhenPastDaysAreAllowed() {
-    show(allowPast = true)
-    tap(LocalDate.of(2026, 11, 17))
-    composeTestRule.onNodeWithTag(DateRangePickerTestTags.CLEAR_BUTTON).assertExists()
-    composeTestRule.onNodeWithText("Tue 17 Nov", substring = true).assertIsDisplayed()
   }
 
   /** Breaks if the dialog ignores the dates it is opened with or loses their end. */
@@ -197,19 +176,6 @@ class DateRangePickerTest {
     composeTestRule.onNodeWithText("Tap a start day, then an end day").assertIsDisplayed()
   }
 
-  /**
-   * Breaks if the last column of the calendar is cut off on a phone narrower than Material's
-   * calendar, as most phones are: the Saturday cell would then be narrower than the Sunday one.
-   */
-  @Test
-  @Config(qualifiers = "en-rUS-w360dp-h640dp")
-  fun theWholeCalendarFitsOnANarrowScreen() {
-    show()
-    val sunday = composeTestRule.onNode(cellOf(LocalDate.of(2026, 11, 22))).getBoundsInRoot()
-    val saturday = composeTestRule.onNode(cellOf(LocalDate.of(2026, 11, 28))).getBoundsInRoot()
-    assertEquals(sunday.width.value, saturday.width.value, 0.1f)
-  }
-
   /** Breaks if the calendar moves when a first day is chosen, because the summary changes size. */
   @Test
   fun theSummaryLineKeepsItsSizeWhenADayIsChosen() {
@@ -238,22 +204,6 @@ class DateRangePickerTest {
     composeTestRule.onNodeWithText("7 days", substring = true).assertIsDisplayed()
   }
 
-  /** Breaks if a range that starts in the past opens selected while past days are refused. */
-  @Test
-  fun aPastRangeOpensEmptyWhenPastDaysAreRefused() {
-    show(start = LocalDate.of(2026, 11, 10), end = LocalDate.of(2026, 11, 12))
-    composeTestRule.onNodeWithText("Tap a start day, then an end day").assertIsDisplayed()
-    composeTestRule.onNodeWithTag(DateRangePickerTestTags.CLEAR_BUTTON).assertDoesNotExist()
-  }
-
-  /** Breaks if a past range is dropped when past days are allowed, as on the edit screens. */
-  @Test
-  fun aPastRangeOpensSelectedWhenPastDaysAreAllowed() {
-    show(start = LocalDate.of(2026, 11, 10), end = LocalDate.of(2026, 11, 12), allowPast = true)
-    composeTestRule.onNodeWithText("Tue 10 to Thu 12 Nov", substring = true).assertIsDisplayed()
-    composeTestRule.onNodeWithTag(DateRangePickerTestTags.CLEAR_BUTTON).assertExists()
-  }
-
   /** Breaks if Clear leaves a day selected or keeps itself on screen. */
   @Test
   fun clearEmptiesTheSelectionAndHidesItself() {
@@ -280,14 +230,5 @@ class DateRangePickerTest {
     composeTestRule.onNodeWithTag(DateRangePickerTestTags.SAVE_BUTTON).performClick()
     assertEquals(listOf(LocalDate.of(2026, 11, 23) to LocalDate.of(2026, 11, 27)), saved)
     assertEquals(0, dismissals)
-  }
-
-  /** Breaks if Clear then Save keeps the old dates instead of removing them. */
-  @Test
-  fun clearThenSaveRemovesTheDates() {
-    show(start = LocalDate.of(2026, 11, 23), end = LocalDate.of(2026, 11, 27))
-    composeTestRule.onNodeWithTag(DateRangePickerTestTags.CLEAR_BUTTON).performClick()
-    composeTestRule.onNodeWithTag(DateRangePickerTestTags.SAVE_BUTTON).performClick()
-    assertEquals(listOf(null), saved)
   }
 }

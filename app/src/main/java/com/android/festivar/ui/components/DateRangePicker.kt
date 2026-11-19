@@ -3,14 +3,12 @@ package com.android.festivar.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,16 +25,13 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -62,9 +57,6 @@ object DateRangePickerTestTags {
   const val CLEAR_BUTTON = "dateRangePickerClearButton"
 }
 
-/** The width of Material's calendar, which it keeps whatever the room it gets. */
-private val MATERIAL_CALENDAR_WIDTH = 360.dp
-
 /** The opacity of a disabled element, as in the design. */
 private const val DISABLED_ALPHA = 0.38f
 
@@ -81,11 +73,8 @@ private const val DISABLED_ALPHA = 0.38f
  *   no day is chosen: the dates are removed. Dates are never required, they are both filled or
  *   none.
  * @param onDismiss Called when the user goes back, which discards the choice.
- * @param allowPast Whether days before [today] can be chosen, for the screens that edit an event. A
- *   range that starts before [today] opens empty when they cannot. Read when the dialog opens.
- * @param today The first day that can be chosen unless [allowPast], and the month shown while
- *   nothing is selected. Read when the dialog opens. The ring around today is drawn by Material
- *   from the system date.
+ * @param today The month shown while nothing is selected. The ring around today is drawn by
+ *   Material from the system date.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -94,18 +83,15 @@ fun FestivarDateRangePickerDialog(
     initialEnd: LocalDate?,
     onConfirm: (range: Pair<LocalDate, LocalDate>?) -> Unit,
     onDismiss: () -> Unit,
-    allowPast: Boolean = false,
     today: LocalDate = LocalDate.now(),
 ) {
-  // The calendar refuses these days, so a range that starts on one of them opens empty.
-  val first = initialStart?.takeIf { allowPast || !it.isBefore(today) }
+  val first = initialStart
   val last = first?.let { day -> initialEnd?.takeIf { !it.isBefore(day) } ?: day }
   val state =
       rememberDateRangePickerState(
           initialSelectedStartDateMillis = first?.toPickerMillis(),
           initialSelectedEndDateMillis = last?.toPickerMillis(),
           initialDisplayedMonthMillis = (first ?: today).toPickerMillis(),
-          selectableDates = remember { selectableDays(today, allowPast) },
       )
   val start = state.selectedStartDateMillis?.toPickerDate()
   // The calendar leaves the end empty after one tap; for the form that day is also the end.
@@ -134,17 +120,6 @@ fun FestivarDateRangePickerDialog(
     }
   }
 }
-
-/** The days the calendar accepts: all of them when [allowPast], else [today] and the later ones. */
-@OptIn(ExperimentalMaterial3Api::class)
-private fun selectableDays(today: LocalDate, allowPast: Boolean) =
-    object : SelectableDates {
-      // The calendar works in UTC milliseconds.
-      override fun isSelectableDate(utcTimeMillis: Long) =
-          allowPast || !utcTimeMillis.toPickerDate().isBefore(today)
-
-      override fun isSelectableYear(year: Int) = allowPast || year >= today.year
-    }
 
 @Composable
 private fun DateRangePickerTopBar(showClear: Boolean, onBack: () -> Unit, onClear: () -> Unit) {
@@ -241,20 +216,7 @@ private fun DateRangeCalendar(state: DateRangePickerState, modifier: Modifier) {
       color = scheme.surfaceBright,
       border = BorderStroke(1.dp, scheme.outlineVariant),
   ) {
-    // Material's calendar is 360dp wide whatever the room it gets, so a narrower phone would cut
-    // off its last column. It is drawn at that size and scaled down to fit: the days then get
-    // smaller than 48dp, which is the price of showing the whole month.
-    BoxWithConstraints(contentAlignment = Alignment.Center) {
-      val scale = minOf(1f, maxWidth / MATERIAL_CALENDAR_WIDTH)
-      val pickerModifier =
-          if (scale == 1f) Modifier
-          else
-              Modifier.requiredSize(MATERIAL_CALENDAR_WIDTH, maxHeight / scale).graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-              }
-      DateRangePickerCalendar(state, pickerModifier)
-    }
+    DateRangePickerCalendar(state, Modifier)
   }
 }
 
@@ -310,7 +272,7 @@ private fun DateRangeSaveButton(onClick: () -> Unit) {
   }
 }
 
-@Preview(name = "Past days refused")
+@Preview
 @Composable
 internal fun FestivarDateRangePickerDialogPreview() {
   AppTheme {
@@ -319,20 +281,6 @@ internal fun FestivarDateRangePickerDialogPreview() {
         initialEnd = LocalDate.now().plusDays(15),
         onConfirm = {},
         onDismiss = {},
-    )
-  }
-}
-
-@Preview(name = "Past days allowed")
-@Composable
-internal fun FestivarDateRangePickerDialogPastAllowedPreview() {
-  AppTheme {
-    FestivarDateRangePickerDialog(
-        initialStart = LocalDate.now().minusDays(3),
-        initialEnd = LocalDate.now().plusDays(2),
-        onConfirm = {},
-        onDismiss = {},
-        allowPast = true,
     )
   }
 }
