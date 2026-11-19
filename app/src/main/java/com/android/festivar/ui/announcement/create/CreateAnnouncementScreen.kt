@@ -1,47 +1,21 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.announcement.create
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import com.android.festivar.R
 import com.android.festivar.model.event.announcement.AnnouncementPriority
+import com.android.festivar.ui.announcement.AnnouncementFormActions
 import com.android.festivar.ui.announcement.AnnouncementFormBackHandling
+import com.android.festivar.ui.announcement.AnnouncementFormContent
 import com.android.festivar.ui.announcement.AnnouncementFormLabels
+import com.android.festivar.ui.announcement.AnnouncementFormState
 import com.android.festivar.ui.announcement.AnnouncementFormTags
-import com.android.festivar.ui.announcement.AnnouncementFormTopBar
-import com.android.festivar.ui.announcement.announcementPriorityLabelRes
-import com.android.festivar.ui.components.FestivarChipSelector
-import com.android.festivar.ui.components.FestivarFieldError
-import com.android.festivar.ui.components.FestivarFieldWithError
-import com.android.festivar.ui.components.FestivarTextField
-import com.android.festivar.ui.components.LONG_TEXT_MAX_LENGTH
 import com.android.festivar.ui.theme.AppTheme
 
 object CreateAnnouncementScreenTestTags {
@@ -63,7 +37,7 @@ object CreateAnnouncementScreenTestTags {
   fun priorityChip(priority: AnnouncementPriority) = "createAnnouncementPriority_${priority.name}"
 }
 
-// The tags and texts of the form when it creates an announcement, its defaults.
+// The tags and texts of the form when it creates an announcement.
 private val createAnnouncementTags =
     AnnouncementFormTags(
         backButton = CreateAnnouncementScreenTestTags.BACK_BUTTON,
@@ -88,18 +62,6 @@ private val createAnnouncementLabels =
         submit = R.string.create_announcement_publish,
         submitting = R.string.create_announcement_publishing,
     )
-
-/**
- * What the user can do on the Create announcement screen. Lets [CreateAnnouncementContent] stay
- * stateless.
- */
-class CreateAnnouncementActions(
-    val onBack: () -> Unit = {},
-    val onTitleChange: (String) -> Unit = {},
-    val onContentChange: (String) -> Unit = {},
-    val onPriorityChange: (AnnouncementPriority) -> Unit = {},
-    val onPublish: () -> Unit = {},
-)
 
 /**
  * Create announcement screen, connected to its [viewModel], which knows the event the announcement
@@ -131,12 +93,12 @@ fun CreateAnnouncementScreen(
     CreateAnnouncementContent(
         state = state,
         actions =
-            CreateAnnouncementActions(
+            AnnouncementFormActions(
                 onBack = requestBack,
                 onTitleChange = viewModel::updateTitle,
                 onContentChange = viewModel::updateContent,
                 onPriorityChange = viewModel::updatePriority,
-                onPublish = viewModel::publish,
+                onSubmit = viewModel::publish,
             ),
         modifier = modifier,
     )
@@ -144,130 +106,37 @@ fun CreateAnnouncementScreen(
 }
 
 /**
- * Stateless Create announcement screen: draws [state] and reports user input through [actions]. The
- * Edit announcement screen draws its form with it as well.
- *
- * @param labels The top bar title, the button text and the description of its spinner.
- * @param tags The test tags of the form's nodes.
- * @param canSubmit Whether the button at the bottom can be pressed.
+ * Stateless Create announcement screen: draws [state] with the shared [AnnouncementFormContent] and
+ * reports user input through [actions]. The button at the bottom publishes the announcement.
  */
 @Composable
 fun CreateAnnouncementContent(
     state: CreateAnnouncementUiState,
-    actions: CreateAnnouncementActions,
+    actions: AnnouncementFormActions,
     modifier: Modifier = Modifier,
-    labels: AnnouncementFormLabels = createAnnouncementLabels,
-    tags: AnnouncementFormTags = createAnnouncementTags,
-    canSubmit: Boolean = state.canPublish,
 ) {
-  Scaffold(
+  AnnouncementFormContent(
+      form = state.toForm(),
+      isSaving = state.isSaving,
+      isEditable = state.isEditable,
+      canSubmit = state.canPublish,
+      errorMsg = state.errorMsg,
+      actions = actions,
+      labels = createAnnouncementLabels,
+      tags = createAnnouncementTags,
       modifier = modifier,
-      containerColor = MaterialTheme.colorScheme.background,
-      topBar = { AnnouncementFormTopBar(labels.title, actions.onBack, tags) },
-      bottomBar = {
-        PublishBar(
-            state = state,
-            onPublish = actions.onPublish,
-            labels = labels,
-            tags = tags,
-            canSubmit = canSubmit,
-        )
-      },
-  ) { padding ->
-    Column(
-        modifier =
-            Modifier.fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(start = 20.dp, top = 12.dp, end = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
-    ) {
-      FestivarFieldWithError(state.titleError, tags.titleError) {
-        FestivarTextField(
-            value = state.title,
-            onValueChange = actions.onTitleChange,
-            label = stringResource(R.string.create_announcement_field_title),
-            enabled = state.isEditable,
-            isError = state.titleError != null,
-            modifier = Modifier.testTag(tags.titleField),
-        )
-      }
-      FestivarFieldWithError(state.contentError, tags.descriptionError) {
-        FestivarTextField(
-            value = state.content,
-            onValueChange = actions.onContentChange,
-            label = stringResource(R.string.create_announcement_field_description),
-            enabled = state.isEditable,
-            singleLine = false,
-            maxLength = LONG_TEXT_MAX_LENGTH,
-            showCounter = true,
-            isError = state.contentError != null,
-            modifier = Modifier.heightIn(min = 96.dp).testTag(tags.descriptionField),
-        )
-      }
-      FestivarChipSelector(
-          options = AnnouncementPriority.entries,
-          selected = state.priority,
-          onSelect = actions.onPriorityChange,
-          label = stringResource(R.string.create_announcement_field_priority),
-          optionLabelRes = ::announcementPriorityLabelRes,
-          enabled = state.isEditable,
-          labelModifier = Modifier.testTag(tags.priorityLabel),
-          chipModifier = { Modifier.testTag(tags.priorityChip(it)) },
-      )
-    }
-  }
+  )
 }
 
-/** The bottom of the screen: the save error, when there is one, above the submit button. */
-@Composable
-private fun PublishBar(
-    state: CreateAnnouncementUiState,
-    onPublish: () -> Unit,
-    labels: AnnouncementFormLabels,
-    tags: AnnouncementFormTags,
-    canSubmit: Boolean,
-) {
-  Column {
-    state.errorMsg?.let {
-      FestivarFieldError(
-          message = stringResource(it),
-          modifier = Modifier.padding(horizontal = 20.dp).testTag(tags.saveError),
-      )
-    }
-    Button(
-        onClick = onPublish,
-        enabled = canSubmit,
-        shape = RoundedCornerShape(12.dp),
-        // As in Figma, the disabled button is the beige of the hairlines with dark text; Material
-        // would draw it grey with faded text.
-        colors =
-            ButtonDefaults.buttonColors(
-                disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                disabledContentColor = MaterialTheme.colorScheme.onSurface,
-            ),
-        modifier =
-            Modifier.fillMaxWidth()
-                .padding(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 24.dp)
-                .height(52.dp)
-                .testTag(tags.submitButton),
-    ) {
-      if (state.isSaving) {
-        val publishing = stringResource(labels.submitting)
-        CircularProgressIndicator(
-            modifier =
-                Modifier.size(16.dp)
-                    .semantics { contentDescription = publishing }
-                    .testTag(tags.savingIndicator),
-            color = MaterialTheme.colorScheme.onSurface,
-            strokeWidth = 2.dp,
-        )
-      } else {
-        Text(text = stringResource(labels.submit), style = MaterialTheme.typography.labelLarge)
-      }
-    }
-  }
-}
+/** The fields of [this] that the shared form draws. */
+private fun CreateAnnouncementUiState.toForm(): AnnouncementFormState =
+    AnnouncementFormState(
+        title = title,
+        content = content,
+        priority = priority,
+        titleEdited = titleEdited,
+        contentEdited = contentEdited,
+    )
 
 @Preview(showBackground = true)
 @Composable
@@ -280,7 +149,7 @@ internal fun CreateAnnouncementContentPreview() {
                 content = "Strong wind on the hill. Send everyone to the north gate until 16:00.",
                 priority = AnnouncementPriority.URGENT,
             ),
-        actions = CreateAnnouncementActions(),
+        actions = AnnouncementFormActions(),
     )
   }
 }
@@ -297,7 +166,7 @@ internal fun CreateAnnouncementContentSavingPreview() {
                 priority = AnnouncementPriority.URGENT,
                 isSaving = true,
             ),
-        actions = CreateAnnouncementActions(),
+        actions = AnnouncementFormActions(),
     )
   }
 }
@@ -308,7 +177,7 @@ internal fun CreateAnnouncementContentFieldErrorsPreview() {
   AppTheme {
     CreateAnnouncementContent(
         state = CreateAnnouncementUiState(titleEdited = true, contentEdited = true),
-        actions = CreateAnnouncementActions(),
+        actions = AnnouncementFormActions(),
     )
   }
 }
