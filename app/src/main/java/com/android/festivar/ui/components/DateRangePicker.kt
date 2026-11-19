@@ -9,10 +9,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePickerColors
@@ -31,8 +33,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -40,6 +45,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.android.festivar.R
 import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 
 /** Test tags of [FestivarDateRangePickerDialog]. */
 object DateRangePickerTestTags {
@@ -57,7 +63,7 @@ private const val DISABLED_ALPHA = 0.38f
 /**
  * Full-screen dialog to pick a start and an end day in one calendar. One tap picks a single day
  * (the end is the start), a second tap on a later day sets the end, a tap before the start begins a
- * new range.
+ * new range. The summary line is display only: the calendar is the only input.
  *
  * @param initialStart The first day selected when the dialog opens, or `null` for none. The
  *   calendar opens on its month, or on today's.
@@ -103,6 +109,7 @@ fun FestivarDateRangePickerDialog(
             onBack = onDismiss,
             onClear = { state.setSelection(null, null) },
         )
+        DateRangeSummary(start, end)
         DateRangeCalendar(state, Modifier.weight(1f))
         FixedBottomBar {
           DateRangeSaveButton {
@@ -144,6 +151,56 @@ private fun DateRangePickerTopBar(showClear: Boolean, onBack: () -> Unit, onClea
             style = MaterialTheme.typography.labelLarge,
         )
       }
+    }
+  }
+}
+
+/**
+ * The chosen days on one line, or a hint while there are none. Display only. The days shorten
+ * before the number of days does.
+ */
+@Composable
+private fun DateRangeSummary(start: LocalDate?, end: LocalDate?) {
+  val muted = MaterialTheme.colorScheme.onSurfaceVariant
+  Row(
+      Modifier.fillMaxWidth()
+          .padding(start = 24.dp, top = 8.dp, end = 20.dp, bottom = 16.dp)
+          .testTag(DateRangePickerTestTags.SUMMARY),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(8.dp),
+  ) {
+    Icon(
+        Icons.Outlined.CalendarToday,
+        contentDescription = null,
+        modifier = Modifier.size(20.dp),
+        tint = muted,
+    )
+    if (start == null || end == null) {
+      Text(
+          stringResource(R.string.date_range_picker_hint),
+          style = MaterialTheme.typography.bodyLarge,
+          color = muted,
+      )
+    } else {
+      val count = ChronoUnit.DAYS.between(start, end).toInt() + 1
+      val counted = pluralStringResource(R.plurals.date_range_picker_days, count, count)
+      Text(
+          formatDateRange(start, end),
+          style = MaterialTheme.typography.labelLarge,
+          color = MaterialTheme.colorScheme.onSurface,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+          modifier = Modifier.weight(1f, fill = false),
+      )
+      Text(
+          "· $counted",
+          style = MaterialTheme.typography.bodyLarge,
+          color = muted,
+          maxLines = 1,
+          softWrap = false,
+          // A screen reader would read the dot out loud.
+          modifier = Modifier.semantics { contentDescription = counted },
+      )
     }
   }
 }
