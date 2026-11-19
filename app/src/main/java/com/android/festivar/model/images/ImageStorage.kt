@@ -26,7 +26,10 @@ interface ImageStorage {
   suspend fun delete(imageUrl: String)
 }
 
-/** In-memory image storage used by local repositories and previews. */
+/**
+ * In-memory image storage used by local repositories and previews. This does basically nothing,
+ * only use for tests
+ */
 class ImageStorageLocal : ImageStorage {
   override fun getNewUid(): String = UUID.randomUUID().toString()
 
