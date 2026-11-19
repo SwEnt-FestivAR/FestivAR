@@ -1,6 +1,7 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored by: Gemini
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.navigation.announcement
 
 import androidx.compose.material3.Text
@@ -38,6 +39,7 @@ import org.junit.runner.RunWith
 private const val EVENT_ID = "e1"
 private const val USER_ID = "user-1"
 private const val PREVIOUS_SCREEN = "previous screen"
+private const val LOGIN_SCREEN = "login screen"
 
 /** Time between two taps of a double tap, well within the exit transition of the screen. */
 private const val TAP_GAP_MILLIS = 100L
@@ -72,6 +74,7 @@ class AnnouncementNavGraphTest {
       navController = rememberNavController()
       NavHost(navController = navController, startDestination = PREVIOUS_SCREEN) {
         composable(PREVIOUS_SCREEN) { Text(PREVIOUS_SCREEN) }
+        composable(AppScreens.Login.name) { Text(LOGIN_SCREEN) }
         announcementGraph(
             navController,
             DataRepositoryLocal(
@@ -127,18 +130,19 @@ class AnnouncementNavGraphTest {
     assertEquals(USER_ID, saved.authorId)
   }
 
-  // Breaks if the route stops treating a missing user as a blank author: the announcement would
-  // then be saved without an author, or the screen would leave as if it had been published.
+  /** Breaks if a signed-out user can still open the Create announcement screen. */
   @Test
-  fun publishingWhileSignedOutShowsTheErrorAndStaysWithoutSaving() {
-    openTheRouteAs(null)
-    fillTheForm()
-    composeTestRule.onNodeWithTag(Tags.PUBLISH_BUTTON).performClick()
+  fun aSignedOutUserOpeningTheRouteIsSentToTheLogin() {
+    showTheGraphAs(null)
+    composeTestRule.runOnUiThread {
+      navController.navigate(AppScreens.createAnnouncement(EVENT_ID))
+    }
 
-    composeTestRule.onNodeWithTag(Tags.SAVE_ERROR).assertIsDisplayed()
-    composeTestRule.onNodeWithTag(Tags.TITLE).assertIsDisplayed()
-    val announcements = runBlocking { repository.getEvent(EVENT_ID).announcements }
-    assertEquals(0, announcements.size)
+    composeTestRule.onNodeWithText(LOGIN_SCREEN).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(Tags.TITLE).assertDoesNotExist()
+    composeTestRule.runOnIdle {
+      assertEquals(AppScreens.Login.name, navController.currentDestination?.route)
+    }
   }
 
   // Breaks if the back arrow of the screen is not connected to the back stack, or if it does not

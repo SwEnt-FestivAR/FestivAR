@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.navigation.event
 
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -46,7 +47,11 @@ class EventNavGraphTest {
         )
     val dataRepository =
         DataRepositoryLocal(
-            authRepository = mockk<AuthRepository> { every { currentUser } returns null },
+            authRepository =
+                mockk<AuthRepository> {
+                  every { currentUser } returns
+                      mockk<FirebaseUser> { every { uid } returns "owner-1" }
+                },
             eventsRepository = EventsRepositoryLocal(listOf(event)),
         )
     lateinit var navController: NavHostController
@@ -76,17 +81,6 @@ class EventNavGraphTest {
         event.title,
         nameField.fetchSemanticsNode().config[SemanticsProperties.EditableText].text,
     )
-    nameField.performTextClearance()
-    nameField.performTextInput("Unsaved festival")
-    composeTestRule.onNodeWithTag(EditEventScreenTestTags.SAVE_BUTTON).performClick()
-    composeTestRule.waitUntil(timeoutMillis = 5_000) {
-      composeTestRule
-          .onAllNodesWithTag(EditEventScreenTestTags.SAVE_ERROR)
-          .fetchSemanticsNodes()
-          .isNotEmpty()
-    }
-    nameField.performTextClearance()
-    nameField.performTextInput(event.title)
     composeTestRule.onNodeWithTag(EditEventScreenTestTags.BACK_BUTTON).performClick()
     composeTestRule.waitUntil(timeoutMillis = 5_000) {
       navController.currentBackStackEntry?.destination?.route ==

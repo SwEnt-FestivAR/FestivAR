@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.navigation.event
 
 import androidx.navigation.NavHostController
@@ -13,10 +14,4 @@ class EventsOverviewNavigator(private val navController: NavHostController) {
   val onJoinEvent: () -> Unit = { navController.navigate(AppScreens.JoinEvent.name) }
 
   val onAddEvent: () -> Unit = { navController.navigate(AppScreens.CreateEvent.name) }
-
-  val onSignedOut: () -> Unit = {
-    navController.navigate(AppScreens.Login.name) {
-      popUpTo(navController.graph.id) { inclusive = true }
-    }
-  }
 }
