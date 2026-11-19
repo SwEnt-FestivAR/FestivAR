@@ -241,6 +241,7 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
         // Stored so a join can be a single query instead of a download of the whole collection
         "joinCode" to joinCodeOf(event),
         ANNOUNCEMENTS_FIELD to event.announcements.map { it.toMap() },
+        "imageUrl" to event.imageUrl,
     )
   }
 
@@ -280,6 +281,7 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
         tasks = tasks,
         closed = document.getBoolean("closed") ?: false,
         announcements = readAnnouncements(document),
+        imageUrl = document.getString("imageUrl") ?: "",
     )
   }
 }
