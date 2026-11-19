@@ -36,6 +36,4 @@ class TaskOverviewNavigatorTest {
 
     verify { navController.navigate(AppScreens.createTask("e1")) }
   }
-
-  /** Turns red when signing out stops opening the login or leaves the overview under it. */
 }

@@ -23,6 +23,4 @@ class MyTasksNavigatorTest {
 
     verify { navController.navigate(AppScreens.taskDetails("task-123", TaskOrigin.MY_TASKS)) }
   }
-
-  /** Turns red when signing out stops opening the login or leaves My tasks under it. */
 }
