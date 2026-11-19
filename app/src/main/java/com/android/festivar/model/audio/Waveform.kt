@@ -13,11 +13,11 @@ internal const val MAX_AMPLITUDE = Short.MAX_VALUE.toInt()
 /**
  * Reduces the [amplitudes] sampled during a recording to exactly [WAVEFORM_BAR_COUNT] bars between
  * 0 and 1. A bar is the loudest sample of its share of the recording, so a short loud sound stays
- * visible. With fewer samples than bars, neighbouring bars repeat a sample. No sample gives silent
- * bars.
+ * visible. With fewer samples than bars, neighbouring bars repeat a sample. No sample at all, as
+ * when the level could never be read, gives no bars, so that it is not mistaken for silence.
  */
 internal fun downsampleWaveform(amplitudes: List<Int>): List<Float> {
-  if (amplitudes.isEmpty()) return List(WAVEFORM_BAR_COUNT) { 0f }
+  if (amplitudes.isEmpty()) return emptyList()
 
   return List(WAVEFORM_BAR_COUNT) { bar ->
     val loudest = readingsOfBar(bar, amplitudes).max()

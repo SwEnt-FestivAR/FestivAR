@@ -162,12 +162,18 @@ class AndroidVoiceRecorder(context: Context) : VoiceRecorder {
     }
   }
 
-  /** The loudest amplitude since the last reading, or null if the recorder cannot tell. */
+  /**
+   * The loudest amplitude since the last reading, or null if the recorder cannot tell. Only the
+   * first failure of a recording is logged, as a recorder that cannot tell fails on every tick.
+   */
   private fun readAmplitude(recording: ActiveRecording): Int? =
       try {
         recording.recorder.maxAmplitude
       } catch (e: RuntimeException) {
-        Log.w(LOG_TAG, "Error reading the amplitude", e)
+        if (!recording.amplitudeFailureLogged) {
+          recording.amplitudeFailureLogged = true
+          Log.w(LOG_TAG, "Error reading the amplitude", e)
+        }
         null
       }
 
@@ -226,7 +232,10 @@ class AndroidVoiceRecorder(context: Context) : VoiceRecorder {
    * @property recordedBefore The time recorded before [runningSince].
    * @property timer The timer of the current run. It is cancelled while the recording is paused.
    * @property amplitudes One amplitude per tick of the timer, so none for paused time. The time
-   *   since the last tick, up to one tick, is not sampled.
+   *   since the last tick, up to one tick, is not sampled. The list grows with the recording, which
+   *   is fine for the length of a voice note: five integers per second.
+   * @property amplitudeFailureLogged Whether a failed reading was already logged for this
+   *   recording.
    */
   private class ActiveRecording(
       val recorder: MediaRecorder,
@@ -235,6 +244,7 @@ class AndroidVoiceRecorder(context: Context) : VoiceRecorder {
       var recordedBefore: Duration = Duration.ZERO,
       var timer: Job? = null,
       val amplitudes: MutableList<Int> = mutableListOf(),
+      var amplitudeFailureLogged: Boolean = false,
   ) {
     val isPaused: Boolean
       get() = runningSince == null
