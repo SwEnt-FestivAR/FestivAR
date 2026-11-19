@@ -16,7 +16,9 @@ import java.time.format.DateTimeParseException
  * - [id] is not blank;
  * - [audioUrl] is not blank;
  * - [duration] is positive (a recording of zero length is refused, like by [Audio]);
- * - every bar of [waveform] is between 0 and 1.
+ * - every bar of [waveform] is between 0 and 1. Its length is not checked: the app records
+ *   [com.android.festivar.model.audio.WAVEFORM_BAR_COUNT] bars, but a note stored with another
+ *   number of bars, or none, is still valid, so whoever draws it must cope with any length.
  *
  * @property id Unique identifier of the [VoiceNote].
  * @property audioUrl Where the audio file can be played from.
