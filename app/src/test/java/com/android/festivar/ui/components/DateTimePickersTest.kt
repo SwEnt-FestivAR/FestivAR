@@ -2,6 +2,7 @@
 package com.android.festivar.ui.components
 
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -187,5 +188,133 @@ class DateTimePickersTest {
         )
 
     assertNull(endDateError(range, now = now))
+  }
+
+  /** Breaks if the prefilled range is not today from the next full hour, for two hours. */
+  @Test
+  fun prefilled_startsAtTheNextFullHourAndLastsTwoHours() {
+    val range = DateTimeRange.prefilled(LocalDateTime.of(2026, 10, 17, 14, 20))
+
+    assertEquals(
+        DateTimeRange(
+            LocalDate.of(2026, 10, 17),
+            LocalTime.of(15, 0),
+            LocalDate.of(2026, 10, 17),
+            LocalTime.of(17, 0),
+        ),
+        range,
+    )
+  }
+
+  /** Breaks if exactly on the hour counts as the next full hour, or the end ignores midnight. */
+  @Test
+  fun prefilled_onTheHourTakesTheFollowingHourAndMayEndTomorrow() {
+    val range = DateTimeRange.prefilled(LocalDateTime.of(2026, 10, 17, 22, 0))
+
+    assertEquals(LocalTime.of(23, 0), range.startTime)
+    assertEquals(LocalDate.of(2026, 10, 17), range.startDate)
+    assertEquals(LocalTime.of(1, 0), range.endTime)
+    assertEquals(LocalDate.of(2026, 10, 18), range.endDate)
+  }
+
+  /** Breaks if moving the start time does not move the end time by the same amount. */
+  @Test
+  fun withStartTime_movesTheEndToKeepTheDuration() {
+    val day = LocalDate.of(2026, 10, 17)
+    val range = DateTimeRange(day, LocalTime.of(18, 0), day, LocalTime.of(20, 0))
+
+    val moved = range.withStartTime(LocalTime.of(10, 30))
+
+    assertEquals(DateTimeRange(day, LocalTime.of(10, 30), day, LocalTime.of(12, 30)), moved)
+  }
+
+  /** Breaks if the duration of a range over several days is not kept across the days. */
+  @Test
+  fun withStartTime_keepsTheDurationOfARangeOverSeveralDays() {
+    val range =
+        DateTimeRange(
+            LocalDate.of(2026, 11, 20),
+            LocalTime.of(18, 0),
+            LocalDate.of(2026, 11, 22),
+            LocalTime.of(12, 0),
+        )
+
+    val moved = range.withStartTime(LocalTime.of(20, 0))
+
+    assertEquals(LocalDate.of(2026, 11, 22), moved.endDate)
+    assertEquals(LocalTime.of(14, 0), moved.endTime)
+  }
+
+  /** Breaks if an end pushed past midnight stays on the start day. */
+  @Test
+  fun withStartTime_movesTheEndToTheNextDayPastMidnight() {
+    val day = LocalDate.of(2026, 10, 17)
+    val range = DateTimeRange(day, LocalTime.of(18, 0), day, LocalTime.of(20, 0))
+
+    val moved = range.withStartTime(LocalTime.of(23, 0))
+
+    assertEquals(day.plusDays(1), moved.endDate)
+    assertEquals(LocalTime.of(1, 0), moved.endTime)
+  }
+
+  /**
+   * Breaks if a range already ending before its start drags its end along instead of keeping it.
+   */
+  @Test
+  fun withStartTime_keepsTheEndOfARangeThatEndsBeforeItsStart() {
+    val day = LocalDate.of(2026, 10, 17)
+    val range = DateTimeRange(day, LocalTime.of(20, 0), day, LocalTime.of(18, 0))
+
+    val moved = range.withStartTime(LocalTime.of(17, 0))
+
+    assertEquals(DateTimeRange(day, LocalTime.of(17, 0), day, LocalTime.of(18, 0)), moved)
+  }
+
+  /** Breaks if a range without an end time gets one invented when the start time is set. */
+  @Test
+  fun withStartTime_onAnIncompleteRangeOnlySetsTheStartTime() {
+    val day = LocalDate.of(2026, 10, 17)
+
+    assertEquals(
+        DateTimeRange(day, LocalTime.NOON),
+        DateTimeRange(day).withStartTime(LocalTime.NOON),
+    )
+    assertEquals(
+        DateTimeRange(startTime = LocalTime.NOON),
+        DateTimeRange().withStartTime(LocalTime.NOON),
+    )
+  }
+
+  /** Breaks if a one-day range whose end is not after its start is accepted. */
+  @Test
+  fun timesError_sameDayEndNotAfterStart_returnsEndBeforeStart() {
+    val day = LocalDate.of(2026, 10, 17)
+
+    listOf(LocalTime.of(18, 0), LocalTime.of(17, 0)).forEach { end ->
+      val range = DateTimeRange(day, LocalTime.of(18, 0), day, end)
+      assertEquals(FieldError.END_BEFORE_START, range.timesError())
+    }
+  }
+
+  /** Breaks if a later end, or an end on a later day, is reported as an error. */
+  @Test
+  fun timesError_laterEndOrLaterDay_returnsNoError() {
+    val day = LocalDate.of(2026, 10, 17)
+
+    assertNull(
+        DateTimeRange(day, LocalTime.of(18, 0), day, LocalTime.of(18, 1)).timesError(),
+    )
+    assertNull(
+        DateTimeRange(day, LocalTime.of(20, 0), day.plusDays(1), LocalTime.of(2, 0)).timesError(),
+    )
+  }
+
+  /** Breaks if a range that is not filled in yet reports an error. */
+  @Test
+  fun timesError_incompleteRange_returnsNoError() {
+    val day = LocalDate.of(2026, 10, 17)
+
+    assertNull(DateTimeRange().timesError())
+    assertNull(DateTimeRange(day, LocalTime.NOON, day).timesError())
   }
 }
