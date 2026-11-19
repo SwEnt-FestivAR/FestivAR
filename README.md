@@ -66,6 +66,15 @@ The app will also be able to load the event from a local file.
 
 ---
 
+## Maps API key
+The map needs a Google Maps key to show its tiles. The app builds, runs and passes its tests without one: a placeholder is used and the map stays grey.
+
+- Add the line `MAPS_API_KEY=<key>` to `local.properties` at the root of the project. That file is never committed; ask the team for the key.
+- Each git worktree has its own `local.properties`, so each one needs the line.
+- CI needs nothing from you: the APK workflow reads the key from the `MAPS_API_KEY` Actions secret.
+
+---
+
 ## Code Review
 Code reviews should follow these [guidelines](https://github.com/swent-epfl/public/blob/main/project/README.md#reviewing-code).
 Don't forget to delete branches after merging in main.

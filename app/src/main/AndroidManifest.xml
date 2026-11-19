@@ -21,6 +21,9 @@
         android:theme="@style/Theme.AppTheme"
         android:localeConfig="@xml/locale_config"
         tools:targetApi="31">
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${MAPS_API_KEY}" />
         <activity
             android:name=".SecondActivity"
             android:exported="false"
