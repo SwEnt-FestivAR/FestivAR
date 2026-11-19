@@ -28,10 +28,13 @@ fun RequireSignedIn(
     content: @Composable (firebaseUser: FirebaseUser) -> Unit,
 ) {
   val authRepository = dataRepository.authRepository
+  // Cold flow: collecting starts when the route is drawn and is cancelled when it leaves the
+  // composition. Reading the state below makes the gate recompose on each change.
   val currentUser =
       remember(authRepository) { authRepository.currentUserFlow }
           .collectAsState(initial = authRepository.currentUser)
-  // Read into a local so the null check below smart-casts.
+  // One read per composition, into a local so the null check below smart-casts: `.value` could
+  // change between two reads. A later change recomposes the gate and takes a new snapshot.
   val firebaseUser = currentUser.value
   if (firebaseUser == null) {
     LaunchedEffect(Unit) {
@@ -40,6 +43,7 @@ fun RequireSignedIn(
       }
     }
   } else {
+    // Not drawn once the user is null, so the route and its state are disposed on sign-out.
     content(firebaseUser)
   }
 }
