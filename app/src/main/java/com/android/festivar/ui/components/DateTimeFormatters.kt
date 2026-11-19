@@ -28,21 +28,23 @@ fun formatWeekday(date: LocalDate): String = date.format(formatter("EEE"))
 fun formatDay(date: LocalDate): String = date.format(formatter("EEE d"))
 
 /**
- * Formats an event date range, omitting repeated month and year information where possible.
+ * Formats the first and the last day of a range, omitting repeated month and year information where
+ * possible, e.g. `Fri 16 to Sun 18 Oct`.
  *
  * For ranges spanning different years, the year is included for both dates.
  */
-fun formatEventDate(event: Event): String {
-  val start = event.startDate.toLocalDate()
-  val end = event.endDate.toLocalDate()
-  return when {
-    start == end -> formatDate(start)
-    start.year == end.year && start.month == end.month ->
-        "${formatDay(start)} to ${formatDate(end)}"
-    start.year == end.year -> "${formatDate(start)} to ${formatDate(end)}"
-    else -> "${formatDateWithYear(start)} to ${formatDateWithYear(end)}"
-  }
-}
+fun formatDateRange(start: LocalDate, end: LocalDate): String =
+    when {
+      start == end -> formatDate(start)
+      start.year == end.year && start.month == end.month ->
+          "${formatDay(start)} to ${formatDate(end)}"
+      start.year == end.year -> "${formatDate(start)} to ${formatDate(end)}"
+      else -> "${formatDateWithYear(start)} to ${formatDateWithYear(end)}"
+    }
+
+/** Formats the days of an [event] with [formatDateRange]. */
+fun formatEventDate(event: Event): String =
+    formatDateRange(event.startDate.toLocalDate(), event.endDate.toLocalDate())
 
 /**
  * Formats the days and the location of an [event] on one line, e.g. "Fri 16 to Sun 18 Oct · Parc de

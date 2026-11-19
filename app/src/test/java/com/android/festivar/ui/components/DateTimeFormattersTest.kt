@@ -28,6 +28,19 @@ class DateTimeFormattersTest {
   }
 
   @Test
+  fun formatDateRange_omitsWhatTheTwoDaysShare() {
+    val day = LocalDate.of(2026, 11, 27)
+
+    assertEquals("Fri 27 Nov", formatDateRange(day, day))
+    assertEquals("Fri 27 to Sun 29 Nov", formatDateRange(day, LocalDate.of(2026, 11, 29)))
+    assertEquals("Fri 27 Nov to Wed 2 Dec", formatDateRange(day, LocalDate.of(2026, 12, 2)))
+    assertEquals(
+        "Fri 27 Nov 2026 to Sat 2 Jan 2027",
+        formatDateRange(day, LocalDate.of(2027, 1, 2)),
+    )
+  }
+
+  @Test
   fun formatEventDate_accountsForMonthAndYearBoundaries() {
     val start = ZonedDateTime.of(2026, 10, 16, 10, 0, 0, 0, ZoneId.of("Europe/Zurich"))
     val sameDayEnd = start.plusHours(8)
