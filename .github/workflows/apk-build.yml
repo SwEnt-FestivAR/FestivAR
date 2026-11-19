@@ -61,6 +61,15 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: ./gradlew assembleDebug
 
+      - name: Check the Maps key reached the manifest
+        env:
+          MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
+        run: |
+          if [ -n "$MAPS_API_KEY" ] && grep -rq DEFAULT_API_KEY app/build/intermediates/merged_manifests/debug; then
+            echo "::error::The merged manifest still holds the placeholder key, the secrets plugin did not apply."
+            exit 1
+          fi
+
       - name: Upload APK
         uses: actions/upload-artifact@v5
         with:
