@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.audio
 
 import android.content.Context
@@ -53,6 +54,9 @@ class AndroidVoiceRecorderTest {
   private var pauseFailure: RuntimeException? = null
   private var resumeFailure: RuntimeException? = null
   private var writesAudio = true
+  private var amplitude = 0
+  private var peakSinceLastReading = 0
+  private var amplitudeFailure: RuntimeException? = null
   private var pauses = 0
   private var resumes = 0
   private var stops = 0
@@ -69,6 +73,12 @@ class AndroidVoiceRecorderTest {
     every { anyConstructed<MediaRecorder>().setOutputFile(any<String>()) } answers
         {
           files += File(firstArg<String>())
+        }
+    // Like the real recorder: a reading gives the peak since the previous one, the first is 0.
+    every { anyConstructed<MediaRecorder>().maxAmplitude } answers
+        {
+          amplitudeFailure?.let { throw it }
+          peakSinceLastReading.also { peakSinceLastReading = amplitude }
         }
     every { anyConstructed<MediaRecorder>().prepare() } returns Unit
     every { anyConstructed<MediaRecorder>().start() } answers
@@ -339,6 +349,64 @@ class AndroidVoiceRecorderTest {
     assertEquals(1, stops)
     assertEquals(1, releases)
     assertStaysIn(RecorderState.Idle)
+  }
+
+  /**
+   * Breaks if stop returns no bars, a wrong number of them, a value outside 0 to 1, or a first bar
+   * of 0 because the empty first reading of the recorder was kept as a sample.
+   */
+  @Test
+  fun stop_returnsTheFixedNumberOfBarsFromTheAmplitude() {
+    amplitude = MAX_AMPLITUDE / 2
+
+    listOf(minMillis, 30_000L).forEach { millis ->
+      record(millis)
+
+      val bars = recorder.stop().waveform
+
+      assertEquals(WAVEFORM_BAR_COUNT, bars.size)
+      assertTrue(bars.all { it == (MAX_AMPLITUDE / 2).toFloat() / MAX_AMPLITUDE })
+    }
+  }
+
+  /** Breaks if a silent recording gets bars above zero. */
+  @Test
+  fun stop_givesSilentBarsForASilentRecording() {
+    record(3_000)
+
+    assertEquals(List(WAVEFORM_BAR_COUNT) { 0f }, recorder.stop().waveform)
+  }
+
+  /**
+   * Breaks if paused time adds bars, or the peak reached just before a pause shows up again in the
+   * first bar after the resume.
+   */
+  @Test
+  fun stop_addsNoBarForPausedTime() {
+    amplitude = MAX_AMPLITUDE
+    record(1_000)
+    recorder.pause()
+    advance(10_000)
+    amplitude = 0
+    recorder.resume()
+    advance(1_000)
+
+    val bars = recorder.stop().waveform
+
+    assertEquals(List(WAVEFORM_BAR_COUNT / 2) { 1f }, bars.take(WAVEFORM_BAR_COUNT / 2))
+    assertEquals(List(WAVEFORM_BAR_COUNT / 2) { 0f }, bars.drop(WAVEFORM_BAR_COUNT / 2))
+  }
+
+  /** Breaks if an amplitude that cannot be read ends the recording or leaves bars out. */
+  @Test
+  fun stop_survivesAnAmplitudeThatCannotBeRead() {
+    amplitudeFailure = IllegalStateException("not recording")
+    record()
+
+    val audio = recorder.stop()
+
+    assertEquals(WAVEFORM_BAR_COUNT, audio.waveform.size)
+    assertTrue(audio.file.exists())
   }
 
   /** Breaks if a stop with no recording is not refused as a wrong call. */

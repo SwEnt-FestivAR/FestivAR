@@ -1,4 +1,5 @@
 // Co-authored-by: Gemini
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.audio
 
 import java.io.File
