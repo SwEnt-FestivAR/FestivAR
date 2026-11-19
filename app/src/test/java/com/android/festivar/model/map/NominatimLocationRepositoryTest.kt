@@ -9,6 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.currentTime
@@ -144,6 +145,22 @@ class NominatimLocationRepositoryTest {
   }
 
   /**
+   * Breaks if a service that cannot be reached, as without internet, leaves the search waiting for
+   * ever instead of failing.
+   */
+  @Test
+  fun aServiceThatCannotBeReachedIsAnIOException() {
+    val client =
+        OkHttpClient.Builder().addInterceptor { _ -> throw IOException("No internet.") }.build()
+
+    val exception =
+        assertThrows(IOException::class.java) {
+          runTest { NominatimLocationRepository(client) { currentTime }.search("Vidy") }
+        }
+    assertEquals("No internet.", exception.message)
+  }
+
+  /**
    * Breaks if an answer that is not a list of places crashes with something else than IOException.
    */
   @Test
@@ -166,6 +183,19 @@ class NominatimLocationRepositoryTest {
     repository.search("b")
 
     assertEquals(1_000L, currentTime)
+  }
+
+  /**
+   * Breaks if searches started at the same time are not queued: the second and the third would both
+   * wait for the first and then reach the service together, which the usage policy forbids.
+   */
+  @Test
+  fun searchesStartedTogetherAreEachOneSecondApart() = runTest {
+    val repository = repository(Canned(200, "[]"))
+
+    List(3) { launch { repository.search("a") } }.joinAll()
+
+    assertEquals(2_000L, currentTime)
   }
 
   /** Breaks if a search waits although the previous one is already more than a second old. */
