@@ -55,7 +55,11 @@ data class CreateEventUIState(
     val isDiscarded: Boolean = false,
     val zone: ZoneId = ZoneId.systemDefault(),
     @StringRes val errorMsg: Int? = null,
+    val imageUrl: String? = null,
 ) {
+  val hasImage: Boolean
+    get() = !imageUrl.isNullOrEmpty()
+
   val startDateTime: ZonedDateTime?
     get() = computeStartDateTime(startDate, startTime, zone)
 

@@ -197,12 +197,20 @@ fun CreateEventContent(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 12.dp),
     ) {
-      ImagePlaceholder(
-          modifier =
-              Modifier.padding(top = 5.dp).testTag(CreateEventScreenTestTags.IMAGE_SELECT_BUTTON),
-          icon = IconsType.CAM,
-          text = stringResource(R.string.create_event_add_image),
-      )
+      if (state.hasImage && !state.imageUrl.isNullOrEmpty()) {
+        ImageViewer(
+            modifier = Modifier,
+            url = state.imageUrl,
+        )
+      } else {
+        ImagePlaceholder(
+            modifier =
+                Modifier.padding(top = 5.dp).testTag(CreateEventScreenTestTags.IMAGE_SELECT_BUTTON),
+            icon = IconsType.CAM,
+            text = stringResource(R.string.create_event_add_image),
+        )
+      }
+
       Spacer(modifier = Modifier.height(14.dp))
       EventFields(
           name = state.name,
@@ -366,7 +374,7 @@ fun ImagePlaceholder(
 
 @OptIn(ExperimentalGlideComposeApi::class)
 @Composable
-fun SelectedImageViewer(
+fun ImageViewer(
     modifier: Modifier = Modifier,
     url: String,
 ) {
