@@ -19,8 +19,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.outlined.CameraAlt
+import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -44,6 +44,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -51,6 +52,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.R
+import com.android.festivar.ui.components.AvatarTestTags
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.DateTimeRange
 import com.android.festivar.ui.components.FestivarDiscardDialog
@@ -58,6 +60,9 @@ import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.event.EventFields
 import com.android.festivar.ui.event.EventFieldsTestTags
 import com.android.festivar.ui.theme.AppTheme
+import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
+import com.bumptech.glide.integration.compose.GlideImage
+import com.bumptech.glide.integration.compose.placeholder
 import java.time.LocalDate
 import java.time.LocalTime
 
@@ -155,6 +160,12 @@ fun CreateEventScreen(
   }
 }
 
+enum class IconsType {
+  CAM,
+  WARNING,
+  LOAD,
+}
+
 /**
  * Stateless Create event screen: draws [state] and reports user input through [actions]. The open
  * date picker dialog is part of [state] too.
@@ -186,9 +197,11 @@ fun CreateEventContent(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 12.dp),
     ) {
-      ImageSelector(
+      ImagePlaceholder(
           modifier =
-              Modifier.padding(top = 5.dp).testTag(CreateEventScreenTestTags.IMAGE_SELECT_BUTTON)
+              Modifier.padding(top = 5.dp).testTag(CreateEventScreenTestTags.IMAGE_SELECT_BUTTON),
+          icon = IconsType.CAM,
+          text = stringResource(R.string.create_event_add_image),
       )
       Spacer(modifier = Modifier.height(14.dp))
       EventFields(
@@ -255,7 +268,10 @@ private fun CreateEventSaveBar(
     ) {
       if (isSaving) {
         CircularProgressIndicator(
-            modifier = Modifier.size(16.dp).testTag(CreateEventScreenTestTags.SAVING_INDICATOR),
+            modifier =
+                Modifier.padding(horizontal = 12.dp, vertical = 12.dp)
+                    .size(16.dp)
+                    .testTag(CreateEventScreenTestTags.SAVING_INDICATOR),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             strokeWidth = 2.dp,
         )
@@ -269,21 +285,29 @@ private fun CreateEventSaveBar(
   }
 }
 
+/**
+ * This composable can be the "Add an Image" button, the fallback in the case the image fails to
+ * load or the image loading
+ *
+ * @param icon the icon to display
+ * @param text the text to display
+ */
 @Composable
-fun ImageSelector(
+fun ImagePlaceholder(
     modifier: Modifier = Modifier,
+    icon: IconsType,
+    text: String,
 ) {
   // Source - https://stackoverflow.com/a/67039676
   // Posted by Gabriele Mariotti, modified by community. See post 'Timeline' for change history
   // Retrieved 2026-11-19, License - CC BY-SA 4.0
-
   val stroke =
       Stroke(
           width = 5f,
           pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f),
       )
-  val outlineColor = MaterialTheme.colorScheme.outline
 
+  val outlineColor = MaterialTheme.colorScheme.outline
   Card(
       modifier =
           modifier.drawBehind {
@@ -305,17 +329,68 @@ fun ImageSelector(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-      Icon(
-          imageVector = Icons.Outlined.CameraAlt,
-          contentDescription = "Camera icon",
-          modifier = Modifier.fillMaxWidth(1f).padding(20.dp),
-      )
+      when (icon) {
+        IconsType.CAM -> {
+          Icon(
+              imageVector = Icons.Outlined.CameraAlt,
+              contentDescription = "Camera icon",
+              modifier = Modifier.fillMaxWidth(1f).padding(20.dp),
+          )
+        }
+        IconsType.WARNING -> {
+          Icon(
+              imageVector = Icons.Outlined.Warning,
+              contentDescription = "Warning icon",
+              modifier = Modifier.fillMaxWidth(1f).padding(20.dp),
+          )
+        }
+        IconsType.LOAD -> {
+          CircularProgressIndicator(
+              modifier =
+                  Modifier.padding(20.dp)
+                      .size(16.dp)
+                      .testTag(CreateEventScreenTestTags.SAVING_INDICATOR),
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+              strokeWidth = 2.dp,
+          )
+        }
+      }
       Text(
           modifier = Modifier.fillMaxWidth(1f).padding(bottom = 20.dp),
-          text = stringResource(R.string.create_event_add_image),
+          text = text,
           textAlign = TextAlign.Center,
       )
     }
+  }
+}
+
+@OptIn(ExperimentalGlideComposeApi::class)
+@Composable
+fun SelectedImageViewer(
+    modifier: Modifier = Modifier,
+    url: String,
+) {
+  Card() {
+    GlideImage(
+        model = url,
+        contentDescription = "User profile picture",
+        contentScale = ContentScale.Crop,
+        failure =
+            placeholder {
+              ImagePlaceholder(
+                  icon = IconsType.WARNING,
+                  text = stringResource(R.string.create_event_image_fail),
+              )
+            },
+        loading =
+            placeholder {
+              ImagePlaceholder(
+                  icon = IconsType.LOAD,
+                  text = stringResource(R.string.create_event_image_fail),
+              )
+            },
+        modifier = Modifier.fillMaxSize().testTag(AvatarTestTags.PROFILE_PICTURE),
+    )
   }
 }
 

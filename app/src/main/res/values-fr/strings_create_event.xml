@@ -13,4 +13,6 @@
     <string name="create_event_error_save_failed">Impossible de créer l’événement.</string>
     <string name="create_event_discard_title">Abandonner cet événement ?</string>
     <string name="create_event_add_image">Ajouter une image</string>
+    <string name="create_event_image_fail">Impossible de charger l\'image</string>
+    <string name="create_event_image_load">Chargement…</string>
 </resources>
