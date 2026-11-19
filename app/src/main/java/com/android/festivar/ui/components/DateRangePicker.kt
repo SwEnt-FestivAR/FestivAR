@@ -312,7 +312,7 @@ private fun DateRangeSaveButton(enabled: Boolean, onClick: () -> Unit) {
   }
 }
 
-@Preview
+@Preview(name = "Past days refused")
 @Composable
 internal fun FestivarDateRangePickerDialogPreview() {
   AppTheme {
@@ -321,6 +321,20 @@ internal fun FestivarDateRangePickerDialogPreview() {
         initialEnd = LocalDate.now().plusDays(15),
         onConfirm = { _, _ -> },
         onDismiss = {},
+    )
+  }
+}
+
+@Preview(name = "Past days allowed")
+@Composable
+internal fun FestivarDateRangePickerDialogPastAllowedPreview() {
+  AppTheme {
+    FestivarDateRangePickerDialog(
+        initialStart = LocalDate.now().minusDays(3),
+        initialEnd = LocalDate.now().plusDays(2),
+        onConfirm = { _, _ -> },
+        onDismiss = {},
+        allowPast = true,
     )
   }
 }
