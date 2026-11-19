@@ -199,15 +199,27 @@ class DateRangePickerTest {
 
   /**
    * Breaks if the last column of the calendar is cut off on a phone narrower than Material's
-   * calendar, as most phones are: the Saturday cell would then be narrower than the Sunday one.
+   * calendar: the Saturday cell would then be narrower than the Sunday one.
    */
   @Test
-  @Config(qualifiers = "en-rUS-w360dp-h640dp")
-  fun theWholeCalendarFitsOnANarrowScreen() {
+  @Config(qualifiers = "en-rUS-w340dp-h640dp")
+  fun theWholeCalendarFitsOnAPhoneNarrowerThanIt() {
     show()
     val sunday = composeTestRule.onNode(cellOf(LocalDate.of(2026, 11, 22))).getBoundsInRoot()
     val saturday = composeTestRule.onNode(cellOf(LocalDate.of(2026, 11, 28))).getBoundsInRoot()
     assertEquals(sunday.width.value, saturday.width.value, 0.1f)
+  }
+
+  /**
+   * Breaks if a 360dp phone, the most common width, gets days smaller than the 48dp touch target:
+   * the side margin of the card must give way before the calendar is scaled down.
+   */
+  @Test
+  @Config(qualifiers = "en-rUS-w360dp-h640dp")
+  fun aPhoneOf360dpKeepsTheDaysAtTheirFullSize() {
+    show()
+    val day = composeTestRule.onNode(cellOf(LocalDate.of(2026, 11, 22))).getBoundsInRoot()
+    assertEquals(48f, day.width.value, 0.1f)
   }
 
   /** Breaks if the calendar moves when a first day is chosen, because the summary changes size. */

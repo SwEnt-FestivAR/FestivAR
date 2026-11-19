@@ -65,6 +65,9 @@ object DateRangePickerTestTags {
 /** The width of Material's calendar, which it keeps whatever the room it gets. */
 private val MATERIAL_CALENDAR_WIDTH = 360.dp
 
+/** The side margin of the calendar card in the design, kept while the phone is wide enough. */
+private val CALENDAR_MARGIN = 20.dp
+
 /** The opacity of a disabled element, as in the design. */
 private const val DISABLED_ALPHA = 0.38f
 
@@ -230,20 +233,36 @@ private fun DateRangeSummary(start: LocalDate?, end: LocalDate?) {
   }
 }
 
-/** The calendar in a white card. Today is ringed in the error colour, never filled. */
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * The calendar in a white card. Today is ringed in the error colour, never filled.
+ *
+ * The side margin of the card gives way first on a narrow phone, so that the calendar keeps its
+ * full size on a 360dp one; the margin is gone at that width.
+ */
 @Composable
 private fun DateRangeCalendar(state: DateRangePickerState, modifier: Modifier) {
+  BoxWithConstraints(modifier.fillMaxWidth()) {
+    val margin = ((maxWidth - MATERIAL_CALENDAR_WIDTH) / 2).coerceIn(0.dp, CALENDAR_MARGIN)
+    DateRangeCalendarCard(
+        state,
+        Modifier.fillMaxSize().padding(start = margin, end = margin, bottom = 12.dp),
+    )
+  }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DateRangeCalendarCard(state: DateRangePickerState, modifier: Modifier) {
   val scheme = MaterialTheme.colorScheme
   Surface(
-      modifier = modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 12.dp),
+      modifier = modifier,
       shape = RoundedCornerShape(20.dp),
       color = scheme.surfaceBright,
       border = BorderStroke(1.dp, scheme.outlineVariant),
   ) {
-    // Material's calendar is 360dp wide whatever the room it gets, so a narrower phone would cut
-    // off its last column. It is drawn at that size and scaled down to fit: the days then get
-    // smaller than 48dp, which is the price of showing the whole month.
+    // Material's calendar is 360dp wide whatever the room it gets, so a phone narrower than that
+    // would cut off its last column. It is drawn at that size and scaled down to fit: the days then
+    // get smaller than 48dp, which is the price of showing the whole month.
     BoxWithConstraints(contentAlignment = Alignment.Center) {
       val scale = minOf(1f, maxWidth / MATERIAL_CALENDAR_WIDTH)
       val pickerModifier =
