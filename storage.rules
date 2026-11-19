@@ -1,17 +1,34 @@
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
     match /audio/voice-note/{taskId}/{file} {
-      // Note: read and delete are currently allowed for any signed-in user because Firebase
-      // Storage rules cannot easily verify Firestore task ownership. This is a known security
-      // limitation to be addressed in a future sprint (see issue #302)
-      // (e.g., via task ownership validation or security tokens).
-      allow read: if request.auth != null;
-      allow write: if request.auth != null
-                   && request.resource.size < 20 * 1024 * 1024
-                   && (request.resource.contentType == null || request.resource.contentType.matches('audio/.*'));
-      allow delete: if request.auth != null;
+      // The task document in Firestore is the source of truth: a voice note belongs to the task
+      // named in its path, and only the task's owner may write or delete it.
+      function task() {
+        return firestore.get(/databases/(default)/documents/tasks/$(taskId));
+      }
+      function taskExists() {
+        return firestore.exists(/databases/(default)/documents/tasks/$(taskId));
+      }
+      function isTaskOwner() {
+        return request.auth != null
+            && taskExists()
+            && task().data.ownerId == request.auth.uid;
+      }
+
+      // The owner comes from the task document, so this is only as strong as the Firestore rules
+      // that protect `ownerId`.
+      //
+      // Tasks are readable by every signed-in user in Firestore, so the voice note is too, as long
+      // as its task exists.
+      allow read: if request.auth != null && taskExists();
+      allow create, update: if isTaskOwner()
+                            && request.resource.size < 20 * 1024 * 1024
+                            && (request.resource.contentType == null
+                                || request.resource.contentType.matches('audio/.*'));
+      allow delete: if isTaskOwner();
     }
   }
 }
