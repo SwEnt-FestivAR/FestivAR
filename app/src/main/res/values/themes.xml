@@ -22,10 +22,6 @@
         <item name="android:textColorSecondary">@color/settings_on_surface_light</item>
     </style>
 
-    <style name="Theme.Test.RawColorPrimary" parent="Theme.AppCompat.Light.NoActionBar">
-        <item name="android:textColorPrimary">#123456</item>
-    </style>
-
     <!-- System start screen, the app's only splash: the burst and the wordmark on the background,
          shown while the app starts, then Theme.AppTheme. -->
     <style name="Theme.App.Starting" parent="Theme.SplashScreen">
