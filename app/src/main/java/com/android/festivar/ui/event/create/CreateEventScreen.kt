@@ -212,8 +212,8 @@ fun CreateEventContent(
     ) {
       if (state.hasImage && !state.imageUrl.isNullOrEmpty()) {
         ImageViewer(
-            modifier = Modifier,
             url = state.imageUrl,
+            onEditImageClick = { launchPicker("image/*") },
         )
       } else {
         ImagePlaceholderPicker(
@@ -391,10 +391,10 @@ fun ImagePlaceholderPicker(
 @OptIn(ExperimentalGlideComposeApi::class)
 @Composable
 fun ImageViewer(
-    modifier: Modifier = Modifier,
     url: String,
+    onEditImageClick: () -> Unit = {},
 ) {
-  Card() {
+  Card(onClick = onEditImageClick) {
     GlideImage(
         model = url,
         contentDescription = "User profile picture",

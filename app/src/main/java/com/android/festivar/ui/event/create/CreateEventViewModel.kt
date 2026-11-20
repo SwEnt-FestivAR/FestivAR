@@ -197,7 +197,7 @@ class CreateEventViewModel(
   }
 
   /** Confirms that the user wants to leave and discard the entered details. */
-  suspend fun confirmDiscard() {
+  fun confirmDiscard() {
     val urlToDelete = uiState.value.imageUrl
     if (currentState.createdEventId == null && !urlToDelete.isNullOrBlank()) {
       viewModelScope.launch(ioDispatcher) {

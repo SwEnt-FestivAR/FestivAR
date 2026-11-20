@@ -81,6 +81,7 @@ class CreateEventScreenTest {
             CreateEventScreenTestTags.LOCATION_FIELD,
             CreateEventScreenTestTags.DESCRIPTION_FIELD,
             CreateEventScreenTestTags.CREATE_BUTTON,
+            CreateEventScreenTestTags.IMAGE_SELECT_BUTTON,
         )
         .forEach { tag -> composeTestRule.onNodeWithTag(tag).assertIsDisplayed() }
   }
