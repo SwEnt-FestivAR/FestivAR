@@ -41,6 +41,7 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
 import kotlinx.coroutines.CompletableDeferred
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -252,6 +253,58 @@ class CreateEventScreenTest {
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.DISCARD_BUTTON).performClick()
     composeTestRule.waitForIdle()
     verify(exactly = 1) { onBack() }
+  }
+
+  /** Breaks if clicking the add image placeholder does not trigger the photo picker. */
+  @Test
+  fun addImageButtonTriggersPhotoPicker() {
+    val launchPhotoPicker = mockk<(String) -> Unit>(relaxed = true)
+    viewModel = CreateEventViewModel(dataRepository)
+    composeTestRule.setContent {
+      CreateEventScreen(viewModel = viewModel, launchPhotoPicker = launchPhotoPicker)
+    }
+
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.IMAGE_SELECT_BUTTON).performClick()
+    verify(exactly = 1) { launchPhotoPicker("image/*") }
+  }
+
+  /**
+   * Breaks if clicking the delete image button when an image is present does not display the delete
+   * confirmation dialog and handle confirmation correctly.
+   */
+  @Test
+  fun deleteImageButtonOpensConfirmationDialogAndConfirmsDeletion() {
+    viewModel = CreateEventViewModel(dataRepository)
+    viewModel.setImageUrlForTesting("https://example.com/image.png")
+    composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
+    composeTestRule.waitForIdle()
+
+    composeTestRule
+        .onNodeWithTag(CreateEventScreenTestTags.DELETE_IMAGE_BUTTON)
+        .assertIsDisplayed()
+        .performClick()
+    composeTestRule.waitForIdle()
+
+    composeTestRule
+        .onNodeWithTag(CreateEventScreenTestTags.DELETE_IMAGE_CONFIRM_DIALOG)
+        .assertIsDisplayed()
+
+    // Test dismiss/cancel first
+    composeTestRule
+        .onNodeWithTag(CreateEventScreenTestTags.DELETE_IMAGE_DISMISS_BUTTON)
+        .performClick()
+    composeTestRule.waitForIdle()
+    assertNotNull(viewModel.uiState.value.imageUrl)
+
+    // Open dialog again and confirm deletion
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.DELETE_IMAGE_BUTTON).performClick()
+    composeTestRule.waitForIdle()
+    composeTestRule
+        .onNodeWithTag(CreateEventScreenTestTags.DELETE_IMAGE_CONFIRM_BUTTON)
+        .performClick()
+    composeTestRule.waitForIdle()
+
+    assertNull(viewModel.uiState.value.imageUrl)
   }
 
   /** Red if system back leaves an edited event without asking first. */

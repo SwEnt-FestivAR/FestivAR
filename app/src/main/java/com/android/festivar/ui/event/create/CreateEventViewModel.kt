@@ -312,6 +312,10 @@ class CreateEventViewModel(
     updateState { it.copy(showDeleteImageConfirmation = true) }
   }
 
+  internal fun setImageUrlForTesting(url: String?) {
+    updateState { it.copy(imageUrl = url) }
+  }
+
   /** Closes the delete image confirmation dialog without deleting the image. */
   fun cancelDeleteImage() {
     updateState { it.copy(showDeleteImageConfirmation = false) }
