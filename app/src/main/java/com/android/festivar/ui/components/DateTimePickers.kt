@@ -31,9 +31,7 @@ import com.android.festivar.ui.theme.AppTheme
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
-import java.time.ZoneId
 import java.time.ZoneOffset
-import java.time.ZonedDateTime
 
 /** The date picker works in UTC milliseconds; this is the value that shows [this] date. */
 internal fun LocalDate.toPickerMillis(): Long =
@@ -119,20 +117,6 @@ enum class DateTimeField {
   END_TIME,
 }
 
-/** The start and end picked in a form. Any part may still be unset. */
-data class DateTimeRange(
-    val startDate: LocalDate? = null,
-    val startTime: LocalTime? = null,
-    val endDate: LocalDate? = null,
-    val endTime: LocalTime? = null,
-)
-
-/** Default start time when a date is selected without an explicit time. */
-val START_OF_DAY: LocalTime = LocalTime.MIDNIGHT
-
-/** Default end time when a date is selected without an explicit time. */
-val END_OF_DAY: LocalTime = LocalTime.of(23, 59)
-
 /**
  * Shows the picker dialog of [field], or nothing when [field] is `null`. The dialogs open on the
  * values of [range], and the end ones on the start while no end is picked. The caller closes the
@@ -207,45 +191,6 @@ fun FestivarDateTimeRow(
         enabled = enabled,
         modifier = Modifier.weight(1f).testTag(timeTag),
     )
-  }
-}
-
-/**
- * Validates the start date/time fields.
- *
- * A start time may only be selected after a start date; selecting a time without a date reports
- * [FieldError.MISSING_DATE]. All other combinations are valid for this field.
- */
-fun startDateError(startDate: LocalDate?, startTime: LocalTime?): FieldError? =
-    if (startTime != null && startDate == null) FieldError.MISSING_DATE else null
-
-/**
- * Validates the end date/time fields against the start and the current time.
- *
- * A selected end time requires an end date. When both dates are present, missing start and end
- * times default to [START_OF_DAY] and [END_OF_DAY]. The end must be strictly after the start, and
- * it must not be in the past. A start in the past is allowed as long as the end is still in the
- * future.
- */
-fun endDateError(
-    range: DateTimeRange,
-    zone: ZoneId = ZoneId.systemDefault(),
-    now: ZonedDateTime = ZonedDateTime.now(),
-    endZone: ZoneId = zone,
-): FieldError? {
-  if (range.endTime != null && range.endDate == null) return FieldError.MISSING_DATE
-
-  val start = range.startDate?.atTime(range.startTime ?: START_OF_DAY)?.atZone(zone)
-  val end = range.endDate?.atTime(range.endTime ?: END_OF_DAY)?.atZone(endZone)
-
-  return if (end != null) {
-    when {
-      start != null && !end.isAfter(start) -> FieldError.END_BEFORE_START
-      end.isBefore(now) -> FieldError.OUTDATED
-      else -> null
-    }
-  } else {
-    null
   }
 }
 
