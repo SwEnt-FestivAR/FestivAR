@@ -94,7 +94,12 @@ class MainActivityNavigationTest {
   // The events overview fetches the events of the signed-in user from Firestore
   private val signedInUid = "user-${UUID.randomUUID()}"
 
-  private val signedInUser = mockk<FirebaseUser> { every { uid } returns signedInUid }
+  // Not anonymous, so the overview offers to create an event
+  private val signedInUser =
+      mockk<FirebaseUser> {
+        every { uid } returns signedInUid
+        every { isAnonymous } returns false
+      }
 
   // The stored profile of the signed-in user
   private val storedUser = User(uid = signedInUid, name = "Sara", surname = "Keller")
