@@ -18,52 +18,23 @@ import com.android.festivar.ui.components.formatTime
 import java.time.LocalDate
 import java.time.LocalTime
 
-/** A date or time field of a form with a start and an end, each opening its own picker. */
-enum class DateTimeField {
-  START_DATE,
-  START_TIME,
-  END_DATE,
-  END_TIME,
-}
-
 /**
- * Shows the picker dialog of [field], or nothing when [field] is `null`. The dialogs open on the
- * values of [range], and the end ones on the start while no end is picked. The caller closes the
- * dialog after [onDatePicked] and [onTimePicked].
- */
-@Composable
-fun FestivarDateTimePickerDialog(
-    field: DateTimeField?,
-    range: DateTimeRange,
-    onDatePicked: (LocalDate) -> Unit,
-    onTimePicked: (LocalTime) -> Unit,
-    onDismiss: () -> Unit,
-) {
-  when (field) {
-    DateTimeField.START_DATE ->
-        FestivarDatePickerDialog(range.startDate, onConfirm = onDatePicked, onDismiss = onDismiss)
-    DateTimeField.END_DATE ->
-        FestivarDatePickerDialog(
-            initial = range.endDate ?: range.startDate,
-            onConfirm = onDatePicked,
-            onDismiss = onDismiss,
-        )
-    DateTimeField.START_TIME ->
-        FestivarTimePickerDialog(range.startTime, onConfirm = onTimePicked, onDismiss = onDismiss)
-    DateTimeField.END_TIME ->
-        FestivarTimePickerDialog(
-            initial = range.endTime ?: range.startTime,
-            onConfirm = onTimePicked,
-            onDismiss = onDismiss,
-        )
-    null -> Unit
-  }
-}
-
-/**
- * A date field and a time field side by side, each opening its picker when tapped. [dateError]
- * marks both fields, and its message is shown under the date. The tags are the test tags of the
- * date, of the error and of the time.
+ * A date field and a time field side by side, each opening its picker when tapped. As in Figma, an
+ * error marks both fields, and its message is shown under the date.
+ *
+ * @param dateLabel Label of the date field.
+ * @param timeLabel Label of the time field.
+ * @param date The date shown, or `null` for an empty field.
+ * @param time The time shown, or `null` for an empty field.
+ * @param dateError The error marking both fields, or `null` for none. Its message is shown under
+ *   the date.
+ * @param onDateClick Called when the date field is tapped.
+ * @param onTimeClick Called when the time field is tapped.
+ * @param dateTag Test tag of the date field.
+ * @param dateErrorTag Test tag of the error message.
+ * @param timeTag Test tag of the time field.
+ * @param modifier Modifier of the row.
+ * @param enabled Whether the fields can be tapped.
  */
 @Composable
 fun FestivarDateTimeRow(
