@@ -9,15 +9,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerColors
 import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TimePickerColors
 import androidx.compose.material3.TimePickerDefaults
@@ -25,7 +22,6 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -250,28 +246,6 @@ fun endDateError(
     }
   } else {
     null
-  }
-}
-
-/**
- * Text button of the dialogs. Material draws these in `primary`, which is the lime of the app and
- * cannot be read on the dialog background, so the dark green of the theme is used instead.
- */
-@Composable
-internal fun DialogButton(
-    text: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    contentColor: Color = MaterialTheme.colorScheme.onPrimaryContainer,
-) {
-  TextButton(
-      onClick = onClick,
-      modifier = modifier,
-      enabled = enabled,
-      colors = ButtonDefaults.textButtonColors(contentColor = contentColor),
-  ) {
-    Text(text)
   }
 }
 
