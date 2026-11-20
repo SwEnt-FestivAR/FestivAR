@@ -9,11 +9,13 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -392,29 +394,36 @@ fun ImagePlaceholderPicker(
 @Composable
 fun ImageViewer(
     url: String,
+    modifier: Modifier = Modifier,
     onEditImageClick: () -> Unit = {},
 ) {
-  Card(onClick = onEditImageClick) {
-    GlideImage(
-        model = url,
-        contentDescription = "User profile picture",
-        contentScale = ContentScale.Crop,
-        failure =
-            placeholder {
-              ImagePlaceholderPicker(
-                  icon = IconsType.WARNING,
-                  text = stringResource(R.string.create_event_image_fail),
-              )
-            },
-        loading =
-            placeholder {
-              ImagePlaceholderPicker(
-                  icon = IconsType.LOAD,
-                  text = stringResource(R.string.create_event_image_load),
-              )
-            },
-        modifier = Modifier.fillMaxSize().testTag(AvatarTestTags.PROFILE_PICTURE),
-    )
+  // This forces the image to not be shown taller than a square
+  BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth().heightIn(max = maxWidth),
+        onClick = onEditImageClick,
+    ) {
+      GlideImage(
+          model = url,
+          contentDescription = stringResource(R.string.create_event_title),
+          contentScale = ContentScale.FillWidth,
+          failure =
+              placeholder {
+                ImagePlaceholderPicker(
+                    icon = IconsType.WARNING,
+                    text = stringResource(R.string.create_event_image_fail),
+                )
+              },
+          loading =
+              placeholder {
+                ImagePlaceholderPicker(
+                    icon = IconsType.LOAD,
+                    text = stringResource(R.string.create_event_image_load),
+                )
+              },
+          modifier = Modifier.fillMaxWidth().testTag(AvatarTestTags.PROFILE_PICTURE),
+      )
+    }
   }
 }
 
