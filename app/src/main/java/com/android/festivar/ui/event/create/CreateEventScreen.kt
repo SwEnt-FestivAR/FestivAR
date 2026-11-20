@@ -6,6 +6,8 @@ package com.android.festivar.ui.event.create
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -45,6 +47,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -126,11 +129,19 @@ fun CreateEventScreen(
     viewModel: CreateEventViewModel = viewModel(),
     onBack: () -> Unit = {},
     onCreated: () -> Unit = {},
+    launchPhotoPicker: ((String) -> Unit)? = null,
 ) {
   val uiState by viewModel.uiState.collectAsState()
   LaunchedEffect(uiState.isDiscarded) { if (uiState.isDiscarded) onBack() }
   LaunchedEffect(uiState.createdEventId) { if (uiState.createdEventId != null) onCreated() }
   BackHandler(onBack = viewModel::requestDiscard)
+
+  val context = LocalContext.current
+  val photoPicker =
+      rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let { viewModel.updateImage(it, context.contentResolver, context.cacheDir) }
+      }
+  val launchPicker = launchPhotoPicker ?: { mimeType -> photoPicker.launch(mimeType) }
 
   CreateEventContent(
       state = uiState,
@@ -146,6 +157,7 @@ fun CreateEventScreen(
               onCreate = viewModel::createEvent,
           ),
       modifier = modifier,
+      launchPicker,
   )
 
   if (uiState.showDiscardConfirmation) {
@@ -176,6 +188,7 @@ fun CreateEventContent(
     state: CreateEventUIState,
     actions: CreateEventActions,
     modifier: Modifier = Modifier,
+    launchPicker: ((String) -> Unit) = {},
 ) {
   Scaffold(
       modifier = modifier,
@@ -203,11 +216,12 @@ fun CreateEventContent(
             url = state.imageUrl,
         )
       } else {
-        ImagePlaceholder(
+        ImagePlaceholderPicker(
             modifier =
                 Modifier.padding(top = 5.dp).testTag(CreateEventScreenTestTags.IMAGE_SELECT_BUTTON),
             icon = IconsType.CAM,
-            text = stringResource(R.string.create_event_add_image),
+            text = stringResource(R.string.create_event_image_add),
+            onEditImageClick = { launchPicker("image/*") },
         )
       }
 
@@ -301,10 +315,11 @@ private fun CreateEventSaveBar(
  * @param text the text to display
  */
 @Composable
-fun ImagePlaceholder(
+fun ImagePlaceholderPicker(
     modifier: Modifier = Modifier,
     icon: IconsType,
     text: String,
+    onEditImageClick: () -> Unit = {},
 ) {
   // Source - https://stackoverflow.com/a/67039676
   // Posted by Gabriele Mariotti, modified by community. See post 'Timeline' for change history
@@ -332,6 +347,7 @@ fun ImagePlaceholder(
               disabledContainerColor = MaterialTheme.colorScheme.outlineVariant,
               disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
           ),
+      onClick = onEditImageClick,
   ) {
     Column(
         verticalArrangement = Arrangement.Center,
@@ -385,16 +401,16 @@ fun ImageViewer(
         contentScale = ContentScale.Crop,
         failure =
             placeholder {
-              ImagePlaceholder(
+              ImagePlaceholderPicker(
                   icon = IconsType.WARNING,
                   text = stringResource(R.string.create_event_image_fail),
               )
             },
         loading =
             placeholder {
-              ImagePlaceholder(
+              ImagePlaceholderPicker(
                   icon = IconsType.LOAD,
-                  text = stringResource(R.string.create_event_image_fail),
+                  text = stringResource(R.string.create_event_image_load),
               )
             },
         modifier = Modifier.fillMaxSize().testTag(AvatarTestTags.PROFILE_PICTURE),

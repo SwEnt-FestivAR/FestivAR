@@ -12,7 +12,7 @@
     <string name="create_event_button">Create event</string>
     <string name="create_event_error_save_failed">Unable to create the event.</string>
     <string name="create_event_discard_title">Discard this event?</string>
-    <string name="create_event_add_image">Add an image</string>
+    <string name="create_event_image_add">Add an image</string>
     <string name="create_event_image_fail">Image failed to load</string>
     <string name="create_event_image_load">Loading…</string>
 </resources>
