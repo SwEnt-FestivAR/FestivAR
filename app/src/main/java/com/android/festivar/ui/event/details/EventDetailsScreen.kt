@@ -566,7 +566,11 @@ private fun previewEvent(): Event {
 internal fun EventDetailsScreenPreview() {
   AppTheme {
     EventDetailsContent(
-        state = EventDetailsUIState(event = previewEvent()),
+        state =
+            EventDetailsUIState(
+                event = previewEvent(),
+                permissions = EventDetailsPermissions(canSeeMembers = true, canSeeTasks = true),
+            ),
         actions = EventDetailsActions(onBack = {}, onTasksButtonClicked = {}),
     )
   }
