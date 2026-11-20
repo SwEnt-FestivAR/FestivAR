@@ -46,6 +46,12 @@ internal fun DialogCloseButton(onClick: () -> Unit, modifier: Modifier = Modifie
 /**
  * Text button of the dialogs. Material draws these in `primary`, which is the lime of the app and
  * cannot be read on the dialog background, so the dark green of the theme is used instead.
+ *
+ * @param text Label of the button.
+ * @param onClick Called when the button is tapped.
+ * @param modifier Modifier of the button.
+ * @param enabled Whether the button can be tapped.
+ * @param contentColor Color of the label; the dark green of the theme by default.
  */
 @Composable
 internal fun DialogButton(
