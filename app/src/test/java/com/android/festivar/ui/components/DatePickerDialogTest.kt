@@ -5,7 +5,7 @@ import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-class DateTimePickersTest {
+class DatePickerDialogTest {
   // Converting a date to picker milliseconds and back gives the same date, leap day included.
   @Test
   fun pickerMillis_roundTripsTheSameDate() {
