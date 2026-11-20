@@ -227,7 +227,7 @@ private fun errorMessage(uiState: EventsOverviewUIState): String =
 /**
  * Empty state of the [EventsOverviewScreen], shown when the user has no [Event] at all. It offers
  * to join or to create one, both buttons sharing the width equally. The "Create" button is hidden
- * when [canCreateEvent] is `false`.
+ * when [canCreateEvent] is `false`, and the "Join" button then takes the whole width.
  */
 @Composable
 private fun EmptyEventsState(

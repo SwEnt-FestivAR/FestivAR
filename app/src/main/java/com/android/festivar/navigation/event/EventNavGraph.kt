@@ -41,6 +41,7 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, dataRepository:
                 EventsOverviewViewModel(
                     dataRepository = dataRepository,
                     uId = firebaseUser.uid,
+                    // Read at each call, so that an anonymous account upgraded later is seen
                     isAnonymous = {
                       dataRepository.authRepository.currentUser?.isAnonymous == true
                     },
