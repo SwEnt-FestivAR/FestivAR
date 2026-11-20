@@ -145,7 +145,11 @@ fun EventsOverviewContent(
       floatingActionButton = {
         // The empty state has its own "Join" and "Create" buttons, the error state has none
         if (uiState.hasError || !uiState.hasNoEvents) {
-          EventActionsMenu(onJoinEvent = onJoinEvent, onAddEvent = onAddEvent)
+          EventActionsMenu(
+              canCreateEvent = uiState.canCreateEvent,
+              onJoinEvent = onJoinEvent,
+              onAddEvent = onAddEvent,
+          )
         }
       },
   ) { pd ->
@@ -194,7 +198,13 @@ fun EventsOverviewContent(
                     EventsFilter.PAST -> R.string.events_overview_no_past
                   }
               ),
-          emptyState = { EmptyEventsState(onJoinEvent = onJoinEvent, onAddEvent = onAddEvent) },
+          emptyState = {
+            EmptyEventsState(
+                canCreateEvent = uiState.canCreateEvent,
+                onJoinEvent = onJoinEvent,
+                onAddEvent = onAddEvent,
+            )
+          },
           modifier = Modifier.fillMaxSize(),
           // A new list state for each filter, so that switching filter starts back at the top
           listKey = uiState.selectedFilter,
@@ -216,10 +226,15 @@ private fun errorMessage(uiState: EventsOverviewUIState): String =
 
 /**
  * Empty state of the [EventsOverviewScreen], shown when the user has no [Event] at all. It offers
- * to join or to create one, both buttons sharing the width equally.
+ * to join or to create one, both buttons sharing the width equally. The "Create" button is hidden
+ * when [canCreateEvent] is `false`, and the "Join" button then takes the whole width.
  */
 @Composable
-private fun EmptyEventsState(onJoinEvent: () -> Unit, onAddEvent: () -> Unit) {
+private fun EmptyEventsState(
+    canCreateEvent: Boolean,
+    onJoinEvent: () -> Unit,
+    onAddEvent: () -> Unit,
+) {
   val buttonShape = RoundedCornerShape(12.dp)
   val buttonPadding = PaddingValues(horizontal = 12.dp)
   EmptyState(
@@ -250,37 +265,44 @@ private fun EmptyEventsState(onJoinEvent: () -> Unit, onAddEvent: () -> Unit) {
           maxLines = 1,
       )
     }
-    Button(
-        onClick = onAddEvent,
-        shape = buttonShape,
-        colors =
-            ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-            ),
-        contentPadding = buttonPadding,
-        modifier =
-            Modifier.weight(1f)
-                .height(52.dp)
-                .testTag(EventsOverviewScreenTestTags.CREATE_EVENT_BUTTON),
-    ) {
-      Icon(painter = painterResource(R.drawable.ic_add), contentDescription = null)
-      Spacer(modifier = Modifier.width(10.dp))
-      Text(
-          text = stringResource(R.string.events_overview_create),
-          style = MaterialTheme.typography.labelLarge,
-          maxLines = 1,
-      )
+    if (canCreateEvent) {
+      Button(
+          onClick = onAddEvent,
+          shape = buttonShape,
+          colors =
+              ButtonDefaults.buttonColors(
+                  containerColor = MaterialTheme.colorScheme.primary,
+                  contentColor = MaterialTheme.colorScheme.onPrimary,
+              ),
+          contentPadding = buttonPadding,
+          modifier =
+              Modifier.weight(1f)
+                  .height(52.dp)
+                  .testTag(EventsOverviewScreenTestTags.CREATE_EVENT_BUTTON),
+      ) {
+        Icon(painter = painterResource(R.drawable.ic_add), contentDescription = null)
+        Spacer(modifier = Modifier.width(10.dp))
+        Text(
+            text = stringResource(R.string.events_overview_create),
+            style = MaterialTheme.typography.labelLarge,
+            maxLines = 1,
+        )
+      }
     }
   }
 }
 
 /**
  * Floating "+" button of the [EventsOverviewScreen]. Clicking on it turns it into a close button
- * and shows the "Join" and "Create" buttons above it.
+ * and shows the "Join" and "Create" buttons above it. The "Create" button is hidden when
+ * [canCreateEvent] is `false`.
  */
 @Composable
-private fun EventActionsMenu(onJoinEvent: () -> Unit, onAddEvent: () -> Unit) {
+private fun EventActionsMenu(
+    canCreateEvent: Boolean,
+    onJoinEvent: () -> Unit,
+    onAddEvent: () -> Unit,
+) {
   var expanded by rememberSaveable { mutableStateOf(false) }
   // The design has its own floating shadow instead of the Material elevation
   val elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
@@ -311,16 +333,18 @@ private fun EventActionsMenu(onJoinEvent: () -> Unit, onAddEvent: () -> Unit) {
             elevation = elevation,
             modifier = floatingShadow.testTag(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON),
         )
-        EventActionButton(
-            label = stringResource(R.string.events_overview_create),
-            icon = R.drawable.ic_add,
-            onClick = {
-              expanded = false
-              onAddEvent()
-            },
-            elevation = elevation,
-            modifier = floatingShadow.testTag(EventsOverviewScreenTestTags.CREATE_EVENT_BUTTON),
-        )
+        if (canCreateEvent) {
+          EventActionButton(
+              label = stringResource(R.string.events_overview_create),
+              icon = R.drawable.ic_add,
+              onClick = {
+                expanded = false
+                onAddEvent()
+              },
+              elevation = elevation,
+              modifier = floatingShadow.testTag(EventsOverviewScreenTestTags.CREATE_EVENT_BUTTON),
+          )
+        }
       }
     }
     FloatingActionButton(

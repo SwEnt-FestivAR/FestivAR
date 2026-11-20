@@ -674,4 +674,32 @@ class EventsOverviewScreenTest {
     assertEquals(0, joins)
     assertEquals(1, adds)
   }
+
+  /** Breaks if the "+" button still offers to create an event to an anonymous account. */
+  @Test
+  fun actionsButtonOfAnAnonymousAccountShowsOnlyTheJoinButton() {
+    setContent(EventsOverviewUIState(ongoingEvents = listOf(ongoingEvent), canCreateEvent = false))
+
+    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.EVENT_ACTIONS_BUTTON).performClick()
+
+    composeTestRule
+        .onNodeWithTag(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON)
+        .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(EventsOverviewScreenTestTags.CREATE_EVENT_BUTTON)
+        .assertDoesNotExist()
+  }
+
+  /** Breaks if the empty state still offers to create an event to an anonymous account. */
+  @Test
+  fun emptyStateOfAnAnonymousAccountShowsOnlyTheJoinButton() {
+    setContent(EventsOverviewUIState(canCreateEvent = false))
+
+    composeTestRule
+        .onNodeWithTag(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON)
+        .assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(EventsOverviewScreenTestTags.CREATE_EVENT_BUTTON)
+        .assertDoesNotExist()
+  }
 }

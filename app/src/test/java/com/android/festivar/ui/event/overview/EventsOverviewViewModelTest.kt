@@ -141,11 +141,12 @@ class EventsOverviewViewModelTest {
 
   /**
    * Creates the ViewModel and, unless [shown] is `false`, refreshes it once, as the screen does
-   * when it is shown.
+   * when it is shown. [isAnonymous] tells whether the user has an anonymous account.
    */
   private fun createViewModel(
       withRepository: EventsRepository,
       shown: Boolean = true,
+      isAnonymous: () -> Boolean = { false },
   ): EventsOverviewViewModel {
     val viewModel =
         EventsOverviewViewModel(
@@ -153,6 +154,7 @@ class EventsOverviewViewModelTest {
                 DataRepositoryLocal(FakeAuthRepository(), eventsRepository = withRepository),
             uId = sara.uid,
             now = { now },
+            isAnonymous = isAnonymous,
         )
     if (shown) viewModel.refreshUIState()
     return viewModel
@@ -630,6 +632,43 @@ class EventsOverviewViewModelTest {
       advanceUntilIdle()
       assertFalse(viewModel.uiState.value.hasNoEvents)
     }
+  }
+
+  /** Breaks if an anonymous account can create an event, before or after the first fetch. */
+  @Test
+  fun anonymousAccountCannotCreateAnEvent() = runTest {
+    val viewModel =
+        createViewModel(
+            withRepository = RecordingEventsRepository(listOf(ongoingEvent)),
+            shown = false,
+            isAnonymous = { true },
+        )
+    assertFalse(viewModel.uiState.value.canCreateEvent)
+
+    viewModel.refreshUIState()
+    advanceUntilIdle()
+
+    assertFalse(viewModel.uiState.value.canCreateEvent)
+  }
+
+  /**
+   * Breaks if an anonymous account upgraded in the meantime does not get back the creation of an
+   * event at the next refresh, even when its fetch fails.
+   */
+  @Test
+  fun upgradedAccountCanCreateAnEventAfterARefresh() = runTest {
+    var isAnonymous = true
+    val repository = RecordingEventsRepository(error = RuntimeException("Network error"))
+    val viewModel = createViewModel(withRepository = repository, isAnonymous = { isAnonymous })
+    advanceUntilIdle()
+    assertFalse(viewModel.uiState.value.canCreateEvent)
+
+    isAnonymous = false
+    viewModel.refreshUIState()
+    advanceUntilIdle()
+
+    assertTrue(viewModel.uiState.value.hasError)
+    assertTrue(viewModel.uiState.value.canCreateEvent)
   }
 
   /** Test that, with the default clock, the events of the user are split with the real time. */
