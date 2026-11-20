@@ -1,7 +1,7 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
-package com.android.festivar.ui.components
+package com.android.festivar.ui.components.dates
 
 import java.time.LocalDate
 import java.time.LocalTime

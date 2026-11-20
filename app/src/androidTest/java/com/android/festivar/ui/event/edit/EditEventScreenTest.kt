@@ -19,7 +19,7 @@ import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
-import com.android.festivar.ui.components.DateTimeField
+import com.android.festivar.ui.components.dates.DateTimeField
 import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
 import java.time.LocalTime

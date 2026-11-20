@@ -1,5 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
-package com.android.festivar.ui.components
+package com.android.festivar.ui.components.dates
 
 import java.time.LocalDate
 import org.junit.Assert.assertEquals

@@ -1,5 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
-package com.android.festivar.ui.components
+package com.android.festivar.ui.components.dates
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -48,6 +48,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.android.festivar.R
+import com.android.festivar.ui.components.FixedBottomBar
+import com.android.festivar.ui.components.formatDateRange
 import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit

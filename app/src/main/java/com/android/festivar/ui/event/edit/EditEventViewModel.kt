@@ -9,10 +9,10 @@ import com.android.festivar.R
 import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
-import com.android.festivar.ui.components.DateTimeField
-import com.android.festivar.ui.components.DateTimeRange
 import com.android.festivar.ui.components.FieldError
-import com.android.festivar.ui.components.endDateError as validateEndDateError
+import com.android.festivar.ui.components.dates.DateTimeField
+import com.android.festivar.ui.components.dates.DateTimeRange
+import com.android.festivar.ui.components.dates.endDateError as validateEndDateError
 import com.android.festivar.ui.event.EventFormViewModel
 import com.android.festivar.ui.event.computeEndDateTime
 import com.android.festivar.ui.event.computeStartDateTime

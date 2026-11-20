@@ -17,8 +17,8 @@ import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryLocal
-import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.FieldError
+import com.android.festivar.ui.components.dates.DateTimeField
 import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalTime

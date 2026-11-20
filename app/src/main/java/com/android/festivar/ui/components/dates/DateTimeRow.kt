@@ -1,7 +1,7 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
-package com.android.festivar.ui.components
+package com.android.festivar.ui.components.dates
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -10,6 +10,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import com.android.festivar.ui.components.FestivarFieldWithError
+import com.android.festivar.ui.components.FestivarPickerField
+import com.android.festivar.ui.components.FieldError
+import com.android.festivar.ui.components.formatDate
+import com.android.festivar.ui.components.formatTime
 import java.time.LocalDate
 import java.time.LocalTime
 

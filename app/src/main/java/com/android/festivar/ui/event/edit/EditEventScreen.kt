@@ -39,10 +39,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
 import com.android.festivar.model.event.Event
-import com.android.festivar.ui.components.DateTimeField
-import com.android.festivar.ui.components.DateTimeRange
 import com.android.festivar.ui.components.FestivarDiscardDialog
 import com.android.festivar.ui.components.FestivarFieldError
+import com.android.festivar.ui.components.dates.DateTimeField
+import com.android.festivar.ui.components.dates.DateTimeRange
 import com.android.festivar.ui.event.EventFields
 import com.android.festivar.ui.event.EventFieldsTestTags
 import com.android.festivar.ui.theme.AppTheme

@@ -34,8 +34,8 @@ import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.ui.components.FieldError
+import com.android.festivar.ui.components.dates.hasDayOfMonth
 import com.android.festivar.ui.components.fieldErrorMessageRes
-import com.android.festivar.ui.components.hasDayOfMonth
 import com.android.festivar.ui.task.priorityLabelRes
 import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate

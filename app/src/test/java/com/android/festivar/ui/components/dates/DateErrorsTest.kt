@@ -1,6 +1,7 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
-package com.android.festivar.ui.components
+package com.android.festivar.ui.components.dates
 
+import com.android.festivar.ui.components.FieldError
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId

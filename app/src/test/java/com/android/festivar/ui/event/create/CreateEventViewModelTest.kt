@@ -11,10 +11,10 @@ import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryLocal
-import com.android.festivar.ui.components.DateTimeField
-import com.android.festivar.ui.components.END_OF_DAY
 import com.android.festivar.ui.components.FieldError
-import com.android.festivar.ui.components.START_OF_DAY
+import com.android.festivar.ui.components.dates.DateTimeField
+import com.android.festivar.ui.components.dates.END_OF_DAY
+import com.android.festivar.ui.components.dates.START_OF_DAY
 import io.mockk.mockk
 import java.time.LocalDate
 import java.time.LocalTime
