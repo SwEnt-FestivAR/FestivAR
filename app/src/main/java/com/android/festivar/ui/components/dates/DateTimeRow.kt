@@ -77,8 +77,8 @@ fun FestivarDateTimeRow(
     dateTag: String,
     dateErrorTag: String,
     timeTag: String,
-    enabled: Boolean = true,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
   Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = modifier.fillMaxWidth()) {
     FestivarFieldWithError(dateError, dateErrorTag, Modifier.weight(1f)) {
