@@ -306,6 +306,8 @@ class CreateEventViewModel(
     }
   }
 
+  internal fun deleteTemporaryImageForTesting(file: File) = deleteTemporaryImage(file)
+
   /** Opens the delete image confirmation dialog if an image is present. */
   fun requestDeleteImage() {
     if (!uiState.value.hasImage) return

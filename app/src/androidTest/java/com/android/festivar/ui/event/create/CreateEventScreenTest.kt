@@ -6,7 +6,15 @@ package com.android.festivar.ui.event.create
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 
+import android.app.Activity
+import android.content.Intent
+import android.net.Uri
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.LocalActivityResultRegistryOwner
+import androidx.activity.result.ActivityResultRegistry
+import androidx.activity.result.ActivityResultRegistryOwner
+import androidx.activity.result.contract.ActivityResultContract
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -20,6 +28,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
+import androidx.core.app.ActivityOptionsCompat
 import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.datarepository.DataRepositoryLocal
@@ -266,6 +275,47 @@ class CreateEventScreenTest {
 
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.IMAGE_SELECT_BUTTON).performClick()
     verify(exactly = 1) { launchPhotoPicker("image/*") }
+  }
+
+  private class TestActivityResultRegistry : ActivityResultRegistry() {
+    private var requestCode: Int? = null
+
+    override fun <I, O> onLaunch(
+        requestCode: Int,
+        contract: ActivityResultContract<I, O>,
+        input: I,
+        options: ActivityOptionsCompat?,
+    ) {
+      this.requestCode = requestCode
+    }
+
+    fun dispatchGetContentResult(uri: Uri?) {
+      val intent = uri?.let { Intent().setData(it) }
+      dispatchResult(requireNotNull(requestCode), Activity.RESULT_OK, intent)
+    }
+  }
+
+  private val activityResultRegistry = TestActivityResultRegistry()
+
+  /** Breaks if selecting an image via the photo picker contract fails to trigger image update. */
+  @Test
+  fun photoPickerContractUpdatesImageWhenUriIsDispatched() {
+    viewModel = CreateEventViewModel(dataRepository)
+    composeTestRule.setContent {
+      CompositionLocalProvider(
+          LocalActivityResultRegistryOwner provides
+              object : ActivityResultRegistryOwner {
+                override val activityResultRegistry =
+                    this@CreateEventScreenTest.activityResultRegistry
+              },
+      ) {
+        CreateEventScreen(viewModel = viewModel)
+      }
+    }
+
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.IMAGE_SELECT_BUTTON).performClick()
+    activityResultRegistry.dispatchGetContentResult(Uri.parse("content://event-image"))
+    composeTestRule.waitForIdle()
   }
 
   /**

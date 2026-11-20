@@ -24,6 +24,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
 import io.mockk.unmockkStatic
+import io.mockk.verify
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.time.LocalDate
@@ -1312,6 +1313,38 @@ class CreateEventViewModelTest {
         unmockkStatic(MimeTypeMap::class)
       }
     }
+  }
+
+  /** Breaks if attempting to delete a non-existent temporary file throws an exception. */
+  @Test
+  fun deleteTemporaryImageWithNonExistentFile() {
+    val nonExistentFile = File("non_existent_file_12345.tmp")
+    viewModel.deleteTemporaryImageForTesting(nonExistentFile)
+    assertFalse(nonExistentFile.exists())
+  }
+
+  /** Breaks if deleting an existing temporary file fails to remove it. */
+  @Test
+  fun deleteTemporaryImageWithSuccessfullyDeletableFile() {
+    val tempFile = File.createTempFile("temp", ".tmp")
+    assertTrue(tempFile.exists())
+    viewModel.deleteTemporaryImageForTesting(tempFile)
+    assertFalse(tempFile.exists())
+  }
+
+  /**
+   * Breaks if a file deletion failure during temporary cleanup fails to log a warning gracefully.
+   */
+  @Test
+  fun deleteTemporaryImageWithUndeletableFile() {
+    val mockFile = mockk<File>()
+    every { mockFile.exists() } returns true
+    every { mockFile.delete() } returns false
+    every { mockFile.path } returns "mock/path"
+
+    viewModel.deleteTemporaryImageForTesting(mockFile)
+    verify { mockFile.exists() }
+    verify { mockFile.delete() }
   }
 }
 
