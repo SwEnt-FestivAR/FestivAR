@@ -68,6 +68,7 @@ data class CreateEventUIState(
     val createdEventId: String? = null,
     val showDiscardConfirmation: Boolean = false,
     val isDiscarded: Boolean = false,
+    val showDeleteImageConfirmation: Boolean = false,
     val zone: ZoneId = ZoneId.systemDefault(),
     @StringRes val errorMsg: Int? = null,
     val imageUrl: String? = null,
@@ -302,6 +303,32 @@ class CreateEventViewModel(
   private fun deleteTemporaryImage(file: File) {
     if (file.exists() && !file.delete()) {
       Log.w(LOG_TAG, "Could not delete temporary image ${file.path}")
+    }
+  }
+
+  /** Opens the delete image confirmation dialog if an image is present. */
+  fun requestDeleteImage() {
+    if (!uiState.value.hasImage) return
+    updateState { it.copy(showDeleteImageConfirmation = true) }
+  }
+
+  /** Closes the delete image confirmation dialog without deleting the image. */
+  fun cancelDeleteImage() {
+    updateState { it.copy(showDeleteImageConfirmation = false) }
+  }
+
+  /** Confirms deleting the image from storage and removes it from the form state. */
+  fun confirmDeleteImage() {
+    val urlToDelete = uiState.value.imageUrl
+    updateState { it.copy(imageUrl = null, showDeleteImageConfirmation = false) }
+    if (!urlToDelete.isNullOrEmpty()) {
+      CoroutineScope(ioDispatcher + NonCancellable).launch {
+        try {
+          imageStorage.delete(urlToDelete)
+        } catch (e: Exception) {
+          Log.e(LOG_TAG, "Error deleting image", e)
+        }
+      }
     }
   }
 

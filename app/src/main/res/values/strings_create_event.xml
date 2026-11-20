@@ -15,4 +15,8 @@
     <string name="create_event_image_add">Add an image</string>
     <string name="create_event_image_fail">Image failed to load</string>
     <string name="create_event_image_load">Loading…</string>
+    <string name="create_event_image_del">Delete image</string>
+    <string name="create_event_delete_image_title">Delete image?</string>
+    <string name="create_event_delete_image_message">Are you sure you want to delete this image?</string>
+    <string name="create_event_delete_image_cancel">Cancel</string>
 </resources>

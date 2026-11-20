@@ -234,6 +234,99 @@ class CreateEventViewModelTest {
     }
   }
 
+  /** Breaks if requesting image deletion does not open the confirmation dialog. */
+  @Test
+  fun requestDeleteImageOpensConfirmationDialog() = runBlocking {
+    val mimeTypeMap = mockk<MimeTypeMap>()
+    mockkStatic(MimeTypeMap::class)
+    every { MimeTypeMap.getSingleton() } returns mimeTypeMap
+    every { mimeTypeMap.getExtensionFromMimeType("image/png") } returns "png"
+
+    try {
+      val resolver = mockk<ContentResolver>()
+      val tempDir = File.createTempFile("test", "dir")
+      tempDir.delete()
+      tempDir.mkdir()
+      tempDir.deleteOnExit()
+      val uri = mockk<Uri>()
+
+      every { resolver.getType(uri) } returns "image/png"
+      every { resolver.openInputStream(uri) } returns
+          ByteArrayInputStream("test image content".toByteArray())
+
+      viewModel =
+          CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
+      viewModel.updateImage(uri, resolver, tempDir)
+
+      withTimeout(5_000.milliseconds) {
+        while (viewModel.uiState.value.imageUrl == null) delay(10.milliseconds)
+      }
+
+      viewModel.requestDeleteImage()
+      assertTrue(viewModel.uiState.value.showDeleteImageConfirmation)
+
+      viewModel.cancelDeleteImage()
+      assertFalse(viewModel.uiState.value.showDeleteImageConfirmation)
+    } finally {
+      unmockkStatic(MimeTypeMap::class)
+    }
+  }
+
+  /** Breaks if confirming image deletion does not clear the image URL from state and storage. */
+  @Test
+  fun confirmDeleteImageClearsImageUrlAndDeletesFromStorage() = runBlocking {
+    val mimeTypeMap = mockk<MimeTypeMap>()
+    mockkStatic(MimeTypeMap::class)
+    every { MimeTypeMap.getSingleton() } returns mimeTypeMap
+    every { mimeTypeMap.getExtensionFromMimeType("image/png") } returns "png"
+
+    try {
+      val imageStorage = RecordingImageStorage()
+      dataRepository =
+          DataRepositoryLocal(
+              mockk(),
+              eventsRepository = eventsRepository,
+              usersRepository = usersRepository,
+              imageStorage = imageStorage,
+          )
+      viewModel =
+          CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
+      val resolver = mockk<ContentResolver>()
+      val tempDir = File.createTempFile("test", "dir")
+      tempDir.delete()
+      tempDir.mkdir()
+      tempDir.deleteOnExit()
+      val uri = mockk<Uri>()
+
+      every { resolver.getType(uri) } returns "image/png"
+      every { resolver.openInputStream(uri) } returns
+          ByteArrayInputStream("test image content".toByteArray())
+
+      viewModel.updateImage(uri, resolver, tempDir)
+
+      withTimeout(5_000.milliseconds) {
+        while (viewModel.uiState.value.imageUrl == null) delay(10.milliseconds)
+      }
+
+      val uploadedUrl = viewModel.uiState.value.imageUrl
+      assertNotNull(uploadedUrl)
+
+      viewModel.requestDeleteImage()
+      viewModel.confirmDeleteImage()
+
+      assertNull(viewModel.uiState.value.imageUrl)
+      assertFalse(viewModel.uiState.value.showDeleteImageConfirmation)
+
+      withTimeout(5_000.milliseconds) {
+        while (imageStorage.deletedUrls.isEmpty()) delay(10.milliseconds)
+      }
+
+      assertEquals(listOf(uploadedUrl), imageStorage.deletedUrls)
+    } finally {
+      unmockkStatic(MimeTypeMap::class)
+    }
+  }
+
   /** Red if any date/time picker fails to update its field or close afterward. */
   @Test
   fun pickerActionsUpdateAndCloseThePicker() {

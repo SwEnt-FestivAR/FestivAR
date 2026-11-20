@@ -23,6 +23,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CameraAlt
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -56,9 +57,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.R
-import com.android.festivar.ui.components.AvatarTestTags
 import com.android.festivar.ui.components.DateTimeField
 import com.android.festivar.ui.components.DateTimeRange
+import com.android.festivar.ui.components.FestivarConfirmDialog
 import com.android.festivar.ui.components.FestivarDiscardDialog
 import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.event.EventFields
@@ -71,6 +72,11 @@ import java.time.LocalDate
 import java.time.LocalTime
 
 object CreateEventScreenTestTags {
+  const val DELETE_IMAGE_BUTTON: String = "DeleteImageButton"
+  const val IMAGE_PREVIEW: String = "ImagePreview"
+  const val DELETE_IMAGE_CONFIRM_DIALOG = "deleteImageConfirmDialog"
+  const val DELETE_IMAGE_CONFIRM_BUTTON = "deleteImageConfirmButton"
+  const val DELETE_IMAGE_DISMISS_BUTTON = "deleteImageDismissButton"
   const val NAVIGATION_BUTTON = "navigationButton"
   const val TITLE = "title"
   const val NAME_FIELD = "nameField"
@@ -116,6 +122,7 @@ class CreateEventActions(
     val onDatePicked: (LocalDate) -> Unit = {},
     val onTimePicked: (LocalTime) -> Unit = {},
     val onCreate: () -> Unit = {},
+    val onDeleteImageClick: () -> Unit = {},
 )
 
 /**
@@ -156,9 +163,10 @@ fun CreateEventScreen(
               onDatePicked = viewModel::pickDate,
               onTimePicked = viewModel::pickTime,
               onCreate = viewModel::createEvent,
+              onDeleteImageClick = viewModel::requestDeleteImage,
           ),
       modifier = modifier,
-      launchPicker,
+      launchPicker = launchPicker,
   )
 
   if (uiState.showDiscardConfirmation) {
@@ -169,6 +177,20 @@ fun CreateEventScreen(
         modifier = Modifier.testTag(CreateEventScreenTestTags.DISCARD_DIALOG),
         confirmModifier = Modifier.testTag(CreateEventScreenTestTags.DISCARD_BUTTON),
         dismissModifier = Modifier.testTag(CreateEventScreenTestTags.KEEP_EDITING_BUTTON),
+    )
+  }
+
+  if (uiState.showDeleteImageConfirmation) {
+    FestivarConfirmDialog(
+        title = stringResource(R.string.create_event_delete_image_title),
+        message = stringResource(R.string.create_event_delete_image_message),
+        confirmText = stringResource(R.string.create_event_image_del),
+        dismissText = stringResource(R.string.create_event_delete_image_cancel),
+        onConfirm = viewModel::confirmDeleteImage,
+        onDismiss = viewModel::cancelDeleteImage,
+        modifier = Modifier.testTag(CreateEventScreenTestTags.DELETE_IMAGE_CONFIRM_DIALOG),
+        confirmModifier = Modifier.testTag(CreateEventScreenTestTags.DELETE_IMAGE_CONFIRM_BUTTON),
+        dismissModifier = Modifier.testTag(CreateEventScreenTestTags.DELETE_IMAGE_DISMISS_BUTTON),
     )
   }
 }
@@ -215,6 +237,8 @@ fun CreateEventContent(
         ImageViewer(
             url = state.imageUrl,
             onEditImageClick = { launchPicker("image/*") },
+            onDeleteImageClick = actions.onDeleteImageClick,
+            uiState = state,
         )
       } else {
         ImagePlaceholderPicker(
@@ -395,6 +419,8 @@ fun ImageViewer(
     url: String,
     modifier: Modifier = Modifier,
     onEditImageClick: () -> Unit = {},
+    onDeleteImageClick: () -> Unit = {},
+    uiState: CreateEventUIState,
 ) {
   // This forces the image to not be shown taller than a square
   BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
@@ -420,7 +446,27 @@ fun ImageViewer(
                     text = stringResource(R.string.create_event_image_load),
                 )
               },
-          modifier = Modifier.fillMaxWidth().testTag(AvatarTestTags.PROFILE_PICTURE),
+          modifier = Modifier.fillMaxWidth().testTag(CreateEventScreenTestTags.IMAGE_PREVIEW),
+      )
+    }
+    IconButton(
+        onClick = onDeleteImageClick,
+        enabled = !uiState.isSaving && uiState.hasImage,
+        modifier =
+            Modifier.align(Alignment.BottomEnd)
+                .padding(8.dp)
+                .size(64.dp)
+                .testTag(CreateEventScreenTestTags.DELETE_IMAGE_BUTTON),
+        colors =
+            androidx.compose.material3.IconButtonDefaults.iconButtonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+            ),
+    ) {
+      Icon(
+          imageVector = Icons.Outlined.Delete,
+          contentDescription = stringResource(R.string.create_event_image_del),
+          modifier = Modifier.size(42.dp),
       )
     }
   }
