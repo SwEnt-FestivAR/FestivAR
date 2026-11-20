@@ -49,7 +49,7 @@ class DateTimePickerDialogsTest {
 
   // --- Time dialog ---------------------------------------------------------------------------
 
-  // With no initial time, OK confirms the 09:00 default.
+  /** Breaks if OK does not confirm the 09:00 default when no initial time is given. */
   @Test
   fun timeDialog_withoutInitialTime_proposesNineOClock() {
     showTimeDialog(initial = null)
@@ -57,7 +57,7 @@ class DateTimePickerDialogsTest {
     assertEquals(LocalTime.of(9, 0), pickedTime)
   }
 
-  // OK confirms the initial time unchanged, including the minutes.
+  /** Breaks if OK changes the initial time, minutes included. */
   @Test
   fun timeDialog_confirmsTheInitialTime() {
     showTimeDialog(initial = LocalTime.of(14, 35))
@@ -65,7 +65,7 @@ class DateTimePickerDialogsTest {
     assertEquals(LocalTime.of(14, 35), pickedTime)
   }
 
-  // Cancel dismisses the dialog and never calls onConfirm.
+  /** Breaks if Cancel on the time dialog does not only dismiss it, or calls onConfirm. */
   @Test
   fun timeDialog_cancelOnlyDismisses() {
     showTimeDialog(initial = LocalTime.of(14, 35))
@@ -76,7 +76,7 @@ class DateTimePickerDialogsTest {
 
   // --- Date dialog ---------------------------------------------------------------------------
 
-  // OK confirms the initial date unchanged (checks the UTC conversion on the way in and out).
+  /** Breaks if OK changes the initial date, which the UTC conversion in and out must preserve. */
   @Test
   fun dateDialog_confirmsTheInitialDate() {
     showDateDialog(initial = LocalDate.of(2026, 10, 17))
@@ -84,7 +84,7 @@ class DateTimePickerDialogsTest {
     assertEquals(LocalDate.of(2026, 10, 17), pickedDate)
   }
 
-  // With no initial date, OK is disabled, so nothing can be confirmed.
+  /** Breaks if OK is enabled before a date is selected, so that nothing can be confirmed. */
   @Test
   fun dateDialog_cannotBeConfirmedBeforeADateIsSelected() {
     showDateDialog(initial = null)
@@ -92,7 +92,7 @@ class DateTimePickerDialogsTest {
     assertNull(pickedDate)
   }
 
-  // Tapping day 15 of the shown month and pressing OK confirms that day of the current month.
+  /** Breaks if tapping day 15 of the shown month and pressing OK does not confirm that day. */
   @Test
   fun dateDialog_confirmsTheDayThatWasTapped() {
     showDateDialog(initial = null)
@@ -103,8 +103,7 @@ class DateTimePickerDialogsTest {
     assertEquals(LocalDate.now().withDayOfMonth(15), pickedDate)
   }
 
-  // The user picks a day but changes their mind: Cancel must only dismiss the dialog, and the
-  // tapped day must not be reported through onConfirm.
+  /** Breaks if Cancel after tapping a day does not only dismiss the dialog, or reports the day. */
   @Test
   fun dateDialog_cancelAfterTappingADay_doesNotConfirm() {
     showDateDialog(initial = null)
@@ -116,7 +115,7 @@ class DateTimePickerDialogsTest {
     assertNull(pickedDate)
   }
 
-  // Cancel dismisses the dialog and never calls onConfirm.
+  /** Breaks if Cancel on the date dialog does not only dismiss it, or calls onConfirm. */
   @Test
   fun dateDialog_cancelOnlyDismisses() {
     showDateDialog(initial = LocalDate.of(2026, 10, 17))

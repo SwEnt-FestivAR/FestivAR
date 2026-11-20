@@ -12,19 +12,19 @@ import org.junit.Test
 
 /** The field errors of a start and an end date and time. */
 class DateErrorsTest {
-  /** Red if the initially empty start date/time fields report an error. */
+  /** Breaks if the initially empty start date/time fields report an error. */
   @Test
   fun startDateError_initialState_returnsNoError() {
     assertNull(startDateError(startDate = null, startTime = null))
   }
 
-  /** Red if a start date without a start time incorrectly reports an error. */
+  /** Breaks if a start date without a start time incorrectly reports an error. */
   @Test
   fun startDateError_dateWithoutTime_returnsNoError() {
     assertNull(startDateError(startDate = LocalDate.now(), startTime = null))
   }
 
-  /** Red if a start time without a start date does not report a missing-date error. */
+  /** Breaks if a start time without a start date does not report a missing-date error. */
   @Test
   fun startDateError_timeWithoutDate_returnsMissingDate() {
     assertEquals(
@@ -33,19 +33,19 @@ class DateErrorsTest {
     )
   }
 
-  /** Red if the initially empty end date/time fields report an error. */
+  /** Breaks if the initially empty end date/time fields report an error. */
   @Test
   fun endDateError_initialState_returnsNoError() {
     assertNull(endDateError(DateTimeRange(endDate = null, endTime = null)))
   }
 
-  /** Red if an end date without an end time incorrectly reports an error. */
+  /** Breaks if an end date without an end time incorrectly reports an error. */
   @Test
   fun endDateError_dateWithoutTime_returnsNoError() {
     assertNull(endDateError(DateTimeRange(endDate = LocalDate.now().plusDays(1))))
   }
 
-  /** Red if a valid end date/time range incorrectly reports an error. */
+  /** Breaks if a valid end date/time range incorrectly reports an error. */
   @Test
   fun endDateError_validRangeWithDatesAndTimes_returnsNoError() {
     val startDate = LocalDate.now()
@@ -61,7 +61,7 @@ class DateErrorsTest {
     assertNull(endDateError(range))
   }
 
-  /** Red if a one-day range with its end time after its start time reports an error. */
+  /** Breaks if a one-day range with its end time after its start time reports an error. */
   @Test
   fun endDateError_oneDayRangeWithEndAfterStart_returnsNoError() {
     val date = LocalDate.now().plusDays(1)
@@ -77,7 +77,7 @@ class DateErrorsTest {
   }
 
   /**
-   * Red if a one-day range with its end time before its start time reports no end-before-start
+   * Breaks if a one-day range with its end time before its start time reports no end-before-start
    * error.
    */
   @Test
@@ -94,7 +94,7 @@ class DateErrorsTest {
     assertEquals(FieldError.END_BEFORE_START, endDateError(range))
   }
 
-  /** Red if a range with equal start and end reports no end-before-start error. */
+  /** Breaks if a range with equal start and end reports no end-before-start error. */
   @Test
   fun endDateError_equalStartAndEnd_returnsEndBeforeStart() {
     val date = LocalDate.now().plusDays(1)
@@ -109,7 +109,7 @@ class DateErrorsTest {
     assertEquals(FieldError.END_BEFORE_START, endDateError(range))
   }
 
-  /** Red if a valid date-only range incorrectly reports an error. */
+  /** Breaks if a valid date-only range incorrectly reports an error. */
   @Test
   fun endDateError_validRangeWithDatesOnly_returnsNoError() {
     val date = LocalDate.now().plusDays(1)
@@ -117,7 +117,7 @@ class DateErrorsTest {
     assertNull(endDateError(DateTimeRange(startDate = date, endDate = date)))
   }
 
-  /** Red if an end time without an end date does not report a missing-date error. */
+  /** Breaks if an end time without an end date does not report a missing-date error. */
   @Test
   fun endDateError_timeWithoutDate_returnsMissingDate() {
     assertEquals(
@@ -126,7 +126,7 @@ class DateErrorsTest {
     )
   }
 
-  /** Red if an end before start does not report an end-before-start error. */
+  /** Breaks if an end before start does not report an end-before-start error. */
   @Test
   fun endDateError_endBeforeStart_returnsEndBeforeStart() {
     val date = LocalDate.now().plusDays(1)
@@ -141,7 +141,7 @@ class DateErrorsTest {
     assertEquals(FieldError.END_BEFORE_START, endDateError(range))
   }
 
-  /** Red if a range in the past does not report an outdated error. */
+  /** Breaks if a range in the past does not report an outdated error. */
   @Test
   fun endDateError_pastRange_returnsOutdated() {
     val now = ZonedDateTime.of(2026, 10, 29, 12, 0, 0, 0, ZoneId.systemDefault())
@@ -157,7 +157,7 @@ class DateErrorsTest {
     assertEquals(FieldError.OUTDATED, endDateError(range, now = now))
   }
 
-  /** Red if a past start date is rejected when the end date is still in the future. */
+  /** Breaks if a past start date is rejected when the end date is still in the future. */
   @Test
   fun endDateError_pastStartAndFutureEnd_returnsNoError() {
     val now = ZonedDateTime.of(2026, 10, 29, 12, 0, 0, 0, ZoneId.systemDefault())
