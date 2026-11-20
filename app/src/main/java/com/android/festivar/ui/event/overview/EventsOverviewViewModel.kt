@@ -42,6 +42,7 @@ data class EventsOverviewUIState(
     val upcomingEvents: List<Event> = emptyList(),
     val pastEvents: List<Event> = emptyList(),
     val selectedFilter: EventsFilter = EventsFilter.ONGOING,
+    val canCreateEvent: Boolean = true,
     val isLoading: Boolean = false,
     val hasError: Boolean = false,
     val errorMsg: String? = null,
@@ -78,13 +79,14 @@ class EventsOverviewViewModel(
     private val dataRepository: DataRepository,
     private val uId: String,
     private val now: () -> ZonedDateTime = ZonedDateTime::now,
+    private val isAnonymous: () -> Boolean = { false },
 ) : ViewModel() {
 
   private val eventsRepository: EventsRepository = dataRepository.eventsRepository
 
   // Loading from the start: nothing is fetched until the screen calls refreshUIState on resume,
   // and until then the screen must show its progress indicator, not its empty state.
-  private val _uiState = MutableStateFlow(EventsOverviewUIState(isLoading = true))
+  private val _uiState = MutableStateFlow(EventsOverviewUIState(isLoading = true, canCreateEvent = !isAnonymous()))
   val uiState: StateFlow<EventsOverviewUIState> = _uiState.asStateFlow()
 
   /** The fetch of the [Event] items in progress, cancelled when a newer one starts. */
@@ -118,7 +120,7 @@ class EventsOverviewViewModel(
    */
   private fun getEvents() {
     getEventsJob?.cancel()
-    _uiState.update { it.copy(isLoading = true) }
+    _uiState.update { it.copy(isLoading = true, canCreateEvent = !isAnonymous()) }
     getEventsJob = viewModelScope.launch {
       try {
         val events = eventsRepository.getEventsForUser(uId)
