@@ -83,7 +83,7 @@ Don't forget to delete branches after merging in main.
 
 ## New branches should be named following these guidelines:
 - New feature: feature/feature-name (ex: feature/map-screen)
-- Bugfix: bugfix/issue-number (ex: bugfix/issue-67)
+- Bugfix: bugfix/short-desc (ex: bugfix/voice-notes-delete-with-tasks)
 - Improvements: improvement/short-desc (ex: improvement/refactor)
 - Refactors: refactor/short-desc (ex: refactor/organize-files) (only for pure refactorings that have no impact on code, != from improvements)
 - Trying things: experiment/desc (ex: experiment/ar-view)
