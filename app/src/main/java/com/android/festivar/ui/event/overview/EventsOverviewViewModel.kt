@@ -86,7 +86,8 @@ class EventsOverviewViewModel(
 
   // Loading from the start: nothing is fetched until the screen calls refreshUIState on resume,
   // and until then the screen must show its progress indicator, not its empty state.
-  private val _uiState = MutableStateFlow(EventsOverviewUIState(isLoading = true, canCreateEvent = !isAnonymous()))
+  private val _uiState =
+      MutableStateFlow(EventsOverviewUIState(isLoading = true, canCreateEvent = !isAnonymous()))
   val uiState: StateFlow<EventsOverviewUIState> = _uiState.asStateFlow()
 
   /** The fetch of the [Event] items in progress, cancelled when a newer one starts. */

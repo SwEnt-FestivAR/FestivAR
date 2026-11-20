@@ -38,11 +38,13 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, dataRepository:
       EventsOverviewScreen(
           eventsOverviewViewModel =
               viewModel {
-                  EventsOverviewViewModel(
-                      dataRepository= dataRepository,
-                      uId = firebaseUser.uid,
-                      isAnonymous = { dataRepository.authRepository.currentUser?.isAnonymous == true }
-                  )
+                EventsOverviewViewModel(
+                    dataRepository = dataRepository,
+                    uId = firebaseUser.uid,
+                    isAnonymous = {
+                      dataRepository.authRepository.currentUser?.isAnonymous == true
+                    },
+                )
               },
           onSelectEvent = navigator.onSelectEvent,
           onJoinEvent = navigator.onJoinEvent,
