@@ -75,6 +75,7 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, dataRepository:
           onTasksButtonClicked = { navigator.onTasksButtonClicked(eventId) },
           onAnnouncementsClicked = { navigator.onAnnouncementsClicked(eventId) },
           onEditClicked = { navigator.onEdit(eventId) },
+          onEventDeleted = navigator.onEventDeleted,
       )
     }
   }

@@ -17,4 +17,10 @@
     <string name="event_details_announcements">Annonces</string>
     <string name="event_details_more_actions">Plus d’actions pour l’événement</string>
     <string name="event_details_edit_event">Modifier l’événement</string>
+    <string name="event_details_delete_event">Supprimer l’événement</string>
+    <string name="event_details_delete_confirmation_title">Supprimer %1$s ?</string>
+    <string name="event_details_delete_confirmation_message">Ses tâches, ses structures et son équipe partent avec lui. Cette action est irréversible.</string>
+    <string name="event_details_delete_confirm">Supprimer</string>
+    <string name="event_details_keep_event">Garder l’événement</string>
+    <string name="event_details_delete_error">Impossible de supprimer l’événement. Réessayez.</string>
 </resources>
