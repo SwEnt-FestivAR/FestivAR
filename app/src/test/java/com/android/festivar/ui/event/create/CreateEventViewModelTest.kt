@@ -243,6 +243,16 @@ class CreateEventViewModelTest {
     every { mimeTypeMap.getExtensionFromMimeType("image/png") } returns "png"
 
     try {
+      val imageStorage = RecordingImageStorage()
+      dataRepository =
+          DataRepositoryLocal(
+              mockk(),
+              eventsRepository = eventsRepository,
+              usersRepository = usersRepository,
+              imageStorage = imageStorage,
+          )
+      viewModel =
+          CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
       val resolver = mockk<ContentResolver>()
       val tempDir = File.createTempFile("test", "dir")
       tempDir.delete()
@@ -254,8 +264,6 @@ class CreateEventViewModelTest {
       every { resolver.openInputStream(uri) } returns
           ByteArrayInputStream("test image content".toByteArray())
 
-      viewModel =
-          CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
       viewModel.updateImage(uri, resolver, tempDir)
 
       withTimeout(5_000.milliseconds) {
