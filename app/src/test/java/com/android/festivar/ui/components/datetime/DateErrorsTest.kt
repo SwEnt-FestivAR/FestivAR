@@ -1,5 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
-package com.android.festivar.ui.components.dates
+package com.android.festivar.ui.components.datetime
 
 import com.android.festivar.ui.components.FieldError
 import java.time.LocalDate

@@ -41,8 +41,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.festivar.R
 import com.android.festivar.ui.components.FestivarDiscardDialog
 import com.android.festivar.ui.components.FestivarFieldError
-import com.android.festivar.ui.components.dates.DateTimeField
-import com.android.festivar.ui.components.dates.DateTimeRange
+import com.android.festivar.ui.components.datetime.DateTimeField
+import com.android.festivar.ui.components.datetime.DateTimeRange
 import com.android.festivar.ui.event.EventFields
 import com.android.festivar.ui.event.EventFieldsTestTags
 import com.android.festivar.ui.theme.AppTheme

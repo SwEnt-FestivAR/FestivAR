@@ -12,7 +12,7 @@ import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.FieldError
-import com.android.festivar.ui.components.dates.DateTimeField
+import com.android.festivar.ui.components.datetime.DateTimeField
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId

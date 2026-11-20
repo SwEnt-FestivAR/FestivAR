@@ -10,8 +10,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.android.festivar.R
-import com.android.festivar.ui.components.dates.FestivarDatePickerDialogPreview
-import com.android.festivar.ui.components.dates.FestivarTimePickerDialogPreview
+import com.android.festivar.ui.components.datetime.FestivarDatePickerDialogPreview
+import com.android.festivar.ui.components.datetime.FestivarTimePickerDialogPreview
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith

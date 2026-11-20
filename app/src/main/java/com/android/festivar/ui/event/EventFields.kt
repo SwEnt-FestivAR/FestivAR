@@ -18,10 +18,10 @@ import com.android.festivar.ui.components.FestivarFieldWithError
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.components.FieldError
 import com.android.festivar.ui.components.LONG_TEXT_MAX_LENGTH
-import com.android.festivar.ui.components.dates.DateTimeField
-import com.android.festivar.ui.components.dates.DateTimeRange
-import com.android.festivar.ui.components.dates.FestivarDateTimePickerDialog
-import com.android.festivar.ui.components.dates.FestivarDateTimeRow
+import com.android.festivar.ui.components.datetime.DateTimeField
+import com.android.festivar.ui.components.datetime.DateTimeRange
+import com.android.festivar.ui.components.datetime.FestivarDateTimePickerDialog
+import com.android.festivar.ui.components.datetime.FestivarDateTimeRow
 import java.time.LocalDate
 import java.time.LocalTime
 

@@ -4,10 +4,10 @@ package com.android.festivar.ui.event
 
 import androidx.lifecycle.ViewModel
 import com.android.festivar.ui.components.FieldError
-import com.android.festivar.ui.components.dates.DateTimeField
-import com.android.festivar.ui.components.dates.END_OF_DAY
-import com.android.festivar.ui.components.dates.START_OF_DAY
-import com.android.festivar.ui.components.dates.startDateError
+import com.android.festivar.ui.components.datetime.DateTimeField
+import com.android.festivar.ui.components.datetime.END_OF_DAY
+import com.android.festivar.ui.components.datetime.START_OF_DAY
+import com.android.festivar.ui.components.datetime.startDateError
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
