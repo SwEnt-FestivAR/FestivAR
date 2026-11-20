@@ -34,6 +34,7 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.TimeoutCancellationException
@@ -196,10 +197,37 @@ class CreateEventViewModel(
   }
 
   /** Confirms that the user wants to leave and discard the entered details. */
-  fun confirmDiscard() {
+  suspend fun confirmDiscard() {
+    val urlToDelete = uiState.value.imageUrl
+    if (currentState.createdEventId == null && !urlToDelete.isNullOrBlank()) {
+      viewModelScope.launch(ioDispatcher) {
+        try {
+          imageStorage.delete(urlToDelete)
+        } catch (e: Exception) {
+          Log.e(LOG_TAG, "Error deleting image on discard", e)
+        }
+      }
+    }
+
     updateState {
       if (it.isSaving || it.createdEventId != null) it.copy(showDiscardConfirmation = false)
       else it.copy(showDiscardConfirmation = false, isDiscarded = true)
+    }
+  }
+
+  /** This deletes the image from firebase if the Viewmodel is destroyed unexpectedly */
+  override fun onCleared() {
+    val state = currentState
+    val imageUrlToDelete = state.imageUrl
+    // 3. Fallback cleanup if the ViewModel is destroyed before event creation
+    if (state.createdEventId == null && !imageUrlToDelete.isNullOrBlank()) {
+      CoroutineScope(ioDispatcher + NonCancellable).launch {
+        try {
+          imageStorage.delete(imageUrlToDelete)
+        } catch (e: Exception) {
+          Log.e(LOG_TAG, "Error deleting image on ViewModel cleared", e)
+        }
+      }
     }
   }
 
@@ -210,7 +238,8 @@ class CreateEventViewModel(
           state.startTime != null ||
           state.endTime != null ||
           state.venue.isNotEmpty() ||
-          state.notes.isNotEmpty()
+          state.notes.isNotEmpty() ||
+          state.hasImage
 
   /**
    * Saves the form as a new event with the creator as its first member. Ignored while a save runs
