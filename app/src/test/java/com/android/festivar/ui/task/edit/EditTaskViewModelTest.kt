@@ -14,10 +14,10 @@ import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.user.User
 import com.android.festivar.model.voicenote.VoiceNote
-import com.android.festivar.ui.components.DateTimeField
-import com.android.festivar.ui.components.END_OF_DAY
 import com.android.festivar.ui.components.FieldError
-import com.android.festivar.ui.components.START_OF_DAY
+import com.android.festivar.ui.components.datetime.DateTimeField
+import com.android.festivar.ui.components.datetime.END_OF_DAY
+import com.android.festivar.ui.components.datetime.START_OF_DAY
 import com.android.festivar.ui.task.create.CreateTaskUiState
 import java.time.Duration
 import java.time.LocalDate
