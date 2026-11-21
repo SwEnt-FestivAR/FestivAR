@@ -34,6 +34,7 @@ val DEFAULT_ROLE = Role.VISITOR
  * Every new version goes through the `init` block, so the rules below always hold:
  * - [title] is not blank;
  * - [eventId] is not blank;
+ * - [chatId] is not blank;
  * - [ownerId] identifies one of the members;
  * - a [User] is a joined member at most once, identified by its [User.uid] (no duplicates);
  * - every member has exactly one [Role] in [roles], and only members have one;
@@ -45,6 +46,7 @@ val DEFAULT_ROLE = Role.VISITOR
  * - [endDate] must be after [startDate];
  *
  * @property eventId Unique identifier of the [Event].
+ * @property chatId Unique identifier of the chat belonging to the [Event].
  * @property ownerId Unique identifier of the user who created and owns the [Event].
  * @property title Name of the [Event], shown as the screen title.
  * @property description Free-text description of specifications about the [Event].
@@ -73,10 +75,12 @@ data class Event(
     val tasks: List<Task> = emptyList(),
     val closed: Boolean = false,
     val announcements: List<Announcement> = emptyList(),
+    val chatId: String = eventId,
 ) {
 
   init {
     require(eventId.isNotBlank()) { "The eventId cannot be empty." }
+    require(chatId.isNotBlank()) { "The chatId cannot be empty." }
     require(ownerId.isNotBlank()) { "The ownerId cannot be empty." }
     require(title.isNotBlank()) { "The title cannot be empty." }
     require(tasks.map { it.taskId }.distinct().size == tasks.size) { "A task is duplicated." }

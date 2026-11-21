@@ -3,6 +3,8 @@
 package com.android.festivar.model.datarepository
 
 import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.model.chat.Chat
+import com.android.festivar.model.chat.ChatRepository
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.canKick
@@ -33,6 +35,7 @@ import kotlinx.coroutines.withContext
  * @property tasksRepository The repository storing the [Task]s.
  * @property eventsRepository The repository storing the [Event]s.
  * @property usersRepository The repository storing the [User]s.
+ * @property chatRepository The repository storing the chats, when configured.
  */
 interface DataRepository {
 
@@ -40,6 +43,7 @@ interface DataRepository {
   val tasksRepository: TasksRepository
   val eventsRepository: EventsRepository
   val usersRepository: UsersRepository
+  val chatRepository: ChatRepository?
   val imageStorage: ImageStorage
 
   /**
@@ -174,6 +178,11 @@ interface DataRepository {
       eventsRepository.addEvent(event)
       undoProcess.addFirst { eventsRepository.deleteEvent(event.eventId) }
 
+      chatRepository?.let {
+        it.addChat(Chat(chatId = event.chatId, eventId = event.eventId))
+        undoProcess.addFirst { it.deleteChat(event.chatId) }
+      }
+
       editUsers(users, newUsers, undoProcess)
     } catch (e: Exception) {
       rollback(undoProcess, e)
@@ -223,6 +232,16 @@ interface DataRepository {
       for (task in tasks) {
         tasksRepository.deleteTask(task.taskId)
         undoProcess.addFirst { tasksRepository.addTask(task) }
+      }
+
+      chatRepository?.let {
+        try {
+          val chat = it.getChat(event.chatId)
+          it.deleteChat(event.chatId)
+          undoProcess.addFirst { it.addChat(chat) }
+        } catch (_: NoSuchElementException) {
+          // Events stored before chatId existed fall back to eventId and may have no chat.
+        }
       }
 
       editUsers(users, newUsers, undoProcess)
