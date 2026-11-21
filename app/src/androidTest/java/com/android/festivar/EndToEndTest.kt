@@ -29,6 +29,7 @@ import com.android.festivar.model.authentication.AuthRepositoryFirebase
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventRepositoryFirebase
 import com.android.festivar.model.event.joinCodeOf
+import com.android.festivar.model.event.role.Role
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TaskRepositoryFirebase
 import com.android.festivar.model.user.UsersRepositoryFirebase
@@ -113,6 +114,7 @@ class EndToEndTest {
       composeTestRule
           .onNodeWithTag(EventDetailsScreenTestTags.EVENT_NAME)
           .assertTextEquals(event.title)
+      promoteTo(Role.TEAM_LEAD)
 
       // Its tasks: none yet, so the member adds one, saves it and finds it listed
       composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.SEE_TASKS_BUTTON).performClick()
@@ -192,6 +194,7 @@ class EndToEndTest {
           .onNodeWithTag(EventDetailsScreenTestTags.JOIN_CODE_VALUE, useUnmergedTree = true)
           .assertTextEquals(joinCodeOf(event))
 
+      promoteTo(Role.TEAM_LEAD)
       openTheBoard()
       assertTheBoardBar()
 
@@ -231,6 +234,7 @@ class EndToEndTest {
     try {
       signUp(M2_MEMBER_EMAIL)
       joinTheSeededEvent()
+      promoteTo(Role.TEAM_LEAD)
       openTheBoard()
       addTaskFromTheBoard(M2_TASK_TITLE)
 
@@ -272,6 +276,7 @@ class EndToEndTest {
     try {
       signUp(VOLUNTEER_EMAIL)
       joinTheSeededEvent()
+      promoteTo(Role.STAFF)
       openTheBoard()
 
       waitUntilTextExists(SEEDED_TASK_TITLE)
@@ -550,6 +555,21 @@ class EndToEndTest {
     composeTestRule
         .onNodeWithTag(EventDetailsScreenTestTags.EVENT_NAME)
         .assertTextEquals(event.title)
+  }
+
+  /**
+   * Has the organizer give [role] to the signed-in member, who joined as a visitor that does not
+   * see the tasks, then reopens the event from the overview so its details follow the new role.
+   */
+  private fun promoteTo(role: Role) {
+    runBlocking {
+      val events = EventRepositoryFirebase(Firebase.firestore)
+      val uid = checkNotNull(Firebase.auth.currentUser?.uid)
+      val stored = events.getEvent(event.eventId)
+      events.editEvent(event.eventId, stored.setRole(stored.ownerId, uid, role))
+    }
+    Espresso.pressBack()
+    openTheEventFromTheOverview()
   }
 
   /** From the event details, opens the task board of the event. */

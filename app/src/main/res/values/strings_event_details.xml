@@ -17,4 +17,30 @@
     <string name="event_details_announcements">Announcements</string>
     <string name="event_details_more_actions">More event actions</string>
     <string name="event_details_edit_event">Edit event</string>
+    <string name="event_details_change_role_failed">Could not change the role. Please try again.</string>
+    <string name="event_details_kick_failed">Could not kick this member. Please try again.</string>
+    <string name="event_details_role_owner">Owner</string>
+    <string name="event_details_role_admin">Admin</string>
+    <string name="event_details_role_staff_manager">Staff manager</string>
+    <string name="event_details_role_team_lead">Team lead</string>
+    <string name="event_details_role_staff">Staff</string>
+    <string name="event_details_role_visitor">Visitor</string>
+    <string name="event_details_category_owner">Owner</string>
+    <string name="event_details_category_admin">Admins</string>
+    <string name="event_details_category_staff_manager">Staff managers</string>
+    <string name="event_details_category_team_lead">Team leads</string>
+    <string name="event_details_category_staff">Staff</string>
+    <string name="event_details_category_visitor">Visitors</string>
+    <plurals name="event_details_member_tasks">
+        <item quantity="one">%d task</item>
+        <item quantity="other">%d tasks</item>
+    </plurals>
+    <string name="event_details_change_role">Change role</string>
+    <string name="event_details_kick">Kick</string>
+    <string name="event_details_change_role_title">Change the role of %1$s</string>
+    <string name="event_details_current_role">Current</string>
+    <string name="event_details_change_role_confirm_title">Make %1$s %2$s?</string>
+    <string name="event_details_change_role_confirm_message">%1$s will get the permissions of this role in %2$s.</string>
+    <string name="event_details_kick_confirm_title">Kick %1$s?</string>
+    <string name="event_details_kick_confirm_message">They leave %1$s and lose its tasks. They can join again with the join code.</string>
 </resources>
