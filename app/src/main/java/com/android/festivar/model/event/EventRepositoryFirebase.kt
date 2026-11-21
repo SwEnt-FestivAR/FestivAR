@@ -228,6 +228,7 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
   private fun toFirestoreData(event: Event): Map<String, Any?> {
     return mapOf(
         "eventId" to event.eventId,
+        "chatId" to event.chatId,
         "ownerId" to event.ownerId,
         "title" to event.title,
         "description" to event.description,
@@ -266,6 +267,7 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
 
     return Event(
         eventId = document.getString("eventId") ?: document.id,
+        chatId = document.getString("chatId") ?: document.id,
         ownerId = ownerId,
         title =
             document.getString("title")

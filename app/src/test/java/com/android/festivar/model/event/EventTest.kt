@@ -20,6 +20,7 @@ class EventTest {
 
   // Messages of the `init` block of Event, in the order in which the rules are checked.
   private val eventIdMessage = "The eventId cannot be empty."
+  private val chatIdMessage = "The chatId cannot be empty."
   private val ownerIdMessage = "The ownerId cannot be empty."
   private val titleMessage = "The title cannot be empty."
   private val duplicateTaskMessage = "A task is duplicated."
@@ -64,6 +65,7 @@ class EventTest {
   /** Builds an event with valid default values, so that only the given fields matter. */
   private fun event(
       eventId: String = "e1",
+      chatId: String = eventId,
       ownerId: String = "owner-1",
       title: String = "Festival",
       members: List<User> = listOf(User("owner-1")),
@@ -73,6 +75,7 @@ class EventTest {
   ): Event =
       Event(
           eventId = eventId,
+          chatId = chatId,
           ownerId = ownerId,
           title = title,
           members = members,
@@ -158,6 +161,13 @@ class EventTest {
     assertEquals(listOf(task("t1"), task("t2")), event.tasks)
   }
 
+  /** Breaks if Event no longer gives a default chatId or does not retain an explicit chatId. */
+  @Test
+  fun init_setsChatIdFromEventIdUnlessExplicit() {
+    assertEquals("e1", event().chatId)
+    assertEquals("chat-1", event(chatId = "chat-1").chatId)
+  }
+
   // ---------------------------------------------------------------------------------------- //
   // init rules
   // ---------------------------------------------------------------------------------------- //
@@ -167,6 +177,13 @@ class EventTest {
   fun init_fails_whenEventIdIsBlank() {
     assertInvalid(eventIdMessage) { event(eventId = "") }
     assertInvalid(eventIdMessage) { event(eventId = " \t\n") }
+  }
+
+  /** Breaks if [Event] accepts a blank chatId. */
+  @Test
+  fun init_fails_whenChatIdIsBlank() {
+    assertInvalid(chatIdMessage) { event(chatId = "") }
+    assertInvalid(chatIdMessage) { event(chatId = " \t\n") }
   }
 
   /** Breaks if [Event] accepts a blank `ownerId`. */
