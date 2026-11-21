@@ -1,12 +1,14 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.components.datetime
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -16,6 +18,7 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -308,5 +311,28 @@ class DatesAndTimesTest {
       composeTestRule.onNodeWithTag(it).assertIsDisplayed()
     }
     composeTestRule.onNodeWithTag(tags.dates).assertDoesNotExist()
+  }
+
+  /**
+   * Breaks if a preview of the fields stops rendering, so a state that is shown for design review
+   * is lost: each of the seven shows one Dates field, and the two error previews show their
+   * message.
+   */
+  @Test
+  fun everyPreviewShowsItsStateOfTheFields() {
+    composeTestRule.setContent {
+      Column {
+        FestivarDatesAndTimesNothingChosenPreview()
+        FestivarDatesAndTimesDayChosenPreview()
+        FestivarDatesAndTimesOneDayPreview()
+        FestivarDatesAndTimesRangePreview()
+        FestivarDatesAndTimesEndBeforeStartPreview()
+        FestivarDatesAndTimesOutdatedPreview()
+        FestivarDatesAndTimesDisabledPreview()
+      }
+    }
+    composeTestRule.onAllNodesWithTag(tags.dates).assertCountEquals(7)
+    composeTestRule.onNodeWithText("Ends before it starts").assertExists()
+    composeTestRule.onNodeWithText("Ends in the past").assertExists()
   }
 }
