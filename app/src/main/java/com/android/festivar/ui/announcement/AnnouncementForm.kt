@@ -15,7 +15,7 @@ internal const val ANNOUNCEMENT_SAVE_TIMEOUT_MS = 15_000L
 /**
  * The part of an announcement form shared by the create and edit screens: what the user types, plus
  * the field rules. It has no saving or error flags, which belong to the state of each screen. The
- * Create announcement ViewModel does not use it yet: its screen builds one to draw the shared form.
+ * create and edit ViewModels both hold it in their UI state.
  *
  * @property title The title as typed. It is saved as [trimmedTitle].
  * @property content The body of the announcement as typed. It is saved as [trimmedContent].
@@ -82,11 +82,12 @@ data class AnnouncementFormState(
    * Whether [announcement] holds what this form saves, for example a copy read back after a failed
    * save. Only the fields the form sets are compared: full equality would also compare the time
    * zone of [Announcement.updatedAt], the links and the pin, so a copy read back from a remote
-   * store would always differ.
+   * store would always differ. Spaces around the texts are ignored on both sides, since saving
+   * trims them.
    */
   fun matches(announcement: Announcement): Boolean =
-      announcement.title == trimmedTitle &&
-          announcement.content == trimmedContent &&
+      announcement.title.trim() == trimmedTitle &&
+          announcement.content.trim() == trimmedContent &&
           announcement.priority == priority
 }
 

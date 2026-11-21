@@ -231,27 +231,17 @@ class EditAnnouncementViewModelTest {
     assertTrue(vm.uiState.value.canSave)
   }
 
-  // Breaks if hasChanges ignores a field or compares untrimmed texts, or if
-  // needsDiscardConfirmation does not follow it.
+  /**
+   * Breaks if hasChanges does not compare the form with the loaded announcement, or if
+   * needsDiscardConfirmation does not follow it. The compared fields and the trimming are tested in
+   * AnnouncementFormTest (matches).
+   */
   @Test
-  fun hasChangesComparesTrimmedTitleContentAndPriority() {
+  fun aFormThatDiffersFromTheLoadedAnnouncementHasChanges() {
     val vm = viewModel().apply { load() }
-    fun changed() = vm.uiState.value.needsDiscardConfirmation
-
-    vm.updateTitle("  Gates open ")
-    vm.updateContent(" The north gate opens at 16:00.  ")
-    assertFalse(changed())
-
-    vm.updateTitle("Doors open")
-    assertTrue(changed())
-    vm.updateTitle("Gates open")
-
-    vm.updateContent("The south gate opens at 16:00.")
-    assertTrue(changed())
-    vm.updateContent("The north gate opens at 16:00.")
 
     vm.updatePriority(AnnouncementPriority.URGENT)
-    assertTrue(changed())
+    assertTrue(vm.uiState.value.needsDiscardConfirmation)
   }
 
   // Breaks if a text is stored untrimmed or a field is not stored, if the time of the edit is not
