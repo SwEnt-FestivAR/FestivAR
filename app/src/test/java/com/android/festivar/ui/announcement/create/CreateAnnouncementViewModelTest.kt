@@ -128,8 +128,10 @@ class CreateAnnouncementViewModelTest {
     assertTrue(state.canPublish)
   }
 
-  // Breaks if hasChanges forgets the title, the content or the priority, or if a published form
-  // still asks before leaving.
+  /**
+   * Breaks if hasChanges forgets the title, the content or the priority, or if a published form
+   * still asks before leaving.
+   */
   @Test
   fun hasChangesAndNeedsDiscardConfirmationFollowTheForm() {
     val vm = viewModel()
@@ -156,8 +158,10 @@ class CreateAnnouncementViewModelTest {
     assertFalse(vm.uiState.value.needsDiscardConfirmation)
   }
 
-  // Breaks if isEditable ignores isSaving or isPublished, or if a failed save leaves the form
-  // locked, so the user cannot fix it and retry.
+  /**
+   * Breaks if isEditable ignores isSaving or isPublished, or if a failed save leaves the form
+   * locked, so the user cannot fix it and retry.
+   */
   @Test
   fun theFormIsEditableExceptDuringASaveAndOncePublished() {
     val gate = CompletableDeferred<Unit>()
@@ -184,8 +188,10 @@ class CreateAnnouncementViewModelTest {
     assertFalse(vm.uiState.value.isEditable)
   }
 
-  // Breaks if the text is stored untrimmed, the author, priority or time is wrong, or the id is
-  // not the one the repository handed out.
+  /**
+   * Breaks if the text is stored untrimmed, the author, priority or time is wrong, or the id is not
+   * the one the repository handed out.
+   */
   @Test
   fun aValidFormPublishesOneTrimmedAnnouncementWithAuthorPriorityAndTime() {
     val vm = viewModel()
@@ -207,7 +213,9 @@ class CreateAnnouncementViewModelTest {
     assertNull(vm.uiState.value.errorMsg)
   }
 
-  // Breaks if a blank uid is not checked and an authorless announcement is written or attempted.
+  /**
+   * Breaks if a blank uid is not checked and an authorless announcement is written or attempted.
+   */
   @Test
   fun aBlankUserIdPublishesNothingAndShowsTheSaveError() {
     val vm = viewModel(userId = { " " })
@@ -221,7 +229,7 @@ class CreateAnnouncementViewModelTest {
     assertEquals(R.string.create_announcement_error_save_failed, vm.uiState.value.errorMsg)
   }
 
-  // Breaks if canPublish ignores isSaving, so a second tap writes a second announcement.
+  /** Breaks if canPublish ignores isSaving, so a second tap writes a second announcement. */
   @Test
   fun aSecondTapWhileSavingIsIgnored() {
     val gate = CompletableDeferred<Unit>()
@@ -279,7 +287,7 @@ class CreateAnnouncementViewModelTest {
     assertTrue(stored().isEmpty())
   }
 
-  // Breaks if the write has no timeout, so the form stays stuck in the saving state forever.
+  /** Breaks if the write has no timeout, so the form stays stuck in the saving state forever. */
   @Test
   fun aSaveThatHangsTimesOutAndKeepsTheForm() {
     val never = CompletableDeferred<Unit>()
@@ -320,8 +328,10 @@ class CreateAnnouncementViewModelTest {
     assertEquals(0, repo.edits)
   }
 
-  // Breaks if the read-back runs without its own timeout, so a hanging event read keeps the form
-  // saving forever.
+  /**
+   * Breaks if the read-back runs without its own timeout, so a hanging event read keeps the form
+   * saving forever.
+   */
   @Test
   fun aReadBackThatHangsEndsAsTheSaveError() {
     val never = CompletableDeferred<Unit>()
@@ -341,7 +351,7 @@ class CreateAnnouncementViewModelTest {
     assertTrue(stored().isEmpty())
   }
 
-  // Breaks if a retry draws a new id or a new time instead of the ones kept from the first try.
+  /** Breaks if a retry draws a new id or a new time instead of the ones kept from the first try. */
   @Test
   fun aRetryReusesTheIdAndTheTimeOfTheFirstAttempt() {
     val moving = MovingClock(zone)
@@ -429,8 +439,10 @@ class CreateAnnouncementViewModelTest {
     assertFalse(state.isPublished)
   }
 
-  // Breaks if the announcement is built from the live state inside the coroutine, so typing during
-  // the save changes what is stored.
+  /**
+   * Breaks if the announcement is built from the live state inside the coroutine, so typing during
+   * the save changes what is stored.
+   */
   @Test
   fun typingDuringTheSaveDoesNotChangeWhatIsSaved() {
     val gate = CompletableDeferred<Unit>()
