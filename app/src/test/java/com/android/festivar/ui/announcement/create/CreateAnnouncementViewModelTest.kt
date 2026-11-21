@@ -109,8 +109,10 @@ class CreateAnnouncementViewModelTest {
     }
   }
 
-  // Breaks if canPublish ignores the form, so an empty form can publish, or if applyEdit does not
-  // store the edited form in the state. The field rules are tested in AnnouncementFormTest.
+  /**
+   * Breaks if canPublish ignores the form, so an empty form can publish, or if applyEdit does not
+   * store the edited form in the state. The field rules are tested in AnnouncementFormTest.
+   */
   @Test
   fun typingReachesTheFormAndOnlyAValidFormCanPublish() {
     val vm = viewModel()
@@ -239,7 +241,7 @@ class CreateAnnouncementViewModelTest {
     assertFalse(vm.uiState.value.isSaving)
   }
 
-  // Breaks if canPublish ignores isPublished, or if applyEdit lets a published form change.
+  /** Breaks if canPublish ignores isPublished, or if applyEdit lets a published form change. */
   @Test
   fun aTapAfterAPublishDoesNotPublishASecondAnnouncementAndEditsAreIgnored() {
     val vm = viewModel()
@@ -257,7 +259,7 @@ class CreateAnnouncementViewModelTest {
     assertEquals(published, vm.uiState.value.form)
   }
 
-  // Breaks if a failed write is reported as published, clears the form, or skips the read-back.
+  /** Breaks if a failed write is reported as published, clears the form, or skips the read-back. */
   @Test
   fun aFailingRepositoryReportsTheSaveErrorAndKeepsTheForm() {
     repo.beforeStore = { throw IllegalStateException("offline") }
@@ -298,8 +300,10 @@ class CreateAnnouncementViewModelTest {
     assertEquals(typed, state.form)
   }
 
-  // Breaks if a timeout is reported as a failure without reading back the write that landed, or
-  // if the read-back edits a stored copy that already matches the form.
+  /**
+   * Breaks if a timeout is reported as a failure without reading back the write that landed, or if
+   * the read-back edits a stored copy that already matches the form.
+   */
   @Test
   fun aTimeoutAfterTheWriteLandedEndsAsPublished() {
     val never = CompletableDeferred<Unit>()
@@ -360,11 +364,12 @@ class CreateAnnouncementViewModelTest {
     assertNull(vm.uiState.value.errorMsg)
   }
 
-  // Breaks if the read-back marks a stored copy that differs from the form published without
-  // editing it to the new text, if the edit carries a new time instead of the first attempt's, or
-  // if
-  // it hands the announcement to the user who retried. Which fields are compared is tested in
-  // AnnouncementFormTest (matches).
+  /**
+   * Breaks if the read-back marks a stored copy that differs from the form published without
+   * editing it to the new text, if the edit carries a new time instead of the first attempt's, or
+   * if it hands the announcement to the user who retried. Which fields are compared is tested in
+   * AnnouncementFormTest (matches).
+   */
   @Test
   fun aRetryThatFindsTheStoredCopyUpdatesItWithTheEditedText() {
     var firstTry = true
@@ -402,8 +407,10 @@ class CreateAnnouncementViewModelTest {
     assertTrue(vm.uiState.value.isPublished)
   }
 
-  // Breaks if CancellationException falls into the generic catch, so a cancelled save leaves the
-  // form saving or shows an error the user did not cause.
+  /**
+   * Breaks if CancellationException falls into the generic catch, so a cancelled save leaves the
+   * form saving or shows an error the user did not cause.
+   */
   @Test
   fun aCancelledSaveClearsSavingAndShowsNoError() {
     val never = CompletableDeferred<Unit>()
@@ -440,7 +447,7 @@ class CreateAnnouncementViewModelTest {
     assertEquals("Doors open", vm.uiState.value.form.title)
   }
 
-  // Breaks if the init check on eventId is removed, so a blank event fails only at save time.
+  /** Breaks if the init check on eventId is removed, so a blank event fails only at save time. */
   @Test
   fun aBlankEventIdFailsFast() {
     assertThrows(IllegalArgumentException::class.java) {
