@@ -2,6 +2,8 @@
 package com.android.festivar.model.datarepository
 
 import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.model.chat.Chat
+import com.android.festivar.model.chat.ChatRepository
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.role.Role
@@ -11,6 +13,8 @@ import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryLocal
+import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import java.io.IOException
 import java.time.ZonedDateTime
@@ -133,7 +137,15 @@ class DataRepositoryLocalTest {
   private fun repositoryWith(
       users: UsersRepository = usersRepository,
       tasks: TasksRepository = tasksRepository,
-  ) = DataRepositoryLocal(mockk<AuthRepository>(), tasks, eventsRepository, users)
+      chatRepository: ChatRepository? = null,
+  ) =
+      DataRepositoryLocal(
+          mockk<AuthRepository>(),
+          tasks,
+          eventsRepository,
+          users,
+          chatRepository,
+      )
 
   /** A [TasksRepository] that behaves like [delegate], except that every edit fails. */
   private class BrokenTasksRepository(private val delegate: TasksRepository) :
@@ -409,6 +421,44 @@ class DataRepositoryLocalTest {
 
   @Test
   fun deleteEvent_failingWrite_isUndone() = runTest { assertRollsBack("bob") { deleteEvent("e1") } }
+
+  /** Breaks if deleting a chat leaves its identifier on the owning event. */
+  @Test
+  fun deleteChat_removesTheChatIdFromItsEvent() = runTest {
+    val chatRepository = mockk<ChatRepository>()
+    val chat = Chat("chat-1", "e1")
+    val event = e1.copy(chatIds = listOf("chat-1", "chat-2"))
+    eventsRepository = EventsRepositoryLocal(listOf(event, e2))
+    dataRepository = repositoryWith(chatRepository = chatRepository)
+
+    coEvery { chatRepository.getChat("chat-1") } returns chat
+    coEvery { chatRepository.deleteChat("chat-1") } returns Unit
+
+    dataRepository.deleteChat("chat-1")
+
+    assertEquals(listOf("chat-2"), eventsRepository.getEvent("e1").chatIds)
+    coVerify(exactly = 1) { chatRepository.deleteChat("chat-1") }
+  }
+
+  /** Breaks if deleting an event does not delete every chat linked to it. */
+  @Test
+  fun deleteEvent_deletesEveryLinkedChat() = runTest {
+    val chatRepository = mockk<ChatRepository>()
+    val event = e1.copy(chatIds = listOf("chat-1", "chat-2"))
+    val chats = listOf(Chat("chat-1", "e1"), Chat("chat-2", "e1"))
+    eventsRepository = EventsRepositoryLocal(listOf(event, e2))
+    dataRepository = repositoryWith(chatRepository = chatRepository)
+
+    chats.forEach { chat ->
+      coEvery { chatRepository.getChat(chat.chatId) } returns chat
+      coEvery { chatRepository.deleteChat(chat.chatId) } returns Unit
+    }
+
+    dataRepository.deleteEvent("e1")
+
+    coVerify(exactly = 1) { chatRepository.deleteChat("chat-1") }
+    coVerify(exactly = 1) { chatRepository.deleteChat("chat-2") }
+  }
 
   // ********************************* joinEvent ********************************* //
 

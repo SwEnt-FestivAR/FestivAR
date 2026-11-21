@@ -179,8 +179,10 @@ interface DataRepository {
       undoProcess.addFirst { eventsRepository.deleteEvent(event.eventId) }
 
       chatRepository?.let {
-        it.addChat(Chat(chatId = event.chatId, eventId = event.eventId))
-        undoProcess.addFirst { it.deleteChat(event.chatId) }
+        for (chatId in event.chatIds) {
+          it.addChat(Chat(chatId = chatId, eventId = event.eventId))
+          undoProcess.addFirst { it.deleteChat(chatId) }
+        }
       }
 
       editUsers(users, newUsers, undoProcess)
@@ -235,16 +237,47 @@ interface DataRepository {
       }
 
       chatRepository?.let {
-        try {
-          val chat = it.getChat(event.chatId)
-          it.deleteChat(event.chatId)
-          undoProcess.addFirst { it.addChat(chat) }
-        } catch (_: NoSuchElementException) {
-          // Events stored before chatId existed fall back to eventId and may have no chat.
+        for (chatId in event.chatIds) {
+          try {
+            val chat = it.getChat(chatId)
+            it.deleteChat(chatId)
+            undoProcess.addFirst { it.addChat(chat) }
+          } catch (_: NoSuchElementException) {
+            // Events stored before chatIds existed may have no linked chat.
+          }
         }
       }
 
       editUsers(users, newUsers, undoProcess)
+    } catch (e: Exception) {
+      rollback(undoProcess, e)
+      throw e
+    }
+  }
+
+  /**
+   * Deletes a chat and removes its identifier from the event that owns it.
+   *
+   * @param chatId The identifier of the chat to delete.
+   * @throws IllegalStateException If no chat repository is configured.
+   * @throws NoSuchElementException If the chat or its event does not exist.
+   * @throws DataInconsistencyException If a write failed and could not be fully undone.
+   */
+  suspend fun deleteChat(chatId: String) {
+    val repository =
+        chatRepository ?: throw IllegalStateException("Chat repository is not configured.")
+
+    val chat = repository.getChat(chatId)
+    val event = eventsRepository.getEvent(chat.eventId)
+    val newEvent = event.removeChatId(chatId)
+
+    val undoProcess = ArrayDeque<suspend () -> Unit>()
+    try {
+      repository.deleteChat(chatId)
+      undoProcess.addFirst { repository.addChat(chat) }
+
+      eventsRepository.editEvent(event.eventId, newEvent)
+      undoProcess.addFirst { eventsRepository.editEvent(event.eventId, event) }
     } catch (e: Exception) {
       rollback(undoProcess, e)
       throw e
