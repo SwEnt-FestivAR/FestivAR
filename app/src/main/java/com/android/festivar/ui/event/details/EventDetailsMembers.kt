@@ -9,7 +9,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -25,12 +25,10 @@ import com.android.festivar.ui.components.PeopleRow
 import com.android.festivar.ui.components.UserListBottomSheet
 
 /**
- * The "Members" card of the [event], which opens the list of its members grouped by role, from the
- * owner to the visitors, each with the badge of their role and their number of tasks.
+ * The "Members" card of the [event], opening the list of its members by role, each with their role
+ * badge and number of tasks. Tapping a member opens their [MemberActions].
  *
- * Tapping a member opens their [MemberActions].
- *
- * @param startOpen whether the list is open at first, which previews use to show it.
+ * @param startOpen whether the list starts open, for the previews.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,7 +57,7 @@ internal fun MembersEntry(
   if (showMembers) {
     val categories = Role.entries.associateWith { stringResource(it.categoryRes()) }
     val tags = Role.entries.associateWith { roleTag(it) }
-    val resources = LocalContext.current.resources
+    val resources = LocalResources.current
     UserListBottomSheet(
         users = members,
         onDismissRequest = { showMembers = false },
@@ -88,13 +86,11 @@ internal fun MembersEntry(
 }
 
 /**
- * The dialogs of one [member] of the [event]: a [MemberDialog] offering the actions the current
- * user can do on them (see [EventDetailsPermissions.onMember]), which are changing their role,
- * through an [OptionPickerDialog] of the roles they can give, or kicking them. Both ask for a
- * confirmation before calling [actions].
+ * The dialogs of one [member]: a [MemberDialog] with the actions the current user can do on them,
+ * changing their role through an [OptionPickerDialog] or kicking them, both confirmed before
+ * calling [actions].
  *
- * @param onClose Called to close every dialog of the member, after a confirmed action or when the
- *   member dialog is dismissed.
+ * @param onClose Called to close every dialog, after a confirmed action or a dismiss.
  */
 @Composable
 private fun MemberActions(

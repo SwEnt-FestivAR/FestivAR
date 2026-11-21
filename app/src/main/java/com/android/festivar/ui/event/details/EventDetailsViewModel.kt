@@ -27,13 +27,11 @@ import kotlinx.coroutines.launch
 private const val LOG_TAG = "EventDetailsViewModel"
 
 /**
- * What the current user can do on one member of the event, shown in the window that opens when they
- * tap this member in the members list.
+ * What the current user can do on one member, offered in the dialog of this member.
  *
- * @property assignableRoles the roles the current user can give to this member, from the highest to
- *   the lowest. It includes the member's current role when the current user could give it, so the
- *   window can mark it as current. Empty if the current user cannot change this member's role.
- * @property canKick whether the window offers to kick this member out of the event.
+ * @property assignableRoles the roles the current user can give them, from the highest. It includes
+ *   their current role when it could be given, so the picker marks it. Empty if none.
+ * @property canKick whether the dialog offers to kick them.
  */
 data class MemberPermissions(
     val assignableRoles: List<Role> = emptyList(),
@@ -113,8 +111,7 @@ class EventDetailsViewModel(
 
   /**
    * Loads [eventId] and updates the UI state with either the event and the permissions of the
-   * current user in it, or a loading error. A current user who is not a member of the event gets a
-   * loading error too.
+   * current user in it, or a loading error. A non-member gets a loading error.
    */
   fun fetchEvent() {
     if (_uiState.value.isUpdating) return
@@ -132,12 +129,9 @@ class EventDetailsViewModel(
   }
 
   /**
-   * Gives [newRole] to the member [userId] and saves it, then shows the saved event with the
-   * permissions recomputed. The role is set on the latest stored event, so a change made meanwhile
-   * by someone else is kept. Does nothing while the event is not loaded or another change is being
-   * saved; on failure, [EventDetailsUIState.errorMsg] is set and the event shown is unchanged.
+   * Gives [newRole] to the member [userId] and saves it, on the latest stored event so that changes
+   * made meanwhile are kept.
    *
-   * @param userId The [User.uid] of the member whose role changes.
    * @param newRole The [Role] they get, among [MemberPermissions.assignableRoles].
    */
   fun changeRole(userId: String, newRole: Role) {
@@ -148,13 +142,7 @@ class EventDetailsViewModel(
     }
   }
 
-  /**
-   * Kicks the member [userId] out of the event with [DataRepository.kickMember], then shows the
-   * event without them. Does nothing while the event is not loaded or another change is being
-   * saved; on failure, [EventDetailsUIState.errorMsg] is set and the event shown is unchanged.
-   *
-   * @param userId The [User.uid] of the member to kick.
-   */
+  /** Kicks the member [userId] out of the event with [DataRepository.kickMember]. */
   fun kickMember(userId: String) =
       save(R.string.event_details_kick_failed) {
         dataRepository.kickMember(eventId, currentUserId, userId)

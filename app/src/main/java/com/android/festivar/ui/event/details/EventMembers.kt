@@ -5,11 +5,7 @@ package com.android.festivar.ui.event.details
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.user.User
 
-/**
- * The members of the event as one list, from the highest role to the lowest: the owner first, then
- * the admins, and so on down to the visitors. Members with the same role keep the order of
- * [Event.members].
- */
+/** The members from the highest role to the lowest, keeping their order within a role. */
 internal fun Event.membersByRole(): List<User> = members.sortedByDescending {
   roleOf(it.uid).ordinal
 }

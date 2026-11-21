@@ -309,8 +309,8 @@ private fun OpenTasksStat(event: Event) {
 }
 
 /**
- * The card under the join code, as in Figma: the "Announcements" row then, if the current user can
- * see the members, a hairline inset to the text and the [MembersEntry] row.
+ * The card under the join code, as in Figma: the "Announcements" row, then the [MembersEntry] row
+ * if the current user can see the members.
  */
 @Composable
 private fun EventLinks(event: Event, state: EventDetailsUIState, actions: EventDetailsActions) {
