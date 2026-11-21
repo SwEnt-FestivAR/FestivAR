@@ -1,6 +1,9 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.datarepository
 
+import com.android.festivar.model.audio.AudioRepositoryLocal
+import com.android.festivar.model.audio.AudioRepositoryProvider
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.EventsRepositoryProvider
@@ -27,6 +30,7 @@ class DataRepositoryFirebaseTest {
     TasksRepositoryProvider.reset()
     EventsRepositoryProvider.reset()
     UsersRepositoryProvider.reset()
+    AudioRepositoryProvider.reset()
   }
 
   // No FirebaseApp exists in a plain unit test: if building the data repository built a Firestore
@@ -39,6 +43,8 @@ class DataRepositoryFirebaseTest {
     TasksRepositoryProvider.repository = tasks
     EventsRepositoryProvider.repository = events
     UsersRepositoryProvider.repository = users
+    val audio = AudioRepositoryLocal()
+    AudioRepositoryProvider.repository = audio
     // The default AuthRepositoryFirebase needs Firebase.auth, which is unavailable here.
     val auth = mockk<AuthRepository>()
 
@@ -48,5 +54,6 @@ class DataRepositoryFirebaseTest {
     assertSame(tasks, repository.tasksRepository)
     assertSame(events, repository.eventsRepository)
     assertSame(users, repository.usersRepository)
+    assertSame(audio, repository.audioRepository)
   }
 }
