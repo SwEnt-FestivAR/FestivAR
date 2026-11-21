@@ -82,11 +82,12 @@ data class AnnouncementFormState(
    * Whether [announcement] holds what this form saves, for example a copy read back after a failed
    * save. Only the fields the form sets are compared: full equality would also compare the time
    * zone of [Announcement.updatedAt], the links and the pin, so a copy read back from a remote
-   * store would always differ.
+   * store would always differ. Spaces around the texts are ignored on both sides, since saving
+   * trims them.
    */
   fun matches(announcement: Announcement): Boolean =
-      announcement.title == trimmedTitle &&
-          announcement.content == trimmedContent &&
+      announcement.title.trim() == trimmedTitle &&
+          announcement.content.trim() == trimmedContent &&
           announcement.priority == priority
 }
 

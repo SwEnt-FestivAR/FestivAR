@@ -128,14 +128,16 @@ class AnnouncementFormTest {
     }
   }
 
-  // Breaks if matches compares the untrimmed texts, ignores one of the three fields, or compares a
-  // field the form does not set (author, time zone, links, pin).
+  /**
+   * Breaks if matches compares the untrimmed texts of the form or of the stored copy, ignores one
+   * of the three fields, or compares a field the form does not set (author, time zone, links, pin).
+   */
   @Test
   fun matchesComparesOnlyTheFieldsTheFormSets() {
     val stored =
         Announcement(
             announcementId = "a1",
-            title = "Gates open",
+            title = "Gates open ",
             authorId = "someone-else",
             content = "At 16:00.",
             priority = AnnouncementPriority.URGENT,
