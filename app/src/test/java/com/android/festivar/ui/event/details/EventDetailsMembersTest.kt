@@ -216,6 +216,22 @@ class EventDetailsMembersTest {
         .forEach { composeTestRule.onAllNodesWithTag(it).assertCountEquals(0) }
   }
 
+  /** Breaks if an element is shown or hidden by another permission than its own. */
+  @Test
+  fun aStaffSeesTheTasksAndTheMembersButNotTheMenu() {
+    setContent(MembersFixture.eventWithRoles(sara to Role.STAFF), currentUserId = sara.uid)
+
+    listOf(
+            EventDetailsScreenTestTags.OPEN_TASKS_STAT,
+            EventDetailsScreenTestTags.SEE_TASKS_BUTTON,
+            EventDetailsScreenTestTags.MEMBERS_CARD,
+        )
+        .forEach { composeTestRule.onAllNodesWithTag(it).assertCountEquals(1) }
+    composeTestRule
+        .onAllNodesWithTag(EventDetailsScreenTestTags.MORE_ACTIONS_BUTTON)
+        .assertCountEquals(0)
+  }
+
   /**
    * Breaks if the dialog of a member does not show them, their role and tasks, then the actions.
    */
