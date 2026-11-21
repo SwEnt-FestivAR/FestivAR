@@ -20,7 +20,7 @@ class EventTest {
 
   // Messages of the `init` block of Event, in the order in which the rules are checked.
   private val eventIdMessage = "The eventId cannot be empty."
-  private val chatIdMessage = "The chatId cannot be empty."
+  private val chatIdMessage = "A chatId cannot be empty."
   private val ownerIdMessage = "The ownerId cannot be empty."
   private val titleMessage = "The title cannot be empty."
   private val duplicateTaskMessage = "A task is duplicated."
@@ -65,7 +65,7 @@ class EventTest {
   /** Builds an event with valid default values, so that only the given fields matter. */
   private fun event(
       eventId: String = "e1",
-      chatId: String = eventId,
+      chatIds: List<String> = listOf(eventId),
       ownerId: String = "owner-1",
       title: String = "Festival",
       members: List<User> = listOf(User("owner-1")),
@@ -75,7 +75,7 @@ class EventTest {
   ): Event =
       Event(
           eventId = eventId,
-          chatId = chatId,
+          chatIds = chatIds,
           ownerId = ownerId,
           title = title,
           members = members,
@@ -161,11 +161,12 @@ class EventTest {
     assertEquals(listOf(task("t1"), task("t2")), event.tasks)
   }
 
-  /** Breaks if Event no longer gives a default chatId or does not retain an explicit chatId. */
+  /** Breaks if Event no longer gives a default chatIds list or does not retain explicit chatIds. */
   @Test
-  fun init_setsChatIdFromEventIdUnlessExplicit() {
-    assertEquals("e1", event().chatId)
-    assertEquals("chat-1", event(chatId = "chat-1").chatId)
+  fun init_setsChatIdsFromEventIdUnlessExplicit() {
+    assertEquals(listOf("e1"), event().chatIds)
+    assertEquals(listOf("chat-1", "chat-2"), event(chatIds = listOf("chat-1", "chat-2")).chatIds)
+    assertEquals(emptyList<String>(), event(chatIds = emptyList()).chatIds)
   }
 
   // ---------------------------------------------------------------------------------------- //
@@ -179,11 +180,30 @@ class EventTest {
     assertInvalid(eventIdMessage) { event(eventId = " \t\n") }
   }
 
-  /** Breaks if [Event] accepts a blank chatId. */
+  /** Breaks if [Event] accepts a blank or duplicate chatId. */
   @Test
-  fun init_fails_whenChatIdIsBlank() {
-    assertInvalid(chatIdMessage) { event(chatId = "") }
-    assertInvalid(chatIdMessage) { event(chatId = " \t\n") }
+  fun init_fails_whenChatIdsAreInvalid() {
+    assertInvalid(chatIdMessage) { event(chatIds = listOf("")) }
+    assertInvalid(chatIdMessage) { event(chatIds = listOf(" \t\n")) }
+    assertInvalid("A chatId is duplicated.") { event(chatIds = listOf("chat-1", "chat-1")) }
+  }
+
+  /** Breaks if chat IDs cannot be added or removed without validation and immutability. */
+  @Test
+  fun chatIdsCanBeAddedAndRemoved() {
+    val event = event(chatIds = listOf("chat-1"))
+
+    val withTwoChats = event.addChatId("chat-2")
+    assertEquals(listOf("chat-1", "chat-2"), withTwoChats.chatIds)
+    assertEquals(listOf("chat-1"), event.chatIds)
+
+    assertEquals(
+        emptyList<String>(),
+        withTwoChats.removeChatId("chat-1").removeChatId("chat-2").chatIds,
+    )
+    assertInvalid(chatIdMessage) { event.addChatId("") }
+    assertInvalid("A chatId is duplicated.") { event.addChatId("chat-1") }
+    assertInvalid("This chatId is not linked to the event.") { event.removeChatId("chat-2") }
   }
 
   /** Breaks if [Event] accepts a blank `ownerId`. */
