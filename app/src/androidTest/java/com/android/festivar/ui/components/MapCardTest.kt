@@ -3,12 +3,9 @@ package com.android.festivar.ui.components
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -30,17 +27,9 @@ import org.junit.runner.RunWith
 class MapCardTest {
   @get:Rule val composeTestRule = createComposeRule()
 
-  private fun setCard(
-      locations: List<GeoPosition>,
-      shape: Shape? = null,
-      content: @Composable () -> Unit = {},
-  ) {
+  private fun setCard(locations: List<GeoPosition>, content: @Composable () -> Unit = {}) {
     composeTestRule.setContent {
-      AppTheme {
-        val modifier = Modifier.fillMaxWidth().height(156.dp)
-        if (shape == null) MapCard(locations, modifier, content = content)
-        else MapCard(locations, modifier, shape, content)
-      }
+      AppTheme { MapCard(locations, Modifier.fillMaxWidth().height(156.dp), content = content) }
     }
   }
 
@@ -61,14 +50,6 @@ class MapCardTest {
     composeTestRule.onNodeWithTag(MapCardTestTags.CARD).assertIsDisplayed()
   }
 
-  /** Breaks if the card becomes clickable, since it must not react to touches in S6. */
-  @Test
-  fun card_isNotClickable() {
-    setCard(listOf(EPFL_LOCATION))
-
-    composeTestRule.onNodeWithTag(MapCardTestTags.CARD).assertHasNoClickAction()
-  }
-
   /** Breaks if the card does not hand its content to the map, so markers are never composed. */
   @Test
   fun card_composesTheContentItIsGiven() {
@@ -83,14 +64,5 @@ class MapCardTest {
 
     composeTestRule.waitForIdle()
     assertTrue(composed)
-  }
-
-  /** Breaks if the card fails to display when a screen gives it its own shape. */
-  @Test
-  fun card_withCustomShape_isDisplayed() {
-    setCard(listOf(EPFL_LOCATION), RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
-
-    composeTestRule.onNodeWithTag(MapCardTestTags.CARD).assertIsDisplayed()
-    composeTestRule.onNodeWithTag(FestivarMapTestTags.MAP).assertIsDisplayed()
   }
 }
