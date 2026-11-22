@@ -444,7 +444,7 @@ class EventDetailsScreenTest {
   @Test
   fun volunteerSeesNoMenu() {
     val volunteer = User(uid = "volunteer", name = "Vera V.")
-    setContent(eventSameMonth.copy(members = eventSameMonth.members + volunteer), volunteer.uid)
+    setContent(eventSameMonth.addMember(volunteer), volunteer.uid)
 
     composeTestRule
         .onNodeWithTag(EventDetailsScreenTestTags.MORE_ACTIONS_BUTTON)

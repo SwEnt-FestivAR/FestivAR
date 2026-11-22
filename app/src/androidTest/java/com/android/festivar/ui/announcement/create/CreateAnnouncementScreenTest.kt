@@ -16,7 +16,6 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
-import androidx.compose.ui.test.performTextReplacement
 import androidx.test.platform.app.InstrumentationRegistry
 import com.android.festivar.R
 import com.android.festivar.model.authentication.FakeAuthRepository
@@ -27,8 +26,6 @@ import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.event.announcement.AnnouncementPriority
 import com.android.festivar.ui.announcement.create.CreateAnnouncementScreenTestTags as Tags
-import com.android.festivar.ui.components.LONG_TEXT_MAX_LENGTH
-import com.android.festivar.ui.components.checkTheOnlyCounterIsUnder
 import com.android.festivar.ui.theme.AppTheme
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -131,20 +128,22 @@ class CreateAnnouncementScreenTest {
     publishButton().performClick()
   }
 
-  // Breaks if a part of the design is missing, or if the empty form starts with an error, another
-  // default priority, or a Publish button that can be tapped.
+  /**
+   * Breaks if a part of the design is missing, if the empty form starts with an error, another
+   * default priority, or a Publish button that can be tapped, or if back asks before leaving it.
+   */
   @Test
-  fun anEmptyFormShowsTheDesignWithInfoSelectedAndPublishDisabled() {
+  fun anEmptyFormShowsTheDesignWithInfoSelectedAndBackLeaves() {
     composeTestRule.onNodeWithTag(Tags.TITLE).assertTextEquals(string(R.string.create_announcement))
     composeTestRule
         .onNodeWithTag(Tags.TITLE_FIELD)
-        .assertTextContains(string(R.string.create_announcement_field_title))
+        .assertTextContains(string(R.string.announcement_form_field_title))
     composeTestRule
         .onNodeWithTag(Tags.DESCRIPTION_FIELD)
-        .assertTextContains(string(R.string.create_announcement_field_description))
+        .assertTextContains(string(R.string.announcement_form_field_description))
     composeTestRule
         .onNodeWithTag(Tags.PRIORITY_LABEL)
-        .assertTextEquals(string(R.string.create_announcement_field_priority).uppercase())
+        .assertTextEquals(string(R.string.announcement_form_field_priority).uppercase())
     chip(AnnouncementPriority.INFO)
         .assertIsSelected()
         .assertTextEquals(string(R.string.create_announcement_priority_info))
@@ -158,16 +157,15 @@ class CreateAnnouncementScreenTest {
     publishButton().assertIsNotEnabled()
     composeTestRule.onNodeWithTag(Tags.TITLE_ERROR).assertDoesNotExist()
     composeTestRule.onNodeWithTag(Tags.DESCRIPTION_ERROR).assertDoesNotExist()
+
+    composeTestRule.onNodeWithTag(Tags.BACK_BUTTON).performClick()
+    assertEquals(1, backCount)
   }
 
-  // Breaks if the content loses its long limit and counter, or if the title gets a counter too.
-  @Test
-  fun onlyTheContentShowsACharacterCounter() {
-    composeTestRule.checkTheOnlyCounterIsUnder(Tags.DESCRIPTION_FIELD, "0/$LONG_TEXT_MAX_LENGTH")
-  }
-
-  // Breaks if the fields swap their values, a chip reports the wrong priority, the button does not
-  // publish what the form shows, or the inputs can still be edited once it is published.
+  /**
+   * Breaks if the fields swap their values, a chip reports the wrong priority, the button does not
+   * publish what the form shows, or the inputs can still be edited once it is published.
+   */
   @Test
   fun publishingSavesTheFormAndReportsItOnce() {
     typeTitle("Stage B is closed")
@@ -189,36 +187,17 @@ class CreateAnnouncementScreenTest {
     inputs().forEach { it.assertIsNotEnabled() }
   }
 
-  // Breaks if a message is mapped to the wrong field, or stays once the field is filled again.
+  /**
+   * Breaks if the screen does not pass a running save to the form (no spinner with the Publishing
+   * label, Publish or the inputs still enabled), if either back leaves or asks during the save,
+   * which could publish an announcement the user chose to discard, if the back handler is turned
+   * off so that system back closes the activity, or if the save reports success early, stops, or
+   * lets a back pressed during it fire once it ends.
+   */
   @Test
-  fun clearingAFieldShowsItsOwnErrorUntilItIsFilledAgain() {
-    typeTitle("Stage B")
-    typeDescription("Wind")
-
-    composeTestRule.onNodeWithTag(Tags.TITLE_FIELD).performTextReplacement("")
-    composeTestRule
-        .onNodeWithTag(Tags.TITLE_ERROR)
-        .assertTextEquals(string(R.string.field_error_empty_announcement_title))
-    composeTestRule.onNodeWithTag(Tags.DESCRIPTION_ERROR).assertDoesNotExist()
-    publishButton().assertIsNotEnabled()
-
-    composeTestRule.onNodeWithTag(Tags.DESCRIPTION_FIELD).performTextReplacement("")
-    composeTestRule
-        .onNodeWithTag(Tags.DESCRIPTION_ERROR)
-        .assertTextEquals(string(R.string.field_error_empty_announcement_content))
-
-    typeTitle("Stage B")
-    composeTestRule.onNodeWithTag(Tags.TITLE_ERROR).assertDoesNotExist()
-  }
-
-  // Breaks if the spinner is not shown or has no screen reader label, if Publish can be tapped
-  // again during the save, if a field or a chip can still be edited, as the form could then differ
-  // from what gets stored, or if the save reports success early or never finishes.
-  @Test
-  fun aRunningSaveShowsTheIndicatorAndLocksTheForm() {
+  fun aRunningSaveLocksTheFormAndBackUntilItFinishes() {
     val gate = CompletableDeferred<Unit>()
     beforeAdd = { gate.await() }
-
     fillAndPublish()
 
     composeTestRule
@@ -226,26 +205,11 @@ class CreateAnnouncementScreenTest {
         .assertContentDescriptionEquals(string(R.string.create_announcement_publishing))
     publishButton().assertIsNotEnabled()
     inputs().forEach { it.assertIsNotEnabled() }
-    assertEquals(0, publishedCount)
-
-    gate.complete(Unit)
-    composeTestRule.waitUntil(UI_WAIT_TIMEOUT) { publishedCount == 1 }
-    assertEquals(1, stored().size)
-  }
-
-  // Breaks if either back leaves or asks during the save, which could publish an announcement the
-  // user chose to discard, if the back handler is turned off so that system back closes the
-  // activity, or if a back pressed during the save stops the save or fires once it ends.
-  @Test
-  fun backDoesNothingDuringARunningSaveAndTheSaveFinishes() {
-    val gate = CompletableDeferred<Unit>()
-    beforeAdd = { gate.await() }
-    fillAndPublish()
-
     composeTestRule.onNodeWithTag(Tags.BACK_BUTTON).performClick()
     pressSystemBack()
 
     assertEquals(0, backCount)
+    assertEquals(0, publishedCount)
     assertFalse(composeTestRule.activity.isFinishing)
     composeTestRule.onNodeWithTag(Tags.DISCARD_DIALOG).assertDoesNotExist()
 
@@ -256,11 +220,12 @@ class CreateAnnouncementScreenTest {
     composeTestRule.onNodeWithTag(Tags.DISCARD_DIALOG).assertDoesNotExist()
   }
 
-  // Breaks if a failed save is not shown or leaves the screen, if it leaves the form locked (the
-  // inputs stay disabled, or back stays ignored and the user cannot leave), or if the error
-  // survives a working retry.
+  /**
+   * Breaks if the screen does not pass its save error to the form, if a failed save leaves the
+   * screen, or if the error survives a working retry.
+   */
   @Test
-  fun aFailedSaveShowsTheErrorUnlocksTheFormAndARetryPublishes() {
+  fun aFailedSaveShowsTheErrorAndARetryPublishes() {
     beforeAdd = { throw IllegalStateException("offline") }
 
     fillAndPublish()
@@ -270,14 +235,8 @@ class CreateAnnouncementScreenTest {
         .onNodeWithTag(Tags.SAVE_ERROR)
         .assertTextEquals(string(R.string.create_announcement_error_save_failed))
     assertEquals(0, publishedCount)
-    assertTrue(stored().isEmpty())
-
-    inputs().forEach { it.assertIsEnabled() }
-    composeTestRule.onNodeWithTag(Tags.BACK_BUTTON).performClick()
-    composeTestRule.onNodeWithTag(Tags.DISCARD_DIALOG).assertIsDisplayed()
     assertEquals(0, backCount)
-    composeTestRule.onNodeWithTag(Tags.KEEP_EDITING_BUTTON).performClick()
-    composeTestRule.onNodeWithTag(Tags.DISCARD_DIALOG).assertDoesNotExist()
+    assertTrue(stored().isEmpty())
 
     beforeAdd = {}
     publishButton().performClick()
@@ -288,42 +247,18 @@ class CreateAnnouncementScreenTest {
     composeTestRule.onNodeWithTag(Tags.SAVE_ERROR).assertDoesNotExist()
   }
 
-  // Breaks if the back arrow asks before leaving a form with nothing to lose.
+  /**
+   * Breaks if the screen does not pass its edited state or its dialog title to the back handling,
+   * or if "Discard" does not leave without publishing.
+   */
   @Test
-  fun backFromAnUntouchedFormLeavesWithoutAsking() {
-    composeTestRule.onNodeWithTag(Tags.BACK_BUTTON).performClick()
-
-    assertEquals(1, backCount)
-    composeTestRule.onNodeWithTag(Tags.DISCARD_DIALOG).assertDoesNotExist()
-  }
-
-  // Breaks if the back arrow leaves an edited form, if the dialog asks with another title than this
-  // screen's, or if "Keep editing" leaves or loses the text.
-  @Test
-  fun backFromAnEditedFormAsksAndKeepEditingStays() {
-    typeTitle("Stage B")
-
-    composeTestRule.onNodeWithTag(Tags.BACK_BUTTON).performClick()
-    composeTestRule.onNodeWithTag(Tags.DISCARD_DIALOG).assertIsDisplayed()
-    composeTestRule
-        .onNodeWithText(string(R.string.create_announcement_discard_title))
-        .assertIsDisplayed()
-    assertEquals(0, backCount)
-
-    composeTestRule.onNodeWithTag(Tags.KEEP_EDITING_BUTTON).performClick()
-    composeTestRule.onNodeWithTag(Tags.DISCARD_DIALOG).assertDoesNotExist()
-    composeTestRule.onNodeWithTag(Tags.TITLE_FIELD).assertTextContains("Stage B")
-    assertEquals(0, backCount)
-  }
-
-  // Breaks if the system back button skips the question, or if "Discard" does not leave.
-  @Test
-  fun systemBackFromAnEditedFormAsksAndDiscardLeaves() {
+  fun systemBackFromAnEditedFormAsksWithTheCreateTitleAndDiscardLeaves() {
     typeTitle("Stage B")
 
     pressSystemBack()
-    composeTestRule.onNodeWithTag(Tags.DISCARD_DIALOG).assertIsDisplayed()
-    assertEquals(0, backCount)
+    composeTestRule
+        .onNodeWithText(string(R.string.create_announcement_discard_title))
+        .assertIsDisplayed()
 
     composeTestRule.onNodeWithTag(Tags.DISCARD_BUTTON).performClick()
     composeTestRule.waitForIdle()

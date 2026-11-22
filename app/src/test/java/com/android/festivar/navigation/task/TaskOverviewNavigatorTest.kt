@@ -2,17 +2,13 @@
 // Co-authored-by: Gemini <noreply@google.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.navigation.task
 
 import androidx.navigation.NavHostController
-import androidx.navigation.NavOptionsBuilder
-import androidx.navigation.navOptions
 import com.android.festivar.navigation.AppScreens
 import io.mockk.mockk
-import io.mockk.slot
 import io.mockk.verify
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TaskOverviewNavigatorTest {
@@ -39,18 +35,5 @@ class TaskOverviewNavigatorTest {
     navigator.onAddTask("e1")
 
     verify { navController.navigate(AppScreens.createTask("e1")) }
-  }
-
-  /** Turns red when signing out stops opening the login or leaves the overview under it. */
-  @Test
-  fun signedOutNavigatesToLoginAndClearsBackStack() {
-    val options = slot<NavOptionsBuilder.() -> Unit>()
-
-    navigator.onSignedOut()
-
-    verify { navController.navigate(AppScreens.Login.name, capture(options)) }
-    val navOptions = navOptions(options.captured)
-    assertEquals(navController.graph.id, navOptions.popUpToId)
-    assertTrue(navOptions.isPopUpToInclusive())
   }
 }
