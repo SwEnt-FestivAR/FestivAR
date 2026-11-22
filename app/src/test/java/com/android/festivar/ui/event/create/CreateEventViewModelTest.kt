@@ -1658,6 +1658,295 @@ class CreateEventViewModelTest {
       unmockkStatic(MimeTypeMap::class)
     }
   }
+
+  /** Breaks if hasImage returns true when the image URL is null. */
+  @Test
+  fun hasImageReturnsFalseWhenImageUrlIsNull() {
+    val state = CreateEventUIState(imageUrl = null)
+    assertFalse(state.hasImage)
+  }
+
+  /** Breaks if hasImage returns true when the image URL is empty. */
+  @Test
+  fun hasImageReturnsFalseWhenImageUrlIsEmpty() {
+    val state = CreateEventUIState(imageUrl = "")
+    assertFalse(state.hasImage)
+  }
+
+  /** Breaks if hasImage returns false when a valid image URL is set. */
+  @Test
+  fun hasImageReturnsTrueWhenImageUrlIsPresent() {
+    val state = CreateEventUIState(imageUrl = "https://example.com/image.png")
+    assertTrue(state.hasImage)
+  }
+
+  /**
+   * Breaks if confirming discard attempts to delete an image when the image URL is null or blank.
+   */
+  @Test
+  fun confirmDiscardDoesNotDeleteImageWhenUrlIsNullOrBlank() = runBlocking {
+    val imageStorage = RecordingImageStorage()
+    dataRepository =
+        DataRepositoryLocal(
+            mockk(),
+            eventsRepository = eventsRepository,
+            usersRepository = usersRepository,
+            imageStorage = imageStorage,
+        )
+    viewModel =
+        CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
+
+    viewModel.setImageUrlForTesting(null)
+    viewModel.confirmDiscard()
+
+    viewModel.setImageUrlForTesting("   ")
+    viewModel.confirmDiscard()
+
+    assertTrue(imageStorage.deletedUrls.isEmpty())
+  }
+
+  /**
+   * Breaks if confirming discard attempts to delete an image when the event has already been
+   * created.
+   */
+  @Test
+  fun confirmDiscardDoesNotDeleteImageWhenEventAlreadyCreated() = runBlocking {
+    val imageStorage = RecordingImageStorage()
+    dataRepository =
+        DataRepositoryLocal(
+            mockk(),
+            eventsRepository = eventsRepository,
+            usersRepository = usersRepository,
+            imageStorage = imageStorage,
+        )
+    viewModel =
+        CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
+
+    viewModel.setImageUrlForTesting("https://example.com/image.png")
+    val stateField = EventFormViewModel::class.java.getDeclaredField("_uiState")
+    stateField.isAccessible = true
+    @Suppress("UNCHECKED_CAST")
+    val stateFlow = stateField.get(viewModel) as MutableStateFlow<CreateEventUIState>
+    stateFlow.value = stateFlow.value.copy(createdEventId = "event-123")
+
+    viewModel.confirmDiscard()
+
+    assertTrue(imageStorage.deletedUrls.isEmpty())
+  }
+
+  /**
+   * Breaks if clearing the ViewModel attempts to delete an image when the image URL is null or
+   * blank.
+   */
+  @Test
+  fun onClearedDoesNotDeleteImageWhenUrlIsNullOrBlank() = runBlocking {
+    val imageStorage = RecordingImageStorage()
+    dataRepository =
+        DataRepositoryLocal(
+            mockk(),
+            eventsRepository = eventsRepository,
+            usersRepository = usersRepository,
+            imageStorage = imageStorage,
+        )
+    viewModel =
+        CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
+
+    viewModel.setImageUrlForTesting(null)
+    val method = viewModel.javaClass.getDeclaredMethod("onCleared")
+    method.isAccessible = true
+    method.invoke(viewModel)
+
+    viewModel.setImageUrlForTesting("   ")
+    method.invoke(viewModel)
+
+    assertTrue(imageStorage.deletedUrls.isEmpty())
+  }
+
+  /**
+   * Breaks if clearing the ViewModel attempts to delete an image when the event has already been
+   * created.
+   */
+  @Test
+  fun onClearedDoesNotDeleteImageWhenEventIsCreated() = runBlocking {
+    val imageStorage = RecordingImageStorage()
+    dataRepository =
+        DataRepositoryLocal(
+            mockk(),
+            eventsRepository = eventsRepository,
+            usersRepository = usersRepository,
+            imageStorage = imageStorage,
+        )
+    viewModel =
+        CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
+
+    viewModel.setImageUrlForTesting("https://example.com/image.png")
+    val stateField = EventFormViewModel::class.java.getDeclaredField("_uiState")
+    stateField.isAccessible = true
+    @Suppress("UNCHECKED_CAST")
+    val stateFlow = stateField.get(viewModel) as MutableStateFlow<CreateEventUIState>
+    stateFlow.value = stateFlow.value.copy(createdEventId = "event-123")
+
+    val method = viewModel.javaClass.getDeclaredMethod("onCleared")
+    method.isAccessible = true
+    method.invoke(viewModel)
+
+    assertTrue(imageStorage.deletedUrls.isEmpty())
+  }
+
+  /**
+   * Breaks if confirming image deletion attempts to delete from storage when the image URL is null
+   * or empty.
+   */
+  @Test
+  fun confirmDeleteImageDoesNotDeleteFromStorageWhenUrlIsNullOrEmpty() = runBlocking {
+    val imageStorage = RecordingImageStorage()
+    dataRepository =
+        DataRepositoryLocal(
+            mockk(),
+            eventsRepository = eventsRepository,
+            usersRepository = usersRepository,
+            imageStorage = imageStorage,
+        )
+    viewModel =
+        CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
+
+    viewModel.setImageUrlForTesting(null)
+    viewModel.confirmDeleteImage()
+
+    viewModel.setImageUrlForTesting("")
+    viewModel.confirmDeleteImage()
+
+    assertTrue(imageStorage.deletedUrls.isEmpty())
+  }
+
+  /**
+   * Breaks if updating an image attempts to delete the old image when old and new image URLs are
+   * equal.
+   */
+  @Test
+  fun saveImageDoesNotDeleteOldImageWhenOldAndNewUrlsAreEqual() = runBlocking {
+    val mimeTypeMap = mockk<MimeTypeMap>()
+    mockkStatic(MimeTypeMap::class)
+    every { MimeTypeMap.getSingleton() } returns mimeTypeMap
+    every { mimeTypeMap.getExtensionFromMimeType("image/png") } returns "png"
+
+    try {
+      val imageStorage =
+          object : ImageStorage {
+            val deleted = mutableListOf<String>()
+
+            override fun getNewUid(): String = "uid"
+
+            override suspend fun upload(storedImage: StoredImage, subFolder: String): String =
+                "https://example.com/same_image.png"
+
+            override suspend fun delete(imageUrl: String) {
+              deleted.add(imageUrl)
+            }
+          }
+      dataRepository =
+          DataRepositoryLocal(
+              mockk(),
+              eventsRepository = eventsRepository,
+              usersRepository = usersRepository,
+              imageStorage = imageStorage,
+          )
+      viewModel =
+          CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
+
+      viewModel.setImageUrlForTesting("https://example.com/same_image.png")
+
+      val resolver = mockk<ContentResolver>()
+      val tempDir = File.createTempFile("test", "dir")
+      tempDir.delete()
+      tempDir.mkdir()
+      tempDir.deleteOnExit()
+      val uri = mockk<Uri>()
+
+      every { resolver.getType(uri) } returns "image/png"
+      every { resolver.openInputStream(uri) } returns
+          ByteArrayInputStream("test image content".toByteArray())
+
+      viewModel.updateImage(uri, resolver, tempDir)
+
+      withTimeout(5_000.milliseconds) {
+        while (viewModel.uiState.value.isSaving) delay(10.milliseconds)
+      }
+
+      assertTrue(imageStorage.deleted.isEmpty())
+    } finally {
+      unmockkStatic(MimeTypeMap::class)
+    }
+  }
+
+  /**
+   * Breaks if an exception during image save fails to clean up the newly uploaded image from
+   * storage.
+   */
+  @Test
+  fun saveImageDeletesNewlyUploadedImageWhenExceptionOccursAfterUpload() = runBlocking {
+    val mimeTypeMap = mockk<MimeTypeMap>()
+    mockkStatic(MimeTypeMap::class)
+    every { MimeTypeMap.getSingleton() } returns mimeTypeMap
+    every { mimeTypeMap.getExtensionFromMimeType("image/png") } returns "png"
+
+    try {
+      val imageStorage = RecordingImageStorage()
+      dataRepository =
+          DataRepositoryLocal(
+              mockk(),
+              eventsRepository = eventsRepository,
+              usersRepository = usersRepository,
+              imageStorage = imageStorage,
+          )
+      viewModel =
+          CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
+
+      val field = EventFormViewModel::class.java.getDeclaredField("_uiState")
+      field.isAccessible = true
+      @Suppress("UNCHECKED_CAST")
+      val originalStateFlow = field.get(viewModel) as MutableStateFlow<CreateEventUIState>
+
+      var updateCount = 0
+      @Suppress("OPT_IN_USAGE")
+      val failingStateFlow =
+          object : MutableStateFlow<CreateEventUIState> by originalStateFlow {
+            override fun compareAndSet(
+                expect: CreateEventUIState,
+                update: CreateEventUIState,
+            ): Boolean {
+              updateCount++
+              if (updateCount == 2) {
+                throw RuntimeException("Simulated updateState failure after upload")
+              }
+              return originalStateFlow.compareAndSet(expect, update)
+            }
+          }
+      field.set(viewModel, failingStateFlow)
+
+      val resolver = mockk<ContentResolver>()
+      val tempDir = File.createTempFile("test", "dir")
+      tempDir.delete()
+      tempDir.mkdir()
+      tempDir.deleteOnExit()
+      val uri = mockk<Uri>()
+
+      every { resolver.getType(uri) } returns "image/png"
+      every { resolver.openInputStream(uri) } returns
+          ByteArrayInputStream("test image content".toByteArray())
+
+      viewModel.updateImage(uri, resolver, tempDir)
+
+      withTimeout(5_000.milliseconds) {
+        while (imageStorage.deletedUrls.isEmpty()) delay(10.milliseconds)
+      }
+
+      assertTrue(imageStorage.deletedUrls.isNotEmpty())
+      assertEquals(R.string.create_event_error_save_failed, viewModel.uiState.value.errorMsg)
+    } finally {
+      unmockkStatic(MimeTypeMap::class)
+    }
+  }
 }
 
 private class RecordingImageStorage(
