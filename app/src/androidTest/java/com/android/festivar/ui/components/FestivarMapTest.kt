@@ -14,6 +14,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.map.geometry.EPFL_LOCATION
 import com.android.festivar.model.map.geometry.GeoPosition
 import com.android.festivar.ui.theme.AppTheme
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.rememberUpdatedMarkerState
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -47,9 +50,7 @@ class FestivarMapTest {
   @Test
   fun map_inDarkTheme_isDisplayed() {
     composeTestRule.setContent {
-      AppTheme(darkTheme = true) {
-        FestivarMap(listOf(EPFL_LOCATION), Modifier.fillMaxSize(), darkTheme = true)
-      }
+      AppTheme(darkTheme = true) { FestivarMap(listOf(EPFL_LOCATION), Modifier.fillMaxSize()) }
     }
 
     composeTestRule.onNodeWithTag(FestivarMapTestTags.MAP).assertIsDisplayed()
@@ -63,17 +64,23 @@ class FestivarMapTest {
     composeTestRule.onNodeWithTag(FestivarMapTestTags.MAP).assertExists()
   }
 
-  /** Breaks if giving the map its gestures and its content makes it fail to display. */
+  /** Breaks if giving the map its gestures and a marker makes it fail to display. */
   @Test
-  fun map_withGesturesAndContent_isDisplayed() {
+  fun map_withGesturesAndMarker_isDisplayed() {
     composeTestRule.setContent {
       AppTheme {
         FestivarMap(
             listOf(EPFL_LOCATION),
             Modifier.fillMaxSize(),
             gesturesEnabled = true,
-            content = {},
-        )
+        ) {
+          Marker(
+              state =
+                  rememberUpdatedMarkerState(
+                      position = LatLng(EPFL_LOCATION.latitude, EPFL_LOCATION.longitude)
+                  )
+          )
+        }
       }
     }
 
@@ -87,13 +94,8 @@ class FestivarMapTest {
     var darkTheme by mutableStateOf(false)
     var gesturesEnabled by mutableStateOf(false)
     composeTestRule.setContent {
-      AppTheme {
-        FestivarMap(
-            locations,
-            Modifier.fillMaxSize(),
-            gesturesEnabled = gesturesEnabled,
-            darkTheme = darkTheme,
-        )
+      AppTheme(darkTheme = darkTheme) {
+        FestivarMap(locations, Modifier.fillMaxSize(), gesturesEnabled = gesturesEnabled)
       }
     }
 
