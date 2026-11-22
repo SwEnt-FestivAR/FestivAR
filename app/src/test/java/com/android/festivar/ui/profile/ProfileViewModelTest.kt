@@ -618,11 +618,8 @@ class ProfileViewModelTest {
   }
 
   /**
-   * <<<<<<< HEAD Breaks if showing or hiding the upgrade sheet does not correctly toggle sheet
-   * visibility or reset credentials.
-   * =======
    * Breaks if showing or hiding the upgrade sheet does not correctly toggle activeDialog or reset
-   * credentials. >>>>>>> a6146cbc (refactor(profile): consolidate dialog management)
+   * credentials.
    */
   @Test
   fun upgradeSheetStateIncludesVisibilityAndCredentialReset() = runTest {
