@@ -28,7 +28,7 @@ enum class ArAvailability {
 }
 
 /** Tells whether this phone can show AR. */
-interface ArSupport {
+fun interface ArSupport {
   /** Answers whether this phone can show AR. It may take a moment. */
   suspend fun check(): ArAvailability
 }
