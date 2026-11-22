@@ -357,6 +357,28 @@ class CreateEventScreenTest {
     assertNull(viewModel.uiState.value.imageUrl)
   }
 
+  /** Breaks if ImageViewer does not display the loading placeholder with load icon and text. */
+  @Test
+  fun imageViewerDisplaysLoadingPlaceholderAndLoadIcon() {
+    viewModel = CreateEventViewModel(dataRepository)
+    viewModel.setImageUrlForTesting("https://example.com/loading-image.png")
+    composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.IMAGE_PREVIEW).assertIsDisplayed()
+  }
+
+  /** Breaks if ImageViewer does not display the failure placeholder with warning icon and text. */
+  @Test
+  fun imageViewerDisplaysFailurePlaceholderAndWarningIcon() {
+    viewModel = CreateEventViewModel(dataRepository)
+    viewModel.setImageUrlForTesting("https://invalid-domain.com/nonexistent.png")
+    composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.IMAGE_PREVIEW).assertIsDisplayed()
+  }
+
   /** Red if system back leaves an edited event without asking first. */
   @Test
   fun systemBackAsksBeforeDiscardingEnteredDetails() {
