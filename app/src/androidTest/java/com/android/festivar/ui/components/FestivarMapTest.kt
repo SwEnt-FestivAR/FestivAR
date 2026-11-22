@@ -87,6 +87,14 @@ class FestivarMapTest {
     composeTestRule.onNodeWithTag(FestivarMapTestTags.MAP).assertIsDisplayed()
   }
 
+  /** Breaks if the preview of the map, with its marker, fails to compose or to display. */
+  @Test
+  fun preview_isDisplayed() {
+    composeTestRule.setContent { FestivarMapPreview() }
+
+    composeTestRule.onNodeWithTag(FestivarMapTestTags.MAP).assertIsDisplayed()
+  }
+
   /** Breaks if the map crashes or disappears when its locations, theme or gestures change. */
   @Test
   fun map_whenItsInputsChange_staysDisplayed() {
