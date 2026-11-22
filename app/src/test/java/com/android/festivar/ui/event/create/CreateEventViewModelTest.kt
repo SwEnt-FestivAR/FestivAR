@@ -1315,6 +1315,136 @@ class CreateEventViewModelTest {
     }
   }
 
+  /** Breaks if setting an image URL for testing fails to update the view model state. */
+  @Test
+  fun setImageUrlForTestingUpdatesState() {
+    viewModel.setImageUrlForTesting("https://example.com/custom.jpg")
+    assertEquals("https://example.com/custom.jpg", viewModel.uiState.value.imageUrl)
+  }
+
+  /** Breaks if updating an image with a null mime type fails to default to the jpg extension. */
+  @Test
+  fun updateImageWithNullMimeTypeUsesDefaultJpgExtension() = runBlocking {
+    val mimeTypeMap = mockk<MimeTypeMap>()
+    mockkStatic(MimeTypeMap::class)
+    every { MimeTypeMap.getSingleton() } returns mimeTypeMap
+    every { mimeTypeMap.getExtensionFromMimeType(any()) } returns null
+
+    try {
+      val imageStorage = RecordingImageStorage()
+      dataRepository =
+          DataRepositoryLocal(
+              mockk(),
+              eventsRepository = eventsRepository,
+              usersRepository = usersRepository,
+              imageStorage = imageStorage,
+          )
+      viewModel =
+          CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
+      val resolver = mockk<ContentResolver>()
+      val tempDir = File.createTempFile("test", "dir")
+      tempDir.delete()
+      tempDir.mkdir()
+      tempDir.deleteOnExit()
+      val uri = mockk<Uri>()
+
+      every { resolver.getType(uri) } returns null
+      every { resolver.openInputStream(uri) } returns
+          ByteArrayInputStream("test image content".toByteArray())
+
+      viewModel.updateImage(uri, resolver, tempDir)
+
+      withTimeout(5_000.milliseconds) {
+        while (viewModel.uiState.value.imageUrl == null) delay(10.milliseconds)
+      }
+
+      assertTrue(viewModel.uiState.value.imageUrl!!.endsWith(".jpg"))
+    } finally {
+      unmockkStatic(MimeTypeMap::class)
+    }
+  }
+
+  /**
+   * Breaks if a CancellationException during image update reading sets a save error instead of
+   * propagating.
+   */
+  @Test
+  fun updateImagePropagatesCancellationExceptionDuringRead() = runBlocking {
+    val mimeTypeMap = mockk<MimeTypeMap>()
+    mockkStatic(MimeTypeMap::class)
+    every { MimeTypeMap.getSingleton() } returns mimeTypeMap
+    every { mimeTypeMap.getExtensionFromMimeType("image/png") } returns "png"
+
+    try {
+      val resolver = mockk<ContentResolver>()
+      val tempDir = File.createTempFile("test", "dir")
+      tempDir.delete()
+      tempDir.mkdir()
+      tempDir.deleteOnExit()
+      val uri = mockk<Uri>()
+
+      every { resolver.getType(uri) } returns "image/png"
+      every { resolver.openInputStream(uri) } throws CancellationException("cancelled")
+
+      viewModel =
+          CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
+
+      viewModel.updateImage(uri, resolver, tempDir)
+
+      assertNull(viewModel.uiState.value.errorMsg)
+    } finally {
+      unmockkStatic(MimeTypeMap::class)
+    }
+  }
+
+  /**
+   * Breaks if a CancellationException during old image deletion sets a save error instead of
+   * propagating.
+   */
+  @Test
+  fun saveImagePropagatesCancellationDuringOldImageDeletion() = runBlocking {
+    val mimeTypeMap = mockk<MimeTypeMap>()
+    mockkStatic(MimeTypeMap::class)
+    every { MimeTypeMap.getSingleton() } returns mimeTypeMap
+    every { mimeTypeMap.getExtensionFromMimeType("image/png") } returns "png"
+
+    try {
+      val imageStorage = RecordingImageStorage()
+      dataRepository =
+          DataRepositoryLocal(
+              mockk(),
+              eventsRepository = eventsRepository,
+              usersRepository = usersRepository,
+              imageStorage = imageStorage,
+          )
+      viewModel =
+          CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
+      val resolver = mockk<ContentResolver>()
+      val tempDir = File.createTempFile("test", "dir")
+      tempDir.delete()
+      tempDir.mkdir()
+      tempDir.deleteOnExit()
+      val uri = mockk<Uri>()
+
+      every { resolver.getType(uri) } returns "image/png"
+      every { resolver.openInputStream(uri) } returns
+          ByteArrayInputStream("test image content".toByteArray())
+
+      viewModel.updateImage(uri, resolver, tempDir)
+      withTimeout(5_000.milliseconds) {
+        while (viewModel.uiState.value.imageUrl == null) delay(10.milliseconds)
+      }
+
+      imageStorage.deleteError = CancellationException("cancel delete")
+
+      viewModel.updateImage(uri, resolver, tempDir)
+
+      assertNull(viewModel.uiState.value.errorMsg)
+    } finally {
+      unmockkStatic(MimeTypeMap::class)
+    }
+  }
+
   /** Breaks if attempting to delete a non-existent temporary file throws an exception. */
   @Test
   fun deleteTemporaryImageWithNonExistentFile() {
