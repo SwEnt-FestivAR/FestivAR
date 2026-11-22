@@ -76,7 +76,7 @@ class MapCardTest {
       }
     }
 
-    composeTestRule.onNodeWithTag(MapCardTestTags.CARD).performClick()
+    composeTestRule.onNodeWithTag(MapCardTestTags.CARD, useUnmergedTree = true).performClick()
 
     assertTrue(clicked)
   }
