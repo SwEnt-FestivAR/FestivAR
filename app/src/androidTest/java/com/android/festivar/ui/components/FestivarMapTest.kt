@@ -3,12 +3,16 @@ package com.android.festivar.ui.components
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.map.geometry.EPFL_LOCATION
+import com.android.festivar.model.map.geometry.GeoPosition
 import com.android.festivar.ui.theme.AppTheme
 import org.junit.Rule
 import org.junit.Test
@@ -47,6 +51,55 @@ class FestivarMapTest {
         FestivarMap(listOf(EPFL_LOCATION), Modifier.fillMaxSize(), darkTheme = true)
       }
     }
+
+    composeTestRule.onNodeWithTag(FestivarMapTestTags.MAP).assertIsDisplayed()
+  }
+
+  /** Breaks if the map needs a modifier from its caller to be composed. */
+  @Test
+  fun map_withoutModifier_isComposed() {
+    composeTestRule.setContent { AppTheme { FestivarMap(listOf(EPFL_LOCATION)) } }
+
+    composeTestRule.onNodeWithTag(FestivarMapTestTags.MAP).assertExists()
+  }
+
+  /** Breaks if giving the map its gestures and its content makes it fail to display. */
+  @Test
+  fun map_withGesturesAndContent_isDisplayed() {
+    composeTestRule.setContent {
+      AppTheme {
+        FestivarMap(
+            listOf(EPFL_LOCATION),
+            Modifier.fillMaxSize(),
+            gesturesEnabled = true,
+            content = {},
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag(FestivarMapTestTags.MAP).assertIsDisplayed()
+  }
+
+  /** Breaks if the map crashes or disappears when its locations, theme or gestures change. */
+  @Test
+  fun map_whenItsInputsChange_staysDisplayed() {
+    var locations by mutableStateOf(listOf(EPFL_LOCATION))
+    var darkTheme by mutableStateOf(false)
+    var gesturesEnabled by mutableStateOf(false)
+    composeTestRule.setContent {
+      AppTheme {
+        FestivarMap(
+            locations,
+            Modifier.fillMaxSize(),
+            gesturesEnabled = gesturesEnabled,
+            darkTheme = darkTheme,
+        )
+      }
+    }
+
+    composeTestRule.runOnIdle { locations = listOf(GeoPosition(46.0, 7.0), GeoPosition(47.0, 8.0)) }
+    composeTestRule.runOnIdle { darkTheme = true }
+    composeTestRule.runOnIdle { gesturesEnabled = true }
 
     composeTestRule.onNodeWithTag(FestivarMapTestTags.MAP).assertIsDisplayed()
   }
