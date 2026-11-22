@@ -90,4 +90,12 @@ class MapCardTest {
     // The map composes its content only once it is ready.
     composeTestRule.waitUntil(timeoutMillis = 5_000) { composed }
   }
+
+  /** Breaks if the preview of the card, with its marker, fails to compose or to display. */
+  @Test
+  fun preview_isDisplayed() {
+    composeTestRule.setContent { MapCardPreview() }
+
+    composeTestRule.onNodeWithTag(MapCardTestTags.CARD).assertIsDisplayed()
+  }
 }
