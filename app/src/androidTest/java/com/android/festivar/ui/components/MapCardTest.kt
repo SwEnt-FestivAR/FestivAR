@@ -3,12 +3,15 @@ package com.android.festivar.ui.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -128,6 +131,28 @@ class MapCardTest {
     }
 
     composeTestRule.runOnIdle { locations = listOf(GeoPosition(46.0, 7.0), GeoPosition(47.0, 8.0)) }
+
+    composeTestRule.onNodeWithTag(MapCardTestTags.CARD).assertIsDisplayed()
+  }
+
+  /**
+   * Breaks if the card disappears or crashes when its parent recomposes with the same arguments.
+   */
+  @Test
+  fun card_whenItsParentRecomposesWithTheSameArguments_staysDisplayed() {
+    val locations = listOf(EPFL_LOCATION)
+    val modifier = Modifier.fillMaxWidth().height(156.dp)
+    var tick by mutableIntStateOf(0)
+    composeTestRule.setContent {
+      AppTheme {
+        Column {
+          Text(tick.toString())
+          MapCard(locations, modifier)
+        }
+      }
+    }
+
+    composeTestRule.runOnIdle { tick++ }
 
     composeTestRule.onNodeWithTag(MapCardTestTags.CARD).assertIsDisplayed()
   }
