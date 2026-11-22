@@ -9,7 +9,6 @@
     <string name="event_details_navigate_back">Retour</string>
     <string name="event_details_see_tasks">Voir les tâches</string>
     <string name="event_details_members">Membres</string>
-    <string name="event_details_organizer">Organisateur</string>
     <string name="event_details_members_subtitle">%1$s · %2$s</string>
     <string name="event_details_fetch_error">Une erreur est survenue lors du chargement de l’événement. Réessayez.</string>
     <string name="event_details_status_open">Ouvert</string>
@@ -17,4 +16,31 @@
     <string name="event_details_announcements">Annonces</string>
     <string name="event_details_more_actions">Plus d’actions pour l’événement</string>
     <string name="event_details_edit_event">Modifier l’événement</string>
+    <string name="event_details_change_role_failed">Impossible de changer le rôle. Réessayez.</string>
+    <string name="event_details_kick_failed">Impossible d’exclure ce membre. Réessayez.</string>
+    <string name="event_details_role_owner">Propriétaire</string>
+    <string name="event_details_role_admin">Admin</string>
+    <string name="event_details_role_staff_manager">Responsable staff</string>
+    <string name="event_details_role_team_lead">Chef d’équipe</string>
+    <string name="event_details_role_staff">Staff</string>
+    <string name="event_details_role_visitor">Visiteur</string>
+    <string name="event_details_category_owner">Propriétaire</string>
+    <string name="event_details_category_admin">Admins</string>
+    <string name="event_details_category_staff_manager">Responsables staff</string>
+    <string name="event_details_category_team_lead">Chefs d’équipe</string>
+    <string name="event_details_category_staff">Staff</string>
+    <string name="event_details_category_visitor">Visiteurs</string>
+    <plurals name="event_details_member_tasks">
+        <item quantity="one">%d tâche</item>
+        <item quantity="many">%d tâches</item>
+        <item quantity="other">%d tâches</item>
+    </plurals>
+    <string name="event_details_change_role">Changer le rôle</string>
+    <string name="event_details_kick">Exclure</string>
+    <string name="event_details_change_role_title">Changer le rôle de %1$s</string>
+    <string name="event_details_current_role">Actuel</string>
+    <string name="event_details_change_role_confirm_title">Nommer %1$s %2$s ?</string>
+    <string name="event_details_change_role_confirm_message">%1$s recevra les permissions de ce rôle dans %2$s.</string>
+    <string name="event_details_kick_confirm_title">Exclure %1$s ?</string>
+    <string name="event_details_kick_confirm_message">Ce membre quitte %1$s et perd ses tâches. Il peut revenir avec le code d’accès.</string>
 </resources>

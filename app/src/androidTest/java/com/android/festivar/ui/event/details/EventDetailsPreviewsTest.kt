@@ -54,15 +54,15 @@ class EventDetailsPreviewsTest {
     composeTestRule.onNodeWithText("12 members").assertIsDisplayed()
   }
 
-  /** Breaks if the Members list preview stops opening the list with the organizer tagged. */
+  /** Breaks if the Members list preview stops opening the list with the owner's badge. */
   @Test
-  fun membersListPreview_showsTheListWithTheOrganizerTag() {
+  fun membersListPreview_showsTheListWithTheOwnerBadge() {
     composeTestRule.setContent { EventDetailsMembersListPreview() }
     composeTestRule.waitForIdle()
 
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.MEMBERS_SHEET).assertIsDisplayed()
     composeTestRule.onNodeWithText("Olivia Roy").assertIsDisplayed()
-    composeTestRule.onNodeWithText("Organizer").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Owner").assertIsDisplayed()
   }
 
   /** Breaks if the owner preview stops showing the menu button. */
