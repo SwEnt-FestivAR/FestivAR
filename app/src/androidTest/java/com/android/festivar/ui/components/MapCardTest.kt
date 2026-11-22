@@ -1,6 +1,8 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.components
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
@@ -9,11 +11,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.map.geometry.EPFL_LOCATION
 import com.android.festivar.model.map.geometry.GeoPosition
 import com.android.festivar.ui.theme.AppTheme
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -44,6 +48,37 @@ class MapCardTest {
     setCard(emptyList())
 
     composeTestRule.onNodeWithTag(MapCardTestTags.CARD).assertIsDisplayed()
+  }
+
+  /**
+   * Breaks if the card no longer covers the map with its touch layer, so that a tap on a marker
+   * moves the camera again.
+   */
+  @Test
+  fun card_coversTheMapWithATouchLayer() {
+    setCard(listOf(EPFL_LOCATION))
+
+    composeTestRule.onNodeWithTag(MapCardTestTags.TOUCH_BLOCKER).assertIsDisplayed()
+  }
+
+  /**
+   * Breaks if the touch layer swallows the taps, so a screen can no longer make the whole card
+   * clickable.
+   */
+  @Test
+  fun card_stillPassesTapsToAClickableParent() {
+    var clicked = false
+    composeTestRule.setContent {
+      AppTheme {
+        Box(Modifier.clickable { clicked = true }) {
+          MapCard(listOf(EPFL_LOCATION), Modifier.fillMaxWidth().height(156.dp))
+        }
+      }
+    }
+
+    composeTestRule.onNodeWithTag(MapCardTestTags.CARD).performClick()
+
+    assertTrue(clicked)
   }
 
   /** Breaks if the card does not hand its content to the map, so markers are never composed. */
