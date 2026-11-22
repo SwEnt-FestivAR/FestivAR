@@ -17,7 +17,7 @@ data class Location(val name: String, val position: GeoPosition) {
     require(name.isNotBlank()) { "The name of a location cannot be blank." }
   }
 
-  /** @return The location as stored in a document, by the names of [NAME] and [POSITION]. */
+  /** @return The location as stored in a document, by the names "name" and "position". */
   fun toMap(): Map<String, Any> = mapOf(NAME to name, POSITION to position.toMap())
 
   companion object {

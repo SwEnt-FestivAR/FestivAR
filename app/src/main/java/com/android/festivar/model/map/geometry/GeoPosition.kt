@@ -21,7 +21,7 @@ data class GeoPosition(val latitude: Double, val longitude: Double) {
     require(longitude in -180.0..180.0) { "The longitude must be between -180 and 180." }
   }
 
-  /** @return The position as stored in a document, by the names of [LATITUDE] and [LONGITUDE]. */
+  /** @return The position as stored in a document, by the names "latitude" and "longitude". */
   fun toMap(): Map<String, Double> = mapOf(LATITUDE to latitude, LONGITUDE to longitude)
 
   companion object {
