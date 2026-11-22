@@ -2,6 +2,8 @@
 package com.android.festivar.ui.components
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -9,7 +11,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import com.android.festivar.model.map.geometry.EPFL_LOCATION
 import com.android.festivar.model.map.geometry.GeoPosition
+import com.android.festivar.ui.theme.AppTheme
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.rememberUpdatedMarkerState
 
 /** Test tags of [MapCard]. */
 object MapCardTestTags {
@@ -50,5 +59,21 @@ fun MapCard(
     // window. This layer sits above the map so that no touch reaches it. It leaves the touches
     // unconsumed, so a screen can still make the whole card clickable.
     Box(Modifier.matchParentSize().testTag(MapCardTestTags.TOUCH_BLOCKER).pointerInput(Unit) {})
+  }
+}
+
+/** Preview of the card: use "Run Preview on Device", the preview panel cannot draw Google Maps. */
+@Preview(showBackground = true)
+@Composable
+internal fun MapCardPreview() {
+  AppTheme {
+    MapCard(listOf(EPFL_LOCATION), Modifier.fillMaxWidth().height(156.dp)) {
+      Marker(
+          state =
+              rememberUpdatedMarkerState(
+                  position = LatLng(EPFL_LOCATION.latitude, EPFL_LOCATION.longitude)
+              )
+      )
+    }
   }
 }
