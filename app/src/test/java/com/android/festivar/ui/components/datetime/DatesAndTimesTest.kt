@@ -42,7 +42,7 @@ class DatesAndTimesTest {
   @get:Rule val composeTestRule = createComposeRule()
 
   private val saturday = LocalDate.of(2026, 10, 17)
-  private val tags = DatesAndTimesTags()
+  private val tags = DatesAndTimesFieldTags()
   private var range by mutableStateOf(DateTimeRange())
 
   private fun show(
@@ -50,7 +50,7 @@ class DatesAndTimesTest {
       timesError: FieldError? = null,
       allowPast: Boolean = false,
       today: LocalDate = saturday,
-      rowTags: DatesAndTimesTags = tags,
+      rowTags: DatesAndTimesFieldTags = tags,
       enabled: Boolean = true,
   ) {
     range = initial
@@ -301,7 +301,7 @@ class DatesAndTimesTest {
   /** Breaks if the row ignores the tags of the screen, so its tests cannot find the fields. */
   @Test
   fun theFieldsUseTheTagsOfTheScreen() {
-    val own = DatesAndTimesTags("a", "b", "c", "d")
+    val own = DatesAndTimesFieldTags("a", "b", "c", "d")
     show(
         DateTimeRange(saturday, LocalTime.of(20, 0), saturday, LocalTime.of(18, 0)),
         timesError = FieldError.END_BEFORE_START,

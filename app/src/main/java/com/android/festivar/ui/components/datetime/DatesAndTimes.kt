@@ -41,7 +41,7 @@ object DatesAndTimesTestTags {
  * The test tags of the fields of [FestivarDatesAndTimes]. Each screen passes its own, so that its
  * tests can tell the rows apart; the defaults are those of [DatesAndTimesTestTags].
  */
-data class DatesAndTimesTags(
+data class DatesAndTimesFieldTags(
     val dates: String = DatesAndTimesTestTags.DATES_FIELD,
     val startTime: String = DatesAndTimesTestTags.START_TIME_FIELD,
     val endTime: String = DatesAndTimesTestTags.END_TIME_FIELD,
@@ -57,8 +57,8 @@ private enum class DatesAndTimesPicker {
 
 /**
  * The days and times of a form: one Dates field that opens the range picker, and the Start time and
- * End time fields side by side. The row adds no rule on the times: it shows [range] and what the
- * user picks, and it shows [timesError], which the form computes, under the times.
+ * End time fields side by side. The component adds no rule on the times: it shows [range] and what
+ * the user picks, and it shows [timesError], which the form computes, under the times.
  *
  * The times wait for a day, so they are disabled until one is chosen, and saving the picker with no
  * day clears the times too.
@@ -83,7 +83,7 @@ fun FestivarDatesAndTimes(
     timesError: FieldError? = null,
     allowPast: Boolean = false,
     today: LocalDate = LocalDate.now(),
-    tags: DatesAndTimesTags = DatesAndTimesTags(),
+    tags: DatesAndTimesFieldTags = DatesAndTimesFieldTags(),
 ) {
   var openPicker by rememberSaveable { mutableStateOf<DatesAndTimesPicker?>(null) }
   val join = stringResource(R.string.date_range_join)
@@ -172,7 +172,7 @@ private fun DatesAndTimesPreview(
   var range by remember { mutableStateOf(initial) }
   AppTheme {
     Surface(color = MaterialTheme.colorScheme.background) {
-      Column(Modifier.padding(horizontal = 12.dp, vertical = 12.dp)) {
+      Column(Modifier.padding(12.dp)) {
         FestivarDatesAndTimes(
             range = range,
             onRangeChange = { range = it },
