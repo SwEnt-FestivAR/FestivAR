@@ -4,7 +4,7 @@ package com.android.festivar.navigation.profile
 
 import android.content.Intent
 import androidx.navigation.NavHostController
-import com.android.festivar.MySettingsActivity
+import com.android.festivar.SettingsActivity
 import com.android.festivar.navigation.AppScreens
 
 /** The navigation actions of the profile screen. */
@@ -24,6 +24,6 @@ class ProfileNavigator(
   }
 
   val onSettingsClick: () -> Unit = {
-    startActivity(Intent(navController.context, MySettingsActivity::class.java))
+    startActivity(Intent(navController.context, SettingsActivity::class.java))
   }
 }

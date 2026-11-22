@@ -98,6 +98,13 @@ class AndroidVoicePlayerTest {
           .single()
           .invokeErrorListener(MediaPlayer.MEDIA_ERROR_UNKNOWN, MediaPlayer.MEDIA_ERROR_IO)
 
+  /** Makes the fake take far longer than the timeout to load [first], like a stalled connection. */
+  private fun stallLoading() =
+      ShadowMediaPlayer.addMediaInfo(
+          DataSource.toDataSource(context, first.toUri()),
+          ShadowMediaPlayer.MediaInfo(DURATION_MS, STALLED_MS),
+      )
+
   private fun idle(duration: Duration = Duration.ZERO) =
       shadowOf(Looper.getMainLooper()).idleFor(duration)
 
@@ -614,7 +621,89 @@ class AndroidVoicePlayerTest {
     assertEquals(PlayerState.Playing(first), player.state.value)
   }
 
+  /** Breaks if a note that does not load within 10 seconds stays Playing or keeps its player. */
+  @Test
+  fun play_failsAndFreesThePlayerWhenTheNoteDoesNotLoadInTime() {
+    stallLoading()
+    player.play(first)
+
+    idle(Duration.ofMillis(TIMEOUT_MS - 1))
+    assertEquals(PlayerState.Playing(first), player.state.value)
+
+    idle(Duration.ofMillis(1))
+
+    assertEquals(PlayerState.Failed(first), player.state.value)
+    assertEquals(1, players.single().releaseCount())
+    assertEquals("The voice note did not load in time", lastLoggedError())
+  }
+
+  /** Breaks if a note that is ready in time is failed by the timeout afterwards. */
+  @Test
+  fun play_aNoteReadyInTimeIsNotFailedByTheTimeout() {
+    player.play(first)
+    idle()
+
+    idle(Duration.ofMillis(AFTER_TIMEOUT_MS))
+
+    assertEquals(PlayerState.Playing(first), player.state.value)
+    assertEquals(State.STARTED, players.single().state)
+  }
+
+  /** Breaks if a note paused while it loaded, then ready in time, is failed by the timeout. */
+  @Test
+  fun pause_whileLoadingThenReadyInTimeIsNotFailedByTheTimeout() {
+    player.play(first)
+    player.pause()
+    idle()
+
+    idle(Duration.ofMillis(AFTER_TIMEOUT_MS))
+
+    assertEquals(PlayerState.Paused(first), player.state.value)
+    assertEquals(State.PREPARED, players.single().state)
+  }
+
+  /** Breaks if a stopped note is later reported as Failed by its timeout. */
+  @Test
+  fun stop_whileLoadingCancelsTheTimeout() {
+    stallLoading()
+    player.play(first)
+    player.stop()
+
+    idle(Duration.ofMillis(AFTER_TIMEOUT_MS))
+
+    assertEquals(PlayerState.Idle, player.state.value)
+  }
+
+  /** Breaks if the timeout of a replaced note fails the note that replaced it. */
+  @Test
+  fun play_aSecondNoteIsNotFailedByTheFirstNotesTimeout() {
+    stallLoading()
+    player.play(first)
+    player.play(second)
+    idle()
+
+    idle(Duration.ofMillis(AFTER_TIMEOUT_MS))
+
+    assertEquals(PlayerState.Playing(second), player.state.value)
+  }
+
+  /** Breaks if a note paused while it is stuck loading stays Paused for ever. */
+  @Test
+  fun pause_whileLoadingStillFailsWhenTheNoteDoesNotLoadInTime() {
+    stallLoading()
+    player.play(first)
+    player.pause()
+
+    idle(Duration.ofMillis(TIMEOUT_MS))
+
+    assertEquals(PlayerState.Failed(first), player.state.value)
+    assertEquals(1, players.single().releaseCount())
+  }
+
   private companion object {
     const val DURATION_MS = 14_000
+    const val STALLED_MS = 1_000_000
+    const val TIMEOUT_MS = 10_000L
+    const val AFTER_TIMEOUT_MS = 11_000L
   }
 }

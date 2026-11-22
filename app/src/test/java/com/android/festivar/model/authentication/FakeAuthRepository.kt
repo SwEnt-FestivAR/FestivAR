@@ -1,12 +1,15 @@
 // Co-authored-by: Gemini
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.authentication
 
 import androidx.credentials.Credential
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 
 open class FakeAuthRepository(
-    override val currentUser: FirebaseUser? = null,
+    currentUser: FirebaseUser? = null,
     var signInResult: Result<FirebaseUser> =
         Result.failure(UnsupportedOperationException("Not used")),
     var signOutResult: Result<Unit> = Result.success(Unit),
@@ -27,6 +30,18 @@ open class FakeAuthRepository(
     var signUpCallCount: Int = 0,
 ) : AuthRepository {
 
+  private val currentUserState = MutableStateFlow(currentUser)
+
+  override val currentUser: FirebaseUser?
+    get() = currentUserState.value
+
+  override val currentUserFlow: Flow<FirebaseUser?> = currentUserState
+
+  /** Signs [user] in, or signs out when null, as Firebase does while a screen is open. */
+  fun setCurrentUser(user: FirebaseUser?) {
+    currentUserState.value = user
+  }
+
   var resetResult: Result<Unit>
     get() = forgotPasswordResult
     set(value) {
@@ -38,7 +53,10 @@ open class FakeAuthRepository(
   override suspend fun signOut(): Result<Unit> {
     signOutCount++
     signOutGate?.await()
-    return signOutBehavior?.invoke() ?: signOutResult
+    val result = signOutBehavior?.invoke() ?: signOutResult
+    // Like Firebase, a successful sign-out leaves nobody signed in.
+    if (result.isSuccess) currentUserState.value = null
+    return result
   }
 
   override suspend fun forgotPassword(email: String): Result<Unit> {

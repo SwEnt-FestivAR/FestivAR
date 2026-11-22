@@ -1,6 +1,7 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
-package com.android.festivar.ui.components
+package com.android.festivar.ui.components.datetime
 
+import com.android.festivar.ui.components.FieldError
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
@@ -9,41 +10,21 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
-class DateTimePickersTest {
-  // Converting a date to picker milliseconds and back gives the same date, leap day included.
-  @Test
-  fun pickerMillis_roundTripsTheSameDate() {
-    listOf(LocalDate.of(2026, 10, 17), LocalDate.of(2028, 2, 29), LocalDate.of(1999, 12, 31))
-        .forEach { assertEquals(it, it.toPickerMillis().toPickerDate()) }
-  }
-
-  // The picker value of a date is midnight UTC, as the Material date picker expects.
-  @Test
-  fun pickerMillis_isUtcMidnight() {
-    assertEquals(0L, LocalDate.of(1970, 1, 1).toPickerMillis())
-    assertEquals(86_400_000L, LocalDate.of(1970, 1, 2).toPickerMillis())
-  }
-
-  // Any moment within a UTC day maps back to that same day, so the time of day is ignored.
-  @Test
-  fun pickerDate_ignoresTimeOfDayWithinTheUtcDay() {
-    val lateOnTheDay = LocalDate.of(2026, 10, 17).toPickerMillis() + 86_399_999L
-    assertEquals(LocalDate.of(2026, 10, 17), lateOnTheDay.toPickerDate())
-  }
-
-  /** Red if the initially empty start date/time fields report an error. */
+/** The field errors of a start and an end date and time. */
+class DateErrorsTest {
+  /** Breaks if the initially empty start date/time fields report an error. */
   @Test
   fun startDateError_initialState_returnsNoError() {
     assertNull(startDateError(startDate = null, startTime = null))
   }
 
-  /** Red if a start date without a start time incorrectly reports an error. */
+  /** Breaks if a start date without a start time incorrectly reports an error. */
   @Test
   fun startDateError_dateWithoutTime_returnsNoError() {
     assertNull(startDateError(startDate = LocalDate.now(), startTime = null))
   }
 
-  /** Red if a start time without a start date does not report a missing-date error. */
+  /** Breaks if a start time without a start date does not report a missing-date error. */
   @Test
   fun startDateError_timeWithoutDate_returnsMissingDate() {
     assertEquals(
@@ -52,19 +33,19 @@ class DateTimePickersTest {
     )
   }
 
-  /** Red if the initially empty end date/time fields report an error. */
+  /** Breaks if the initially empty end date/time fields report an error. */
   @Test
   fun endDateError_initialState_returnsNoError() {
     assertNull(endDateError(DateTimeRange(endDate = null, endTime = null)))
   }
 
-  /** Red if an end date without an end time incorrectly reports an error. */
+  /** Breaks if an end date without an end time incorrectly reports an error. */
   @Test
   fun endDateError_dateWithoutTime_returnsNoError() {
     assertNull(endDateError(DateTimeRange(endDate = LocalDate.now().plusDays(1))))
   }
 
-  /** Red if a valid end date/time range incorrectly reports an error. */
+  /** Breaks if a valid end date/time range incorrectly reports an error. */
   @Test
   fun endDateError_validRangeWithDatesAndTimes_returnsNoError() {
     val startDate = LocalDate.now()
@@ -80,7 +61,7 @@ class DateTimePickersTest {
     assertNull(endDateError(range))
   }
 
-  /** Red if a one-day range with its end time after its start time reports an error. */
+  /** Breaks if a one-day range with its end time after its start time reports an error. */
   @Test
   fun endDateError_oneDayRangeWithEndAfterStart_returnsNoError() {
     val date = LocalDate.now().plusDays(1)
@@ -96,7 +77,7 @@ class DateTimePickersTest {
   }
 
   /**
-   * Red if a one-day range with its end time before its start time reports no end-before-start
+   * Breaks if a one-day range with its end time before its start time reports no end-before-start
    * error.
    */
   @Test
@@ -113,7 +94,7 @@ class DateTimePickersTest {
     assertEquals(FieldError.END_BEFORE_START, endDateError(range))
   }
 
-  /** Red if a range with equal start and end reports no end-before-start error. */
+  /** Breaks if a range with equal start and end reports no end-before-start error. */
   @Test
   fun endDateError_equalStartAndEnd_returnsEndBeforeStart() {
     val date = LocalDate.now().plusDays(1)
@@ -128,7 +109,7 @@ class DateTimePickersTest {
     assertEquals(FieldError.END_BEFORE_START, endDateError(range))
   }
 
-  /** Red if a valid date-only range incorrectly reports an error. */
+  /** Breaks if a valid date-only range incorrectly reports an error. */
   @Test
   fun endDateError_validRangeWithDatesOnly_returnsNoError() {
     val date = LocalDate.now().plusDays(1)
@@ -136,7 +117,7 @@ class DateTimePickersTest {
     assertNull(endDateError(DateTimeRange(startDate = date, endDate = date)))
   }
 
-  /** Red if an end time without an end date does not report a missing-date error. */
+  /** Breaks if an end time without an end date does not report a missing-date error. */
   @Test
   fun endDateError_timeWithoutDate_returnsMissingDate() {
     assertEquals(
@@ -145,7 +126,7 @@ class DateTimePickersTest {
     )
   }
 
-  /** Red if an end before start does not report an end-before-start error. */
+  /** Breaks if an end before start does not report an end-before-start error. */
   @Test
   fun endDateError_endBeforeStart_returnsEndBeforeStart() {
     val date = LocalDate.now().plusDays(1)
@@ -160,7 +141,7 @@ class DateTimePickersTest {
     assertEquals(FieldError.END_BEFORE_START, endDateError(range))
   }
 
-  /** Red if a range in the past does not report an outdated error. */
+  /** Breaks if a range in the past does not report an outdated error. */
   @Test
   fun endDateError_pastRange_returnsOutdated() {
     val now = ZonedDateTime.of(2026, 10, 29, 12, 0, 0, 0, ZoneId.systemDefault())
@@ -176,7 +157,7 @@ class DateTimePickersTest {
     assertEquals(FieldError.OUTDATED, endDateError(range, now = now))
   }
 
-  /** Red if a past start date is rejected when the end date is still in the future. */
+  /** Breaks if a past start date is rejected when the end date is still in the future. */
   @Test
   fun endDateError_pastStartAndFutureEnd_returnsNoError() {
     val now = ZonedDateTime.of(2026, 10, 29, 12, 0, 0, 0, ZoneId.systemDefault())

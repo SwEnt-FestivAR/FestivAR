@@ -1,9 +1,11 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.audio
 
 import android.content.Context
 import android.media.MediaRecorder
 import android.os.Looper
+import android.util.Log
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.mockk.every
@@ -33,6 +35,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import org.robolectric.shadows.ShadowLog
 
 /**
  * The recorder on a [MediaRecorder] replaced by MockK, under Robolectric, whose own recorder cannot
@@ -53,6 +56,9 @@ class AndroidVoiceRecorderTest {
   private var pauseFailure: RuntimeException? = null
   private var resumeFailure: RuntimeException? = null
   private var writesAudio = true
+  private var amplitude = 0
+  private var peakSinceLastReading = 0
+  private var amplitudeFailure: RuntimeException? = null
   private var pauses = 0
   private var resumes = 0
   private var stops = 0
@@ -69,6 +75,12 @@ class AndroidVoiceRecorderTest {
     every { anyConstructed<MediaRecorder>().setOutputFile(any<String>()) } answers
         {
           files += File(firstArg<String>())
+        }
+    // Like the real recorder: a reading gives the peak since the previous one, the first is 0.
+    every { anyConstructed<MediaRecorder>().maxAmplitude } answers
+        {
+          amplitudeFailure?.let { throw it }
+          peakSinceLastReading.also { peakSinceLastReading = amplitude }
         }
     every { anyConstructed<MediaRecorder>().prepare() } returns Unit
     every { anyConstructed<MediaRecorder>().start() } answers
@@ -341,6 +353,103 @@ class AndroidVoiceRecorderTest {
     assertStaysIn(RecorderState.Idle)
   }
 
+  /**
+   * Breaks if stop returns no bars, a wrong number of them, a value outside 0 to 1, or a first bar
+   * of 0 because the empty first reading of the recorder was kept as a sample.
+   */
+  @Test
+  fun stop_returnsTheFixedNumberOfBarsFromTheAmplitude() {
+    amplitude = MAX_AMPLITUDE / 2
+
+    listOf(minMillis, 30_000L).forEach { millis ->
+      record(millis)
+
+      val bars = recorder.stop().waveform
+
+      assertEquals(WAVEFORM_BAR_COUNT, bars.size)
+      assertTrue(bars.all { it == (MAX_AMPLITUDE / 2).toFloat() / MAX_AMPLITUDE })
+    }
+  }
+
+  /** Breaks if a silent recording gets bars above zero. */
+  @Test
+  fun stop_givesSilentBarsForASilentRecording() {
+    record(3_000)
+
+    assertEquals(List(WAVEFORM_BAR_COUNT) { 0f }, recorder.stop().waveform)
+  }
+
+  /**
+   * Breaks if paused time adds bars, or the peak reached just before a pause shows up again in the
+   * first bar after the resume.
+   */
+  @Test
+  fun stop_addsNoBarForPausedTime() {
+    amplitude = MAX_AMPLITUDE
+    record(1_000)
+    recorder.pause()
+    advance(10_000)
+    amplitude = 0
+    recorder.resume()
+    advance(1_000)
+
+    val bars = recorder.stop().waveform
+
+    assertEquals(List(WAVEFORM_BAR_COUNT / 2) { 1f }, bars.take(WAVEFORM_BAR_COUNT / 2))
+    assertEquals(List(WAVEFORM_BAR_COUNT / 2) { 0f }, bars.drop(WAVEFORM_BAR_COUNT / 2))
+  }
+
+  /**
+   * Breaks if an amplitude that cannot be read ends the recording, or gives bars that look like
+   * silence.
+   */
+  @Test
+  fun stop_survivesAnAmplitudeThatCannotBeRead() {
+    amplitudeFailure = IllegalStateException("not recording")
+    record()
+
+    val audio = recorder.stop()
+
+    assertEquals(emptyList<Float>(), audio.waveform)
+    assertTrue(audio.file.exists())
+  }
+
+  /** Breaks if a recorder that cannot tell its level logs a stack trace on every tick. */
+  @Test
+  fun amplitudeThatCannotBeRead_isLoggedOnlyOncePerRecording() {
+    ShadowLog.clear()
+    amplitudeFailure = IllegalStateException("not recording")
+
+    record(tickMillis * 5)
+
+    assertEquals(1, amplitudeWarnings())
+
+    recorder.cancel()
+    record(tickMillis * 5)
+
+    assertEquals(2, amplitudeWarnings())
+  }
+
+  /** Breaks if a pause and resume inside one recording log the unreadable amplitude again. */
+  @Test
+  fun amplitudeThatCannotBeRead_isNotLoggedAgainAfterAResume() {
+    ShadowLog.clear()
+    amplitudeFailure = IllegalStateException("not recording")
+    record(tickMillis * 2)
+    recorder.pause()
+    recorder.resume()
+    advance(tickMillis * 2)
+
+    assertEquals(1, amplitudeWarnings())
+  }
+
+  private fun amplitudeWarnings() =
+      ShadowLog.getLogs().count {
+        it.tag == "AndroidVoiceRecorder" &&
+            it.type == Log.WARN &&
+            it.msg == "Error reading the amplitude"
+      }
+
   /** Breaks if a stop with no recording is not refused as a wrong call. */
   @Test
   fun stop_whenIdleThrows() {
@@ -505,6 +614,23 @@ class AndroidVoiceRecorderTest {
     assertEquals(1, stops)
     assertDropped()
     assertCanRecordAgain()
+  }
+
+  /**
+   * Breaks if a level that cannot be read when resuming fails the resume, or leaves the recording
+   * without its timer.
+   */
+  @Test
+  fun resume_succeedsWhenTheAmplitudeCannotBeRead() {
+    record(tickMillis * 2)
+    recorder.pause()
+    amplitudeFailure = IllegalStateException("not recording")
+
+    recorder.resume()
+
+    assertEquals(recordingOf(tickMillis * 2), recorder.state.value)
+    advance(tickMillis)
+    assertEquals(recordingOf(tickMillis * 3), recorder.state.value)
   }
 
   /** Breaks if the timer does not update the state exactly once per tick. */
