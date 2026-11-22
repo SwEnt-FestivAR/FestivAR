@@ -127,7 +127,7 @@ fun FestivarMap(
 /** Preview of the map: use "Run Preview on Device", the preview panel cannot draw Google Maps. */
 @Preview(showBackground = true)
 @Composable
-private fun FestivarMapPreview() {
+internal fun FestivarMapPreview() {
   AppTheme {
     FestivarMap(listOf(EPFL_LOCATION), Modifier.fillMaxSize(), gesturesEnabled = true) {
       Marker(
