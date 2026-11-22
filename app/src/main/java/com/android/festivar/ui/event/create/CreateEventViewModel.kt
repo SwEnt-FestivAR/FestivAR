@@ -16,10 +16,10 @@ import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.images.StoredImage
 import com.android.festivar.model.user.User
-import com.android.festivar.ui.components.DateTimeField
-import com.android.festivar.ui.components.DateTimeRange
 import com.android.festivar.ui.components.FieldError
-import com.android.festivar.ui.components.endDateError
+import com.android.festivar.ui.components.datetime.DateTimeField
+import com.android.festivar.ui.components.datetime.DateTimeRange
+import com.android.festivar.ui.components.datetime.endDateError
 import com.android.festivar.ui.event.EventFormViewModel
 import com.android.festivar.ui.event.computeEndDateTime
 import com.android.festivar.ui.event.computeStartDateTime
