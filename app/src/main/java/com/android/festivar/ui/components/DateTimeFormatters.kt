@@ -28,21 +28,26 @@ fun formatWeekday(date: LocalDate): String = date.format(formatter("EEE"))
 fun formatDay(date: LocalDate): String = date.format(formatter("EEE d"))
 
 /**
- * Formats an event date range, omitting repeated month and year information where possible.
+ * Formats the first and the last day of a range, omitting repeated month and year information where
+ * possible, e.g. `Fri 16 to Sun 18 Oct`.
  *
  * For ranges spanning different years, the year is included for both dates.
+ *
+ * @param join The word between the two days in the language of the user, with a placeholder for
+ *   each day, e.g. `%1$s to %2$s` (`R.string.date_range_join`).
  */
-fun formatEventDate(event: Event): String {
-  val start = event.startDate.toLocalDate()
-  val end = event.endDate.toLocalDate()
-  return when {
-    start == end -> formatDate(start)
-    start.year == end.year && start.month == end.month ->
-        "${formatDay(start)} to ${formatDate(end)}"
-    start.year == end.year -> "${formatDate(start)} to ${formatDate(end)}"
-    else -> "${formatDateWithYear(start)} to ${formatDateWithYear(end)}"
-  }
-}
+fun formatDateRange(start: LocalDate, end: LocalDate, join: String): String =
+    when {
+      start == end -> formatDate(start)
+      start.year == end.year && start.month == end.month ->
+          join.format(formatDay(start), formatDate(end))
+      start.year == end.year -> join.format(formatDate(start), formatDate(end))
+      else -> join.format(formatDateWithYear(start), formatDateWithYear(end))
+    }
+
+/** Formats the days of an [event] with [formatDateRange]. */
+fun formatEventDate(event: Event, join: String): String =
+    formatDateRange(event.startDate.toLocalDate(), event.endDate.toLocalDate(), join)
 
 /**
  * Formats the days and the location of an [event] on one line, e.g. "Fri 16 to Sun 18 Oct · Parc de
@@ -50,7 +55,7 @@ fun formatEventDate(event: Event): String {
  */
 @Composable
 fun formatEventDateAndLocation(event: Event): String {
-  val dates = formatEventDate(event)
+  val dates = formatEventDate(event, stringResource(R.string.date_range_join))
   return if (event.location.isBlank()) dates
   else stringResource(R.string.event_dates_location, dates, event.location)
 }

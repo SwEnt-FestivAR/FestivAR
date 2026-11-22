@@ -12,7 +12,6 @@ import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.event.announcement.AnnouncementPriority
-import com.android.festivar.ui.components.FieldError
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -110,55 +109,29 @@ class CreateAnnouncementViewModelTest {
     }
   }
 
-  // Breaks if an error shows before the user touched a field, or if an empty form can publish.
+  /**
+   * Breaks if canPublish ignores the form, so an empty form can publish, or if applyEdit does not
+   * store the edited form in the state. The field rules are tested in AnnouncementFormTest.
+   */
   @Test
-  fun anUntouchedFormShowsNoErrorAndCannotPublish() {
-    val state = viewModel().uiState.value
-
-    assertNull(state.titleError)
-    assertNull(state.contentError)
-    assertFalse(state.canPublish)
-  }
-
-  // Breaks if titleError or contentError reads the other field, or if one edited flag sets both.
-  // In each half the other field is filled, so an error that reads the wrong field stays null.
-  @Test
-  fun editingAFieldToBlankSetsOnlyThatFieldsError() {
+  fun typingReachesTheFormAndOnlyAValidFormCanPublish() {
     val vm = viewModel()
-    vm.updateContent("The north gate opens at 16:00.")
-
-    vm.updateTitle("  ")
-    assertEquals(FieldError.EMPTY_ANNOUNCEMENT_TITLE, vm.uiState.value.titleError)
-    assertNull(vm.uiState.value.contentError)
-
-    val other = viewModel()
-    other.updateTitle("Gates open")
-    other.updateContent("")
-    assertEquals(FieldError.EMPTY_ANNOUNCEMENT_CONTENT, other.uiState.value.contentError)
-    assertNull(other.uiState.value.titleError)
-  }
-
-  // Breaks if a setter does not store its value, or if an error stays once the field is filled.
-  @Test
-  fun typingUpdatesTheStateAndClearsTheError() {
-    val vm = viewModel()
-    vm.updateTitle("")
-    vm.updateContent("")
+    assertFalse(vm.uiState.value.canPublish)
 
     vm.fill()
     vm.updatePriority(AnnouncementPriority.URGENT)
 
     val state = vm.uiState.value
-    assertEquals("Gates open", state.title)
-    assertEquals("The north gate opens at 16:00.", state.content)
-    assertEquals(AnnouncementPriority.URGENT, state.priority)
-    assertNull(state.titleError)
-    assertNull(state.contentError)
+    assertEquals("Gates open", state.form.title)
+    assertEquals("The north gate opens at 16:00.", state.form.content)
+    assertEquals(AnnouncementPriority.URGENT, state.form.priority)
     assertTrue(state.canPublish)
   }
 
-  // Breaks if hasChanges forgets the title, the content or the priority, or if a published form
-  // still asks before leaving.
+  /**
+   * Breaks if hasChanges forgets the title, the content or the priority, or if a published form
+   * still asks before leaving.
+   */
   @Test
   fun hasChangesAndNeedsDiscardConfirmationFollowTheForm() {
     val vm = viewModel()
@@ -185,8 +158,10 @@ class CreateAnnouncementViewModelTest {
     assertFalse(vm.uiState.value.needsDiscardConfirmation)
   }
 
-  // Breaks if isEditable ignores isSaving or isPublished, or if a failed save leaves the form
-  // locked, so the user cannot fix it and retry.
+  /**
+   * Breaks if isEditable ignores isSaving or isPublished, or if a failed save leaves the form
+   * locked, so the user cannot fix it and retry.
+   */
   @Test
   fun theFormIsEditableExceptDuringASaveAndOncePublished() {
     val gate = CompletableDeferred<Unit>()
@@ -213,8 +188,10 @@ class CreateAnnouncementViewModelTest {
     assertFalse(vm.uiState.value.isEditable)
   }
 
-  // Breaks if the text is stored untrimmed, the author, priority or time is wrong, or the id is
-  // not the one the repository handed out.
+  /**
+   * Breaks if the text is stored untrimmed, the author, priority or time is wrong, or the id is not
+   * the one the repository handed out.
+   */
   @Test
   fun aValidFormPublishesOneTrimmedAnnouncementWithAuthorPriorityAndTime() {
     val vm = viewModel()
@@ -236,7 +213,9 @@ class CreateAnnouncementViewModelTest {
     assertNull(vm.uiState.value.errorMsg)
   }
 
-  // Breaks if a blank uid is not checked and an authorless announcement is written or attempted.
+  /**
+   * Breaks if a blank uid is not checked and an authorless announcement is written or attempted.
+   */
   @Test
   fun aBlankUserIdPublishesNothingAndShowsTheSaveError() {
     val vm = viewModel(userId = { " " })
@@ -250,7 +229,7 @@ class CreateAnnouncementViewModelTest {
     assertEquals(R.string.create_announcement_error_save_failed, vm.uiState.value.errorMsg)
   }
 
-  // Breaks if canPublish ignores isSaving, so a second tap writes a second announcement.
+  /** Breaks if canPublish ignores isSaving, so a second tap writes a second announcement. */
   @Test
   fun aSecondTapWhileSavingIsIgnored() {
     val gate = CompletableDeferred<Unit>()
@@ -270,12 +249,13 @@ class CreateAnnouncementViewModelTest {
     assertFalse(vm.uiState.value.isSaving)
   }
 
-  // Breaks if canPublish ignores isPublished, or if edit {} lets a published form change.
+  /** Breaks if canPublish ignores isPublished, or if applyEdit lets a published form change. */
   @Test
   fun aTapAfterAPublishDoesNotPublishASecondAnnouncementAndEditsAreIgnored() {
     val vm = viewModel()
     vm.fill()
     vm.publish()
+    val published = vm.uiState.value.form
 
     vm.publish()
     vm.updateTitle("Something else")
@@ -284,18 +264,16 @@ class CreateAnnouncementViewModelTest {
 
     assertEquals(1, repo.addedIds.size)
     assertEquals(1, stored().size)
-    val state = vm.uiState.value
-    assertEquals("Gates open", state.title)
-    assertEquals("The north gate opens at 16:00.", state.content)
-    assertEquals(AnnouncementPriority.INFO, state.priority)
+    assertEquals(published, vm.uiState.value.form)
   }
 
-  // Breaks if a failed write is reported as published, clears the form, or skips the read-back.
+  /** Breaks if a failed write is reported as published, clears the form, or skips the read-back. */
   @Test
   fun aFailingRepositoryReportsTheSaveErrorAndKeepsTheForm() {
     repo.beforeStore = { throw IllegalStateException("offline") }
     val vm = viewModel()
     vm.fill()
+    val typed = vm.uiState.value.form
 
     vm.publish()
 
@@ -304,13 +282,12 @@ class CreateAnnouncementViewModelTest {
     assertFalse(state.isPublished)
     assertFalse(state.isSaving)
     assertTrue(state.canPublish)
-    assertEquals("Gates open", state.title)
-    assertEquals("The north gate opens at 16:00.", state.content)
+    assertEquals(typed, state.form)
     assertEquals(1, repo.reads)
     assertTrue(stored().isEmpty())
   }
 
-  // Breaks if the write has no timeout, so the form stays stuck in the saving state forever.
+  /** Breaks if the write has no timeout, so the form stays stuck in the saving state forever. */
   @Test
   fun aSaveThatHangsTimesOutAndKeepsTheForm() {
     val never = CompletableDeferred<Unit>()
@@ -318,6 +295,7 @@ class CreateAnnouncementViewModelTest {
     val vm = viewModel(saveTimeoutMs = 1_000)
     vm.fill()
     vm.updatePriority(AnnouncementPriority.WARNING)
+    val typed = vm.uiState.value.form
 
     vm.publish()
     assertTrue(vm.uiState.value.isSaving)
@@ -327,13 +305,13 @@ class CreateAnnouncementViewModelTest {
     assertEquals(R.string.create_announcement_error_save_failed, state.errorMsg)
     assertFalse(state.isSaving)
     assertTrue(state.canPublish)
-    assertEquals("Gates open", state.title)
-    assertEquals("The north gate opens at 16:00.", state.content)
-    assertEquals(AnnouncementPriority.WARNING, state.priority)
+    assertEquals(typed, state.form)
   }
 
-  // Breaks if a timeout is reported as a failure without reading back the write that landed, or
-  // if the read-back edits a stored copy that already matches the form.
+  /**
+   * Breaks if a timeout is reported as a failure without reading back the write that landed, or if
+   * the read-back edits a stored copy that already matches the form.
+   */
   @Test
   fun aTimeoutAfterTheWriteLandedEndsAsPublished() {
     val never = CompletableDeferred<Unit>()
@@ -350,8 +328,10 @@ class CreateAnnouncementViewModelTest {
     assertEquals(0, repo.edits)
   }
 
-  // Breaks if the read-back runs without its own timeout, so a hanging event read keeps the form
-  // saving forever.
+  /**
+   * Breaks if the read-back runs without its own timeout, so a hanging event read keeps the form
+   * saving forever.
+   */
   @Test
   fun aReadBackThatHangsEndsAsTheSaveError() {
     val never = CompletableDeferred<Unit>()
@@ -371,7 +351,7 @@ class CreateAnnouncementViewModelTest {
     assertTrue(stored().isEmpty())
   }
 
-  // Breaks if a retry draws a new id or a new time instead of the ones kept from the first try.
+  /** Breaks if a retry draws a new id or a new time instead of the ones kept from the first try. */
   @Test
   fun aRetryReusesTheIdAndTheTimeOfTheFirstAttempt() {
     val moving = MovingClock(zone)
@@ -394,9 +374,12 @@ class CreateAnnouncementViewModelTest {
     assertNull(vm.uiState.value.errorMsg)
   }
 
-  // Breaks if the read-back marks the stored copy published without editing it to the new text, if
-  // the edit carries a new time instead of the first attempt's, or if it hands the announcement to
-  // the user who retried.
+  /**
+   * Breaks if the read-back marks a stored copy that differs from the form published without
+   * editing it to the new text, if the edit carries a new time instead of the first attempt's, or
+   * if it hands the announcement to the user who retried. Which fields are compared is tested in
+   * AnnouncementFormTest (matches).
+   */
   @Test
   fun aRetryThatFindsTheStoredCopyUpdatesItWithTheEditedText() {
     var firstTry = true
@@ -434,70 +417,10 @@ class CreateAnnouncementViewModelTest {
     assertTrue(vm.uiState.value.isPublished)
   }
 
-  // Breaks if sameFormAs stops comparing the title.
-  @Test
-  fun aRetryThatChangedOnlyTheTitleUpdatesTheStoredCopy() {
-    var firstTry = true
-    repo.afterStore = {
-      if (firstTry) {
-        firstTry = false
-        throw IllegalStateException("lost the answer")
-      }
-    }
-    // The first read-back fails too (offline), so the first attempt ends with the error.
-    var firstRead = true
-    repo.beforeRead = {
-      if (firstRead) {
-        firstRead = false
-        throw IllegalStateException("offline")
-      }
-    }
-    val vm = viewModel()
-    vm.fill()
-    vm.publish()
-    assertEquals(R.string.create_announcement_error_save_failed, vm.uiState.value.errorMsg)
-
-    vm.updateTitle("Doors open")
-    vm.publish()
-
-    assertEquals("Doors open", stored().single().title)
-    assertEquals(1, repo.edits)
-    assertTrue(vm.uiState.value.isPublished)
-  }
-
-  // Breaks if sameFormAs stops comparing the priority.
-  @Test
-  fun aRetryThatChangedOnlyThePriorityUpdatesTheStoredCopy() {
-    var firstTry = true
-    repo.afterStore = {
-      if (firstTry) {
-        firstTry = false
-        throw IllegalStateException("lost the answer")
-      }
-    }
-    // The first read-back fails too (offline), so the first attempt ends with the error.
-    var firstRead = true
-    repo.beforeRead = {
-      if (firstRead) {
-        firstRead = false
-        throw IllegalStateException("offline")
-      }
-    }
-    val vm = viewModel()
-    vm.fill()
-    vm.publish()
-    assertEquals(R.string.create_announcement_error_save_failed, vm.uiState.value.errorMsg)
-
-    vm.updatePriority(AnnouncementPriority.URGENT)
-    vm.publish()
-
-    assertEquals(AnnouncementPriority.URGENT, stored().single().priority)
-    assertEquals(1, repo.edits)
-    assertTrue(vm.uiState.value.isPublished)
-  }
-
-  // Breaks if CancellationException falls into the generic catch, so a cancelled save leaves the
-  // form saving or shows an error the user did not cause.
+  /**
+   * Breaks if CancellationException falls into the generic catch, so a cancelled save leaves the
+   * form saving or shows an error the user did not cause.
+   */
   @Test
   fun aCancelledSaveClearsSavingAndShowsNoError() {
     val never = CompletableDeferred<Unit>()
@@ -516,8 +439,10 @@ class CreateAnnouncementViewModelTest {
     assertFalse(state.isPublished)
   }
 
-  // Breaks if the announcement is built from the live state inside the coroutine, so typing during
-  // the save changes what is stored.
+  /**
+   * Breaks if the announcement is built from the live state inside the coroutine, so typing during
+   * the save changes what is stored.
+   */
   @Test
   fun typingDuringTheSaveDoesNotChangeWhatIsSaved() {
     val gate = CompletableDeferred<Unit>()
@@ -531,10 +456,10 @@ class CreateAnnouncementViewModelTest {
     idle()
 
     assertEquals("Gates open", stored().single().title)
-    assertEquals("Doors open", vm.uiState.value.title)
+    assertEquals("Doors open", vm.uiState.value.form.title)
   }
 
-  // Breaks if the init check on eventId is removed, so a blank event fails only at save time.
+  /** Breaks if the init check on eventId is removed, so a blank event fails only at save time. */
   @Test
   fun aBlankEventIdFailsFast() {
     assertThrows(IllegalArgumentException::class.java) {

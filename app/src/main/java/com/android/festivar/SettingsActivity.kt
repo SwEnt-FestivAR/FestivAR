@@ -1,11 +1,13 @@
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.festivar
 
 import android.content.pm.ActivityInfo
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.Toolbar
 import com.android.festivar.ui.settings.SettingsFragment
 
-class MySettingsActivity : AppCompatActivity() {
+class SettingsActivity : AppCompatActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
 
@@ -16,7 +18,18 @@ class MySettingsActivity : AppCompatActivity() {
     this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
 
     setContentView(R.layout.activity_settings)
-    supportActionBar?.setDisplayHomeAsUpEnabled(true)
+
+    // 1. Set up the Toolbar as the ActionBar
+    val toolbar = findViewById<Toolbar>(R.id.settings_toolbar)
+    setSupportActionBar(toolbar)
+
+    // 2. Enable the back arrow
+    val actionBar = requireNotNull(supportActionBar)
+    actionBar.setDisplayHomeAsUpEnabled(true)
+    actionBar.setDisplayShowHomeEnabled(true)
+
+    // Optional: Explicitly set title if needed (otherwise fetched from Manifest label)
+    // supportActionBar?.title = getString(R.string.title_activity_settings)
 
     supportFragmentManager
         .beginTransaction()
@@ -25,7 +38,7 @@ class MySettingsActivity : AppCompatActivity() {
   }
 
   override fun onSupportNavigateUp(): Boolean {
-    finish()
+    finish() // Closes the settings activity and returns to the previous screen
     return true
   }
 }

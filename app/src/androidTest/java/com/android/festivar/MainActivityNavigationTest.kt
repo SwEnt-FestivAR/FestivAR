@@ -623,7 +623,7 @@ class MainActivityNavigationTest {
     val event =
         Event(
             eventId = "e1",
-            ownerId = "u0",
+            ownerId = testUserId,
             title = "Balelec",
             startDate = start,
             endDate = start.plusHours(2),

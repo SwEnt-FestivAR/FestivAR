@@ -3,7 +3,10 @@
 // Co-authored-by: Gemini <noreply@google.com>
 package com.android.festivar.ui.profile
 
+import android.content.ContentResolver
 import android.content.Context
+import android.net.Uri
+import android.webkit.MimeTypeMap
 import androidx.credentials.Credential
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
@@ -11,6 +14,8 @@ import androidx.credentials.GetCredentialResponse
 import com.android.festivar.R
 import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.datarepository.DataRepositoryLocal
+import com.android.festivar.model.images.ImageStorage
+import com.android.festivar.model.images.StoredImage
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryLocal
@@ -18,6 +23,12 @@ import com.google.firebase.auth.FirebaseUser
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkStatic
+import io.mockk.unmockkStatic
+import java.io.ByteArrayInputStream
+import java.io.File
+import java.io.RandomAccessFile
+import kotlin.io.path.createTempDirectory
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -72,6 +83,28 @@ class ProfileViewModelTest {
     }
   }
 
+  private class RecordingImageStorage(
+      private val uploadedUrl: String = "https://example.com/new-picture.png",
+      var uploadError: Exception? = null,
+      var deleteError: Exception? = null,
+  ) : ImageStorage {
+    val uploadedImages = mutableListOf<Pair<StoredImage, String>>()
+    val deletedUrls = mutableListOf<String>()
+
+    override fun getNewUid(): String = "image-id"
+
+    override suspend fun upload(storedImage: StoredImage, subFolder: String): String {
+      uploadedImages += storedImage to subFolder
+      uploadError?.let { throw it }
+      return uploadedUrl
+    }
+
+    override suspend fun delete(imageUrl: String) {
+      deletedUrls += imageUrl
+      deleteError?.let { throw it }
+    }
+  }
+
   private val testDispatcher = StandardTestDispatcher()
 
   private val sara =
@@ -99,6 +132,7 @@ class ProfileViewModelTest {
   private fun createViewModel(
       repository: UsersRepository = RecordingUsersRepository(listOf(sara)),
       authRepository: FakeAuthRepository = this.authRepository,
+      imageStorage: ImageStorage = RecordingImageStorage(),
       uId: String = sara.uid,
   ): ProfileViewModel =
       ProfileViewModel(
@@ -106,8 +140,10 @@ class ProfileViewModelTest {
               DataRepositoryLocal(
                   authRepository = authRepository,
                   usersRepository = repository,
+                  imageStorage = imageStorage,
               ),
           uId = uId,
+          ioDispatcher = testDispatcher,
       )
 
   /** Test that the UI state is loading until the user is fetched, then fills the fields. */
@@ -354,6 +390,217 @@ class ProfileViewModelTest {
     assertFalse(state.isSaving)
     assertNull(state.errorMsg)
     assertFalse(state.canSave)
+  }
+
+  @Test
+  fun updateProfilePictureReplacesAndDeletesPreviousPicture() = runTest {
+    val user = sara.copy(profilePictureUrl = "https://example.com/old-picture.png")
+    val repository = RecordingUsersRepository(listOf(user))
+    val imageStorage = RecordingImageStorage()
+    val viewModel =
+        createViewModel(
+            repository = repository,
+            imageStorage = imageStorage,
+            uId = user.uid,
+        )
+    advanceUntilIdle()
+
+    val storedImage = StoredImage(File("new-picture.png"))
+    viewModel.updateProfilePicture(storedImage)
+    advanceUntilIdle()
+
+    val expected = user.copy(profilePictureUrl = "https://example.com/new-picture.png")
+    assertEquals(listOf(storedImage to "pfp"), imageStorage.uploadedImages)
+    assertEquals(listOf(user.profilePictureUrl), imageStorage.deletedUrls)
+    assertEquals(listOf(expected), repository.editedUsers)
+    assertEquals(expected, viewModel.uiState.value.user)
+    assertFalse(viewModel.uiState.value.isSaving)
+    assertNull(viewModel.uiState.value.errorMsg)
+  }
+
+  @Test
+  fun updateProfilePictureFromUriShowsErrorWhenUriCannotBeRead() = runTest {
+    val resolver = mockk<ContentResolver>()
+    val uri = mockk<Uri>()
+    val cacheDir = createTempDirectory("profile-picker-test-").toFile()
+    every { resolver.getType(uri) } returns null
+    every { resolver.openInputStream(uri) } returns null
+    val viewModel = createViewModel()
+
+    advanceUntilIdle()
+    viewModel.updateProfilePicture(
+        uri,
+        resolver,
+        cacheDir,
+    )
+    repeat(100) {
+      Thread.sleep(10)
+      advanceUntilIdle()
+      if (!viewModel.uiState.value.isSaving) return@repeat
+    }
+
+    assertEquals(R.string.profile_picture_save_failed, viewModel.uiState.value.errorMsg)
+    assertFalse(viewModel.uiState.value.isSaving)
+    assertTrue(cacheDir.listFiles().orEmpty().isEmpty())
+  }
+
+  @Test
+  fun updateProfilePictureFromUriRejectsCopiedPictureOver10Mb() = runTest {
+    val resolver = mockk<ContentResolver>()
+    val uri = mockk<Uri>()
+    val cacheDir = createTempDirectory("profile-picker-large-test-").toFile()
+    val bytes = ByteArray(10 * 1024 * 1024 + 1)
+    val mimeTypeMap = mockk<MimeTypeMap>()
+    mockkStatic(MimeTypeMap::class)
+    every { MimeTypeMap.getSingleton() } returns mimeTypeMap
+    every { mimeTypeMap.getExtensionFromMimeType("image/png") } returns "png"
+    every { resolver.getType(uri) } returns "image/png"
+    every { resolver.openInputStream(uri) } returns ByteArrayInputStream(bytes)
+    val viewModel = createViewModel()
+
+    try {
+      advanceUntilIdle()
+      viewModel.updateProfilePicture(uri, resolver, cacheDir)
+      advanceUntilIdle()
+
+      assertEquals(R.string.profile_picture_too_large, viewModel.uiState.value.errorMsg)
+      assertFalse(viewModel.uiState.value.isSaving)
+      assertTrue(cacheDir.listFiles().orEmpty().isEmpty())
+    } finally {
+      unmockkStatic(MimeTypeMap::class)
+    }
+  }
+
+  @Test
+  fun profilePictureSizeLimitRejectsOnlyPicturesOver10Mb() {
+    assertFalse(isProfilePictureTooLarge(10L * 1024L * 1024L))
+    assertTrue(isProfilePictureTooLarge(10L * 1024L * 1024L + 1L))
+  }
+
+  @Test
+  fun updateProfilePictureRejectsPicturesOver10Mb() = runTest {
+    val sourceFile = kotlin.io.path.createTempFile("large-profile-picture-", ".png").toFile()
+    RandomAccessFile(sourceFile, "rw").use { it.setLength(10L * 1024L * 1024L + 1L) }
+    val imageStorage = RecordingImageStorage()
+    val viewModel = createViewModel(imageStorage = imageStorage)
+
+    advanceUntilIdle()
+    viewModel.updateProfilePicture(StoredImage(sourceFile))
+    advanceUntilIdle()
+
+    assertEquals(R.string.profile_picture_too_large, viewModel.uiState.value.errorMsg)
+    assertFalse(viewModel.uiState.value.isSaving)
+    assertTrue(imageStorage.uploadedImages.isEmpty())
+  }
+
+  // Breaks if URI-copy cancellation is converted into a profile-picture error.
+  @Test
+  fun updateProfilePictureFromUriPropagatesCancellation() = runTest {
+    val resolver = mockk<ContentResolver>()
+    val uri = mockk<Uri>()
+    every { resolver.getType(uri) } throws CancellationException("cancelled")
+    val viewModel = createViewModel()
+
+    advanceUntilIdle()
+    viewModel.updateProfilePicture(
+        uri,
+        resolver,
+        createTempDirectory("profile-picker-test-").toFile(),
+    )
+    advanceUntilIdle()
+
+    assertNull(viewModel.uiState.value.errorMsg)
+  }
+
+  @Test
+  fun updateProfilePictureShowsErrorWhenUploadFails() = runTest {
+    val imageStorage = RecordingImageStorage(uploadError = RuntimeException("offline"))
+    val viewModel = createViewModel(imageStorage = imageStorage)
+
+    advanceUntilIdle()
+    viewModel.updateProfilePicture(StoredImage(File("new-picture.png")))
+    advanceUntilIdle()
+
+    assertEquals(R.string.profile_picture_save_failed, viewModel.uiState.value.errorMsg)
+    assertFalse(viewModel.uiState.value.isSaving)
+  }
+
+  @Test
+  fun updateProfilePictureShowsErrorWhenUserUpdateFails() = runTest {
+    val repository =
+        RecordingUsersRepository(
+            listOf(sara),
+            editError = RuntimeException("offline"),
+        )
+    val imageStorage = RecordingImageStorage()
+    val viewModel = createViewModel(repository = repository, imageStorage = imageStorage)
+
+    advanceUntilIdle()
+    viewModel.updateProfilePicture(StoredImage(File("new-picture.png")))
+    advanceUntilIdle()
+
+    assertEquals(R.string.profile_picture_save_failed, viewModel.uiState.value.errorMsg)
+    assertEquals(listOf("https://example.com/new-picture.png"), imageStorage.deletedUrls)
+    assertFalse(viewModel.uiState.value.isSaving)
+  }
+
+  @Test
+  fun updateProfilePictureReportsOldPictureDeletionFailureAfterSaving() = runTest {
+    val user = sara.copy(profilePictureUrl = "https://example.com/old-picture.png")
+    val imageStorage = RecordingImageStorage(deleteError = RuntimeException("offline"))
+    val viewModel =
+        createViewModel(
+            repository = RecordingUsersRepository(listOf(user)),
+            imageStorage = imageStorage,
+        )
+
+    advanceUntilIdle()
+    viewModel.updateProfilePicture(StoredImage(File("new-picture.png")))
+    advanceUntilIdle()
+
+    assertEquals(R.string.profile_picture_save_failed, viewModel.uiState.value.errorMsg)
+    assertEquals(
+        user.copy(profilePictureUrl = "https://example.com/new-picture.png"),
+        viewModel.uiState.value.user,
+    )
+    assertFalse(viewModel.uiState.value.isSaving)
+  }
+
+  // Breaks if cancellation while deleting the old picture is swallowed or shown as an error.
+  @Test
+  fun updateProfilePicturePropagatesOldPictureDeletionCancellation() = runTest {
+    val user = sara.copy(profilePictureUrl = "https://example.com/old-picture.png")
+    val imageStorage = RecordingImageStorage(deleteError = CancellationException("cancelled"))
+    val repository = RecordingUsersRepository(listOf(user))
+    val viewModel = createViewModel(repository = repository, imageStorage = imageStorage)
+
+    advanceUntilIdle()
+    viewModel.updateProfilePicture(StoredImage(File("new-picture.png")))
+    advanceUntilIdle()
+
+    assertEquals(1, repository.editedUsers.size)
+    assertTrue(viewModel.uiState.value.isSaving)
+    assertNull(viewModel.uiState.value.errorMsg)
+  }
+
+  // Breaks if cleanup failures hide the original profile-picture save error.
+  @Test
+  fun updateProfilePictureReportsCleanupDeletionFailure() = runTest {
+    val repository =
+        RecordingUsersRepository(
+            listOf(sara),
+            editError = RuntimeException("offline"),
+        )
+    val imageStorage = RecordingImageStorage(deleteError = RuntimeException("cleanup offline"))
+    val viewModel = createViewModel(repository = repository, imageStorage = imageStorage)
+
+    advanceUntilIdle()
+    viewModel.updateProfilePicture(StoredImage(File("new-picture.png")))
+    advanceUntilIdle()
+
+    assertEquals(R.string.profile_picture_save_failed, viewModel.uiState.value.errorMsg)
+    assertEquals(listOf("https://example.com/new-picture.png"), imageStorage.deletedUrls)
+    assertFalse(viewModel.uiState.value.isSaving)
   }
 
   /** Test that saving does nothing when there is nothing to save. */

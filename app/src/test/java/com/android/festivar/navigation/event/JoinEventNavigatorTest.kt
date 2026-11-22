@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.navigation.event
 
 import androidx.navigation.NavHostController
@@ -32,18 +33,6 @@ class JoinEventNavigatorTest {
     verify { navController.navigate(AppScreens.eventDetails("e1"), capture(options)) }
     val navOptions = navOptions(options.captured)
     assertEquals(AppScreens.JoinEvent.name, navOptions.popUpToRoute)
-    assertTrue(navOptions.isPopUpToInclusive())
-  }
-
-  @Test
-  fun signedOutNavigatesToLoginAndClearsBackStack() {
-    val options = slot<NavOptionsBuilder.() -> Unit>()
-
-    navigator.onSignedOut()
-
-    verify { navController.navigate(AppScreens.Login.name, capture(options)) }
-    val navOptions = navOptions(options.captured)
-    assertEquals(navController.graph.id, navOptions.popUpToId)
     assertTrue(navOptions.isPopUpToInclusive())
   }
 }

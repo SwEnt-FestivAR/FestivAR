@@ -32,6 +32,8 @@ class FakeVoiceRecorder : VoiceRecorder {
 
   /** The duration of the next recordings. */
   var duration: Duration = Duration.ofSeconds(5)
+  /** The waveform of the next recordings. */
+  var waveform: List<Float> = emptyList()
 
   var starts = 0
   var cancels = 0
@@ -63,7 +65,9 @@ class FakeVoiceRecorder : VoiceRecorder {
     check(_state.value is RecorderState.Recording) { "Not recording." }
     _state.value = RecorderState.Idle
     stopFailure?.let { throw it }
-    return Audio(File.createTempFile("note", ".m4a", directory), duration).also { lastAudio = it }
+    return Audio(File.createTempFile("note", ".m4a", directory), duration, waveform).also {
+      lastAudio = it
+    }
   }
 
   override fun cancel() {

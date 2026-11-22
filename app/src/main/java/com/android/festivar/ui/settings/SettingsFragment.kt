@@ -1,7 +1,9 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.ui.settings
 
+import android.app.UiModeManager
 import android.content.Context
+import android.os.Build
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.edit
@@ -27,7 +29,7 @@ open class SettingsFragment : PreferenceFragmentCompat() {
     val themePreference = findPreference<DropDownPreference>("theme")
     themePreference?.setOnPreferenceChangeListener { _, newValue ->
       val theme = newValue as? String ?: return@setOnPreferenceChangeListener false
-      applyThemePreference(theme)
+      applyThemePreference(requireContext(), theme)
       true
     }
 
@@ -66,7 +68,7 @@ open class SettingsFragment : PreferenceFragmentCompat() {
  */
 internal fun applySavedSettings(context: Context) {
   val preferences = PreferenceManager.getDefaultSharedPreferences(context)
-  applyThemePreference(preferences.getString("theme", "system") ?: "system")
+  applyThemePreference(context, preferences.getString("theme", "system") ?: "system")
 
   // Synchronize OS-level locale changes (from Android System Settings) back to SharedPreferences.
   val currentLocales = AppCompatDelegate.getApplicationLocales()
@@ -92,9 +94,19 @@ internal fun applySavedSettings(context: Context) {
   }
 }
 
-/** Applies the given theme string to the application night mode. */
-private fun applyThemePreference(theme: String) {
+/** Applies the given theme string to the application night mode and system UiModeManager. */
+private fun applyThemePreference(context: Context, theme: String) {
   AppCompatDelegate.setDefaultNightMode(nightModeForTheme(theme))
+  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+    val uiModeManager = context.getSystemService(Context.UI_MODE_SERVICE) as? UiModeManager
+    val uiMode =
+        when (theme) {
+          "light" -> UiModeManager.MODE_NIGHT_NO
+          "dark" -> UiModeManager.MODE_NIGHT_YES
+          else -> UiModeManager.MODE_NIGHT_AUTO
+        }
+    uiModeManager?.setApplicationNightMode(uiMode)
+  }
 }
 
 /** Applies the given language string to the application locales. */
