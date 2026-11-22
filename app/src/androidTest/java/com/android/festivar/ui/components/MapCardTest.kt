@@ -14,10 +14,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.map.geometry.EPFL_LOCATION
 import com.android.festivar.model.map.geometry.GeoPosition
 import com.android.festivar.ui.theme.AppTheme
-import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.rememberUpdatedMarkerState
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -54,15 +50,9 @@ class MapCardTest {
   @Test
   fun card_composesTheContentItIsGiven() {
     var composed = false
-    setCard(listOf(EPFL_LOCATION)) {
-      SideEffect { composed = true }
-      Marker(
-          state =
-              rememberUpdatedMarkerState(LatLng(EPFL_LOCATION.latitude, EPFL_LOCATION.longitude))
-      )
-    }
+    setCard(listOf(EPFL_LOCATION)) { SideEffect { composed = true } }
 
-    composeTestRule.waitForIdle()
-    assertTrue(composed)
+    // The map composes its content only once it is ready.
+    composeTestRule.waitUntil(timeoutMillis = 5_000) { composed }
   }
 }
