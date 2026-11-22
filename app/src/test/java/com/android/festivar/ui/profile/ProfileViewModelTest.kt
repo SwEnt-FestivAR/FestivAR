@@ -3,7 +3,11 @@
 // Co-authored-by: Gemini <noreply@google.com>
 package com.android.festivar.ui.profile
 
+import android.content.Context
 import androidx.credentials.Credential
+import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.GetCredentialResponse
 import com.android.festivar.R
 import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.datarepository.DataRepositoryLocal
@@ -11,8 +15,10 @@ import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryLocal
 import com.google.firebase.auth.FirebaseUser
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -1019,5 +1025,106 @@ class ProfileViewModelTest {
     assertTrue(viewModel.uiState.value.isUserAnonymous)
     assertEquals(ProfileDialog.UPGRADE_SHEET, viewModel.uiState.value.activeDialog)
     assertFalse(viewModel.uiState.value.isLoading)
+  }
+
+  /**
+   * Breaks if upgradeWithGoogle with context does not request credentials and update state on
+   * success.
+   */
+  @Test
+  fun upgradeWithGoogleContextSuccessUpdatesState() = runTest {
+    val context = mockk<Context>()
+    val credentialManager = mockk<CredentialManager>()
+    val credential = mockk<Credential>()
+    val response = mockk<GetCredentialResponse>()
+    val firebaseUser = mockk<FirebaseUser> { every { isAnonymous } returns false }
+    every { context.getString(R.string.default_web_client_id) } returns "client-id"
+    coEvery { credentialManager.getCredential(context, any<GetCredentialRequest>()) } returns
+        response
+    every { response.credential } returns credential
+
+    val authRepo =
+        object : FakeAuthRepository() {
+          private var user: FirebaseUser? = mockk { every { isAnonymous } returns true }
+          override val currentUser: FirebaseUser?
+            get() = user
+
+          override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> {
+            user = firebaseUser
+            return Result.success(firebaseUser)
+          }
+        }
+    val viewModel =
+        createViewModel(
+            repository = RecordingUsersRepository(listOf(sara)),
+            authRepository = authRepo,
+        )
+    advanceUntilIdle()
+
+    viewModel.upgradeWithGoogle(context, credentialManager)
+    advanceUntilIdle()
+
+    assertNull(viewModel.uiState.value.errorMsg)
+    assertFalse(viewModel.uiState.value.isLoading)
+    assertFalse(viewModel.uiState.value.isUserAnonymous)
+  }
+
+  /**
+   * Breaks if upgradeWithGoogle with context catches an exception and does not set upgrade error
+   * message.
+   */
+  @Test
+  fun upgradeWithGoogleContextFailureShowsError() = runTest {
+    val context = mockk<Context>()
+    val credentialManager = mockk<CredentialManager>()
+    every { context.getString(R.string.default_web_client_id) } returns "client-id"
+    coEvery { credentialManager.getCredential(context, any<GetCredentialRequest>()) } throws
+        RuntimeException("Failed")
+
+    val firebaseUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+    val authRepo =
+        object : FakeAuthRepository() {
+          override val currentUser = firebaseUser
+        }
+    val viewModel =
+        createViewModel(
+            repository = RecordingUsersRepository(listOf(sara)),
+            authRepository = authRepo,
+        )
+    advanceUntilIdle()
+
+    viewModel.upgradeWithGoogle(context, credentialManager)
+    advanceUntilIdle()
+
+    assertEquals(R.string.profile_anon_upgrade_failed, viewModel.uiState.value.errorMsg)
+    assertFalse(viewModel.uiState.value.isLoading)
+  }
+
+  /** Breaks if upgradeWithGoogle with context does not reset loading on cancellation. */
+  @Test
+  fun upgradeWithGoogleContextCancellationResetsLoading() = runTest {
+    val context = mockk<Context>()
+    val credentialManager = mockk<CredentialManager>()
+    every { context.getString(R.string.default_web_client_id) } returns "client-id"
+    coEvery { credentialManager.getCredential(context, any<GetCredentialRequest>()) } throws
+        CancellationException("Cancelled")
+
+    val firebaseUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+    val authRepo =
+        object : FakeAuthRepository() {
+          override val currentUser = firebaseUser
+        }
+    val viewModel =
+        createViewModel(
+            repository = RecordingUsersRepository(listOf(sara)),
+            authRepository = authRepo,
+        )
+    advanceUntilIdle()
+
+    viewModel.upgradeWithGoogle(context, credentialManager)
+    advanceUntilIdle()
+
+    assertFalse(viewModel.uiState.value.isLoading)
+    assertNull(viewModel.uiState.value.errorMsg)
   }
 }

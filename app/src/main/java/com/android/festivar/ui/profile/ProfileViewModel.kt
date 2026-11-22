@@ -3,9 +3,12 @@
 // Co-authored-by: Gemini <noreply@google.com>
 package com.android.festivar.ui.profile
 
+import android.content.Context
 import android.util.Log
 import androidx.annotation.StringRes
 import androidx.credentials.Credential
+import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
@@ -13,6 +16,7 @@ import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -289,6 +293,27 @@ class ProfileViewModel(
     if (state.isLoading || !state.isUserAnonymous) return false
     _uiState.update { it.copy(isLoading = true, errorMsg = null) }
     return true
+  }
+
+  /** Starts Google account upgrade with Credential Manager. */
+  fun upgradeWithGoogle(context: Context, credentialManager: CredentialManager) {
+    if (!startGoogleUpgrade()) return
+    viewModelScope.launch {
+      try {
+        val signInWithGoogleOption =
+            GetSignInWithGoogleOption.Builder(context.getString(R.string.default_web_client_id))
+                .build()
+        val request =
+            GetCredentialRequest.Builder().addCredentialOption(signInWithGoogleOption).build()
+        val result = credentialManager.getCredential(context, request)
+        upgradeWithGoogle(result.credential)
+      } catch (e: CancellationException) {
+        _uiState.update { it.copy(isLoading = false) }
+        throw e
+      } catch (e: Exception) {
+        handleGoogleUpgradeError(e)
+      }
+    }
   }
 
   fun upgradeWithGoogle(credential: Credential) {
