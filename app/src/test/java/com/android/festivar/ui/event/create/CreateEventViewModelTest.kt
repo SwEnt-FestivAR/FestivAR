@@ -93,254 +93,6 @@ class CreateEventViewModelTest {
     assertEquals("Bring the stage equipment", state.notes)
   }
 
-  /** Breaks if the created event does not include the uploaded image URL. */
-  @Test
-  fun toEventIncludesImageUrl() {
-    fillAllFields()
-    val event =
-        viewModel.uiState.value
-            .copy(imageUrl = "https://example.com/image.png")
-            .toEvent("event-1", creator)
-    assertEquals("https://example.com/image.png", event.imageUrl)
-  }
-
-  /** Breaks if confirming discard does not delete an uploaded image from storage. */
-  @Test
-  fun confirmDiscardDeletesUploadedImage() = runBlocking {
-    val mimeTypeMap = mockk<MimeTypeMap>()
-    mockkStatic(MimeTypeMap::class)
-    every { MimeTypeMap.getSingleton() } returns mimeTypeMap
-    every { mimeTypeMap.getExtensionFromMimeType("image/png") } returns "png"
-
-    try {
-      val imageStorage = RecordingImageStorage()
-      dataRepository =
-          DataRepositoryLocal(
-              mockk(),
-              eventsRepository = eventsRepository,
-              usersRepository = usersRepository,
-              imageStorage = imageStorage,
-          )
-      viewModel =
-          CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
-      val resolver = mockk<ContentResolver>()
-      val tempDir = File.createTempFile("test", "dir")
-      tempDir.delete()
-      tempDir.mkdir()
-      tempDir.deleteOnExit()
-
-      val uri = mockk<Uri>()
-
-      every { resolver.getType(uri) } returns "image/png"
-      every { resolver.openInputStream(uri) } returns
-          ByteArrayInputStream("test image content".toByteArray())
-
-      viewModel.updateImage(uri, resolver, tempDir)
-
-      withTimeout(5_000.milliseconds) {
-        while (viewModel.uiState.value.imageUrl == null) delay(10.milliseconds)
-      }
-
-      val uploadedUrl = viewModel.uiState.value.imageUrl
-      assertNotNull(uploadedUrl)
-
-      viewModel.confirmDiscard()
-
-      withTimeout(5_000.milliseconds) {
-        while (imageStorage.deletedUrls.isEmpty()) delay(10.milliseconds)
-      }
-
-      assertEquals(listOf(uploadedUrl), imageStorage.deletedUrls)
-    } finally {
-      unmockkStatic(MimeTypeMap::class)
-    }
-  }
-
-  /** Breaks if an event draft with an uploaded image is not considered modified. */
-  @Test
-  fun needsDiscardConfirmationReturnsTrueWhenImageIsUploaded() = runBlocking {
-    val mimeTypeMap = mockk<MimeTypeMap>()
-    mockkStatic(MimeTypeMap::class)
-    every { MimeTypeMap.getSingleton() } returns mimeTypeMap
-    every { mimeTypeMap.getExtensionFromMimeType("image/png") } returns "png"
-
-    try {
-      val imageStorage = RecordingImageStorage()
-      dataRepository =
-          DataRepositoryLocal(
-              mockk(),
-              eventsRepository = eventsRepository,
-              usersRepository = usersRepository,
-              imageStorage = imageStorage,
-          )
-      viewModel =
-          CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
-
-      val resolver = mockk<ContentResolver>()
-      val tempDir = File.createTempFile("test", "dir")
-      tempDir.delete()
-      tempDir.mkdir()
-      tempDir.deleteOnExit()
-
-      val uri = mockk<Uri>()
-
-      every { resolver.getType(uri) } returns "image/png"
-      every { resolver.openInputStream(uri) } returns
-          ByteArrayInputStream("test image content".toByteArray())
-
-      assertFalse(viewModel.needsDiscardConfirmation)
-
-      viewModel.updateImage(uri, resolver, tempDir)
-
-      withTimeout(5_000.milliseconds) {
-        while (viewModel.uiState.value.imageUrl == null) delay(10.milliseconds)
-      }
-
-      assertTrue(viewModel.needsDiscardConfirmation)
-    } finally {
-      unmockkStatic(MimeTypeMap::class)
-    }
-  }
-
-  /**
-   * Breaks if selecting an image exceeding the size limit fails to report a file-too-large error.
-   */
-  @Test
-  fun updateImageWithTooLargeFileSetsError() = runBlocking {
-    val mimeTypeMap = mockk<MimeTypeMap>()
-    mockkStatic(MimeTypeMap::class)
-    every { MimeTypeMap.getSingleton() } returns mimeTypeMap
-    every { mimeTypeMap.getExtensionFromMimeType("image/png") } returns "png"
-
-    try {
-      val resolver = mockk<ContentResolver>()
-      val tempDir = File.createTempFile("test", "dir")
-      tempDir.delete()
-      tempDir.mkdir()
-      tempDir.deleteOnExit()
-
-      val largeData = ByteArray(11 * 1024 * 1024)
-      val uri = mockk<Uri>()
-
-      every { resolver.getType(uri) } returns "image/png"
-      every { resolver.openInputStream(uri) } returns ByteArrayInputStream(largeData)
-
-      viewModel =
-          CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
-      viewModel.updateImage(uri, resolver, tempDir)
-
-      withTimeout(5_000.milliseconds) {
-        while (viewModel.uiState.value.errorMsg == null) delay(10.milliseconds)
-      }
-
-      assertEquals(R.string.profile_picture_too_large, viewModel.uiState.value.errorMsg)
-      assertNull(viewModel.uiState.value.imageUrl)
-    } finally {
-      unmockkStatic(MimeTypeMap::class)
-    }
-  }
-
-  /** Breaks if requesting image deletion does not open the confirmation dialog. */
-  @Test
-  fun requestDeleteImageOpensConfirmationDialog() = runBlocking {
-    val mimeTypeMap = mockk<MimeTypeMap>()
-    mockkStatic(MimeTypeMap::class)
-    every { MimeTypeMap.getSingleton() } returns mimeTypeMap
-    every { mimeTypeMap.getExtensionFromMimeType("image/png") } returns "png"
-
-    try {
-      val imageStorage = RecordingImageStorage()
-      dataRepository =
-          DataRepositoryLocal(
-              mockk(),
-              eventsRepository = eventsRepository,
-              usersRepository = usersRepository,
-              imageStorage = imageStorage,
-          )
-      viewModel =
-          CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
-      val resolver = mockk<ContentResolver>()
-      val tempDir = File.createTempFile("test", "dir")
-      tempDir.delete()
-      tempDir.mkdir()
-      tempDir.deleteOnExit()
-      val uri = mockk<Uri>()
-
-      every { resolver.getType(uri) } returns "image/png"
-      every { resolver.openInputStream(uri) } returns
-          ByteArrayInputStream("test image content".toByteArray())
-
-      viewModel.updateImage(uri, resolver, tempDir)
-
-      withTimeout(5_000.milliseconds) {
-        while (viewModel.uiState.value.imageUrl == null) delay(10.milliseconds)
-      }
-
-      viewModel.requestDeleteImage()
-      assertTrue(viewModel.uiState.value.showDeleteImageConfirmation)
-
-      viewModel.cancelDeleteImage()
-      assertFalse(viewModel.uiState.value.showDeleteImageConfirmation)
-    } finally {
-      unmockkStatic(MimeTypeMap::class)
-    }
-  }
-
-  /** Breaks if confirming image deletion does not clear the image URL from state and storage. */
-  @Test
-  fun confirmDeleteImageClearsImageUrlAndDeletesFromStorage() = runBlocking {
-    val mimeTypeMap = mockk<MimeTypeMap>()
-    mockkStatic(MimeTypeMap::class)
-    every { MimeTypeMap.getSingleton() } returns mimeTypeMap
-    every { mimeTypeMap.getExtensionFromMimeType("image/png") } returns "png"
-
-    try {
-      val imageStorage = RecordingImageStorage()
-      dataRepository =
-          DataRepositoryLocal(
-              mockk(),
-              eventsRepository = eventsRepository,
-              usersRepository = usersRepository,
-              imageStorage = imageStorage,
-          )
-      viewModel =
-          CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
-      val resolver = mockk<ContentResolver>()
-      val tempDir = File.createTempFile("test", "dir")
-      tempDir.delete()
-      tempDir.mkdir()
-      tempDir.deleteOnExit()
-      val uri = mockk<Uri>()
-
-      every { resolver.getType(uri) } returns "image/png"
-      every { resolver.openInputStream(uri) } returns
-          ByteArrayInputStream("test image content".toByteArray())
-
-      viewModel.updateImage(uri, resolver, tempDir)
-
-      withTimeout(5_000.milliseconds) {
-        while (viewModel.uiState.value.imageUrl == null) delay(10.milliseconds)
-      }
-
-      val uploadedUrl = viewModel.uiState.value.imageUrl
-      assertNotNull(uploadedUrl)
-
-      viewModel.requestDeleteImage()
-      viewModel.confirmDeleteImage()
-
-      assertNull(viewModel.uiState.value.imageUrl)
-      assertFalse(viewModel.uiState.value.showDeleteImageConfirmation)
-
-      withTimeout(5_000.milliseconds) {
-        while (imageStorage.deletedUrls.isEmpty()) delay(10.milliseconds)
-      }
-
-      assertEquals(listOf(uploadedUrl), imageStorage.deletedUrls)
-    } finally {
-      unmockkStatic(MimeTypeMap::class)
-    }
-  }
-
   /** Red if any date/time picker fails to update its field or close afterward. */
   @Test
   fun pickerActionsUpdateAndCloseThePicker() {
@@ -944,6 +696,650 @@ class CreateEventViewModelTest {
     }
   }
 
+  /**
+   * Breaks if hasImage, toEvent, or setImageUrlForTesting do not accurately reflect image URL
+   * state.
+   */
+  @Test
+  fun uiStateAndViewModelImageHelpersWork() {
+    assertFalse(CreateEventUIState(imageUrl = null).hasImage)
+    assertFalse(CreateEventUIState(imageUrl = "").hasImage)
+    assertTrue(CreateEventUIState(imageUrl = "https://example.com/image.png").hasImage)
+
+    fillAllFields()
+    val event =
+        viewModel.uiState.value
+            .copy(imageUrl = "https://example.com/image.png")
+            .toEvent("event-1", creator)
+    assertEquals("https://example.com/image.png", event.imageUrl)
+
+    viewModel.setImageUrlForTesting("https://example.com/custom.jpg")
+    assertEquals("https://example.com/custom.jpg", viewModel.uiState.value.imageUrl)
+  }
+
+  /**
+   * Breaks if deleteTemporaryImage fails to handle non-existent, deletable, or undeletable files.
+   */
+  @Test
+  fun deleteTemporaryImageHandlesFileStatus() {
+    val nonExistentFile = File("non_existent_file_12345.tmp")
+    viewModel.deleteTemporaryImageForTesting(nonExistentFile)
+    assertFalse(nonExistentFile.exists())
+
+    val tempFile = File.createTempFile("temp", ".tmp")
+    assertTrue(tempFile.exists())
+    viewModel.deleteTemporaryImageForTesting(tempFile)
+    assertFalse(tempFile.exists())
+
+    val mockFile = mockk<File>()
+    every { mockFile.exists() } returns true
+    every { mockFile.delete() } returns false
+    every { mockFile.path } returns "mock/path"
+    viewModel.deleteTemporaryImageForTesting(mockFile)
+    verify { mockFile.delete() }
+  }
+
+  /**
+   * Breaks if an uploaded image is not treated as draft modification or deleted on confirmed
+   * discard.
+   */
+  @Test
+  fun uploadedImageRequiresDiscardConfirmationAndDeletesOnConfirm() {
+    runBlocking {
+      withMimeTypeMap {
+        val imageStorage = RecordingImageStorage()
+        dataRepository =
+            DataRepositoryLocal(
+                mockk(),
+                eventsRepository = eventsRepository,
+                usersRepository = usersRepository,
+                imageStorage = imageStorage,
+            )
+        viewModel =
+            CreateEventViewModel(
+                dataRepository,
+                creator.uid,
+                ioDispatcher = Dispatchers.Unconfined,
+            )
+        val (resolver, uri) = createMockResolver()
+
+        assertFalse(viewModel.needsDiscardConfirmation)
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        withTimeout(5_000.milliseconds) {
+          while (viewModel.uiState.value.imageUrl == null) delay(10.milliseconds)
+        }
+
+        val uploadedUrl = viewModel.uiState.value.imageUrl
+        assertNotNull(uploadedUrl)
+        assertTrue(viewModel.needsDiscardConfirmation)
+
+        viewModel.confirmDiscard()
+        withTimeout(5_000.milliseconds) {
+          while (imageStorage.deletedUrls.isEmpty()) delay(10.milliseconds)
+        }
+        assertEquals(listOf(uploadedUrl), imageStorage.deletedUrls)
+
+        imageStorage.deleteError = RuntimeException("delete error")
+        viewModel.confirmDiscard()
+        assertTrue(viewModel.uiState.value.isDiscarded)
+      }
+    }
+  }
+
+  /**
+   * Breaks if confirmDiscard attempts image deletion when URL is null/blank or event is created.
+   */
+  @Test
+  fun confirmDiscardNoOpsImageDeletionWhenNotNeeded() {
+    runBlocking {
+      val imageStorage = RecordingImageStorage()
+      dataRepository =
+          DataRepositoryLocal(
+              mockk(),
+              eventsRepository = eventsRepository,
+              usersRepository = usersRepository,
+              imageStorage = imageStorage,
+          )
+      viewModel =
+          CreateEventViewModel(
+              dataRepository,
+              creator.uid,
+              ioDispatcher = Dispatchers.Unconfined,
+          )
+
+      viewModel.setImageUrlForTesting(null)
+      viewModel.confirmDiscard()
+      viewModel.setImageUrlForTesting("   ")
+      viewModel.confirmDiscard()
+
+      viewModel.setImageUrlForTesting("https://example.com/image.png")
+      val stateField =
+          EventFormViewModel::class.java.getDeclaredField("_uiState").apply { isAccessible = true }
+      @Suppress("UNCHECKED_CAST")
+      val stateFlow = stateField.get(viewModel) as MutableStateFlow<CreateEventUIState>
+      stateFlow.value = stateFlow.value.copy(createdEventId = "event-123")
+      viewModel.confirmDiscard()
+
+      assertTrue(imageStorage.deletedUrls.isEmpty())
+    }
+  }
+
+  /**
+   * Breaks if ViewModel clearance fails to delete uploaded images for uncreated events or crash on
+   * delete error.
+   */
+  @Test
+  fun onClearedDeletesUploadedImageForUncreatedEvent() {
+    runBlocking {
+      withMimeTypeMap {
+        val imageStorage = RecordingImageStorage()
+        dataRepository =
+            DataRepositoryLocal(
+                mockk(),
+                eventsRepository = eventsRepository,
+                usersRepository = usersRepository,
+                imageStorage = imageStorage,
+            )
+        viewModel =
+            CreateEventViewModel(
+                dataRepository,
+                creator.uid,
+                ioDispatcher = Dispatchers.Unconfined,
+            )
+        val (resolver, uri) = createMockResolver()
+
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        withTimeout(5_000.milliseconds) {
+          while (viewModel.uiState.value.imageUrl == null) delay(10.milliseconds)
+        }
+        val uploadedUrl = viewModel.uiState.value.imageUrl!!
+
+        val method =
+            viewModel.javaClass.getDeclaredMethod("onCleared").apply { isAccessible = true }
+        method.invoke(viewModel)
+
+        withTimeout(5_000.milliseconds) {
+          while (imageStorage.deletedUrls.isEmpty()) delay(10.milliseconds)
+        }
+        assertEquals(listOf(uploadedUrl), imageStorage.deletedUrls)
+
+        imageStorage.deleteError = RuntimeException("delete error")
+        method.invoke(viewModel)
+      }
+    }
+  }
+
+  /** Breaks if onCleared attempts image deletion when URL is null/blank or event is created. */
+  @Test
+  fun onClearedNoOpsImageDeletionWhenNotNeeded() {
+    runBlocking {
+      val imageStorage = RecordingImageStorage()
+      dataRepository =
+          DataRepositoryLocal(
+              mockk(),
+              eventsRepository = eventsRepository,
+              usersRepository = usersRepository,
+              imageStorage = imageStorage,
+          )
+      viewModel =
+          CreateEventViewModel(
+              dataRepository,
+              creator.uid,
+              ioDispatcher = Dispatchers.Unconfined,
+          )
+      val method = viewModel.javaClass.getDeclaredMethod("onCleared").apply { isAccessible = true }
+
+      viewModel.setImageUrlForTesting(null)
+      method.invoke(viewModel)
+      viewModel.setImageUrlForTesting("   ")
+      method.invoke(viewModel)
+
+      viewModel.setImageUrlForTesting("https://example.com/image.png")
+      val stateField =
+          EventFormViewModel::class.java.getDeclaredField("_uiState").apply { isAccessible = true }
+      @Suppress("UNCHECKED_CAST")
+      val stateFlow = stateField.get(viewModel) as MutableStateFlow<CreateEventUIState>
+      stateFlow.value = stateFlow.value.copy(createdEventId = "event-123")
+      method.invoke(viewModel)
+
+      assertTrue(imageStorage.deletedUrls.isEmpty())
+    }
+  }
+
+  /**
+   * Breaks if image deletion dialog, storage removal, or exception handling during delete image
+   * fails.
+   */
+  @Test
+  fun deleteImageDialogAndConfirmationFlow() {
+    runBlocking {
+      withMimeTypeMap {
+        val imageStorage = RecordingImageStorage()
+        dataRepository =
+            DataRepositoryLocal(
+                mockk(),
+                eventsRepository = eventsRepository,
+                usersRepository = usersRepository,
+                imageStorage = imageStorage,
+            )
+        viewModel =
+            CreateEventViewModel(
+                dataRepository,
+                creator.uid,
+                ioDispatcher = Dispatchers.Unconfined,
+            )
+        val (resolver, uri) = createMockResolver()
+
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        withTimeout(5_000.milliseconds) {
+          while (viewModel.uiState.value.imageUrl == null) delay(10.milliseconds)
+        }
+
+        val uploadedUrl = viewModel.uiState.value.imageUrl!!
+        viewModel.requestDeleteImage()
+        assertTrue(viewModel.uiState.value.showDeleteImageConfirmation)
+        viewModel.cancelDeleteImage()
+        assertFalse(viewModel.uiState.value.showDeleteImageConfirmation)
+
+        viewModel.requestDeleteImage()
+        viewModel.confirmDeleteImage()
+        assertNull(viewModel.uiState.value.imageUrl)
+        assertFalse(viewModel.uiState.value.showDeleteImageConfirmation)
+
+        withTimeout(5_000.milliseconds) {
+          while (imageStorage.deletedUrls.isEmpty()) delay(10.milliseconds)
+        }
+        assertEquals(listOf(uploadedUrl), imageStorage.deletedUrls)
+
+        viewModel.setImageUrlForTesting("https://example.com/test.png")
+        imageStorage.deleteError = RuntimeException("delete error")
+        viewModel.requestDeleteImage()
+        viewModel.confirmDeleteImage()
+        assertNull(viewModel.uiState.value.imageUrl)
+      }
+    }
+  }
+
+  /**
+   * Breaks if requesting or confirming image deletion without an image triggers dialog or storage
+   * delete.
+   */
+  @Test
+  fun deleteImageNoOpsWhenImageMissing() {
+    runBlocking {
+      val imageStorage = RecordingImageStorage()
+      dataRepository =
+          DataRepositoryLocal(
+              mockk(),
+              eventsRepository = eventsRepository,
+              usersRepository = usersRepository,
+              imageStorage = imageStorage,
+          )
+      viewModel =
+          CreateEventViewModel(
+              dataRepository,
+              creator.uid,
+              ioDispatcher = Dispatchers.Unconfined,
+          )
+
+      viewModel.requestDeleteImage()
+      assertFalse(viewModel.uiState.value.showDeleteImageConfirmation)
+
+      viewModel.setImageUrlForTesting(null)
+      viewModel.confirmDeleteImage()
+      viewModel.setImageUrlForTesting("")
+      viewModel.confirmDeleteImage()
+
+      assertTrue(imageStorage.deletedUrls.isEmpty())
+    }
+  }
+
+  /**
+   * Breaks if updating image fails to enforce file size limits or default to jpg extension when
+   * mime type is null.
+   */
+  @Test
+  fun updateImageFileValidationAndExtensionFallback() {
+    runBlocking {
+      withMimeTypeMap {
+        val largeData = ByteArray(11 * 1024 * 1024)
+        val (resolver, uri) = createMockResolver(bytes = largeData)
+        viewModel =
+            CreateEventViewModel(
+                dataRepository,
+                creator.uid,
+                ioDispatcher = Dispatchers.Unconfined,
+            )
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        withTimeout(5_000.milliseconds) {
+          while (viewModel.uiState.value.errorMsg == null) delay(10.milliseconds)
+        }
+        assertEquals(R.string.profile_picture_too_large, viewModel.uiState.value.errorMsg)
+        assertNull(viewModel.uiState.value.imageUrl)
+      }
+
+      withMimeTypeMap(extension = null) {
+        val imageStorage = RecordingImageStorage()
+        dataRepository =
+            DataRepositoryLocal(
+                mockk(),
+                eventsRepository = eventsRepository,
+                usersRepository = usersRepository,
+                imageStorage = imageStorage,
+            )
+        viewModel =
+            CreateEventViewModel(
+                dataRepository,
+                creator.uid,
+                ioDispatcher = Dispatchers.Unconfined,
+            )
+        val (resolver, uri) = createMockResolver(mimeType = null)
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        withTimeout(5_000.milliseconds) {
+          while (viewModel.uiState.value.imageUrl == null) delay(10.milliseconds)
+        }
+        assertTrue(viewModel.uiState.value.imageUrl!!.endsWith(".jpg"))
+      }
+    }
+  }
+
+  /**
+   * Breaks if updating image when a previous image exists fails to delete old image or skips
+   * deletion when URLs match.
+   */
+  @Test
+  fun updateImageHandlesImageReplacement() {
+    runBlocking {
+      withMimeTypeMap {
+        val imageStorage = RecordingImageStorage()
+        dataRepository =
+            DataRepositoryLocal(
+                mockk(),
+                eventsRepository = eventsRepository,
+                usersRepository = usersRepository,
+                imageStorage = imageStorage,
+            )
+        viewModel =
+            CreateEventViewModel(
+                dataRepository,
+                creator.uid,
+                ioDispatcher = Dispatchers.Unconfined,
+            )
+        val (resolver, uri) = createMockResolver()
+
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        withTimeout(5_000.milliseconds) {
+          while (viewModel.uiState.value.imageUrl == null) delay(10.milliseconds)
+        }
+        val firstUrl = viewModel.uiState.value.imageUrl!!
+
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        withTimeout(5_000.milliseconds) {
+          while (imageStorage.deletedUrls.isEmpty()) delay(10.milliseconds)
+        }
+        assertTrue(imageStorage.deletedUrls.contains(firstUrl))
+
+        val sameStorage =
+            object : ImageStorage {
+              val deleted = mutableListOf<String>()
+
+              override fun getNewUid() = "uid"
+
+              override suspend fun upload(storedImage: StoredImage, subFolder: String) =
+                  "https://example.com/same.png"
+
+              override suspend fun delete(imageUrl: String) {
+                deleted.add(imageUrl)
+              }
+            }
+        dataRepository =
+            DataRepositoryLocal(
+                mockk(),
+                eventsRepository = eventsRepository,
+                usersRepository = usersRepository,
+                imageStorage = sameStorage,
+            )
+        viewModel =
+            CreateEventViewModel(
+                dataRepository,
+                creator.uid,
+                ioDispatcher = Dispatchers.Unconfined,
+            )
+        viewModel.setImageUrlForTesting("https://example.com/same.png")
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        withTimeout(5_000.milliseconds) {
+          while (viewModel.uiState.value.isSaving) delay(10.milliseconds)
+        }
+        assertTrue(sameStorage.deleted.isEmpty())
+      }
+    }
+  }
+
+  /**
+   * Breaks if read or upload exceptions during updateImage fail to report save error or clean up
+   * uploaded image.
+   */
+  @Test
+  fun updateImageHandlesReadAndUploadExceptions() {
+    runBlocking {
+      withMimeTypeMap {
+        val (failingResolver, failingUri) =
+            createMockResolver(readException = RuntimeException("read error"))
+        viewModel =
+            CreateEventViewModel(
+                dataRepository,
+                creator.uid,
+                ioDispatcher = Dispatchers.Unconfined,
+            )
+        viewModel.updateImage(failingUri, failingResolver, createTempTestDir())
+        withTimeout(5_000.milliseconds) {
+          while (viewModel.uiState.value.errorMsg == null) delay(10.milliseconds)
+        }
+        assertEquals(R.string.create_event_error_save_failed, viewModel.uiState.value.errorMsg)
+
+        val imageStorage = RecordingImageStorage(uploadError = RuntimeException("upload error"))
+        dataRepository =
+            DataRepositoryLocal(
+                mockk(),
+                eventsRepository = eventsRepository,
+                usersRepository = usersRepository,
+                imageStorage = imageStorage,
+            )
+        viewModel =
+            CreateEventViewModel(
+                dataRepository,
+                creator.uid,
+                ioDispatcher = Dispatchers.Unconfined,
+            )
+        val (resolver, uri) = createMockResolver()
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        withTimeout(5_000.milliseconds) {
+          while (viewModel.uiState.value.errorMsg == null) delay(10.milliseconds)
+        }
+        assertEquals(R.string.create_event_error_save_failed, viewModel.uiState.value.errorMsg)
+      }
+    }
+  }
+
+  /**
+   * Breaks if old image deletion failure or post-upload state update failure fails to log error and
+   * clean up image.
+   */
+  @Test
+  fun updateImageHandlesPostUploadErrors() {
+    runBlocking {
+      withMimeTypeMap {
+        val imageStorage = RecordingImageStorage()
+        dataRepository =
+            DataRepositoryLocal(
+                mockk(),
+                eventsRepository = eventsRepository,
+                usersRepository = usersRepository,
+                imageStorage = imageStorage,
+            )
+        viewModel =
+            CreateEventViewModel(
+                dataRepository,
+                creator.uid,
+                ioDispatcher = Dispatchers.Unconfined,
+            )
+        val (resolver, uri) = createMockResolver()
+
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        withTimeout(5_000.milliseconds) {
+          while (viewModel.uiState.value.imageUrl == null) delay(10.milliseconds)
+        }
+        imageStorage.deleteError = RuntimeException("delete error")
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        withTimeout(5_000.milliseconds) {
+          while (viewModel.uiState.value.errorMsg == null) delay(10.milliseconds)
+        }
+        assertEquals(R.string.create_event_error_save_failed, viewModel.uiState.value.errorMsg)
+
+        val cleanupStorage = RecordingImageStorage()
+        dataRepository =
+            DataRepositoryLocal(
+                mockk(),
+                eventsRepository = eventsRepository,
+                usersRepository = usersRepository,
+                imageStorage = cleanupStorage,
+            )
+        viewModel =
+            CreateEventViewModel(
+                dataRepository,
+                creator.uid,
+                ioDispatcher = Dispatchers.Unconfined,
+            )
+        val field =
+            EventFormViewModel::class.java.getDeclaredField("_uiState").apply {
+              isAccessible = true
+            }
+        @Suppress("UNCHECKED_CAST")
+        val originalStateFlow = field.get(viewModel) as MutableStateFlow<CreateEventUIState>
+        var updateCount = 0
+        @Suppress("OPT_IN_USAGE")
+        val failingStateFlow =
+            object : MutableStateFlow<CreateEventUIState> by originalStateFlow {
+              override fun compareAndSet(
+                  expect: CreateEventUIState,
+                  update: CreateEventUIState,
+              ): Boolean {
+                updateCount++
+                if (updateCount == 2) throw RuntimeException("Simulated updateState failure")
+                return originalStateFlow.compareAndSet(expect, update)
+              }
+            }
+        field.set(viewModel, failingStateFlow)
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        withTimeout(5_000.milliseconds) {
+          while (cleanupStorage.deletedUrls.isEmpty()) delay(10.milliseconds)
+        }
+        assertTrue(cleanupStorage.deletedUrls.isNotEmpty())
+        assertEquals(R.string.create_event_error_save_failed, viewModel.uiState.value.errorMsg)
+
+        val failingStorage2 =
+            RecordingImageStorage().apply { deleteError = RuntimeException("cleanup fail") }
+        dataRepository =
+            DataRepositoryLocal(
+                mockk(),
+                eventsRepository = eventsRepository,
+                usersRepository = usersRepository,
+                imageStorage = failingStorage2,
+            )
+        viewModel =
+            CreateEventViewModel(
+                dataRepository,
+                creator.uid,
+                ioDispatcher = Dispatchers.Unconfined,
+            )
+        @Suppress("UNCHECKED_CAST")
+        val stateFlow2 = field.get(viewModel) as MutableStateFlow<CreateEventUIState>
+        var updateCount2 = 0
+        @Suppress("OPT_IN_USAGE")
+        val failingStateFlow2 =
+            object : MutableStateFlow<CreateEventUIState> by stateFlow2 {
+              override fun compareAndSet(
+                  expect: CreateEventUIState,
+                  update: CreateEventUIState,
+              ): Boolean {
+                updateCount2++
+                if (updateCount2 == 2) throw RuntimeException("Simulated updateState failure")
+                return stateFlow2.compareAndSet(expect, update)
+              }
+            }
+        field.set(viewModel, failingStateFlow2)
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        withTimeout(5_000.milliseconds) {
+          while (viewModel.uiState.value.errorMsg == null) delay(10.milliseconds)
+        }
+        assertEquals(R.string.create_event_error_save_failed, viewModel.uiState.value.errorMsg)
+      }
+    }
+  }
+
+  /**
+   * Breaks if CancellationException during image read, upload, or old image deletion is swallowed
+   * as save error.
+   */
+  @Test
+  fun updateImagePropagatesCancellationExceptions() {
+    runBlocking {
+      withMimeTypeMap {
+        val (readCancelResolver, readCancelUri) =
+            createMockResolver(readException = CancellationException("cancelled"))
+        viewModel =
+            CreateEventViewModel(
+                dataRepository,
+                creator.uid,
+                ioDispatcher = Dispatchers.Unconfined,
+            )
+        viewModel.updateImage(readCancelUri, readCancelResolver, createTempTestDir())
+        assertNull(viewModel.uiState.value.errorMsg)
+
+        val cancelUploadStorage =
+            RecordingImageStorage(uploadError = CancellationException("cancelled"))
+        dataRepository =
+            DataRepositoryLocal(
+                mockk(),
+                eventsRepository = eventsRepository,
+                usersRepository = usersRepository,
+                imageStorage = cancelUploadStorage,
+            )
+        viewModel =
+            CreateEventViewModel(
+                dataRepository,
+                creator.uid,
+                ioDispatcher = Dispatchers.Unconfined,
+            )
+        val (resolver, uri) = createMockResolver()
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        assertNull(viewModel.uiState.value.errorMsg)
+
+        val cancelDeleteStorage = RecordingImageStorage()
+        dataRepository =
+            DataRepositoryLocal(
+                mockk(),
+                eventsRepository = eventsRepository,
+                usersRepository = usersRepository,
+                imageStorage = cancelDeleteStorage,
+            )
+        viewModel =
+            CreateEventViewModel(
+                dataRepository,
+                creator.uid,
+                ioDispatcher = Dispatchers.Unconfined,
+            )
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        withTimeout(5_000.milliseconds) {
+          while (viewModel.uiState.value.imageUrl == null) delay(10.milliseconds)
+        }
+        cancelDeleteStorage.deleteError = CancellationException("cancel delete")
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        assertNull(viewModel.uiState.value.errorMsg)
+      }
+    }
+  }
+
   private fun fillFormAndCreateEvent(
       eventsRepository: EventsRepository,
       usersRepository: UsersRepository,
@@ -1008,944 +1404,40 @@ class CreateEventViewModelTest {
     return events
   }
 
-  /**
-   * Breaks if an exception during image reading or processing is not caught and reported as an
-   * error.
-   */
-  @Test
-  fun updateImageHandlesExceptionGracefully() = runBlocking {
+  private inline fun <T> withMimeTypeMap(extension: String? = "png", block: () -> T): T {
     val mimeTypeMap = mockk<MimeTypeMap>()
     mockkStatic(MimeTypeMap::class)
     every { MimeTypeMap.getSingleton() } returns mimeTypeMap
-    every { mimeTypeMap.getExtensionFromMimeType("image/png") } returns "png"
-
+    every { mimeTypeMap.getExtensionFromMimeType(any()) } returns extension
     try {
-      val resolver = mockk<ContentResolver>()
-      val tempDir = File.createTempFile("test", "dir")
-      tempDir.delete()
-      tempDir.mkdir()
-      tempDir.deleteOnExit()
-      val uri = mockk<Uri>()
-
-      every { resolver.getType(uri) } returns "image/png"
-      every { resolver.openInputStream(uri) } throws RuntimeException("read error")
-
-      viewModel =
-          CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
-      viewModel.updateImage(uri, resolver, tempDir)
-
-      withTimeout(5_000.milliseconds) {
-        while (viewModel.uiState.value.errorMsg == null) delay(10.milliseconds)
-      }
-
-      assertEquals(R.string.create_event_error_save_failed, viewModel.uiState.value.errorMsg)
+      return block()
     } finally {
       unmockkStatic(MimeTypeMap::class)
     }
   }
 
-  /**
-   * Breaks if a CancellationException during image upload is treated as a save error instead of
-   * being propagated.
-   */
-  @Test
-  fun updateImagePropagatesCancellationException() = runBlocking {
-    val mimeTypeMap = mockk<MimeTypeMap>()
-    mockkStatic(MimeTypeMap::class)
-    every { MimeTypeMap.getSingleton() } returns mimeTypeMap
-    every { mimeTypeMap.getExtensionFromMimeType("image/png") } returns "png"
-
-    try {
-      val imageStorage = RecordingImageStorage(uploadError = CancellationException("cancelled"))
-      dataRepository =
-          DataRepositoryLocal(
-              mockk(),
-              eventsRepository = eventsRepository,
-              usersRepository = usersRepository,
-              imageStorage = imageStorage,
-          )
-      viewModel =
-          CreateEventViewModel(
-              dataRepository,
-              creator.uid,
-              ioDispatcher = Dispatchers.Unconfined,
-          )
-      val resolver = mockk<ContentResolver>()
-      val tempDir = File.createTempFile("test", "dir")
-      tempDir.delete()
-      tempDir.mkdir()
-      tempDir.deleteOnExit()
-      val uri = mockk<Uri>()
-
-      every { resolver.getType(uri) } returns "image/png"
-      every { resolver.openInputStream(uri) } returns
-          ByteArrayInputStream("test image content".toByteArray())
-
-      viewModel.updateImage(uri, resolver, tempDir)
-
-      assertNull(viewModel.uiState.value.errorMsg)
-    } finally {
-      unmockkStatic(MimeTypeMap::class)
+  private fun createMockResolver(
+      mimeType: String? = "image/png",
+      bytes: ByteArray = "test image content".toByteArray(),
+      readException: Throwable? = null,
+  ): Pair<ContentResolver, Uri> {
+    val resolver = mockk<ContentResolver>()
+    val uri = mockk<Uri>()
+    every { resolver.getType(uri) } returns mimeType
+    if (readException != null) {
+      every { resolver.openInputStream(uri) } throws readException
+    } else {
+      every { resolver.openInputStream(uri) } returns ByteArrayInputStream(bytes)
     }
+    return resolver to uri
   }
 
-  /** Breaks if an error during image upload fails to trigger cleanup and report a save error. */
-  @Test
-  fun saveImageHandlesUploadExceptionAndCleansUp() = runBlocking {
-    val mimeTypeMap = mockk<MimeTypeMap>()
-    mockkStatic(MimeTypeMap::class)
-    every { MimeTypeMap.getSingleton() } returns mimeTypeMap
-    every { mimeTypeMap.getExtensionFromMimeType("image/png") } returns "png"
-
-    try {
-      val imageStorage = RecordingImageStorage(uploadError = RuntimeException("upload error"))
-      dataRepository =
-          DataRepositoryLocal(
-              mockk(),
-              eventsRepository = eventsRepository,
-              usersRepository = usersRepository,
-              imageStorage = imageStorage,
-          )
-      viewModel =
-          CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
-      val resolver = mockk<ContentResolver>()
-      val tempDir = File.createTempFile("test", "dir")
-      tempDir.delete()
-      tempDir.mkdir()
-      tempDir.deleteOnExit()
-      val uri = mockk<Uri>()
-
-      every { resolver.getType(uri) } returns "image/png"
-      every { resolver.openInputStream(uri) } returns
-          ByteArrayInputStream("test image content".toByteArray())
-
-      viewModel.updateImage(uri, resolver, tempDir)
-
-      withTimeout(5_000.milliseconds) {
-        while (viewModel.uiState.value.errorMsg == null) delay(10.milliseconds)
-      }
-
-      assertEquals(R.string.create_event_error_save_failed, viewModel.uiState.value.errorMsg)
-    } finally {
-      unmockkStatic(MimeTypeMap::class)
-    }
-  }
-
-  /** Breaks if an error deleting the old image during replacement fails to set an error message. */
-  @Test
-  fun saveImageHandlesOldImageDeletionError() = runBlocking {
-    val mimeTypeMap = mockk<MimeTypeMap>()
-    mockkStatic(MimeTypeMap::class)
-    every { MimeTypeMap.getSingleton() } returns mimeTypeMap
-    every { mimeTypeMap.getExtensionFromMimeType("image/png") } returns "png"
-
-    try {
-      val imageStorage = RecordingImageStorage()
-      dataRepository =
-          DataRepositoryLocal(
-              mockk(),
-              eventsRepository = eventsRepository,
-              usersRepository = usersRepository,
-              imageStorage = imageStorage,
-          )
-      viewModel =
-          CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
-
-      val resolver = mockk<ContentResolver>()
-      val tempDir = File.createTempFile("test", "dir")
-      tempDir.delete()
-      tempDir.mkdir()
-      tempDir.deleteOnExit()
-      val uri = mockk<Uri>()
-
-      every { resolver.getType(uri) } returns "image/png"
-      every { resolver.openInputStream(uri) } returns
-          ByteArrayInputStream("test image content".toByteArray())
-
-      viewModel.updateImage(uri, resolver, tempDir)
-      withTimeout(5_000.milliseconds) {
-        while (viewModel.uiState.value.imageUrl == null) delay(10.milliseconds)
-      }
-
-      imageStorage.deleteError = RuntimeException("delete error")
-      viewModel.updateImage(uri, resolver, tempDir)
-      withTimeout(5_000.milliseconds) {
-        while (viewModel.uiState.value.errorMsg == null) delay(10.milliseconds)
-      }
-
-      assertEquals(R.string.create_event_error_save_failed, viewModel.uiState.value.errorMsg)
-    } finally {
-      unmockkStatic(MimeTypeMap::class)
-    }
-  }
-
-  /**
-   * Breaks if an exception during online image deletion on confirmation throws instead of being
-   * caught.
-   */
-  @Test
-  fun confirmDeleteImageHandlesExceptionGracefully() = runBlocking {
-    val mimeTypeMap = mockk<MimeTypeMap>()
-    mockkStatic(MimeTypeMap::class)
-    every { MimeTypeMap.getSingleton() } returns mimeTypeMap
-    every { mimeTypeMap.getExtensionFromMimeType("image/png") } returns "png"
-
-    try {
-      val imageStorage = RecordingImageStorage()
-      dataRepository =
-          DataRepositoryLocal(
-              mockk(),
-              eventsRepository = eventsRepository,
-              usersRepository = usersRepository,
-              imageStorage = imageStorage,
-          )
-      viewModel =
-          CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
-      val resolver = mockk<ContentResolver>()
-      val tempDir = File.createTempFile("test", "dir")
-      tempDir.delete()
-      tempDir.mkdir()
-      tempDir.deleteOnExit()
-      val uri = mockk<Uri>()
-
-      every { resolver.getType(uri) } returns "image/png"
-      every { resolver.openInputStream(uri) } returns
-          ByteArrayInputStream("test image content".toByteArray())
-
-      viewModel.updateImage(uri, resolver, tempDir)
-      withTimeout(5_000.milliseconds) {
-        while (viewModel.uiState.value.imageUrl == null) delay(10.milliseconds)
-      }
-
-      imageStorage.deleteError = RuntimeException("delete error")
-      viewModel.requestDeleteImage()
-      viewModel.confirmDeleteImage()
-
-      assertNull(viewModel.uiState.value.imageUrl)
-    } finally {
-      unmockkStatic(MimeTypeMap::class)
-    }
-  }
-
-  /** Breaks if an exception during image deletion on discard throws instead of being caught. */
-  @Test
-  fun confirmDiscardHandlesExceptionGracefully() = runBlocking {
-    val mimeTypeMap = mockk<MimeTypeMap>()
-    mockkStatic(MimeTypeMap::class)
-    every { MimeTypeMap.getSingleton() } returns mimeTypeMap
-    every { mimeTypeMap.getExtensionFromMimeType("image/png") } returns "png"
-
-    try {
-      val imageStorage = RecordingImageStorage()
-      dataRepository =
-          DataRepositoryLocal(
-              mockk(),
-              eventsRepository = eventsRepository,
-              usersRepository = usersRepository,
-              imageStorage = imageStorage,
-          )
-      viewModel =
-          CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
-      val resolver = mockk<ContentResolver>()
-      val tempDir = File.createTempFile("test", "dir")
-      tempDir.delete()
-      tempDir.mkdir()
-      tempDir.deleteOnExit()
-      val uri = mockk<Uri>()
-
-      every { resolver.getType(uri) } returns "image/png"
-      every { resolver.openInputStream(uri) } returns
-          ByteArrayInputStream("test image content".toByteArray())
-
-      viewModel.updateImage(uri, resolver, tempDir)
-      withTimeout(5_000.milliseconds) {
-        while (viewModel.uiState.value.imageUrl == null) delay(10.milliseconds)
-      }
-
-      imageStorage.deleteError = RuntimeException("delete error")
-      viewModel.confirmDiscard()
-
-      assertTrue(viewModel.uiState.value.isDiscarded)
-    } finally {
-      unmockkStatic(MimeTypeMap::class)
-    }
-  }
-
-  /**
-   * Breaks if an exception during image deletion on ViewModel clearance throws instead of being
-   * caught.
-   */
-  @Test
-  fun onClearedHandlesExceptionGracefully() {
-    runBlocking {
-      val mimeTypeMap = mockk<MimeTypeMap>()
-      mockkStatic(MimeTypeMap::class)
-      every { MimeTypeMap.getSingleton() } returns mimeTypeMap
-      every { mimeTypeMap.getExtensionFromMimeType("image/png") } returns "png"
-
-      try {
-        val imageStorage = RecordingImageStorage()
-        dataRepository =
-            DataRepositoryLocal(
-                mockk(),
-                eventsRepository = eventsRepository,
-                usersRepository = usersRepository,
-                imageStorage = imageStorage,
-            )
-        viewModel =
-            CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
-        val resolver = mockk<ContentResolver>()
-        val tempDir = File.createTempFile("test", "dir")
-        tempDir.delete()
-        tempDir.mkdir()
-        tempDir.deleteOnExit()
-        val uri = mockk<Uri>()
-
-        every { resolver.getType(uri) } returns "image/png"
-        every { resolver.openInputStream(uri) } returns
-            ByteArrayInputStream("test image content".toByteArray())
-
-        viewModel.updateImage(uri, resolver, tempDir)
-        withTimeout(5_000.milliseconds) {
-          while (viewModel.uiState.value.imageUrl == null) delay(10.milliseconds)
-        }
-
-        imageStorage.deleteError = RuntimeException("delete error")
-        val method = viewModel.javaClass.getDeclaredMethod("onCleared")
-        method.isAccessible = true
-        method.invoke(viewModel)
-      } finally {
-        unmockkStatic(MimeTypeMap::class)
-      }
-    }
-  }
-
-  /** Breaks if setting an image URL for testing fails to update the view model state. */
-  @Test
-  fun setImageUrlForTestingUpdatesState() {
-    viewModel.setImageUrlForTesting("https://example.com/custom.jpg")
-    assertEquals("https://example.com/custom.jpg", viewModel.uiState.value.imageUrl)
-  }
-
-  /** Breaks if updating an image with a null mime type fails to default to the jpg extension. */
-  @Test
-  fun updateImageWithNullMimeTypeUsesDefaultJpgExtension() = runBlocking {
-    val mimeTypeMap = mockk<MimeTypeMap>()
-    mockkStatic(MimeTypeMap::class)
-    every { MimeTypeMap.getSingleton() } returns mimeTypeMap
-    every { mimeTypeMap.getExtensionFromMimeType(any()) } returns null
-
-    try {
-      val imageStorage = RecordingImageStorage()
-      dataRepository =
-          DataRepositoryLocal(
-              mockk(),
-              eventsRepository = eventsRepository,
-              usersRepository = usersRepository,
-              imageStorage = imageStorage,
-          )
-      viewModel =
-          CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
-      val resolver = mockk<ContentResolver>()
-      val tempDir = File.createTempFile("test", "dir")
-      tempDir.delete()
-      tempDir.mkdir()
-      tempDir.deleteOnExit()
-      val uri = mockk<Uri>()
-
-      every { resolver.getType(uri) } returns null
-      every { resolver.openInputStream(uri) } returns
-          ByteArrayInputStream("test image content".toByteArray())
-
-      viewModel.updateImage(uri, resolver, tempDir)
-
-      withTimeout(5_000.milliseconds) {
-        while (viewModel.uiState.value.imageUrl == null) delay(10.milliseconds)
-      }
-
-      assertTrue(viewModel.uiState.value.imageUrl!!.endsWith(".jpg"))
-    } finally {
-      unmockkStatic(MimeTypeMap::class)
-    }
-  }
-
-  /**
-   * Breaks if a CancellationException during image update reading sets a save error instead of
-   * propagating.
-   */
-  @Test
-  fun updateImagePropagatesCancellationExceptionDuringRead() = runBlocking {
-    val mimeTypeMap = mockk<MimeTypeMap>()
-    mockkStatic(MimeTypeMap::class)
-    every { MimeTypeMap.getSingleton() } returns mimeTypeMap
-    every { mimeTypeMap.getExtensionFromMimeType("image/png") } returns "png"
-
-    try {
-      val resolver = mockk<ContentResolver>()
-      val tempDir = File.createTempFile("test", "dir")
-      tempDir.delete()
-      tempDir.mkdir()
-      tempDir.deleteOnExit()
-      val uri = mockk<Uri>()
-
-      every { resolver.getType(uri) } returns "image/png"
-      every { resolver.openInputStream(uri) } throws CancellationException("cancelled")
-
-      viewModel =
-          CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
-
-      viewModel.updateImage(uri, resolver, tempDir)
-
-      assertNull(viewModel.uiState.value.errorMsg)
-    } finally {
-      unmockkStatic(MimeTypeMap::class)
-    }
-  }
-
-  /**
-   * Breaks if a CancellationException during old image deletion sets a save error instead of
-   * propagating.
-   */
-  @Test
-  fun saveImagePropagatesCancellationDuringOldImageDeletion() = runBlocking {
-    val mimeTypeMap = mockk<MimeTypeMap>()
-    mockkStatic(MimeTypeMap::class)
-    every { MimeTypeMap.getSingleton() } returns mimeTypeMap
-    every { mimeTypeMap.getExtensionFromMimeType("image/png") } returns "png"
-
-    try {
-      val imageStorage = RecordingImageStorage()
-      dataRepository =
-          DataRepositoryLocal(
-              mockk(),
-              eventsRepository = eventsRepository,
-              usersRepository = usersRepository,
-              imageStorage = imageStorage,
-          )
-      viewModel =
-          CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
-      val resolver = mockk<ContentResolver>()
-      val tempDir = File.createTempFile("test", "dir")
-      tempDir.delete()
-      tempDir.mkdir()
-      tempDir.deleteOnExit()
-      val uri = mockk<Uri>()
-
-      every { resolver.getType(uri) } returns "image/png"
-      every { resolver.openInputStream(uri) } returns
-          ByteArrayInputStream("test image content".toByteArray())
-
-      viewModel.updateImage(uri, resolver, tempDir)
-      withTimeout(5_000.milliseconds) {
-        while (viewModel.uiState.value.imageUrl == null) delay(10.milliseconds)
-      }
-
-      imageStorage.deleteError = CancellationException("cancel delete")
-
-      viewModel.updateImage(uri, resolver, tempDir)
-
-      assertNull(viewModel.uiState.value.errorMsg)
-    } finally {
-      unmockkStatic(MimeTypeMap::class)
-    }
-  }
-
-  /** Breaks if attempting to delete a non-existent temporary file throws an exception. */
-  @Test
-  fun deleteTemporaryImageWithNonExistentFile() {
-    val nonExistentFile = File("non_existent_file_12345.tmp")
-    viewModel.deleteTemporaryImageForTesting(nonExistentFile)
-    assertFalse(nonExistentFile.exists())
-  }
-
-  /** Breaks if deleting an existing temporary file fails to remove it. */
-  @Test
-  fun deleteTemporaryImageWithSuccessfullyDeletableFile() {
-    val tempFile = File.createTempFile("temp", ".tmp")
-    assertTrue(tempFile.exists())
-    viewModel.deleteTemporaryImageForTesting(tempFile)
-    assertFalse(tempFile.exists())
-  }
-
-  /**
-   * Breaks if a file deletion failure during temporary cleanup fails to log a warning gracefully.
-   */
-  @Test
-  fun deleteTemporaryImageWithUndeletableFile() {
-    val mockFile = mockk<File>()
-    every { mockFile.exists() } returns true
-    every { mockFile.delete() } returns false
-    every { mockFile.path } returns "mock/path"
-
-    viewModel.deleteTemporaryImageForTesting(mockFile)
-    verify { mockFile.exists() }
-    verify { mockFile.delete() }
-  }
-
-  /**
-   * Breaks if clearing the ViewModel when an image is uploaded and event is not created does not
-   * delete the image.
-   */
-  @Test
-  fun onClearedDeletesUploadedImageWhenEventNotCreated() = runBlocking {
-    val mimeTypeMap = mockk<MimeTypeMap>()
-    mockkStatic(MimeTypeMap::class)
-    every { MimeTypeMap.getSingleton() } returns mimeTypeMap
-    every { mimeTypeMap.getExtensionFromMimeType("image/png") } returns "png"
-
-    try {
-      val imageStorage = RecordingImageStorage()
-      dataRepository =
-          DataRepositoryLocal(
-              mockk(),
-              eventsRepository = eventsRepository,
-              usersRepository = usersRepository,
-              imageStorage = imageStorage,
-          )
-      viewModel =
-          CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
-      val resolver = mockk<ContentResolver>()
-      val tempDir = File.createTempFile("test", "dir")
-      tempDir.delete()
-      tempDir.mkdir()
-      tempDir.deleteOnExit()
-      val uri = mockk<Uri>()
-
-      every { resolver.getType(uri) } returns "image/png"
-      every { resolver.openInputStream(uri) } returns
-          ByteArrayInputStream("test image content".toByteArray())
-
-      viewModel.updateImage(uri, resolver, tempDir)
-      withTimeout(5_000.milliseconds) {
-        while (viewModel.uiState.value.imageUrl == null) delay(10.milliseconds)
-      }
-
-      val uploadedUrl = viewModel.uiState.value.imageUrl
-      assertNotNull(uploadedUrl)
-
-      val method = viewModel.javaClass.getDeclaredMethod("onCleared")
-      method.isAccessible = true
-      method.invoke(viewModel)
-
-      withTimeout(5_000.milliseconds) {
-        while (imageStorage.deletedUrls.isEmpty()) delay(10.milliseconds)
-      }
-
-      assertEquals(listOf(uploadedUrl), imageStorage.deletedUrls)
-    } finally {
-      unmockkStatic(MimeTypeMap::class)
-    }
-  }
-
-  /**
-   * Breaks if updating an image when a previous image exists fails to delete the old image from
-   * storage.
-   */
-  @Test
-  fun updateImageReplacesOldImageAndDeletesPreviousFromStorage() = runBlocking {
-    val mimeTypeMap = mockk<MimeTypeMap>()
-    mockkStatic(MimeTypeMap::class)
-    every { MimeTypeMap.getSingleton() } returns mimeTypeMap
-    every { mimeTypeMap.getExtensionFromMimeType("image/png") } returns "png"
-
-    try {
-      val imageStorage = RecordingImageStorage()
-      dataRepository =
-          DataRepositoryLocal(
-              mockk(),
-              eventsRepository = eventsRepository,
-              usersRepository = usersRepository,
-              imageStorage = imageStorage,
-          )
-      viewModel =
-          CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
-      val resolver = mockk<ContentResolver>()
-      val tempDir = File.createTempFile("test", "dir")
-      tempDir.delete()
-      tempDir.mkdir()
-      tempDir.deleteOnExit()
-      val uri = mockk<Uri>()
-
-      every { resolver.getType(uri) } returns "image/png"
-      every { resolver.openInputStream(uri) } returns
-          ByteArrayInputStream("test image content".toByteArray())
-
-      viewModel.updateImage(uri, resolver, tempDir)
-      withTimeout(5_000.milliseconds) {
-        while (viewModel.uiState.value.imageUrl == null) delay(10.milliseconds)
-      }
-
-      val firstUploadedUrl = viewModel.uiState.value.imageUrl
-      assertNotNull(firstUploadedUrl)
-
-      viewModel.updateImage(uri, resolver, tempDir)
-      withTimeout(5_000.milliseconds) {
-        while (imageStorage.deletedUrls.isEmpty()) delay(10.milliseconds)
-      }
-
-      assertTrue(imageStorage.deletedUrls.contains(firstUploadedUrl))
-    } finally {
-      unmockkStatic(MimeTypeMap::class)
-    }
-  }
-
-  /**
-   * Breaks if image storage cleanup fails during a save error and does not log or set an error
-   * message gracefully.
-   */
-  @Test
-  @OptIn(ExperimentalCoroutinesApi::class)
-  fun saveImageCleanupHandlesExceptionWhenDeleteFails() = runBlocking {
-    val mimeTypeMap = mockk<MimeTypeMap>()
-    mockkStatic(MimeTypeMap::class)
-    every { MimeTypeMap.getSingleton() } returns mimeTypeMap
-    every { mimeTypeMap.getExtensionFromMimeType("image/png") } returns "png"
-
-    try {
-      val imageStorage = RecordingImageStorage()
-      imageStorage.deleteError = RuntimeException("cleanup delete error")
-      dataRepository =
-          DataRepositoryLocal(
-              mockk(),
-              eventsRepository = eventsRepository,
-              usersRepository = usersRepository,
-              imageStorage = imageStorage,
-          )
-      viewModel =
-          CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
-
-      val field = EventFormViewModel::class.java.getDeclaredField("_uiState")
-      field.isAccessible = true
-      @Suppress("UNCHECKED_CAST")
-      val originalStateFlow = field.get(viewModel) as MutableStateFlow<CreateEventUIState>
-
-      var updateCount = 0
-      @Suppress("OPT_IN_USAGE")
-      val failingStateFlow =
-          object : MutableStateFlow<CreateEventUIState> by originalStateFlow {
-            override fun compareAndSet(
-                expect: CreateEventUIState,
-                update: CreateEventUIState,
-            ): Boolean {
-              updateCount++
-              if (updateCount == 2) {
-                throw RuntimeException("Simulated updateState failure")
-              }
-              return originalStateFlow.compareAndSet(expect, update)
-            }
-          }
-      field.set(viewModel, failingStateFlow)
-
-      val resolver = mockk<ContentResolver>()
-      val tempDir = File.createTempFile("test", "dir")
-      tempDir.delete()
-      tempDir.mkdir()
-      tempDir.deleteOnExit()
-      val uri = mockk<Uri>()
-
-      every { resolver.getType(uri) } returns "image/png"
-      every { resolver.openInputStream(uri) } returns
-          ByteArrayInputStream("test image content".toByteArray())
-
-      viewModel.updateImage(uri, resolver, tempDir)
-
-      withTimeout(5_000.milliseconds) {
-        while (viewModel.uiState.value.errorMsg == null) delay(10.milliseconds)
-      }
-
-      assertEquals(R.string.create_event_error_save_failed, viewModel.uiState.value.errorMsg)
-    } finally {
-      unmockkStatic(MimeTypeMap::class)
-    }
-  }
-
-  /** Breaks if hasImage returns true when the image URL is null. */
-  @Test
-  fun hasImageReturnsFalseWhenImageUrlIsNull() {
-    val state = CreateEventUIState(imageUrl = null)
-    assertFalse(state.hasImage)
-  }
-
-  /** Breaks if hasImage returns true when the image URL is empty. */
-  @Test
-  fun hasImageReturnsFalseWhenImageUrlIsEmpty() {
-    val state = CreateEventUIState(imageUrl = "")
-    assertFalse(state.hasImage)
-  }
-
-  /** Breaks if hasImage returns false when a valid image URL is set. */
-  @Test
-  fun hasImageReturnsTrueWhenImageUrlIsPresent() {
-    val state = CreateEventUIState(imageUrl = "https://example.com/image.png")
-    assertTrue(state.hasImage)
-  }
-
-  /**
-   * Breaks if confirming discard attempts to delete an image when the image URL is null or blank.
-   */
-  @Test
-  fun confirmDiscardDoesNotDeleteImageWhenUrlIsNullOrBlank() = runBlocking {
-    val imageStorage = RecordingImageStorage()
-    dataRepository =
-        DataRepositoryLocal(
-            mockk(),
-            eventsRepository = eventsRepository,
-            usersRepository = usersRepository,
-            imageStorage = imageStorage,
-        )
-    viewModel =
-        CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
-
-    viewModel.setImageUrlForTesting(null)
-    viewModel.confirmDiscard()
-
-    viewModel.setImageUrlForTesting("   ")
-    viewModel.confirmDiscard()
-
-    assertTrue(imageStorage.deletedUrls.isEmpty())
-  }
-
-  /**
-   * Breaks if confirming discard attempts to delete an image when the event has already been
-   * created.
-   */
-  @Test
-  fun confirmDiscardDoesNotDeleteImageWhenEventAlreadyCreated() = runBlocking {
-    val imageStorage = RecordingImageStorage()
-    dataRepository =
-        DataRepositoryLocal(
-            mockk(),
-            eventsRepository = eventsRepository,
-            usersRepository = usersRepository,
-            imageStorage = imageStorage,
-        )
-    viewModel =
-        CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
-
-    viewModel.setImageUrlForTesting("https://example.com/image.png")
-    val stateField = EventFormViewModel::class.java.getDeclaredField("_uiState")
-    stateField.isAccessible = true
-    @Suppress("UNCHECKED_CAST")
-    val stateFlow = stateField.get(viewModel) as MutableStateFlow<CreateEventUIState>
-    stateFlow.value = stateFlow.value.copy(createdEventId = "event-123")
-
-    viewModel.confirmDiscard()
-
-    assertTrue(imageStorage.deletedUrls.isEmpty())
-  }
-
-  /**
-   * Breaks if clearing the ViewModel attempts to delete an image when the image URL is null or
-   * blank.
-   */
-  @Test
-  fun onClearedDoesNotDeleteImageWhenUrlIsNullOrBlank() = runBlocking {
-    val imageStorage = RecordingImageStorage()
-    dataRepository =
-        DataRepositoryLocal(
-            mockk(),
-            eventsRepository = eventsRepository,
-            usersRepository = usersRepository,
-            imageStorage = imageStorage,
-        )
-    viewModel =
-        CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
-
-    viewModel.setImageUrlForTesting(null)
-    val method = viewModel.javaClass.getDeclaredMethod("onCleared")
-    method.isAccessible = true
-    method.invoke(viewModel)
-
-    viewModel.setImageUrlForTesting("   ")
-    method.invoke(viewModel)
-
-    assertTrue(imageStorage.deletedUrls.isEmpty())
-  }
-
-  /**
-   * Breaks if clearing the ViewModel attempts to delete an image when the event has already been
-   * created.
-   */
-  @Test
-  fun onClearedDoesNotDeleteImageWhenEventIsCreated() = runBlocking {
-    val imageStorage = RecordingImageStorage()
-    dataRepository =
-        DataRepositoryLocal(
-            mockk(),
-            eventsRepository = eventsRepository,
-            usersRepository = usersRepository,
-            imageStorage = imageStorage,
-        )
-    viewModel =
-        CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
-
-    viewModel.setImageUrlForTesting("https://example.com/image.png")
-    val stateField = EventFormViewModel::class.java.getDeclaredField("_uiState")
-    stateField.isAccessible = true
-    @Suppress("UNCHECKED_CAST")
-    val stateFlow = stateField.get(viewModel) as MutableStateFlow<CreateEventUIState>
-    stateFlow.value = stateFlow.value.copy(createdEventId = "event-123")
-
-    val method = viewModel.javaClass.getDeclaredMethod("onCleared")
-    method.isAccessible = true
-    method.invoke(viewModel)
-
-    assertTrue(imageStorage.deletedUrls.isEmpty())
-  }
-
-  /**
-   * Breaks if confirming image deletion attempts to delete from storage when the image URL is null
-   * or empty.
-   */
-  @Test
-  fun confirmDeleteImageDoesNotDeleteFromStorageWhenUrlIsNullOrEmpty() = runBlocking {
-    val imageStorage = RecordingImageStorage()
-    dataRepository =
-        DataRepositoryLocal(
-            mockk(),
-            eventsRepository = eventsRepository,
-            usersRepository = usersRepository,
-            imageStorage = imageStorage,
-        )
-    viewModel =
-        CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
-
-    viewModel.setImageUrlForTesting(null)
-    viewModel.confirmDeleteImage()
-
-    viewModel.setImageUrlForTesting("")
-    viewModel.confirmDeleteImage()
-
-    assertTrue(imageStorage.deletedUrls.isEmpty())
-  }
-
-  /**
-   * Breaks if updating an image attempts to delete the old image when old and new image URLs are
-   * equal.
-   */
-  @Test
-  fun saveImageDoesNotDeleteOldImageWhenOldAndNewUrlsAreEqual() = runBlocking {
-    val mimeTypeMap = mockk<MimeTypeMap>()
-    mockkStatic(MimeTypeMap::class)
-    every { MimeTypeMap.getSingleton() } returns mimeTypeMap
-    every { mimeTypeMap.getExtensionFromMimeType("image/png") } returns "png"
-
-    try {
-      val imageStorage =
-          object : ImageStorage {
-            val deleted = mutableListOf<String>()
-
-            override fun getNewUid(): String = "uid"
-
-            override suspend fun upload(storedImage: StoredImage, subFolder: String): String =
-                "https://example.com/same_image.png"
-
-            override suspend fun delete(imageUrl: String) {
-              deleted.add(imageUrl)
-            }
-          }
-      dataRepository =
-          DataRepositoryLocal(
-              mockk(),
-              eventsRepository = eventsRepository,
-              usersRepository = usersRepository,
-              imageStorage = imageStorage,
-          )
-      viewModel =
-          CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
-
-      viewModel.setImageUrlForTesting("https://example.com/same_image.png")
-
-      val resolver = mockk<ContentResolver>()
-      val tempDir = File.createTempFile("test", "dir")
-      tempDir.delete()
-      tempDir.mkdir()
-      tempDir.deleteOnExit()
-      val uri = mockk<Uri>()
-
-      every { resolver.getType(uri) } returns "image/png"
-      every { resolver.openInputStream(uri) } returns
-          ByteArrayInputStream("test image content".toByteArray())
-
-      viewModel.updateImage(uri, resolver, tempDir)
-
-      withTimeout(5_000.milliseconds) {
-        while (viewModel.uiState.value.isSaving) delay(10.milliseconds)
-      }
-
-      assertTrue(imageStorage.deleted.isEmpty())
-    } finally {
-      unmockkStatic(MimeTypeMap::class)
-    }
-  }
-
-  /**
-   * Breaks if an exception during image save fails to clean up the newly uploaded image from
-   * storage.
-   */
-  @Test
-  fun saveImageDeletesNewlyUploadedImageWhenExceptionOccursAfterUpload() = runBlocking {
-    val mimeTypeMap = mockk<MimeTypeMap>()
-    mockkStatic(MimeTypeMap::class)
-    every { MimeTypeMap.getSingleton() } returns mimeTypeMap
-    every { mimeTypeMap.getExtensionFromMimeType("image/png") } returns "png"
-
-    try {
-      val imageStorage = RecordingImageStorage()
-      dataRepository =
-          DataRepositoryLocal(
-              mockk(),
-              eventsRepository = eventsRepository,
-              usersRepository = usersRepository,
-              imageStorage = imageStorage,
-          )
-      viewModel =
-          CreateEventViewModel(dataRepository, creator.uid, ioDispatcher = Dispatchers.Unconfined)
-
-      val field = EventFormViewModel::class.java.getDeclaredField("_uiState")
-      field.isAccessible = true
-      @Suppress("UNCHECKED_CAST")
-      val originalStateFlow = field.get(viewModel) as MutableStateFlow<CreateEventUIState>
-
-      var updateCount = 0
-      @Suppress("OPT_IN_USAGE")
-      val failingStateFlow =
-          object : MutableStateFlow<CreateEventUIState> by originalStateFlow {
-            override fun compareAndSet(
-                expect: CreateEventUIState,
-                update: CreateEventUIState,
-            ): Boolean {
-              updateCount++
-              if (updateCount == 2) {
-                throw RuntimeException("Simulated updateState failure after upload")
-              }
-              return originalStateFlow.compareAndSet(expect, update)
-            }
-          }
-      field.set(viewModel, failingStateFlow)
-
-      val resolver = mockk<ContentResolver>()
-      val tempDir = File.createTempFile("test", "dir")
-      tempDir.delete()
-      tempDir.mkdir()
-      tempDir.deleteOnExit()
-      val uri = mockk<Uri>()
-
-      every { resolver.getType(uri) } returns "image/png"
-      every { resolver.openInputStream(uri) } returns
-          ByteArrayInputStream("test image content".toByteArray())
-
-      viewModel.updateImage(uri, resolver, tempDir)
-
-      withTimeout(5_000.milliseconds) {
-        while (imageStorage.deletedUrls.isEmpty()) delay(10.milliseconds)
-      }
-
-      assertTrue(imageStorage.deletedUrls.isNotEmpty())
-      assertEquals(R.string.create_event_error_save_failed, viewModel.uiState.value.errorMsg)
-    } finally {
-      unmockkStatic(MimeTypeMap::class)
-    }
+  private fun createTempTestDir(): File {
+    val tempDir = File.createTempFile("test", "dir")
+    tempDir.delete()
+    tempDir.mkdir()
+    tempDir.deleteOnExit()
+    return tempDir
   }
 }
 
