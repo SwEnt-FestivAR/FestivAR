@@ -190,6 +190,9 @@ class ChatTest {
       assertInvalid("Invalid chat message data: '$name' is missing or invalid.") {
         ChatMessage.fromMap(stored - name)
       }
+      assertInvalid("Invalid chat message data: '$name' is missing or invalid.") {
+        ChatMessage.fromMap(stored + (name to " "))
+      }
     }
     assertInvalid("Invalid chat message data: bad sentAt 'yesterday'.") {
       ChatMessage.fromMap(stored + ("sentAt" to "yesterday"))

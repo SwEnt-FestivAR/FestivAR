@@ -131,22 +131,30 @@ data class ChatMessage(
       fun <T> field(name: String, value: T?): T =
           requireNotNull(value) { "Invalid chat message data: '$name' is missing or invalid." }
 
-      val messageId = field("messageId", map["messageId"] as? String)
-      val authorId = field("authorId", map["authorId"] as? String)
+      fun stringField(name: String): String {
+        val value = field(name, map[name] as? String)
+        require(value.isNotBlank()) { "Invalid chat message data: '$name' is missing or invalid." }
+        return value
+      }
+
+      val messageId = stringField("messageId")
+      val authorId = stringField("authorId")
+      val sentAtString = stringField("sentAt")
       val sentAt =
-          field("sentAt", map["sentAt"] as? String).let {
-            try {
-              ZonedDateTime.parse(it)
-            } catch (e: DateTimeParseException) {
-              throw IllegalArgumentException("Invalid chat message data: bad sentAt '$it'.", e)
-            }
+          try {
+            ZonedDateTime.parse(sentAtString)
+          } catch (e: DateTimeParseException) {
+            throw IllegalArgumentException(
+                "Invalid chat message data: bad sentAt '$sentAtString'.",
+                e,
+            )
           }
 
-      val type = field("type", map["type"] as? String)
+      val type = stringField("type")
       val content: MessageContent =
           when (type) {
             "TEXT" -> {
-              val text = field("text", map["text"] as? String)
+              val text = stringField("text")
               val imageUrls =
                   map["imageUrls"]?.let { value ->
                     requireNotNull((value as? List<*>)?.map { field("imageUrls", it as? String) }) {
