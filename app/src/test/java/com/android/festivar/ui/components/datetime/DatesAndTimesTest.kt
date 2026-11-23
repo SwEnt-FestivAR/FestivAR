@@ -35,7 +35,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 
-/** The shared row of a form: the Dates field and the Start and End times. */
+/** The shared component of a form: the Dates field and the Start and End times. */
 @RunWith(AndroidJUnit4::class)
 @Config(qualifiers = "en-rUS-w412dp-h915dp")
 class DatesAndTimesTest {
@@ -84,7 +84,7 @@ class DatesAndTimesTest {
     composeTestRule.onNode(cellOf(date)).performScrollTo().performClick()
   }
 
-  /** Breaks if the row fills in any day or time by itself: a new form starts empty. */
+  /** Breaks if the component fills in any day or time by itself: a new form starts empty. */
   @Test
   fun anEmptyRangeShowsEmptyFieldsAndNoError() {
     show(DateTimeRange())
@@ -127,7 +127,7 @@ class DatesAndTimesTest {
         .assertIsDisplayed()
   }
 
-  /** Breaks if choosing days in an empty row fills in a time, or loses a day. */
+  /** Breaks if choosing days in an empty component fills in a time, or loses a day. */
   @Test
   fun choosingDaysInAnEmptyRowSetsTheDaysAndLeavesTheTimesEmpty() {
     show(DateTimeRange())
@@ -139,7 +139,7 @@ class DatesAndTimesTest {
     assertEquals(DateTimeRange(saturday, null, saturday.plusDays(2), null), range)
   }
 
-  /** Breaks if choosing other days in a filled row drops the times the user already set. */
+  /** Breaks if choosing other days in a filled component drops the times the user already set. */
   @Test
   fun choosingOtherDaysKeepsTheTimes() {
     show(DateTimeRange(saturday, LocalTime.of(18, 0), saturday, LocalTime.of(20, 0)))
@@ -152,8 +152,8 @@ class DatesAndTimesTest {
   }
 
   /**
-   * Breaks if a row that is not enabled, for instance while its form is saving, can still open a
-   * picker. The row has a day, so its times would be enabled if the row were.
+   * Breaks if a component that is not enabled, for instance while its form is saving, can still
+   * open a picker. The component has a day, so its times would be enabled if the component were.
    */
   @Test
   fun aDisabledRowCannotBeEdited() {
@@ -229,7 +229,10 @@ class DatesAndTimesTest {
     composeTestRule.onNodeWithTag(tags.endTime).assertIsEnabled()
   }
 
-  /** Breaks if the error given to the row is not shown under the times with both fields marked. */
+  /**
+   * Breaks if the error given to the component is not shown under the times with both fields
+   * marked.
+   */
   @Test
   fun anErrorGivenToTheRowIsShownUnderBothTimes() {
     show(
@@ -241,7 +244,7 @@ class DatesAndTimesTest {
     assertTimesMarkedAsError(true)
   }
 
-  /** Breaks if the row finds an error of its own: the form decides which errors are shown. */
+  /** Breaks if the component finds an error of its own: the form decides which errors are shown. */
   @Test
   fun aRowWithoutAnErrorShowsNoneEvenWhenTheEndIsBeforeTheStart() {
     show(DateTimeRange(saturday, LocalTime.of(20, 0), saturday, LocalTime.of(18, 0)))
@@ -249,7 +252,9 @@ class DatesAndTimesTest {
     assertTimesMarkedAsError(false)
   }
 
-  /** Breaks if picking the start time moves the end time: the row adds no rule on the times. */
+  /**
+   * Breaks if picking the start time moves the end time: the component adds no rule on the times.
+   */
   @Test
   fun pickingTheStartTimeLeavesTheEndTime() {
     show(DateTimeRange(saturday, LocalTime.of(18, 0), saturday, LocalTime.of(20, 0)))
@@ -298,7 +303,9 @@ class DatesAndTimesTest {
     composeTestRule.onNodeWithTag(DateRangePickerTestTags.CLEAR_BUTTON).assertIsDisplayed()
   }
 
-  /** Breaks if the row ignores the tags of the screen, so its tests cannot find the fields. */
+  /**
+   * Breaks if the component ignores the tags of the screen, so its tests cannot find the fields.
+   */
   @Test
   fun theFieldsUseTheTagsOfTheScreen() {
     val own = DatesAndTimesFieldTags("a", "b", "c", "d")

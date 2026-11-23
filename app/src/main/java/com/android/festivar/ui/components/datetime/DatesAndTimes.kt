@@ -29,7 +29,7 @@ import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
 import java.time.LocalTime
 
-/** The default test tags of [FestivarDatesAndTimes], for a screen that has a single row. */
+/** The default test tags of [FestivarDatesAndTimes], for a screen that has a single component. */
 object DatesAndTimesTestTags {
   const val DATES_FIELD = "datesAndTimesDatesField"
   const val START_TIME_FIELD = "datesAndTimesStartTimeField"
@@ -39,7 +39,7 @@ object DatesAndTimesTestTags {
 
 /**
  * The test tags of the fields of [FestivarDatesAndTimes]. Each screen passes its own, so that its
- * tests can tell the rows apart; the defaults are those of [DatesAndTimesTestTags].
+ * tests can tell the components apart; the defaults are those of [DatesAndTimesTestTags].
  */
 data class DatesAndTimesFieldTags(
     val dates: String = DatesAndTimesTestTags.DATES_FIELD,
@@ -65,7 +65,7 @@ private enum class DatesAndTimesPicker {
  *
  * @param range The current days and times; the form owns it.
  * @param onRangeChange Called with the new range after a picker is confirmed.
- * @param modifier Applied to the whole row.
+ * @param modifier Applied to the whole component.
  * @param enabled Whether the fields react to taps; the forms turn it off while they are saving. The
  *   times also need a day, whatever [enabled] says.
  * @param timesError The error to show under the times, which also marks both time fields.
@@ -160,8 +160,8 @@ fun FestivarDatesAndTimes(
 private val PREVIEW_DAY: LocalDate = LocalDate.of(2026, 11, 21)
 
 /**
- * The dates and times alone, on the background and with the side margin of a screen. The row can be
- * tapped, but [timesError] stays as given: the form, not the row, computes it.
+ * The dates and times alone, on the background and with the side margin of a screen. The component
+ * can be tapped, but [timesError] stays as given: the form, not the component, computes it.
  */
 @Composable
 private fun DatesAndTimesPreview(
