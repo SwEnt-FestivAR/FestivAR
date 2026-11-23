@@ -26,7 +26,7 @@ import org.junit.runner.RunWith
 class FestivarMapTest {
   @get:Rule val composeTestRule = createComposeRule()
 
-  /** Breaks if the map is not on screen when it is given EPFL, as in S6. */
+  /** Breaks if the map is not on screen when it is given EPFL as its only location. */
   @Test
   fun map_withEpfl_isDisplayed() {
     composeTestRule.setContent {

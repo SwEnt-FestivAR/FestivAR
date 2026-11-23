@@ -43,7 +43,7 @@ class FestivarMapCameraTest {
     assertEquals(EPFL_LOCATION.longitude, target.longitude, 0.0)
   }
 
-  /** Breaks if the map looks anywhere but at its only location (the S6 case, with EPFL). */
+  /** Breaks if the map looks anywhere but at its only location, for example EPFL. */
   @Test
   fun cameraPosition_withOneLocation_looksAtIt() {
     val target = cameraPositionFor(listOf(EPFL_LOCATION)).target
