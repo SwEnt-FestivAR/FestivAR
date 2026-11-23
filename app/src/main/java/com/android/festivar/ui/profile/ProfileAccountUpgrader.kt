@@ -1,4 +1,5 @@
 // Co-authored by Copilot
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.festivar.ui.profile
 
 import androidx.compose.foundation.background
@@ -12,7 +13,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetState
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -24,7 +24,6 @@ import com.android.festivar.R
 import com.android.festivar.ui.authentication.login.EmailLoginForm
 import com.android.festivar.ui.authentication.login.LoginScreenTestTags
 import com.android.festivar.ui.authentication.login.SignInButton
-import com.android.festivar.ui.components.NoticeSnackbar
 import com.android.festivar.ui.components.OrSeparator
 
 @Composable
@@ -54,12 +53,10 @@ internal fun UpgradeBottomSheet(
           onTogglePasswordVisibility = onTogglePasswordVisibility,
           onGoogleUpgrade = onGoogleUpgrade,
       )
-      SnackbarHost(
-          hostState = snackbarHostState,
+      ProfileErrorSnackbar(
+          snackbarHostState = snackbarHostState,
           modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp),
-      ) { data ->
-        NoticeSnackbar(message = data.visuals.message, actionLabel = "", onAction = {})
-      }
+      )
     }
   }
 }
@@ -74,7 +71,11 @@ fun UpgradeBottomSheetContent(
     onGoogleUpgrade: () -> Unit,
 ) {
   Column(
-      modifier = Modifier.fillMaxWidth().padding(24.dp),
+      modifier =
+          Modifier.fillMaxWidth()
+              .verticalScroll(rememberScrollState())
+              .padding(24.dp)
+              .padding(horizontal = 12.dp, vertical = 12.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
   ) {
     EmailLoginForm(
@@ -86,24 +87,18 @@ fun UpgradeBottomSheetContent(
         onPasswordChange = onPasswordChange,
         onLoginClick = onLoginClick,
         onTogglePasswordVisibility = onTogglePasswordVisibility,
-        modifier =
-            Modifier.background(MaterialTheme.colorScheme.surface)
-                .padding(horizontal = 12.dp, vertical = 12.dp)
-                .verticalScroll(rememberScrollState()),
+        modifier = Modifier.background(MaterialTheme.colorScheme.surface),
         buttonText = stringResource(R.string.profile_upgrade),
     )
 
-    OrSeparator(Modifier.padding(horizontal = 12.dp))
+    OrSeparator(Modifier.padding(horizontal = 12.dp, vertical = 12.dp))
 
     SignInButton(
         onClick = onGoogleUpgrade,
         enabled = !uiState.isLoading,
         showGoogle = true,
         text = stringResource(R.string.login_continue_with_google),
-        modifier =
-            Modifier.testTag(LoginScreenTestTags.GOOGLE_BUTTON)
-                .padding(horizontal = 12.dp, vertical = 12.dp)
-                .verticalScroll(rememberScrollState()),
+        modifier = Modifier.testTag(LoginScreenTestTags.GOOGLE_BUTTON),
     )
   }
 }

@@ -3,11 +3,11 @@ package com.android.festivar.ui.event
 // Co-authored-by: Copilot App
 
 import androidx.lifecycle.ViewModel
-import com.android.festivar.ui.components.DateTimeField
-import com.android.festivar.ui.components.END_OF_DAY
 import com.android.festivar.ui.components.FieldError
-import com.android.festivar.ui.components.START_OF_DAY
-import com.android.festivar.ui.components.startDateError
+import com.android.festivar.ui.components.datetime.DateTimeField
+import com.android.festivar.ui.components.datetime.END_OF_DAY
+import com.android.festivar.ui.components.datetime.START_OF_DAY
+import com.android.festivar.ui.components.datetime.startDateError
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId

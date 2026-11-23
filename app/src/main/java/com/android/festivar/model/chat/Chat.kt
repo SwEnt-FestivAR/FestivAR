@@ -13,15 +13,19 @@ import java.time.format.DateTimeParseException
  * @property chatId Unique identifier of the chat.
  * @property eventId Unique identifier of the event.
  * @property messages Messages in chronological order.
+ * @property members IDs of users who belong to the chat.
  */
 data class Chat(
     val chatId: String,
     val eventId: String,
     val messages: List<ChatMessage> = emptyList(),
+    val members: List<String> = emptyList(),
 ) {
   init {
     require(chatId.isNotBlank()) { "The chatId cannot be empty." }
     require(eventId.isNotBlank()) { "The eventId cannot be empty." }
+    require(members.all { it.isNotBlank() }) { "The userId cannot be empty." }
+    require(members.distinct().size == members.size) { "A user is registered twice." }
     require(messages.map { it.messageId }.distinct().size == messages.size) {
       "A messageId is duplicated."
     }
@@ -31,19 +35,20 @@ data class Chat(
   }
 
   /**
-   * Adds [message] if its ID is unique and it is not older than the current last message.
+   * Inserts [message] by sent time if its ID is unique.
    *
-   * @throws IllegalArgumentException if the message ID is duplicated or if the message is older
-   *   than the last message.
+   * @throws IllegalArgumentException if the message ID is duplicated.
    */
-  fun addMessage(message: ChatMessage): Chat =
-      when {
-        messages.any { it.messageId == message.messageId } ->
-            throw IllegalArgumentException("A messageId is duplicated.")
-        messages.isNotEmpty() && message.sentAt.isBefore(messages.last().sentAt) ->
-            throw IllegalArgumentException("The message cannot be older than the last message.")
-        else -> copy(messages = messages + message)
-      }
+  fun addMessage(message: ChatMessage): Chat {
+    require(messages.none { it.messageId == message.messageId }) { "A messageId is duplicated." }
+
+    val insertAt =
+        messages
+            .indexOfFirst { it.sentAt.isAfter(message.sentAt) }
+            .let { index -> if (index == -1) messages.size else index }
+    val updatedMessages = messages.toMutableList().apply { add(insertAt, message) }
+    return copy(messages = updatedMessages)
+  }
 
   /**
    * Deletes the message identified by [messageId].
@@ -53,6 +58,27 @@ data class Chat(
   fun deleteMessage(messageId: String): Chat {
     require(messages.any { it.messageId == messageId }) { "The messageId is unknown." }
     return copy(messages = messages.filterNot { it.messageId == messageId })
+  }
+
+  /**
+   * Adds the user identified by [userId] to this chat.
+   *
+   * @throws IllegalArgumentException if [userId] is already a member or is blank.
+   */
+  fun addMember(userId: String): Chat {
+    require(userId.isNotBlank()) { "The userId cannot be empty." }
+    require(members.none { it == userId }) { "This user is already registered in the chat." }
+    return copy(members = members + userId)
+  }
+
+  /**
+   * Removes the member identified by [userId] from this chat.
+   *
+   * @throws IllegalArgumentException if [userId] is not a member.
+   */
+  fun removeMember(userId: String): Chat {
+    require(members.any { it == userId }) { "This user is not registered in the chat." }
+    return copy(members = members.filterNot { it == userId })
   }
 }
 
@@ -106,22 +132,30 @@ data class ChatMessage(
       fun <T> field(name: String, value: T?): T =
           requireNotNull(value) { "Invalid chat message data: '$name' is missing or invalid." }
 
-      val messageId = field("messageId", map["messageId"] as? String)
-      val authorId = field("authorId", map["authorId"] as? String)
+      fun stringField(name: String): String {
+        val value = field(name, map[name] as? String)
+        require(value.isNotBlank()) { "Invalid chat message data: '$name' is missing or invalid." }
+        return value
+      }
+
+      val messageId = stringField("messageId")
+      val authorId = stringField("authorId")
+      val sentAtString = stringField("sentAt")
       val sentAt =
-          field("sentAt", map["sentAt"] as? String).let {
-            try {
-              ZonedDateTime.parse(it)
-            } catch (e: DateTimeParseException) {
-              throw IllegalArgumentException("Invalid chat message data: bad sentAt '$it'.", e)
-            }
+          try {
+            ZonedDateTime.parse(sentAtString)
+          } catch (e: DateTimeParseException) {
+            throw IllegalArgumentException(
+                "Invalid chat message data: bad sentAt '$sentAtString'.",
+                e,
+            )
           }
 
-      val type = field("type", map["type"] as? String)
+      val type = stringField("type")
       val content: MessageContent =
           when (type) {
             "TEXT" -> {
-              val text = field("text", map["text"] as? String)
+              val text = stringField("text")
               val imageUrls =
                   map["imageUrls"]?.let { value ->
                     requireNotNull((value as? List<*>)?.map { field("imageUrls", it as? String) }) {
@@ -144,7 +178,12 @@ data class ChatMessage(
 
 /** Content carried by a chat message. */
 sealed interface MessageContent {
-  /** Text content with optional image URLs. */
+  /**
+   * Text content with optional image URLs.
+   *
+   * @property text Text displayed in the message.
+   * @property imageUrls URLs of images attached to the text message.
+   */
   data class Text(
       val text: String,
       val imageUrls: List<String> = emptyList(),
@@ -154,6 +193,10 @@ sealed interface MessageContent {
     }
   }
 
-  /** Voice content backed by an existing voice note. */
+  /**
+   * Voice content backed by an existing voice note.
+   *
+   * @property voiceNote Recorded voice note attached to the message.
+   */
   data class Voice(val voiceNote: VoiceNote) : MessageContent
 }

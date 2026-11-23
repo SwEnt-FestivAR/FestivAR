@@ -1,5 +1,6 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored by Copilot
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.festivar.ui.profile
 
 import android.app.Activity
@@ -51,6 +52,7 @@ import com.google.firebase.auth.FirebaseUser
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import java.util.concurrent.CancellationException
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -364,6 +366,10 @@ class ProfileScreenTest {
     assertEquals("user@example.com" to "password", authRepository.lastSignUpCredentials)
   }
 
+  /**
+   * Breaks if upgrading the account with Google shows an upgrade error message despite Google
+   * sign-in succeeding.
+   */
   @Test
   fun googleUpgradeButtonRequestsCredentialAndUpgradesAccount() {
     val credentialManager = mockk<CredentialManager>()
@@ -372,13 +378,14 @@ class ProfileScreenTest {
     coEvery { credentialManager.getCredential(any(), any<GetCredentialRequest>()) } returns response
     every { response.credential } returns credential
     var googleUpgradeCalled = false
+    val upgradedUser = mockk<FirebaseUser> { every { isAnonymous } returns false }
     val authRepository =
         object :
             FakeAuthRepository(
                 currentUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
             ) {
           override suspend fun signInWithGoogle(receivedCredential: Credential) =
-              Result.success(mockk<FirebaseUser>()).also { googleUpgradeCalled = true }
+              Result.success(upgradedUser).also { googleUpgradeCalled = true }
         }
     setProfile(authRepository = authRepository, credentialManager = credentialManager)
 
@@ -386,6 +393,57 @@ class ProfileScreenTest {
     composeTestRule.onNodeWithTag(LoginScreenTestTags.GOOGLE_BUTTON).performClick()
 
     composeTestRule.waitUntil(5_000) { googleUpgradeCalled }
+    composeTestRule
+        .onNodeWithText(string(R.string.profile_anon_upgrade_failed))
+        .assertDoesNotExist()
+  }
+
+  /**
+   * Breaks if upgrading with Google catches a CredentialManager exception and does not show an
+   * error snackbar.
+   */
+  @Test
+  fun googleUpgradeButtonFailureShowsErrorSnackbar() {
+    val credentialManager = mockk<CredentialManager>()
+    coEvery { credentialManager.getCredential(any(), any<GetCredentialRequest>()) } throws
+        RuntimeException("Credential fetch failed")
+
+    val authRepository =
+        object :
+            FakeAuthRepository(
+                currentUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+            ) {}
+    setProfile(authRepository = authRepository, credentialManager = credentialManager)
+
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.UPGRADE_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.GOOGLE_BUTTON).performClick()
+
+    composeTestRule.onNodeWithText(string(R.string.profile_anon_upgrade_failed)).assertIsDisplayed()
+  }
+
+  /**
+   * Breaks if upgrading with Google catches a CancellationException instead of rethrowing it,
+   * showing an error message when cancelled.
+   */
+  @Test
+  fun googleUpgradeButtonCancellationDoesNotShowErrorSnackbar() {
+    val credentialManager = mockk<CredentialManager>()
+    coEvery { credentialManager.getCredential(any(), any<GetCredentialRequest>()) } throws
+        CancellationException("User cancelled credential picker")
+
+    val authRepository =
+        object :
+            FakeAuthRepository(
+                currentUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+            ) {}
+    setProfile(authRepository = authRepository, credentialManager = credentialManager)
+
+    composeTestRule.onNodeWithTag(ProfileScreenTestTags.UPGRADE_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(LoginScreenTestTags.GOOGLE_BUTTON).performClick()
+
+    composeTestRule
+        .onNodeWithText(string(R.string.profile_anon_upgrade_failed))
+        .assertDoesNotExist()
   }
 
   /**
