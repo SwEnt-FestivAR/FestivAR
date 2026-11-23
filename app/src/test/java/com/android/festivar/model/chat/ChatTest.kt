@@ -13,6 +13,7 @@ import org.junit.Test
 class ChatTest {
   private val sentAt = ZonedDateTime.of(2026, 11, 20, 16, 0, 0, 0, ZoneId.of("Europe/Zurich"))
 
+  /** Creates a chat message fixture with configurable IDs, time, and content. */
   private fun message(
       messageId: String = "m1",
       authorId: String = "u1",
@@ -20,6 +21,7 @@ class ChatTest {
       content: MessageContent = MessageContent.Text("Hello"),
   ) = ChatMessage(messageId, authorId, time, content)
 
+  /** Creates a voice note fixture for voice message tests. */
   private fun voiceNote() =
       VoiceNote(
           id = "n1",
@@ -28,6 +30,7 @@ class ChatTest {
           createdAt = sentAt,
       )
 
+  /** Runs invalid-input code and verifies its exact exception message. */
   private fun assertInvalid(expectedMessage: String, block: () -> Unit) {
     val exception = assertThrows(IllegalArgumentException::class.java) { block() }
     assertEquals(expectedMessage, exception.message)
