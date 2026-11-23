@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -15,6 +16,8 @@ import com.android.festivar.R
 import com.android.festivar.model.map.geometry.EPFL_LOCATION
 import com.android.festivar.model.map.geometry.GeoPosition
 import com.android.festivar.ui.theme.AppTheme
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.CameraPositionState
 import org.json.JSONArray
 import org.junit.Assert.assertEquals
@@ -165,6 +168,31 @@ class FestivarMapCameraTest {
 
     assertEquals(47.0, state.position.target.latitude, 1e-9)
     assertEquals(7.0, state.position.target.longitude, 1e-9)
+  }
+
+  /**
+   * Breaks if the camera is put back on the barycenter each time the caller recomposes with the
+   * same locations in a new list, which undoes the user's panning.
+   */
+  @Test
+  fun cameraState_withTheSameLocationsInANewList_staysWhereTheUserLeftIt() {
+    var recompositions by mutableIntStateOf(0)
+    lateinit var state: CameraPositionState
+    composeTestRule.setContent {
+      // A new list with the same points at every recomposition, as `listOf(...)` in a caller.
+      state =
+          rememberFestivarCameraState(
+              listOf(GeoPosition(46.0 + recompositions * 0.0, 6.0), GeoPosition(48.0, 8.0))
+          )
+    }
+    composeTestRule.waitForIdle()
+    val movedByTheUser = CameraPosition.fromLatLngZoom(LatLng(10.0, 20.0), 5f)
+    composeTestRule.runOnIdle { state.position = movedByTheUser }
+
+    composeTestRule.runOnIdle { recompositions++ }
+    composeTestRule.waitForIdle()
+
+    assertEquals(movedByTheUser, state.position)
   }
 
   /** Breaks if the manifest asks for a location permission, which the map must never need. */
