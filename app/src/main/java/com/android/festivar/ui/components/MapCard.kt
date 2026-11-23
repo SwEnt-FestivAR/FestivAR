@@ -175,7 +175,7 @@ internal fun MapCardEmptyPreview() {
         subtitle = "Volunteers find a pinned task faster.",
         buttonLabel = "Pin it",
         onButtonClick = {},
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().padding(20.dp),
     )
   }
 }
@@ -185,7 +185,7 @@ internal fun MapCardEmptyPreview() {
 @Composable
 internal fun MapCardPreview() {
   AppTheme {
-    MapCard(listOf(EPFL_LOCATION), Modifier.fillMaxWidth().height(156.dp)) {
+    MapCard(listOf(EPFL_LOCATION), Modifier.fillMaxWidth().padding(20.dp).height(156.dp)) {
       Marker(
           state =
               rememberUpdatedMarkerState(
