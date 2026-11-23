@@ -52,7 +52,7 @@ class ChatRepositoryLocalTest {
 
     assertEquals(listOf(chat), repository.getAllChats())
     assertEquals(chat, repository.getChat(chat.chatId))
-    assertEquals(chat, repository.getChatForEvent(chat.eventId))
+    assertEquals(listOf(chat), repository.getChatsForEvent(chat.eventId))
   }
 
   /** Breaks if duplicate chat IDs or missing chats are accepted. */
@@ -66,9 +66,7 @@ class ChatRepositoryLocalTest {
     assertThrows(NoSuchElementException::class.java) {
       kotlinx.coroutines.runBlocking { repository.getChat("missing") }
     }
-    assertThrows(NoSuchElementException::class.java) {
-      kotlinx.coroutines.runBlocking { repository.getChatForEvent("missing") }
-    }
+    assertEquals(emptyList<Chat>(), repository.getChatsForEvent("missing"))
   }
 
   /** Breaks if editChat overwrites a chat or does not preserve the original identifier. */
@@ -131,6 +129,45 @@ class ChatRepositoryLocalTest {
     }
     assertThrows(IllegalArgumentException::class.java) {
       kotlinx.coroutines.runBlocking { repository.deleteMessage(chat.chatId, "missing") }
+    }
+  }
+
+  /** Breaks if event lookup returns only one chat or excludes a second chat from the event. */
+  @Test
+  fun getChatsForEventReturnsEveryLinkedChat() = runTest {
+    val secondChat = Chat("c3", "e1")
+    repository.addChat(chat)
+    repository.addChat(secondChat)
+
+    assertEquals(listOf(chat, secondChat), repository.getChatsForEvent("e1"))
+  }
+
+  /** Breaks if member operations do not update membership immutably or reject invalid users. */
+  @Test
+  fun addAndRemoveMemberSucceedAndValidate() = runTest {
+    repository.addChat(chat.copy(members = listOf("u1")))
+
+    repository.addMember(chat.chatId, "u2")
+    assertEquals(listOf("u1", "u2"), repository.getChat(chat.chatId).members)
+
+    repository.removeMember(chat.chatId, "u1")
+    assertEquals(listOf("u2"), repository.getChat(chat.chatId).members)
+    assertThrows(IllegalArgumentException::class.java) {
+      kotlinx.coroutines.runBlocking { repository.addMember(chat.chatId, "u2") }
+    }
+    assertThrows(IllegalArgumentException::class.java) {
+      kotlinx.coroutines.runBlocking { repository.removeMember(chat.chatId, "missing") }
+    }
+  }
+
+  /** Breaks if member operations accept changes for unknown chats. */
+  @Test
+  fun memberOperationsRejectUnknownChats() = runTest {
+    assertThrows(NoSuchElementException::class.java) {
+      kotlinx.coroutines.runBlocking { repository.addMember("missing", "u1") }
+    }
+    assertThrows(NoSuchElementException::class.java) {
+      kotlinx.coroutines.runBlocking { repository.removeMember("missing", "u1") }
     }
   }
 }

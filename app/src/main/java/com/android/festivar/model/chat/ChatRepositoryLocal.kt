@@ -26,9 +26,9 @@ class ChatRepositoryLocal(initialChats: List<Chat> = emptyList()) : ChatReposito
       chats.find { it.chatId == chatId }
           ?: throw NoSuchElementException("ChatRepositoryLocal: Chat $chatId not found")
 
-  override suspend fun getChatForEvent(eventId: String): Chat =
-      chats.find { it.eventId == eventId }
-          ?: throw NoSuchElementException("ChatRepositoryLocal: Chat for event $eventId not found")
+  override suspend fun getChatsForEvent(eventId: String): List<Chat> = chats.filter {
+    it.eventId == eventId
+  }
 
   override suspend fun addChat(chat: Chat) {
     require(chats.none { it.chatId == chat.chatId }) {
@@ -68,5 +68,15 @@ class ChatRepositoryLocal(initialChats: List<Chat> = emptyList()) : ChatReposito
   override suspend fun deleteMessage(chatId: String, messageId: String) {
     val chat = getChat(chatId)
     editChat(chatId, chat.deleteMessage(messageId))
+  }
+
+  override suspend fun addMember(chatId: String, userId: String) {
+    val chat = getChat(chatId)
+    editChat(chatId, chat.addMember(userId))
+  }
+
+  override suspend fun removeMember(chatId: String, userId: String) {
+    val chat = getChat(chatId)
+    editChat(chatId, chat.removeMember(userId))
   }
 }
