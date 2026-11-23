@@ -177,7 +177,12 @@ data class ChatMessage(
 
 /** Content carried by a chat message. */
 sealed interface MessageContent {
-  /** Text content with optional image URLs. */
+  /**
+   * Text content with optional image URLs.
+   *
+   * @property text Text displayed in the message.
+   * @property imageUrls URLs of images attached to the text message.
+   */
   data class Text(
       val text: String,
       val imageUrls: List<String> = emptyList(),
@@ -187,6 +192,10 @@ sealed interface MessageContent {
     }
   }
 
-  /** Voice content backed by an existing voice note. */
+  /**
+   * Voice content backed by an existing voice note.
+   *
+   * @property voiceNote Recorded voice note attached to the message.
+   */
   data class Voice(val voiceNote: VoiceNote) : MessageContent
 }
