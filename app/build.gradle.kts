@@ -170,6 +170,8 @@ dependencies {
   implementation(libs.androidx.navigation.compose)
   implementation(libs.maps.compose)
   implementation(libs.play.services.maps)
+  implementation(libs.arsceneview)
+  implementation(libs.arcore)
   implementation(libs.credentials)
   implementation(libs.credentials.play.services.auth)
   implementation(libs.firebase.firestore)
