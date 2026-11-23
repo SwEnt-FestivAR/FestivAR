@@ -44,8 +44,13 @@ private const val ARCORE_CHECK_DELAY_MS = 200L
  *
  * It holds nothing but the call to ARCore, because ARCore cannot run in a unit test: the waiting
  * and the translation live in [pollArCore], which is tested on its own.
+ *
+ * It keeps the application context only, so building it from a screen does not keep that screen
+ * alive.
  */
-class ArCoreSupport(private val context: Context) : ArSupport {
+class ArCoreSupport(context: Context) : ArSupport {
+  private val context = context.applicationContext
+
   override suspend fun check(): ArAvailability = pollArCore {
     ArCoreApk.getInstance().checkAvailability(context)
   }
