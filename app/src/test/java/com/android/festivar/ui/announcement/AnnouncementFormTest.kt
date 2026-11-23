@@ -40,7 +40,9 @@ class AnnouncementFormTest {
     assertEquals(expected(before), state.value)
   }
 
-  // Breaks if an error does not wait for its field to be edited, so a new form opens with errors.
+  /**
+   * Breaks if an error does not wait for its field to be edited, so a new form opens with errors.
+   */
   @Test
   fun anUntouchedEmptyFormShowsNoError() {
     val form = AnnouncementFormState()
@@ -49,8 +51,10 @@ class AnnouncementFormTest {
     assertNull(form.contentError)
   }
 
-  // Breaks if titleError reads the content or its edited flag, counts whitespace as a title, or
-  // reports the content error.
+  /**
+   * Breaks if titleError reads the content or its edited flag, counts whitespace as a title, or
+   * reports the content error.
+   */
   @Test
   fun anEditedBlankTitleShowsTheTitleErrorOnly() {
     val form = AnnouncementFormState(title = "  ", titleEdited = true)
@@ -60,8 +64,10 @@ class AnnouncementFormTest {
     assertNull(form.copy(title = "Gates open").titleError)
   }
 
-  // Breaks if contentError reads the title or its edited flag, counts whitespace as a content, or
-  // reports the title error.
+  /**
+   * Breaks if contentError reads the title or its edited flag, counts whitespace as a content, or
+   * reports the title error.
+   */
   @Test
   fun anEditedBlankContentShowsTheContentErrorOnly() {
     val form = AnnouncementFormState(content = " \n", contentEdited = true)
@@ -71,7 +77,7 @@ class AnnouncementFormTest {
     assertNull(form.copy(content = "The north gate opens at 16:00.").contentError)
   }
 
-  // Breaks if isValid accepts a blank title or a blank content, or depends on the edited flags.
+  /** Breaks if isValid accepts a blank title or a blank content, or depends on the edited flags. */
   @Test
   fun isValidNeedsBothTheTitleAndTheContentNotBlank() {
     val filled = AnnouncementFormState(title = "Gates open", content = "At 16:00.")
@@ -81,8 +87,10 @@ class AnnouncementFormTest {
     assertFalse(filled.copy(content = " ").isValid)
   }
 
-  // Breaks if a trimmed value keeps the spaces or line breaks around the text, or removes the ones
-  // inside it.
+  /**
+   * Breaks if a trimmed value keeps the spaces or line breaks around the text, or removes the ones
+   * inside it.
+   */
   @Test
   fun theTrimmedValuesDropOnlyTheSpacesAroundTheText() {
     val form = AnnouncementFormState(title = "  Gates  open \n", content = "\tAt 16:00. \n")
@@ -91,8 +99,10 @@ class AnnouncementFormTest {
     assertEquals("At 16:00.", form.trimmedContent)
   }
 
-  // Breaks if toAnnouncement saves the untrimmed texts, drops the priority, or swaps the id, the
-  // author or the time.
+  /**
+   * Breaks if toAnnouncement saves the untrimmed texts, drops the priority, or swaps the id, the
+   * author or the time.
+   */
   @Test
   fun toAnnouncementBuildsTheAnnouncementFromTheTrimmedForm() {
     val form =
@@ -115,7 +125,7 @@ class AnnouncementFormTest {
     )
   }
 
-  // Breaks if toAnnouncement builds an announcement from a form that cannot be saved.
+  /** Breaks if toAnnouncement builds an announcement from a form that cannot be saved. */
   @Test
   fun toAnnouncementRejectsABlankTitleOrContent() {
     val filled = AnnouncementFormState(title = "Gates open", content = "At 16:00.")
@@ -128,14 +138,16 @@ class AnnouncementFormTest {
     }
   }
 
-  // Breaks if matches compares the untrimmed texts, ignores one of the three fields, or compares a
-  // field the form does not set (author, time zone, links, pin).
+  /**
+   * Breaks if matches compares the untrimmed texts of the form or of the stored copy, ignores one
+   * of the three fields, or compares a field the form does not set (author, time zone, links, pin).
+   */
   @Test
   fun matchesComparesOnlyTheFieldsTheFormSets() {
     val stored =
         Announcement(
             announcementId = "a1",
-            title = "Gates open",
+            title = "Gates open ",
             authorId = "someone-else",
             content = "At 16:00.",
             priority = AnnouncementPriority.URGENT,
@@ -156,22 +168,26 @@ class AnnouncementFormTest {
     assertFalse(form.copy(priority = AnnouncementPriority.INFO).matches(stored))
   }
 
-  // Breaks if updateTitle drops the text, does not mark the title as edited, or marks the content.
+  /**
+   * Breaks if updateTitle drops the text, does not mark the title as edited, or marks the content.
+   */
   @Test
   fun updateTitleSetsTheTitleAndMarksOnlyItAsEdited() =
       assertOnly({ it.copy(title = "Gates open", titleEdited = true) }) {
         editing.updateTitle("Gates open")
       }
 
-  // Breaks if updateContent drops the text, does not mark the content as edited, or marks the
-  // title.
+  /**
+   * Breaks if updateContent drops the text, does not mark the content as edited, or marks the
+   * title.
+   */
   @Test
   fun updateContentSetsTheContentAndMarksOnlyItAsEdited() =
       assertOnly({ it.copy(content = "At 16:00.", contentEdited = true) }) {
         editing.updateContent("At 16:00.")
       }
 
-  // Breaks if updatePriority ignores the priority or marks a text field as edited.
+  /** Breaks if updatePriority ignores the priority or marks a text field as edited. */
   @Test
   fun updatePriorityChangesOnlyThePriority() =
       assertOnly({ it.copy(priority = AnnouncementPriority.URGENT) }) {

@@ -30,6 +30,8 @@ mapsCompose = "9.0.1"
 playServicesMaps = "20.0.0"
 secretsGradlePlugin = "2.0.1"
 okhttp = "5.5.0"
+arsceneview = "4.70.0"
+arcore = "1.57.0"
 [libraries]
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -74,6 +76,8 @@ kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-cor
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 maps-compose = { group = "com.google.maps.android", name = "maps-compose", version.ref = "mapsCompose" }
 play-services-maps = { group = "com.google.android.gms", name = "play-services-maps", version.ref = "playServicesMaps" }
+arsceneview = { group = "io.github.sceneview", name = "arsceneview", version.ref = "arsceneview" }
+arcore = { group = "com.google.ar", name = "core", version.ref = "arcore" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

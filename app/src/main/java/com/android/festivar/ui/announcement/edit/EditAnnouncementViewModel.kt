@@ -49,15 +49,11 @@ data class EditAnnouncementUiState(
     @StringRes val errorMsg: Int? = null,
 ) {
   /**
-   * Whether the form differs from [announcement] on a field the user can edit. Spaces around the
-   * texts are not a change, since the save trims them.
+   * Whether the form differs from [announcement] on a field the user can edit (see
+   * [AnnouncementFormState.matches]).
    */
   val hasChanges: Boolean
-    get() =
-        announcement != null &&
-            (form.trimmedTitle != announcement.title.trim() ||
-                form.trimmedContent != announcement.content.trim() ||
-                form.priority != announcement.priority)
+    get() = announcement != null && !form.matches(announcement)
 
   /** Whether going back must ask first: a saved edit has nothing left to lose. */
   val needsDiscardConfirmation: Boolean

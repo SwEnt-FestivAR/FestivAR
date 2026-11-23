@@ -13,6 +13,7 @@ import org.junit.Test
 class ChatTest {
   private val sentAt = ZonedDateTime.of(2026, 11, 20, 16, 0, 0, 0, ZoneId.of("Europe/Zurich"))
 
+  /** Creates a chat message fixture with configurable IDs, time, and content. */
   private fun message(
       messageId: String = "m1",
       authorId: String = "u1",
@@ -20,6 +21,7 @@ class ChatTest {
       content: MessageContent = MessageContent.Text("Hello"),
   ) = ChatMessage(messageId, authorId, time, content)
 
+  /** Creates a voice note fixture for voice message tests. */
   private fun voiceNote() =
       VoiceNote(
           id = "n1",
@@ -28,6 +30,7 @@ class ChatTest {
           createdAt = sentAt,
       )
 
+  /** Runs invalid-input code and verifies its exact exception message. */
   private fun assertInvalid(expectedMessage: String, block: () -> Unit) {
     val exception = assertThrows(IllegalArgumentException::class.java) { block() }
     assertEquals(expectedMessage, exception.message)
@@ -37,6 +40,7 @@ class ChatTest {
   @Test
   fun chatCreationUsesDefaultsAndRejectsBlankIds() {
     assertTrue(Chat("c1", "e1").messages.isEmpty())
+    assertTrue(Chat("c1", "e1").members.isEmpty())
     assertInvalid("The chatId cannot be empty.") { Chat(" ", "e1") }
     assertInvalid("The eventId cannot be empty.") { Chat("c1", "") }
   }
@@ -45,6 +49,29 @@ class ChatTest {
   @Test
   fun chatRejectsDuplicateMessageIds() {
     assertInvalid("A messageId is duplicated.") { Chat("c1", "e1", listOf(message(), message())) }
+  }
+
+  /** Breaks if Chat accepts duplicate users or member changes are not immutable. */
+  @Test
+  fun chatMemberValidationAndChanges() {
+    val alice = "u1"
+    val bob = "u2"
+    val chat = Chat("c1", "e1", members = listOf(alice))
+
+    assertInvalid("A user is registered twice.") {
+      Chat("c1", "e1", members = listOf(alice, alice))
+    }
+    assertInvalid("The userId cannot be empty.") { Chat("c1", "e1", members = listOf(" ")) }
+    assertInvalid("The userId cannot be empty.") { chat.addMember("") }
+    assertInvalid("This user is already registered in the chat.") { chat.addMember(alice) }
+    assertInvalid("This user is not registered in the chat.") { chat.removeMember("u2") }
+
+    assertEquals(listOf(alice, bob), chat.addMember(bob).members)
+    assertEquals(
+        emptyList<String>(),
+        chat.addMember(bob).removeMember("u1").removeMember("u2").members,
+    )
+    assertEquals(listOf(alice), chat.members)
   }
 
   /** Breaks if Chat accepts messages that are not ordered oldest first. */
@@ -72,18 +99,20 @@ class ChatTest {
     assertInvalid("The text cannot be empty.") { MessageContent.Text(" \t") }
   }
 
-  /** Breaks if addMessage accepts duplicate IDs or appends an older message. */
+  /**
+   * Breaks if addMessage accepts duplicate IDs or an older message is not inserted chronologically.
+   */
   @Test
-  fun addMessageRejectsDuplicateOrOlderMessage() {
+  fun addMessageRejectsDuplicateAndInsertsOlderMessage() {
     val chat = Chat("c1", "e1", listOf(message()))
 
     assertInvalid("A messageId is duplicated.") { chat.addMessage(message()) }
-    assertInvalid("The message cannot be older than the last message.") {
-      chat.addMessage(message("m2", time = sentAt.minusNanos(1)))
-    }
+
+    val older = message("m0", time = sentAt.minusNanos(1))
+    assertEquals(listOf(older, message()), chat.addMessage(older).messages)
   }
 
-  /** Breaks if addMessage changes the original or does not preserve chronological order. */
+  /** Breaks if addMessage changes the original or appends a later message without order. */
   @Test
   fun addMessageAddsAtEndWithoutChangingOriginal() {
     val chat = Chat("c1", "e1", listOf(message()))
@@ -93,6 +122,17 @@ class ChatTest {
 
     assertEquals(listOf(message(), later), result.messages)
     assertEquals(listOf(message()), chat.messages)
+  }
+
+  /** Breaks if addMessage appends a message that belongs between existing messages. */
+  @Test
+  fun addMessageInsertsMessageInMiddleBySentTime() {
+    val first = message("m1", time = sentAt)
+    val third = message("m3", time = sentAt.plusHours(2))
+    val second = message("m2", time = sentAt.plusHours(1))
+    val chat = Chat("c1", "e1", listOf(first, third))
+
+    assertEquals(listOf(first, second, third), chat.addMessage(second).messages)
   }
 
   /** Breaks if deleteMessage accepts an unknown ID or changes the original chat. */
@@ -165,6 +205,9 @@ class ChatTest {
     required.forEach { name ->
       assertInvalid("Invalid chat message data: '$name' is missing or invalid.") {
         ChatMessage.fromMap(stored - name)
+      }
+      assertInvalid("Invalid chat message data: '$name' is missing or invalid.") {
+        ChatMessage.fromMap(stored + (name to " "))
       }
     }
     assertInvalid("Invalid chat message data: bad sentAt 'yesterday'.") {
