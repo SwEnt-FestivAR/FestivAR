@@ -27,10 +27,9 @@ interface ChatRepository {
    * Retrieves the chat belonging to an event.
    *
    * @param eventId The unique identifier of the event.
-   * @return The chat for the event.
-   * @throws NoSuchElementException if the event has no chat.
+   * @return The chats for the event.
    */
-  suspend fun getChatForEvent(eventId: String): Chat
+  suspend fun getChatsForEvent(eventId: String): List<Chat>
 
   /**
    * Adds a new chat to the repository.
@@ -59,12 +58,11 @@ interface ChatRepository {
   suspend fun deleteChat(chatId: String)
 
   /**
-   * Appends a message to a chat.
+   * Adds a message to a chat.
    *
    * @param chatId The unique identifier of the chat.
    * @param message The message to add. Its [ChatMessage.messageId] must be unique in the chat.
-   * @throws IllegalArgumentException if the message ID is duplicated or the message is out of
-   *   chronological order.
+   * @throws IllegalArgumentException if the message ID is duplicated.
    * @throws NoSuchElementException if the chat is not found.
    */
   suspend fun addMessage(chatId: String, message: ChatMessage)
@@ -78,4 +76,24 @@ interface ChatRepository {
    * @throws NoSuchElementException if the chat is not found.
    */
   suspend fun deleteMessage(chatId: String, messageId: String)
+
+  /**
+   * Adds a member to a chat.
+   *
+   * @param chatId The unique identifier of the chat.
+   * @param userId The unique identifier of the user to add.
+   * @throws IllegalArgumentException if the user is already a member or has a blank identifier.
+   * @throws NoSuchElementException if the chat is not found.
+   */
+  suspend fun addMember(chatId: String, userId: String)
+
+  /**
+   * Removes a member from a chat.
+   *
+   * @param chatId The unique identifier of the chat.
+   * @param userId The unique identifier of the user to remove.
+   * @throws IllegalArgumentException if the user is not a member.
+   * @throws NoSuchElementException if the chat is not found.
+   */
+  suspend fun removeMember(chatId: String, userId: String)
 }
