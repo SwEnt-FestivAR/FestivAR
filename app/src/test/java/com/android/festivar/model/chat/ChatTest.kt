@@ -1,7 +1,6 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.model.chat
 
-import com.android.festivar.model.user.User
 import com.android.festivar.model.voicenote.VoiceNote
 import java.time.Duration
 import java.time.ZoneId
@@ -52,19 +51,21 @@ class ChatTest {
   /** Breaks if Chat accepts duplicate users or member changes are not immutable. */
   @Test
   fun chatMemberValidationAndChanges() {
-    val alice = User("u1")
-    val bob = User("u2")
+    val alice = "u1"
+    val bob = "u2"
     val chat = Chat("c1", "e1", members = listOf(alice))
 
     assertInvalid("A user is registered twice.") {
-      Chat("c1", "e1", members = listOf(alice, alice.copy(name = "Alice")))
+      Chat("c1", "e1", members = listOf(alice, alice))
     }
+    assertInvalid("The userId cannot be empty.") { Chat("c1", "e1", members = listOf(" ")) }
+    assertInvalid("The userId cannot be empty.") { chat.addMember("") }
     assertInvalid("This user is already registered in the chat.") { chat.addMember(alice) }
     assertInvalid("This user is not registered in the chat.") { chat.removeMember("u2") }
 
     assertEquals(listOf(alice, bob), chat.addMember(bob).members)
     assertEquals(
-        emptyList<User>(),
+        emptyList<String>(),
         chat.addMember(bob).removeMember("u1").removeMember("u2").members,
     )
     assertEquals(listOf(alice), chat.members)

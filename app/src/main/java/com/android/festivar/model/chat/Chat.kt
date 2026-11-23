@@ -1,7 +1,6 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.model.chat
 
-import com.android.festivar.model.user.User
 import com.android.festivar.model.voicenote.VoiceNote
 import java.time.ZonedDateTime
 import java.time.format.DateTimeParseException
@@ -14,18 +13,19 @@ import java.time.format.DateTimeParseException
  * @property chatId Unique identifier of the chat.
  * @property eventId Unique identifier of the event.
  * @property messages Messages in chronological order.
- * @property members Users who belong to the chat.
+ * @property members IDs of users who belong to the chat.
  */
 data class Chat(
     val chatId: String,
     val eventId: String,
     val messages: List<ChatMessage> = emptyList(),
-    val members: List<User> = emptyList(),
+    val members: List<String> = emptyList(),
 ) {
   init {
     require(chatId.isNotBlank()) { "The chatId cannot be empty." }
     require(eventId.isNotBlank()) { "The eventId cannot be empty." }
-    require(members.distinctBy { it.uid }.size == members.size) { "A user is registered twice." }
+    require(members.all { it.isNotBlank() }) { "The userId cannot be empty." }
+    require(members.distinct().size == members.size) { "A user is registered twice." }
     require(messages.map { it.messageId }.distinct().size == messages.size) {
       "A messageId is duplicated."
     }
@@ -60,13 +60,14 @@ data class Chat(
   }
 
   /**
-   * Adds [user] to this chat.
+   * Adds the user identified by [userId] to this chat.
    *
-   * @throws IllegalArgumentException if [user] is already a member.
+   * @throws IllegalArgumentException if [userId] is already a member or is blank.
    */
-  fun addMember(user: User): Chat {
-    require(members.none { it.uid == user.uid }) { "This user is already registered in the chat." }
-    return copy(members = members + user)
+  fun addMember(userId: String): Chat {
+    require(userId.isNotBlank()) { "The userId cannot be empty." }
+    require(members.none { it == userId }) { "This user is already registered in the chat." }
+    return copy(members = members + userId)
   }
 
   /**
@@ -75,8 +76,8 @@ data class Chat(
    * @throws IllegalArgumentException if [userId] is not a member.
    */
   fun removeMember(userId: String): Chat {
-    require(members.any { it.uid == userId }) { "This user is not registered in the chat." }
-    return copy(members = members.filterNot { it.uid == userId })
+    require(members.any { it == userId }) { "This user is not registered in the chat." }
+    return copy(members = members.filterNot { it == userId })
   }
 }
 
