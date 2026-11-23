@@ -4,6 +4,10 @@ package com.android.festivar.model.ar
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import io.mockk.confirmVerified
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -30,5 +34,21 @@ class ArCoreSupportOnDeviceTest {
         "expected UNKNOWN or UNSUPPORTED but was $answer",
         answer == ArAvailability.UNKNOWN || answer == ArAvailability.UNSUPPORTED,
     )
+  }
+
+  /**
+   * Breaks if the check hands ARCore the context it was built with instead of the application
+   * context: built from a screen, it would keep that screen alive after it is closed.
+   */
+  @Test
+  fun theCheckOnlyTakesTheApplicationContextOfTheOneItIsGiven() = runTest {
+    val application = ApplicationProvider.getApplicationContext<Context>()
+    val screen = mockk<Context>()
+    every { screen.applicationContext } returns application
+
+    ArCoreSupport(screen).check()
+
+    verify(exactly = 1) { screen.applicationContext }
+    confirmVerified(screen)
   }
 }
