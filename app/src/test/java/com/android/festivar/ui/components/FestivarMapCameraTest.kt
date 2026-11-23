@@ -179,7 +179,9 @@ class FestivarMapCameraTest {
     var recompositions by mutableIntStateOf(0)
     lateinit var state: CameraPositionState
     composeTestRule.setContent {
-      // A new list with the same points at every recomposition, as `listOf(...)` in a caller.
+      // Reading `recompositions` makes this block recompose each time it changes. `* 0.0` keeps
+      // the value at 46.0: the points stay the same and only the list is a new object, as
+      // `listOf(...)` is in a caller.
       state =
           rememberFestivarCameraState(
               listOf(GeoPosition(46.0 + recompositions * 0.0, 6.0), GeoPosition(48.0, 8.0))
