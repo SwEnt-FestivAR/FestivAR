@@ -674,4 +674,17 @@ class EventsOverviewScreenTest {
     assertEquals(0, joins)
     assertEquals(1, adds)
   }
+
+  /** Breaks if an event with an image URL fails to display in the event overview screen. */
+  @Test
+  fun eventItem_displaysImageWhenImageUrlIsPresent() {
+    val eventWithImage =
+        upcomingEvent.copy(imageUrl = "android.resource://com.android.festivar/drawable/app_logo")
+    setContent(withRepository = EventsRepositoryImpl(listOf(eventWithImage)))
+
+    composeTestRule.onNodeWithText("Soirée Jazz").assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(EventsOverviewScreenTestTags.getTestTagForEventItem(eventWithImage))
+        .assertIsDisplayed()
+  }
 }
