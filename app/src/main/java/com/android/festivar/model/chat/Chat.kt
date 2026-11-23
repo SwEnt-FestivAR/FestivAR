@@ -35,19 +35,20 @@ data class Chat(
   }
 
   /**
-   * Adds [message] if its ID is unique and it is not older than the current last message.
+   * Inserts [message] by sent time if its ID is unique.
    *
-   * @throws IllegalArgumentException if the message ID is duplicated or if the message is older
-   *   than the last message.
+   * @throws IllegalArgumentException if the message ID is duplicated.
    */
-  fun addMessage(message: ChatMessage): Chat =
-      when {
-        messages.any { it.messageId == message.messageId } ->
-            throw IllegalArgumentException("A messageId is duplicated.")
-        messages.isNotEmpty() && message.sentAt.isBefore(messages.last().sentAt) ->
-            throw IllegalArgumentException("The message cannot be older than the last message.")
-        else -> copy(messages = messages + message)
-      }
+  fun addMessage(message: ChatMessage): Chat {
+    require(messages.none { it.messageId == message.messageId }) { "A messageId is duplicated." }
+
+    val insertAt =
+        messages
+            .indexOfFirst { it.sentAt.isAfter(message.sentAt) }
+            .let { index -> if (index == -1) messages.size else index }
+    val updatedMessages = messages.toMutableList().apply { add(insertAt, message) }
+    return copy(messages = updatedMessages)
+  }
 
   /**
    * Deletes the message identified by [messageId].

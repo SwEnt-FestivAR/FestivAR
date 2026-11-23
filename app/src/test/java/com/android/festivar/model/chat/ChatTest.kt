@@ -96,18 +96,20 @@ class ChatTest {
     assertInvalid("The text cannot be empty.") { MessageContent.Text(" \t") }
   }
 
-  /** Breaks if addMessage accepts duplicate IDs or appends an older message. */
+  /**
+   * Breaks if addMessage accepts duplicate IDs or an older message is not inserted chronologically.
+   */
   @Test
-  fun addMessageRejectsDuplicateOrOlderMessage() {
+  fun addMessageRejectsDuplicateAndInsertsOlderMessage() {
     val chat = Chat("c1", "e1", listOf(message()))
 
     assertInvalid("A messageId is duplicated.") { chat.addMessage(message()) }
-    assertInvalid("The message cannot be older than the last message.") {
-      chat.addMessage(message("m2", time = sentAt.minusNanos(1)))
-    }
+
+    val older = message("m0", time = sentAt.minusNanos(1))
+    assertEquals(listOf(older, message()), chat.addMessage(older).messages)
   }
 
-  /** Breaks if addMessage changes the original or does not preserve chronological order. */
+  /** Breaks if addMessage changes the original or appends a later message without order. */
   @Test
   fun addMessageAddsAtEndWithoutChangingOriginal() {
     val chat = Chat("c1", "e1", listOf(message()))
@@ -117,6 +119,17 @@ class ChatTest {
 
     assertEquals(listOf(message(), later), result.messages)
     assertEquals(listOf(message()), chat.messages)
+  }
+
+  /** Breaks if addMessage appends a message that belongs between existing messages. */
+  @Test
+  fun addMessageInsertsMessageInMiddleBySentTime() {
+    val first = message("m1", time = sentAt)
+    val third = message("m3", time = sentAt.plusHours(2))
+    val second = message("m2", time = sentAt.plusHours(1))
+    val chat = Chat("c1", "e1", listOf(first, third))
+
+    assertEquals(listOf(first, second, third), chat.addMessage(second).messages)
   }
 
   /** Breaks if deleteMessage accepts an unknown ID or changes the original chat. */
