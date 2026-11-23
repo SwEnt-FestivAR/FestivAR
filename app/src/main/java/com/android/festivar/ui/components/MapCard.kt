@@ -184,14 +184,24 @@ internal fun MapCardEmptyPreview() {
 @Preview(showBackground = true)
 @Composable
 internal fun MapCardPreview() {
-  AppTheme {
-    MapCard(listOf(EPFL_LOCATION), Modifier.fillMaxWidth().padding(20.dp).height(156.dp)) {
-      Marker(
-          state =
-              rememberUpdatedMarkerState(
-                  position = LatLng(EPFL_LOCATION.latitude, EPFL_LOCATION.longitude)
-              )
+  // Two titled markers around the center of the card: tapping one is how to check by hand that the
+  // card neither moves its camera nor opens an info window.
+  val locations =
+      listOf(
+          EPFL_LOCATION,
+          GeoPosition(EPFL_LOCATION.latitude - 0.0004, EPFL_LOCATION.longitude - 0.0008),
       )
+  AppTheme {
+    MapCard(locations, Modifier.fillMaxWidth().padding(20.dp).height(156.dp)) {
+      locations.forEachIndexed { index, location ->
+        Marker(
+            state =
+                rememberUpdatedMarkerState(
+                    position = LatLng(location.latitude, location.longitude)
+                ),
+            title = "Marker ${index + 1}",
+        )
+      }
     }
   }
 }
