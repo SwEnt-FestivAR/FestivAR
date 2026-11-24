@@ -315,6 +315,41 @@ class EventRepositoryFirebaseTest {
     assertTrue(repository.getEvent(event.eventId).announcements.isEmpty())
   }
 
+  /** Breaks if stored chat IDs are not deserialized from Firestore. */
+  @Test
+  fun getEvent_readsStoredChatIds() = runBlocking {
+    val chatIds = listOf("chat-1", "chat-2")
+    repository.addEvent(event.copy(chatIds = chatIds))
+
+    assertEquals(chatIds, repository.getEvent(event.eventId).chatIds)
+  }
+
+  /** Breaks if a non-string stored chat ID is accepted. */
+  @Test
+  fun getEvent_rejectsNonStringChatIds() = runBlocking {
+    repository.addEvent(event)
+    eventDocument().update("chatIds", listOf(42)).await()
+
+    assertThrowsOfType<IllegalArgumentException>("Invalid chatId data: 42") {
+      repository.getEvent(event.eventId)
+    }
+  }
+
+  /** Breaks if legacy chat fields do not fall back to the document ID. */
+  @Test
+  fun getEvent_fallsBackToLegacyChatIdThenDocumentId() = runBlocking {
+    writeEventDocument()
+    eventDocument().update("chatId", "legacy-chat").await()
+
+    assertEquals(listOf("legacy-chat"), repository.getEvent(event.eventId).chatIds)
+
+    eventDocument()
+        .update(mapOf("chatId" to FieldValue.delete(), "eventId" to FieldValue.delete()))
+        .await()
+
+    assertEquals(listOf(event.eventId), repository.getEvent(event.eventId).chatIds)
+  }
+
   // --------------------------------------- roles ------------------------------------------ //
 
   /** Breaks if addEvent or editEvent do not write the roles, so a role change vanishes on save. */
