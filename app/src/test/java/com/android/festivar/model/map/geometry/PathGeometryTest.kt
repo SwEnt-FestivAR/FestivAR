@@ -146,6 +146,30 @@ class PathGeometryTest {
     )
   }
 
+  /**
+   * Breaks if a sample exactly at the minimum distance from the last one kept is dropped (`>=`
+   * turned into `>`), or if one a centimetre short of it is kept.
+   */
+  @Test
+  fun aSampleExactlyAtTheMinimumDistanceIsKept() {
+    val first = sample(0.0, 0.0, 3.0)
+    val next = sample(2.0, 0.0, 3.0)
+    val apart = distanceMeters(first.position, next.position)
+
+    assertEquals(
+        listOf(first, next),
+        filterGpsSamples(listOf(first, next), maxAccuracyMeters = 10.0, minDistanceMeters = apart),
+    )
+    assertEquals(
+        listOf(first),
+        filterGpsSamples(
+            listOf(first, next),
+            maxAccuracyMeters = 10.0,
+            minDistanceMeters = apart + 0.01,
+        ),
+    )
+  }
+
   /** Breaks if an imprecise sample counts as the last one kept and hides the good one after it. */
   @Test
   fun aDroppedSampleDoesNotCountAsThePreviousOne() {
