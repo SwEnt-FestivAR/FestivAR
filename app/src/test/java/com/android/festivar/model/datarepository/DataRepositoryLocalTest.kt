@@ -446,7 +446,7 @@ class DataRepositoryLocalTest {
   @Test
   fun deleteEvent_failingWrite_isUndone() = runTest { assertRollsBack("bob") { deleteEvent("e1") } }
 
-  /** Breaks if deleting a chat leaves its identifier on the owning event. */
+  /** Breaks if deleting a chat changes another event or leaves its identifier on its own event. */
   @Test
   fun deleteChat_removesTheChatIdFromItsEvent() = runTest {
     val chatRepository = mockk<ChatRepository>()
@@ -461,6 +461,7 @@ class DataRepositoryLocalTest {
     dataRepository.deleteChat("chat-1")
 
     assertEquals(listOf("chat-2"), eventsRepository.getEvent("e1").chatIds)
+    assertEquals(e2, eventsRepository.getEvent("e2"))
     coVerify(exactly = 1) { chatRepository.deleteChat("chat-1") }
   }
 
