@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Fable 5.2 <noreply@anthropic.com>
 package com.android.festivar.ui.announcement.edit
 
 import android.os.Looper
@@ -317,17 +318,20 @@ class EditAnnouncementViewModelTest {
   }
 
   /**
-   * Breaks if canSave ignores isSaving or isSaved, so a second tap writes twice, if typing during
-   * the save changes the form, or if a saved form that still differs asks to discard.
+   * Breaks if canSave or isEditable ignores isSaving or isSaved, so a second tap writes twice or
+   * the inputs stay open, if typing during the save changes the form, or if a saved form that still
+   * differs asks to discard.
    */
   @Test
   fun aSaveInProgressIgnoresASecondTapAndLaterTyping() {
     val gate = CompletableDeferred<Unit>()
     repo.beforeEdit = { gate.await() }
     val vm = editedViewModel()
+    assertTrue(vm.uiState.value.isEditable)
 
     vm.save()
     assertTrue(vm.uiState.value.isSaving)
+    assertFalse(vm.uiState.value.isEditable)
     vm.save()
     vm.updateTitle("Later")
     assertEquals("Doors open", vm.uiState.value.form.title)
@@ -339,12 +343,13 @@ class EditAnnouncementViewModelTest {
     val state = vm.uiState.value
     assertTrue(state.isSaved)
     assertFalse(state.canSave)
+    assertFalse(state.isEditable)
     assertFalse(state.needsDiscardConfirmation)
   }
 
   /**
-   * Breaks if a failed write is shown as saved or resets the form, if a retry keeps the old error,
-   * or if a write that landed before the failure is not read back as saved.
+   * Breaks if a failed write is shown as saved, resets the form or leaves it locked, if a retry
+   * keeps the old error, or if a write that landed before the failure is not read back as saved.
    */
   @Test
   fun aFailedSaveKeepsTheFormAndARetryThatLandedEndsAsSaved() {
@@ -355,6 +360,7 @@ class EditAnnouncementViewModelTest {
 
     assertSaveError(vm)
     assertTrue(vm.uiState.value.canSave)
+    assertTrue(vm.uiState.value.isEditable)
     assertEquals(seeded, stored())
 
     repo.beforeEdit = {}

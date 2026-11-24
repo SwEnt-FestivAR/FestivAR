@@ -175,7 +175,7 @@ fun EditAnnouncementContent(
           AnnouncementFormContent(
               form = state.form,
               isSaving = state.isSaving,
-              isEditable = !state.isSaving && !state.isSaved,
+              isEditable = state.isEditable,
               canSubmit = state.canSave,
               errorMsg = state.errorMsg,
               actions = actions,
