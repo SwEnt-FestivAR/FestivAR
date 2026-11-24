@@ -34,6 +34,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
@@ -208,6 +209,7 @@ class EditEventViewModelTest {
 
     assertTrue(loadedState.isValid)
     assertFalse(loadedState.hasChanges)
+    assertNotNull(event.location)
     // The form saves no location: its venue is a text without coordinates.
     assertEquals(event.copy(location = null), loadedState.toEvent())
     assertTrue(updatedState.hasChanges)
@@ -302,6 +304,7 @@ class EditEventViewModelTest {
     viewModel.fetchEvent(initialEvent.eventId)
     advanceUntilIdle()
     viewModel.updateName("Updated festival")
+    assertNotNull(eventsRepository.getEvent(initialEvent.eventId).location)
 
     viewModel.saveChanges()
     advanceUntilIdle()
@@ -341,6 +344,7 @@ class EditEventViewModelTest {
     advanceUntilIdle()
     viewModel.updateName("Updated festival")
     viewModel.updateVenue("New venue")
+    assertNotNull(eventsRepository.getEvent(initialEvent.eventId).location)
 
     assertTrue(viewModel.uiState.value.canSave)
     viewModel.saveChanges()

@@ -243,6 +243,7 @@ class CreateEventViewModelTest {
     assertEquals(viewModel.uiState.value.startDateTime, event.startDate)
     assertEquals(viewModel.uiState.value.endDateTime, event.endDate)
     // The typed venue has no coordinates, so it is not a location (the search will set one).
+    assertEquals("Main square", viewModel.uiState.value.venue)
     assertNull(event.location)
   }
 
