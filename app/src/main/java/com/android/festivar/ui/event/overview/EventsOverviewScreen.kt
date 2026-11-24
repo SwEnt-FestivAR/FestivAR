@@ -227,7 +227,8 @@ private fun errorMessage(uiState: EventsOverviewUIState): String =
 /**
  * Empty state of the [EventsOverviewScreen], shown when the user has no [Event] at all. It offers
  * to join or to create one, both buttons sharing the width equally. The "Create" button is hidden
- * when [canCreateEvent] is `false`, and the "Join" button then takes the whole width.
+ * when [canCreateEvent] is `false`: the "Join" button then takes the whole width, and the subtitle
+ * only offers to join an event.
  */
 @Composable
 private fun EmptyEventsState(
@@ -240,7 +241,11 @@ private fun EmptyEventsState(
   EmptyState(
       icon = R.drawable.ic_event,
       title = stringResource(R.string.events_overview_empty_title),
-      subtitle = stringResource(R.string.events_overview_empty_subtitle),
+      subtitle =
+          stringResource(
+              if (canCreateEvent) R.string.events_overview_empty_subtitle
+              else R.string.events_overview_empty_subtitle_join
+          ),
   ) {
     OutlinedButton(
         onClick = onJoinEvent,
@@ -295,7 +300,7 @@ private fun EmptyEventsState(
 /**
  * Floating "+" button of the [EventsOverviewScreen]. Clicking on it turns it into a close button
  * and shows the "Join" and "Create" buttons above it. The "Create" button is hidden when
- * [canCreateEvent] is `false`.
+ * [canCreateEvent] is `false`, and the description of the "+" button then only mentions joining.
  */
 @Composable
 private fun EventActionsMenu(
@@ -359,7 +364,11 @@ private fun EventActionsMenu(
           painter = painterResource(if (expanded) R.drawable.ic_close else R.drawable.ic_add),
           contentDescription =
               stringResource(
-                  if (expanded) R.string.events_overview_close else R.string.events_overview_actions
+                  when {
+                    expanded -> R.string.events_overview_close
+                    canCreateEvent -> R.string.events_overview_actions
+                    else -> R.string.events_overview_actions_join
+                  }
               ),
       )
     }

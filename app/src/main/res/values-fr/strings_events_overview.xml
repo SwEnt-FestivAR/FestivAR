@@ -6,6 +6,7 @@
     <string name="events_overview_chip_past">Passés</string>
     <string name="events_overview_empty_title">Aucun événement</string>
     <string name="events_overview_empty_subtitle">Rejoignez ou créez un événement.</string>
+    <string name="events_overview_empty_subtitle_join">Rejoignez un événement.</string>
     <string name="events_overview_no_ongoing">Vous n’avez aucun événement en cours.</string>
     <string name="events_overview_no_upcoming">Vous n’avez aucun événement à venir.</string>
     <string name="events_overview_no_past">Vous n’avez aucun événement passé.</string>
@@ -13,6 +14,7 @@
     <string name="events_overview_create">Créer</string>
     <string name="events_overview_close">Fermer</string>
     <string name="events_overview_actions">Rejoindre ou créer un événement</string>
+    <string name="events_overview_actions_join">Rejoindre un événement</string>
     <!-- The days of an event, then its location, e.g. "Fri 16 Oct · Parc de Vidy" -->
 
     <string name="events_overview_error">Impossible de charger les événements : %1$s</string>

@@ -6,6 +6,7 @@
     <string name="events_overview_chip_past">Past</string>
     <string name="events_overview_empty_title">No events yet</string>
     <string name="events_overview_empty_subtitle">Join or create an event.</string>
+    <string name="events_overview_empty_subtitle_join">Join an event.</string>
     <string name="events_overview_no_ongoing">You have no ongoing event.</string>
     <string name="events_overview_no_upcoming">You have no upcoming event.</string>
     <string name="events_overview_no_past">You have no past event.</string>
@@ -13,6 +14,7 @@
     <string name="events_overview_create">Create</string>
     <string name="events_overview_close">Close</string>
     <string name="events_overview_actions">Join or create an event</string>
+    <string name="events_overview_actions_join">Join an event</string>
     <string name="events_overview_error">Failed to load events: %1$s</string>
     <string name="events_overview_error_no_cause">Failed to load events.</string>
 </resources>

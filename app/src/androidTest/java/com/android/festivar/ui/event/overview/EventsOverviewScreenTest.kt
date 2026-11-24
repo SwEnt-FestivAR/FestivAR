@@ -675,12 +675,18 @@ class EventsOverviewScreenTest {
     assertEquals(1, adds)
   }
 
-  /** Breaks if the "+" button still offers to create an event to an anonymous account. */
+  /**
+   * Breaks if the "+" button, or its description, still offers to create an event to an anonymous
+   * account.
+   */
   @Test
   fun actionsButtonOfAnAnonymousAccountShowsOnlyTheJoinButton() {
     setContent(EventsOverviewUIState(ongoingEvents = listOf(ongoingEvent), canCreateEvent = false))
+    val actionsButton =
+        composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.EVENT_ACTIONS_BUTTON)
 
-    composeTestRule.onNodeWithTag(EventsOverviewScreenTestTags.EVENT_ACTIONS_BUTTON).performClick()
+    actionsButton.assert(hasContentDescription("Join an event"))
+    actionsButton.performClick()
 
     composeTestRule
         .onNodeWithTag(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON)
@@ -690,11 +696,16 @@ class EventsOverviewScreenTest {
         .assertDoesNotExist()
   }
 
-  /** Breaks if the empty state still offers to create an event to an anonymous account. */
+  /**
+   * Breaks if the empty state, its button or its subtitle, still offers to create an event to an
+   * anonymous account.
+   */
   @Test
   fun emptyStateOfAnAnonymousAccountShowsOnlyTheJoinButton() {
     setContent(EventsOverviewUIState(canCreateEvent = false))
 
+    composeTestRule.onNodeWithText("Join an event.").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Join or create an event.").assertDoesNotExist()
     composeTestRule
         .onNodeWithTag(EventsOverviewScreenTestTags.JOIN_EVENT_BUTTON)
         .assertIsDisplayed()
