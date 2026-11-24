@@ -34,6 +34,7 @@ val DEFAULT_ROLE = Role.VISITOR
  * Every new version goes through the `init` block, so the rules below always hold:
  * - [title] is not blank;
  * - [eventId] is not blank;
+ * - [chatIds] contains no blank or duplicate chat identifiers;
  * - [ownerId] identifies one of the members;
  * - a [User] is a joined member at most once, identified by its [User.uid] (no duplicates);
  * - every member has exactly one [Role] in [roles], and only members have one;
@@ -45,6 +46,7 @@ val DEFAULT_ROLE = Role.VISITOR
  * - [endDate] must be after [startDate];
  *
  * @property eventId Unique identifier of the [Event].
+ * @property chatIds Unique identifiers of the chats belonging to the [Event].
  * @property ownerId Unique identifier of the user who created and owns the [Event].
  * @property title Name of the [Event], shown as the screen title.
  * @property description Free-text description of specifications about the [Event].
@@ -73,10 +75,13 @@ data class Event(
     val tasks: List<Task> = emptyList(),
     val closed: Boolean = false,
     val announcements: List<Announcement> = emptyList(),
+    val chatIds: List<String> = listOf(eventId),
 ) {
 
   init {
     require(eventId.isNotBlank()) { "The eventId cannot be empty." }
+    require(chatIds.none { it.isBlank() }) { "A chatId cannot be empty." }
+    require(chatIds.distinct().size == chatIds.size) { "A chatId is duplicated." }
     require(ownerId.isNotBlank()) { "The ownerId cannot be empty." }
     require(title.isNotBlank()) { "The title cannot be empty." }
     require(tasks.map { it.taskId }.distinct().size == tasks.size) { "A task is duplicated." }
@@ -117,6 +122,29 @@ data class Event(
    */
   fun isPast(at: ZonedDateTime): Boolean {
     return closed || !endDate.isAfter(at)
+  }
+
+  /**
+   * Adds [chatId] to this event's chat identifiers.
+   *
+   * @return A copy of this event containing [chatId].
+   * @throws IllegalArgumentException If [chatId] is blank or already linked to this event.
+   */
+  fun addChatId(chatId: String): Event {
+    require(chatId.isNotBlank()) { "A chatId cannot be empty." }
+    require(chatIds.none { it == chatId }) { "A chatId is duplicated." }
+    return copy(chatIds = chatIds + chatId)
+  }
+
+  /**
+   * Removes [chatId] from this event's chat identifiers.
+   *
+   * @return A copy of this event without [chatId].
+   * @throws IllegalArgumentException If [chatId] is not linked to this event.
+   */
+  fun removeChatId(chatId: String): Event {
+    require(chatIds.contains(chatId)) { "This chatId is not linked to the event." }
+    return copy(chatIds = chatIds.filterNot { it == chatId })
   }
 
   /**
