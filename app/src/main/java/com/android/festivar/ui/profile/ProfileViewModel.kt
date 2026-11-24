@@ -1,10 +1,15 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored by Copilot
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.festivar.ui.profile
 
+import android.content.ContentResolver
 import android.content.Context
+import android.net.Uri
 import android.util.Log
+import android.webkit.MimeTypeMap
 import androidx.annotation.StringRes
+import androidx.credentials.Credential
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import androidx.lifecycle.ViewModel
@@ -12,17 +17,35 @@ import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.datarepository.DataRepository
+import com.android.festivar.model.images.StoredImage
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
+import com.google.firebase.auth.FirebaseUser
+import java.io.File
+import java.io.FileOutputStream
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private const val LOG_TAG = "ProfileViewModel"
+private const val MAX_PROFILE_PICTURE_SIZE_BYTES = 10L * 1024L * 1024L
+
+internal fun isProfilePictureTooLarge(sizeBytes: Long): Boolean =
+    sizeBytes > MAX_PROFILE_PICTURE_SIZE_BYTES
+
+/** Represents an overlay dialog that can be shown to a guest user on the profile screen. */
+enum class ProfileDialog {
+  UPGRADE_SHEET,
+  SIGN_OUT_WARNING,
+}
 
 /**
  * Represents the UI state of the Profile screen.
@@ -41,8 +64,7 @@ private const val LOG_TAG = "ProfileViewModel"
  *   operation when the disconnection is occurred.
  * @property isSigningOut Whether the [User] is currently in the process of signing out, it blocks
  *   any other operation while trying to disconnect the [User].
- * @property isUpgrading Whether the account upgrade bottom sheet is visible.
- * @property showSignOutWarning Whether the anonymous-account sign-out warning is visible.
+ * @property activeDialog The active guest dialog shown on the screen, or null.
  */
 data class ProfileUIState(
     val user: User? = null,
@@ -57,8 +79,7 @@ data class ProfileUIState(
     val email: String = "",
     val password: String = "",
     val isPasswordVisible: Boolean = false,
-    val isUpgrading: Boolean = false,
-    val showSignOutWarning: Boolean = false,
+    val activeDialog: ProfileDialog? = null,
 ) {
   /**
    * Whether the Save changes button can be pressed: the profile is loaded, no save is running, no
@@ -114,10 +135,12 @@ data class ProfileUIState(
 class ProfileViewModel(
     private val dataRepository: DataRepository,
     private val uId: String,
+    private val ioDispatcher: CoroutineDispatcher = IO,
 ) : ViewModel() {
 
   private val repository: UsersRepository = dataRepository.usersRepository
   private val authRepository: AuthRepository = dataRepository.authRepository
+  private val imageStorage = dataRepository.imageStorage
 
   private val _uiState = MutableStateFlow(ProfileUIState())
   val uiState: StateFlow<ProfileUIState> = _uiState.asStateFlow()
@@ -196,6 +219,132 @@ class ProfileViewModel(
   }
 
   /**
+   * Uploads and saves a new profile picture. The previous picture is deleted after the user points
+   * to the new one.
+   */
+  fun updateProfilePicture(storedImage: StoredImage) {
+    if (!canUpdateProfilePicture()) return
+    if (isProfilePictureTooLarge(storedImage.file.length())) {
+      _uiState.update { it.copy(errorMsg = R.string.profile_picture_too_large) }
+      return
+    }
+
+    _uiState.update { it.copy(isSaving = true, errorMsg = null) }
+
+    viewModelScope.launch { saveProfilePicture(storedImage) }
+  }
+
+  /** Copies the selected content URI and saves it as the user's profile picture. */
+  fun updateProfilePicture(uri: Uri, contentResolver: ContentResolver, cacheDir: File) {
+    if (!canUpdateProfilePicture()) return
+
+    _uiState.update { it.copy(isSaving = true, errorMsg = null) }
+    viewModelScope.launch {
+      var temporaryFile: File? = null
+      try {
+        val extension =
+            MimeTypeMap.getSingleton().getExtensionFromMimeType(contentResolver.getType(uri))
+                ?: "jpg"
+        val storedImage: StoredImage? =
+            withContext(ioDispatcher) {
+              val file = File.createTempFile("profile-picture-", ".$extension", cacheDir)
+              try {
+                val input =
+                    contentResolver.openInputStream(uri)
+                        ?: error("Unable to read selected profile picture.")
+                input.use { FileOutputStream(file).use { output -> input.copyTo(output) } }
+                if (isProfilePictureTooLarge(file.length())) {
+                  deleteTemporaryProfilePicture(file)
+                  null
+                } else {
+                  StoredImage(file)
+                }
+              } catch (e: Exception) {
+                deleteTemporaryProfilePicture(file)
+                throw e
+              }
+            }
+        if (storedImage == null) {
+          _uiState.update {
+            it.copy(isSaving = false, errorMsg = R.string.profile_picture_too_large)
+          }
+        } else {
+          temporaryFile = storedImage.file
+          saveProfilePicture(storedImage)
+        }
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        Log.e(LOG_TAG, "Unable to read selected profile picture", e)
+        _uiState.update {
+          it.copy(isSaving = false, errorMsg = R.string.profile_picture_save_failed)
+        }
+      } finally {
+        temporaryFile?.let { file ->
+          withContext(NonCancellable + ioDispatcher) { deleteTemporaryProfilePicture(file) }
+        }
+      }
+    }
+  }
+
+  private fun deleteTemporaryProfilePicture(file: File) {
+    if (file.exists() && !file.delete()) {
+      Log.w(LOG_TAG, "Could not delete temporary profile picture ${file.path}")
+    }
+  }
+
+  private fun canUpdateProfilePicture(): Boolean {
+    val state = _uiState.value
+    return state.user != null &&
+        !state.isLoading &&
+        !state.isSaving &&
+        !state.signedOut &&
+        !state.isSigningOut
+  }
+
+  private suspend fun saveProfilePicture(storedImage: StoredImage) {
+    val original = requireNotNull(_uiState.value.user)
+    var newPictureUrl: String? = null
+    try {
+      newPictureUrl = imageStorage.upload(storedImage, "pfp")
+      val updatedUser = original.copy(profilePictureUrl = newPictureUrl)
+      repository.editUser(uId, updatedUser)
+
+      val oldPictureUrl = original.profilePictureUrl
+      var oldPictureDeletionFailed = false
+      if (!oldPictureUrl.isNullOrBlank() && oldPictureUrl != newPictureUrl) {
+        try {
+          imageStorage.delete(oldPictureUrl)
+        } catch (e: CancellationException) {
+          throw e
+        } catch (e: Exception) {
+          Log.e(LOG_TAG, "Error deleting old profile picture for user $uId", e)
+          oldPictureDeletionFailed = true
+        }
+      }
+      _uiState.update {
+        it.copy(
+            user = updatedUser,
+            isSaving = false,
+            errorMsg = if (oldPictureDeletionFailed) R.string.profile_picture_save_failed else null,
+        )
+      }
+    } catch (e: CancellationException) {
+      throw e
+    } catch (e: Exception) {
+      Log.e(LOG_TAG, "Error saving profile picture for user $uId", e)
+      newPictureUrl?.let { uploadedUrl ->
+        try {
+          imageStorage.delete(uploadedUrl)
+        } catch (cleanupError: Exception) {
+          Log.e(LOG_TAG, "Error cleaning up profile picture for user $uId", cleanupError)
+        }
+      }
+      _uiState.update { it.copy(isSaving = false, errorMsg = R.string.profile_picture_save_failed) }
+    }
+  }
+
+  /**
    * Signs the user out. On success [ProfileUIState.signedOut] turns true, so the screen can go back
    * to the login screen; on failure [ProfileUIState.errorMsg] is set.
    */
@@ -237,24 +386,32 @@ class ProfileViewModel(
     _uiState.update { it.copy(isPasswordVisible = !it.isPasswordVisible) }
   }
 
-  /** Shows the account upgrade bottom sheet. */
+  /** Shows the account upgrade bottom sheet if the account is anonymous. */
   fun showUpgradeSheet() {
-    _uiState.update { it.copy(isUpgrading = true) }
+    if (!_uiState.value.isUserAnonymous) return
+    _uiState.update { it.copy(activeDialog = ProfileDialog.UPGRADE_SHEET) }
   }
 
   /** Hides the account upgrade bottom sheet and clears its credentials. */
   fun hideUpgradeSheet() {
-    _uiState.update { it.copy(isUpgrading = false, email = "", password = "") }
+    _uiState.update {
+      val dialog = if (it.activeDialog == ProfileDialog.UPGRADE_SHEET) null else it.activeDialog
+      it.copy(activeDialog = dialog, email = "", password = "")
+    }
   }
 
   /** Shows the warning displayed before an anonymous account signs out. */
   fun showSignOutWarning() {
-    _uiState.update { it.copy(showSignOutWarning = true) }
+    if (!_uiState.value.isUserAnonymous) return
+    _uiState.update { it.copy(activeDialog = ProfileDialog.SIGN_OUT_WARNING) }
   }
 
   /** Hides the anonymous-account sign-out warning. */
   fun hideSignOutWarning() {
-    _uiState.update { it.copy(showSignOutWarning = false) }
+    _uiState.update {
+      val dialog = if (it.activeDialog == ProfileDialog.SIGN_OUT_WARNING) null else it.activeDialog
+      it.copy(activeDialog = dialog)
+    }
   }
 
   /** Upgrades the anonymous account with email and password. */
@@ -273,20 +430,48 @@ class ProfileViewModel(
     upgradeAccount("email") { authRepository.signUpWithEmailAndPassword(email, password) }
   }
 
-  fun upgradeWithGoogle(context: Context, credentialManager: CredentialManager) {
+  fun startGoogleUpgrade(): Boolean {
     val state = _uiState.value
-    if (state.isLoading || !state.isUserAnonymous) return
-
+    if (state.isLoading || !state.isUserAnonymous) return false
     _uiState.update { it.copy(isLoading = true, errorMsg = null) }
-    upgradeAccount("Google") {
-      val signInWithGoogleOption =
-          GetSignInWithGoogleOption.Builder(context.getString(R.string.default_web_client_id))
-              .build()
-      val request =
-          GetCredentialRequest.Builder().addCredentialOption(signInWithGoogleOption).build()
-      val credential = credentialManager.getCredential(context, request).credential
-      authRepository.signInWithGoogle(credential)
+    return true
+  }
+
+  /** Starts Google account upgrade with Credential Manager. */
+  fun upgradeWithGoogle(context: Context, credentialManager: CredentialManager) {
+    if (!startGoogleUpgrade()) return
+    viewModelScope.launch {
+      try {
+        val signInWithGoogleOption =
+            GetSignInWithGoogleOption.Builder(context.getString(R.string.default_web_client_id))
+                .build()
+        val request =
+            GetCredentialRequest.Builder().addCredentialOption(signInWithGoogleOption).build()
+        val result = credentialManager.getCredential(context, request)
+        upgradeWithGoogle(result.credential)
+      } catch (e: CancellationException) {
+        _uiState.update { it.copy(isLoading = false) }
+        throw e
+      } catch (e: Exception) {
+        handleGoogleUpgradeError(e)
+      }
     }
+  }
+
+  fun upgradeWithGoogle(credential: Credential) {
+    val state = _uiState.value
+    if (!state.isUserAnonymous) {
+      _uiState.update { it.copy(isLoading = false) }
+      return
+    }
+    upgradeAccount("Google") { authRepository.signInWithGoogle(credential) }
+  }
+
+  fun handleGoogleUpgradeError(e: Exception? = null) {
+    if (e != null) {
+      Log.e(LOG_TAG, "Error upgrading account with Google", e)
+    }
+    _uiState.update { it.copy(isLoading = false, errorMsg = R.string.profile_anon_upgrade_failed) }
   }
 
   private fun upgradeAccount(
@@ -297,8 +482,17 @@ class ProfileViewModel(
       try {
         operation()
             .fold(
-                onSuccess = {
-                  _uiState.update { it.copy(isLoading = false) }
+                onSuccess = { upgradedUser ->
+                  val isAnonymous =
+                      (upgradedUser as? FirebaseUser)?.isAnonymous
+                          ?: (authRepository.currentUser?.isAnonymous == true)
+                  _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        isUserAnonymous = isAnonymous,
+                        activeDialog = if (isAnonymous) it.activeDialog else null,
+                    )
+                  }
                   getUserInformation()
                 },
                 onFailure = { e ->
@@ -339,6 +533,7 @@ class ProfileViewModel(
               surname = user.surname,
               isLoading = false,
               isUserAnonymous = isAnonymous,
+              activeDialog = if (isAnonymous) it.activeDialog else null,
           )
         }
       } catch (e: CancellationException) {

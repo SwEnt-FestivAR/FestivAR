@@ -1,0 +1,5 @@
+<!-- Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com> -->
+<resources>
+    <string name="edit_announcement_error_load_failed">Impossible de charger l’annonce.</string>
+    <string name="edit_announcement_error_save_failed">Impossible d’enregistrer vos modifications.</string>
+</resources>

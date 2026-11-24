@@ -1,10 +1,6 @@
 <!-- Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com> -->
 <resources>
     <string name="create_announcement">Créer une annonce</string>
-    <string name="create_announcement_back">Retour</string>
-    <string name="create_announcement_field_title">Titre</string>
-    <string name="create_announcement_field_description">Description</string>
-    <string name="create_announcement_field_priority">Priorité</string>
     <string name="create_announcement_priority_info">Information</string>
     <string name="create_announcement_priority_warning">Avertissement</string>
     <string name="create_announcement_priority_urgent">Urgente</string>

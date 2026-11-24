@@ -24,3 +24,6 @@ local.properties
 
 # Agent plugins' files
 /graphify-out
+
+# Local Claude Code instructions (never commit)
+/CLAUDE.md

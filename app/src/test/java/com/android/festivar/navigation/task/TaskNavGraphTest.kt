@@ -1,11 +1,9 @@
 // Co-authored-by: Copilot App
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 package com.android.festivar.navigation.task
 
-import android.content.Context
-import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
@@ -16,11 +14,10 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.android.festivar.R
 import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
@@ -112,10 +109,11 @@ class TaskNavGraphTest {
     composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.CREATE_BUTTON).performClick()
   }
 
+  /** Breaks if creating a task from the route does not assign the signed-in user as its owner. */
   @Test
   fun createTaskRoute_makesTheSignedInUserTheOwnerOfTheTask() {
     val user = mockk<FirebaseUser> { every { uid } returns "owner-1" }
-    openCreateTaskRoute(mockk<AuthRepository> { every { currentUser } returns user })
+    openCreateTaskRoute(FakeAuthRepository(currentUser = user))
     composeTestRule.waitUntil(timeoutMillis = 5_000) {
       runBlocking { repository.getAllTasks("event-1") }.isNotEmpty()
     }
@@ -125,19 +123,53 @@ class TaskNavGraphTest {
     assertEquals("event-1", saved.eventId)
   }
 
+  /** Breaks if a signed-out user can still open the Create task screen. */
   @Test
-  fun createTaskRoute_withNobodySignedIn_savesNothingAndShowsTheSaveError() {
-    openCreateTaskRoute(mockk<AuthRepository> { every { currentUser } returns null })
+  fun createTaskRoute_withNobodySignedIn_sendsTheUserToTheLogin() {
+    lateinit var navController: NavHostController
+    val authRepository = FakeAuthRepository(currentUser = null)
+    composeTestRule.setContent {
+      AppTheme {
+        navController = rememberNavController()
+        NavHost(navController, startDestination = AppScreens.createTask("event-1")) {
+          composable(AppScreens.Login.name) {}
+          taskGraph(navController, dataRepository(authRepository))
+        }
+      }
+    }
     composeTestRule.waitForIdle()
 
-    val message =
-        ApplicationProvider.getApplicationContext<Context>()
-            .getString(R.string.create_task_error_save_failed)
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.TITLE_FIELD).assertDoesNotExist()
+    assertEquals(AppScreens.Login.name, navController.currentDestination?.route)
+  }
+
+  /**
+   * Breaks if signing out on the Create task screen leaves the form on screen, so it can be saved.
+   */
+  @Test
+  fun createTaskRoute_whenTheUserSignsOutOnTheScreen_sendsTheUserToTheLoginAndRemovesTheForm() {
+    lateinit var navController: NavHostController
+    val authRepository =
+        FakeAuthRepository(currentUser = mockk<FirebaseUser> { every { uid } returns "owner-1" })
+    composeTestRule.setContent {
+      AppTheme {
+        navController = rememberNavController()
+        NavHost(navController, startDestination = AppScreens.createTask("event-1")) {
+          composable(AppScreens.Login.name) {}
+          taskGraph(navController, dataRepository(authRepository))
+        }
+      }
+    }
     composeTestRule
-        .onNodeWithTag(CreateTaskScreenTestTags.SAVE_ERROR)
-        .assertIsDisplayed()
-        .assertTextEquals(message)
-    assertTrue(runBlocking { repository.getAllTasks("event-1") }.isEmpty())
+        .onNodeWithTag(CreateTaskScreenTestTags.TITLE_FIELD)
+        .performTextInput("Run power to stage")
+
+    composeTestRule.runOnUiThread { authRepository.setCurrentUser(null) }
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.TITLE_FIELD).assertDoesNotExist()
+    assertEquals(AppScreens.Login.name, navController.currentDestination?.route)
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.CREATE_BUTTON).assertDoesNotExist()
   }
 
   // The [route] is opened on top of a "start" screen, to see where leaving goes back to.
@@ -164,7 +196,7 @@ class TaskNavGraphTest {
 
   private fun signedInAs(userId: String): AuthRepository {
     val user = mockk<FirebaseUser> { every { uid } returns userId }
-    return mockk<AuthRepository> { every { currentUser } returns user }
+    return FakeAuthRepository(currentUser = user)
   }
 
   private fun hasRecordButton() =
@@ -186,7 +218,7 @@ class TaskNavGraphTest {
           every { displayName } returns "Owner"
           every { email } returns "owner@festivar.ch"
         }
-    val auth = mockk<AuthRepository> { every { currentUser } returns user }
+    val auth = FakeAuthRepository(currentUser = user)
     openOnTopOfStart(AppScreens.taskDetails("task-1"), auth, voiceNoteServices = voiceNoteServices)
     composeTestRule.waitUntil(timeoutMillis = 5_000) {
       composeTestRule
@@ -217,10 +249,17 @@ class TaskNavGraphTest {
     assertTrue(!hasRecordButton())
   }
 
+  /**
+   * Breaks if tapping the back button on the create task screen fails to return to the previous
+   * screen.
+   */
   @Test
   fun createTaskRoute_backButton_returnsToThePreviousScreen() {
     val navController =
-        openOnTopOfStart(AppScreens.createTask("event-1"), mockk<AuthRepository>(relaxed = true))
+        openOnTopOfStart(
+            AppScreens.createTask("event-1"),
+            FakeAuthRepository(currentUser = mockk(relaxed = true)),
+        )
 
     composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.BACK_BUTTON).performClick()
     composeTestRule.waitForIdle()
@@ -228,6 +267,30 @@ class TaskNavGraphTest {
     assertEquals("start", navController.currentBackStackEntry?.destination?.route)
   }
 
+  /**
+   * Breaks if double tapping the back button on the create task screen pops more than once from the
+   * back stack.
+   */
+  @Test
+  fun createTaskRoute_doubleTapBackPopsOnlyOnce() {
+    val navController =
+        openOnTopOfStart(AppScreens.createTask("event-1"), mockk<AuthRepository>(relaxed = true))
+
+    composeTestRule.mainClock.autoAdvance = false
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.BACK_BUTTON).performClick()
+    composeTestRule.mainClock.advanceTimeBy(100L)
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.BACK_BUTTON).performClick()
+    composeTestRule.mainClock.autoAdvance = true
+    composeTestRule.waitForIdle()
+
+    assertEquals("start", navController.currentBackStackEntry?.destination?.route)
+    assertTrue(navController.previousBackStackEntry == null)
+  }
+
+  /**
+   * Breaks if successfully creating a task does not return to the previous screen or assign the
+   * owner.
+   */
   @Test
   fun createTaskRoute_afterTheTaskIsCreated_returnsToThePreviousScreen() {
     val navController = openOnTopOfStart(AppScreens.createTask("event-1"), signedInAs("owner-1"))
@@ -256,7 +319,7 @@ class TaskNavGraphTest {
     return navController
   }
 
-  // Breaks if the edit route does not save as the signed-in owner or does not leave once saved.
+  /** Breaks if the edit route does not save as the signed-in owner or does not leave once saved. */
   @Test
   fun editTaskRoute_afterTheEditIsSaved_returnsToThePreviousScreen() {
     val navController = openEditTaskOnTopOfStart()
@@ -271,13 +334,15 @@ class TaskNavGraphTest {
     assertEquals("New title", runBlocking { repository.getTask("t1") }.title)
   }
 
-  // Breaks if the optional origin argument does not parse, so a task opened from My tasks has no
-  // destination.
+  /**
+   * Breaks if the optional origin argument does not parse, so a task opened from My tasks has no
+   * destination.
+   */
   @Test
   fun taskDetailsRoute_fromMyTasks_opensTheDetailsAndKeepsTheOrigin() {
     runBlocking { repository.addTask(Task("t1", "event-1", "Old title", ownerId = "owner-1")) }
     val user = mockk<FirebaseUser>(relaxed = true) { every { uid } returns "owner-1" }
-    val authRepository = mockk<AuthRepository> { every { currentUser } returns user }
+    val authRepository = FakeAuthRepository(currentUser = user)
     lateinit var navController: NavHostController
     composeTestRule.setContent {
       AppTheme {
@@ -306,7 +371,7 @@ class TaskNavGraphTest {
     )
   }
 
-  // Breaks if back from an unchanged edit form does not pop the edit route.
+  /** Breaks if back from an unchanged edit form does not pop the edit route. */
   @Test
   fun editTaskRoute_back_returnsToThePreviousScreen() {
     val navController = openEditTaskOnTopOfStart()
@@ -318,10 +383,11 @@ class TaskNavGraphTest {
     assertEquals("Old title", runBlocking { repository.getTask("t1") }.title)
   }
 
-  // Breaks if the My tasks route stops showing the signed-in user's tasks, if a tapped row stops
-  // opening the details of that task as opened from My tasks, or if the arrow or the system back of
-  // the details stops
-  // returning to My tasks.
+  /**
+   * Breaks if the My tasks route stops showing the signed-in user's tasks, if a tapped row stops
+   * opening the details of that task as opened from My tasks, or if the arrow or the system back of
+   * the details stops returning to My tasks.
+   */
   @Test
   fun myTasksRoute_aRowOpensItsTaskDetailsAndBackReturns() {
     val owner = User("owner-1")
@@ -341,7 +407,7 @@ class TaskNavGraphTest {
     val navController =
         openOnTopOfStart(
             AppScreens.MyTasks.name,
-            mockk<AuthRepository> { every { currentUser } returns user },
+            FakeAuthRepository(currentUser = user),
             ownerTasks = listOf("t1"),
         )
     val route = { navController.currentBackStackEntry?.destination?.route }

@@ -1,7 +1,10 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored by Copilot
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.festivar.ui.profile
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -15,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -58,6 +62,7 @@ object ProfileScreenTestTags {
   const val SETTINGS = "profileSettings"
   const val LOADING = "profileLoading"
   const val AVATAR = "profileAvatar"
+  const val EDIT_PROFILE_PICTURE_BUTTON = "profileEditPictureButton"
   const val SURNAME_FIELD = "profileSurnameField"
   const val NAME_FIELD = "profileNameField"
   const val EMAIL = "profileEmail"
@@ -96,12 +101,22 @@ fun ProfileScreen(
     onBack: () -> Unit = {},
     onSignedOut: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
-    credentialManager: CredentialManager = CredentialManager.create(LocalContext.current),
+    credentialManager: CredentialManager? = null,
+    launchPhotoPicker: ((String) -> Unit)? = null,
 ) {
 
   val profileUIState by profileViewModel.uiState.collectAsState()
   val context = LocalContext.current
+  val rememberedCredentialManager =
+      credentialManager ?: remember(context) { CredentialManager.create(context) }
   val snackbarHostState = remember { SnackbarHostState() }
+  val photoPicker =
+      rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let {
+          profileViewModel.updateProfilePicture(it, context.contentResolver, context.cacheDir)
+        }
+      }
+  val launchPicker = launchPhotoPicker ?: { mimeType -> photoPicker.launch(mimeType) }
   // SheetState is Compose UI state, so it stays local; visibility belongs in ProfileUIState.
   val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -116,13 +131,6 @@ fun ProfileScreen(
 
   // Leaves the screen once the sign-out succeeded.
   LaunchedEffect(profileUIState.signedOut) { if (profileUIState.signedOut) onSignedOut() }
-
-  // Closes bottom sheet once upgrade/linking succeeded.
-  LaunchedEffect(profileUIState.isUserAnonymous) {
-    if (!profileUIState.isUserAnonymous && profileUIState.isUpgrading) {
-      profileViewModel.hideUpgradeSheet()
-    }
-  }
 
   Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
@@ -162,6 +170,7 @@ fun ProfileScreen(
           onSurnameChange = profileViewModel::updateSurname,
           onNameChange = profileViewModel::updateName,
           onSaveClick = profileViewModel::saveChanges,
+          onEditProfilePictureClick = { launchPicker("image/*") },
           onSignOutClick = {
             if (profileUIState.isUserAnonymous) {
               profileViewModel.showSignOutWarning()
@@ -175,48 +184,61 @@ fun ProfileScreen(
       )
     }
 
-    if (profileUIState.isUpgrading) {
-      UpgradeBottomSheet(
-          onUpgradeCancel = profileViewModel::hideUpgradeSheet,
-          sheetState = sheetState,
-          uiState = profileUIState,
-          onEmailChange = profileViewModel::updateEmail,
-          onPasswordChange = profileViewModel::updatePassword,
-          onLoginClick = profileViewModel::upgradeWithEmail,
-          onTogglePasswordVisibility = profileViewModel::togglePasswordVisibility,
-          onGoogleUpgrade = { profileViewModel.upgradeWithGoogle(context, credentialManager) },
-          snackbarHostState = snackbarHostState,
-      )
-    }
-
-    if (profileUIState.showSignOutWarning && profileUIState.isUserAnonymous) {
-      FestivarConfirmDialog(
-          title = stringResource(R.string.login_warning),
-          message = stringResource(R.string.profile_anon_sign_out_warning),
-          confirmText = stringResource(R.string.action_continue_anyway),
-          dismissText = stringResource(R.string.action_cancel),
-          onConfirm = {
-            profileViewModel.hideSignOutWarning()
-            profileViewModel.signOut()
-          },
-          onDismiss = profileViewModel::hideSignOutWarning,
-          destructive = true,
-      )
-    }
-
-    if (!profileUIState.isUpgrading) {
-      SnackbarHost(
-          hostState = snackbarHostState,
-          modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
-      ) { data ->
-        NoticeSnackbar(
-            message = data.visuals.message,
-            actionLabel = "",
-            onAction = {},
-            modifier = Modifier.testTag(ProfileScreenTestTags.ERROR_MESSAGE),
+    when (profileUIState.activeDialog) {
+      ProfileDialog.UPGRADE_SHEET -> {
+        UpgradeBottomSheet(
+            onUpgradeCancel = profileViewModel::hideUpgradeSheet,
+            sheetState = sheetState,
+            uiState = profileUIState,
+            onEmailChange = profileViewModel::updateEmail,
+            onPasswordChange = profileViewModel::updatePassword,
+            onLoginClick = profileViewModel::upgradeWithEmail,
+            onTogglePasswordVisibility = profileViewModel::togglePasswordVisibility,
+            onGoogleUpgrade = {
+              profileViewModel.upgradeWithGoogle(context, rememberedCredentialManager)
+            },
+            snackbarHostState = snackbarHostState,
+        )
+      }
+      ProfileDialog.SIGN_OUT_WARNING -> {
+        FestivarConfirmDialog(
+            title = stringResource(R.string.login_warning),
+            message = stringResource(R.string.profile_anon_sign_out_warning),
+            confirmText = stringResource(R.string.action_continue_anyway),
+            dismissText = stringResource(R.string.action_cancel),
+            onConfirm = {
+              profileViewModel.hideSignOutWarning()
+              profileViewModel.signOut()
+            },
+            onDismiss = profileViewModel::hideSignOutWarning,
+            destructive = true,
+        )
+      }
+      null -> {
+        ProfileErrorSnackbar(
+            snackbarHostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
         )
       }
     }
+  }
+}
+
+@Composable
+internal fun ProfileErrorSnackbar(
+    snackbarHostState: SnackbarHostState,
+    modifier: Modifier = Modifier,
+) {
+  SnackbarHost(
+      hostState = snackbarHostState,
+      modifier = modifier,
+  ) { data ->
+    NoticeSnackbar(
+        message = data.visuals.message,
+        actionLabel = "",
+        onAction = {},
+        modifier = Modifier.testTag(ProfileScreenTestTags.ERROR_MESSAGE),
+    )
   }
 }
 
@@ -238,6 +260,7 @@ internal fun ProfileScreenContent(
     onSurnameChange: (String) -> Unit,
     onNameChange: (String) -> Unit,
     onSaveClick: () -> Unit,
+    onEditProfilePictureClick: () -> Unit,
     onSignOutClick: () -> Unit,
     onRetryClick: () -> Unit,
     onUpgradeClick: () -> Unit,
@@ -282,8 +305,28 @@ internal fun ProfileScreenContent(
       // The avatar shows the saved user, so its initials only change once the changes are saved.
       // The email is shown under it and cannot be edited.
       uiState.user.let { user ->
-        Box(modifier = Modifier.testTag(ProfileScreenTestTags.AVATAR)) {
+        Box(
+            modifier = Modifier.testTag(ProfileScreenTestTags.AVATAR),
+            contentAlignment = Alignment.BottomEnd,
+        ) {
           Avatar(user = user, modifier = Modifier.size(96.dp))
+          IconButton(
+              onClick = onEditProfilePictureClick,
+              enabled = !uiState.isSaving,
+              modifier =
+                  Modifier.size(28.dp).testTag(ProfileScreenTestTags.EDIT_PROFILE_PICTURE_BUTTON),
+              colors =
+                  androidx.compose.material3.IconButtonDefaults.iconButtonColors(
+                      containerColor = MaterialTheme.colorScheme.primary,
+                      contentColor = MaterialTheme.colorScheme.onPrimary,
+                  ),
+          ) {
+            Icon(
+                imageVector = Icons.Default.Create,
+                contentDescription = stringResource(R.string.profile_edit_picture),
+                modifier = Modifier.size(16.dp),
+            )
+          }
         }
         Spacer(modifier = Modifier.height(16.dp))
         Text(
@@ -335,7 +378,7 @@ internal fun ProfileScreenContent(
           modifier =
               Modifier.fillMaxWidth().height(48.dp).testTag(ProfileScreenTestTags.UPGRADE_BUTTON),
       ) {
-        if (uiState.isSaving) {
+        if (uiState.isLoading) {
           CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
         } else {
           Text(

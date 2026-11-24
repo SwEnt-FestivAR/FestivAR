@@ -1,3 +1,4 @@
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Copilot App
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.details
@@ -339,6 +340,19 @@ class VoiceNoteRecordingTest {
     assertEquals("note-id", host.savedTask!!.voiceNote!!.id)
     assertEquals(recordedAt, host.savedTask!!.voiceNote!!.createdAt)
     assertEquals(RecordingStage.Idle, subject.stage.value)
+  }
+
+  /** Breaks if the bars of the recording are lost on the way to the saved voice note. */
+  @Test
+  fun confirmSend_savesTheWaveformOfTheRecording() = runTest {
+    recorder.waveform = listOf(0.1f, 0.9f)
+    val subject = recording
+    subject.start()
+    subject.finish()
+
+    subject.confirmSend()
+
+    assertEquals(listOf(0.1f, 0.9f), host.savedTask!!.voiceNote!!.waveform)
   }
 
   /** Breaks if confirming without a waiting recording starts an upload or save. */
