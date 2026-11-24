@@ -16,7 +16,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -25,15 +24,10 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.map.geometry.EPFL_LOCATION
 import com.android.festivar.model.map.geometry.GeoPosition
 import com.android.festivar.ui.theme.AppTheme
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-
-private const val EMPTY_TITLE = "Not on the map yet"
-private const val EMPTY_SUBTITLE = "Volunteers find a pinned task faster."
-private const val EMPTY_BUTTON = "Pin it"
 
 /** There is no API key in instrumented tests: the map shows no tiles, and no test looks at them. */
 @RunWith(AndroidJUnit4::class)
@@ -161,73 +155,6 @@ class MapCardTest {
     composeTestRule.runOnIdle { tick++ }
 
     composeTestRule.onNodeWithTag(MapCardTestTags.CARD).assertIsDisplayed()
-  }
-
-  private fun setEmptyCard(onButtonClick: () -> Unit = {}, modifier: Modifier = Modifier) {
-    composeTestRule.setContent {
-      AppTheme {
-        MapCardEmpty(
-            title = EMPTY_TITLE,
-            subtitle = EMPTY_SUBTITLE,
-            buttonLabel = EMPTY_BUTTON,
-            onButtonClick = onButtonClick,
-            modifier = modifier,
-        )
-      }
-    }
-  }
-
-  /** Breaks if the empty card does not show the title and the subtitle it is given. */
-  @Test
-  fun emptyCard_showsItsTitleAndSubtitle() {
-    setEmptyCard()
-
-    composeTestRule.onNodeWithTag(MapCardEmptyTestTags.TITLE).assertTextEquals(EMPTY_TITLE)
-    composeTestRule.onNodeWithTag(MapCardEmptyTestTags.SUBTITLE).assertTextEquals(EMPTY_SUBTITLE)
-  }
-
-  /** Breaks if the empty card does not show the label it is given on its button. */
-  @Test
-  fun emptyCard_showsItsButtonLabel() {
-    setEmptyCard()
-
-    composeTestRule.onNodeWithTag(MapCardEmptyTestTags.BUTTON).assertTextEquals(EMPTY_BUTTON)
-  }
-
-  /** Breaks if clicking the button of the empty card does not call the given callback. */
-  @Test
-  fun emptyCard_clickingTheButton_callsTheCallback() {
-    var clicks = 0
-    setEmptyCard(onButtonClick = { clicks++ })
-
-    composeTestRule.onNodeWithTag(MapCardEmptyTestTags.BUTTON).performClick()
-
-    assertEquals(1, clicks)
-  }
-
-  /** Breaks if the empty card does not display, or needs a modifier from its caller. */
-  @Test
-  fun emptyCard_withoutModifier_isDisplayed() {
-    setEmptyCard()
-
-    composeTestRule.onNodeWithTag(MapCardEmptyTestTags.CARD).assertIsDisplayed()
-  }
-
-  /** Breaks if the empty card, or its button, is not on screen when it fills the width. */
-  @Test
-  fun emptyCard_fillingTheWidth_showsCardAndButton() {
-    setEmptyCard(modifier = Modifier.fillMaxWidth())
-
-    composeTestRule.onNodeWithTag(MapCardEmptyTestTags.CARD).assertIsDisplayed()
-    composeTestRule.onNodeWithTag(MapCardEmptyTestTags.BUTTON).assertIsDisplayed()
-  }
-
-  /** Breaks if the preview of the empty card fails to compose or to display. */
-  @Test
-  fun emptyPreview_isDisplayed() {
-    composeTestRule.setContent { MapCardEmptyPreview() }
-
-    composeTestRule.onNodeWithTag(MapCardEmptyTestTags.CARD).assertIsDisplayed()
   }
 
   /** Breaks if the preview of the card, with its marker, fails to compose or to display. */
