@@ -1,7 +1,7 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Copilot App
-package com.android.festivar.ui.components
+package com.android.festivar.ui.components.datetime
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource

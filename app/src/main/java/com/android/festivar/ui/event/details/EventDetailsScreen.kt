@@ -62,7 +62,7 @@ import com.android.festivar.ui.components.Hairline
 import com.android.festivar.ui.components.NoticeSnackbar
 import com.android.festivar.ui.components.PillStyle
 import com.android.festivar.ui.components.StatusPill
-import com.android.festivar.ui.components.formatEventDateAndLocation
+import com.android.festivar.ui.components.datetime.formatEventDateAndLocation
 import com.android.festivar.ui.theme.AppTheme
 import com.android.festivar.ui.theme.NumeralLarge
 import java.time.ZoneId
