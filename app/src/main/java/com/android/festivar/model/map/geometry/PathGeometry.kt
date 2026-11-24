@@ -8,6 +8,10 @@ package com.android.festivar.model.map.geometry
  * within [toleranceMeters] of the simplified path. The first and the last point are always kept,
  * and the order is unchanged.
  *
+ * A closed path, one that ends where it starts, simplified with a tolerance larger than its size is
+ * reduced to its two ends, which are the same place: an outline with no area. A caller that builds
+ * an outline from the result checks that enough points are left.
+ *
  * @throws IllegalArgumentException if [toleranceMeters] is negative or not a number.
  */
 fun simplifyPath(points: List<LocalPosition>, toleranceMeters: Double): List<LocalPosition> {
