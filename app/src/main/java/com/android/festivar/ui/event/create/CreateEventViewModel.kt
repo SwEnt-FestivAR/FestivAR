@@ -343,6 +343,12 @@ class CreateEventViewModel(
     var newImageUrl: String? = null
     try {
       newImageUrl = imageStorage.upload(storedImage, "events")
+      updateState {
+        it.copy(
+            imageUrl = newImageUrl,
+            isSaving = false,
+        )
+      }
       var oldImageDeletionFailed = false
       if (!oldImageUrl.isNullOrBlank() && oldImageUrl != newImageUrl) {
         try {
@@ -354,13 +360,12 @@ class CreateEventViewModel(
           oldImageDeletionFailed = true
         }
       }
-      updateState {
-        it.copy(
-            imageUrl = newImageUrl,
-            isSaving = false,
-            errorMsg =
-                if (oldImageDeletionFailed) R.string.create_event_error_save_failed else null,
-        )
+      if (oldImageDeletionFailed) {
+        updateState {
+          it.copy(
+              errorMsg = R.string.create_event_error_save_failed,
+          )
+        }
       }
     } catch (e: CancellationException) {
       throw e
