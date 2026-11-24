@@ -17,6 +17,8 @@ import com.android.festivar.ui.announcement.create.CreateAnnouncementScreen
 import com.android.festivar.ui.announcement.create.CreateAnnouncementViewModel
 import com.android.festivar.ui.announcement.details.AnnouncementDetailsScreen
 import com.android.festivar.ui.announcement.details.AnnouncementDetailsViewModel
+import com.android.festivar.ui.announcement.edit.EditAnnouncementScreen
+import com.android.festivar.ui.announcement.edit.EditAnnouncementViewModel
 import com.android.festivar.ui.announcement.feed.AnnouncementFeedScreen
 import com.android.festivar.ui.announcement.feed.AnnouncementFeedViewModel
 
@@ -55,6 +57,45 @@ fun NavGraphBuilder.announcementGraph(
                 )
               },
           onBack = navigator.onBack,
+          onEdit = { navigator.onEdit(eventId, announcementId) },
+      )
+    }
+  }
+  // Reached through AppScreens.editAnnouncement(eventId, announcementId), from the details of an
+  // announcement the organizer of the event opened.
+  composable(
+      route = "${AppScreens.EditAnnouncement.name}/{eventId}/{announcementId}",
+      arguments =
+          listOf(
+              navArgument("eventId") { type = NavType.StringType },
+              navArgument("announcementId") { type = NavType.StringType },
+          ),
+  ) { backStackEntry ->
+    val (eventId, announcementId) =
+        requireAnnouncementDetailsArguments(
+            backStackEntry.arguments?.getString("eventId"),
+            backStackEntry.arguments?.getString("announcementId"),
+        )
+    // Leaving the screen, whether the edit was saved or not, goes back to the details. The arrow
+    // still takes taps during the exit transition, so only this entry may pop itself, and only
+    // once.
+    val leave: () -> Unit = {
+      if (navController.currentBackStackEntry == backStackEntry) navController.popBackStack()
+    }
+    RequireSignedIn(navController, dataRepository) { firebaseUser ->
+      // No key needed: the view model is scoped to this back stack entry, which has its own ids.
+      EditAnnouncementScreen(
+          viewModel =
+              viewModel {
+                EditAnnouncementViewModel(
+                    eventId,
+                    announcementId,
+                    { firebaseUser.uid },
+                    dataRepository,
+                )
+              },
+          onBack = leave,
+          onSaved = leave,
       )
     }
   }

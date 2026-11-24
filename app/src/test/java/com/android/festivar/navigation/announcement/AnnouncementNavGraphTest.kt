@@ -2,15 +2,18 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored by: Gemini
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Fable 5.2 <noreply@anthropic.com>
 package com.android.festivar.navigation.announcement
 
 import androidx.compose.material3.Text
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -24,6 +27,7 @@ import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.navigation.AppScreens
 import com.android.festivar.ui.announcement.create.CreateAnnouncementScreenTestTags as Tags
 import com.android.festivar.ui.announcement.details.AnnouncementDetailsScreenTestTags as DetailsTags
+import com.android.festivar.ui.announcement.edit.EditAnnouncementScreenTestTags as EditTags
 import com.android.festivar.ui.announcement.feed.AnnouncementFeedScreenTestTags as FeedTags
 import com.google.firebase.auth.FirebaseUser
 import io.mockk.every
@@ -38,6 +42,9 @@ import org.junit.runner.RunWith
 
 private const val EVENT_ID = "e1"
 private const val USER_ID = "user-1"
+private const val OWNER_ID = "owner"
+private const val ANNOUNCEMENT_ID = "a1"
+private const val DETAILS_ROUTE = "AnnouncementDetails/{eventId}/{announcementId}"
 private const val PREVIOUS_SCREEN = "previous screen"
 private const val LOGIN_SCREEN = "login screen"
 
@@ -58,7 +65,7 @@ class AnnouncementNavGraphTest {
           listOf(
               Event(
                   eventId = EVENT_ID,
-                  ownerId = "owner",
+                  ownerId = OWNER_ID,
                   title = "Balelec",
                   startDate = ZonedDateTime.now().plusDays(1),
                   endDate = ZonedDateTime.now().plusDays(2),
@@ -66,6 +73,7 @@ class AnnouncementNavGraphTest {
           )
       )
   private val signedInUser = mockk<FirebaseUser> { every { uid } returns USER_ID }
+  private val organizer = mockk<FirebaseUser> { every { uid } returns OWNER_ID }
   private lateinit var navController: NavHostController
 
   /** Shows the announcement graph behind a previous screen, as [user]; null means signed out. */
@@ -100,6 +108,37 @@ class AnnouncementNavGraphTest {
     showTheGraphAs(signedInUser)
     composeTestRule.runOnUiThread { navController.navigate(AppScreens.announcementFeed(EVENT_ID)) }
     composeTestRule.onNodeWithTag(FeedTags.TITLE).assertIsDisplayed()
+  }
+
+  /**
+   * Stores an announcement, opens its details as the organizer from the previous screen, then opens
+   * its edit with the edit button.
+   */
+  private fun openTheEditFromTheDetails() {
+    val announcement =
+        Announcement(
+            announcementId = ANNOUNCEMENT_ID,
+            title = "Stage B is closed",
+            authorId = USER_ID,
+            content = "Strong wind.",
+            updatedAt = ZonedDateTime.now().minusHours(1),
+        )
+    runBlocking { repository.addAnnouncement(EVENT_ID, announcement) }
+    showTheGraphAs(organizer)
+    composeTestRule.runOnUiThread {
+      navController.navigate(AppScreens.announcementDetails(EVENT_ID, ANNOUNCEMENT_ID))
+    }
+    composeTestRule.onNodeWithTag(DetailsTags.EDIT_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(EditTags.TITLE_FIELD).assertIsDisplayed()
+  }
+
+  /** Fails unless the details are on top, with only the previous screen under them. */
+  private fun assertTheDetailsAreBackOnTop() {
+    composeTestRule.runOnIdle {
+      assertEquals(DETAILS_ROUTE, navController.currentDestination?.route)
+      assertEquals(PREVIOUS_SCREEN, navController.previousBackStackEntry?.destination?.route)
+    }
+    composeTestRule.onNodeWithTag(EditTags.TITLE_FIELD).assertDoesNotExist()
   }
 
   private fun fillTheForm() {
@@ -289,6 +328,59 @@ class AnnouncementNavGraphTest {
           "${AppScreens.AnnouncementFeed.name}/{eventId}",
           navController.previousBackStackEntry?.destination?.route,
       )
+    }
+  }
+
+  /**
+   * Breaks if the edit button of the details does not open the edit on top of the details, if the
+   * ids of the route or the signed-in user do not reach the edit view model (the form then stays
+   * empty or the save is refused), or if saving does not pop back to details that show the edit.
+   */
+  @Test
+  fun theOrganizerEditsFromTheDetailsAndComesBackToTheEditedDetails() {
+    openTheEditFromTheDetails()
+    composeTestRule.runOnIdle {
+      assertEquals(DETAILS_ROUTE, navController.previousBackStackEntry?.destination?.route)
+    }
+
+    composeTestRule.onNodeWithTag(EditTags.TITLE_FIELD).performTextReplacement("Stage B is open")
+    composeTestRule.onNodeWithTag(EditTags.SAVE_BUTTON).performClick()
+
+    composeTestRule.onNodeWithTag(DetailsTags.TITLE).assertTextEquals("Stage B is open")
+    assertTheDetailsAreBackOnTop()
+    val saved = runBlocking { repository.getEvent(EVENT_ID).announcements.single() }
+    assertEquals("Stage B is open", saved.title)
+  }
+
+  /**
+   * Breaks if the back arrow of the edit does not pop it, or pops again on a second tap during the
+   * exit transition, which would leave the details too.
+   */
+  @Test
+  fun twoTapsOnTheEditsBackLeaveOnlyTheEdit() {
+    openTheEditFromTheDetails()
+    composeTestRule.mainClock.autoAdvance = false
+    composeTestRule.onNodeWithTag(EditTags.BACK_BUTTON).performClick()
+    composeTestRule.mainClock.advanceTimeBy(TAP_GAP_MILLIS)
+    composeTestRule.onNodeWithTag(EditTags.BACK_BUTTON).performClick()
+    composeTestRule.mainClock.autoAdvance = true
+
+    assertTheDetailsAreBackOnTop()
+    composeTestRule.onNodeWithTag(DetailsTags.TITLE).assertTextEquals("Stage B is closed")
+  }
+
+  /** Breaks if a signed-out user can still open the Edit announcement screen. */
+  @Test
+  fun aSignedOutUserOpeningTheEditRouteIsSentToTheLogin() {
+    showTheGraphAs(null)
+    composeTestRule.runOnUiThread {
+      navController.navigate(AppScreens.editAnnouncement(EVENT_ID, ANNOUNCEMENT_ID))
+    }
+
+    composeTestRule.onNodeWithText(LOGIN_SCREEN).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(EditTags.TITLE).assertDoesNotExist()
+    composeTestRule.runOnIdle {
+      assertEquals(AppScreens.Login.name, navController.currentDestination?.route)
     }
   }
 }
