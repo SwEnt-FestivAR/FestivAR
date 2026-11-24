@@ -499,6 +499,22 @@ class DataRepositoryLocalTest {
     assertEquals("Chat repository is not configured.", exception.message)
   }
 
+  /** Breaks if deleting an event with no chat IDs tries to delete a chat. */
+  @Test
+  fun deleteEvent_withNoChatIds_doesNotAccessChatRepository() = runTest {
+    val chatRepository = mockk<ChatRepository>()
+    eventsRepository = EventsRepositoryLocal(listOf(e1.copy(chatIds = emptyList()), e2))
+    dataRepository = repositoryWith(chatRepository = chatRepository)
+
+    dataRepository.deleteEvent("e1")
+
+    assertThrows(NoSuchElementException::class.java) {
+      runBlocking { eventsRepository.getEvent("e1") }
+    }
+    coVerify(exactly = 0) { chatRepository.getChat(any()) }
+    coVerify(exactly = 0) { chatRepository.deleteChat(any()) }
+  }
+
   /** Breaks if deleting an event does not delete every chat linked to it. */
   @Test
   fun deleteEvent_deletesEveryLinkedChat() = runTest {
