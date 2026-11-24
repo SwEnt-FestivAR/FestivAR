@@ -112,7 +112,6 @@ class ChatViewModel(
    * Generates a unique message ID and uses [currentUserId] as the author.
    */
   fun sendMessage(content: MessageContent) {
-    val currentChat = _uiState.value.chat ?: return
     if (!_uiState.value.canSend) return
 
     _uiState.update { it.copy(isSending = true, errorMsg = null) }

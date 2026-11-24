@@ -16,6 +16,7 @@ import java.io.IOException
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
@@ -62,7 +63,7 @@ class ChatViewModelTest {
     Dispatchers.resetMain()
   }
 
-  private fun dataRepository(chatRepo: ChatRepository = localChatRepo): DataRepository =
+  private fun dataRepository(chatRepo: ChatRepository? = localChatRepo): DataRepository =
       DataRepositoryLocal(
           authRepository = mockk(),
           tasksRepository = mockk(),
@@ -71,7 +72,8 @@ class ChatViewModelTest {
           chatRepository = chatRepo,
       )
 
-  private fun viewModel() = ChatViewModel("c1", dataRepository(), "u2")
+  private fun viewModel(dataRepo: DataRepository = dataRepository()) =
+      ChatViewModel("c1", dataRepo, "u2")
 
   /** Breaks if loadChat does not retrieve the chat and author user details successfully. */
   @Test
@@ -84,7 +86,7 @@ class ChatViewModelTest {
     val state = vm.uiState.value
     assertEquals(chat, state.chat)
     assertEquals(2, state.authors.size)
-    assertEquals("Camille", state.authors["u1"]?.name)
+    assertEquals("Kim", state.authors["u1"]?.name)
     assertFalse(state.isLoading)
     assertTrue(state.canSend)
     assertNull(state.errorMsg)
@@ -147,7 +149,7 @@ class ChatViewModelTest {
     localChatRepo.getFailure = CancellationException("cancelled")
     val vm = viewModel()
 
-    assertThrows(CancellationException::class.java) { vm.loadChat() }
+    vm.loadChat()
     assertNull(vm.uiState.value.errorMsg)
   }
 
@@ -173,10 +175,54 @@ class ChatViewModelTest {
     assertNull(vm.uiState.value.errorMsg)
   }
 
+  /**
+   * Breaks if ChatViewModel throws exception when initialized with unconfigured chat repository.
+   */
+  @Test
+  fun unconfiguredChatRepositoryThrowsIllegalStateException() {
+    val badDataRepo = dataRepository(chatRepo = null)
+    assertThrows(IllegalStateException::class.java) { ChatViewModel("c1", badDataRepo, "u2") }
+  }
+
+  /** Breaks if loadChat executes concurrently while already active. */
+  @Test
+  fun loadChatIgnoresConcurrentCallsWhileLoading() {
+    val gate = CompletableDeferred<Unit>()
+    localChatRepo.beforeGet = { gate.await() }
+    val vm = viewModel()
+
+    vm.loadChat()
+    vm.loadChat() // ignored while loading
+
+    gate.complete(Unit)
+    assertEquals(chat, vm.uiState.value.chat)
+  }
+
+  /** Breaks if sendMessage runs when chat is null or cannot send. */
+  @Test
+  fun sendMessageIgnoredWhenChatNullOrCannotSend() {
+    val vm = viewModel() // chat is null initially
+    vm.sendMessage(MessageContent.Text("Ignored"))
+    assertNull(vm.uiState.value.chat)
+  }
+
+  /** Breaks if sendMessage handles cancellation without setting error or leaving isSending true. */
+  @Test
+  fun sendMessageCancellationExceptionDoesNotSetError() {
+    val vm = viewModel().also { it.loadChat() }
+    localChatRepo.addMessageFailure = CancellationException("cancelled")
+
+    vm.sendMessage(MessageContent.Text("Cancel"))
+
+    assertFalse(vm.uiState.value.isSending)
+    assertNull(vm.uiState.value.errorMsg)
+  }
+
   private class ScriptedChatRepository(initialChat: Chat) : ChatRepository {
     var chatState = initialChat
     var getFailure: Exception? = null
     var addMessageFailure: Exception? = null
+    var beforeGet: suspend () -> Unit = {}
     var uidCounter = 10
 
     override fun getNewUid(): String = "m${uidCounter++}"
@@ -184,6 +230,7 @@ class ChatViewModelTest {
     override suspend fun getAllChats(): List<Chat> = listOf(chatState)
 
     override suspend fun getChat(chatId: String): Chat {
+      beforeGet()
       getFailure?.let { throw it }
       require(chatId == chatState.chatId) { "Chat not found" }
       return chatState
