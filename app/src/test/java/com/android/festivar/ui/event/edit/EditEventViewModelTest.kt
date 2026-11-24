@@ -296,6 +296,45 @@ class EditEventViewModelTest {
     assertEquals(FieldError.END_BEFORE_START, state.endDateError)
   }
 
+  /** Breaks if the form saves a location from its venue text, which has no coordinates. */
+  @Test
+  fun saveChanges_savesNoLocation() = runTest {
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+    viewModel.updateName("Updated festival")
+
+    viewModel.saveChanges()
+    advanceUntilIdle()
+
+    assertNull(eventsRepository.getEvent(initialEvent.eventId).location)
+  }
+
+  /** Breaks if an event without a location fills the venue with anything but an empty text. */
+  @Test
+  fun fetchEventWithoutLocationPrefillsAnEmptyVenue() = runTest {
+    eventsRepository.editEvent(initialEvent.eventId, initialEvent.copy(location = null))
+
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+
+    val state = viewModel.uiState.value
+    assertEquals("", state.venue)
+    assertFalse(state.hasChanges)
+  }
+
+  /** Breaks if typing the venue back to its original text still counts as a change. */
+  @Test
+  fun venueTypedBackToTheOriginalIsNoChange() = runTest {
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+
+    viewModel.updateVenue("Somewhere else")
+    assertTrue(viewModel.uiState.value.hasChanges)
+    viewModel.updateVenue(initialEvent.location!!.name)
+
+    assertFalse(viewModel.uiState.value.hasChanges)
+  }
+
   @Test
   fun saveChangesUpdatesEventAndPreservesUneditedEventData() = runTest {
     viewModel.fetchEvent(initialEvent.eventId)
