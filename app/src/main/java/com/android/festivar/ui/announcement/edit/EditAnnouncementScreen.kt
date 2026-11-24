@@ -8,12 +8,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -198,7 +198,9 @@ fun EditAnnouncementContent(
 private fun NoForm(onBack: () -> Unit, content: @Composable () -> Unit) {
   Scaffold(
       containerColor = MaterialTheme.colorScheme.background,
-      topBar = { AnnouncementFormTopBar(R.string.edit_announcement, onBack, editAnnouncementTags) },
+      topBar = {
+        AnnouncementFormTopBar(editAnnouncementLabels.title, onBack, editAnnouncementTags)
+      },
   ) { padding ->
     Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { content() }
   }
@@ -219,12 +221,9 @@ private fun LoadError(@StringRes message: Int, onRetry: () -> Unit) {
         textAlign = TextAlign.Center,
         modifier = Modifier.testTag(EditAnnouncementScreenTestTags.LOAD_ERROR),
     )
-    TextButton(
+    Button(
         onClick = onRetry,
-        colors =
-            ButtonDefaults.textButtonColors(
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-            ),
+        shape = RoundedCornerShape(12.dp),
         modifier = Modifier.testTag(EditAnnouncementScreenTestTags.LOAD_RETRY),
     ) {
       Text(stringResource(R.string.action_retry))
