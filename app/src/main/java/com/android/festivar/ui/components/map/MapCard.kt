@@ -58,10 +58,18 @@ fun MapCard(
         content = content,
     )
     // The map's gestures are off, but a tap on a marker still moves its camera and opens its info
-    // window. This layer sits above the map so that no touch reaches it. It leaves the touches
-    // unconsumed, so a screen can still make the whole card clickable.
-    Box(Modifier.matchParentSize().testTag(MapCardTestTags.TOUCH_BLOCKER).pointerInput(Unit) {})
+    // window. This layer sits above the map so that no touch reaches it.
+    TouchBlocker(Modifier.matchParentSize().testTag(MapCardTestTags.TOUCH_BLOCKER))
   }
+}
+
+/**
+ * A transparent layer that keeps the touches from reaching what is drawn under it. It leaves the
+ * touches unconsumed, so a screen can still make the whole card clickable.
+ */
+@Composable
+internal fun TouchBlocker(modifier: Modifier = Modifier) {
+  Box(modifier.pointerInput(Unit) {})
 }
 
 /** Preview of the card: use "Run Preview on Device", the preview panel cannot draw Google Maps. */
