@@ -290,6 +290,33 @@ class EventRepositoryFirebaseTest {
     )
   }
 
+  /** Breaks if the location of an event is not saved with its coordinates and read back. */
+  @Test
+  fun location_isSavedAndReadBack() = runBlocking {
+    repository.addEvent(event)
+
+    assertEquals(event.location, repository.getEvent(event.eventId).location)
+  }
+
+  /** Breaks if editing an event to no location keeps the place it had before. */
+  @Test
+  fun location_isClearedByAnEditWithoutLocation() = runBlocking {
+    repository.addEvent(event)
+
+    repository.editEvent(event.eventId, event.copy(location = null))
+
+    assertNull(repository.getEvent(event.eventId).location)
+  }
+
+  /** Breaks if an event saved with a text location, before the coordinates, stops loading. */
+  @Test
+  fun location_savedAsTextReadsAsNoLocation() = runBlocking {
+    repository.addEvent(event)
+    eventDocument().update("location", "EPFL").await()
+
+    assertNull(repository.getEvent(event.eventId).location)
+  }
+
   @Test
   fun getEvent_usesDefaultsForMissingOptionalFields() = runBlocking {
     val document = Firebase.firestore.collection("events").document(event.eventId)

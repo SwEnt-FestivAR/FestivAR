@@ -1,13 +1,17 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.event
 
 import com.android.festivar.model.event.announcement.Announcement
+import com.android.festivar.model.map.Location
+import com.android.festivar.model.map.geometry.GeoPosition
 import com.android.festivar.model.user.User
 import java.time.ZonedDateTime
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -123,6 +127,21 @@ class EventsRepositoryLocalTest {
     assertEquals(listOf(fete, feteBis), repository.getEventsByJoinCode("FETE20"))
     assertTrue(repository.getEventsByJoinCode("NOEL1").isEmpty())
     assertTrue(repository.getEventsByJoinCode("ZZZZZZ").isEmpty())
+  }
+
+  /** Breaks if the local repository drops the location when it adds, edits or reads an event. */
+  @Test
+  fun location_isKeptByAddAndEdit() = runTest {
+    val epfl = Location("EPFL", GeoPosition(46.5191, 6.5668))
+    repository.addEvent(event.copy(location = epfl))
+    assertEquals(epfl, repository.getEvent(event.eventId).location)
+
+    val vidy = Location("Vidy", GeoPosition(46.5137, 6.6012))
+    repository.editEvent(event.eventId, event.copy(location = vidy))
+    assertEquals(vidy, repository.getEvent(event.eventId).location)
+
+    repository.editEvent(event.eventId, event.copy(location = null))
+    assertNull(repository.getEvent(event.eventId).location)
   }
 
   @Test
