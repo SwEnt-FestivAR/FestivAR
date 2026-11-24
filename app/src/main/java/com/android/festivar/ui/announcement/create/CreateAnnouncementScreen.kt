@@ -37,7 +37,7 @@ object CreateAnnouncementScreenTestTags {
   fun priorityChip(priority: AnnouncementPriority) = "createAnnouncementPriority_${priority.name}"
 }
 
-// The tags and texts of the form when it creates an announcement.
+/** The test tags of the form when it creates an announcement. */
 private val createAnnouncementTags =
     AnnouncementFormTags(
         backButton = CreateAnnouncementScreenTestTags.BACK_BUTTON,
@@ -56,6 +56,7 @@ private val createAnnouncementTags =
         priorityChip = CreateAnnouncementScreenTestTags::priorityChip,
     )
 
+/** The texts of the form when it creates an announcement. */
 private val createAnnouncementLabels =
     AnnouncementFormLabels(
         title = R.string.create_announcement,
@@ -116,7 +117,7 @@ fun CreateAnnouncementContent(
     modifier: Modifier = Modifier,
 ) {
   AnnouncementFormContent(
-      form = state.toForm(),
+      form = state.form,
       isSaving = state.isSaving,
       isEditable = state.isEditable,
       canSubmit = state.canPublish,
@@ -128,16 +129,6 @@ fun CreateAnnouncementContent(
   )
 }
 
-/** The fields of [this] that the shared form draws. */
-private fun CreateAnnouncementUiState.toForm(): AnnouncementFormState =
-    AnnouncementFormState(
-        title = title,
-        content = content,
-        priority = priority,
-        titleEdited = titleEdited,
-        contentEdited = contentEdited,
-    )
-
 @Preview(showBackground = true)
 @Composable
 internal fun CreateAnnouncementContentPreview() {
@@ -145,9 +136,13 @@ internal fun CreateAnnouncementContentPreview() {
     CreateAnnouncementContent(
         state =
             CreateAnnouncementUiState(
-                title = "Stage B is closed",
-                content = "Strong wind on the hill. Send everyone to the north gate until 16:00.",
-                priority = AnnouncementPriority.URGENT,
+                form =
+                    AnnouncementFormState(
+                        title = "Stage B is closed",
+                        content =
+                            "Strong wind on the hill. Send everyone to the north gate until 16:00.",
+                        priority = AnnouncementPriority.URGENT,
+                    )
             ),
         actions = AnnouncementFormActions(),
     )
@@ -161,9 +156,13 @@ internal fun CreateAnnouncementContentSavingPreview() {
     CreateAnnouncementContent(
         state =
             CreateAnnouncementUiState(
-                title = "Stage B is closed",
-                content = "Strong wind on the hill. Send everyone to the north gate until 16:00.",
-                priority = AnnouncementPriority.URGENT,
+                form =
+                    AnnouncementFormState(
+                        title = "Stage B is closed",
+                        content =
+                            "Strong wind on the hill. Send everyone to the north gate until 16:00.",
+                        priority = AnnouncementPriority.URGENT,
+                    ),
                 isSaving = true,
             ),
         actions = AnnouncementFormActions(),
@@ -176,7 +175,10 @@ internal fun CreateAnnouncementContentSavingPreview() {
 internal fun CreateAnnouncementContentFieldErrorsPreview() {
   AppTheme {
     CreateAnnouncementContent(
-        state = CreateAnnouncementUiState(titleEdited = true, contentEdited = true),
+        state =
+            CreateAnnouncementUiState(
+                form = AnnouncementFormState(titleEdited = true, contentEdited = true)
+            ),
         actions = AnnouncementFormActions(),
     )
   }

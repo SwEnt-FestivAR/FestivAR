@@ -6,10 +6,12 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.FirebaseEmulatorSetup
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.event.announcement.AnnouncementPriority
+import com.android.festivar.model.event.role.Role
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepositoryFirebase
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.firestore
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -81,6 +83,7 @@ class EventRepositoryFirebaseTest {
     assertNotEquals(first, second)
   }
 
+  /** Breaks if an event field, its roles included, is not written to Firestore as expected. */
   @Test
   fun toFirestoreData_serializesEventFields() {
     val data = invokeToFirestoreData(event)
@@ -95,6 +98,7 @@ class EventRepositoryFirebaseTest {
     assertEquals(emptyList<String>(), data["tasks"])
     assertEquals(event.closed, data["closed"])
     assertEquals(joinCodeOf(event), data["joinCode"])
+    assertEquals(mapOf("user-1" to "OWNER"), data["roles"])
   }
 
   @Test
@@ -138,6 +142,7 @@ class EventRepositoryFirebaseTest {
     }
   }
 
+  /** Breaks if getEventsForUser returns an event the user is not a member of, or misses one. */
   @Test
   fun getEventsForUser_returnsOnlyMatchingEvents() = runBlocking {
     val otherEvent =
@@ -145,6 +150,7 @@ class EventRepositoryFirebaseTest {
             eventId = "event-${UUID.randomUUID()}",
             ownerId = "other-owner",
             members = listOf(User("other-owner")),
+            roles = mapOf("other-owner" to Role.OWNER),
         )
     repository.addEvent(event)
     repository.addEvent(otherEvent)
@@ -307,6 +313,96 @@ class EventRepositoryFirebaseTest {
     // A null field reads as absent, while another type is malformed (see the test below).
     document.update("announcements", null).await()
     assertTrue(repository.getEvent(event.eventId).announcements.isEmpty())
+  }
+
+  // --------------------------------------- roles ------------------------------------------ //
+
+  /** Breaks if addEvent or editEvent do not write the roles, so a role change vanishes on save. */
+  @Test
+  fun addEventAndEditEvent_saveTheRoles() = runBlocking {
+    val created = event.addMember(User("user-2", "Alex", "Lee"))
+    repository.addEvent(created)
+    assertEquals(created, repository.getEvent(event.eventId))
+
+    val edited = created.setRole("user-1", "user-2", Role.STAFF)
+    repository.editEvent(event.eventId, edited)
+    assertEquals(edited, repository.getEvent(event.eventId))
+  }
+
+  /** Writes the event document by hand, with the members user-1 and user-2 and the raw [roles]. */
+  private suspend fun writeTwoMemberEvent(roles: Any?) {
+    eventDocument()
+        .set(
+            mapOf(
+                "eventId" to event.eventId,
+                "ownerId" to event.ownerId,
+                "title" to event.title,
+                "members" to listOf("user-1", "user-2"),
+                "roles" to roles,
+                "startDate" to event.startDate.toString(),
+                "endDate" to event.endDate.toString(),
+            )
+        )
+        .await()
+  }
+
+  /**
+   * Breaks if an event saved before roles were stored can no longer be read. TEMPORARY, like
+   * repairRoles in EventRepositoryFirebase: delete it with it.
+   */
+  @Test
+  fun getEvent_withoutRoles_givesOwnerToTheOwnerAndTheDefaultRoleToTheOthers() = runBlocking {
+    val defaultRoles = mapOf("user-1" to Role.OWNER, "user-2" to DEFAULT_ROLE)
+
+    // A null field reads as absent, while another type is malformed (see the test below).
+    writeTwoMemberEvent(roles = null)
+    assertEquals(defaultRoles, repository.getEvent(event.eventId).roles)
+
+    eventDocument().update(mapOf("roles" to FieldValue.delete())).await()
+    assertEquals(defaultRoles, repository.getEvent(event.eventId).roles)
+  }
+
+  /**
+   * Breaks if roles out of sync with the members, as an older version of the app writes them, make
+   * the event unreadable. TEMPORARY, like repairRoles in EventRepositoryFirebase: delete them
+   * together.
+   */
+  @Test
+  fun getEvent_repairsRolesOutOfSyncWithTheMembers() = runBlocking {
+    // The owner lost OWNER, and a user who left the event kept a role.
+    writeTwoMemberEvent(
+        roles = mapOf("user-1" to "VISITOR", "user-2" to "STAFF", "gone" to "ADMIN")
+    )
+    assertEquals(
+        mapOf("user-1" to Role.OWNER, "user-2" to Role.STAFF),
+        repository.getEvent(event.eventId).roles,
+    )
+
+    // The owner has no role, and another member has OWNER.
+    writeTwoMemberEvent(roles = mapOf("user-2" to "OWNER"))
+    assertEquals(
+        mapOf("user-1" to Role.OWNER, "user-2" to DEFAULT_ROLE),
+        repository.getEvent(event.eventId).roles,
+    )
+  }
+
+  /** Breaks if malformed stored roles are read with made-up values, or if the error is unclear. */
+  @Test
+  fun malformedStoredRoles_areRefused_namingTheEvent() = runBlocking {
+    val invalid = "Invalid role data for event ${event.eventId}"
+
+    writeEventDocument(roles = "not a map")
+    assertThrowsOfType<IllegalArgumentException>("$invalid.") { repository.getEvent(event.eventId) }
+
+    writeEventDocument(roles = mapOf("user-1" to 3))
+    assertThrowsOfType<IllegalArgumentException>("$invalid: user-1=3.") {
+      repository.getEvent(event.eventId)
+    }
+
+    writeEventDocument(roles = mapOf("user-1" to "KING"))
+    assertThrowsOfType<IllegalArgumentException>("$invalid: unknown role 'KING'.") {
+      repository.getEvent(event.eventId)
+    }
   }
 
   // ----------------------------------- announcements -------------------------------------- //
@@ -488,8 +584,11 @@ class EventRepositoryFirebaseTest {
 
   private fun eventDocument() = Firebase.firestore.collection("events").document(event.eventId)
 
-  /** Writes the event document by hand, with the given raw `announcements` field. */
-  private suspend fun writeEventDocument(announcements: Any) {
+  /** Writes the event document by hand, with the given raw `announcements` and `roles` fields. */
+  private suspend fun writeEventDocument(
+      announcements: Any = emptyList<Any>(),
+      roles: Any? = null,
+  ) {
     eventDocument()
         .set(
             mapOf(
@@ -499,6 +598,7 @@ class EventRepositoryFirebaseTest {
                 "startDate" to event.startDate.toString(),
                 "endDate" to event.endDate.toString(),
                 "announcements" to announcements,
+                "roles" to roles,
             )
         )
         .await()

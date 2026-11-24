@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.navigation.announcement
 
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -10,6 +11,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.navigation.AppScreens
+import com.android.festivar.navigation.RequireSignedIn
 import com.android.festivar.ui.announcement.create.CreateAnnouncementScreen
 import com.android.festivar.ui.announcement.create.CreateAnnouncementViewModel
 import com.android.festivar.ui.announcement.details.AnnouncementDetailsScreen
@@ -51,21 +53,23 @@ fun NavGraphBuilder.announcementGraph(
       arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
   ) { backStackEntry ->
     val eventId = requireEventId(backStackEntry)
-    // Asked at each tap on "Publish". Blank when nobody is signed in: the view model then refuses
-    // to save (redirect left to #261).
-    val currentUserId: () -> String = { dataRepository.authRepository.currentUser?.uid.orEmpty() }
     // Leaving the screen, whether the announcement was published or not, goes back. The arrow still
     // takes taps during the exit transition, so only this entry may pop itself, and only once.
     val leave: () -> Unit = {
       if (navController.currentBackStackEntry == backStackEntry) navController.popBackStack()
     }
-    // No key needed: the view model is scoped to this back stack entry, which has its own eventId.
-    CreateAnnouncementScreen(
-        viewModel =
-            viewModel { CreateAnnouncementViewModel(eventId, currentUserId, dataRepository) },
-        onBack = leave,
-        onPublished = leave,
-    )
+    RequireSignedIn(navController, dataRepository) { firebaseUser ->
+      // No key needed: the view model is scoped to this back stack entry, which has its own
+      // eventId.
+      CreateAnnouncementScreen(
+          viewModel =
+              viewModel {
+                CreateAnnouncementViewModel(eventId, { firebaseUser.uid }, dataRepository)
+              },
+          onBack = leave,
+          onPublished = leave,
+      )
+    }
   }
   // Reached through AppScreens.announcementFeed(eventId). The route carries the id of the event
   // whose announcements are shown.

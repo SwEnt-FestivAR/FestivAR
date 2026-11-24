@@ -11,6 +11,7 @@
     <string name="action_retry">Retry</string>
     <string name="action_open_settings">Open settings</string>
     <string name="action_dismiss">Dismiss</string>
+    <string name="action_close">Close</string>
     <string name="action_continue">Continue</string>
     <string name="action_continue_anyway">Continue anyway</string>
     <!-- User list -->

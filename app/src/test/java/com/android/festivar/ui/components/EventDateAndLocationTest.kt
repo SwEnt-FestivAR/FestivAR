@@ -10,6 +10,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.annotation.Config
 
 /** Unit tests of the line showing the days and the place of an event. */
 @RunWith(AndroidJUnit4::class)
@@ -49,5 +50,12 @@ class EventDateAndLocationTest {
   @Test
   fun whitespaceLocationLeavesOnlyTheDays() {
     assertEquals("Fri 16 to Sun 18 Oct", lineOf("   "))
+  }
+
+  /** Breaks if the word between the two days stays English when the phone is in French. */
+  @Test
+  @Config(qualifiers = "fr")
+  fun theWordBetweenTheDaysFollowsTheLanguage() {
+    assertEquals("ven. 16 au dim. 18 oct. · Parc de Vidy", lineOf("Parc de Vidy"))
   }
 }

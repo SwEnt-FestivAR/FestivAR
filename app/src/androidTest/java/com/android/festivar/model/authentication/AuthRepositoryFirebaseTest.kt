@@ -1,5 +1,6 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.authentication
 
 import android.os.Bundle
@@ -16,8 +17,13 @@ import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.firestore
 import java.util.UUID
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.yield
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -149,6 +155,21 @@ class AuthRepositoryFirebaseTest {
 
     assertTrue(result.isSuccess)
     assertNull(repository.currentUser)
+  }
+
+  /** Breaks if the flow misses the sign-in that was made, or the sign-out that follows. */
+  @Test
+  fun currentUserFlow_emitsTheSignedInUserThenNullOnSignOut() = runBlocking {
+    val user = signInAnon()
+    val emitted = mutableListOf<String?>()
+
+    val collecting =
+        repository.currentUserFlow.take(2).onEach { emitted.add(it?.uid) }.launchIn(this)
+    withTimeout(10_000) { while (emitted.isEmpty()) yield() }
+    repository.signOut()
+    withTimeout(10_000) { collecting.join() }
+
+    assertEquals(listOf(user.uid, null), emitted)
   }
 
   @Test

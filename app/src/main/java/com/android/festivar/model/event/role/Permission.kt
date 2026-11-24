@@ -39,13 +39,19 @@ enum class Permission {
   CAN_EDIT_OWN_ANNOUNCEMENT,
   /** Delete the announcements the member owns. */
   CAN_DELETE_OWN_ANNOUNCEMENT,
-  /** Edit any announcement of the event, whoever owns it. */
+  /**
+   * Edit any announcement of the event, whoever owns it. Pinning or unpinning an announcement
+   * counts as editing it, with this permission or [CAN_EDIT_OWN_ANNOUNCEMENT].
+   */
   CAN_EDIT_ANNOUNCEMENT,
   /** Delete any announcement of the event, whoever owns it. */
   CAN_DELETE_ANNOUNCEMENT,
   /** Publish a new announcement in the event. */
   CAN_CREATE_ANNOUNCEMENT,
-  /** Edit the details of the event (title, description, dates, location...). */
+  /**
+   * Edit the details of the event (title, description, dates, location...). Closing the event
+   * counts as editing it.
+   */
   CAN_EDIT_EVENT,
   /** Delete the event. */
   CAN_DELETE_EVENT,

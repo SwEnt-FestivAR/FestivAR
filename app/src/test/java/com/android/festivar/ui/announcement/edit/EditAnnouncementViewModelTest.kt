@@ -119,7 +119,7 @@ class EditAnnouncementViewModelTest {
     }
   }
 
-  // Breaks if the init check on eventId or on announcementId is removed.
+  /** Breaks if the init check on eventId or on announcementId is removed. */
   @Test
   fun blankIdsFailFast() {
     assertThrows(IllegalArgumentException::class.java) {
@@ -130,8 +130,10 @@ class EditAnnouncementViewModelTest {
     }
   }
 
-  // Breaks if a setter edits a form that is not loaded, if save() writes it, or if hasChanges reads
-  // the announcement before it is loaded.
+  /**
+   * Breaks if a setter edits a form that is not loaded, if save() writes it, or if hasChanges reads
+   * the announcement before it is loaded.
+   */
   @Test
   fun beforeLoadNothingIsEditableOrSavable() {
     val vm = viewModel()
@@ -144,8 +146,10 @@ class EditAnnouncementViewModelTest {
     assertEquals(0, repo.edits)
   }
 
-  // Breaks if a stored field is not mapped into the form, if the load stays loading, or if an
-  // untouched form counts as a change.
+  /**
+   * Breaks if a stored field is not mapped into the form, if the load stays loading, or if an
+   * untouched form counts as a change.
+   */
   @Test
   fun loadPrefillsTheFormWithoutErrorsOrChanges() {
     val vm = viewModel().apply { load() }
@@ -161,8 +165,10 @@ class EditAnnouncementViewModelTest {
     assertFalse(state.canSave)
   }
 
-  // Breaks if a missing announcement shows no load error or stays loading, or if the error blocks
-  // a retry.
+  /**
+   * Breaks if a missing announcement shows no load error or stays loading, or if the error blocks a
+   * retry.
+   */
   @Test
   fun aMissingAnnouncementShowsTheLoadErrorAndALaterLoadRecovers() {
     runBlocking { repo.local.deleteAnnouncement("event-1", "ann-1") }
@@ -180,8 +186,10 @@ class EditAnnouncementViewModelTest {
     assertNull(vm.uiState.value.errorMsg)
   }
 
-  // Breaks if the load guard ignores a running load or a loaded announcement, so a second call
-  // reads again or wipes the unsaved edit, or if isLoading is not set while the load runs.
+  /**
+   * Breaks if the load guard ignores a running load or a loaded announcement, so a second call
+   * reads again or wipes the unsaved edit, or if isLoading is not set while the load runs.
+   */
   @Test
   fun loadIsNotRepeatedWhileRunningOrOnceLoadedAndKeepsEdits() {
     val gate = CompletableDeferred<Unit>()
@@ -203,7 +211,7 @@ class EditAnnouncementViewModelTest {
     assertEquals("Doors open", vm.uiState.value.form.title)
   }
 
-  // Breaks if a cancelled load falls into the generic catch and shows a load error.
+  /** Breaks if a cancelled load falls into the generic catch and shows a load error. */
   @Test
   fun aCancelledLoadShowsNoError() {
     repo.beforeRead = { never.await() }
@@ -215,8 +223,10 @@ class EditAnnouncementViewModelTest {
     assertNull(vm.uiState.value.errorMsg)
   }
 
-  // Breaks if a stored blank content is not flagged from the start, or if canSave ignores an
-  // invalid form.
+  /**
+   * Breaks if a stored blank content is not flagged from the start, or if canSave ignores an
+   * invalid form.
+   */
   @Test
   fun blankStoredContentShowsTheErrorFromTheStartAndNeedsContentToSave() {
     runBlocking { repo.local.editAnnouncement("event-1", seeded.copy(content = "")) }
@@ -231,32 +241,24 @@ class EditAnnouncementViewModelTest {
     assertTrue(vm.uiState.value.canSave)
   }
 
-  // Breaks if hasChanges ignores a field or compares untrimmed texts, or if
-  // needsDiscardConfirmation does not follow it.
+  /**
+   * Breaks if hasChanges does not compare the form with the loaded announcement, or if
+   * needsDiscardConfirmation does not follow it. The compared fields and the trimming are tested in
+   * AnnouncementFormTest (matches).
+   */
   @Test
-  fun hasChangesComparesTrimmedTitleContentAndPriority() {
+  fun aFormThatDiffersFromTheLoadedAnnouncementHasChanges() {
     val vm = viewModel().apply { load() }
-    fun changed() = vm.uiState.value.needsDiscardConfirmation
-
-    vm.updateTitle("  Gates open ")
-    vm.updateContent(" The north gate opens at 16:00.  ")
-    assertFalse(changed())
-
-    vm.updateTitle("Doors open")
-    assertTrue(changed())
-    vm.updateTitle("Gates open")
-
-    vm.updateContent("The south gate opens at 16:00.")
-    assertTrue(changed())
-    vm.updateContent("The north gate opens at 16:00.")
 
     vm.updatePriority(AnnouncementPriority.URGENT)
-    assertTrue(changed())
+    assertTrue(vm.uiState.value.needsDiscardConfirmation)
   }
 
-  // Breaks if a text is stored untrimmed or a field is not stored, if the time of the edit is not
-  // now, if the save writes the copy loaded at screen open (undoing a pin toggled since), or if a
-  // saved form still takes typing.
+  /**
+   * Breaks if a text is stored untrimmed or a field is not stored, if the time of the edit is not
+   * now, if the save writes the copy loaded at screen open (undoing a pin toggled since), or if a
+   * saved form still takes typing.
+   */
   @Test
   fun saveStoresTheTrimmedEditsOnTheLatestCopy() {
     val vm = viewModel().apply { load() }
@@ -284,7 +286,7 @@ class EditAnnouncementViewModelTest {
     assertEquals("  Doors open ", vm.uiState.value.form.title)
   }
 
-  // Breaks if a device clock behind the stored time is written as is, which the model refuses.
+  /** Breaks if a device clock behind the stored time is written as is, which the model refuses. */
   @Test
   fun aClockBehindTheStoredTimeKeepsTheStoredTime() {
     val behind = Clock.fixed(Instant.parse("2026-10-30T05:00:00Z"), zone)
@@ -296,8 +298,10 @@ class EditAnnouncementViewModelTest {
     assertEquals(seeded.updatedAt.toInstant(), stored().updatedAt.toInstant())
   }
 
-  // Breaks if the owner is not checked, or only at load, so a user who no longer owns the event
-  // can save, or if the refused save shows no error.
+  /**
+   * Breaks if the owner is not checked, or only at load, so a user who no longer owns the event can
+   * save, or if the refused save shows no error.
+   */
   @Test
   fun aUserWhoNoLongerOwnsTheEventCannotSave() {
     var user = "owner-1"
@@ -312,8 +316,10 @@ class EditAnnouncementViewModelTest {
     assertSaveError(vm)
   }
 
-  // Breaks if canSave ignores isSaving or isSaved, so a second tap writes twice, if typing during
-  // the save changes the form, or if a saved form that still differs asks to discard.
+  /**
+   * Breaks if canSave ignores isSaving or isSaved, so a second tap writes twice, if typing during
+   * the save changes the form, or if a saved form that still differs asks to discard.
+   */
   @Test
   fun aSaveInProgressIgnoresASecondTapAndLaterTyping() {
     val gate = CompletableDeferred<Unit>()
@@ -336,8 +342,10 @@ class EditAnnouncementViewModelTest {
     assertFalse(state.needsDiscardConfirmation)
   }
 
-  // Breaks if a failed write is shown as saved or resets the form, if a retry keeps the old error,
-  // or if a write that landed before the failure is not read back as saved.
+  /**
+   * Breaks if a failed write is shown as saved or resets the form, if a retry keeps the old error,
+   * or if a write that landed before the failure is not read back as saved.
+   */
   @Test
   fun aFailedSaveKeepsTheFormAndARetryThatLandedEndsAsSaved() {
     repo.beforeEdit = { throw IllegalStateException("offline") }
@@ -359,8 +367,10 @@ class EditAnnouncementViewModelTest {
     assertEquals("Doors open", stored().title)
   }
 
-  // Breaks if the write has no timeout, or if a timeout is reported as a failure without reading
-  // back the write that landed.
+  /**
+   * Breaks if the write has no timeout, or if a timeout is reported as a failure without reading
+   * back the write that landed.
+   */
   @Test
   fun aTimeoutAfterTheWriteLandedEndsAsSaved() {
     repo.afterEdit = { never.await() }
@@ -374,8 +384,10 @@ class EditAnnouncementViewModelTest {
     assertEquals("Doors open", vm.uiState.value.announcement?.title)
   }
 
-  // Breaks if the read-back after a failed write has no timeout of its own, or lets its failure
-  // escape, so the form stays saving or crashes.
+  /**
+   * Breaks if the read-back after a failed write has no timeout of its own, or lets its failure
+   * escape, so the form stays saving or crashes.
+   */
   @Test
   fun aReadBackThatFailsOrHangsEndsAsTheSaveError() {
     val readBacks: List<suspend () -> Unit> =
@@ -394,7 +406,7 @@ class EditAnnouncementViewModelTest {
     }
   }
 
-  // Breaks if the save recreates an announcement deleted since the load, or does not report it.
+  /** Breaks if the save recreates an announcement deleted since the load, or does not report it. */
   @Test
   fun anAnnouncementDeletedBeforeTheSaveShowsTheSaveErrorAndStoresNothing() {
     val vm = editedViewModel()
@@ -407,8 +419,10 @@ class EditAnnouncementViewModelTest {
     assertTrue(runBlocking { repo.local.getEvent("event-1") }.announcements.isEmpty())
   }
 
-  // Breaks if a cancellation during the save or its read-back falls into a generic catch, so the
-  // form stays saving or shows an error the user did not cause.
+  /**
+   * Breaks if a cancellation during the save or its read-back falls into a generic catch, so the
+   * form stays saving or shows an error the user did not cause.
+   */
   @Test
   fun aSaveCancelledDuringTheReadBackClearsSavingAndShowsNoError() {
     repo.beforeEdit = { throw IllegalStateException("offline") }

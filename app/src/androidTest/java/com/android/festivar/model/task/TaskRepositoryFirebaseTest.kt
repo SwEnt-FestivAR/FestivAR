@@ -112,6 +112,7 @@ class TaskRepositoryFirebaseTest {
             "audioUrl" to "https://example.com/note-1.m4a",
             "duration" to 14_000_000_000L,
             "createdAt" to "2026-07-01T10:00+02:00[Europe/Zurich]",
+            "waveform" to listOf(0.25, 0.5, 1.0),
         )
 
     assertEquals(stored, invokeToFirestoreData(task.copy(voiceNote = note))["voiceNote"])
@@ -391,6 +392,7 @@ class TaskRepositoryFirebaseTest {
           audioUrl = "https://example.com/note-1.m4a",
           duration = Duration.ofSeconds(14),
           createdAt = ZonedDateTime.of(2026, 7, 1, 10, 0, 0, 0, ZoneId.of("Europe/Zurich")),
+          waveform = listOf(0.25f, 0.5f, 1f),
       )
 
   private fun newTask(): Task =

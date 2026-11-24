@@ -6,9 +6,17 @@
     <uses-feature
         android:name="android.hardware.microphone"
         android:required="false" />
+    <!-- AR is optional: the app installs on a phone without a camera or ARCore, minus the AR. -->
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.camera.ar"
+        android:required="false" />
 
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.CAMERA" />
 
     <application
         android:allowBackup="true"
@@ -19,12 +27,19 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.AppTheme"
+        android:localeConfig="@xml/locale_config"
         tools:targetApi="31">
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${MAPS_API_KEY}" />
+        <meta-data
+            android:name="com.google.ar.core"
+            android:value="optional" />
         <activity
             android:name=".SecondActivity"
             android:exported="false"
             android:label="@string/title_activity_second" />
-        <activity android:name=".MySettingsActivity"
+        <activity android:name=".SettingsActivity"
             android:exported="true"
             android:theme="@style/Theme.App.Settings"
             android:label="@string/title_activity_settings" />

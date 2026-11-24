@@ -1,16 +1,35 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored by Copilot
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.festivar.ui.profile
 
+import android.content.ContentResolver
+import android.content.Context
+import android.net.Uri
+import android.webkit.MimeTypeMap
+import androidx.credentials.Credential
+import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.GetCredentialResponse
 import com.android.festivar.R
 import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.datarepository.DataRepositoryLocal
+import com.android.festivar.model.images.ImageStorage
+import com.android.festivar.model.images.StoredImage
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryLocal
 import com.google.firebase.auth.FirebaseUser
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkStatic
+import io.mockk.unmockkStatic
+import java.io.ByteArrayInputStream
+import java.io.File
+import java.io.RandomAccessFile
+import kotlin.io.path.createTempDirectory
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -64,6 +83,28 @@ class ProfileViewModelTest {
     }
   }
 
+  private class RecordingImageStorage(
+      private val uploadedUrl: String = "https://example.com/new-picture.png",
+      var uploadError: Exception? = null,
+      var deleteError: Exception? = null,
+  ) : ImageStorage {
+    val uploadedImages = mutableListOf<Pair<StoredImage, String>>()
+    val deletedUrls = mutableListOf<String>()
+
+    override fun getNewUid(): String = "image-id"
+
+    override suspend fun upload(storedImage: StoredImage, subFolder: String): String {
+      uploadedImages += storedImage to subFolder
+      uploadError?.let { throw it }
+      return uploadedUrl
+    }
+
+    override suspend fun delete(imageUrl: String) {
+      deletedUrls += imageUrl
+      deleteError?.let { throw it }
+    }
+  }
+
   private val testDispatcher = StandardTestDispatcher()
 
   private val sara =
@@ -91,6 +132,7 @@ class ProfileViewModelTest {
   private fun createViewModel(
       repository: UsersRepository = RecordingUsersRepository(listOf(sara)),
       authRepository: FakeAuthRepository = this.authRepository,
+      imageStorage: ImageStorage = RecordingImageStorage(),
       uId: String = sara.uid,
   ): ProfileViewModel =
       ProfileViewModel(
@@ -98,8 +140,10 @@ class ProfileViewModelTest {
               DataRepositoryLocal(
                   authRepository = authRepository,
                   usersRepository = repository,
+                  imageStorage = imageStorage,
               ),
           uId = uId,
+          ioDispatcher = testDispatcher,
       )
 
   /** Test that the UI state is loading until the user is fetched, then fills the fields. */
@@ -346,6 +390,217 @@ class ProfileViewModelTest {
     assertFalse(state.isSaving)
     assertNull(state.errorMsg)
     assertFalse(state.canSave)
+  }
+
+  @Test
+  fun updateProfilePictureReplacesAndDeletesPreviousPicture() = runTest {
+    val user = sara.copy(profilePictureUrl = "https://example.com/old-picture.png")
+    val repository = RecordingUsersRepository(listOf(user))
+    val imageStorage = RecordingImageStorage()
+    val viewModel =
+        createViewModel(
+            repository = repository,
+            imageStorage = imageStorage,
+            uId = user.uid,
+        )
+    advanceUntilIdle()
+
+    val storedImage = StoredImage(File("new-picture.png"))
+    viewModel.updateProfilePicture(storedImage)
+    advanceUntilIdle()
+
+    val expected = user.copy(profilePictureUrl = "https://example.com/new-picture.png")
+    assertEquals(listOf(storedImage to "pfp"), imageStorage.uploadedImages)
+    assertEquals(listOf(user.profilePictureUrl), imageStorage.deletedUrls)
+    assertEquals(listOf(expected), repository.editedUsers)
+    assertEquals(expected, viewModel.uiState.value.user)
+    assertFalse(viewModel.uiState.value.isSaving)
+    assertNull(viewModel.uiState.value.errorMsg)
+  }
+
+  @Test
+  fun updateProfilePictureFromUriShowsErrorWhenUriCannotBeRead() = runTest {
+    val resolver = mockk<ContentResolver>()
+    val uri = mockk<Uri>()
+    val cacheDir = createTempDirectory("profile-picker-test-").toFile()
+    every { resolver.getType(uri) } returns null
+    every { resolver.openInputStream(uri) } returns null
+    val viewModel = createViewModel()
+
+    advanceUntilIdle()
+    viewModel.updateProfilePicture(
+        uri,
+        resolver,
+        cacheDir,
+    )
+    repeat(100) {
+      Thread.sleep(10)
+      advanceUntilIdle()
+      if (!viewModel.uiState.value.isSaving) return@repeat
+    }
+
+    assertEquals(R.string.profile_picture_save_failed, viewModel.uiState.value.errorMsg)
+    assertFalse(viewModel.uiState.value.isSaving)
+    assertTrue(cacheDir.listFiles().orEmpty().isEmpty())
+  }
+
+  @Test
+  fun updateProfilePictureFromUriRejectsCopiedPictureOver10Mb() = runTest {
+    val resolver = mockk<ContentResolver>()
+    val uri = mockk<Uri>()
+    val cacheDir = createTempDirectory("profile-picker-large-test-").toFile()
+    val bytes = ByteArray(10 * 1024 * 1024 + 1)
+    val mimeTypeMap = mockk<MimeTypeMap>()
+    mockkStatic(MimeTypeMap::class)
+    every { MimeTypeMap.getSingleton() } returns mimeTypeMap
+    every { mimeTypeMap.getExtensionFromMimeType("image/png") } returns "png"
+    every { resolver.getType(uri) } returns "image/png"
+    every { resolver.openInputStream(uri) } returns ByteArrayInputStream(bytes)
+    val viewModel = createViewModel()
+
+    try {
+      advanceUntilIdle()
+      viewModel.updateProfilePicture(uri, resolver, cacheDir)
+      advanceUntilIdle()
+
+      assertEquals(R.string.profile_picture_too_large, viewModel.uiState.value.errorMsg)
+      assertFalse(viewModel.uiState.value.isSaving)
+      assertTrue(cacheDir.listFiles().orEmpty().isEmpty())
+    } finally {
+      unmockkStatic(MimeTypeMap::class)
+    }
+  }
+
+  @Test
+  fun profilePictureSizeLimitRejectsOnlyPicturesOver10Mb() {
+    assertFalse(isProfilePictureTooLarge(10L * 1024L * 1024L))
+    assertTrue(isProfilePictureTooLarge(10L * 1024L * 1024L + 1L))
+  }
+
+  @Test
+  fun updateProfilePictureRejectsPicturesOver10Mb() = runTest {
+    val sourceFile = kotlin.io.path.createTempFile("large-profile-picture-", ".png").toFile()
+    RandomAccessFile(sourceFile, "rw").use { it.setLength(10L * 1024L * 1024L + 1L) }
+    val imageStorage = RecordingImageStorage()
+    val viewModel = createViewModel(imageStorage = imageStorage)
+
+    advanceUntilIdle()
+    viewModel.updateProfilePicture(StoredImage(sourceFile))
+    advanceUntilIdle()
+
+    assertEquals(R.string.profile_picture_too_large, viewModel.uiState.value.errorMsg)
+    assertFalse(viewModel.uiState.value.isSaving)
+    assertTrue(imageStorage.uploadedImages.isEmpty())
+  }
+
+  // Breaks if URI-copy cancellation is converted into a profile-picture error.
+  @Test
+  fun updateProfilePictureFromUriPropagatesCancellation() = runTest {
+    val resolver = mockk<ContentResolver>()
+    val uri = mockk<Uri>()
+    every { resolver.getType(uri) } throws CancellationException("cancelled")
+    val viewModel = createViewModel()
+
+    advanceUntilIdle()
+    viewModel.updateProfilePicture(
+        uri,
+        resolver,
+        createTempDirectory("profile-picker-test-").toFile(),
+    )
+    advanceUntilIdle()
+
+    assertNull(viewModel.uiState.value.errorMsg)
+  }
+
+  @Test
+  fun updateProfilePictureShowsErrorWhenUploadFails() = runTest {
+    val imageStorage = RecordingImageStorage(uploadError = RuntimeException("offline"))
+    val viewModel = createViewModel(imageStorage = imageStorage)
+
+    advanceUntilIdle()
+    viewModel.updateProfilePicture(StoredImage(File("new-picture.png")))
+    advanceUntilIdle()
+
+    assertEquals(R.string.profile_picture_save_failed, viewModel.uiState.value.errorMsg)
+    assertFalse(viewModel.uiState.value.isSaving)
+  }
+
+  @Test
+  fun updateProfilePictureShowsErrorWhenUserUpdateFails() = runTest {
+    val repository =
+        RecordingUsersRepository(
+            listOf(sara),
+            editError = RuntimeException("offline"),
+        )
+    val imageStorage = RecordingImageStorage()
+    val viewModel = createViewModel(repository = repository, imageStorage = imageStorage)
+
+    advanceUntilIdle()
+    viewModel.updateProfilePicture(StoredImage(File("new-picture.png")))
+    advanceUntilIdle()
+
+    assertEquals(R.string.profile_picture_save_failed, viewModel.uiState.value.errorMsg)
+    assertEquals(listOf("https://example.com/new-picture.png"), imageStorage.deletedUrls)
+    assertFalse(viewModel.uiState.value.isSaving)
+  }
+
+  @Test
+  fun updateProfilePictureReportsOldPictureDeletionFailureAfterSaving() = runTest {
+    val user = sara.copy(profilePictureUrl = "https://example.com/old-picture.png")
+    val imageStorage = RecordingImageStorage(deleteError = RuntimeException("offline"))
+    val viewModel =
+        createViewModel(
+            repository = RecordingUsersRepository(listOf(user)),
+            imageStorage = imageStorage,
+        )
+
+    advanceUntilIdle()
+    viewModel.updateProfilePicture(StoredImage(File("new-picture.png")))
+    advanceUntilIdle()
+
+    assertEquals(R.string.profile_picture_save_failed, viewModel.uiState.value.errorMsg)
+    assertEquals(
+        user.copy(profilePictureUrl = "https://example.com/new-picture.png"),
+        viewModel.uiState.value.user,
+    )
+    assertFalse(viewModel.uiState.value.isSaving)
+  }
+
+  // Breaks if cancellation while deleting the old picture is swallowed or shown as an error.
+  @Test
+  fun updateProfilePicturePropagatesOldPictureDeletionCancellation() = runTest {
+    val user = sara.copy(profilePictureUrl = "https://example.com/old-picture.png")
+    val imageStorage = RecordingImageStorage(deleteError = CancellationException("cancelled"))
+    val repository = RecordingUsersRepository(listOf(user))
+    val viewModel = createViewModel(repository = repository, imageStorage = imageStorage)
+
+    advanceUntilIdle()
+    viewModel.updateProfilePicture(StoredImage(File("new-picture.png")))
+    advanceUntilIdle()
+
+    assertEquals(1, repository.editedUsers.size)
+    assertTrue(viewModel.uiState.value.isSaving)
+    assertNull(viewModel.uiState.value.errorMsg)
+  }
+
+  // Breaks if cleanup failures hide the original profile-picture save error.
+  @Test
+  fun updateProfilePictureReportsCleanupDeletionFailure() = runTest {
+    val repository =
+        RecordingUsersRepository(
+            listOf(sara),
+            editError = RuntimeException("offline"),
+        )
+    val imageStorage = RecordingImageStorage(deleteError = RuntimeException("cleanup offline"))
+    val viewModel = createViewModel(repository = repository, imageStorage = imageStorage)
+
+    advanceUntilIdle()
+    viewModel.updateProfilePicture(StoredImage(File("new-picture.png")))
+    advanceUntilIdle()
+
+    assertEquals(R.string.profile_picture_save_failed, viewModel.uiState.value.errorMsg)
+    assertEquals(listOf("https://example.com/new-picture.png"), imageStorage.deletedUrls)
+    assertFalse(viewModel.uiState.value.isSaving)
   }
 
   /** Test that saving does nothing when there is nothing to save. */
@@ -609,32 +864,90 @@ class ProfileViewModelTest {
     assertFalse(viewModel.uiState.value.isPasswordVisible)
   }
 
+  /**
+   * Breaks if showing or hiding the upgrade sheet does not correctly toggle activeDialog or reset
+   * credentials.
+   */
   @Test
   fun upgradeSheetStateIncludesVisibilityAndCredentialReset() = runTest {
-    val viewModel = createViewModel()
+    val firebaseUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+    val authRepo =
+        object : FakeAuthRepository() {
+          override val currentUser = firebaseUser
+        }
+    val viewModel = createViewModel(authRepository = authRepo)
     advanceUntilIdle()
 
     viewModel.updateEmail("test@example.com")
     viewModel.updatePassword("password")
     viewModel.showUpgradeSheet()
-    assertTrue(viewModel.uiState.value.isUpgrading)
+    assertEquals(ProfileDialog.UPGRADE_SHEET, viewModel.uiState.value.activeDialog)
 
     viewModel.hideUpgradeSheet()
-    assertFalse(viewModel.uiState.value.isUpgrading)
+    assertNull(viewModel.uiState.value.activeDialog)
     assertEquals("", viewModel.uiState.value.email)
     assertEquals("", viewModel.uiState.value.password)
   }
 
+  /**
+   * Breaks if showing or hiding the sign out warning does not toggle activeDialog for anonymous
+   * users.
+   */
   @Test
   fun signOutWarningStateToggles() = runTest {
-    val viewModel = createViewModel()
+    val firebaseUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+    val authRepo =
+        object : FakeAuthRepository() {
+          override val currentUser = firebaseUser
+        }
+    val viewModel = createViewModel(authRepository = authRepo)
     advanceUntilIdle()
 
     viewModel.showSignOutWarning()
-    assertTrue(viewModel.uiState.value.showSignOutWarning)
+    assertEquals(ProfileDialog.SIGN_OUT_WARNING, viewModel.uiState.value.activeDialog)
 
     viewModel.hideSignOutWarning()
-    assertFalse(viewModel.uiState.value.showSignOutWarning)
+    assertNull(viewModel.uiState.value.activeDialog)
+  }
+
+  /** Breaks if guest dialogs can be opened for a non-anonymous user. */
+  @Test
+  fun guestDialogsIgnoredWhenUserIsNotAnonymous() = runTest {
+    val firebaseUser = mockk<FirebaseUser> { every { isAnonymous } returns false }
+    val authRepo =
+        object : FakeAuthRepository() {
+          override val currentUser = firebaseUser
+        }
+    val viewModel = createViewModel(authRepository = authRepo)
+    advanceUntilIdle()
+
+    viewModel.showUpgradeSheet()
+    assertNull(viewModel.uiState.value.activeDialog)
+
+    viewModel.showSignOutWarning()
+    assertNull(viewModel.uiState.value.activeDialog)
+  }
+
+  /** Breaks if activeDialog is not cleared when a user is no longer anonymous. */
+  @Test
+  fun guestDialogClearedWhenUserNoLongerAnonymous() = runTest {
+    var isAnon = true
+    val firebaseUser = mockk<FirebaseUser> { every { isAnonymous } answers { isAnon } }
+    val authRepo =
+        object : FakeAuthRepository() {
+          override val currentUser = firebaseUser
+        }
+    val viewModel = createViewModel(authRepository = authRepo)
+    advanceUntilIdle()
+
+    viewModel.showUpgradeSheet()
+    assertEquals(ProfileDialog.UPGRADE_SHEET, viewModel.uiState.value.activeDialog)
+
+    isAnon = false
+    viewModel.getUserInformation()
+    advanceUntilIdle()
+
+    assertNull(viewModel.uiState.value.activeDialog)
   }
 
   @Test
@@ -657,12 +970,25 @@ class ProfileViewModelTest {
     assertEquals(R.string.profile_anon_upgrade_failed, viewModel.uiState.value.errorMsg)
   }
 
+  /**
+   * Breaks if upgrading with email does not invoke sign-up with typed credentials and refresh user
+   * state when account is anonymous.
+   */
   @Test
   fun upgradeWithEmailSuccessRefreshesUser() = runTest {
-    val firebaseUser = mockk<FirebaseUser> { every { isAnonymous } returns false }
+    var isAnon = true
+    val firebaseUser = mockk<FirebaseUser> { every { isAnonymous } answers { isAnon } }
     val authRepo =
         object : FakeAuthRepository() {
           override val currentUser = firebaseUser
+
+          override suspend fun signUpWithEmailAndPassword(
+              email: String,
+              password: String,
+          ): Result<FirebaseUser> {
+            isAnon = false
+            return super.signUpWithEmailAndPassword(email, password)
+          }
         }
     authRepo.signUpResult = Result.success(firebaseUser)
     val viewModel =
@@ -671,14 +997,18 @@ class ProfileViewModelTest {
             authRepository = authRepo,
         )
     advanceUntilIdle()
+    assertTrue(viewModel.uiState.value.isUserAnonymous)
 
     viewModel.updateEmail("sara@epfl.ch")
     viewModel.updatePassword("secret123")
     viewModel.upgradeWithEmail()
     advanceUntilIdle()
 
+    assertEquals(1, authRepo.signUpCallCount)
+    assertEquals("sara@epfl.ch" to "secret123", authRepo.lastSignUpCredentials)
     assertNull(viewModel.uiState.value.errorMsg)
     assertFalse(viewModel.uiState.value.isLoading)
+    assertFalse(viewModel.uiState.value.isUserAnonymous)
   }
 
   @Test
@@ -755,6 +1085,290 @@ class ProfileViewModelTest {
     advanceUntilIdle()
 
     assertEquals(0, authRepo.signUpCallCount)
+    assertNull(viewModel.uiState.value.errorMsg)
+  }
+
+  /**
+   * Breaks if upgrading an account does not close the sheet and update the guest flag when profile
+   * reload fails.
+   */
+  @Test
+  fun upgradeSuccessWithReloadFailureClosesSheetAndUpdatesGuestFlag() = runTest {
+    val initialUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+    val upgradedUser = mockk<FirebaseUser> { every { isAnonymous } returns false }
+    val authRepo =
+        object : FakeAuthRepository() {
+          override val currentUser = initialUser
+        }
+    authRepo.signUpResult = Result.success(upgradedUser)
+    val usersRepo = RecordingUsersRepository(listOf(sara))
+    val viewModel = createViewModel(repository = usersRepo, authRepository = authRepo)
+    advanceUntilIdle()
+    assertTrue(viewModel.uiState.value.isUserAnonymous)
+
+    usersRepo.getError = RuntimeException("Load failed")
+    viewModel.showUpgradeSheet()
+    viewModel.updateEmail("sara@epfl.ch")
+    viewModel.updatePassword("secret123")
+    viewModel.upgradeWithEmail()
+    advanceUntilIdle()
+
+    val state = viewModel.uiState.value
+    assertNull(state.activeDialog)
+    assertFalse(state.isUserAnonymous)
+    assertEquals(R.string.profile_load_failed, state.errorMsg)
+  }
+
+  /** Breaks if upgradeWithGoogle does not sign in with Google and update user state on success. */
+  @Test
+  fun upgradeWithGoogleSuccessUpdatesState() = runTest {
+    val firebaseUser = mockk<FirebaseUser> { every { isAnonymous } returns false }
+    val authRepo =
+        object : FakeAuthRepository() {
+          private var user: FirebaseUser? = mockk { every { isAnonymous } returns true }
+          override val currentUser: FirebaseUser?
+            get() = user
+
+          override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> {
+            user = firebaseUser
+            return Result.success(firebaseUser)
+          }
+        }
+    val credential = mockk<Credential>()
+    val viewModel =
+        createViewModel(
+            repository = RecordingUsersRepository(listOf(sara)),
+            authRepository = authRepo,
+        )
+    advanceUntilIdle()
+
+    viewModel.upgradeWithGoogle(credential)
+    advanceUntilIdle()
+
+    assertNull(viewModel.uiState.value.errorMsg)
+    assertFalse(viewModel.uiState.value.isLoading)
+    assertFalse(viewModel.uiState.value.isUserAnonymous)
+  }
+
+  /** Breaks if upgradeWithGoogle attempts to upgrade when the user is not anonymous. */
+  @Test
+  fun upgradeWithGoogleIgnoredWhenNotAnonymous() = runTest {
+    var signInCalled = false
+    val authRepo =
+        object : FakeAuthRepository() {
+          override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> {
+            signInCalled = true
+            return Result.failure(RuntimeException("Should not be called"))
+          }
+        }
+    val viewModel =
+        createViewModel(
+            repository = RecordingUsersRepository(listOf(sara)),
+            authRepository = authRepo,
+        )
+    advanceUntilIdle()
+    assertFalse(viewModel.uiState.value.isUserAnonymous)
+
+    viewModel.upgradeWithGoogle(mockk())
+    advanceUntilIdle()
+
+    assertFalse(signInCalled)
+    assertFalse(viewModel.uiState.value.isLoading)
+  }
+
+  /**
+   * Breaks if handleGoogleUpgradeError with an exception does not update UI state error message.
+   */
+  @Test
+  fun handleGoogleUpgradeErrorWithExceptionSetsErrorMsg() = runTest {
+    val viewModel = createViewModel()
+    advanceUntilIdle()
+
+    viewModel.handleGoogleUpgradeError(RuntimeException("Google error"))
+
+    assertEquals(R.string.profile_anon_upgrade_failed, viewModel.uiState.value.errorMsg)
+    assertFalse(viewModel.uiState.value.isLoading)
+  }
+
+  /**
+   * Breaks if handleGoogleUpgradeError with null exception does not update UI state error message.
+   */
+  @Test
+  fun handleGoogleUpgradeErrorWithNullSetsErrorMsg() = runTest {
+    val viewModel = createViewModel()
+    advanceUntilIdle()
+
+    viewModel.handleGoogleUpgradeError(null)
+
+    assertEquals(R.string.profile_anon_upgrade_failed, viewModel.uiState.value.errorMsg)
+    assertFalse(viewModel.uiState.value.isLoading)
+  }
+
+  /**
+   * Breaks if upgradeAccount does not preserve activeDialog when the upgraded user remains
+   * anonymous.
+   */
+  @Test
+  fun upgradeAccountWithStillAnonymousUserKeepsActiveDialog() = runTest {
+    val stillAnonUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+    val authRepo =
+        object : FakeAuthRepository() {
+          override val currentUser: FirebaseUser = stillAnonUser
+
+          override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> {
+            return Result.success(stillAnonUser)
+          }
+        }
+    val viewModel =
+        createViewModel(
+            repository = RecordingUsersRepository(listOf(sara)),
+            authRepository = authRepo,
+        )
+    advanceUntilIdle()
+    assertTrue(viewModel.uiState.value.isUserAnonymous)
+    viewModel.showUpgradeSheet()
+    assertEquals(ProfileDialog.UPGRADE_SHEET, viewModel.uiState.value.activeDialog)
+
+    viewModel.upgradeWithGoogle(mockk())
+    advanceUntilIdle()
+
+    assertTrue(viewModel.uiState.value.isUserAnonymous)
+    assertEquals(ProfileDialog.UPGRADE_SHEET, viewModel.uiState.value.activeDialog)
+    assertFalse(viewModel.uiState.value.isLoading)
+  }
+
+  /**
+   * Breaks if upgradeAccount does not fall back to authRepository.currentUser when upgradedUser is
+   * not a FirebaseUser.
+   */
+  @Test
+  fun upgradeAccountFallsBackToCurrentUserWhenUpgradedUserNotFirebaseUser() = runTest {
+    val anonUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+    val authRepo =
+        object : FakeAuthRepository() {
+          override val currentUser: FirebaseUser = anonUser
+
+          @Suppress("UNCHECKED_CAST")
+          override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> {
+            return Result.success("NotAFirebaseUser") as Result<FirebaseUser>
+          }
+        }
+    val viewModel =
+        createViewModel(
+            repository = RecordingUsersRepository(listOf(sara)),
+            authRepository = authRepo,
+        )
+    advanceUntilIdle()
+    assertTrue(viewModel.uiState.value.isUserAnonymous)
+    viewModel.showUpgradeSheet()
+    assertEquals(ProfileDialog.UPGRADE_SHEET, viewModel.uiState.value.activeDialog)
+
+    viewModel.upgradeWithGoogle(mockk())
+    advanceUntilIdle()
+
+    assertTrue(viewModel.uiState.value.isUserAnonymous)
+    assertEquals(ProfileDialog.UPGRADE_SHEET, viewModel.uiState.value.activeDialog)
+    assertFalse(viewModel.uiState.value.isLoading)
+  }
+
+  /**
+   * Breaks if upgradeWithGoogle with context does not request credentials and update state on
+   * success.
+   */
+  @Test
+  fun upgradeWithGoogleContextSuccessUpdatesState() = runTest {
+    val context = mockk<Context>()
+    val credentialManager = mockk<CredentialManager>()
+    val credential = mockk<Credential>()
+    val response = mockk<GetCredentialResponse>()
+    val firebaseUser = mockk<FirebaseUser> { every { isAnonymous } returns false }
+    every { context.getString(R.string.default_web_client_id) } returns "client-id"
+    coEvery { credentialManager.getCredential(context, any<GetCredentialRequest>()) } returns
+        response
+    every { response.credential } returns credential
+
+    val authRepo =
+        object : FakeAuthRepository() {
+          private var user: FirebaseUser? = mockk { every { isAnonymous } returns true }
+          override val currentUser: FirebaseUser?
+            get() = user
+
+          override suspend fun signInWithGoogle(credential: Credential): Result<FirebaseUser> {
+            user = firebaseUser
+            return Result.success(firebaseUser)
+          }
+        }
+    val viewModel =
+        createViewModel(
+            repository = RecordingUsersRepository(listOf(sara)),
+            authRepository = authRepo,
+        )
+    advanceUntilIdle()
+
+    viewModel.upgradeWithGoogle(context, credentialManager)
+    advanceUntilIdle()
+
+    assertNull(viewModel.uiState.value.errorMsg)
+    assertFalse(viewModel.uiState.value.isLoading)
+    assertFalse(viewModel.uiState.value.isUserAnonymous)
+  }
+
+  /**
+   * Breaks if upgradeWithGoogle with context catches an exception and does not set upgrade error
+   * message.
+   */
+  @Test
+  fun upgradeWithGoogleContextFailureShowsError() = runTest {
+    val context = mockk<Context>()
+    val credentialManager = mockk<CredentialManager>()
+    every { context.getString(R.string.default_web_client_id) } returns "client-id"
+    coEvery { credentialManager.getCredential(context, any<GetCredentialRequest>()) } throws
+        RuntimeException("Failed")
+
+    val firebaseUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+    val authRepo =
+        object : FakeAuthRepository() {
+          override val currentUser = firebaseUser
+        }
+    val viewModel =
+        createViewModel(
+            repository = RecordingUsersRepository(listOf(sara)),
+            authRepository = authRepo,
+        )
+    advanceUntilIdle()
+
+    viewModel.upgradeWithGoogle(context, credentialManager)
+    advanceUntilIdle()
+
+    assertEquals(R.string.profile_anon_upgrade_failed, viewModel.uiState.value.errorMsg)
+    assertFalse(viewModel.uiState.value.isLoading)
+  }
+
+  /** Breaks if upgradeWithGoogle with context does not reset loading on cancellation. */
+  @Test
+  fun upgradeWithGoogleContextCancellationResetsLoading() = runTest {
+    val context = mockk<Context>()
+    val credentialManager = mockk<CredentialManager>()
+    every { context.getString(R.string.default_web_client_id) } returns "client-id"
+    coEvery { credentialManager.getCredential(context, any<GetCredentialRequest>()) } throws
+        CancellationException("Cancelled")
+
+    val firebaseUser = mockk<FirebaseUser> { every { isAnonymous } returns true }
+    val authRepo =
+        object : FakeAuthRepository() {
+          override val currentUser = firebaseUser
+        }
+    val viewModel =
+        createViewModel(
+            repository = RecordingUsersRepository(listOf(sara)),
+            authRepository = authRepo,
+        )
+    advanceUntilIdle()
+
+    viewModel.upgradeWithGoogle(context, credentialManager)
+    advanceUntilIdle()
+
+    assertFalse(viewModel.uiState.value.isLoading)
     assertNull(viewModel.uiState.value.errorMsg)
   }
 }

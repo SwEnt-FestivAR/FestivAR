@@ -15,29 +15,38 @@ import java.time.format.DateTimeParseException
  * always hold:
  * - [id] is not blank;
  * - [audioUrl] is not blank;
- * - [duration] is positive (a recording of zero length is refused, like by [Audio]).
+ * - [duration] is positive (a recording of zero length is refused, like by [Audio]);
+ * - every bar of [waveform] is between 0 and 1. Its length is not checked: the app records
+ *   [com.android.festivar.model.audio.WAVEFORM_BAR_COUNT] bars, but a note stored with another
+ *   number of bars, or none, is still valid, so whoever draws it must cope with any length.
  *
  * @property id Unique identifier of the [VoiceNote].
  * @property audioUrl Where the audio file can be played from.
  * @property duration Length of the recording.
  * @property createdAt When the note was recorded.
+ * @property waveform The loudness of the recording as bars between 0 and 1, taken while recording.
+ *   Empty when the level is not known: for a note stored before waveforms existed, and for a
+ *   recording whose level could not be read. An empty waveform means unknown, not silence.
  */
 data class VoiceNote(
     val id: String,
     val audioUrl: String,
     val duration: Duration,
     val createdAt: ZonedDateTime,
+    val waveform: List<Float> = emptyList(),
 ) {
 
   init {
     require(id.isNotBlank()) { "The id cannot be empty." }
     require(audioUrl.isNotBlank()) { "The audioUrl cannot be empty." }
     require(duration.isPositive()) { "The duration must be positive." }
+    require(waveform.all { it in 0f..1f }) { "The waveform bars must be between 0 and 1." }
   }
 
   /**
    * The note as the map stored in the database. [duration] is kept in nanoseconds and [createdAt]
-   * as ISO text, the same way a task stores its estimated time and its dates.
+   * as ISO text, the same way a task stores its estimated time and its dates. The [waveform] is a
+   * list of numbers.
    */
   fun toMap(): Map<String, Any> =
       mapOf(
@@ -45,11 +54,15 @@ data class VoiceNote(
           "audioUrl" to audioUrl,
           "duration" to duration.toNanos(),
           "createdAt" to createdAt.toString(),
+          // Firestore keeps its numbers as Double, so the bars are written as such.
+          "waveform" to waveform.map { it.toDouble() },
       )
 
   companion object {
     /**
      * Rebuilds a note from a [map] written by [toMap].
+     *
+     * A map without a `waveform`, as stored before waveforms existed, gives a note without bars.
      *
      * @throws IllegalArgumentException if a field is missing or has the wrong type, or if the
      *   values break a rule of [VoiceNote].
@@ -73,7 +86,16 @@ data class VoiceNote(
                   throw IllegalArgumentException("Invalid voice note data: bad createdAt '$it'.", e)
                 }
               },
+          waveform = readWaveform(map["waveform"]),
       )
+    }
+
+    private fun readWaveform(value: Any?): List<Float> {
+      if (value == null) return emptyList()
+      val bars = requireNotNull(value as? List<*>) { "Invalid voice note data: bad waveform." }
+      return bars.map {
+        requireNotNull((it as? Number)?.toFloat()) { "Invalid voice note data: bad waveform." }
+      }
     }
   }
 }
