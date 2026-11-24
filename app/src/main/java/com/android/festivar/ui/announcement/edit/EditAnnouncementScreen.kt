@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -36,6 +34,7 @@ import com.android.festivar.ui.announcement.AnnouncementFormLabels
 import com.android.festivar.ui.announcement.AnnouncementFormState
 import com.android.festivar.ui.announcement.AnnouncementFormTags
 import com.android.festivar.ui.announcement.AnnouncementFormTopBar
+import com.android.festivar.ui.components.RetryButton
 import com.android.festivar.ui.theme.AppTheme
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
@@ -61,7 +60,6 @@ object EditAnnouncementScreenTestTags {
   const val DISCARD_BUTTON = "editAnnouncementDiscardButton"
   const val LOADING = "editAnnouncementLoading"
   const val LOAD_ERROR = "editAnnouncementLoadError"
-  const val LOAD_RETRY = "editAnnouncementLoadRetry"
   const val NOT_ORGANIZER = "editAnnouncementNotOrganizer"
 
   /** Test tag of the chip of [priority]. */
@@ -225,13 +223,7 @@ private fun LoadError(@StringRes message: Int, onRetry: () -> Unit) {
         textAlign = TextAlign.Center,
         modifier = Modifier.testTag(EditAnnouncementScreenTestTags.LOAD_ERROR),
     )
-    Button(
-        onClick = onRetry,
-        shape = RoundedCornerShape(12.dp),
-        modifier = Modifier.testTag(EditAnnouncementScreenTestTags.LOAD_RETRY),
-    ) {
-      Text(stringResource(R.string.action_retry))
-    }
+    RetryButton(onClick = onRetry)
   }
 }
 

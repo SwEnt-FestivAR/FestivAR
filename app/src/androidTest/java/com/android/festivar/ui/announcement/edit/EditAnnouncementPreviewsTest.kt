@@ -11,6 +11,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performScrollTo
 import com.android.festivar.model.event.announcement.AnnouncementPriority
 import com.android.festivar.ui.announcement.edit.EditAnnouncementScreenTestTags as Tags
+import com.android.festivar.ui.components.RetryButtonTestTags
 import org.junit.Rule
 import org.junit.Test
 
@@ -59,7 +60,7 @@ class EditAnnouncementPreviewsTest {
     composeTestRule.setContent { EditAnnouncementContentLoadErrorPreview() }
 
     composeTestRule.onNodeWithTag(Tags.LOAD_ERROR).assertIsDisplayed()
-    composeTestRule.onNodeWithTag(Tags.LOAD_RETRY).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(RetryButtonTestTags.BUTTON).assertIsDisplayed()
     composeTestRule.onNodeWithTag(Tags.TITLE_FIELD).assertDoesNotExist()
     composeTestRule.onNodeWithTag(Tags.SAVE_BUTTON).assertDoesNotExist()
   }

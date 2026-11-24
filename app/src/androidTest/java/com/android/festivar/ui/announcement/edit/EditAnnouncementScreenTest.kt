@@ -30,6 +30,7 @@ import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.event.announcement.AnnouncementPriority
 import com.android.festivar.ui.announcement.edit.EditAnnouncementScreenTestTags as Tags
+import com.android.festivar.ui.components.RetryButtonTestTags
 import com.android.festivar.ui.theme.AppTheme
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -226,12 +227,12 @@ class EditAnnouncementScreenTest {
         .onNodeWithTag(Tags.LOAD_ERROR)
         .assertIsDisplayed()
         .assertTextEquals(string(R.string.edit_announcement_error_load_failed))
-    composeTestRule.onNodeWithTag(Tags.LOAD_RETRY).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(RetryButtonTestTags.BUTTON).assertIsDisplayed()
     composeTestRule.onNodeWithTag(Tags.TITLE_FIELD).assertDoesNotExist()
     composeTestRule.onNodeWithTag(Tags.SAVE_BUTTON).assertDoesNotExist()
 
     beforeRead = {}
-    composeTestRule.onNodeWithTag(Tags.LOAD_RETRY).performClick()
+    composeTestRule.onNodeWithTag(RetryButtonTestTags.BUTTON).performClick()
     waitFor(Tags.TITLE_FIELD)
 
     composeTestRule.onNodeWithTag(Tags.TITLE_FIELD).assertTextContains(announcement.title)
