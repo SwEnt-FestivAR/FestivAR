@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Fable 5.2 <noreply@anthropic.com>
 package com.android.festivar.ui.announcement.details
 
 import android.content.ActivityNotFoundException
@@ -75,6 +76,7 @@ class AnnouncementDetailsScreenTest {
         AnnouncementDetailsViewModel(
             eventId = "event-1",
             announcementId = announcement.announcementId,
+            currentUserId = "member-1",
             dataRepository =
                 DataRepositoryLocal(
                     authRepository = FakeAuthRepository(),
@@ -237,6 +239,7 @@ class AnnouncementDetailsScreenTest {
         AnnouncementDetailsViewModel(
             eventId = "event-1",
             announcementId = announcement.announcementId,
+            currentUserId = "member-1",
             dataRepository =
                 DataRepositoryLocal(
                     authRepository = FakeAuthRepository(),
@@ -287,6 +290,7 @@ class AnnouncementDetailsScreenTest {
         AnnouncementDetailsViewModel(
             eventId = "event-1",
             announcementId = announcement.announcementId,
+            currentUserId = "member-1",
             dataRepository =
                 DataRepositoryLocal(
                     authRepository = FakeAuthRepository(),
@@ -336,6 +340,37 @@ class AnnouncementDetailsScreenTest {
     }
     composeTestRule.onNodeWithTag(Tags.RETRY).performClick()
     composeTestRule.onNodeWithTag(Tags.ERROR).assertIsDisplayed()
+  }
+
+  /**
+   * Breaks if the edit button is drawn for a user who cannot edit, is missing for one who can, or
+   * does not call onEdit when tapped.
+   */
+  @Test
+  fun editButtonIsShownOnlyToAUserWhoCanEditAndCallsOnEdit() {
+    var edits = 0
+    val canEdit = mutableStateOf(false)
+    composeTestRule.setContent {
+      AppTheme {
+        AnnouncementDetailsContent(
+            state =
+                AnnouncementDetailsUiState(
+                    announcement = announcement,
+                    canEdit = canEdit.value,
+                    isLoading = false,
+                ),
+            onEdit = { edits++ },
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag(Tags.TITLE).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(Tags.EDIT_BUTTON).assertDoesNotExist()
+
+    canEdit.value = true
+
+    composeTestRule.onNodeWithTag(Tags.EDIT_BUTTON).assertIsDisplayed().performClick()
+    assertEquals(1, edits)
   }
 
   @Test

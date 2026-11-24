@@ -1,5 +1,6 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Fable 5.2 <noreply@anthropic.com>
 package com.android.festivar.navigation.announcement
 
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -40,11 +41,22 @@ fun NavGraphBuilder.announcementGraph(
             backStackEntry.arguments?.getString("announcementId"),
         )
     val navigator = AnnouncementDetailsNavigator(navController)
-    AnnouncementDetailsScreen(
-        viewModel =
-            viewModel { AnnouncementDetailsViewModel(eventId, announcementId, dataRepository) },
-        onBack = navigator.onBack,
-    )
+    RequireSignedIn(navController, dataRepository) { firebaseUser ->
+      // Keyed by user: the view model knows whether the user may edit, so another sign-in needs a
+      // new one
+      AnnouncementDetailsScreen(
+          viewModel =
+              viewModel(key = "$eventId:$announcementId:${firebaseUser.uid}") {
+                AnnouncementDetailsViewModel(
+                    eventId,
+                    announcementId,
+                    firebaseUser.uid,
+                    dataRepository,
+                )
+              },
+          onBack = navigator.onBack,
+      )
+    }
   }
   // Reached through AppScreens.createAnnouncement(eventId). The route carries the id of the event
   // the new announcement belongs to.

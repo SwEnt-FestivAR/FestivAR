@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Fable 5.2 <noreply@anthropic.com>
 package com.android.festivar.ui.announcement.details
 
 import com.android.festivar.R
@@ -31,6 +32,9 @@ import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+
+/** A member of the event who does not own it. */
+private const val MEMBER_ID = "member-1"
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AnnouncementDetailsViewModelTest {
@@ -79,8 +83,27 @@ class AnnouncementDetailsViewModelTest {
           usersRepository = usersRepository,
       )
 
-  private fun viewModel() =
-      AnnouncementDetailsViewModel("event-1", "announcement-1", dataRepository())
+  private fun viewModel(currentUserId: String = MEMBER_ID) =
+      AnnouncementDetailsViewModel("event-1", "announcement-1", currentUserId, dataRepository())
+
+  /**
+   * Breaks if canEdit is true before the event is loaded, false for the owner of the event, or true
+   * for someone else, here the author: the Edit announcement screen would then refuse the edit it
+   * was opened for.
+   */
+  @Test
+  fun onlyTheOwnerOfTheEventCanEdit() {
+    val owner = viewModel(currentUserId = event.ownerId)
+    val author = viewModel(currentUserId = announcement.authorId)
+
+    assertFalse(owner.uiState.value.canEdit)
+
+    owner.load()
+    author.load()
+
+    assertTrue(owner.uiState.value.canEdit)
+    assertFalse(author.uiState.value.canEdit)
+  }
 
   @Test
   fun loadProvidesAnnouncementAuthorAndEventEndTime() {
@@ -147,7 +170,13 @@ class AnnouncementDetailsViewModelTest {
         object : EventsRepository by localEvents {
           override suspend fun getEvent(eventId: String) = event.copy(announcements = emptyList())
         }
-    val vm = AnnouncementDetailsViewModel("event-1", "announcement-1", dataRepository(repository))
+    val vm =
+        AnnouncementDetailsViewModel(
+            "event-1",
+            "announcement-1",
+            MEMBER_ID,
+            dataRepository(repository),
+        )
 
     vm.load()
 
@@ -179,6 +208,7 @@ class AnnouncementDetailsViewModelTest {
         AnnouncementDetailsViewModel(
             "event-1",
             "announcement-1",
+            MEMBER_ID,
             dataRepository(usersRepository = blankSurnameUsers),
         )
 
@@ -199,6 +229,7 @@ class AnnouncementDetailsViewModelTest {
         AnnouncementDetailsViewModel(
             "event-1",
             "announcement-1",
+            MEMBER_ID,
             dataRepository(usersRepository = deletedAuthorRepository),
         )
 
@@ -284,10 +315,10 @@ class AnnouncementDetailsViewModelTest {
   @Test
   fun blankIdsFailFast() {
     assertThrows(IllegalArgumentException::class.java) {
-      AnnouncementDetailsViewModel(" ", "announcement-1", dataRepository())
+      AnnouncementDetailsViewModel(" ", "announcement-1", MEMBER_ID, dataRepository())
     }
     assertThrows(IllegalArgumentException::class.java) {
-      AnnouncementDetailsViewModel("event-1", " ", dataRepository())
+      AnnouncementDetailsViewModel("event-1", " ", MEMBER_ID, dataRepository())
     }
   }
 

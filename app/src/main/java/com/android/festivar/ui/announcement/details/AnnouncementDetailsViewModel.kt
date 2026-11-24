@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Fable 5.2 <noreply@anthropic.com>
 package com.android.festivar.ui.announcement.details
 
 import android.util.Log
@@ -29,6 +30,8 @@ private const val LOG_TAG = "AnnouncementDetailsVM"
  * @property authorName the author's name, or null if the account no longer exists.
  * @property authorNameRes the string resource for a missing author's name, or null when known.
  * @property eventEndTime the end time of the event that contains the announcement.
+ * @property canEdit whether the edit button is shown: only the organizer (owner) of the event can
+ *   edit an announcement, the same rule as on the Edit announcement screen.
  * @property isLoading true while the announcement is being loaded.
  * @property isUpdating true while the pin state is being saved.
  * @property errorMsg the string resource of the latest load or save failure, or null.
@@ -38,6 +41,7 @@ data class AnnouncementDetailsUiState(
     val authorName: String? = null,
     @param:StringRes val authorNameRes: Int? = null,
     val eventEndTime: ZonedDateTime? = null,
+    val canEdit: Boolean = false,
     val isLoading: Boolean = true,
     val isUpdating: Boolean = false,
     @param:StringRes val errorMsg: Int? = null,
@@ -54,11 +58,14 @@ data class AnnouncementDetailsUiState(
  *
  * @param eventId identifier of the event containing the announcement.
  * @param announcementId identifier of the announcement to show.
+ * @param currentUserId the uid of the signed-in user, to tell whether they can edit the
+ *   announcement.
  * @param dataRepository provides the event and user repositories used by this ViewModel.
  */
 class AnnouncementDetailsViewModel(
     private val eventId: String,
     private val announcementId: String,
+    private val currentUserId: String,
     private val dataRepository: DataRepository,
 ) : ViewModel() {
   private val eventsRepository: EventsRepository = dataRepository.eventsRepository
@@ -100,6 +107,7 @@ class AnnouncementDetailsViewModel(
               authorNameRes =
                   if (authorName == null) R.string.announcement_details_user_fetch_failed else null,
               eventEndTime = event.endDate,
+              canEdit = event.ownerId == currentUserId,
               isLoading = false,
               errorMsg =
                   it.errorMsg.takeUnless { error ->
