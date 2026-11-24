@@ -4,6 +4,7 @@ package com.android.festivar.model.datarepository
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.authentication.AuthRepositoryFirebase
 import com.android.festivar.model.chat.ChatRepository
+import com.android.festivar.model.chat.ChatRepositoryProvider
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryProvider
 import com.android.festivar.model.images.ImageStorage
@@ -31,7 +32,7 @@ class DataRepositoryFirebase(
     override val tasksRepository: TasksRepository = TasksRepositoryProvider.repository,
     override val eventsRepository: EventsRepository = EventsRepositoryProvider.repository,
     override val usersRepository: UsersRepository = UsersRepositoryProvider.repository,
-    override val chatRepository: ChatRepository? = null,
+    override val chatRepository: ChatRepository? = ChatRepositoryProvider.repository,
     imageStorage: ImageStorage? = null,
 ) : DataRepository {
   private val configuredImageStorage = imageStorage
