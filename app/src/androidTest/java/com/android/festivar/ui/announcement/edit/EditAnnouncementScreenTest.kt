@@ -177,9 +177,11 @@ class EditAnnouncementScreenTest {
     composeTestRule.waitForIdle()
   }
 
-  // Breaks if a waiting load shows no spinner or no top bar to leave by, if the form is not filled
-  // from the announcement or keeps the Create texts, if an untouched form can be saved, or if back
-  // asks before leaving it.
+  /**
+   * Breaks if a waiting load shows no spinner or no top bar to leave by, if the form is not filled
+   * from the announcement or keeps the Create texts, if an untouched form can be saved, or if back
+   * asks before leaving it.
+   */
   @Test
   fun theScreenShowsTheSpinnerThenTheFormFilledFromTheAnnouncement() {
     val gate = CompletableDeferred<Unit>()
@@ -211,7 +213,9 @@ class EditAnnouncementScreenTest {
     composeTestRule.onNodeWithTag(Tags.DISCARD_DIALOG).assertDoesNotExist()
   }
 
-  // Breaks if a failed load shows no error or an empty form, or if the retry does not load again.
+  /**
+   * Breaks if a failed load shows no error or an empty form, or if the retry does not load again.
+   */
   @Test
   fun aFailedLoadShowsTheLoadErrorAndRetryLoadsTheForm() {
     beforeRead = { throw IllegalStateException("offline") }
@@ -234,8 +238,10 @@ class EditAnnouncementScreenTest {
     composeTestRule.onNodeWithTag(Tags.LOAD_ERROR).assertDoesNotExist()
   }
 
-  // Breaks if a user who does not own the event gets the form or no notice saying why not, or if
-  // that user cannot leave the screen.
+  /**
+   * Breaks if a user who does not own the event gets the form or no notice saying why not, or if
+   * that user cannot leave the screen.
+   */
   @Test
   fun aUserWhoIsNotTheOrganizerSeesWhyInsteadOfTheForm() {
     showScreen(userId = "volunteer-1")
@@ -253,9 +259,11 @@ class EditAnnouncementScreenTest {
     composeTestRule.onNodeWithTag(Tags.DISCARD_DIALOG).assertDoesNotExist()
   }
 
-  // Breaks if a field or the priority does not reach the ViewModel, if the save rewrites the id,
-  // author, links or pin, or if onSaved is not called exactly once. The trimming and the change
-  // rules are in EditAnnouncementViewModelTest.
+  /**
+   * Breaks if a field or the priority does not reach the ViewModel, if the save rewrites the id,
+   * author, links or pin, or if onSaved is not called exactly once. The trimming and the change
+   * rules are in EditAnnouncementViewModelTest.
+   */
   @Test
   fun savingStoresTheEditAndReportsItOnce() {
     showLoadedScreen()
@@ -280,9 +288,11 @@ class EditAnnouncementScreenTest {
     assertEquals(0, backCount)
   }
 
-  // Breaks if the screen does not pass its save error to the form, if it replaces the form with the
-  // load error, or if a failed save locks Save or loses the edit. The retry is in
-  // EditAnnouncementViewModelTest.
+  /**
+   * Breaks if the screen does not pass its save error to the form, if it replaces the form with the
+   * load error, or if a failed save locks Save or loses the edit. The retry is in
+   * EditAnnouncementViewModelTest.
+   */
   @Test
   fun aFailedSaveShowsTheErrorAndKeepsTheEdit() {
     beforeEdit = { throw IllegalStateException("offline") }
@@ -302,11 +312,12 @@ class EditAnnouncementScreenTest {
     assertEquals(0, savedCount)
   }
 
-  // Breaks if the screen does not pass a running save to the form (spinner, Save and inputs), if
-  // either back acts during the save, if the back handler is turned off so that system back closes
-  // the activity, or if the save reports success early, stops, or lets a back pressed during it
-  // fire
-  // once it ends.
+  /**
+   * Breaks if the screen does not pass a running save to the form (spinner, Save and inputs), if
+   * either back acts during the save, if the back handler is turned off so that system back closes
+   * the activity, or if the save reports success early, stops, or lets a back pressed during it
+   * fire once it ends.
+   */
   @Test
   fun aRunningSaveLocksTheFormAndBackUntilItFinishes() {
     val gate = CompletableDeferred<Unit>()
@@ -337,8 +348,10 @@ class EditAnnouncementScreenTest {
     composeTestRule.onNodeWithTag(Tags.DISCARD_DIALOG).assertDoesNotExist()
   }
 
-  // Breaks if the screen does not pass its edited state or its dialog texts to the back handling,
-  // or if "Discard" does not leave or stores a part of the edit.
+  /**
+   * Breaks if the screen does not pass its edited state or its dialog texts to the back handling,
+   * or if "Discard" does not leave or stores a part of the edit.
+   */
   @Test
   fun systemBackFromAnEditedFormAsksWithTheEditTextsAndDiscardLeaves() {
     showLoadedScreen()

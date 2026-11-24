@@ -98,8 +98,10 @@ private val editAnnouncementLabels =
  * Edit announcement screen, connected to its [viewModel], which knows the announcement to edit and
  * who is signed in.
  *
+ * @param viewModel Holds the state of the screen, loads the announcement and saves the edit.
  * @param onBack Called when the user leaves without saving.
  * @param onSaved Called once the edit has been saved.
+ * @param modifier Applied to the whole screen.
  */
 @Composable
 fun EditAnnouncementScreen(
@@ -144,8 +146,10 @@ fun EditAnnouncementScreen(
  * once it is loaded, the load error with a retry when a load failed, a short notice instead of the
  * form for a user who is not the organizer of the event, and otherwise a spinner.
  *
+ * @param state What to show: the loaded announcement with its form, or the loading and error flags.
  * @param actions The form's input; `onSubmit` saves the edit.
  * @param onRetry Loads the announcement again after a failed load.
+ * @param modifier Applied to the whole screen.
  */
 @Composable
 fun EditAnnouncementContent(

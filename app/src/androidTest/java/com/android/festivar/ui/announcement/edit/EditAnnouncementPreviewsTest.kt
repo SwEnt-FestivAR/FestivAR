@@ -22,7 +22,9 @@ import org.junit.Test
 class EditAnnouncementPreviewsTest {
   @get:Rule val composeTestRule = createComposeRule()
 
-  // Breaks if the preview stops showing the filled form of the Figma, with an edit ready to save.
+  /**
+   * Breaks if the preview stops showing the filled form of the Figma, with an edit ready to save.
+   */
   @Test
   fun preview_showsTheFilledFormWithAnEditReadyToSave() {
     composeTestRule.setContent { EditAnnouncementContentPreview() }
@@ -32,7 +34,7 @@ class EditAnnouncementPreviewsTest {
     composeTestRule.onNodeWithTag(Tags.SAVE_BUTTON).assertIsEnabled()
   }
 
-  // Breaks if the preview stops showing both field errors, with Save locked.
+  /** Breaks if the preview stops showing both field errors, with Save locked. */
   @Test
   fun fieldErrorsPreview_showsBothErrorsAndADisabledSave() {
     composeTestRule.setContent { EditAnnouncementContentFieldErrorsPreview() }
@@ -42,7 +44,7 @@ class EditAnnouncementPreviewsTest {
     composeTestRule.onNodeWithTag(Tags.SAVE_BUTTON).assertIsNotEnabled()
   }
 
-  // Breaks if the preview stops showing the save error, or shows it with Save locked.
+  /** Breaks if the preview stops showing the save error, or shows it with Save locked. */
   @Test
   fun saveErrorPreview_showsTheErrorAndAnEnabledSave() {
     composeTestRule.setContent { EditAnnouncementContentSaveErrorPreview() }
@@ -51,7 +53,7 @@ class EditAnnouncementPreviewsTest {
     composeTestRule.onNodeWithTag(Tags.SAVE_BUTTON).assertIsEnabled()
   }
 
-  // Breaks if the preview stops showing the load error with its retry, or draws a form with it.
+  /** Breaks if the preview stops showing the load error with its retry, or draws a form with it. */
   @Test
   fun loadErrorPreview_showsTheErrorAndTheRetryWithoutAForm() {
     composeTestRule.setContent { EditAnnouncementContentLoadErrorPreview() }
