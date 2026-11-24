@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -15,6 +16,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -25,12 +27,18 @@ import com.android.festivar.model.map.geometry.EPFL_LOCATION
 import com.android.festivar.model.map.geometry.GeoPosition
 import com.android.festivar.ui.components.FestivarMapTestTags
 import com.android.festivar.ui.theme.AppTheme
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** There is no API key in instrumented tests: the map shows no tiles, and no test looks at them. */
+/**
+ * There is no API key in instrumented tests: the map shows no tiles, and no test looks at them.
+ *
+ * `gesturesEnabled = false` on the map is not covered by a test, since the map does not expose it:
+ * it is checked by hand, on a device.
+ */
 @RunWith(AndroidJUnit4::class)
 class MapCardTest {
   @get:Rule val composeTestRule = createComposeRule()
@@ -67,6 +75,29 @@ class MapCardTest {
     setCard(listOf(EPFL_LOCATION))
 
     composeTestRule.onNodeWithTag(MapCardTestTags.TOUCH_BLOCKER).assertIsDisplayed()
+  }
+
+  /**
+   * Breaks if the touch layer lets a tap reach what is under it, so a tap on a marker of the map
+   * moves the camera again.
+   */
+  @Test
+  fun touchBlocker_keepsTheTapsFromWhatIsUnderIt() {
+    var clicked = false
+    composeTestRule.setContent {
+      Box(Modifier.size(100.dp)) {
+        // In a Box, a child written later is drawn on top of the ones before it, and receives the
+        // touches first: the blocker covers the clickable box, as it covers the map in MapCard.
+        Box(Modifier.matchParentSize().testTag("under").clickable { clicked = true })
+        TouchBlocker(Modifier.matchParentSize())
+      }
+    }
+
+    // A click is not sent to the node it finds: it is injected at the center of its bounds and goes
+    // through the usual hit testing, so it reaches whatever is on top there, the blocker.
+    composeTestRule.onNodeWithTag("under").performClick()
+
+    assertFalse(clicked)
   }
 
   /**
