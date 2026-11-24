@@ -4,6 +4,7 @@ package com.android.festivar.model.datarepository
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.android.festivar.model.authentication.AuthRepositoryFirebase
+import com.android.festivar.model.chat.ChatRepositoryFirebase
 import com.android.festivar.model.event.EventRepositoryFirebase
 import com.android.festivar.model.task.TaskRepositoryFirebase
 import com.android.festivar.model.user.UsersRepositoryFirebase
@@ -36,5 +37,6 @@ class DataRepositoryFirebaseDefaultTest {
     assertTrue(repository.tasksRepository is TaskRepositoryFirebase)
     assertTrue(repository.eventsRepository is EventRepositoryFirebase)
     assertTrue(repository.usersRepository is UsersRepositoryFirebase)
+    assertTrue(repository.chatRepository is ChatRepositoryFirebase)
   }
 }
