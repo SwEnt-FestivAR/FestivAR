@@ -185,6 +185,7 @@ class EventTest {
   fun init_fails_whenChatIdsAreInvalid() {
     assertInvalid(chatIdMessage) { event(chatIds = listOf("")) }
     assertInvalid(chatIdMessage) { event(chatIds = listOf(" \t\n")) }
+    assertInvalid(chatIdMessage) { event(chatIds = listOf("\u2003")) }
     assertInvalid("A chatId is duplicated.") { event(chatIds = listOf("chat-1", "chat-1")) }
   }
 
