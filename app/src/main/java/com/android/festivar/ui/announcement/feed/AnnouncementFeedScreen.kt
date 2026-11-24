@@ -52,10 +52,10 @@ import com.android.festivar.ui.components.Hairline
 import com.android.festivar.ui.components.RefreshableStateList
 import com.android.festivar.ui.components.SectionLabel
 import com.android.festivar.ui.components.StatusPill
+import com.android.festivar.ui.components.datetime.formatDate
+import com.android.festivar.ui.components.datetime.formatTime
+import com.android.festivar.ui.components.datetime.formatWeekday
 import com.android.festivar.ui.components.floatingShadow
-import com.android.festivar.ui.components.formatDate
-import com.android.festivar.ui.components.formatTime
-import com.android.festivar.ui.components.formatWeekday
 import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
 import java.time.ZoneId

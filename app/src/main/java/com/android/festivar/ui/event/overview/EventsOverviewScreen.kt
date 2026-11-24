@@ -60,8 +60,8 @@ import com.android.festivar.model.event.Event
 import com.android.festivar.ui.components.EmptyState
 import com.android.festivar.ui.components.FilterChip
 import com.android.festivar.ui.components.RefreshableStateList
+import com.android.festivar.ui.components.datetime.formatEventDateAndLocation
 import com.android.festivar.ui.components.floatingShadow
-import com.android.festivar.ui.components.formatEventDateAndLocation
 import com.android.festivar.ui.theme.AppTheme
 import java.time.ZoneId
 import java.time.ZonedDateTime
