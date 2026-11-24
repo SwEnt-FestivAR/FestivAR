@@ -1,7 +1,9 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.datarepository
 
+import com.android.festivar.model.audio.AudioRepository
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
@@ -33,6 +35,8 @@ import kotlinx.coroutines.withContext
  * @property tasksRepository The repository storing the [Task]s.
  * @property eventsRepository The repository storing the [Event]s.
  * @property usersRepository The repository storing the [User]s.
+ * @property audioRepository The storage of the audio files, used to remove the voice notes of the
+ *   [Task]s that are deleted.
  */
 interface DataRepository {
 
@@ -40,6 +44,7 @@ interface DataRepository {
   val tasksRepository: TasksRepository
   val eventsRepository: EventsRepository
   val usersRepository: UsersRepository
+  val audioRepository: AudioRepository
   val imageStorage: ImageStorage
 
   /**
@@ -103,10 +108,14 @@ interface DataRepository {
    * and of each of its assignees. If the owner no longer lists the task (for example after
    * [quitTask] or [quitEvent]), their [User.tasksAssigned] is left unchanged.
    *
+   * If the task has a voice note, its audio file is removed from the storage first. If that fails,
+   * nothing else is deleted, so the task keeps its voice note.
+   *
    * @param taskId The identifier of the [Task] to delete.
    * @throws NoSuchElementException If the task, its event, its owner or an assignee does not exist.
    * @throws IllegalArgumentException If the event does not contain the task, or if an assignee who
    *   is not the owner does not list it in [User.tasksAssigned].
+   * @throws java.io.IOException If the audio file of its voice note could not be deleted.
    * @throws DataInconsistencyException If a write failed and could not be fully undone.
    */
   suspend fun deleteTask(taskId: String) {
@@ -129,6 +138,7 @@ interface DataRepository {
         }
 
     // Store the changes.
+    deleteVoiceNotes(listOf(task))
     val undoProcess = ArrayDeque<suspend () -> Unit>()
     try {
 
@@ -146,6 +156,21 @@ interface DataRepository {
       rollback(undoProcess, e)
       throw e
     }
+  }
+
+  /**
+   * Removes the audio files of the voice notes of [tasks]. It runs before the tasks are deleted,
+   * because the storage rules are meant to check the task's owner, which needs the task to exist
+   * (see issue #302).
+   *
+   * The deletion of an audio file cannot be undone: if a later write fails, the restored task still
+   * lists a voice note whose file is gone. Deleting a file that is already gone is not an error, so
+   * deleting again is safe.
+   *
+   * @throws java.io.IOException If the storage cannot be reached or refuses a deletion.
+   */
+  private suspend fun deleteVoiceNotes(tasks: List<Task>) {
+    tasks.forEach { task -> task.voiceNote?.let { audioRepository.delete(it.audioUrl) } }
   }
 
   /**
@@ -188,9 +213,12 @@ interface DataRepository {
    * Only the members are updated: a user assigned to one of the tasks without being a member of the
    * event keeps the deleted task in [User.tasksAssigned].
    *
+   * The audio files of the voice notes of the tasks are removed first, as in [deleteTask].
+   *
    * @param eventId The identifier of the [Event] to delete.
    * @throws NoSuchElementException If the event, one of its tasks or a member does not exist.
    * @throws IllegalArgumentException If a member does not list the event in [User.joinedEvents].
+   * @throws java.io.IOException If the audio file of a voice note could not be deleted.
    * @throws DataInconsistencyException If a write failed and could not be fully undone.
    */
   suspend fun deleteEvent(eventId: String) {
@@ -214,6 +242,7 @@ interface DataRepository {
     }
 
     // Store the changes.
+    deleteVoiceNotes(tasks)
     val undoProcess = ArrayDeque<suspend () -> Unit>()
     try {
 

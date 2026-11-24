@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.datarepository
 
 import com.android.festivar.model.authentication.AuthRepository
@@ -11,8 +12,11 @@ import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryLocal
+import com.android.festivar.model.voicenote.VoiceNote
+import com.android.festivar.ui.task.details.FakeAudioRepository
 import io.mockk.mockk
 import java.io.IOException
+import java.time.Duration
 import java.time.ZonedDateTime
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
@@ -35,6 +39,7 @@ class DataRepositoryLocalTest {
   private lateinit var eventsRepository: EventsRepositoryLocal
   private lateinit var usersRepository: UsersRepositoryLocal
   private lateinit var dataRepository: DataRepository
+  private lateinit var audioRepository: FakeAudioRepository
 
   private val start = ZonedDateTime.parse("2026-07-01T14:00:00+02:00")
 
@@ -115,6 +120,7 @@ class DataRepositoryLocalTest {
       tasksRepository.addTask(t1)
       tasksRepository.addTask(t2)
     }
+    audioRepository = FakeAudioRepository()
     dataRepository = repositoryWith(usersRepository)
   }
 
@@ -133,7 +139,14 @@ class DataRepositoryLocalTest {
   private fun repositoryWith(
       users: UsersRepository = usersRepository,
       tasks: TasksRepository = tasksRepository,
-  ) = DataRepositoryLocal(mockk<AuthRepository>(), tasks, eventsRepository, users)
+  ) =
+      DataRepositoryLocal(
+          mockk<AuthRepository>(),
+          tasks,
+          eventsRepository,
+          users,
+          audioRepository = audioRepository,
+      )
 
   /** A [TasksRepository] that behaves like [delegate], except that every edit fails. */
   private class BrokenTasksRepository(private val delegate: TasksRepository) :
@@ -200,6 +213,11 @@ class DataRepositoryLocalTest {
   ) {
     dataRepository = repositoryWith(tasks = BrokenTasksRepository(tasksRepository))
     assertFailsWithoutChanges(IOException::class.java) { dataRepository.operation() }
+  }
+
+  private suspend fun storeVoiceNoteOnT1() {
+    val note = VoiceNote("v1", AUDIO_URL, Duration.ofSeconds(5), start)
+    tasksRepository.editTask("t1", t1.copy(voiceNote = note))
   }
 
   private suspend fun assertUser(uid: String, joinedEvents: List<String>, tasks: List<String>) {
@@ -307,6 +325,49 @@ class DataRepositoryLocalTest {
     assertEquals(t2, tasksRepository.getTask("t2"))
   }
 
+  /** Breaks if deleting a task leaves its voice note in the storage. */
+  @Test
+  fun deleteTask_withVoiceNote_deletesItsAudioFile() = runTest {
+    storeVoiceNoteOnT1()
+
+    dataRepository.deleteTask("t1")
+
+    assertEquals(listOf(AUDIO_URL), audioRepository.deletions)
+  }
+
+  /** Breaks if deleting a task without a voice note touches the storage. */
+  @Test
+  fun deleteTask_withoutVoiceNote_deletesNoAudioFile() = runTest {
+    dataRepository.deleteTask("t1")
+
+    assertTrue(audioRepository.deletions.isEmpty())
+  }
+
+  /** Breaks if a task is deleted although its audio file could not be deleted. */
+  @Test
+  fun deleteTask_audioFileNotDeletable_throwsAndChangesNothing() = runTest {
+    storeVoiceNoteOnT1()
+    audioRepository.deleteFailure = IOException("Storage unreachable")
+
+    assertFailsWithoutChanges(IOException::class.java) { dataRepository.deleteTask("t1") }
+  }
+
+  /**
+   * Breaks if the audio file is deleted after the task, whose owner the storage rules must read.
+   */
+  @Test
+  fun deleteTask_withVoiceNote_deletesTheAudioFileBeforeTheTask() = runTest {
+    storeVoiceNoteOnT1()
+    var taskStillStored = false
+    audioRepository.onDelete = {
+      taskStillStored = runBlocking { tasksRepository.getAllTasks("e1").any { it.taskId == "t1" } }
+    }
+
+    dataRepository.deleteTask("t1")
+
+    assertTrue(taskStillStored)
+  }
+
   /** Breaks if a task cannot be deleted once its owner no longer lists it in their tasks. */
   @Test
   fun deleteTask_ownerNoLongerListingIt_deletesItAnyway() = runTest {
@@ -333,6 +394,64 @@ class DataRepositoryLocalTest {
     // The assignees are edited before the owner: the owner's write fails last.
     assertRollsBack("bob") { deleteTask("t1") }
     assertRollsBack("alice") { deleteTask("t1") }
+  }
+
+  // ********************************* deleteEvent (voice notes) *********************************
+  // //
+
+  /** Breaks if deleting an event leaves the voice notes of its tasks in the storage. */
+  @Test
+  fun deleteEvent_deletesTheAudioFilesOfItsTasks() = runTest {
+    storeVoiceNoteOnT1()
+
+    dataRepository.deleteEvent("e1")
+
+    assertEquals(listOf(AUDIO_URL), audioRepository.deletions)
+  }
+
+  /** Breaks if the audio files are deleted after the event, whose tasks the storage rules read. */
+  @Test
+  fun deleteEvent_deletesTheAudioFilesBeforeTheEvent() = runTest {
+    storeVoiceNoteOnT1()
+    var eventStillStored = false
+    audioRepository.onDelete = {
+      eventStillStored = runBlocking { eventsRepository.getAllEvents().any { it.eventId == "e1" } }
+    }
+
+    dataRepository.deleteEvent("e1")
+
+    assertTrue(eventStillStored)
+  }
+
+  /**
+   * Breaks if tasks without a voice note get their storage touched, or one with a note is missed.
+   */
+  @Test
+  fun deleteEvent_mixedTasks_deletesOnlyTheAudioFilesThatExist() = runTest {
+    storeVoiceNoteOnT1()
+    val t4 =
+        t3.copy(
+            taskId = "t4",
+            voiceNote = VoiceNote("v4", "https://fake/t4/1.m4a", Duration.ofSeconds(2), start),
+        )
+    tasksRepository.addTask(t4)
+    eventsRepository.editEvent("e1", e1.addTask(t4))
+
+    dataRepository.deleteEvent("e1")
+
+    assertEquals(
+        listOf(AUDIO_URL, "https://fake/t4/1.m4a").sorted(),
+        audioRepository.deletions.sorted(),
+    )
+  }
+
+  /** Breaks if an event is deleted although an audio file of its tasks could not be deleted. */
+  @Test
+  fun deleteEvent_audioFileNotDeletable_throwsAndChangesNothing() = runTest {
+    storeVoiceNoteOnT1()
+    audioRepository.deleteFailure = IOException("Storage unreachable")
+
+    assertFailsWithoutChanges(IOException::class.java) { dataRepository.deleteEvent("e1") }
   }
 
   // ********************************* createEvent ********************************* //
@@ -684,5 +803,9 @@ class DataRepositoryLocalTest {
     assertTrue(exception.suppressed.single() is IOException)
     assertTrue(tasksRepository.getAllTasks("e1").none { it.taskId == "t3" })
     assertEquals(e1, eventsRepository.getEvent("e1"))
+  }
+
+  private companion object {
+    const val AUDIO_URL = "https://fake/t1/1.m4a"
   }
 }
