@@ -157,6 +157,26 @@ class DateErrorsTest {
     assertEquals(FieldError.OUTDATED, endDateError(range, now = now))
   }
 
+  /** Breaks if a range that ended is still reported when the past is allowed, as when editing. */
+  @Test
+  fun endDateError_pastRangeWhenThePastIsAllowed_returnsNoError() {
+    val now = ZonedDateTime.of(2026, 10, 29, 12, 0, 0, 0, ZoneId.systemDefault())
+    val date = now.toLocalDate().minusDays(1)
+    val range = DateTimeRange(date, LocalTime.of(9, 0), date, LocalTime.of(17, 0))
+
+    assertNull(endDateError(range, now = now, allowPast = true))
+  }
+
+  /** Breaks if allowing the past also hides an end that is not after the start. */
+  @Test
+  fun endDateError_endBeforeStartWhenThePastIsAllowed_returnsEndBeforeStart() {
+    val now = ZonedDateTime.of(2026, 10, 29, 12, 0, 0, 0, ZoneId.systemDefault())
+    val date = now.toLocalDate().minusDays(1)
+    val range = DateTimeRange(date, LocalTime.of(17, 0), date, LocalTime.of(9, 0))
+
+    assertEquals(FieldError.END_BEFORE_START, endDateError(range, now = now, allowPast = true))
+  }
+
   /** Breaks if a past start date is rejected when the end date is still in the future. */
   @Test
   fun endDateError_pastStartAndFutureEnd_returnsNoError() {
