@@ -1,5 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
-package com.android.festivar.ui.components
+package com.android.festivar.ui.components.map
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.map.geometry.EPFL_LOCATION
 import com.android.festivar.model.map.geometry.GeoPosition
+import com.android.festivar.ui.components.FestivarMapTestTags
 import com.android.festivar.ui.theme.AppTheme
 import org.junit.Assert.assertTrue
 import org.junit.Rule
