@@ -1,8 +1,8 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.voicenote
 
-import com.android.festivar.ui.components.formatDate
-import com.android.festivar.ui.components.formatDateWithYear
+import com.android.festivar.ui.components.datetime.formatDate
+import com.android.festivar.ui.components.datetime.formatDateWithYear
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
