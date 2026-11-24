@@ -57,6 +57,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.android.festivar.R
 import com.android.festivar.model.event.Event
+import com.android.festivar.model.map.Location
+import com.android.festivar.model.map.geometry.GeoPosition
 import com.android.festivar.ui.components.EmptyState
 import com.android.festivar.ui.components.FilterChip
 import com.android.festivar.ui.components.RefreshableStateList
@@ -405,7 +407,7 @@ internal fun EventsOverviewContentPreview() {
               title = "Fête de l'Asso 2026",
               startDate = date(10, 16, 10),
               endDate = date(10, 18, 23),
-              location = "Parc de Vidy, Lausanne",
+              location = Location("Parc de Vidy, Lausanne", GeoPosition(46.5137, 6.6012)),
           ),
           Event(
               eventId = "2",
@@ -413,7 +415,7 @@ internal fun EventsOverviewContentPreview() {
               title = "Soirée Jazz",
               startDate = date(11, 6, 19),
               endDate = date(11, 6, 23),
-              location = "Salle Polyvalente",
+              location = Location("Salle Polyvalente", GeoPosition(46.5191, 6.5668)),
           ),
           Event(
               eventId = "3",
@@ -421,7 +423,7 @@ internal fun EventsOverviewContentPreview() {
               title = "Marché de Noël",
               startDate = date(12, 12, 10),
               endDate = date(12, 13, 20),
-              location = "Place de la Riponne",
+              location = Location("Place de la Riponne", GeoPosition(46.5232, 6.6337)),
           ),
       )
   val ongoingEvent =

@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.event.overview
 
 import com.android.festivar.model.authentication.FakeAuthRepository
@@ -7,6 +8,8 @@ import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.role.Role
+import com.android.festivar.model.map.Location
+import com.android.festivar.model.map.geometry.GeoPosition
 import com.android.festivar.model.user.User
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -92,7 +95,7 @@ class EventsOverviewViewModelTest {
           members = listOf(sara),
           startDate = getDate(2026, 10, 17, hour = 16),
           endDate = getDate(2026, 10, 17, hour = 23),
-          location = "Esplanade EPFL",
+          location = Location("Esplanade EPFL", GeoPosition(46.5191, 6.5668)),
       )
 
   private val upcomingEvent =
@@ -104,7 +107,7 @@ class EventsOverviewViewModelTest {
           members = listOf(sara),
           startDate = getDate(2026, 10, 19, hour = 20),
           endDate = getDate(2026, 10, 20, hour = 1),
-          location = "Satellite",
+          location = Location("Satellite", GeoPosition(46.5191, 6.5668)),
       )
 
   private val pastEvent =
@@ -116,7 +119,7 @@ class EventsOverviewViewModelTest {
           members = listOf(sara),
           startDate = getDate(2026, 5, 8, hour = 17),
           endDate = getDate(2026, 5, 9, hour = 5),
-          location = "EPFL",
+          location = Location("EPFL", GeoPosition(46.5191, 6.5668)),
       )
 
   /** An event Sara is not a member of, so it is never shown to her. */

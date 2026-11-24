@@ -1,6 +1,7 @@
 package com.android.festivar.ui.event.edit
 
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
@@ -39,6 +40,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
 import com.android.festivar.model.event.Event
+import com.android.festivar.model.map.Location
+import com.android.festivar.model.map.geometry.GeoPosition
 import com.android.festivar.ui.components.FestivarDiscardDialog
 import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.components.datetime.DateTimeField
@@ -326,7 +329,7 @@ internal fun EditEventScreenPreview() {
           description = "Annual music festival by the lake.",
           startDate = ZonedDateTime.of(2037, 10, 17, 16, 0, 0, 0, zone),
           endDate = ZonedDateTime.of(2037, 10, 18, 2, 0, 0, 0, zone),
-          location = "Parc de Vidy",
+          location = Location("Parc de Vidy", GeoPosition(46.5137, 6.6012)),
       )
 
   AppTheme {

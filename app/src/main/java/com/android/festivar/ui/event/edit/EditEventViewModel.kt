@@ -1,6 +1,7 @@
 package com.android.festivar.ui.event.edit
 
 // Co-authored-by: Copilot App
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 
 import android.util.Log
 import androidx.annotation.StringRes
@@ -31,6 +32,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 
 private const val SAVE_TIMEOUT_MS = 15_000L
+
+/** The venue text of the form for this event: the name of its location, empty without one. */
+private val Event.venue: String
+  get() = location?.name.orEmpty()
 
 data class EditEventUIState(
     /** The event currently being edited, or null before a record has been loaded. */
@@ -126,7 +131,7 @@ data class EditEventUIState(
                 startTime != event.startDate.toLocalTime() ||
                 endDate != event.endDate.toLocalDate() ||
                 endTime != event.endDate.toLocalTime() ||
-                venue != event.location ||
+                venue != event.venue ||
                 notes != event.description)
 
   /** True when the form is valid, changed, not busy, and not already saved. */
@@ -142,7 +147,8 @@ data class EditEventUIState(
         description = notes,
         startDate = startDateTime!!,
         endDate = endDateTime!!,
-        location = venue,
+        // The venue is a text without coordinates: the search of the place will set the location.
+        location = null,
     )
   }
 
@@ -156,7 +162,7 @@ data class EditEventUIState(
           endDate = event.endDate.toLocalDate(),
           startTime = event.startDate.toLocalTime(),
           endTime = event.endDate.toLocalTime(),
-          venue = event.location,
+          venue = event.venue,
           notes = event.description,
           openPicker = null,
           isLoading = false,

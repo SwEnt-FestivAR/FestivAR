@@ -1,6 +1,7 @@
 package com.android.festivar.ui.event.edit
 
 // Co-authored-by: Copilot App
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 
 import com.android.festivar.R
 import com.android.festivar.model.authentication.FakeAuthRepository
@@ -9,6 +10,8 @@ import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.announcement.Announcement
+import com.android.festivar.model.map.Location
+import com.android.festivar.model.map.geometry.GeoPosition
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.FieldError
@@ -69,7 +72,7 @@ class EditEventViewModelTest {
     assertEquals(initialEvent.endDate.toLocalDate(), state.endDate)
     assertEquals(initialEvent.startDate.toLocalTime(), state.startTime)
     assertEquals(initialEvent.endDate.toLocalTime(), state.endTime)
-    assertEquals(initialEvent.location, state.venue)
+    assertEquals("Main square", state.venue)
     assertEquals(initialEvent.description, state.notes)
     assertFalse(state.hasChanges)
     assertFalse(state.canSave)
@@ -205,7 +208,8 @@ class EditEventViewModelTest {
 
     assertTrue(loadedState.isValid)
     assertFalse(loadedState.hasChanges)
-    assertEquals(event, loadedState.toEvent())
+    // The form saves no location: its venue is a text without coordinates.
+    assertEquals(event.copy(location = null), loadedState.toEvent())
     assertTrue(updatedState.hasChanges)
     assertEquals("Updated festival", updatedState.toEvent().title)
     assertEquals("New notes", updatedState.toEvent().description)
@@ -305,7 +309,7 @@ class EditEventViewModelTest {
 
     val saved = eventsRepository.getEvent(initialEvent.eventId)
     assertEquals("Updated festival", saved.title)
-    assertEquals("New venue", saved.location)
+    assertNull(saved.location)
     assertEquals(initialEvent.members, saved.members)
     assertEquals(initialEvent.tasks, saved.tasks)
     assertEquals(initialEvent.announcements, saved.announcements)
@@ -601,7 +605,7 @@ class EditEventViewModelTest {
         members = listOf(User(uid = "member-1")),
         startDate = start,
         endDate = start.plusHours(3),
-        location = "Main square",
+        location = Location("Main square", GeoPosition(46.5191, 6.5668)),
         tasks =
             listOf(
                 Task(

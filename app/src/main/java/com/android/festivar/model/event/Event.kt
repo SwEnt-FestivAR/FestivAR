@@ -1,9 +1,11 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.event
 
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.event.role.Permission
 import com.android.festivar.model.event.role.Role
+import com.android.festivar.model.map.Location
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import java.time.ZonedDateTime
@@ -51,7 +53,8 @@ val DEFAULT_ROLE = Role.VISITOR
  * @property members People who joined or were assigned the [Event].
  * @property startDate Starting date and time of the [Event].
  * @property endDate Ending date and time of the [Event].
- * @property location Where the [Event] takes place.
+ * @property location Where the [Event] takes place, with its name and its coordinates, or `null`
+ *   when it is not set.
  * @property tasks Tasks that are related, that belong to the [Event].
  * @property closed Whether the [Event] is still ongoing or not.
  * @property announcements Announcements shared with the members of the [Event].
@@ -69,7 +72,7 @@ data class Event(
     },
     val startDate: ZonedDateTime,
     val endDate: ZonedDateTime,
-    val location: String = "",
+    val location: Location? = null,
     val tasks: List<Task> = emptyList(),
     val closed: Boolean = false,
     val announcements: List<Announcement> = emptyList(),

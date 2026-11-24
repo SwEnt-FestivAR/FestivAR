@@ -29,6 +29,8 @@ import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.model.map.Location
+import com.android.festivar.model.map.geometry.GeoPosition
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.EmptyStateTestTags
@@ -98,7 +100,7 @@ class EventsOverviewScreenTest {
           members = listOf(sara, marc, alice, bob),
           startDate = getDate(2026, 10, 17, hour = 16),
           endDate = getDate(2026, 10, 17, hour = 23),
-          location = "Esplanade EPFL",
+          location = Location("Esplanade EPFL", GeoPosition(46.5191, 6.5668)),
           tasks =
               listOf(
                   Task(ownerId = "owner-1", taskId = "t1", eventId = "0", title = "Set up the bar"),
@@ -122,7 +124,7 @@ class EventsOverviewScreenTest {
           members = listOf(sara),
           startDate = getDate(2026, 10, 19, hour = 20),
           endDate = getDate(2026, 10, 20, hour = 1),
-          location = "Satellite",
+          location = Location("Satellite", GeoPosition(46.5191, 6.5668)),
           tasks =
               listOf(
                   Task(ownerId = "owner-1", taskId = "t4", eventId = "1", title = "Book the band")

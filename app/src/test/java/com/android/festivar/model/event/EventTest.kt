@@ -5,6 +5,8 @@ package com.android.festivar.model.event
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.event.role.Permission
 import com.android.festivar.model.event.role.Role
+import com.android.festivar.model.map.Location
+import com.android.festivar.model.map.geometry.GeoPosition
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import java.time.ZoneId
@@ -109,7 +111,7 @@ class EventTest {
           members = members,
           startDate = start,
           endDate = start.plusDays(2),
-          location = "EPFL",
+          location = Location("EPFL", GeoPosition(46.5191, 6.5668)),
           tasks = tasks,
           announcements = announcements,
       )
@@ -143,7 +145,7 @@ class EventTest {
     assertEquals(listOf(User("owner-1")), event.members)
     assertEquals(start, event.startDate)
     assertEquals(start.plusDays(2), event.endDate)
-    assertEquals("", event.location)
+    assertNull(event.location)
     assertTrue(event.tasks.isEmpty())
     assertTrue(event.announcements.isEmpty())
     assertFalse(event.closed)

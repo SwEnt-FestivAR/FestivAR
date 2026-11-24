@@ -1,5 +1,6 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.event
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -7,6 +8,8 @@ import com.android.festivar.FirebaseEmulatorSetup
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.event.announcement.AnnouncementPriority
 import com.android.festivar.model.event.role.Role
+import com.android.festivar.model.map.Location
+import com.android.festivar.model.map.geometry.GeoPosition
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepositoryFirebase
 import com.google.firebase.Firebase
@@ -24,6 +27,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.BeforeClass
@@ -55,7 +59,7 @@ class EventRepositoryFirebaseTest {
             members = listOf(User("user-1")),
             startDate = start,
             endDate = start.plusHours(5),
-            location = "EPFL",
+            location = Location("EPFL", GeoPosition(46.5191, 6.5668)),
             closed = false,
         )
     repository = EventRepositoryFirebase(Firebase.firestore)
@@ -94,7 +98,7 @@ class EventRepositoryFirebaseTest {
     assertEquals(event.members.map { it.uid }, data["members"])
     assertEquals(event.startDate.toString(), data["startDate"])
     assertEquals(event.endDate.toString(), data["endDate"])
-    assertEquals(event.location, data["location"])
+    assertEquals(event.location?.toMap(), data["location"])
     assertEquals(emptyList<String>(), data["tasks"])
     assertEquals(event.closed, data["closed"])
     assertEquals(joinCodeOf(event), data["joinCode"])
@@ -304,7 +308,7 @@ class EventRepositoryFirebaseTest {
 
     assertEquals(event.eventId, result.eventId)
     assertEquals("", result.description)
-    assertEquals("", result.location)
+    assertNull(result.location)
     assertEquals(listOf(User("user-1")), result.members)
     assertTrue(result.tasks.isEmpty())
     assertFalse(result.closed)

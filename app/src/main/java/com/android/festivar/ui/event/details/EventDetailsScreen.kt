@@ -53,6 +53,8 @@ import com.android.festivar.R
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.joinCodeOf
 import com.android.festivar.model.event.role.Role
+import com.android.festivar.model.map.Location
+import com.android.festivar.model.map.geometry.GeoPosition
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.EditDeleteMenu
@@ -541,7 +543,7 @@ private fun previewEvent(): Event {
           },
       startDate = eventStartDate,
       endDate = eventEndDate,
-      location = "Parc de Vidy, Lausanne",
+      location = Location("Parc de Vidy, Lausanne", GeoPosition(46.5137, 6.6012)),
       description =
           "Our yearly association party by the lake. Three days of concerts, food stands and " +
               "games. Volunteers help with setup, bar shifts and cleanup.",

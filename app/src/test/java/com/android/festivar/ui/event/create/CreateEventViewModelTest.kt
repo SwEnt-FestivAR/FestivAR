@@ -2,6 +2,7 @@ package com.android.festivar.ui.event.create
 
 // Co-authored-by: Copilot App
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 
 import com.android.festivar.R
 import com.android.festivar.model.datarepository.DataRepositoryLocal
@@ -241,7 +242,8 @@ class CreateEventViewModelTest {
     assertEquals(listOf(creator), event.members)
     assertEquals(viewModel.uiState.value.startDateTime, event.startDate)
     assertEquals(viewModel.uiState.value.endDateTime, event.endDate)
-    assertEquals("Main square", event.location)
+    // The typed venue has no coordinates, so it is not a location (the search will set one).
+    assertNull(event.location)
   }
 
   /** Red if the untouched event form displays a field error. */

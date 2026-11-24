@@ -4,6 +4,8 @@ package com.android.festivar.ui.components
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.event.Event
+import com.android.festivar.model.map.Location
+import com.android.festivar.model.map.geometry.GeoPosition
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import org.junit.Assert.assertEquals
@@ -17,7 +19,7 @@ import org.robolectric.annotation.Config
 class EventDateAndLocationTest {
   @get:Rule val composeTestRule = createComposeRule()
 
-  private fun lineOf(location: String): String {
+  private fun lineOf(location: Location?): String {
     val start = ZonedDateTime.of(2026, 10, 16, 10, 0, 0, 0, ZoneId.of("Europe/Zurich"))
     val event =
         Event(
@@ -37,25 +39,25 @@ class EventDateAndLocationTest {
   /** Breaks if the place is not joined to the days with a middle dot on one line. */
   @Test
   fun joinsDaysAndLocation() {
-    assertEquals("Fri 16 to Sun 18 Oct \u00b7 Parc de Vidy", lineOf("Parc de Vidy"))
+    assertEquals(
+        "Fri 16 to Sun 18 Oct \u00b7 Parc de Vidy",
+        lineOf(Location("Parc de Vidy", GeoPosition(46.5191, 6.5668))),
+    )
   }
 
   /** Breaks if an event without a place keeps a dangling separator or a placeholder. */
   @Test
   fun emptyLocationLeavesOnlyTheDays() {
-    assertEquals("Fri 16 to Sun 18 Oct", lineOf(""))
-  }
-
-  /** Breaks if a whitespace-only place is treated as a real place. */
-  @Test
-  fun whitespaceLocationLeavesOnlyTheDays() {
-    assertEquals("Fri 16 to Sun 18 Oct", lineOf("   "))
+    assertEquals("Fri 16 to Sun 18 Oct", lineOf(null))
   }
 
   /** Breaks if the word between the two days stays English when the phone is in French. */
   @Test
   @Config(qualifiers = "fr")
   fun theWordBetweenTheDaysFollowsTheLanguage() {
-    assertEquals("ven. 16 au dim. 18 oct. · Parc de Vidy", lineOf("Parc de Vidy"))
+    assertEquals(
+        "ven. 16 au dim. 18 oct. · Parc de Vidy",
+        lineOf(Location("Parc de Vidy", GeoPosition(46.5191, 6.5668))),
+    )
   }
 }

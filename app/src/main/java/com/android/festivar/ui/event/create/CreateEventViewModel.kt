@@ -3,6 +3,7 @@ package com.android.festivar.ui.event.create
 // Co-authored-by: Copilot App
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 
 import android.util.Log
 import androidx.annotation.StringRes
@@ -100,7 +101,8 @@ data class CreateEventUIState(
         members = listOf(owner),
         startDate = startDateTime!!,
         endDate = endDateTime!!,
-        location = venue,
+        // The typed venue has no coordinates yet: the search of the location sets them.
+        location = null,
     )
   }
 }

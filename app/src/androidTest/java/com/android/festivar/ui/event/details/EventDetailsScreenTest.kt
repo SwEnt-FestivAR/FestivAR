@@ -32,6 +32,8 @@ import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.announcement.Announcement
+import com.android.festivar.model.map.Location
+import com.android.festivar.model.map.geometry.GeoPosition
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import io.mockk.mockk
@@ -67,7 +69,7 @@ class EventDetailsScreenTest {
           members = listOf(User(uid = "user", name = "Sami K.")),
           startDate = eventStartDate,
           endDate = eventEndDate,
-          location = "Parc de Vidy, Lausanne",
+          location = Location("Parc de Vidy, Lausanne", GeoPosition(46.5191, 6.5668)),
           tasks =
               List(
                   size = tasksListSize,
@@ -129,7 +131,7 @@ class EventDetailsScreenTest {
   fun subtitleShowsTheWholeLongPlace() {
     val place =
         "Main entrance, north-western courtyard beside the temporary festival information tent"
-    setContent(eventSameMonth.copy(location = place))
+    setContent(eventSameMonth.copy(location = Location(place, GeoPosition(46.5191, 6.5668))))
 
     composeTestRule
         .onNodeWithTag(EventDetailsScreenTestTags.SUBTITLE)
@@ -150,7 +152,7 @@ class EventDetailsScreenTest {
   /** Breaks if an event without a place shows a dangling separator or a placeholder. */
   @Test
   fun subtitleShowsOnlyDatesWithoutPlace() {
-    setContent(eventSameMonth.copy(location = "  "))
+    setContent(eventSameMonth.copy(location = null))
 
     composeTestRule
         .onNodeWithTag(EventDetailsScreenTestTags.SUBTITLE)

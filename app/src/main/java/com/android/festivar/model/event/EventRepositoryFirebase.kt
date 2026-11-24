@@ -1,10 +1,12 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.model.event
 
 import android.util.Log
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.event.role.Role
+import com.android.festivar.model.map.readStoredLocation
 import com.android.festivar.model.task.TaskRepositoryFirebase
 import com.android.festivar.model.user.UsersRepositoryFirebase
 import com.google.firebase.firestore.DocumentSnapshot
@@ -18,6 +20,7 @@ private const val EVENT_COLLECTION_PATH = "events"
 private const val TAG = "EventRepositoryFirebase"
 private const val ANNOUNCEMENTS_FIELD = "announcements"
 private const val ROLES_FIELD = "roles"
+private const val LOCATION_FIELD = "location"
 
 class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsRepository {
 
@@ -235,7 +238,7 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
         ROLES_FIELD to event.roles.mapValues { it.value.name },
         "startDate" to event.startDate.toString(),
         "endDate" to event.endDate.toString(),
-        "location" to event.location,
+        LOCATION_FIELD to event.location?.toMap(),
         "tasks" to event.tasks.map { it.taskId },
         "closed" to event.closed,
         // Stored so a join can be a single query instead of a download of the whole collection
@@ -276,7 +279,7 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
         roles = repairRoles(readRoles(document), ownerId, members.map { it.uid }),
         startDate = ZonedDateTime.parse(document.getString("startDate")),
         endDate = ZonedDateTime.parse(document.getString("endDate")),
-        location = document.getString("location") ?: "",
+        location = readStoredLocation(document.get(LOCATION_FIELD), "event ${document.id}"),
         tasks = tasks,
         closed = document.getBoolean("closed") ?: false,
         announcements = readAnnouncements(document),

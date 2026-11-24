@@ -51,13 +51,13 @@ fun formatEventDate(event: Event, join: String): String =
 
 /**
  * Formats the days and the location of an [event] on one line, e.g. "Fri 16 to Sun 18 Oct · Parc de
- * Vidy". The days come from [formatEventDate]; a blank location leaves the days alone.
+ * Vidy". The days come from [formatEventDate]; an event without a location leaves the days alone.
  */
 @Composable
 fun formatEventDateAndLocation(event: Event): String {
   val dates = formatEventDate(event, stringResource(R.string.date_range_join))
-  return if (event.location.isBlank()) dates
-  else stringResource(R.string.event_dates_location, dates, event.location)
+  val name = event.location?.name ?: return dates
+  return stringResource(R.string.event_dates_location, dates, name)
 }
 
 /** Formats a time the way the forms show it, e.g. `09:30`. */

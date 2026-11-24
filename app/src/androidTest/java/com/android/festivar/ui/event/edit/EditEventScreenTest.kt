@@ -1,6 +1,7 @@
 package com.android.festivar.ui.event.edit
 
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.mutableStateOf
@@ -19,6 +20,8 @@ import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.model.map.Location
+import com.android.festivar.model.map.geometry.GeoPosition
 import com.android.festivar.ui.components.datetime.DateTimeField
 import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
@@ -296,7 +299,7 @@ class EditEventScreenTest {
             description = "Original notes",
             startDate = ZonedDateTime.of(startDate, LocalTime.of(16, 0), zone),
             endDate = ZonedDateTime.of(endDate, LocalTime.of(10, 0), zone),
-            location = "Parc de Vidy",
+            location = Location("Parc de Vidy", GeoPosition(46.5191, 6.5668)),
         )
     return EditEventUIState(
         event = event,
@@ -305,7 +308,7 @@ class EditEventScreenTest {
         endDate = endDate,
         startTime = LocalTime.of(16, 0),
         endTime = LocalTime.of(10, 0),
-        venue = event.location,
+        venue = event.location?.name.orEmpty(),
         notes = "Updated notes",
         zone = zone,
         endZone = zone,
