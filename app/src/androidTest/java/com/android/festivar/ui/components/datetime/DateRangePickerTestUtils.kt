@@ -1,0 +1,66 @@
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+package com.android.festivar.ui.components.datetime
+
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasScrollToNodeAction
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.junit4.ComposeTestRule
+import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
+import java.util.Locale
+
+/**
+ * Matches the calendar cell of [date] in the range picker. A cell is described by its full date,
+ * e.g. "November 21, 2026", not by its day number, so the month and year cannot be confused. The
+ * label is the long date of the device language, looked for in the text and in the content
+ * description. Kept in sync with `cellOf` of the unit tests, which cannot share a file with this
+ * source set.
+ */
+fun cellOf(date: LocalDate) =
+    SemanticsMatcher("is the cell of $date") { node ->
+      val labels =
+          node.config.getOrNull(SemanticsProperties.Text).orEmpty().map { it.text } +
+              node.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty()
+      val label =
+          DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG)
+              .withLocale(Locale.getDefault())
+              .format(date)
+      labels.any { label in it }
+    }
+
+/**
+ * Opens the range picker from the Dates field [datesTag], scrolling to the field first, taps
+ * [start] then [end] (a single tap when they are the same day) and saves.
+ *
+ * The calendar lists its months lazily, so each day is first scrolled into view in the calendar
+ * itself, whatever its month.
+ */
+fun ComposeTestRule.pickDays(datesTag: String, start: LocalDate, end: LocalDate = start) {
+  require(!end.isBefore(start)) { "The range must end on or after its start: $start to $end." }
+  onNodeWithTag(datesTag).performScrollTo().performClick()
+  tapDay(start)
+  if (end != start) tapDay(end)
+  onNodeWithTag(DateRangePickerTestTags.SAVE_BUTTON).performClick()
+}
+
+/**
+ * Taps the cell of [date] after scrolling the calendar to it. The scroller is the calendar or one
+ * of its children, as the tag is on the picker that Material draws, and a day in a month that is
+ * not composed yet cannot be found by scrolling to the cell itself.
+ */
+private fun ComposeTestRule.tapDay(date: LocalDate) {
+  val inTheCalendar = hasTestTag(DateRangePickerTestTags.CALENDAR)
+  onAllNodes(hasScrollToNodeAction() and (inTheCalendar or hasAnyAncestor(inTheCalendar)))
+      .onFirst()
+      .performScrollToNode(cellOf(date))
+  onNode(cellOf(date)).performClick()
+}
