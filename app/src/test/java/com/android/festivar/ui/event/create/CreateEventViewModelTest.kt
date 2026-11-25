@@ -97,6 +97,16 @@ class CreateEventViewModelTest {
     assertEquals("Bring the stage equipment", state.notes)
   }
 
+  /** Breaks if updating the range does not store the whole range in the form. */
+  @Test
+  fun updateRangeStoresTheWholeRange() {
+    val range = DateTimeRange(startDate, startTime, endDate, endTime)
+
+    viewModel.updateRange(range)
+
+    assertEquals(range, viewModel.uiState.value.range)
+  }
+
   /** Red if the initial event form is considered valid. */
   @Test
   fun initialStateIsInvalid() {

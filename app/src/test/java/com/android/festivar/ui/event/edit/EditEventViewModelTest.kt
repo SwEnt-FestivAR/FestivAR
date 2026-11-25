@@ -137,6 +137,24 @@ class EditEventViewModelTest {
     )
   }
 
+  /** Breaks if updating the range does not replace it whole, or does not count as a change. */
+  @Test
+  fun updateRangeReplacesTheRangeAndMarksTheFormChanged() = runTest {
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+    val loaded = viewModel.uiState.value.range
+    val newRange =
+        loaded.copy(
+            startDate = loaded.startDate!!.plusDays(1),
+            endDate = loaded.endDate!!.plusDays(2),
+        )
+
+    viewModel.updateRange(newRange)
+
+    assertEquals(newRange, viewModel.uiState.value.range)
+    assertTrue(viewModel.uiState.value.hasChanges)
+  }
+
   @Test
   fun initialStateValidationAndEventConversionAreSafe() {
     val state = EditEventUIState()
@@ -210,6 +228,41 @@ class EditEventViewModelTest {
     val state = viewModel.uiState.value.let { it.copy(range = it.range.copy(endDate = null)) }
 
     assertEquals(FieldError.MISSING_DATE, state.endDateError)
+  }
+
+  /** Breaks if an event that already ended is reported as an error, so it could not be edited. */
+  @Test
+  fun endDateErrorAcceptsAnEndInThePast() = runTest {
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+
+    val lastDay = LocalDate.of(2020, 3, 10)
+    val state =
+        viewModel.uiState.value.copy(
+            range =
+                DateTimeRange(
+                    startDate = lastDay.minusDays(1),
+                    startTime = LocalTime.NOON,
+                    endDate = lastDay,
+                    endTime = LocalTime.NOON,
+                ),
+        )
+
+    assertNull(state.endDateError)
+  }
+
+  /** Breaks if an event that already ended cannot be saved after its title is changed. */
+  @Test
+  fun anEventThatEndedCanBeSavedAfterAChange() {
+    val ended =
+        initialEvent.copy(
+            startDate = ZonedDateTime.of(2020, 3, 8, 12, 0, 0, 0, ZoneId.of("Europe/Zurich")),
+            endDate = ZonedDateTime.of(2020, 3, 9, 12, 0, 0, 0, ZoneId.of("Europe/Zurich")),
+        )
+    val state = EditEventUIState().load(ended)
+
+    assertFalse(state.canSave)
+    assertTrue(state.copy(name = "Renamed").canSave)
   }
 
   /** Breaks if the end is read in the zone of the start, which would put it before the start. */
