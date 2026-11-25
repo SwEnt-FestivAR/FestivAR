@@ -98,6 +98,18 @@ class CreateTaskScreenInstrumentedTest : CreateTaskTest() {
     composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.CREATE_BUTTON).assertIsEnabled()
   }
 
+  /** Breaks if the times can be set before a day is chosen, or stay disabled after one is. */
+  @Test
+  fun theTimesWaitForADay() {
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.START_TIME_FIELD).assertIsNotEnabled()
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.END_TIME_FIELD).assertIsNotEnabled()
+
+    composeTestRule.pickDays(CreateTaskScreenTestTags.DATES_FIELD, completeForm.range.startDate!!)
+
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.START_TIME_FIELD).assertIsEnabled()
+    composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.END_TIME_FIELD).assertIsEnabled()
+  }
+
   /**
    * Breaks if an end that is not after the start, here the same minute on the same day, is not
    * reported under the times until the end moves to a later day.
