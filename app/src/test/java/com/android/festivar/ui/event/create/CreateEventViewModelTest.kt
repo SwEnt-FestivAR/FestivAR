@@ -4,6 +4,7 @@ package com.android.festivar.ui.event.create
 
 // Co-authored-by: Copilot App
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Gemini <noreply@google.com>
 
 import android.content.ContentResolver
 import android.net.Uri
