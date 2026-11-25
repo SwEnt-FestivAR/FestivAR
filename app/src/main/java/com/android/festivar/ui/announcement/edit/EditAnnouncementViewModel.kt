@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Fable 5.2 <noreply@anthropic.com>
 package com.android.festivar.ui.announcement.edit
 
 import android.util.Log
@@ -64,6 +65,13 @@ data class EditAnnouncementUiState(
    */
   val canSave: Boolean
     get() = isOrganizer() && form.isValid && hasChanges && !isSaving && !isSaved
+
+  /**
+   * Whether the inputs can be changed. They lock during a save and once the edit is saved, when the
+   * form is final, so what is shown stays what was stored.
+   */
+  val isEditable: Boolean
+    get() = !isSaving && !isSaved
 }
 
 // The model allows a blank content but the form requires one, so the reason "Save" is disabled must

@@ -73,7 +73,7 @@ import com.android.festivar.ui.components.NoticeSnackbar
 import com.android.festivar.ui.components.PinKind
 import com.android.festivar.ui.components.SectionLabel
 import com.android.festivar.ui.components.TaskRow
-import com.android.festivar.ui.components.formatDate
+import com.android.festivar.ui.components.datetime.formatDate
 import com.android.festivar.ui.task.priorityLabelRes
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter

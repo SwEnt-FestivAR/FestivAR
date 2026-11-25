@@ -1,5 +1,11 @@
 <!-- Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com> -->
 <resources>
+    <string name="edit_announcement">Modifier l’annonce</string>
+    <string name="edit_announcement_save">Enregistrer les modifications</string>
+    <string name="edit_announcement_saving">Enregistrement</string>
+    <string name="edit_announcement_discard_title">Abandonner vos modifications ?</string>
+    <string name="edit_announcement_discard_message">Vos modifications de cette annonce seront perdues.</string>
     <string name="edit_announcement_error_load_failed">Impossible de charger l’annonce.</string>
     <string name="edit_announcement_error_save_failed">Impossible d’enregistrer vos modifications.</string>
+    <string name="edit_announcement_not_organizer">Seul l’organisateur de cet événement peut modifier cette annonce.</string>
 </resources>

@@ -1,0 +1,6 @@
+<!-- Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com> -->
+<resources>
+    <string name="dates_and_times_dates">Dates</string>
+    <string name="dates_and_times_start_time">Heure de début</string>
+    <string name="dates_and_times_end_time">Heure de fin</string>
+</resources>
