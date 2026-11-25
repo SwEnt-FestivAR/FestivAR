@@ -223,14 +223,15 @@ class AnnouncementFeedViewModel(
                     isMember && event.canAct(userId, Permission.CAN_CREATE_ANNOUNCEMENT),
             )
         _uiState.update {
-          it.copy(
-              pinnedAnnouncements = pinned,
-              sections = sections,
-              isLoading = false,
-              permissions = permissions,
-              errorMsg = null,
-          )
+            it.copy(
+                pinnedAnnouncements = if (permissions.canSeeAnnouncements) pinned else emptyList(),
+                sections = if (permissions.canSeeAnnouncements) sections else emptyList(),
+                isLoading = false,
+                permissions = permissions,
+                errorMsg = null,
+            )
         }
+
       } catch (e: Exception) {
         // A cancelled fetch must not touch the state, whatever it failed with. A
         // CancellationException is never a feed error, even from the repository, so rethrow it.
