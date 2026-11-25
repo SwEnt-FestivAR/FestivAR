@@ -20,7 +20,9 @@ import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.role.Role
 import com.android.festivar.model.user.User
+import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.navigation.AppScreens
+import com.android.festivar.ui.event.create.CreateEventScreenTestTags
 import com.android.festivar.ui.event.edit.EditEventScreenTestTags
 import com.android.festivar.ui.theme.AppTheme
 import com.google.firebase.auth.FirebaseUser
@@ -186,5 +188,65 @@ class EventNavGraphTest {
     }
 
     assertEquals(eventId, navController.currentBackStackEntry?.arguments?.getString("eventId"))
+  }
+
+  /** Breaks if the create event route lets an anonymous account stay on the form. */
+  @Test
+  fun createEventRoute_anonymousAccountReturnsToOverview() {
+    val navController = openCreateEventRoute(isAnonymous = true)
+
+    composeTestRule.waitUntil(timeoutMillis = 5_000) {
+      navController.currentBackStackEntry?.destination?.route == AppScreens.EventsOverview.name
+    }
+
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAME_FIELD).assertDoesNotExist()
+  }
+
+  /** Breaks if the create event route sends a signed-up account back to the overview. */
+  @Test
+  fun createEventRoute_signedUpAccountStaysOnForm() {
+    val navController = openCreateEventRoute(isAnonymous = false)
+
+    composeTestRule.waitUntil(timeoutMillis = 5_000) {
+      composeTestRule
+          .onAllNodesWithTag(CreateEventScreenTestTags.NAME_FIELD)
+          .fetchSemanticsNodes()
+          .isNotEmpty()
+    }
+
+    assertEquals(
+        AppScreens.CreateEvent.name,
+        navController.currentBackStackEntry?.destination?.route,
+    )
+  }
+
+  /**
+   * Starts on the events overview, signed in with an account that is anonymous or not, and opens
+   * the create event route on top of it, as the "Create" button does.
+   */
+  private fun openCreateEventRoute(isAnonymous: Boolean): NavHostController {
+    val uid = "user-1"
+    val firebaseUser =
+        mockk<FirebaseUser> {
+          every { this@mockk.uid } returns uid
+          every { this@mockk.isAnonymous } returns isAnonymous
+        }
+    val dataRepository =
+        DataRepositoryLocal(
+            authRepository = FakeAuthRepository(currentUser = firebaseUser),
+            usersRepository = UsersRepositoryLocal(listOf(User(uid = uid))),
+        )
+    lateinit var navController: NavHostController
+
+    composeTestRule.setContent {
+      AppTheme {
+        navController = rememberNavController()
+        NavHost(navController, startDestination = AppScreens.EventsOverview.name) {
+          eventGraph(navController, dataRepository)
+        }
+      }
+    }
+    composeTestRule.runOnIdle { navController.navigate(AppScreens.CreateEvent.name) }
+    return navController
   }
 }

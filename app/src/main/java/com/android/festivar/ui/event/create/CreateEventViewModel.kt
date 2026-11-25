@@ -69,6 +69,7 @@ data class CreateEventUIState(
     val showDiscardConfirmation: Boolean = false,
     val isDiscarded: Boolean = false,
     val showDeleteImageConfirmation: Boolean = false,
+    val canCreateEvent: Boolean = true,
     val zone: ZoneId = ZoneId.systemDefault(),
     @StringRes val errorMsg: Int? = null,
     val imageUrl: String? = null,
@@ -137,13 +138,16 @@ private const val SAVE_TIMEOUT_MS = 15_000L
  *   between the different repositories. It coordinates the creation of the event and the update of
  *   its members.
  * @property userId the uid of the signed-in user, blank when nobody is.
+ * @property isAnonymous Tells whether the signed-in user has an anonymous account, which cannot
+ *   create an [Event]. Read when the ViewModel is created and again before saving.
  */
 class CreateEventViewModel(
     private val dataRepository: DataRepository,
     private val userId: String = "",
     private val saveTimeoutMs: Long = SAVE_TIMEOUT_MS,
     private val ioDispatcher: CoroutineDispatcher = IO,
-) : EventFormViewModel<CreateEventUIState>(CreateEventUIState()) {
+    private val isAnonymous: () -> Boolean = { false },
+) : EventFormViewModel<CreateEventUIState>(CreateEventUIState(canCreateEvent = !isAnonymous())) {
   val uiState: StateFlow<CreateEventUIState> = formState
   private var pendingEventId: String? = null
 
@@ -270,6 +274,7 @@ class CreateEventViewModel(
 
   private suspend fun save(form: CreateEventUIState, eventId: String) {
     check(userId.isNotBlank()) { "User not signed in" }
+    check(!isAnonymous()) { "An anonymous account user can't create an event." }
     val creator = dataRepository.usersRepository.getUser(userId)
 
     val newEvent = form.toEvent(eventId, creator)
