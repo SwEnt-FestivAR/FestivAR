@@ -22,7 +22,7 @@ import org.junit.runner.RunWith
 class DateRangePickerTestUtilsTest {
   @get:Rule val composeTestRule = createComposeRule()
 
-  private val today = LocalDate.now()
+  private val today = LocalDate.of(2026, 3, 28)
 
   private var range by mutableStateOf(DateTimeRange())
 
