@@ -272,7 +272,7 @@ class CreateEventViewModel(
 
   private suspend fun save(form: CreateEventUIState, eventId: String) {
     check(userId.isNotBlank()) { "User not signed in" }
-      check(!isAnonymous()){ "An anonymous account user can't create an event." }
+    check(!isAnonymous()) { "An anonymous account user can't create an event." }
     val creator = dataRepository.usersRepository.getUser(userId)
 
     val newEvent = form.toEvent(eventId, creator)

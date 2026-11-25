@@ -61,17 +61,16 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, dataRepository:
       CreateEventScreen(
           viewModel =
               viewModel {
-                  CreateEventViewModel(
-                      dataRepository = dataRepository,
-                      userId = firebaseUser.uid,
-                      isAnonymous = {
-                          dataRepository.authRepository.currentUser?.isAnonymous == true
-                      },
-                  )
+                CreateEventViewModel(
+                    dataRepository = dataRepository,
+                    userId = firebaseUser.uid,
+                    isAnonymous = {
+                      dataRepository.authRepository.currentUser?.isAnonymous == true
+                    },
+                )
               },
           onBack = leave,
           onCreated = leave,
-
       )
     }
   }
