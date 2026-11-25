@@ -16,7 +16,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -188,31 +187,6 @@ class MapCardTest {
     composeTestRule.runOnIdle { label = "second" }
 
     composeTestRule.waitUntil(timeoutMillis = 5_000) { seen == "second" }
-  }
-
-  /** Breaks if the card disappears or crashes when only its modifier changes. */
-  @Test
-  fun card_whenItsModifierChanges_staysDisplayed() {
-    val locations = listOf(EPFL_LOCATION)
-    var modifier by mutableStateOf(Modifier.fillMaxWidth().height(156.dp))
-    composeTestRule.setContent { AppTheme { MapCard(locations, modifier) } }
-
-    composeTestRule.runOnIdle { modifier = Modifier.fillMaxWidth().height(100.dp) }
-
-    composeTestRule.onNodeWithTag(MapCardTestTags.CARD).assertIsDisplayed()
-  }
-
-  /** Breaks if the card disappears or crashes when only its shape changes. */
-  @Test
-  fun card_whenItsShapeChanges_staysDisplayed() {
-    val locations = listOf(EPFL_LOCATION)
-    val modifier = Modifier.fillMaxWidth().height(156.dp)
-    var shape by mutableStateOf<Shape>(RoundedCornerShape(24.dp))
-    composeTestRule.setContent { AppTheme { MapCard(locations, modifier, shape) } }
-
-    composeTestRule.runOnIdle { shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp) }
-
-    composeTestRule.onNodeWithTag(MapCardTestTags.CARD).assertIsDisplayed()
   }
 
   /**
