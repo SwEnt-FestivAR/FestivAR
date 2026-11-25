@@ -1,18 +1,20 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.components.datetime
 
+import androidx.compose.material3.DatePickerDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasAnyAncestor
-import androidx.compose.ui.test.hasScrollToNodeAction
+import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performScrollToIndex
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -52,8 +54,8 @@ internal fun labelsMatch(date: LocalDate, labels: List<String>, locale: Locale):
  * Opens the range picker from the Dates field [datesTag], scrolling to the field first, taps
  * [start] then [end] (a single tap when they are the same day) and saves.
  *
- * The calendar lists its months lazily, so each day is first scrolled into view in the calendar
- * itself, whatever its month.
+ * The calendar lists its months lazily, so the calendar is first scrolled to the month of each day,
+ * whatever that month is.
  */
 fun ComposeTestRule.pickDays(datesTag: String, start: LocalDate, end: LocalDate = start) {
   require(!end.isBefore(start)) { "The range must end on or after its start: $start to $end." }
@@ -64,14 +66,18 @@ fun ComposeTestRule.pickDays(datesTag: String, start: LocalDate, end: LocalDate 
 }
 
 /**
- * Taps the cell of [date] after scrolling the calendar to it. The scroller is the calendar or one
- * of its children, as the tag is on the picker that Material draws, and a day in a month that is
- * not composed yet cannot be found by scrolling to the cell itself.
+ * Taps the cell of [date] after scrolling the calendar to its month. The calendar is a lazy list
+ * with one row per month, from the first year Material offers, so the row of a month is known from
+ * its date: scrolling to the cell itself cannot work, as a cell is inside a month row and not a row
+ * of the list. The scroller is the calendar or one of its children, as the tag is on the picker
+ * that Material draws.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 private fun ComposeTestRule.tapDay(date: LocalDate) {
   val inTheCalendar = hasTestTag(DateRangePickerTestTags.CALENDAR)
-  onAllNodes(hasScrollToNodeAction() and (inTheCalendar or hasAnyAncestor(inTheCalendar)))
+  val monthRow = (date.year - DatePickerDefaults.YearRange.first) * 12 + date.monthValue - 1
+  onAllNodes(hasScrollToIndexAction() and (inTheCalendar or hasAnyAncestor(inTheCalendar)))
       .onFirst()
-      .performScrollToNode(cellOf(date))
+      .performScrollToIndex(monthRow)
   onNode(cellOf(date)).performClick()
 }
