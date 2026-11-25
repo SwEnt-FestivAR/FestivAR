@@ -17,7 +17,13 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** There is no API key in instrumented tests: the map shows no tiles, and no test looks at them. */
+/**
+ * There is no API key in instrumented tests: the map shows no tiles, and no test looks at them.
+ *
+ * A marker is drawn by Google Maps, not by Compose, so a UI test cannot see a pin on the map. The
+ * tests of a map with a pin therefore assert the map only, and the pin is tested on its own, as a
+ * [MapPinImage].
+ */
 @RunWith(AndroidJUnit4::class)
 class MapPinTest {
   @get:Rule val composeTestRule = createComposeRule()
