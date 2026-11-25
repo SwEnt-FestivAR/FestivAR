@@ -57,27 +57,31 @@ class ChatRepositoryFirebaseTest {
 
   /** Breaks if chat CRUD loses fields or does not validate duplicate and missing chats. */
   @Test
-  fun chatCrud_roundTripsAndValidates() = runBlocking {
-    val chat =
-        Chat(
-            chatId = "chat-test-${UUID.randomUUID()}",
-            eventId = "event-test",
-            members = listOf("u1"),
-        )
+  fun chatCrud_roundTripsAndValidates() {
+    runBlocking {
+      val chat =
+          Chat(
+              chatId = "chat-test-${UUID.randomUUID()}",
+              eventId = "event-test",
+              members = listOf("u1"),
+          )
 
-    repository.addChat(chat)
-    assertEquals(chat, repository.getChat(chat.chatId))
-    assertEquals(listOf(chat), repository.getChatsForEvent(chat.eventId))
+      repository.addChat(chat)
+      assertEquals(chat, repository.getChat(chat.chatId))
+      assertEquals(listOf(chat), repository.getChatsForEvent(chat.eventId))
 
-    val updated = chat.copy(members = listOf("u1", "u2"))
-    repository.editChat(chat.chatId, updated)
-    assertEquals(updated, repository.getChat(chat.chatId))
+      val updated = chat.copy(members = listOf("u1", "u2"))
+      repository.editChat(chat.chatId, updated)
+      assertEquals(updated, repository.getChat(chat.chatId))
 
-    assertThrows(IllegalArgumentException::class.java) { runBlocking { repository.addChat(chat) } }
+      assertThrows(IllegalArgumentException::class.java) {
+        runBlocking { repository.addChat(chat) }
+      }
 
-    repository.deleteChat(chat.chatId)
-    assertThrows(NoSuchElementException::class.java) {
-      runBlocking { repository.getChat(chat.chatId) }
+      repository.deleteChat(chat.chatId)
+      assertThrows(NoSuchElementException::class.java) {
+        runBlocking { repository.getChat(chat.chatId) }
+      }
     }
   }
 
@@ -98,38 +102,42 @@ class ChatRepositoryFirebaseTest {
 
   /** Breaks if message operations lose ordering or allow invalid message changes. */
   @Test
-  fun messageOperations_roundTripChronologicallyAndValidate() = runBlocking {
-    val chat = Chat("chat-test-${UUID.randomUUID()}", "event-test")
-    val first = ChatMessage("m1", "u1", sentAt, MessageContent.Text("First", listOf("image.jpg")))
-    val second = ChatMessage("m2", "u2", sentAt.plusHours(1), MessageContent.Text("Second"))
+  fun messageOperations_roundTripChronologicallyAndValidate() {
+    runBlocking {
+      val chat = Chat("chat-test-${UUID.randomUUID()}", "event-test")
+      val first = ChatMessage("m1", "u1", sentAt, MessageContent.Text("First", listOf("image.jpg")))
+      val second = ChatMessage("m2", "u2", sentAt.plusHours(1), MessageContent.Text("Second"))
 
-    repository.addChat(chat)
-    repository.addMessage(chat.chatId, first)
-    repository.addMessage(chat.chatId, second)
+      repository.addChat(chat)
+      repository.addMessage(chat.chatId, first)
+      repository.addMessage(chat.chatId, second)
 
-    assertEquals(listOf(first, second), repository.getChat(chat.chatId).messages)
-    repository.deleteMessage(chat.chatId, "m1")
-    assertEquals(listOf(second), repository.getChat(chat.chatId).messages)
+      assertEquals(listOf(first, second), repository.getChat(chat.chatId).messages)
+      repository.deleteMessage(chat.chatId, "m1")
+      assertEquals(listOf(second), repository.getChat(chat.chatId).messages)
 
-    assertThrows(IllegalArgumentException::class.java) {
-      runBlocking { repository.deleteMessage(chat.chatId, "missing") }
+      assertThrows(IllegalArgumentException::class.java) {
+        runBlocking { repository.deleteMessage(chat.chatId, "missing") }
+      }
     }
   }
 
   /** Breaks if member operations do not persist or validate chat membership. */
   @Test
-  fun memberOperations_roundTripAndValidate() = runBlocking {
-    val chat = Chat("chat-test-${UUID.randomUUID()}", "event-test", members = listOf("u1"))
+  fun memberOperations_roundTripAndValidate() {
+    runBlocking {
+      val chat = Chat("chat-test-${UUID.randomUUID()}", "event-test", members = listOf("u1"))
 
-    repository.addChat(chat)
-    repository.addMember(chat.chatId, "u2")
-    assertEquals(listOf("u1", "u2"), repository.getChat(chat.chatId).members)
+      repository.addChat(chat)
+      repository.addMember(chat.chatId, "u2")
+      assertEquals(listOf("u1", "u2"), repository.getChat(chat.chatId).members)
 
-    repository.removeMember(chat.chatId, "u1")
-    assertEquals(listOf("u2"), repository.getChat(chat.chatId).members)
+      repository.removeMember(chat.chatId, "u1")
+      assertEquals(listOf("u2"), repository.getChat(chat.chatId).members)
 
-    assertThrows(IllegalArgumentException::class.java) {
-      runBlocking { repository.addMember(chat.chatId, "u2") }
+      assertThrows(IllegalArgumentException::class.java) {
+        runBlocking { repository.addMember(chat.chatId, "u2") }
+      }
     }
   }
 
@@ -155,5 +163,26 @@ class ChatRepositoryFirebaseTest {
           runBlocking { repository.getChat(chatId) }
         }
     assertTrue(error.message!!.contains(chatId))
+  }
+
+  /** Breaks if malformed member or message fields are silently read as empty lists. */
+  @Test
+  fun getChat_rejectsNonListMemberAndMessageFields() = runBlocking {
+    val chats = Firebase.firestore.collection(CHAT_COLLECTION_PATH)
+    val memberChatId = "chat-corrupt-${UUID.randomUUID()}"
+    val messageChatId = "chat-corrupt-${UUID.randomUUID()}"
+    chats.document(memberChatId).set(mapOf("eventId" to "event-test", "members" to "u1")).await()
+    chats
+        .document(messageChatId)
+        .set(mapOf("eventId" to "event-test", "messages" to "not-a-list"))
+        .await()
+
+    for (chatId in listOf(memberChatId, messageChatId)) {
+      val error =
+          assertThrows(IllegalArgumentException::class.java) {
+            runBlocking { repository.getChat(chatId) }
+          }
+      assertTrue(error.message!!.contains(chatId))
+    }
   }
 }
