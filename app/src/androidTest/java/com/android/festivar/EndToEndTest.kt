@@ -6,12 +6,14 @@ package com.android.festivar
 
 import android.util.Log
 import androidx.annotation.StringRes
+import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -22,6 +24,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.printToString
 import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -677,26 +680,40 @@ class EndToEndTest {
   }
 
   private fun waitUntilTagExists(tag: String, timeout: Long = TIMEOUT) {
-    composeTestRule.waitUntil(timeoutMillis = timeout) {
+    waitUntil("the tag $tag to exist", timeout) {
       composeTestRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
     }
   }
 
   private fun waitUntilTagGone(tag: String, timeout: Long = TIMEOUT) {
-    composeTestRule.waitUntil(timeoutMillis = timeout) {
+    waitUntil("the tag $tag to be gone", timeout) {
       composeTestRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isEmpty()
     }
   }
 
   private fun waitUntilTextGone(text: String, timeout: Long = TIMEOUT) {
-    composeTestRule.waitUntil(timeoutMillis = timeout) {
+    waitUntil("the text \"$text\" to be gone", timeout) {
       composeTestRule.onAllNodesWithText(text).fetchSemanticsNodes().isEmpty()
     }
   }
 
   private fun waitUntilTextExists(text: String, timeout: Long = TIMEOUT) {
-    composeTestRule.waitUntil(timeoutMillis = timeout) {
+    waitUntil("the text \"$text\" to exist", timeout) {
       composeTestRule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
+    }
+  }
+
+  /**
+   * Waits until [condition] holds. On a timeout the failure says what was awaited and prints what
+   * is on screen, so that a flaky run shows whether the app was still loading, showed an error or
+   * never left the previous screen.
+   */
+  private fun waitUntil(what: String, timeout: Long, condition: () -> Boolean) {
+    try {
+      composeTestRule.waitUntil(timeoutMillis = timeout, condition = condition)
+    } catch (e: ComposeTimeoutException) {
+      val screen = composeTestRule.onAllNodes(isRoot()).printToString(maxDepth = Int.MAX_VALUE)
+      throw AssertionError("Still waiting for $what after $timeout ms. On screen:\n$screen", e)
     }
   }
 
