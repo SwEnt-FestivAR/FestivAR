@@ -508,6 +508,27 @@ class AnnouncementFeedViewModelTest {
     assertFalse(viewModel.uiState.value.permissions.canSeeAnnouncements)
   }
 
+  /** Breaks if a cancelled fetch ending first sets its stale permissions, e.g. sending back. */
+  @Test
+  fun aCancelledFetchDoesNotChangeThePermissions() = runTest {
+    val repository = GatedEventsRepository(ignoresCancellation = true)
+    val viewModel = feedViewModel(repository, userId = { MEMBER_ID })
+    viewModel.refreshUIState()
+    viewModel.refreshUIState()
+    val (olderFetch, newerFetch) = repository.fetches
+
+    olderFetch.complete(event())
+
+    assertEquals(AnnouncementFeedPermissions(), viewModel.uiState.value.permissions)
+
+    newerFetch.complete(eventWithMember(Role.TEAM_LEAD))
+
+    assertEquals(
+        AnnouncementFeedPermissions(canSeeAnnouncements = true, canCreateAnnouncement = true),
+        viewModel.uiState.value.permissions,
+    )
+  }
+
   private fun feedViewModel(
       repository: EventsRepository = EventsRepositoryLocal(listOf(figmaEvent)),
       userId: () -> String = { OWNER_ID },

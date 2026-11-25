@@ -114,9 +114,8 @@ fun AnnouncementFeedScreen(
   val uiState by viewModel.uiState.collectAsState()
 
   LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshUIState() }
-  LaunchedEffect(uiState.permissions.canSeeAnnouncements) {
-    if (!uiState.permissions.canSeeAnnouncements) onBack()
-  }
+  val canSeeAnnouncements = uiState.permissions.canSeeAnnouncements
+  LaunchedEffect(canSeeAnnouncements) { if (!canSeeAnnouncements) onBack() }
 
   AnnouncementFeedContent(
       uiState = uiState,
