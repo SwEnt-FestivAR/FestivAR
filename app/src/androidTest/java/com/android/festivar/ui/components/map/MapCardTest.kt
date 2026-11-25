@@ -25,7 +25,6 @@ import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.map.geometry.EPFL_LOCATION
 import com.android.festivar.model.map.geometry.GeoPosition
-import com.android.festivar.ui.components.FestivarMapTestTags
 import com.android.festivar.ui.theme.AppTheme
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
