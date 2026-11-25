@@ -154,26 +154,28 @@ fun AnnouncementDetailsContent(
         )
       },
       bottomBar = {
-        state.announcement?.takeIf { state.permissions.canPin }?.let { announcement ->
-          OutlinedButton(
-              onClick = onTogglePin,
-              enabled = state.canTogglePin,
-              shape = MaterialTheme.shapes.medium,
-              modifier =
-                  Modifier.fillMaxWidth()
-                      .padding(horizontal = 16.dp, vertical = 8.dp)
-                      .height(52.dp)
-                      .testTag(AnnouncementDetailsScreenTestTags.PIN_BUTTON),
-          ) {
-            Text(
-                stringResource(
-                    if (announcement.pinned) R.string.announcement_details_unpin_from_top
-                    else R.string.announcement_details_pin_to_top
-                ),
-                style = MaterialTheme.typography.labelLarge,
-            )
-          }
-        }
+        state.announcement
+            ?.takeIf { state.permissions.canPin }
+            ?.let { announcement ->
+              OutlinedButton(
+                  onClick = onTogglePin,
+                  enabled = state.canTogglePin,
+                  shape = MaterialTheme.shapes.medium,
+                  modifier =
+                      Modifier.fillMaxWidth()
+                          .padding(horizontal = 16.dp, vertical = 8.dp)
+                          .height(52.dp)
+                          .testTag(AnnouncementDetailsScreenTestTags.PIN_BUTTON),
+              ) {
+                Text(
+                    stringResource(
+                        if (announcement.pinned) R.string.announcement_details_unpin_from_top
+                        else R.string.announcement_details_pin_to_top
+                    ),
+                    style = MaterialTheme.typography.labelLarge,
+                )
+              }
+            }
       },
   ) { padding ->
     Column(
