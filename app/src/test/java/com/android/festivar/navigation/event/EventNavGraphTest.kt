@@ -18,6 +18,7 @@ import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.model.event.role.Role
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.navigation.AppScreens
@@ -91,6 +92,49 @@ class EventNavGraphTest {
     }
 
     assertEquals(eventId, navController.currentBackStackEntry?.arguments?.getString("eventId"))
+  }
+
+  /** Breaks if a member whose role cannot edit the event is not sent back to the event details. */
+  @Test
+  fun editEventRoute_memberWithoutEditRightReturnsToDetails() {
+    val eventId = "event-123"
+    val staffId = "staff-1"
+    val event =
+        Event(
+                eventId = eventId,
+                ownerId = "owner-1",
+                title = "Festival",
+                startDate = ZonedDateTime.now().plusDays(1),
+                endDate = ZonedDateTime.now().plusDays(2),
+            )
+            .addMember(User(uid = staffId))
+            .let { it.setRole(it.ownerId, staffId, Role.STAFF) }
+    val dataRepository =
+        DataRepositoryLocal(
+            authRepository =
+                FakeAuthRepository(
+                    currentUser = mockk<FirebaseUser> { every { uid } returns staffId }
+                ),
+            eventsRepository = EventsRepositoryLocal(listOf(event)),
+        )
+    lateinit var navController: NavHostController
+
+    composeTestRule.setContent {
+      AppTheme {
+        navController = rememberNavController()
+        NavHost(navController, startDestination = AppScreens.eventDetails(eventId)) {
+          eventGraph(navController, dataRepository)
+        }
+      }
+    }
+    composeTestRule.runOnIdle { navController.navigate(AppScreens.editEvent(eventId)) }
+    composeTestRule.waitUntil(timeoutMillis = 5_000) {
+      navController.currentBackStackEntry?.destination?.route ==
+          "${AppScreens.EventDetails.name}/{eventId}"
+    }
+
+    assertEquals(eventId, navController.currentBackStackEntry?.arguments?.getString("eventId"))
+    composeTestRule.onNodeWithTag(EditEventScreenTestTags.SCREEN).assertDoesNotExist()
   }
 
   @Test

@@ -104,7 +104,10 @@ class EditEventActions(
     val onConfirmDiscard: () -> Unit = {},
 )
 
-/** Observes the edit form and reports completion through [onSaved] or [onBack]. */
+/**
+ * Observes the edit form and reports completion through [onSaved] or [onBack]. Also calls [onBack]
+ * when the current user is not allowed to edit the event.
+ */
 @Composable
 fun EditEventScreen(
     eventId: String,
@@ -119,6 +122,8 @@ fun EditEventScreen(
   LaunchedEffect(uiState.isDiscarded) { if (uiState.isDiscarded) onBack() }
   LaunchedEffect(uiState.savedEventId) { if (uiState.savedEventId != null) onSaved() }
   BackHandler(onBack = viewModel::requestDiscard)
+  val canEditEvent = uiState.canEditEvent
+  LaunchedEffect(canEditEvent) { if (!canEditEvent) onBack() }
 
   EditEventContent(
       state = uiState,
