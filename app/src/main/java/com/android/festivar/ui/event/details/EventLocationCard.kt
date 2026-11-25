@@ -11,6 +11,9 @@ import com.android.festivar.ui.components.map.MapCard
 import com.android.festivar.ui.components.map.MapPin
 import com.android.festivar.ui.components.map.MapPinKind
 
+/** Height of the map card, as in the "map card" of the Event details frame in Figma. */
+private val EventLocationCardHeight = 156.dp
+
 /**
  * The map card of the Event Details screen, centred on [location] with the pin of the event on it.
  * The card is not clickable: there is no full-screen map from this screen.
@@ -21,7 +24,7 @@ import com.android.festivar.ui.components.map.MapPinKind
 internal fun EventLocationCard(location: GeoPosition, modifier: Modifier = Modifier) {
   MapCard(
       locations = listOf(location),
-      modifier = modifier.fillMaxWidth().height(156.dp),
+      modifier = modifier.fillMaxWidth().height(EventLocationCardHeight),
   ) {
     MapPin(location, MapPinKind.EVENT)
   }
