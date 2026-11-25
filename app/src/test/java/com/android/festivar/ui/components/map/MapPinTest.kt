@@ -20,6 +20,15 @@ class MapPinTest {
     assertNotEquals(MapPinKind.EVENT.testTag, MapPinKind.TASK.testTag)
   }
 
+  /**
+   * Breaks if the anchor is not the ring centre as fractions: 13.33 / 32 across, 26.67 / 32 down.
+   */
+  @Test
+  fun mapPinAnchor_isTheRingCentreAsFractions() {
+    assertEquals(0.417f, MapPinAnchor.x, 0.001f)
+    assertEquals(0.833f, MapPinAnchor.y, 0.001f)
+  }
+
   /** Breaks if the latitude and the longitude are swapped or changed when placing a pin. */
   @Test
   fun toLatLng_keepsLatitudeFirstAndLongitudeSecond() {
