@@ -24,8 +24,7 @@ import java.util.Locale
  * Matches the calendar cell of [date] in the range picker. A cell is described by its full date,
  * e.g. "November 21, 2026", not by its day number, so the month and year cannot be confused. The
  * label is the long date of the device language, looked for in the text and in the content
- * description, and not as a plain substring so that day 1 never matches day 11 or 21. Kept in sync
- * with `cellOf` of the unit tests, which cannot share a file with this source set.
+ * description, and not as a plain substring so that day 1 never matches day 11 or 21.
  */
 fun cellOf(date: LocalDate) =
     SemanticsMatcher("is the cell of $date") { node ->
