@@ -58,8 +58,8 @@ import com.android.festivar.ui.components.SectionLabel
 import com.android.festivar.ui.components.StatusPill
 import com.android.festivar.ui.components.UserListBottomSheet
 import com.android.festivar.ui.components.UserTag
-import com.android.festivar.ui.components.formatDate
-import com.android.festivar.ui.components.formatTime
+import com.android.festivar.ui.components.datetime.formatDate
+import com.android.festivar.ui.components.datetime.formatTime
 import com.android.festivar.ui.components.peopleCount
 import com.android.festivar.ui.theme.AppTheme
 import com.android.festivar.ui.voicenote.VoiceNoteCallbacks

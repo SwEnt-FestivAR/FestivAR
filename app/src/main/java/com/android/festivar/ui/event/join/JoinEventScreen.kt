@@ -53,8 +53,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.festivar.R
 import com.android.festivar.model.event.JOIN_CODE_LENGTH
-import com.android.festivar.ui.components.formatDate
-import com.android.festivar.ui.components.formatTime
+import com.android.festivar.ui.components.datetime.formatDate
+import com.android.festivar.ui.components.datetime.formatTime
 import com.android.festivar.ui.theme.AppTheme
 import java.time.ZoneId
 import java.time.ZonedDateTime
