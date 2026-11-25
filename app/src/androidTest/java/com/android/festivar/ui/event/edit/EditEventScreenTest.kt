@@ -21,7 +21,9 @@ import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.ui.components.datetime.DateRangePickerTestTags
 import com.android.festivar.ui.components.datetime.DateTimeRange
+import com.android.festivar.ui.components.datetime.pickDays
 import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
 import java.time.LocalTime
@@ -34,6 +36,9 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class EditEventScreenTest {
+  /** A day long over, to show that the edit screen accepts the days of an event that ended. */
+  private val pastDay: LocalDate = LocalDate.of(2020, 3, 10)
+
   @get:Rule val composeTestRule = createAndroidComposeRule<ComponentActivity>()
 
   @Test
@@ -153,6 +158,58 @@ class EditEventScreenTest {
     state.value = testState().copy(isSaving = true)
     composeTestRule.waitForIdle()
     composeTestRule.onNodeWithTag(EditEventScreenTestTags.SAVING_INDICATOR).assertIsDisplayed()
+  }
+
+  /** Breaks if the edit screen does not keep the days of an event that already ended selected. */
+  @Test
+  fun anEventThatEndedOpensItsDaysSelected() {
+    composeTestRule.setContent {
+      AppTheme {
+        EditEventContent(
+            state = testState().copy(range = pastRange()),
+            actions = EditEventActions(),
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag(EditEventScreenTestTags.DATES_FIELD).performClick()
+
+    composeTestRule.onNodeWithTag(DateRangePickerTestTags.CLEAR_BUTTON).assertIsDisplayed()
+  }
+
+  /** Breaks if the saved days are not reported as one range that keeps the times. */
+  @Test
+  fun savingTheDatesReportsOneRangeWithTheSameTimes() {
+    val state = testState()
+    val ranges = mutableListOf<DateTimeRange>()
+    composeTestRule.setContent {
+      AppTheme {
+        EditEventContent(state = state, actions = EditEventActions(onRangeChange = ranges::add))
+      }
+    }
+    val start = state.range.startDate!!.plusDays(1)
+    val end = start.plusDays(2)
+
+    composeTestRule.pickDays(EditEventScreenTestTags.DATES_FIELD, start, end)
+
+    assertEquals(listOf(state.range.copy(startDate = start, endDate = end)), ranges)
+  }
+
+  /** Breaks if the dates picker of the edit screen refuses days that are over. */
+  @Test
+  fun pastDaysCanBePicked() {
+    val ranges = mutableListOf<DateTimeRange>()
+    composeTestRule.setContent {
+      AppTheme {
+        EditEventContent(
+            state = testState(),
+            actions = EditEventActions(onRangeChange = ranges::add),
+        )
+      }
+    }
+    composeTestRule.pickDays(EditEventScreenTestTags.DATES_FIELD, pastDay)
+
+    assertEquals(pastDay, ranges.single().startDate)
   }
 
   @Test
@@ -280,6 +337,11 @@ class EditEventScreenTest {
 
     assertEquals(1, backCount)
     composeTestRule.onNodeWithTag(EditEventScreenTestTags.NAME_FIELD).assertDoesNotExist()
+  }
+
+  /** A range that ended long ago, which the edit screen must still open with its days selected. */
+  private fun pastRange(): DateTimeRange {
+    return DateTimeRange(pastDay, LocalTime.of(9, 0), pastDay, LocalTime.of(10, 0))
   }
 
   /** A range whose end is before its start, which the edit screen reports under the times. */

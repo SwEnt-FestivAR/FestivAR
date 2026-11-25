@@ -189,6 +189,21 @@ class CreateEventScreenTest {
     assertEquals(range, viewModel.uiState.value.range)
   }
 
+  /** Breaks if the create screen lets the user save a day that is over. */
+  @Test
+  fun aPastDayCannotBePickedOnTheCreateScreen() {
+    viewModel = CreateEventViewModel(dataRepository)
+    composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
+
+    // The screen has no `today` parameter, so yesterday is taken from the real clock
+    composeTestRule.pickDays(
+        CreateEventScreenTestTags.DATES_FIELD,
+        LocalDate.now().minusDays(1),
+    )
+
+    assertNull(viewModel.uiState.value.range.startDate)
+  }
+
   /** Red if an end date before the start date does not display an end-date error. */
   @Test
   fun endDateRangeErrorIsDisplayed() {
