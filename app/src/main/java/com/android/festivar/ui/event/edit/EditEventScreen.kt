@@ -122,7 +122,8 @@ fun EditEventScreen(
   LaunchedEffect(uiState.isDiscarded) { if (uiState.isDiscarded) onBack() }
   LaunchedEffect(uiState.savedEventId) { if (uiState.savedEventId != null) onSaved() }
   BackHandler(onBack = viewModel::requestDiscard)
-  LaunchedEffect(uiState.canEditEvent) { if (!uiState.canEditEvent) onBack() }
+  val canEditEvent = uiState.canEditEvent
+  LaunchedEffect(canEditEvent) { if (!canEditEvent) onBack() }
 
   EditEventContent(
       state = uiState,
