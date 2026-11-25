@@ -1,9 +1,6 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.components.datetime
 
-import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.semantics.getOrNull
-import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -51,16 +48,6 @@ class DateRangePickerTest {
       }
     }
   }
-
-  /**
-   * Matches the cell of [date], whose text the picker writes as e.g. "Friday, November 27, 2026".
-   */
-  private fun cellOf(date: LocalDate) =
-      SemanticsMatcher("is the cell of $date") { node ->
-        val texts = node.config.getOrNull(SemanticsProperties.Text).orEmpty().map { it.text }
-        val month = date.month.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.US)
-        texts.any { "$month ${date.dayOfMonth}, ${date.year}" in it }
-      }
 
   private fun tap(date: LocalDate) {
     composeTestRule.onNode(cellOf(date)).performScrollTo().performClick()
