@@ -10,6 +10,8 @@ import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.event.announcement.AnnouncementPriority
+import com.android.festivar.model.event.role.Role
+import com.android.festivar.model.user.User
 import java.time.Clock
 import java.time.LocalTime
 import java.time.ZoneId
@@ -157,12 +159,7 @@ class AnnouncementFeedViewModelTest {
             throw IllegalStateException("fetch failed")
           }
         }
-    val viewModel =
-        AnnouncementFeedViewModel(
-            EVENT_ID,
-            DataRepositoryLocal(FakeAuthRepository(), eventsRepository = repository),
-            clock = clock,
-        )
+    val viewModel = feedViewModel(repository)
 
     viewModel.refreshUIState()
     assertEquals(R.string.announcement_feed_load_failed, viewModel.uiState.value.errorMsg)
@@ -397,14 +394,139 @@ class AnnouncementFeedViewModelTest {
     assertFalse(loadedState(infoToday).hasNoAnnouncements)
   }
 
+  /** Breaks if, before any fetch, the user may not see the feed or already has the add button. */
+  @Test
+  fun initialPermissionsLetTheUserStayButHideTheAddButton() {
+    val state = feedViewModel(ControllableEventsRepository(figmaEvent)).uiState.value
+
+    assertTrue(state.permissions.canSeeAnnouncements)
+    assertFalse(state.permissions.canCreateAnnouncement)
+  }
+
+  /** Breaks if a role gets the add button without CAN_CREATE_ANNOUNCEMENT, or loses the feed. */
+  @Test
+  fun eachRoleSeesTheFeedAndOnlyRolesAllowedToCreateGetTheAddButton() = runTest {
+    val expectedCanCreate =
+        mapOf(
+            Role.VISITOR to false,
+            Role.STAFF to false,
+            Role.TEAM_LEAD to true,
+            Role.STAFF_MANAGER to true,
+            Role.ADMIN to true,
+            Role.OWNER to true,
+        )
+
+    expectedCanCreate.forEach { (role, canCreate) ->
+      val userId = if (role == Role.OWNER) OWNER_ID else MEMBER_ID
+      val event =
+          if (role == Role.OWNER) event(infoToday) else eventWithMember(role, infoToday)
+      val viewModel = feedViewModel(EventsRepositoryLocal(listOf(event)), userId = { userId })
+
+      viewModel.refreshUIState()
+
+      val state = viewModel.uiState.value
+      assertEquals(
+          AnnouncementFeedPermissions(
+              canSeeAnnouncements = true,
+              canCreateAnnouncement = canCreate,
+          ),
+          state.permissions,
+      )
+      assertEquals(listOf(AnnouncementFeedSection(today, listOf(infoToday))), state.sections)
+    }
+  }
+
+  /** Breaks if a non-member keeps any permission, or if being one is shown as a load error. */
+  @Test
+  fun aUserWhoIsNotAMemberHasNoPermissionAndNoError() = runTest {
+    val viewModel = feedViewModel(userId = { "stranger" })
+
+    viewModel.refreshUIState()
+
+    val state = viewModel.uiState.value
+    assertEquals(
+        AnnouncementFeedPermissions(canSeeAnnouncements = false, canCreateAnnouncement = false),
+        state.permissions,
+    )
+    assertNull(state.errorMsg)
+    assertFalse(state.isLoading)
+  }
+
+  /** Breaks if a failed fetch resets the permissions, which would make a member leave the feed. */
+  @Test
+  fun aFailedFetchKeepsThePreviousPermissions() = runTest {
+    val repository = ControllableEventsRepository(eventWithMember(Role.TEAM_LEAD))
+    repository.failure = IllegalStateException("fetch failed")
+    val viewModel = feedViewModel(repository, userId = { MEMBER_ID })
+
+    viewModel.refreshUIState()
+
+    assertEquals(AnnouncementFeedPermissions(), viewModel.uiState.value.permissions)
+
+    repository.failure = null
+    viewModel.refreshUIState()
+    repository.failure = IllegalStateException("fetch failed")
+    viewModel.refreshUIState()
+
+    assertEquals(
+        AnnouncementFeedPermissions(canSeeAnnouncements = true, canCreateAnnouncement = true),
+        viewModel.uiState.value.permissions,
+    )
+    assertEquals(R.string.announcement_feed_load_failed, viewModel.uiState.value.errorMsg)
+  }
+
+  /** Breaks if the permissions keep the role of an older fetch, e.g. after a kick or promotion. */
+  @Test
+  fun eachFetchRecomputesThePermissionsFromTheLatestRoles() = runTest {
+    val repository = ControllableEventsRepository(eventWithMember(Role.STAFF))
+    val viewModel = feedViewModel(repository, userId = { MEMBER_ID })
+    viewModel.refreshUIState()
+    assertFalse(viewModel.uiState.value.permissions.canCreateAnnouncement)
+
+    repository.event = eventWithMember(Role.TEAM_LEAD)
+    viewModel.refreshUIState()
+    assertTrue(viewModel.uiState.value.permissions.canCreateAnnouncement)
+
+    repository.event = event()
+    viewModel.refreshUIState()
+    assertEquals(
+        AnnouncementFeedPermissions(canSeeAnnouncements = false, canCreateAnnouncement = false),
+        viewModel.uiState.value.permissions,
+    )
+  }
+
+  /** Breaks if the uid is read once when the ViewModel is built instead of at each fetch. */
+  @Test
+  fun theCurrentUserIsReadAtEachFetch() = runTest {
+    var currentUser = OWNER_ID
+    val viewModel = feedViewModel(userId = { currentUser })
+    viewModel.refreshUIState()
+    assertTrue(viewModel.uiState.value.permissions.canCreateAnnouncement)
+
+    currentUser = "stranger"
+    viewModel.refreshUIState()
+
+    assertFalse(viewModel.uiState.value.permissions.canSeeAnnouncements)
+  }
+
   private fun feedViewModel(
-      repository: EventsRepository = EventsRepositoryLocal(listOf(figmaEvent))
+      repository: EventsRepository = EventsRepositoryLocal(listOf(figmaEvent)),
+      userId: () -> String = { OWNER_ID },
   ) =
       AnnouncementFeedViewModel(
           EVENT_ID,
           DataRepositoryLocal(FakeAuthRepository(), eventsRepository = repository),
+          currentUserId = userId,
           clock = clock,
       )
+
+  /** An event of [announcements] whose members are the owner and [MEMBER_ID], who has [role]. */
+  private fun eventWithMember(role: Role, vararg announcements: Announcement): Event =
+      event(*announcements)
+          .copy(
+              members = listOf(User(OWNER_ID), User(MEMBER_ID)),
+              roles = mapOf(OWNER_ID to Role.OWNER, MEMBER_ID to role),
+          )
 
   private fun loadedState(vararg announcements: Announcement): AnnouncementFeedUIState {
     val viewModel = feedViewModel(EventsRepositoryLocal(listOf(event(*announcements))))
@@ -423,7 +545,7 @@ class AnnouncementFeedViewModelTest {
   private fun event(vararg announcements: Announcement): Event =
       Event(
           eventId = EVENT_ID,
-          ownerId = "owner",
+          ownerId = OWNER_ID,
           title = "Festival",
           startDate = at(8),
           endDate = at(18),
@@ -475,6 +597,8 @@ class AnnouncementFeedViewModelTest {
 
   private companion object {
     const val EVENT_ID = "event-1"
+    const val OWNER_ID = "owner"
+    const val MEMBER_ID = "member"
     val today = java.time.LocalDate.of(2026, 10, 17)
   }
 }
