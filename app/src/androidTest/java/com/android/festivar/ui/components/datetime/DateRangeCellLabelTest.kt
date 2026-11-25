@@ -10,37 +10,36 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Checks that a calendar day is recognised in an English and in a French device. The language is
+ * Checks that a calendar day is recognised on an English and on a French device. The language is
  * given to `labelsMatch`, so the result does not depend on the language of the emulator.
  */
 class DateRangeCellLabelTest {
 
-  private val english = Locale.ENGLISH
-  private val french = Locale.FRENCH
-
   private val firstOfNovember = LocalDate.of(2026, 11, 1)
-  private val elevenOfNovember = LocalDate.of(2026, 11, 11)
 
   private fun label(date: LocalDate, locale: Locale) =
       DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG).withLocale(locale).format(date)
 
+  /**
+   * Breaks if a day is no longer found by its own label, in a month-first or a day-first language.
+   */
   @Test
-  fun aDayIsFoundByItsOwnLabelInEnglish() {
-    assertTrue(labelsMatch(firstOfNovember, listOf(label(firstOfNovember, english)), english))
+  fun aDayIsFoundByItsOwnLabelInEnglishAndInFrench() {
+    for (locale in listOf(Locale.ENGLISH, Locale.FRENCH)) {
+      val labels = listOf(label(firstOfNovember, locale))
+      assertTrue(locale.toString(), labelsMatch(firstOfNovember, labels, locale))
+    }
   }
 
+  /**
+   * Breaks if day 1 is taken for day 11 or 21: in French "1 novembre 2026" is inside "11 novembre
+   * 2026". It cannot happen in English, where "November 1, 2026" is not inside "November 11, 2026".
+   */
   @Test
-  fun aDayIsFoundByItsOwnLabelInFrench() {
-    assertTrue(labelsMatch(firstOfNovember, listOf(label(firstOfNovember, french)), french))
-  }
-
-  @Test
-  fun the1stIsNotMixedUpWithThe11thInEnglish() {
-    assertFalse(labelsMatch(firstOfNovember, listOf(label(elevenOfNovember, english)), english))
-  }
-
-  @Test
-  fun the1stIsNotMixedUpWithThe11thInFrench() {
-    assertFalse(labelsMatch(firstOfNovember, listOf(label(elevenOfNovember, french)), french))
+  fun the1stIsNotMixedUpWithThe11thAndThe21stInFrench() {
+    for (day in listOf(11, 21)) {
+      val labels = listOf(label(LocalDate.of(2026, 11, day), Locale.FRENCH))
+      assertFalse("day $day", labelsMatch(firstOfNovember, labels, Locale.FRENCH))
+    }
   }
 }
