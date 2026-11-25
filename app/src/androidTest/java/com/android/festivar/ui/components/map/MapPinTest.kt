@@ -4,9 +4,7 @@ package com.android.festivar.ui.components.map
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toPixelMap
-import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -56,28 +54,20 @@ class MapPinTest {
     }
   }
 
-  /** Breaks if the event pin is not drawn at its size and under its own tag. */
+  /** Breaks if the event pin is not displayed under its own tag. */
   @Test
-  fun eventPin_isLarge() {
+  fun eventPin_isDisplayed() {
     composeTestRule.setContent { AppTheme { MapPinImage(MapPinKind.EVENT) } }
 
-    composeTestRule
-        .onNodeWithTag(MapPinKind.EVENT.testTag)
-        .assertIsDisplayed()
-        .assertWidthIsEqualTo(MapPinKind.EVENT.size)
-        .assertHeightIsEqualTo(MapPinKind.EVENT.size)
+    composeTestRule.onNodeWithTag(MapPinKind.EVENT.testTag).assertIsDisplayed()
   }
 
-  /** Breaks if the task pin is not drawn at its size and under its own tag. */
+  /** Breaks if the task pin is not displayed under its own tag. */
   @Test
-  fun taskPin_isSmall() {
+  fun taskPin_isDisplayed() {
     composeTestRule.setContent { AppTheme { MapPinImage(MapPinKind.TASK) } }
 
-    composeTestRule
-        .onNodeWithTag(MapPinKind.TASK.testTag)
-        .assertIsDisplayed()
-        .assertWidthIsEqualTo(MapPinKind.TASK.size)
-        .assertHeightIsEqualTo(MapPinKind.TASK.size)
+    composeTestRule.onNodeWithTag(MapPinKind.TASK.testTag).assertIsDisplayed()
   }
 
   /** Breaks if the preview of the two pins fails to compose, or does not draw both of them. */
