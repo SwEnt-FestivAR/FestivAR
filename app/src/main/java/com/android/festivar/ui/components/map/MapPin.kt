@@ -19,7 +19,6 @@ import androidx.compose.ui.unit.dp
 import com.android.festivar.R
 import com.android.festivar.model.map.geometry.EPFL_LOCATION
 import com.android.festivar.model.map.geometry.GeoPosition
-import com.android.festivar.ui.components.FestivarMap
 import com.android.festivar.ui.theme.AppTheme
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.MarkerComposable
