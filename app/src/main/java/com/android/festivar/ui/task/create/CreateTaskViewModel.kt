@@ -12,17 +12,13 @@ import com.android.festivar.model.task.Priority
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.ui.components.FieldError
-import com.android.festivar.ui.components.datetime.DateTimeField
 import com.android.festivar.ui.components.datetime.DateTimeRange
 import com.android.festivar.ui.components.datetime.END_OF_DAY
 import com.android.festivar.ui.components.datetime.START_OF_DAY
 import com.android.festivar.ui.components.datetime.endDateError
-import com.android.festivar.ui.components.datetime.startDateError
 import com.android.festivar.ui.task.TaskFormEditing
 import com.android.festivar.ui.task.TaskFormEditor
 import java.time.Duration
-import java.time.LocalDate
-import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlinx.coroutines.CancellationException
@@ -45,17 +41,12 @@ data class CreateTaskUiState(
     val title: String = "",
     val description: String = "",
     val location: String = "",
-    val startDate: LocalDate? = null,
-    val startTime: LocalTime? = null,
-    val endDate: LocalDate? = null,
-    val endTime: LocalTime? = null,
+    val range: DateTimeRange = DateTimeRange(),
     val priority: Priority = Priority.NONE,
     // How many people the task needs. A stepper changes it, so it is never below MIN_MAX_ASSIGN.
     val maxAssign: Int = MIN_MAX_ASSIGN,
     // The estimated time is kept as typed (digits only) so that an empty field stays empty.
     val estimatedMinutes: String = "",
-    // The field whose picker dialog is open, or null when none is.
-    val openPicker: DateTimeField? = null,
     val titleEdited: Boolean = false,
     // True while the task is being saved. It keeps a second tap on "Create task" from saving the
     // task twice (see canCreate).
@@ -63,14 +54,17 @@ data class CreateTaskUiState(
     val isCreated: Boolean = false,
     // The time zone of the picked dates and times; the device's one by default.
     val zone: ZoneId = ZoneId.systemDefault(),
+    // Whether days that are over can be picked and an end in the past is accepted, as when editing
+    // a task that may have ended. A new task is refused both.
+    val allowPast: Boolean = false,
     // String resource of the error to show (see R.string.create_task_error_save_failed), or null.
     @StringRes val errorMsg: Int? = null,
 ) {
   val startDateTime: ZonedDateTime?
-    get() = startDate?.atTime(startTime ?: START_OF_DAY)?.atZone(zone)
+    get() = range.startDate?.atTime(range.startTime ?: START_OF_DAY)?.atZone(zone)
 
   val endDateTime: ZonedDateTime?
-    get() = endDate?.atTime(endTime ?: END_OF_DAY)?.atZone(zone)
+    get() = range.endDate?.atTime(range.endTime ?: END_OF_DAY)?.atZone(zone)
 
   /**
    * The title error. It only appears once the title has been edited, so that an untouched form does
@@ -79,13 +73,9 @@ data class CreateTaskUiState(
   val titleError: FieldError?
     get() = if (titleEdited && title.isBlank()) FieldError.EMPTY_TITLE else null
 
-  /** The error shown under the start date, or `null`. See [startDateError]. */
-  val startDateError: FieldError?
-    get() = startDateError(startDate, startTime)
-
-  /** The error shown under the end date, or `null`. See [endDateError]. */
+  /** The error shown under the times, or `null`. See [endDateError]. */
   val endDateError: FieldError?
-    get() = endDateError(DateTimeRange(startDate, startTime, endDate, endTime), zone)
+    get() = endDateError(range, zone, allowPast = allowPast)
 
   /**
    * The error shown under the estimated time field, or `null`. It is optional, so empty is fine,
@@ -105,10 +95,7 @@ data class CreateTaskUiState(
         title.isNotEmpty() ||
             description.isNotEmpty() ||
             location.isNotEmpty() ||
-            startDate != null ||
-            startTime != null ||
-            endDate != null ||
-            endTime != null ||
+            range != DateTimeRange() ||
             priority != Priority.NONE ||
             maxAssign != MIN_MAX_ASSIGN ||
             estimatedMinutes.isNotEmpty()
@@ -126,17 +113,13 @@ data class CreateTaskUiState(
 
   /** Whether it has a title and no field error; [canCreate] adds the saving and created flags. */
   internal val isValid: Boolean
-    get() =
-        title.isNotBlank() &&
-            startDateError == null &&
-            endDateError == null &&
-            estimatedTimeError == null
+    get() = title.isNotBlank() && endDateError == null && estimatedTimeError == null
 
   /**
    * Builds the [Task] described by this form.
    *
    * @param ownerId The uid of the user creating the task, who becomes its owner.
-   * @throws IllegalArgumentException if the form is not valid: blank title, a date error (a time
+   * @throws IllegalArgumentException if the form is not valid: blank title, a time error (a time
    *   without its date, or an end before the start) or a wrong estimated time, or if [ownerId] is
    *   blank.
    */
@@ -219,7 +202,7 @@ private constructor(
   private val _uiState = MutableStateFlow(CreateTaskUiState(zone = zone))
   val uiState: StateFlow<CreateTaskUiState> = _uiState.asStateFlow()
 
-  // A finished form ignores every change, pickers included, since the screen leaves on creation.
+  // A finished form ignores every change, since the screen leaves on creation.
   private fun edit(change: (CreateTaskUiState) -> CreateTaskUiState) = _uiState.update {
     if (it.isCreated) it else change(it)
   }
@@ -227,9 +210,8 @@ private constructor(
   init {
     // A Task needs an event: a blank one is a mistake of the caller.
     require(eventId.isNotBlank()) { "eventId must not be blank" }
-    // The form setters come from TaskFormEditing. Pickers follow the same guard as the fields.
+    // The form setters come from TaskFormEditing and follow the same guard as the fields.
     formEditing.applyEdit = ::edit
-    formEditing.current = { _uiState.value }
   }
 
   /** Saves the task if the form is valid. Does nothing while a save is running. */
@@ -250,7 +232,7 @@ private constructor(
     val taskId = pendingTaskId ?: tasksRepository.getNewUid()
     pendingTaskId = taskId
     val task = form.toTask(taskId, eventId, ownerId)
-    _uiState.update { it.copy(isSaving = true, errorMsg = null, openPicker = null) }
+    _uiState.update { it.copy(isSaving = true, errorMsg = null) }
     viewModelScope.launch {
       try {
         withTimeout(saveTimeoutMs) { dataRepository.addTask(task) }

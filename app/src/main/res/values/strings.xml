@@ -33,10 +33,6 @@
     <string name="create_task_field_title">Title</string>
     <string name="create_task_field_description">Description, optional</string>
     <string name="create_task_field_location">Location</string>
-    <string name="create_task_field_start_date">Start date</string>
-    <string name="create_task_field_start_time">Start time</string>
-    <string name="create_task_field_end_date">End date</string>
-    <string name="create_task_field_end_time">End time</string>
     <string name="create_task_field_max_assign">People needed</string>
     <string name="create_task_max_assign_decrease">Fewer people</string>
     <string name="create_task_max_assign_increase">More people</string>

@@ -18,7 +18,7 @@ import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.ui.components.FieldError
-import com.android.festivar.ui.components.datetime.DateTimeField
+import com.android.festivar.ui.components.datetime.DateTimeRange
 import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalTime
@@ -82,10 +82,14 @@ class CreateTaskViewModelTest {
     viewModel.updateTitle("Run power to stage")
     viewModel.updateDescription("Blue crate")
     viewModel.updateLocation("Stage")
-    viewModel.updateStartDate(day)
-    viewModel.updateStartTime(LocalTime.of(9, 30))
-    viewModel.updateEndDate(day)
-    viewModel.updateEndTime(LocalTime.of(9, 50))
+    viewModel.updateRange(
+        viewModel.uiState.value.range.copy(
+            startDate = day,
+            startTime = LocalTime.of(9, 30),
+            endDate = day,
+            endTime = LocalTime.of(9, 50),
+        )
+    )
 
     val state = viewModel.uiState.value
     assertEquals("Run power to stage", state.title)
@@ -147,13 +151,6 @@ class CreateTaskViewModelTest {
     viewModel.createTask()
     assertTrue(viewModel.uiState.value.isCreated)
     assertFalse(viewModel.uiState.value.needsDiscardConfirmation)
-  }
-
-  @Test
-  fun hasChanges_ignoresOpeningAPicker() {
-    viewModel.showPicker(DateTimeField.START_DATE)
-
-    assertFalse(viewModel.uiState.value.hasChanges)
   }
 
   @Test
@@ -285,8 +282,9 @@ class CreateTaskViewModelTest {
   @Test
   fun createTask_withEndBeforeStart_savesNothing() {
     viewModel.updateTitle("Run power to stage")
-    viewModel.updateStartDate(day)
-    viewModel.updateEndDate(day.minusDays(1))
+    viewModel.updateRange(
+        viewModel.uiState.value.range.copy(startDate = day, endDate = day.minusDays(1))
+    )
 
     viewModel.createTask()
 
@@ -308,37 +306,14 @@ class CreateTaskViewModelTest {
     assertNull(viewModel.uiState.value.titleError)
   }
 
+  /**
+   * Breaks if an end time without its end date does not report the missing date under the times.
+   */
   @Test
-  fun timeWithoutDate_putsTheErrorUnderTheMatchingDate() {
-    viewModel.updateEndTime(LocalTime.of(9, 50))
+  fun endTimeWithoutDate_putsTheErrorUnderTheTimes() {
+    viewModel.updateRange(viewModel.uiState.value.range.copy(endTime = LocalTime.of(9, 50)))
 
     assertEquals(FieldError.MISSING_DATE, viewModel.uiState.value.endDateError)
-    assertNull(viewModel.uiState.value.startDateError)
-  }
-
-  @Test
-  fun picking_setsTheValueOfTheOpenPickerAndClosesIt() {
-    viewModel.showPicker(DateTimeField.START_DATE)
-    assertEquals(DateTimeField.START_DATE, viewModel.uiState.value.openPicker)
-    viewModel.pickDate(day)
-    viewModel.showPicker(DateTimeField.END_TIME)
-    viewModel.pickTime(LocalTime.of(9, 50))
-
-    val state = viewModel.uiState.value
-    assertEquals(day, state.startDate)
-    assertEquals(LocalTime.of(9, 50), state.endTime)
-    assertNull(state.openPicker)
-  }
-
-  @Test
-  fun picking_aDateWithATimePickerOpen_onlyClosesIt() {
-    viewModel.showPicker(DateTimeField.START_TIME)
-    viewModel.pickDate(day)
-
-    val state = viewModel.uiState.value
-    assertNull(state.startDate)
-    assertNull(state.endDate)
-    assertNull(state.openPicker)
   }
 
   @Test
@@ -766,15 +741,15 @@ class CreateTaskViewModelTest {
     assertEquals(1, savedTasks().size)
   }
 
-  // Breaks if the picker setter bypasses the created guard.
+  /** Breaks if the range setter bypasses the created guard. */
   @Test
-  fun showPicker_afterTheTaskIsCreated_isIgnored() {
+  fun updateRange_afterTheTaskIsCreated_isIgnored() {
     viewModel.updateTitle("Run power to stage")
     viewModel.createTask()
     assertTrue(viewModel.uiState.value.isCreated)
 
-    viewModel.showPicker(DateTimeField.START_DATE)
-    assertNull(viewModel.uiState.value.openPicker)
+    viewModel.updateRange(DateTimeRange(startDate = day))
+    assertEquals(DateTimeRange(), viewModel.uiState.value.range)
   }
 }
 
@@ -798,7 +773,6 @@ class CreateTaskUiStateTest {
   fun titleOnly_canBeCreated() {
     assertTrue(valid.canCreate)
     assertNull(valid.titleError)
-    assertNull(valid.startDateError)
     assertNull(valid.endDateError)
   }
 
@@ -811,35 +785,32 @@ class CreateTaskUiStateTest {
   fun dateWithoutTime_startsAtMidnight() {
     assertEquals(
         day.atTime(0, 0).atZone(zone),
-        valid.copy(startDate = day).startDateTime,
+        valid.copy(range = valid.range.copy(startDate = day)).startDateTime,
     )
   }
 
+  /** Breaks if a form with an end time but no end date can be created. */
   @Test
-  fun timeWithoutDate_isAnError() {
-    // The error sits under the date that is missing, and nowhere else.
-    val missingStartDate = valid.copy(startTime = LocalTime.of(9, 30))
-    assertEquals(FieldError.MISSING_DATE, missingStartDate.startDateError)
-    assertNull(missingStartDate.endDateError)
-    assertFalse(missingStartDate.canCreate)
+  fun endTimeWithoutDate_isAnError() {
+    val state = valid.copy(range = valid.range.copy(endTime = LocalTime.of(9, 50)))
 
-    val missingEndDate = valid.copy(endTime = LocalTime.of(9, 50))
-    assertEquals(FieldError.MISSING_DATE, missingEndDate.endDateError)
-    assertNull(missingEndDate.startDateError)
-    assertFalse(missingEndDate.canCreate)
+    assertEquals(FieldError.MISSING_DATE, state.endDateError)
+    assertFalse(state.canCreate)
   }
 
   @Test
   fun endBeforeStart_isAnError() {
     val state =
         valid.copy(
-            startDate = day,
-            startTime = LocalTime.of(9, 30),
-            endDate = day,
-            endTime = LocalTime.of(9, 29),
+            range =
+                valid.range.copy(
+                    startDate = day,
+                    startTime = LocalTime.of(9, 30),
+                    endDate = day,
+                    endTime = LocalTime.of(9, 29),
+                )
         )
     assertEquals(FieldError.END_BEFORE_START, state.endDateError)
-    assertNull(state.startDateError)
     assertFalse(state.canCreate)
   }
 
@@ -847,17 +818,20 @@ class CreateTaskUiStateTest {
   fun endEqualToStart_isAnError() {
     val state =
         valid.copy(
-            startDate = day,
-            startTime = LocalTime.of(9, 30),
-            endDate = day,
-            endTime = LocalTime.of(9, 30),
+            range =
+                valid.range.copy(
+                    startDate = day,
+                    startTime = LocalTime.of(9, 30),
+                    endDate = day,
+                    endTime = LocalTime.of(9, 30),
+                )
         )
     assertEquals(FieldError.END_BEFORE_START, state.endDateError)
   }
 
   @Test
   fun endInThePast_isAnError() {
-    val state = valid.copy(endDate = LocalDate.of(2000, 1, 1))
+    val state = valid.copy(range = valid.range.copy(endDate = LocalDate.of(2000, 1, 1)))
     assertEquals(FieldError.OUTDATED, state.endDateError)
     assertFalse(state.canCreate)
   }
@@ -866,7 +840,10 @@ class CreateTaskUiStateTest {
   // is not "before" a start at 09:00: the user has not picked an end time yet.
   @Test
   fun endDateWithoutTime_onTheStartDay_isValid() {
-    val state = valid.copy(startDate = day, startTime = LocalTime.of(9, 0), endDate = day)
+    val state =
+        valid.copy(
+            range = valid.range.copy(startDate = day, startTime = LocalTime.of(9, 0), endDate = day)
+        )
     assertNull(state.endDateError)
     assertTrue(state.canCreate)
   }
@@ -875,28 +852,32 @@ class CreateTaskUiStateTest {
   fun endDateWithoutTime_endsAtTheLastMinuteOfTheDay() {
     assertEquals(
         day.atTime(23, 59).atZone(zone),
-        valid.copy(endDate = day).endDateTime,
+        valid.copy(range = valid.range.copy(endDate = day)).endDateTime,
     )
   }
 
   // The day before the start, even as a whole day, ends before the start.
   @Test
   fun endDateWithoutTime_onTheDayBeforeTheStart_isAnError() {
-    val state = valid.copy(startDate = day, endDate = day.minusDays(1))
+    val state = valid.copy(range = valid.range.copy(startDate = day, endDate = day.minusDays(1)))
     assertEquals(FieldError.END_BEFORE_START, state.endDateError)
   }
 
   // Both dates without a time: the task covers the whole day, and is saved that way.
   @Test
   fun toTask_withDatesOnly_coversTheWholeDay() {
-    val task = valid.copy(startDate = day, endDate = day).toTask("t1", "e1", "owner-1")
+    val task =
+        valid
+            .copy(range = valid.range.copy(startDate = day, endDate = day))
+            .toTask("t1", "e1", "owner-1")
     assertEquals(day.atTime(0, 0).atZone(zone), task.startTime)
     assertEquals(day.atTime(23, 59).atZone(zone), task.endTime)
   }
 
+  // A state only: the Dates field always sets both days, but a form holding just an end is valid.
   @Test
   fun onlyOneBoundSet_isValid() {
-    assertNull(valid.copy(endDate = day).endDateError)
+    assertNull(valid.copy(range = valid.range.copy(endDate = day)).endDateError)
   }
 
   @Test
@@ -924,10 +905,13 @@ class CreateTaskUiStateTest {
                 title = "  Run power to stage ",
                 description = " Extension reel is in the blue crate. ",
                 location = " Stage, north corner ",
-                startDate = day,
-                startTime = LocalTime.of(9, 30),
-                endDate = day,
-                endTime = LocalTime.of(9, 50),
+                range =
+                    valid.range.copy(
+                        startDate = day,
+                        startTime = LocalTime.of(9, 30),
+                        endDate = day,
+                        endTime = LocalTime.of(9, 50),
+                    ),
             )
             .toTask(taskId = "t1", eventId = "e1", ownerId = "owner-1")
 
@@ -956,7 +940,7 @@ class CreateTaskUiStateTest {
 
   @Test
   fun toTask_withTimeWithoutDate_isRejected() {
-    val form = valid.copy(startTime = LocalTime.of(9, 30))
+    val form = valid.copy(range = valid.range.copy(endTime = LocalTime.of(9, 50)))
 
     assertThrows(IllegalArgumentException::class.java) { form.toTask("t1", "e1", "owner-1") }
   }
@@ -969,7 +953,7 @@ class CreateTaskUiStateTest {
   // The form refuses an end before the start, so the conversion is rejected too.
   @Test
   fun toTask_withEndBeforeStart_isRejected() {
-    val form = valid.copy(startDate = day, endDate = day.minusDays(1))
+    val form = valid.copy(range = valid.range.copy(startDate = day, endDate = day.minusDays(1)))
 
     assertThrows(IllegalArgumentException::class.java) { form.toTask("t1", "e1", "owner-1") }
   }

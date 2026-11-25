@@ -22,6 +22,7 @@ import com.android.festivar.model.task.Priority
 import com.android.festivar.ui.components.FieldError
 import com.android.festivar.ui.components.LONG_TEXT_MAX_LENGTH
 import com.android.festivar.ui.components.checkTheOnlyCounterIsUnder
+import com.android.festivar.ui.components.datetime.pickDays
 import java.time.Duration
 import java.time.LocalDate
 import kotlinx.coroutines.CompletableDeferred
@@ -46,9 +47,8 @@ class CreateTaskScreenInstrumentedTest : CreateTaskTest() {
           CreateTaskScreenTestTags.TITLE_FIELD,
           CreateTaskScreenTestTags.DESCRIPTION_FIELD,
           CreateTaskScreenTestTags.LOCATION_FIELD,
-          CreateTaskScreenTestTags.START_DATE_FIELD,
+          CreateTaskScreenTestTags.DATES_FIELD,
           CreateTaskScreenTestTags.START_TIME_FIELD,
-          CreateTaskScreenTestTags.END_DATE_FIELD,
           CreateTaskScreenTestTags.END_TIME_FIELD,
           CreateTaskScreenTestTags.PRIORITY_SELECTOR,
           CreateTaskScreenTestTags.MAX_ASSIGN_FIELD,
@@ -98,28 +98,24 @@ class CreateTaskScreenInstrumentedTest : CreateTaskTest() {
     composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.CREATE_BUTTON).assertIsEnabled()
   }
 
+  /**
+   * Breaks if an end that is not after the start, here the same minute on the same day, is not
+   * reported under the times until the end moves to a later day.
+   */
   @Test
-  fun aTimeWithoutItsDateShowsAnErrorUnderThatDate() {
+  fun anEndNotAfterTheStartShowsAnErrorUntilTheScheduleIsFixed() {
+    val day: LocalDate = completeForm.range.startDate!!
+    composeTestRule.enterCreateTaskTitle("Run power to stage")
+    composeTestRule.pickDays(CreateTaskScreenTestTags.DATES_FIELD, day)
     composeTestRule.pickCreateTaskTime(
         CreateTaskScreenTestTags.START_TIME_FIELD,
         PICKER_DEFAULT_TIME,
     )
-    composeTestRule.checkStartDateErrorIsDisplayed(FieldError.MISSING_DATE)
-
     composeTestRule.pickCreateTaskTime(CreateTaskScreenTestTags.END_TIME_FIELD, PICKER_DEFAULT_TIME)
-    composeTestRule.checkEndDateErrorIsDisplayed(FieldError.MISSING_DATE)
-  }
-
-  @Test
-  fun anEndBeforeTheStartShowsAnErrorUntilTheScheduleIsFixed() {
-    val day: LocalDate = completeForm.startDate!!
-    composeTestRule.enterCreateTaskTitle("Run power to stage")
-    composeTestRule.pickCreateTaskDate(CreateTaskScreenTestTags.START_DATE_FIELD, day.plusDays(1))
-    composeTestRule.pickCreateTaskDate(CreateTaskScreenTestTags.END_DATE_FIELD, day)
     composeTestRule.checkEndDateErrorIsDisplayed(FieldError.END_BEFORE_START)
     composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.CREATE_BUTTON).assertIsNotEnabled()
 
-    composeTestRule.pickCreateTaskDate(CreateTaskScreenTestTags.END_DATE_FIELD, day.plusDays(2))
+    composeTestRule.pickDays(CreateTaskScreenTestTags.DATES_FIELD, day, day.plusDays(1))
 
     composeTestRule.checkNoFieldErrorIsDisplayed()
     composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.CREATE_BUTTON).assertIsEnabled()
