@@ -113,7 +113,11 @@ class EventNavGraphTest {
         DataRepositoryLocal(
             authRepository =
                 FakeAuthRepository(
-                    currentUser = mockk<FirebaseUser> { every { uid } returns owner.uid }
+                    currentUser =
+                        mockk<FirebaseUser> {
+                          every { uid } returns owner.uid
+                          every { isAnonymous } returns false
+                        }
                 ),
             eventsRepository = eventsRepository,
             usersRepository = UsersRepositoryLocal(listOf(owner)),

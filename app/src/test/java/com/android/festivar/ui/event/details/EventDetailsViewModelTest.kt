@@ -11,7 +11,9 @@ import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.model.event.role.Role
 import com.android.festivar.model.user.User
+import com.android.festivar.ui.event.MembersFixture
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlin.coroutines.cancellation.CancellationException
@@ -159,9 +161,9 @@ class EventDetailsViewModelTest {
     assertNull(viewModel.uiState.value.errorMsg)
   }
 
-  /** Breaks if the organizer of the event is not recognised, so they never get the menu. */
+  /** Breaks if the owner of the event cannot edit it, so they never get the menu. */
   @Test
-  fun ownerOfTheEventIsTheOwner() = runTest {
+  fun ownerOfTheEventCanEditIt() = runTest {
     val event = testEvent("event-1")
     val viewModel =
         EventDetailsViewModel(
@@ -172,12 +174,12 @@ class EventDetailsViewModelTest {
     viewModel.fetchEvent()
     advanceUntilIdle()
 
-    assertTrue(viewModel.uiState.value.isOwner)
+    assertTrue(viewModel.uiState.value.permissions.canEditEvent)
   }
 
-  /** Breaks if a volunteer is treated as the organizer and gets the menu. */
+  /** Breaks if a user who is not a member of the event can edit it and gets the menu. */
   @Test
-  fun anotherUserIsNotTheOwner() = runTest {
+  fun anotherUserCannotEditIt() = runTest {
     val event = testEvent("event-1")
     val viewModel =
         EventDetailsViewModel(
@@ -188,12 +190,12 @@ class EventDetailsViewModelTest {
     viewModel.fetchEvent()
     advanceUntilIdle()
 
-    assertFalse(viewModel.uiState.value.isOwner)
+    assertFalse(viewModel.uiState.value.permissions.canEditEvent)
   }
 
-  /** Breaks if nobody signed in is treated as the organizer. */
+  /** Breaks if nobody signed in can edit the event. */
   @Test
-  fun signedOutUserIsNotTheOwner() = runTest {
+  fun signedOutUserCannotEditIt() = runTest {
     val event = testEvent("event-1")
     val viewModel =
         EventDetailsViewModel(
@@ -204,12 +206,12 @@ class EventDetailsViewModelTest {
     viewModel.fetchEvent()
     advanceUntilIdle()
 
-    assertFalse(viewModel.uiState.value.isOwner)
+    assertFalse(viewModel.uiState.value.permissions.canEditEvent)
   }
 
-  /** Breaks if a failed reload keeps the organizer's rights over an event that is not shown. */
+  /** Breaks if a failed reload keeps the owner's rights over an event that is not shown. */
   @Test
-  fun failedRefetchRemovesOwnership() = runTest {
+  fun failedRefetchRemovesThePermissions() = runTest {
     var shouldFail = false
     val event = testEvent("event-1")
     val repository =
@@ -226,7 +228,166 @@ class EventDetailsViewModelTest {
     viewModel.fetchEvent()
     advanceUntilIdle()
 
-    assertFalse(viewModel.uiState.value.isOwner)
+    assertFalse(viewModel.uiState.value.permissions.canEditEvent)
+  }
+
+  // ******************************* Roles and members ******************************* //
+
+  private val owner = MembersFixture.organizer
+  private val manager = MembersFixture.lea
+  private val staff = MembersFixture.tom
+  private val visitor = MembersFixture.sara
+  private val rolesEvent =
+      MembersFixture.eventWithRoles(
+          manager to Role.STAFF_MANAGER,
+          staff to Role.STAFF,
+          visitor to Role.VISITOR,
+      )
+
+  /** Breaks if what the screen offers does not follow the role of the current user. */
+  @Test
+  fun theScreenPermissionsFollowTheRoleOfTheCurrentUser() = runTest {
+    val staffView = EventDetailsPermissions(canSeeMembers = true, canSeeTasks = true)
+    val managerView = staffView.copy(canEditEvent = true, canManageRoles = true)
+    mapOf(
+            owner to managerView.copy(canDeleteEvent = true),
+            manager to managerView,
+            staff to staffView,
+            visitor to EventDetailsPermissions(),
+        )
+        .forEach { (user, expected) ->
+          val permissions = loadedViewModel(user.uid).uiState.value.permissions
+          assertEquals(user.name, expected, permissions.copy(members = emptyMap()))
+        }
+  }
+
+  /**
+   * Breaks if the roles a member can be given are not listed from the highest, or if someone not
+   * strictly above them can manage them, e.g. a staff manager acting on the owner or kicking.
+   */
+  @Test
+  fun aMemberCanOnlyBeManagedByTheRolesAboveTheirsFromTheHighest() = runTest {
+    val ofOwner = loadedViewModel(owner.uid).uiState.value.permissions
+    val ofManager = loadedViewModel(manager.uid).uiState.value.permissions
+    val belowManager = listOf(Role.TEAM_LEAD, Role.STAFF, Role.VISITOR)
+
+    assertEquals(
+        MemberPermissions(listOf(Role.ADMIN, Role.STAFF_MANAGER) + belowManager, canKick = true),
+        ofOwner.onMember(visitor.uid),
+    )
+    assertEquals(MemberPermissions(belowManager), ofManager.onMember(visitor.uid))
+    assertEquals(MemberPermissions(), ofManager.onMember(owner.uid))
+    assertEquals(MemberPermissions(), ofManager.onMember(manager.uid))
+  }
+
+  /** Breaks if a new role is not saved and shown, or drops a change saved since the load. */
+  @Test
+  fun changeRoleSavesTheNewRoleOnTheLatestEvent() = runTest {
+    val repository = EventsRepositoryLocal(listOf(rolesEvent))
+    val viewModel = loadedViewModel(owner.uid, repository)
+    repository.editEvent(rolesEvent.eventId, rolesEvent.copy(title = "Renamed"))
+
+    viewModel.changeRole(visitor.uid, Role.TEAM_LEAD)
+    advanceUntilIdle()
+
+    val saved = repository.getEvent(rolesEvent.eventId)
+    assertEquals("Renamed", saved.title)
+    assertEquals(Role.TEAM_LEAD, saved.roleOf(visitor.uid))
+    assertEquals(saved, viewModel.uiState.value.event)
+  }
+
+  /** Breaks if a kicked member stays in the event, or the screen still offers actions on them. */
+  @Test
+  fun kickMemberRemovesThemAndTheActionsOnThem() = runTest {
+    val repository = EventsRepositoryLocal(listOf(rolesEvent))
+    val viewModel = loadedViewModel(owner.uid, repository)
+
+    viewModel.kickMember(visitor.uid)
+    advanceUntilIdle()
+
+    val state = viewModel.uiState.value
+    assertEquals(repository.getEvent(rolesEvent.eventId), state.event)
+    assertFalse(visitor in state.event!!.members)
+    assertFalse(visitor.uid in state.permissions.members)
+  }
+
+  /**
+   * Breaks if a failed save does not show its own message until it is cleared, changes the event
+   * shown, or stays in progress.
+   */
+  @Test
+  fun aFailedChangeOfRoleOrKickShowsItsErrorUntilCleared() = runTest {
+    val viewModel = loadedViewModel(owner.uid, MembersFixture.failingToSave(rolesEvent))
+    val saves: List<Pair<() -> Unit, Int>> =
+        listOf(
+            {
+              viewModel.changeRole(visitor.uid, Role.STAFF)
+            } to R.string.event_details_change_role_failed,
+            { viewModel.kickMember(visitor.uid) } to R.string.event_details_kick_failed,
+        )
+
+    saves.forEach { (save, message) ->
+      save()
+      advanceUntilIdle()
+      val state = viewModel.uiState.value
+      assertEquals(EventDetailsUIState(rolesEvent, state.permissions, errorMsg = message), state)
+
+      viewModel.clearError()
+      assertNull(viewModel.uiState.value.errorMsg)
+    }
+  }
+
+  /**
+   * Breaks if a second change, a deletion or a reload runs while a change is saved, e.g. on a
+   * double tap.
+   */
+  @Test
+  fun nothingElseRunsWhileAChangeIsBeingSaved() = runTest {
+    val stored = EventsRepositoryLocal(listOf(rolesEvent))
+    val release = CompletableDeferred<Unit>()
+    var saves = 0
+    val repository =
+        object : EventsRepository by stored {
+          override suspend fun editEvent(eventId: String, newValue: Event) {
+            saves++
+            release.await()
+            stored.editEvent(eventId, newValue)
+          }
+        }
+    var leaves = 0
+    val viewModel = loadedViewModel(owner.uid, repository)
+    viewModel.changeRole(visitor.uid, Role.STAFF)
+
+    viewModel.changeRole(visitor.uid, Role.TEAM_LEAD)
+    viewModel.kickMember(visitor.uid)
+    viewModel.deleteEvent { leaves++ }
+    viewModel.fetchEvent()
+    advanceUntilIdle()
+
+    assertEquals(1, saves)
+    assertEquals(0, leaves)
+    assertTrue(viewModel.uiState.value.isUpdating)
+    assertEquals(rolesEvent, viewModel.uiState.value.event)
+    release.complete(Unit)
+    advanceUntilIdle()
+    assertEquals(Role.STAFF, viewModel.uiState.value.event?.roleOf(visitor.uid))
+    assertFalse(viewModel.uiState.value.isUpdating)
+  }
+
+  /** An [EventDetailsViewModel] of [rolesEvent], stored in [repository], loaded for [userId]. */
+  private fun TestScope.loadedViewModel(
+      userId: String,
+      repository: EventsRepository = EventsRepositoryLocal(listOf(rolesEvent)),
+  ): EventDetailsViewModel {
+    val viewModel =
+        EventDetailsViewModel(
+            MembersFixture.dataRepositoryWith(rolesEvent, repository),
+            rolesEvent.eventId,
+            userId,
+        )
+    viewModel.fetchEvent()
+    advanceUntilIdle()
+    return viewModel
   }
 
   /** Breaks if the organizer's deletion does not delete that event, then leave once. */
@@ -275,8 +436,8 @@ class EventDetailsViewModelTest {
   }
 
   /**
-   * Breaks if a second tap deletes the event twice, or if a reload during the deletion resets the
-   * screen, so the organizer could tap Delete again.
+   * Breaks if a second tap deletes the event twice, if a change of role runs during the deletion,
+   * or if a reload during the deletion resets the screen, so the organizer could tap Delete again.
    */
   @Test
   fun deletionRunsOnceAndIsNotResetByAReload() = runTest {
@@ -292,10 +453,12 @@ class EventDetailsViewModelTest {
     viewModel.deleteEvent { leaves++ }
     advanceUntilIdle()
     viewModel.deleteEvent { leaves++ }
+    viewModel.changeRole("volunteer", Role.TEAM_LEAD)
     viewModel.fetchEvent()
     advanceUntilIdle()
 
     assertTrue(viewModel.uiState.value.isDeleting)
+    assertEquals(testEvent("event-1"), viewModel.uiState.value.event)
     gate.complete(Unit)
     advanceUntilIdle()
     assertEquals(1, deletions)

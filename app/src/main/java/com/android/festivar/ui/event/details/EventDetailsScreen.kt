@@ -47,14 +47,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
-import com.android.festivar.model.event.DEFAULT_ROLE
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.joinCodeOf
 import com.android.festivar.model.event.role.Role
@@ -64,12 +62,10 @@ import com.android.festivar.ui.components.DeleteMenuItem
 import com.android.festivar.ui.components.EditDeleteMenu
 import com.android.festivar.ui.components.FestivarConfirmDialog
 import com.android.festivar.ui.components.Hairline
-import com.android.festivar.ui.components.PeopleRow
+import com.android.festivar.ui.components.NoticeSnackbar
 import com.android.festivar.ui.components.PillStyle
 import com.android.festivar.ui.components.StatusPill
-import com.android.festivar.ui.components.UserListBottomSheet
-import com.android.festivar.ui.components.UserTag
-import com.android.festivar.ui.components.formatEventDateAndLocation
+import com.android.festivar.ui.components.datetime.formatEventDateAndLocation
 import com.android.festivar.ui.theme.AppTheme
 import com.android.festivar.ui.theme.NumeralLarge
 import java.time.ZoneId
@@ -96,7 +92,9 @@ object EventDetailsScreenTestTags {
   const val DELETE_DIALOG = "eventDeleteDialog"
   const val DELETE_CONFIRM_BUTTON = "eventDeleteConfirmButton"
   const val DELETE_DISMISS_BUTTON = "eventDeleteDismissButton"
-  const val DELETE_ERROR = "eventDeleteError"
+  const val ACTION_ERROR = "eventDetailsActionError"
+  const val CHANGE_ROLE_CONFIRM = "changeRoleConfirmButton"
+  const val KICK_CONFIRM = "kickConfirmButton"
 }
 
 /** Callbacks handled by the Event Details screen. */
@@ -106,6 +104,9 @@ class EventDetailsActions(
     val onAnnouncementsClicked: () -> Unit = {},
     val onEditClicked: () -> Unit = {},
     val onDeleteEvent: () -> Unit = {},
+    val onChangeRole: (userId: String, newRole: Role) -> Unit = { _, _ -> },
+    val onKick: (userId: String) -> Unit = {},
+    val onErrorShown: () -> Unit = {},
 )
 
 /**
@@ -144,6 +145,9 @@ fun EventDetailsScreen(
               onAnnouncementsClicked = onAnnouncementsClicked,
               onEditClicked = onEditClicked,
               onDeleteEvent = { viewModel.deleteEvent(onEventDeleted) },
+              onChangeRole = viewModel::changeRole,
+              onKick = viewModel::kickMember,
+              onErrorShown = viewModel::clearError,
           ),
       modifier = modifier,
   )
@@ -167,14 +171,26 @@ private fun EventDetailsContent(
       topBar = {
         EventDetailsTopBar(
             onBack = actions.onBack,
-            showMenu = state.isOwner && !state.isDeleting,
+            showMenu = state.permissions.canEditEvent && !state.isDeleting,
             onEditClicked = actions.onEditClicked,
-            onDeleteClicked = { showDeleteConfirmation = true },
+            onDeleteClicked = { showDeleteConfirmation = true }.takeIf { state.canDelete },
         )
       },
       bottomBar = {
-        if (event != null) {
+        if (event != null && state.permissions.canSeeTasks) {
           EventDetailsBottomBar(onTasksButtonClicked = actions.onTasksButtonClicked)
+        }
+      },
+      snackbarHost = {
+        if (event != null && state.errorMsg != null) {
+          NoticeSnackbar(
+              message = stringResource(state.errorMsg),
+              actionLabel = stringResource(R.string.action_dismiss),
+              onAction = actions.onErrorShown,
+              modifier =
+                  Modifier.padding(horizontal = 20.dp)
+                      .testTag(EventDetailsScreenTestTags.ACTION_ERROR),
+          )
         }
       },
   ) { paddingValues ->
@@ -182,8 +198,8 @@ private fun EventDetailsContent(
       event != null ->
           EventInfo(
               event = event,
-              errorMsg = state.errorMsg,
-              onAnnouncementsClicked = actions.onAnnouncementsClicked,
+              state = state,
+              actions = actions,
               modifier = modifier.padding(paddingValues),
           )
       state.errorMsg != null ->
@@ -221,17 +237,16 @@ private fun EventDetailsContent(
 
 /**
  * Displays the loaded event, including its task summary, a row opening its announcements and its
- * identifying information. [errorMsg], the failure of a deletion, shows above the title.
+ * identifying information. The task summary and the members are shown only if the
+ * [EventDetailsUIState.permissions] of the current user allow it.
  */
 @Composable
 private fun EventInfo(
     event: Event,
-    errorMsg: Int?,
-    onAnnouncementsClicked: () -> Unit,
+    state: EventDetailsUIState,
+    actions: EventDetailsActions,
     modifier: Modifier = Modifier,
 ) {
-  val openTasks = event.tasks.count { !it.completed }
-
   Column(
       modifier =
           modifier
@@ -241,14 +256,6 @@ private fun EventInfo(
       verticalArrangement = Arrangement.spacedBy(12.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
   ) {
-    if (errorMsg != null) {
-      Text(
-          text = stringResource(errorMsg),
-          modifier = Modifier.fillMaxWidth().testTag(EventDetailsScreenTestTags.DELETE_ERROR),
-          color = MaterialTheme.colorScheme.error,
-          style = MaterialTheme.typography.bodyMedium,
-      )
-    }
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -290,93 +297,69 @@ private fun EventInfo(
       }
     }
 
-    Row(
-        modifier =
-            Modifier.fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerLow)
-                .padding(14.dp)
-                .testTag(EventDetailsScreenTestTags.OPEN_TASKS_STAT),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-      Column {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-          Text(
-              text = openTasks.toString(),
-              color = MaterialTheme.colorScheme.onSurface,
-              style = NumeralLarge,
-          )
-          Text(
-              text = stringResource(R.string.event_details_tasks_count, event.tasks.size),
-              modifier = Modifier.padding(start = 4.dp, top = 12.dp),
-              color = MaterialTheme.colorScheme.onSurfaceVariant,
-              style = MaterialTheme.typography.bodySmall,
-          )
-        }
-        Text(
-            text = stringResource(R.string.event_details_tasks_still_open),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.bodySmall,
-        )
-      }
+    if (state.permissions.canSeeTasks) {
+      OpenTasksStat(event)
     }
 
     JoinCodeRow(code = joinCodeOf(event))
 
-    EventLinks(event = event, onAnnouncementsClicked = onAnnouncementsClicked)
+    EventLinks(event = event, state = state, actions = actions)
+  }
+}
+
+/** The number of open tasks of the [event] out of all its tasks. */
+@Composable
+private fun OpenTasksStat(event: Event) {
+  val openTasks = event.tasks.count { !it.completed }
+  Row(
+      modifier =
+          Modifier.fillMaxWidth()
+              .clip(RoundedCornerShape(12.dp))
+              .background(MaterialTheme.colorScheme.surfaceContainerLow)
+              .padding(14.dp)
+              .testTag(EventDetailsScreenTestTags.OPEN_TASKS_STAT),
+      verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Column {
+      Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = openTasks.toString(),
+            color = MaterialTheme.colorScheme.onSurface,
+            style = NumeralLarge,
+        )
+        Text(
+            text = stringResource(R.string.event_details_tasks_count, event.tasks.size),
+            modifier = Modifier.padding(start = 4.dp, top = 12.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodySmall,
+        )
+      }
+      Text(
+          text = stringResource(R.string.event_details_tasks_still_open),
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          style = MaterialTheme.typography.bodySmall,
+      )
+    }
   }
 }
 
 /**
- * The card under the join code, as in Figma: the "Announcements" row, a hairline inset to the text,
- * then the [MembersEntry] row.
+ * The card under the join code, as in Figma: the "Announcements" row, then the [MembersEntry] row
+ * if the current user can see the members.
  */
 @Composable
-private fun EventLinks(event: Event, onAnnouncementsClicked: () -> Unit) {
+private fun EventLinks(event: Event, state: EventDetailsUIState, actions: EventDetailsActions) {
   Column(
       modifier =
           Modifier.fillMaxWidth()
               .clip(RoundedCornerShape(12.dp))
               .background(MaterialTheme.colorScheme.surfaceContainerLow)
   ) {
-    AnnouncementsRow(onClick = onAnnouncementsClicked)
-    Hairline(modifier = Modifier.padding(start = 68.dp))
-    MembersEntry(event = event)
-  }
-}
-
-/**
- * The "Members" card of the [event], which opens one list of its members: the organizer pinned at
- * the top with an "Organizer" tag, then the volunteers. The list shows no availability.
- *
- * @param startOpen whether the list is open at first, which previews use to show it.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun MembersEntry(event: Event, startOpen: Boolean = false) {
-  var showMembers by rememberSaveable { mutableStateOf(startOpen) }
-  val members = event.membersOrganizerFirst()
-  val title = stringResource(R.string.event_details_members)
-  val count = pluralStringResource(R.plurals.join_event_members, members.size, members.size)
-
-  PeopleRow(
-      title = title,
-      people = members,
-      subtitle = count,
-      onClick = { showMembers = true },
-      modifier = Modifier.testTag(EventDetailsScreenTestTags.MEMBERS_CARD),
-  )
-
-  if (showMembers) {
-    val organizerTag = UserTag(stringResource(R.string.event_details_organizer))
-    UserListBottomSheet(
-        users = members,
-        onDismissRequest = { showMembers = false },
-        title = title,
-        subtitle = stringResource(R.string.event_details_members_subtitle, count, event.title),
-        tags = { user -> if (event.isOrganizer(user)) listOf(organizerTag) else emptyList() },
-        modifier = Modifier.testTag(EventDetailsScreenTestTags.MEMBERS_SHEET),
-    )
+    AnnouncementsRow(onClick = actions.onAnnouncementsClicked)
+    if (state.permissions.canSeeMembers) {
+      Hairline(modifier = Modifier.padding(start = 68.dp))
+      MembersEntry(event = event, state = state, actions = actions)
+    }
   }
 }
 
@@ -458,7 +441,7 @@ private fun JoinCodeRow(code: String) {
 
 /**
  * Top app bar containing the navigation button for leaving the details screen and, when [showMenu]
- * is true, the menu to edit or delete the event.
+ * is true, the menu to edit the event. The menu offers to delete it only with an [onDeleteClicked].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -466,7 +449,7 @@ private fun EventDetailsTopBar(
     onBack: () -> Unit,
     showMenu: Boolean,
     onEditClicked: () -> Unit,
-    onDeleteClicked: () -> Unit,
+    onDeleteClicked: (() -> Unit)?,
 ) {
   TopAppBar(
       title = {},
@@ -495,11 +478,13 @@ private fun EventDetailsTopBar(
               editTag = EventDetailsScreenTestTags.EDIT_MENU_ITEM,
               onEdit = onEditClicked,
               delete =
-                  DeleteMenuItem(
-                      label = stringResource(R.string.event_details_delete_event),
-                      testTag = EventDetailsScreenTestTags.DELETE_MENU_ITEM,
-                      onClick = onDeleteClicked,
-                  ),
+                  onDeleteClicked?.let {
+                    DeleteMenuItem(
+                        label = stringResource(R.string.event_details_delete_event),
+                        testTag = EventDetailsScreenTestTags.DELETE_MENU_ITEM,
+                        onClick = it,
+                    )
+                  },
           )
         }
       },
@@ -545,7 +530,7 @@ private const val PREVIEW_EVENT_ID = "3f9a1c2e-7b4d-4e8a-9c15-d2a6b0f84e37"
 
 private const val PREVIEW_OWNER_ID = "owner"
 
-/** Twelve members like in Figma, with the organizer listed last to show they are pinned first. */
+/** Twelve members like in Figma, with the owner listed last to show they are pinned first. */
 private val previewMembers =
     listOf(
             "Sara" to "Keller",
@@ -563,6 +548,26 @@ private val previewMembers =
         .mapIndexed { index, (name, surname) -> User("u$index", name = name, surname = surname) } +
         User(PREVIEW_OWNER_ID, name = "Olivia", surname = "Roy")
 
+/** A role for every member but the owner, so that the members list shows each category. */
+private val previewRoles =
+    previewMembers
+        .filter { it.uid != PREVIEW_OWNER_ID }
+        .mapIndexed { index, user ->
+          user.uid to
+              Role.entries.filter { it != Role.OWNER }.reversed().let { it[index % it.size] }
+        }
+        .toMap()
+
+/** What the owner of [previewEvent] can do in it. */
+private val previewOwnerPermissions =
+    EventDetailsPermissions(
+        canEditEvent = true,
+        canDeleteEvent = true,
+        canSeeMembers = true,
+        canSeeTasks = true,
+        canManageRoles = true,
+    )
+
 private fun previewEvent(): Event {
   val eventStartDate: ZonedDateTime =
       ZonedDateTime.of(2026, 10, 16, 10, 0, 0, 0, ZoneId.of("Europe/Zurich"))
@@ -576,7 +581,7 @@ private fun previewEvent(): Event {
       members = previewMembers,
       roles =
           previewMembers.associate {
-            it.uid to if (it.uid == PREVIEW_OWNER_ID) Role.OWNER else DEFAULT_ROLE
+            it.uid to if (it.uid == PREVIEW_OWNER_ID) Role.OWNER else previewRoles[it.uid]!!
           },
       startDate = eventStartDate,
       endDate = eventEndDate,
@@ -605,7 +610,11 @@ private fun previewEvent(): Event {
 internal fun EventDetailsScreenPreview() {
   AppTheme {
     EventDetailsContent(
-        state = EventDetailsUIState(event = previewEvent()),
+        state =
+            EventDetailsUIState(
+                event = previewEvent(),
+                permissions = EventDetailsPermissions(canSeeMembers = true, canSeeTasks = true),
+            ),
         actions = EventDetailsActions(onBack = {}, onTasksButtonClicked = {}),
     )
   }
@@ -616,7 +625,7 @@ internal fun EventDetailsScreenPreview() {
 internal fun OwnerEventDetailsPreview() {
   AppTheme {
     EventDetailsContent(
-        state = EventDetailsUIState(event = previewEvent(), isOwner = true),
+        state = EventDetailsUIState(event = previewEvent(), permissions = previewOwnerPermissions),
         actions = EventDetailsActions(),
     )
   }
@@ -627,7 +636,11 @@ internal fun OwnerEventDetailsPreview() {
 internal fun ClosedEventPreview() {
   AppTheme {
     EventDetailsContent(
-        state = EventDetailsUIState(event = previewEvent().copy(closed = true)),
+        state =
+            EventDetailsUIState(
+                event = previewEvent().copy(closed = true),
+                permissions = previewOwnerPermissions,
+            ),
         actions = EventDetailsActions(onBack = {}, onTasksButtonClicked = {}),
     )
   }
@@ -639,7 +652,12 @@ internal fun ClosedEventPreview() {
 internal fun EventDetailsMembersListPreview() {
   AppTheme {
     Box(Modifier.fillMaxSize().padding(20.dp)) {
-      MembersEntry(event = previewEvent(), startOpen = true)
+      MembersEntry(
+          event = previewEvent(),
+          state = EventDetailsUIState(permissions = previewOwnerPermissions),
+          actions = EventDetailsActions(),
+          startOpen = true,
+      )
     }
   }
 }

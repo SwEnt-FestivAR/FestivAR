@@ -33,6 +33,7 @@ import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.announcement.Announcement
+import com.android.festivar.model.event.role.Role
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import io.mockk.mockk
@@ -518,12 +519,23 @@ class EventDetailsScreenTest {
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DELETE_CONFIRM_BUTTON).performClick()
     composeTestRule.waitForIdle()
 
-    composeTestRule
-        .onNodeWithTag(EventDetailsScreenTestTags.DELETE_ERROR)
-        .assertIsDisplayed()
-        .assertTextEquals(string(R.string.event_details_delete_error))
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.ACTION_ERROR).assertIsDisplayed()
+    composeTestRule.onNodeWithText(string(R.string.event_details_delete_error)).assertIsDisplayed()
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.EVENT_NAME).assertIsDisplayed()
     assertEquals(0, leaves)
+  }
+
+  /** Breaks if a member who can edit the event without owning it is offered Delete event. */
+  @Test
+  fun staffManagerSeesMenuWithoutDelete() {
+    val manager = User(uid = "manager", name = "Mona M.")
+    val event = eventSameMonth.addMember(manager)
+    setContent(event.copy(roles = event.roles + (manager.uid to Role.STAFF_MANAGER)), manager.uid)
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.MORE_ACTIONS_BUTTON).performClick()
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.EDIT_MENU_ITEM).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DELETE_MENU_ITEM).assertDoesNotExist()
   }
 
   /** Breaks if a volunteer gets the menu button. */

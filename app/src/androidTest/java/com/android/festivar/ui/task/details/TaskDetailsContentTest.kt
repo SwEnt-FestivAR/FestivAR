@@ -32,8 +32,8 @@ import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.PeopleCardTestTags
 import com.android.festivar.ui.components.UserListTestTags
-import com.android.festivar.ui.components.formatDate
-import com.android.festivar.ui.components.formatTime
+import com.android.festivar.ui.components.datetime.formatDate
+import com.android.festivar.ui.components.datetime.formatTime
 import com.android.festivar.ui.voicenote.VoiceNoteCallbacks
 import com.android.festivar.ui.voicenote.VoiceNoteRecordTestTags
 import com.android.festivar.ui.voicenote.VoiceNoteTestTags

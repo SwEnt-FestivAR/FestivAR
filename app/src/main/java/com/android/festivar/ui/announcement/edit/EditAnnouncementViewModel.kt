@@ -1,4 +1,5 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Fable 5.2 <noreply@anthropic.com>
 package com.android.festivar.ui.announcement.edit
 
 import android.util.Log
@@ -49,15 +50,11 @@ data class EditAnnouncementUiState(
     @StringRes val errorMsg: Int? = null,
 ) {
   /**
-   * Whether the form differs from [announcement] on a field the user can edit. Spaces around the
-   * texts are not a change, since the save trims them.
+   * Whether the form differs from [announcement] on a field the user can edit (see
+   * [AnnouncementFormState.matches]).
    */
   val hasChanges: Boolean
-    get() =
-        announcement != null &&
-            (form.trimmedTitle != announcement.title.trim() ||
-                form.trimmedContent != announcement.content.trim() ||
-                form.priority != announcement.priority)
+    get() = announcement != null && !form.matches(announcement)
 
   /** Whether going back must ask first: a saved edit has nothing left to lose. */
   val needsDiscardConfirmation: Boolean
@@ -68,6 +65,13 @@ data class EditAnnouncementUiState(
    */
   val canSave: Boolean
     get() = isOrganizer() && form.isValid && hasChanges && !isSaving && !isSaved
+
+  /**
+   * Whether the inputs can be changed. They lock during a save and once the edit is saved, when the
+   * form is final, so what is shown stays what was stored.
+   */
+  val isEditable: Boolean
+    get() = !isSaving && !isSaved
 }
 
 // The model allows a blank content but the form requires one, so the reason "Save" is disabled must
