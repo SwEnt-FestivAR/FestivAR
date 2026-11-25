@@ -418,8 +418,7 @@ class AnnouncementFeedViewModelTest {
 
     expectedCanCreate.forEach { (role, canCreate) ->
       val userId = if (role == Role.OWNER) OWNER_ID else MEMBER_ID
-      val event =
-          if (role == Role.OWNER) event(infoToday) else eventWithMember(role, infoToday)
+      val event = if (role == Role.OWNER) event(infoToday) else eventWithMember(role, infoToday)
       val viewModel = feedViewModel(EventsRepositoryLocal(listOf(event)), userId = { userId })
 
       viewModel.refreshUIState()
