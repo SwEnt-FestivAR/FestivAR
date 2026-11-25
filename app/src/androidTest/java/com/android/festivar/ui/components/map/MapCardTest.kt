@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Shapes
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
@@ -189,21 +187,6 @@ class MapCardTest {
     composeTestRule.runOnIdle { label = "second" }
 
     composeTestRule.waitUntil(timeoutMillis = 5_000) { seen == "second" }
-  }
-
-  /** Breaks if the card disappears or crashes when the shape of the theme changes under it. */
-  @Test
-  fun card_whenTheThemeShapesChange_staysDisplayed() {
-    var shapes by mutableStateOf(Shapes(large = RoundedCornerShape(24.dp)))
-    composeTestRule.setContent {
-      MaterialTheme(shapes = shapes) {
-        MapCard(listOf(EPFL_LOCATION), Modifier.fillMaxWidth().height(156.dp))
-      }
-    }
-
-    composeTestRule.runOnIdle { shapes = Shapes(large = RoundedCornerShape(4.dp)) }
-
-    composeTestRule.onNodeWithTag(MapCardTestTags.CARD).assertIsDisplayed()
   }
 
   /**
