@@ -3,6 +3,7 @@
 package com.android.festivar.ui.event.create
 
 // Co-authored-by: Copilot App
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Gemini <noreply@google.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
@@ -22,7 +23,7 @@ import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.ui.components.FieldError
-import com.android.festivar.ui.components.datetime.DateTimeField
+import com.android.festivar.ui.components.datetime.DateTimeRange
 import com.android.festivar.ui.components.datetime.END_OF_DAY
 import com.android.festivar.ui.components.datetime.START_OF_DAY
 import com.android.festivar.ui.event.EventFormViewModel
@@ -88,68 +89,12 @@ class CreateEventViewModelTest {
 
     val state = viewModel.uiState.value
     assertEquals("Summer festival", state.name)
-    assertEquals(startDate, state.startDate)
-    assertEquals(endDate, state.endDate)
-    assertEquals(startTime, state.startTime)
-    assertEquals(endTime, state.endTime)
+    assertEquals(startDate, state.range.startDate)
+    assertEquals(endDate, state.range.endDate)
+    assertEquals(startTime, state.range.startTime)
+    assertEquals(endTime, state.range.endTime)
     assertEquals("Main square", state.venue)
     assertEquals("Bring the stage equipment", state.notes)
-  }
-
-  /** Red if any date/time picker fails to update its field or close afterward. */
-  @Test
-  fun pickerActionsUpdateAndCloseThePicker() {
-    viewModel.showPicker(DateTimeField.START_DATE)
-    assertEquals(DateTimeField.START_DATE, viewModel.uiState.value.openPicker)
-
-    viewModel.pickDate(startDate)
-    assertEquals(startDate, viewModel.uiState.value.startDate)
-    assertNull(viewModel.uiState.value.openPicker)
-
-    viewModel.showPicker(DateTimeField.END_DATE)
-    assertEquals(DateTimeField.END_DATE, viewModel.uiState.value.openPicker)
-
-    viewModel.pickDate(endDate)
-    assertEquals(endDate, viewModel.uiState.value.endDate)
-    assertNull(viewModel.uiState.value.openPicker)
-
-    viewModel.showPicker(DateTimeField.START_TIME)
-    assertEquals(DateTimeField.START_TIME, viewModel.uiState.value.openPicker)
-
-    viewModel.pickTime(startTime)
-    assertEquals(startTime, viewModel.uiState.value.startTime)
-    assertNull(viewModel.uiState.value.openPicker)
-
-    viewModel.showPicker(DateTimeField.END_TIME)
-    assertEquals(DateTimeField.END_TIME, viewModel.uiState.value.openPicker)
-
-    viewModel.pickTime(endTime)
-    assertEquals(endTime, viewModel.uiState.value.endTime)
-    assertNull(viewModel.uiState.value.openPicker)
-  }
-
-  /** Red if picking a date without a date picker leaves an unintended date behind. */
-  @Test
-  fun pickDateWithoutDatePickerOnlyClosesThePicker() {
-    viewModel.showPicker(DateTimeField.START_TIME)
-
-    viewModel.pickDate(startDate)
-
-    assertNull(viewModel.uiState.value.startDate)
-    assertNull(viewModel.uiState.value.endDate)
-    assertNull(viewModel.uiState.value.openPicker)
-  }
-
-  /** Red if picking a time without a time picker writes to an unintended field. */
-  @Test
-  fun pickTimeWithoutTimePickerOnlyClosesThePicker() {
-    viewModel.showPicker(DateTimeField.START_DATE)
-
-    viewModel.pickTime(startTime)
-
-    assertNull(viewModel.uiState.value.startTime)
-    assertNull(viewModel.uiState.value.endTime)
-    assertNull(viewModel.uiState.value.openPicker)
   }
 
   /** Red if the initial event form is considered valid. */
@@ -182,16 +127,14 @@ class CreateEventViewModelTest {
   @Test
   fun needsDiscardConfirmationTracksEnteredDetails() {
     assertFalse(viewModel.needsDiscardConfirmation)
-    viewModel.showPicker(DateTimeField.START_DATE)
-    assertFalse(viewModel.needsDiscardConfirmation)
 
     val edits: List<(CreateEventViewModel) -> Unit> =
         listOf(
             { it.updateName("Festival") },
-            { it.updateStartDate(startDate) },
-            { it.updateEndDate(endDate) },
-            { it.updateStartTime(startTime) },
-            { it.updateEndTime(endTime) },
+            { it.updateRange(DateTimeRange(startDate = startDate)) },
+            { it.updateRange(DateTimeRange(endDate = endDate)) },
+            { it.updateRange(DateTimeRange(startTime = startTime)) },
+            { it.updateRange(DateTimeRange(endTime = endTime)) },
             { it.updateVenue("Main square") },
             { it.updateNotes("Bring equipment") },
         )
@@ -284,15 +227,13 @@ class CreateEventViewModelTest {
     val state = viewModel.uiState.value
 
     assertNull(state.nameError)
-    assertNull(state.startDateError)
     assertNull(state.endDateError)
   }
 
   /** Red if missing times do not default to the start and end of their dates. */
   @Test
   fun dateTimesUseDefaultTimesWhenTimesAreNotSet() {
-    viewModel.updateStartDate(startDate)
-    viewModel.updateEndDate(endDate)
+    viewModel.updateRange(DateTimeRange(startDate = startDate, endDate = endDate))
 
     val state = viewModel.uiState.value
     assertEquals(START_OF_DAY, state.startDateTime?.toLocalTime())
@@ -304,10 +245,14 @@ class CreateEventViewModelTest {
   fun dateTimesUseSelectedTimesWhenTimesAreSet() {
     val selectedStartTime = LocalTime.of(14, 30)
     val selectedEndTime = LocalTime.of(18, 0)
-    viewModel.updateStartDate(startDate)
-    viewModel.updateEndDate(endDate)
-    viewModel.updateStartTime(selectedStartTime)
-    viewModel.updateEndTime(selectedEndTime)
+    viewModel.updateRange(
+        DateTimeRange(
+            startDate = startDate,
+            endDate = endDate,
+            startTime = selectedStartTime,
+            endTime = selectedEndTime,
+        )
+    )
 
     val state = viewModel.uiState.value
     assertEquals(selectedStartTime, state.startDateTime?.toLocalTime())
@@ -320,8 +265,11 @@ class CreateEventViewModelTest {
     val validState =
         viewModel.uiState.value.copy(
             name = "Summer festival",
-            startDate = startDate,
-            endDate = endDate,
+            range =
+                DateTimeRange(
+                    startDate = startDate,
+                    endDate = endDate,
+                ),
         )
 
     assertFalse(validState.copy(name = "").canCreate)
@@ -340,8 +288,7 @@ class CreateEventViewModelTest {
   @Test
   fun invalidDateRangeIsReported() {
     viewModel.updateName("Summer festival")
-    viewModel.updateStartDate(endDate)
-    viewModel.updateEndDate(startDate)
+    viewModel.updateRange(DateTimeRange(startDate = endDate, endDate = startDate))
 
     assertEquals(FieldError.END_BEFORE_START, viewModel.uiState.value.endDateError)
     assertFalse(viewModel.uiState.value.isValid)
@@ -355,8 +302,11 @@ class CreateEventViewModelTest {
     val state =
         CreateEventUIState(
             name = "Summer festival",
-            startDate = oldStartDate,
-            endDate = oldEndDate,
+            range =
+                DateTimeRange(
+                    startDate = oldStartDate,
+                    endDate = oldEndDate,
+                ),
         )
 
     assertEquals(FieldError.OUTDATED, state.endDateError)
@@ -412,8 +362,7 @@ class CreateEventViewModelTest {
         )
     val gatedViewModel = CreateEventViewModel(dataRepository, creator.uid)
     gatedViewModel.updateName("Summer festival")
-    gatedViewModel.updateStartDate(startDate)
-    gatedViewModel.updateEndDate(endDate)
+    gatedViewModel.updateRange(DateTimeRange(startDate = startDate, endDate = endDate))
 
     gatedViewModel.createEvent()
     withTimeout(5_000.milliseconds) {
@@ -564,10 +513,10 @@ class CreateEventViewModelTest {
     assertEquals(R.string.create_event_error_save_failed, failingViewModel.uiState.value.errorMsg)
     assertFalse(failingViewModel.uiState.value.isSaving)
     assertEquals("Summer festival", failingViewModel.uiState.value.name)
-    assertEquals(startDate, failingViewModel.uiState.value.startDate)
-    assertEquals(endDate, failingViewModel.uiState.value.endDate)
-    assertEquals(startTime, failingViewModel.uiState.value.startTime)
-    assertEquals(endTime, failingViewModel.uiState.value.endTime)
+    assertEquals(startDate, failingViewModel.uiState.value.range.startDate)
+    assertEquals(endDate, failingViewModel.uiState.value.range.endDate)
+    assertEquals(startTime, failingViewModel.uiState.value.range.startTime)
+    assertEquals(endTime, failingViewModel.uiState.value.range.endTime)
     assertEquals("Main square", failingViewModel.uiState.value.venue)
     assertEquals("Bring the stage equipment", failingViewModel.uiState.value.notes)
   }
@@ -650,8 +599,7 @@ class CreateEventViewModelTest {
         )
     val failingViewModel = CreateEventViewModel(dataRepository, creator.uid)
     failingViewModel.updateName("Summer festival")
-    failingViewModel.updateStartDate(startDate)
-    failingViewModel.updateEndDate(endDate)
+    failingViewModel.updateRange(DateTimeRange(startDate = startDate, endDate = endDate))
 
     failingViewModel.createEvent()
     withTimeout(5_000.milliseconds) {
@@ -1439,16 +1387,19 @@ class CreateEventViewModelTest {
 
   private fun fillRequiredFields() {
     viewModel.updateName("Summer festival")
-    viewModel.updateStartDate(startDate)
-    viewModel.updateEndDate(endDate)
+    viewModel.updateRange(DateTimeRange(startDate = startDate, endDate = endDate))
   }
 
   private fun fillAllFields() {
     viewModel.updateName("Summer festival")
-    viewModel.updateStartDate(startDate)
-    viewModel.updateEndDate(endDate)
-    viewModel.updateStartTime(startTime)
-    viewModel.updateEndTime(endTime)
+    viewModel.updateRange(
+        DateTimeRange(
+            startDate = startDate,
+            endDate = endDate,
+            startTime = startTime,
+            endTime = endTime,
+        )
+    )
     viewModel.updateVenue("Main square")
     viewModel.updateNotes("Bring the stage equipment")
   }
