@@ -1,6 +1,7 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co authored by: Gemini
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.announcement.details
 
 import android.content.ActivityNotFoundException
@@ -33,6 +34,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -90,6 +92,8 @@ fun AnnouncementDetailsScreen(
   val state by viewModel.uiState.collectAsStateWithLifecycle()
   val uriHandler = LocalUriHandler.current
   LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.load() }
+  val canSeeAnnouncement = state.permissions.canSeeAnnouncement
+  LaunchedEffect(canSeeAnnouncement) { if (!canSeeAnnouncement) onBack() }
 
   AnnouncementDetailsContent(
       state = state,
@@ -150,26 +154,28 @@ fun AnnouncementDetailsContent(
         )
       },
       bottomBar = {
-        state.announcement?.let { announcement ->
-          OutlinedButton(
-              onClick = onTogglePin,
-              enabled = state.canTogglePin,
-              shape = MaterialTheme.shapes.medium,
-              modifier =
-                  Modifier.fillMaxWidth()
-                      .padding(horizontal = 16.dp, vertical = 8.dp)
-                      .height(52.dp)
-                      .testTag(AnnouncementDetailsScreenTestTags.PIN_BUTTON),
-          ) {
-            Text(
-                stringResource(
-                    if (announcement.pinned) R.string.announcement_details_unpin_from_top
-                    else R.string.announcement_details_pin_to_top
-                ),
-                style = MaterialTheme.typography.labelLarge,
-            )
-          }
-        }
+        state.announcement
+            ?.takeIf { state.permissions.canPin }
+            ?.let { announcement ->
+              OutlinedButton(
+                  onClick = onTogglePin,
+                  enabled = state.canTogglePin,
+                  shape = MaterialTheme.shapes.medium,
+                  modifier =
+                      Modifier.fillMaxWidth()
+                          .padding(horizontal = 16.dp, vertical = 8.dp)
+                          .height(52.dp)
+                          .testTag(AnnouncementDetailsScreenTestTags.PIN_BUTTON),
+              ) {
+                Text(
+                    stringResource(
+                        if (announcement.pinned) R.string.announcement_details_unpin_from_top
+                        else R.string.announcement_details_pin_to_top
+                    ),
+                    style = MaterialTheme.typography.labelLarge,
+                )
+              }
+            }
       },
   ) { padding ->
     Column(
@@ -339,6 +345,7 @@ internal fun AnnouncementDetailsContentPreview() {
                 authorName = "Marie Dupont",
                 eventEndTime = date.plusHours(2),
                 isLoading = false,
+                permissions = AnnouncementDetailsPermissions(canPin = true),
             )
     )
   }

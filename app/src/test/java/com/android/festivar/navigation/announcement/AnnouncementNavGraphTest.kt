@@ -21,6 +21,7 @@ import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.announcement.Announcement
+import com.android.festivar.model.user.User
 import com.android.festivar.navigation.AppScreens
 import com.android.festivar.ui.announcement.create.CreateAnnouncementScreenTestTags as Tags
 import com.android.festivar.ui.announcement.details.AnnouncementDetailsScreenTestTags as DetailsTags
@@ -59,6 +60,8 @@ class AnnouncementNavGraphTest {
               Event(
                   eventId = EVENT_ID,
                   ownerId = "owner",
+                  // The signed-in user is a member, so the announcement details are shown to them
+                  members = listOf(User(uid = "owner"), User(uid = USER_ID)),
                   title = "Balelec",
                   startDate = ZonedDateTime.now().plusDays(1),
                   endDate = ZonedDateTime.now().plusDays(2),
@@ -290,5 +293,46 @@ class AnnouncementNavGraphTest {
           navController.previousBackStackEntry?.destination?.route,
       )
     }
+  }
+
+  /** Breaks if a signed-out user can still open the announcement details screen. */
+  @Test
+  fun aSignedOutUserOpeningTheDetailsIsSentToTheLogin() {
+    addTheAnnouncement()
+    showTheGraphAs(null)
+    composeTestRule.runOnUiThread {
+      navController.navigate(AppScreens.announcementDetails(EVENT_ID, "a1"))
+    }
+
+    composeTestRule.onNodeWithText(LOGIN_SCREEN).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(DetailsTags.TITLE).assertDoesNotExist()
+    composeTestRule.runOnIdle {
+      assertEquals(AppScreens.Login.name, navController.currentDestination?.route)
+    }
+  }
+
+  /** Breaks if the signed-in user's uid does not reach the view model, or a non-member stays. */
+  @Test
+  fun aNonMemberOpeningTheDetailsGoesBackToThePreviousScreen() {
+    addTheAnnouncement()
+    showTheGraphAs(mockk { every { uid } returns "stranger" })
+    composeTestRule.runOnUiThread {
+      navController.navigate(AppScreens.announcementDetails(EVENT_ID, "a1"))
+    }
+
+    assertThePreviousScreenIsAloneOnTheBackStack()
+    composeTestRule.onNodeWithTag(DetailsTags.TITLE).assertDoesNotExist()
+  }
+
+  /** Adds the announcement "a1", written by the signed-in user, to the event. */
+  private fun addTheAnnouncement() {
+    val announcement =
+        Announcement(
+            announcementId = "a1",
+            title = "Stage B is closed",
+            authorId = USER_ID,
+            updatedAt = ZonedDateTime.now(),
+        )
+    runBlocking { repository.addAnnouncement(EVENT_ID, announcement) }
   }
 }
