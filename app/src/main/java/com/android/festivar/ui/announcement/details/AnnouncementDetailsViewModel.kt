@@ -139,7 +139,7 @@ class AnnouncementDetailsViewModel(
             } catch (_: NoSuchElementException) {
               null
             }
-          val permissions = event.permissionsOf(currentUserId(), announcement)
+        val permissions = event.permissionsOf(currentUserId(), announcement)
         _uiState.update {
           it.copy(
               announcement = announcement.takeIf { permissions.canSeeAnnouncement },
