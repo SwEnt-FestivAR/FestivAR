@@ -68,7 +68,7 @@ fun MapCard(
  * touches unconsumed, so a screen can still make the whole card clickable.
  */
 @Composable
-internal fun TouchBlocker(modifier: Modifier = Modifier) {
+internal fun TouchBlocker(modifier: Modifier) {
   Box(modifier.pointerInput(Unit) {})
 }
 
