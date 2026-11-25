@@ -25,6 +25,12 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.MarkerComposable
 import com.google.maps.android.compose.rememberUpdatedMarkerState
 
+/** Test tags of the pins of the map. */
+object MapPinTestTags {
+  const val EVENT = "map_pin_event"
+  const val TASK = "map_pin_task"
+}
+
 /**
  * What a pin on the map stands for, as in the `Pin` component of the Figma. The event pin is larger
  * than the task pin, so an event stays visible among its tasks.
@@ -35,9 +41,9 @@ import com.google.maps.android.compose.rememberUpdatedMarkerState
  */
 enum class MapPinKind(@DrawableRes val drawable: Int, val size: Dp, val testTag: String) {
   /** The location of an event: a red flag. */
-  EVENT(R.drawable.ic_map_pin_event, size = 56.dp, testTag = "map_pin_event"),
+  EVENT(R.drawable.ic_map_pin_event, size = 56.dp, testTag = MapPinTestTags.EVENT),
   /** The location of a task: a lime flag with an ink outline. */
-  TASK(R.drawable.ic_map_pin_task, size = 40.dp, testTag = "map_pin_task"),
+  TASK(R.drawable.ic_map_pin_task, size = 40.dp, testTag = MapPinTestTags.TASK),
 }
 
 /** Side of the square in which the pins are drawn, in the units of the drawables. */
