@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com> -->
 <!-- Pin Kind=Event of the FestivAR design: red flag. The ring at the foot is the location, with a ground shadow and a relief on the flag. -->
+<!-- Colours: an XML drawable cannot read the Compose theme, so the literals copy the red flag `errorLight` (#B3261E) and the ink pole and ring `onPrimaryLight` (#17180F) of ui/theme/Color.kt. Change them together. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="32dp"
     android:height="32dp"
