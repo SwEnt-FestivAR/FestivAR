@@ -38,15 +38,13 @@ fun cellOf(date: LocalDate) =
  * True when one of [labels] contains the long date of [date] in [locale].
  *
  * Finding the date inside the text is not enough: "1 novembre 2026" is also found inside "11
- * novembre 2026". So the character just before the date must not be a digit.
+ * novembre 2026". So no digit may come right before the date (`(?<!\d)`, "not preceded by a digit")
+ * or right after it (`(?!\d)`, "not followed by a digit").
  */
 internal fun labelsMatch(date: LocalDate, labels: List<String>, locale: Locale): Boolean {
   val longDate = DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG).withLocale(locale).format(date)
-  return labels.any { text ->
-    val start = text.indexOf(longDate)
-    val charBefore = text.getOrNull(start - 1)
-    start >= 0 && (charBefore == null || !charBefore.isDigit())
-  }
+  val whole = Regex("(?<!\\d)" + Regex.escape(longDate) + "(?!\\d)")
+  return labels.any { whole.containsMatchIn(it) }
 }
 
 /**
