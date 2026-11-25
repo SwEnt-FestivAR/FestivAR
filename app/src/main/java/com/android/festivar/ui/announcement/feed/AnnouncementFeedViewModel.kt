@@ -11,6 +11,7 @@ import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.event.announcement.AnnouncementPriority
+import com.android.festivar.model.event.role.Permission
 import java.time.Clock
 import java.time.LocalDate
 import kotlinx.coroutines.CancellationException
@@ -23,6 +24,22 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 private const val LOG_TAG = "AnnouncementFeedViewModel"
+
+/**
+ * What the signed-in user may do on the announcement feed, decided by their role in the event. A
+ * user who is not a member of the event, e.g. one kicked out since the feed was opened, may do
+ * nothing.
+ *
+ * @property canSeeAnnouncements Whether the user may see the announcements of the event. `true`
+ *   until a fetch proves otherwise, so that the screen does not leave before the event is loaded or
+ *   after a failed fetch.
+ * @property canCreateAnnouncement Whether the user may add an announcement, which shows the add
+ *   button. `false` until the event is loaded.
+ */
+data class AnnouncementFeedPermissions(
+    val canSeeAnnouncements: Boolean = true,
+    val canCreateAnnouncement: Boolean = false,
+)
 
 /**
  * Which announcements the feed shows, selected with the chips at the top of the screen.
@@ -61,6 +78,8 @@ data class AnnouncementFeedSection(
  * @property selectedFilter Which announcements are shown: [shownPinnedAnnouncements] and
  *   [shownSections]. A refresh keeps it.
  * @property isLoading Whether the announcements are currently being fetched.
+ * @property permissions What the signed-in user may do on the feed, updated by each successful
+ *   fetch. A failed fetch keeps the previous ones.
  * @property errorMsg The string resource of the failed fetch, or `null` if there is no error. It
  *   stays until a fetch succeeds, so the screen can keep showing the error with a retry.
  */
@@ -69,6 +88,7 @@ data class AnnouncementFeedUIState(
     val sections: List<AnnouncementFeedSection> = emptyList(),
     val selectedFilter: AnnouncementFilter = AnnouncementFilter.ALL,
     val isLoading: Boolean = false,
+    val permissions: AnnouncementFeedPermissions = AnnouncementFeedPermissions(),
     @StringRes val errorMsg: Int? = null,
 ) {
   /** The [pinnedAnnouncements] selected by [selectedFilter]. */
@@ -118,14 +138,21 @@ data class AnnouncementFeedUIState(
  * update date. The announcements in the state have their `updatedAt` in the time zone of [clock],
  * so the times the screen shows always match the date headers.
  *
+ * Each fetch also computes the [AnnouncementFeedPermissions] of the signed-in user from their role
+ * in the loaded event.
+ *
  * @property eventId The unique identifier of the event whose announcements are shown.
  * @property dataRepository Gives the [EventsRepository] used to fetch the announcements.
+ * @property currentUserId Gives the uid of the signed-in user, whose role in the event decides the
+ *   [AnnouncementFeedPermissions]. It is asked at each fetch, so a change of account is seen on
+ *   the next refresh.
  * @property clock Gives the time zone of the announcements' `updatedAt` and the sections' dates.
  *   The device's clock by default.
  */
 class AnnouncementFeedViewModel(
     private val eventId: String,
     private val dataRepository: DataRepository,
+    private val currentUserId: () -> String,
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
 
@@ -184,11 +211,23 @@ class AnnouncementFeedViewModel(
                       announcements = items.sortedByDescending { it.updatedAt.toInstant() },
                   )
                 }
+        val userId = currentUserId()
+        // roleOf throws for a non-member (e.g. kicked out meanwhile): they get no permission
+        // instead of a load error
+        val isMember = userId in event.roles
+        val permissions =
+            AnnouncementFeedPermissions(
+                canSeeAnnouncements =
+                    isMember && event.canAct(userId, Permission.CAN_SEE_ANNOUNCEMENT),
+                canCreateAnnouncement =
+                    isMember && event.canAct(userId, Permission.CAN_CREATE_ANNOUNCEMENT),
+            )
         _uiState.update {
           it.copy(
               pinnedAnnouncements = pinned,
               sections = sections,
               isLoading = false,
+              permissions = permissions,
               errorMsg = null,
           )
         }

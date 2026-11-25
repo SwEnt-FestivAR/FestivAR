@@ -79,17 +79,19 @@ fun NavGraphBuilder.announcementGraph(
   ) { backStackEntry ->
     val eventId = requireEventId(backStackEntry)
     val navigator = AnnouncementFeedNavigator(navController, backStackEntry)
-    AnnouncementFeedScreen(
-        viewModel = viewModel { AnnouncementFeedViewModel(eventId, dataRepository) },
-        // Every member may add an announcement for now. Limiting it to the event's owner needs the
-        // loaded event, so it is left to the feed's view model
-        canAddAnnouncement = true,
-        onBack = navigator.onBack,
-        onAddAnnouncement = { navigator.onAddAnnouncement(eventId) },
-        onSelectAnnouncement = { announcement ->
-          navigator.onSelectAnnouncement(eventId, announcement.announcementId)
-        },
-    )
+    RequireSignedIn(navController, dataRepository) { firebaseUser ->
+      AnnouncementFeedScreen(
+          viewModel =
+              viewModel {
+                AnnouncementFeedViewModel(eventId, dataRepository, { firebaseUser.uid })
+              },
+          onBack = navigator.onBack,
+          onAddAnnouncement = { navigator.onAddAnnouncement(eventId) },
+          onSelectAnnouncement = { announcement ->
+            navigator.onSelectAnnouncement(eventId, announcement.announcementId)
+          },
+      )
+    }
   }
 }
 
