@@ -49,6 +49,8 @@ fun MapCard(
     shape: Shape? = null,
     content: @Composable () -> Unit = {},
 ) {
+  // null and not MaterialTheme.shapes.large in the signature: a default that reads the theme adds
+  // compiler-generated branches that no test can reach.
   val cardShape = shape ?: MaterialTheme.shapes.large
   Box(
       modifier = modifier.clip(cardShape).testTag(MapCardTestTags.CARD),
