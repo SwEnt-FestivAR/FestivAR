@@ -61,9 +61,9 @@ private val RING_CENTER = Offset(13.3333f, 26.6667f)
  */
 internal val MapPinAnchor = Offset(RING_CENTER.x / DRAWABLE_SIDE, RING_CENTER.y / DRAWABLE_SIDE)
 
-/** The pin of this [kind], as designed in Figma. */
+/** The image of the pin of this [kind], as designed in Figma. It is not placed on a map. */
 @Composable
-fun MapPin(kind: MapPinKind, modifier: Modifier = Modifier) {
+fun MapPinImage(kind: MapPinKind, modifier: Modifier = Modifier) {
   Image(
       painter = painterResource(kind.drawable),
       contentDescription = null,
@@ -72,28 +72,28 @@ fun MapPin(kind: MapPinKind, modifier: Modifier = Modifier) {
 }
 
 /**
- * A pin of the given [kind] on [location], to be put in the content of a `FestivarMap`. The ring at
- * the foot of the pin is on the location.
+ * A marker with the pin of the given [kind] on [location], to be put in the content of a
+ * `FestivarMap`. The ring at the foot of the pin is on the location.
  */
 @Composable
-fun LocationPin(location: GeoPosition, kind: MapPinKind) {
+fun MapPin(location: GeoPosition, kind: MapPinKind) {
   MarkerComposable(
       kind,
       state = rememberUpdatedMarkerState(LatLng(location.latitude, location.longitude)),
       anchor = MapPinAnchor,
   ) {
-    MapPin(kind)
+    MapPinImage(kind)
   }
 }
 
 /** Preview of the two pins, side by side. */
 @Preview(showBackground = true)
 @Composable
-internal fun MapPinPreview() {
+internal fun MapPinImagePreview() {
   AppTheme {
     Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-      MapPin(MapPinKind.EVENT)
-      MapPin(MapPinKind.TASK)
+      MapPinImage(MapPinKind.EVENT)
+      MapPinImage(MapPinKind.TASK)
     }
   }
 }
@@ -104,13 +104,13 @@ internal fun MapPinPreview() {
  */
 @Preview(showBackground = true)
 @Composable
-internal fun LocationPinPreview() {
+internal fun MapPinPreview() {
   val event = EPFL_LOCATION
   val task = GeoPosition(event.latitude + 0.002, event.longitude + 0.003)
   AppTheme {
     FestivarMap(listOf(event), Modifier.fillMaxSize()) {
-      LocationPin(event, MapPinKind.EVENT)
-      LocationPin(task, MapPinKind.TASK)
+      MapPin(event, MapPinKind.EVENT)
+      MapPin(task, MapPinKind.TASK)
     }
   }
 }

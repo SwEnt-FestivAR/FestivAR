@@ -54,16 +54,14 @@ class MapPinTest {
   private fun showMapWithPin(kind: MapPinKind) {
     val location = EPFL_LOCATION
     composeTestRule.setContent {
-      AppTheme {
-        FestivarMap(listOf(location), Modifier.fillMaxSize()) { LocationPin(location, kind) }
-      }
+      AppTheme { FestivarMap(listOf(location), Modifier.fillMaxSize()) { MapPin(location, kind) } }
     }
   }
 
   /** Breaks if the event pin is not drawn at its size and under its own tag. */
   @Test
   fun eventPin_isLarge() {
-    composeTestRule.setContent { AppTheme { MapPin(MapPinKind.EVENT) } }
+    composeTestRule.setContent { AppTheme { MapPinImage(MapPinKind.EVENT) } }
 
     composeTestRule
         .onNodeWithTag(MapPinKind.EVENT.testTag)
@@ -75,7 +73,7 @@ class MapPinTest {
   /** Breaks if the task pin is not drawn at its size and under its own tag. */
   @Test
   fun taskPin_isSmall() {
-    composeTestRule.setContent { AppTheme { MapPin(MapPinKind.TASK) } }
+    composeTestRule.setContent { AppTheme { MapPinImage(MapPinKind.TASK) } }
 
     composeTestRule
         .onNodeWithTag(MapPinKind.TASK.testTag)
@@ -86,8 +84,8 @@ class MapPinTest {
 
   /** Breaks if the preview of the two pins fails to compose, or does not draw both of them. */
   @Test
-  fun pinsPreview_showsBothPins() {
-    composeTestRule.setContent { MapPinPreview() }
+  fun pinImagesPreview_showsBothPins() {
+    composeTestRule.setContent { MapPinImagePreview() }
 
     composeTestRule.onNodeWithTag(MapPinKind.EVENT.testTag).assertIsDisplayed()
     composeTestRule.onNodeWithTag(MapPinKind.TASK.testTag).assertIsDisplayed()
@@ -95,8 +93,8 @@ class MapPinTest {
 
   /** Breaks if the preview of the map with its pins fails to compose or to display. */
   @Test
-  fun locationPinPreview_isDisplayed() {
-    composeTestRule.setContent { LocationPinPreview() }
+  fun mapPinPreview_isDisplayed() {
+    composeTestRule.setContent { MapPinPreview() }
 
     composeTestRule.onNodeWithTag(FestivarMapTestTags.MAP).assertIsDisplayed()
   }
@@ -113,7 +111,7 @@ class MapPinTest {
    * anchor missed the ring, the pin would hang off the map centre.
    */
   private fun assertRingOnAnchor(kind: MapPinKind) {
-    composeTestRule.setContent { AppTheme { MapPin(kind) } }
+    composeTestRule.setContent { AppTheme { MapPinImage(kind) } }
 
     val pin = composeTestRule.onNodeWithTag(kind.testTag).captureToImage().toPixelMap()
     val anchorX = (MapPinAnchor.x * pin.width).toInt()
