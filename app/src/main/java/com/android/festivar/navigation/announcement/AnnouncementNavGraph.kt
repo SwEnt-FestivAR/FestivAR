@@ -40,11 +40,20 @@ fun NavGraphBuilder.announcementGraph(
             backStackEntry.arguments?.getString("announcementId"),
         )
     val navigator = AnnouncementDetailsNavigator(navController)
-    AnnouncementDetailsScreen(
-        viewModel =
-            viewModel { AnnouncementDetailsViewModel(eventId, announcementId, dataRepository) },
-        onBack = navigator.onBack,
-    )
+    RequireSignedIn(navController, dataRepository) { firebaseUser ->
+      AnnouncementDetailsScreen(
+          viewModel =
+              viewModel {
+                AnnouncementDetailsViewModel(
+                    eventId,
+                    announcementId,
+                    { firebaseUser.uid },
+                    dataRepository,
+                )
+              },
+          onBack = navigator.onBack,
+      )
+    }
   }
   // Reached through AppScreens.createAnnouncement(eventId). The route carries the id of the event
   // the new announcement belongs to.
