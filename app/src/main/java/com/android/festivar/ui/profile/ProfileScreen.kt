@@ -1,5 +1,6 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored by Copilot
+// Co-authored-by: Gemini <noreply@google.com>
 package com.android.festivar.ui.profile
 
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -100,12 +101,14 @@ fun ProfileScreen(
     onBack: () -> Unit = {},
     onSignedOut: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
-    credentialManager: CredentialManager = CredentialManager.create(LocalContext.current),
+    credentialManager: CredentialManager? = null,
     launchPhotoPicker: ((String) -> Unit)? = null,
 ) {
 
   val profileUIState by profileViewModel.uiState.collectAsState()
   val context = LocalContext.current
+  val rememberedCredentialManager =
+      credentialManager ?: remember(context) { CredentialManager.create(context) }
   val snackbarHostState = remember { SnackbarHostState() }
   val photoPicker =
       rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -128,13 +131,6 @@ fun ProfileScreen(
 
   // Leaves the screen once the sign-out succeeded.
   LaunchedEffect(profileUIState.signedOut) { if (profileUIState.signedOut) onSignedOut() }
-
-  // Closes bottom sheet once upgrade/linking succeeded.
-  LaunchedEffect(profileUIState.isUserAnonymous) {
-    if (!profileUIState.isUserAnonymous && profileUIState.isUpgrading) {
-      profileViewModel.hideUpgradeSheet()
-    }
-  }
 
   Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
@@ -188,48 +184,61 @@ fun ProfileScreen(
       )
     }
 
-    if (profileUIState.isUpgrading) {
-      UpgradeBottomSheet(
-          onUpgradeCancel = profileViewModel::hideUpgradeSheet,
-          sheetState = sheetState,
-          uiState = profileUIState,
-          onEmailChange = profileViewModel::updateEmail,
-          onPasswordChange = profileViewModel::updatePassword,
-          onLoginClick = profileViewModel::upgradeWithEmail,
-          onTogglePasswordVisibility = profileViewModel::togglePasswordVisibility,
-          onGoogleUpgrade = { profileViewModel.upgradeWithGoogle(context, credentialManager) },
-          snackbarHostState = snackbarHostState,
-      )
-    }
-
-    if (profileUIState.showSignOutWarning && profileUIState.isUserAnonymous) {
-      FestivarConfirmDialog(
-          title = stringResource(R.string.login_warning),
-          message = stringResource(R.string.profile_anon_sign_out_warning),
-          confirmText = stringResource(R.string.action_continue_anyway),
-          dismissText = stringResource(R.string.action_cancel),
-          onConfirm = {
-            profileViewModel.hideSignOutWarning()
-            profileViewModel.signOut()
-          },
-          onDismiss = profileViewModel::hideSignOutWarning,
-          destructive = true,
-      )
-    }
-
-    if (!profileUIState.isUpgrading) {
-      SnackbarHost(
-          hostState = snackbarHostState,
-          modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
-      ) { data ->
-        NoticeSnackbar(
-            message = data.visuals.message,
-            actionLabel = "",
-            onAction = {},
-            modifier = Modifier.testTag(ProfileScreenTestTags.ERROR_MESSAGE),
+    when (profileUIState.activeDialog) {
+      ProfileDialog.UPGRADE_SHEET -> {
+        UpgradeBottomSheet(
+            onUpgradeCancel = profileViewModel::hideUpgradeSheet,
+            sheetState = sheetState,
+            uiState = profileUIState,
+            onEmailChange = profileViewModel::updateEmail,
+            onPasswordChange = profileViewModel::updatePassword,
+            onLoginClick = profileViewModel::upgradeWithEmail,
+            onTogglePasswordVisibility = profileViewModel::togglePasswordVisibility,
+            onGoogleUpgrade = {
+              profileViewModel.upgradeWithGoogle(context, rememberedCredentialManager)
+            },
+            snackbarHostState = snackbarHostState,
+        )
+      }
+      ProfileDialog.SIGN_OUT_WARNING -> {
+        FestivarConfirmDialog(
+            title = stringResource(R.string.login_warning),
+            message = stringResource(R.string.profile_anon_sign_out_warning),
+            confirmText = stringResource(R.string.action_continue_anyway),
+            dismissText = stringResource(R.string.action_cancel),
+            onConfirm = {
+              profileViewModel.hideSignOutWarning()
+              profileViewModel.signOut()
+            },
+            onDismiss = profileViewModel::hideSignOutWarning,
+            destructive = true,
+        )
+      }
+      null -> {
+        ProfileErrorSnackbar(
+            snackbarHostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
         )
       }
     }
+  }
+}
+
+@Composable
+internal fun ProfileErrorSnackbar(
+    snackbarHostState: SnackbarHostState,
+    modifier: Modifier = Modifier,
+) {
+  SnackbarHost(
+      hostState = snackbarHostState,
+      modifier = modifier,
+  ) { data ->
+    NoticeSnackbar(
+        message = data.visuals.message,
+        actionLabel = "",
+        onAction = {},
+        modifier = Modifier.testTag(ProfileScreenTestTags.ERROR_MESSAGE),
+    )
   }
 }
 
@@ -369,7 +378,7 @@ internal fun ProfileScreenContent(
           modifier =
               Modifier.fillMaxWidth().height(48.dp).testTag(ProfileScreenTestTags.UPGRADE_BUTTON),
       ) {
-        if (uiState.isSaving) {
+        if (uiState.isLoading) {
           CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
         } else {
           Text(
