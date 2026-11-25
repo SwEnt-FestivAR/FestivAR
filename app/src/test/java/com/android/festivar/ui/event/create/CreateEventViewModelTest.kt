@@ -5,6 +5,7 @@ package com.android.festivar.ui.event.create
 // Co-authored-by: Copilot App
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Gemini <noreply@google.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 
 import android.content.ContentResolver
 import android.net.Uri
@@ -14,6 +15,7 @@ import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.model.event.role.Role
 import com.android.festivar.model.images.ImageStorage
 import com.android.festivar.model.images.StoredImage
 import com.android.festivar.model.user.User
@@ -160,6 +162,20 @@ class CreateEventViewModelTest {
   @Test
   fun initialStateCannotCreateEvent() {
     assertFalse(viewModel.uiState.value.canCreate)
+  }
+
+  /** Breaks if an anonymous account is allowed on the create event form. */
+  @Test
+  fun anonymousAccountCannotCreateEvent() {
+    viewModel = CreateEventViewModel(dataRepository, creator.uid, isAnonymous = { true })
+
+    assertFalse(viewModel.uiState.value.canCreateEvent)
+  }
+
+  /** Breaks if a signed-up account is sent away from the create event form. */
+  @Test
+  fun signedUpAccountCanCreateEvent() {
+    assertTrue(viewModel.uiState.value.canCreateEvent)
   }
 
   /** Red if the ViewModel misses a form field or asks before the user enters anything. */
@@ -516,6 +532,7 @@ class CreateEventViewModelTest {
     val event = waitForEvents(eventsRepository).single()
     assertEquals(creator.uid, event.ownerId)
     assertEquals(listOf(creator), event.members)
+    assertEquals(Role.OWNER, event.roles[creator.uid])
     assertTrue(usersRepository.getUser(creator.uid).joinedEvents.contains(event.eventId))
   }
 
@@ -571,6 +588,48 @@ class CreateEventViewModelTest {
         viewModel.uiState.value.errorMsg,
     )
     assertFalse(viewModel.uiState.value.isSaving)
+    assertTrue(eventsRepository.getAllEvents().isEmpty())
+  }
+
+  /** Breaks if an anonymous account can write an event by calling createEvent. */
+  @Test
+  fun createEventWithAnonymousAccountShowsAnErrorAndDoesNotAddAnEvent() = runBlocking {
+    viewModel = CreateEventViewModel(dataRepository, creator.uid, isAnonymous = { true })
+    fillRequiredFields()
+
+    viewModel.createEvent()
+    withTimeout(5_000.milliseconds) {
+      while (viewModel.uiState.value.errorMsg == null) delay(10.milliseconds)
+    }
+
+    assertEquals(
+        R.string.create_event_error_save_failed,
+        viewModel.uiState.value.errorMsg,
+    )
+    assertFalse(viewModel.uiState.value.isSaving)
+    assertTrue(eventsRepository.getAllEvents().isEmpty())
+    assertTrue(usersRepository.getUser(creator.uid).joinedEvents.isEmpty())
+  }
+
+  /** Breaks if save trusts the state computed at creation instead of checking the account. */
+  @Test
+  fun createEventChecksTheAccountAtSaveTime() = runBlocking {
+    var anonymous = false
+    viewModel = CreateEventViewModel(dataRepository, creator.uid, isAnonymous = { anonymous })
+    assertTrue(viewModel.uiState.value.canCreateEvent)
+    fillRequiredFields()
+
+    anonymous = true
+    viewModel.createEvent()
+    withTimeout(5_000.milliseconds) {
+      while (viewModel.uiState.value.errorMsg == null) delay(10.milliseconds)
+    }
+
+    assertEquals(
+        R.string.create_event_error_save_failed,
+        viewModel.uiState.value.errorMsg,
+    )
+    assertNull(viewModel.uiState.value.createdEventId)
     assertTrue(eventsRepository.getAllEvents().isEmpty())
   }
 
