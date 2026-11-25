@@ -84,6 +84,23 @@ class MapPinTest {
         .assertHeightIsEqualTo(MapPinKind.TASK.size)
   }
 
+  /** Breaks if the preview of the two pins fails to compose, or does not draw both of them. */
+  @Test
+  fun pinsPreview_showsBothPins() {
+    composeTestRule.setContent { MapPinPreview() }
+
+    composeTestRule.onNodeWithTag(MapPinKind.EVENT.testTag).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(MapPinKind.TASK.testTag).assertIsDisplayed()
+  }
+
+  /** Breaks if the preview of the map with its pins fails to compose or to display. */
+  @Test
+  fun locationPinPreview_isDisplayed() {
+    composeTestRule.setContent { LocationPinPreview() }
+
+    composeTestRule.onNodeWithTag(FestivarMapTestTags.MAP).assertIsDisplayed()
+  }
+
   /** Breaks if the ring of the event pin is not centred on [MapPinAnchor], where a marker sits. */
   @Test fun eventPin_hasItsRingOnTheAnchor() = assertRingOnAnchor(MapPinKind.EVENT)
 
