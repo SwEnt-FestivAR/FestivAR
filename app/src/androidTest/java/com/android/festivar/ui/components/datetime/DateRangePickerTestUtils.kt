@@ -22,20 +22,31 @@ import java.util.Locale
  * Matches the calendar cell of [date] in the range picker. A cell is described by its full date,
  * e.g. "November 21, 2026", not by its day number, so the month and year cannot be confused. The
  * label is the long date of the device language, looked for in the text and in the content
- * description. Kept in sync with `cellOf` of the unit tests, which cannot share a file with this
- * source set.
+ * description, and not as a plain substring so that day 1 never matches day 11 or 21. Kept in sync
+ * with `cellOf` of the unit tests, which cannot share a file with this source set.
  */
 fun cellOf(date: LocalDate) =
     SemanticsMatcher("is the cell of $date") { node ->
       val labels =
           node.config.getOrNull(SemanticsProperties.Text).orEmpty().map { it.text } +
               node.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty()
-      val label =
-          DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG)
-              .withLocale(Locale.getDefault())
-              .format(date)
-      labels.any { label in it }
+      labelsMatch(date, labels, Locale.getDefault())
     }
+
+/**
+ * True when one of [labels] contains the long date of [date] in [locale].
+ *
+ * Finding the date inside the text is not enough: "1 novembre 2026" is also found inside "11
+ * novembre 2026". So the character just before the date must not be a digit.
+ */
+internal fun labelsMatch(date: LocalDate, labels: List<String>, locale: Locale): Boolean {
+  val longDate = DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG).withLocale(locale).format(date)
+  return labels.any { text ->
+    val start = text.indexOf(longDate)
+    val charBefore = text.getOrNull(start - 1)
+    start >= 0 && (charBefore == null || !charBefore.isDigit())
+  }
+}
 
 /**
  * Opens the range picker from the Dates field [datesTag], scrolling to the field first, taps
