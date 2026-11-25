@@ -1,0 +1,110 @@
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+package com.android.festivar.ui.components.map
+
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.test.assertHeightIsEqualTo
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertWidthIsEqualTo
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.android.festivar.model.map.geometry.EPFL_LOCATION
+import com.android.festivar.ui.components.FestivarMap
+import com.android.festivar.ui.components.FestivarMapTestTags
+import com.android.festivar.ui.theme.AppTheme
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+
+/** There is no API key in instrumented tests: the map shows no tiles, and no test looks at them. */
+@RunWith(AndroidJUnit4::class)
+class MapPinTest {
+  @get:Rule val composeTestRule = createComposeRule()
+
+  /** Breaks if the map without any pin (S6) fails to display. */
+  @Test
+  fun map_withNoPin_isDisplayed() {
+    composeTestRule.setContent { AppTheme { FestivarMap(emptyList(), Modifier.fillMaxSize()) } }
+
+    composeTestRule.onNodeWithTag(FestivarMapTestTags.MAP).assertIsDisplayed()
+  }
+
+  /** Breaks if the map with the event pin fails to display. */
+  @Test
+  fun map_withEventPin_isDisplayed() {
+    showMapWithPin(MapPinKind.EVENT)
+
+    composeTestRule.onNodeWithTag(FestivarMapTestTags.MAP).assertIsDisplayed()
+  }
+
+  /** Breaks if the map with the task pin fails to display. */
+  @Test
+  fun map_withTaskPin_isDisplayed() {
+    showMapWithPin(MapPinKind.TASK)
+
+    composeTestRule.onNodeWithTag(FestivarMapTestTags.MAP).assertIsDisplayed()
+  }
+
+  /** Shows a map centred on EPFL with a pin of [kind] on it. */
+  private fun showMapWithPin(kind: MapPinKind) {
+    val location = EPFL_LOCATION
+    composeTestRule.setContent {
+      AppTheme {
+        FestivarMap(listOf(location), Modifier.fillMaxSize()) { LocationPin(location, kind) }
+      }
+    }
+  }
+
+  /** Breaks if the event pin is not drawn at its size and under its own tag. */
+  @Test
+  fun eventPin_isLarge() {
+    composeTestRule.setContent { AppTheme { MapPin(MapPinKind.EVENT) } }
+
+    composeTestRule
+        .onNodeWithTag(MapPinKind.EVENT.testTag)
+        .assertIsDisplayed()
+        .assertWidthIsEqualTo(MapPinKind.EVENT.size)
+        .assertHeightIsEqualTo(MapPinKind.EVENT.size)
+  }
+
+  /** Breaks if the task pin is not drawn at its size and under its own tag. */
+  @Test
+  fun taskPin_isSmall() {
+    composeTestRule.setContent { AppTheme { MapPin(MapPinKind.TASK) } }
+
+    composeTestRule
+        .onNodeWithTag(MapPinKind.TASK.testTag)
+        .assertIsDisplayed()
+        .assertWidthIsEqualTo(MapPinKind.TASK.size)
+        .assertHeightIsEqualTo(MapPinKind.TASK.size)
+  }
+
+  /** Breaks if the ring of the event pin is not centred on [MapPinAnchor], where a marker sits. */
+  @Test fun eventPin_hasItsRingOnTheAnchor() = assertRingOnAnchor(MapPinKind.EVENT)
+
+  /** Breaks if the ring of the task pin is not centred on [MapPinAnchor], where a marker sits. */
+  @Test fun taskPin_hasItsRingOnTheAnchor() = assertRingOnAnchor(MapPinKind.TASK)
+
+  /**
+   * Draws the pin of [kind] and checks that the ring at its foot is centred on [MapPinAnchor]: the
+   * stroke of the ring is not on the anchor itself, and it is drawn right of it. If the anchor
+   * missed the ring, the pin would hang off the map centre.
+   */
+  private fun assertRingOnAnchor(kind: MapPinKind) {
+    composeTestRule.setContent { AppTheme { MapPin(kind) } }
+
+    val pin = composeTestRule.onNodeWithTag(kind.testTag).captureToImage().toPixelMap()
+    val centerX = (MapPinAnchor.x * pin.width).toInt()
+    val centerY = (MapPinAnchor.y * pin.height).toInt()
+    // The ring is a stroke around the anchor: its right side is 3.33 of the 32 units away.
+    val ringRightX = ((MapPinAnchor.x + 3.3333f / 32f) * pin.width).toInt()
+
+    // Only the faint ground shadow is inside the ring, not the stroke of the ring.
+    assertTrue(pin[centerX, centerY].alpha < 0.5f)
+    assertTrue(pin[ringRightX, centerY].alpha > 0.5f)
+  }
+}
