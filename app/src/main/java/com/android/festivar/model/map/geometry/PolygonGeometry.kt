@@ -32,6 +32,8 @@ fun polygonArea(polygon: List<LocalPosition>): Double = abs(signedArea(polygon))
 fun polygonCentroid(polygon: List<LocalPosition>): LocalPosition {
   require(polygon.isNotEmpty()) { "An empty polygon has no centroid." }
   val area = signedArea(polygon)
+  // The formula below divides by the area. Fewer than three corners give exactly 0. Corners on one
+  // line give what rounding left, which grows with the square of the lengths: hence that scale.
   if (abs(area) <= RELATIVE_TOLERANCE * squaredEdgeLengths(polygon)) {
     return LocalPosition(
         polygon.sumOf { it.x } / polygon.size,
@@ -49,15 +51,19 @@ fun polygonCentroid(polygon: List<LocalPosition>): LocalPosition {
 }
 
 /**
- * Whether [point] is inside [polygon]. A point on an edge or on a corner is inside. Always false
- * with fewer than three corners.
+ * Whether [point] is inside [polygon]. A point on an edge or on a corner is inside.
+ *
+ * Fewer than three corners are a point or a line, not a polygon: there is no inside, so the answer
+ * is always false, even for a point on that line.
  */
 fun polygonContains(polygon: List<LocalPosition>, point: LocalPosition): Boolean {
   if (polygon.size < 3) return false
   var inside = false
   forEachEdge(polygon) { a, b ->
     if (isOnSegment(a, b, point)) return true
-    // Ray casting: count the edges crossed by the half line going east from the point.
+    // Ray casting: count the edges crossed by the half line going east from the point. Each
+    // crossing enters or leaves the polygon, so an odd count means the point is inside.
+    // An edge is crossed when its ends are on both sides of that line, east of the point.
     if ((a.y > point.y) != (b.y > point.y)) {
       val xOfEdge = a.x + (point.y - a.y) / (b.y - a.y) * (b.x - a.x)
       if (point.x < xOfEdge) inside = !inside
@@ -85,6 +91,8 @@ fun isSimplePolygon(polygon: List<LocalPosition>): Boolean {
 
 /** Whether the edge from [b] to [c] comes back over the edge from [a] to [b] that it follows. */
 private fun foldsBack(a: LocalPosition, b: LocalPosition, c: LocalPosition): Boolean {
+  // The dot product of the steps from b to a and from b to c: positive when they leave b on the
+  // same side. On one line, that means c is back on the way to a.
   val turnsBack = (a.x - b.x) * (c.x - b.x) + (a.y - b.y) * (c.y - b.y) > 0
   val onOneLine =
       abs(cross(a, b, c)) <= RELATIVE_TOLERANCE * distanceMeters(a, b) * distanceMeters(b, c)
@@ -150,7 +158,13 @@ private inline fun forEachEdge(
   for (i in polygon.indices) action(polygon[i], polygon[(i + 1) % polygon.size])
 }
 
-/** The area of [polygon], positive when its corners turn counterclockwise (shoelace formula). */
+/**
+ * The area of [polygon], positive when its corners turn counterclockwise (shoelace formula).
+ *
+ * Each edge adds the area of the triangle it makes with the origin, counted positive when the edge
+ * turns counterclockwise around the origin and negative otherwise. What lies outside the polygon is
+ * counted once each way and cancels.
+ */
 private fun signedArea(polygon: List<LocalPosition>): Double {
   if (polygon.size < 3) return 0.0
   var sum = 0.0
@@ -165,7 +179,11 @@ private fun squaredEdgeLengths(polygon: List<LocalPosition>): Double {
   return sum
 }
 
-/** Positive when [c] is to the left of the line from [a] to [b], zero when it is on it. */
+/**
+ * Positive when [c] is to the left of the line from [a] to [b], negative to the right, zero when it
+ * is on it. It is the cross product of the steps from [a] to [b] and from [a] to [c], which is
+ * twice the signed area of the triangle they make.
+ */
 private fun cross(a: LocalPosition, b: LocalPosition, c: LocalPosition): Double =
     (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
 
