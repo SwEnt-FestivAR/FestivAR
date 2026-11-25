@@ -1,4 +1,5 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.announcement.details
 
 import android.content.ActivityNotFoundException
@@ -40,6 +41,9 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
+private const val OWNER_ID = "owner-1"
+private const val VISITOR_ID = "visitor-1"
+
 @RunWith(AndroidJUnit4::class)
 class AnnouncementDetailsScreenTest {
   @get:Rule val composeTestRule = createAndroidComposeRule<ComponentActivity>()
@@ -61,7 +65,9 @@ class AnnouncementDetailsScreenTest {
               Event(
                   eventId = "event-1",
                   title = "Vidyfest",
-                  ownerId = "owner-1",
+                  ownerId = OWNER_ID,
+                  // VISITOR_ID gets the default role, VISITOR
+                  members = listOf(User(uid = OWNER_ID), User(uid = VISITOR_ID)),
                   startDate = postedAt.minusHours(1),
                   endDate = postedAt.plusHours(2),
                   announcements = listOf(announcement),
@@ -75,6 +81,7 @@ class AnnouncementDetailsScreenTest {
         AnnouncementDetailsViewModel(
             eventId = "event-1",
             announcementId = announcement.announcementId,
+            currentUserId = { OWNER_ID },
             dataRepository =
                 DataRepositoryLocal(
                     authRepository = FakeAuthRepository(),
@@ -184,6 +191,7 @@ class AnnouncementDetailsScreenTest {
                 AnnouncementDetailsUiState(
                     announcement = announcement.copy(content = "", links = emptyList()),
                     isLoading = true,
+                    permissions = AnnouncementDetailsPermissions(canPin = true),
                 )
         )
       }
@@ -237,6 +245,7 @@ class AnnouncementDetailsScreenTest {
         AnnouncementDetailsViewModel(
             eventId = "event-1",
             announcementId = announcement.announcementId,
+            currentUserId = { OWNER_ID },
             dataRepository =
                 DataRepositoryLocal(
                     authRepository = FakeAuthRepository(),
@@ -287,6 +296,7 @@ class AnnouncementDetailsScreenTest {
         AnnouncementDetailsViewModel(
             eventId = "event-1",
             announcementId = announcement.announcementId,
+            currentUserId = { OWNER_ID },
             dataRepository =
                 DataRepositoryLocal(
                     authRepository = FakeAuthRepository(),
@@ -315,7 +325,13 @@ class AnnouncementDetailsScreenTest {
   @Test
   fun defaultContentActionsAreNoOps() {
     val uiState =
-        mutableStateOf(AnnouncementDetailsUiState(announcement = announcement, isLoading = false))
+        mutableStateOf(
+            AnnouncementDetailsUiState(
+                announcement = announcement,
+                isLoading = false,
+                permissions = AnnouncementDetailsPermissions(canPin = true),
+            )
+        )
     composeTestRule.setContent { AppTheme { AnnouncementDetailsContent(state = uiState.value) } }
 
     composeTestRule.onNodeWithTag(Tags.BACK_BUTTON).performClick()
@@ -352,4 +368,77 @@ class AnnouncementDetailsScreenTest {
         .performScrollTo()
         .assertIsDisplayed()
   }
+
+  /** Breaks if the pin button is shown to a user whose role may not pin. */
+  @Test
+  fun hidesThePinButtonFromAUserWhoCannotPin() {
+    composeTestRule.setContent {
+      AppTheme {
+        AnnouncementDetailsContent(
+            state =
+                AnnouncementDetailsUiState(
+                    announcement = announcement,
+                    isLoading = false,
+                    permissions = AnnouncementDetailsPermissions(canPin = false),
+                )
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag(Tags.TITLE).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(Tags.PIN_BUTTON).assertDoesNotExist()
+  }
+
+  /** Breaks if a member whose role may not pin is shown the pin button by the screen. */
+  @Test
+  fun visitorSeesTheAnnouncementWithoutThePinButton() {
+    var backCount = 0
+    composeTestRule.setContent {
+      AppTheme {
+        AnnouncementDetailsScreen(
+            viewModel = viewModelFor(VISITOR_ID),
+            onBack = { backCount++ },
+        )
+      }
+    }
+
+    composeTestRule.waitUntil(5_000) {
+      composeTestRule.onAllNodesWithTag(Tags.TITLE).fetchSemanticsNodes().isNotEmpty()
+    }
+    composeTestRule.onNodeWithTag(Tags.PIN_BUTTON).assertDoesNotExist()
+    assertEquals(0, backCount)
+  }
+
+  /** Breaks if a user who is not a member of the event stays on the screen. */
+  @Test
+  fun aNonMemberLeavesTheScreenWithoutSeeingTheAnnouncement() {
+    var backCount = 0
+    composeTestRule.setContent {
+      AppTheme {
+        AnnouncementDetailsScreen(
+            viewModel = viewModelFor("stranger"),
+            onBack = { backCount++ },
+        )
+      }
+    }
+
+    composeTestRule.waitUntil(5_000) { backCount > 0 }
+    assertEquals(1, backCount)
+    composeTestRule.onNodeWithTag(Tags.TITLE).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(Tags.PIN_BUTTON).assertDoesNotExist()
+  }
+
+  /** Builds a ViewModel that shows [announcement] to the user [userId]. */
+  private fun viewModelFor(userId: String) =
+      AnnouncementDetailsViewModel(
+          eventId = "event-1",
+          announcementId = announcement.announcementId,
+          currentUserId = { userId },
+          dataRepository =
+              DataRepositoryLocal(
+                  authRepository = FakeAuthRepository(),
+                  eventsRepository = events,
+                  usersRepository = UsersRepositoryLocal(emptyList()),
+              ),
+      )
 }
