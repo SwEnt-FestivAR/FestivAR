@@ -144,8 +144,8 @@ data class AnnouncementFeedUIState(
  * @property eventId The unique identifier of the event whose announcements are shown.
  * @property dataRepository Gives the [EventsRepository] used to fetch the announcements.
  * @property currentUserId Gives the uid of the signed-in user, whose role in the event decides the
- *   [AnnouncementFeedPermissions]. It is asked at each fetch, so a change of account is seen on
- *   the next refresh.
+ *   [AnnouncementFeedPermissions]. It is asked at each fetch, so a change of account is seen on the
+ *   next refresh.
  * @property clock Gives the time zone of the announcements' `updatedAt` and the sections' dates.
  *   The device's clock by default.
  */
