@@ -41,7 +41,6 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, dataRepository:
                 EventsOverviewViewModel(
                     dataRepository = dataRepository,
                     uId = firebaseUser.uid,
-                    // Read at each call, so that an anonymous account upgraded later is seen
                     isAnonymous = {
                       dataRepository.authRepository.currentUser?.isAnonymous == true
                     },
@@ -60,7 +59,16 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, dataRepository:
     }
     RequireSignedIn(navController, dataRepository) { firebaseUser ->
       CreateEventScreen(
-          viewModel = viewModel { CreateEventViewModel(dataRepository, userId = firebaseUser.uid) },
+          viewModel =
+              viewModel {
+                CreateEventViewModel(
+                    dataRepository = dataRepository,
+                    userId = firebaseUser.uid,
+                    isAnonymous = {
+                      dataRepository.authRepository.currentUser?.isAnonymous == true
+                    },
+                )
+              },
           onBack = leave,
           onCreated = leave,
       )

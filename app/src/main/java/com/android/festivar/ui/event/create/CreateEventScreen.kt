@@ -113,6 +113,7 @@ fun CreateEventScreen(
   LaunchedEffect(uiState.isDiscarded) { if (uiState.isDiscarded) onBack() }
   LaunchedEffect(uiState.createdEventId) { if (uiState.createdEventId != null) onCreated() }
   BackHandler(onBack = viewModel::requestDiscard)
+  LaunchedEffect(uiState.canCreateEvent) { if (!uiState.canCreateEvent) onBack() }
 
   CreateEventContent(
       state = uiState,
