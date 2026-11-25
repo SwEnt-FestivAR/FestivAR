@@ -182,7 +182,8 @@ class AnnouncementFeedViewModel(
   /**
    * Fetches the event's announcements from the repository and updates the UI state. Cancels the
    * previous fetch, so that an older result never overwrites a newer one. A failure keeps the
-   * announcements already shown, and the error stays until a fetch succeeds.
+   * announcements already shown, and the error stays until a fetch succeeds. A user who may not see
+   * the announcements, e.g. one no longer a member of the event, gets none of them.
    */
   private fun getAnnouncements() {
     getAnnouncementsJob?.cancel()

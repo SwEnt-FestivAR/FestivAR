@@ -435,9 +435,9 @@ class AnnouncementFeedViewModelTest {
     }
   }
 
-  /** Breaks if a non-member keeps any permission, or if being one is shown as a load error. */
+  /** Breaks if a non-member keeps a permission or the announcements, or gets a load error. */
   @Test
-  fun aUserWhoIsNotAMemberHasNoPermissionAndNoError() = runTest {
+  fun aUserWhoIsNotAMemberHasNoPermissionNoAnnouncementAndNoError() = runTest {
     val viewModel = feedViewModel(userId = { "stranger" })
 
     viewModel.refreshUIState()
@@ -447,6 +447,8 @@ class AnnouncementFeedViewModelTest {
         AnnouncementFeedPermissions(canSeeAnnouncements = false, canCreateAnnouncement = false),
         state.permissions,
     )
+    assertTrue(state.hasNoAnnouncements)
+    assertEquals(counts(urgent = 0, warning = 0, info = 0, all = 0), state.counts)
     assertNull(state.errorMsg)
     assertFalse(state.isLoading)
   }
@@ -474,24 +476,33 @@ class AnnouncementFeedViewModelTest {
     assertEquals(R.string.announcement_feed_load_failed, viewModel.uiState.value.errorMsg)
   }
 
-  /** Breaks if the permissions keep the role of an older fetch, e.g. after a kick or promotion. */
+  /**
+   * Breaks if the permissions keep the role of an older fetch, e.g. after a kick or promotion, or
+   * if a kicked member keeps the announcements they were shown before.
+   */
   @Test
   fun eachFetchRecomputesThePermissionsFromTheLatestRoles() = runTest {
-    val repository = ControllableEventsRepository(eventWithMember(Role.STAFF))
+    val repository = ControllableEventsRepository(eventWithMember(Role.STAFF, infoToday))
     val viewModel = feedViewModel(repository, userId = { MEMBER_ID })
     viewModel.refreshUIState()
     assertFalse(viewModel.uiState.value.permissions.canCreateAnnouncement)
 
-    repository.event = eventWithMember(Role.TEAM_LEAD)
+    repository.event = eventWithMember(Role.TEAM_LEAD, infoToday)
     viewModel.refreshUIState()
     assertTrue(viewModel.uiState.value.permissions.canCreateAnnouncement)
+    assertEquals(
+        listOf(AnnouncementFeedSection(today, listOf(infoToday))),
+        viewModel.uiState.value.sections,
+    )
 
-    repository.event = event()
+    repository.event = event(infoToday, pinnedInfo)
     viewModel.refreshUIState()
+    val kicked = viewModel.uiState.value
     assertEquals(
         AnnouncementFeedPermissions(canSeeAnnouncements = false, canCreateAnnouncement = false),
-        viewModel.uiState.value.permissions,
+        kicked.permissions,
     )
+    assertTrue(kicked.hasNoAnnouncements)
   }
 
   /** Breaks if the uid is read once when the ViewModel is built instead of at each fetch. */
