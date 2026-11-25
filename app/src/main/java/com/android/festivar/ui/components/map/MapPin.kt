@@ -70,6 +70,9 @@ fun MapPinImage(kind: MapPinKind, modifier: Modifier = Modifier) {
   )
 }
 
+/** The position of this location on the map, with the latitude first. */
+internal fun GeoPosition.toLatLng(): LatLng = LatLng(latitude, longitude)
+
 /**
  * A marker with the pin of the given [kind] on [location], to be put in the content of a
  * `FestivarMap`. The ring at the foot of the pin is on the location.
@@ -77,7 +80,7 @@ fun MapPinImage(kind: MapPinKind, modifier: Modifier = Modifier) {
 @Composable
 fun MapPin(location: GeoPosition, kind: MapPinKind) {
   MarkerComposable(
-      state = rememberUpdatedMarkerState(LatLng(location.latitude, location.longitude)),
+      state = rememberUpdatedMarkerState(location.toLatLng()),
       anchor = MapPinAnchor,
   ) {
     MapPinImage(kind)
