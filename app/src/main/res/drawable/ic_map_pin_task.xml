@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com> -->
+<!-- Pin Kind=Task of the FestivAR design: lime flag with an ink outline. The ring at the foot is the location, with a ground shadow and a relief on the flag. -->
+<!-- Colours: an XML drawable cannot read the Compose theme, so the literals copy the lime flag `primaryLight` (#D9FF3D) and ink outline `onPrimaryLight` (#17180F) of ui/theme/Color.kt. Change them together. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="32dp"
+    android:height="32dp"
+    android:viewportWidth="32"
+    android:viewportHeight="32">
+  <!-- Ground shadow under the ring, for depth: two flat ellipses, as in the design. -->
+  <path
+      android:fillColor="#1F000000"
+      android:pathData="M6.8333,28.5A6.5,2.6 0 1,0 19.8333,28.5A6.5,2.6 0 1,0 6.8333,28.5Z" />
+  <path
+      android:fillColor="#2E000000"
+      android:pathData="M8.5333,28.5A4.8,1.8 0 1,0 18.1333,28.5A4.8,1.8 0 1,0 8.5333,28.5Z" />
+  <!-- Relief of the flag: two flat copies of it, shifted down and to the right. -->
+  <path
+      android:fillColor="#1F000000"
+      android:pathData="M14.9333,6.4L25.6,10.4L14.9333,14.4V6.4Z"
+      android:strokeWidth="2"
+      android:strokeColor="#1F000000"
+      android:strokeLineCap="round"
+      android:strokeLineJoin="round" />
+  <path
+      android:fillColor="#38000000"
+      android:pathData="M14.5333,5.8L25.2,9.8L14.5333,13.8V5.8Z"
+      android:strokeWidth="2"
+      android:strokeColor="#38000000"
+      android:strokeLineCap="round"
+      android:strokeLineJoin="round" />
+  <path
+      android:pathData="M13.3333,4V22.6667"
+      android:strokeWidth="2"
+      android:strokeColor="#17180F"
+      android:strokeLineCap="round"
+      android:strokeLineJoin="round" />
+  <path
+      android:fillColor="#D9FF3D"
+      android:pathData="M13.3333,4L24,8L13.3333,12V4Z"
+      android:strokeWidth="2"
+      android:strokeColor="#17180F"
+      android:strokeLineCap="round"
+      android:strokeLineJoin="round" />
+  <path
+      android:pathData="M16.6667,26.6667C16.6667,28.5076 15.1743,30 13.3333,30C11.4924,30 10,28.5076 10,26.6667C10,24.8257 11.4924,23.3333 13.3333,23.3333C15.1743,23.3333 16.6667,24.8257 16.6667,26.6667Z"
+      android:strokeWidth="2"
+      android:strokeColor="#17180F"
+      android:strokeLineCap="round"
+      android:strokeLineJoin="round" />
+</vector>
