@@ -316,6 +316,16 @@ class CreateTaskViewModelTest {
     assertEquals(FieldError.MISSING_DATE, viewModel.uiState.value.endDateError)
   }
 
+  /** Breaks if updateRange does not store the whole range in the form. */
+  @Test
+  fun updateRange_storesTheWholeRange() {
+    val range = DateTimeRange(day, LocalTime.of(9, 30), day, LocalTime.of(9, 50))
+
+    viewModel.updateRange(range)
+
+    assertEquals(range, viewModel.uiState.value.range)
+  }
+
   @Test
   fun createTask_whenRepositoryFails_exposesErrorAndAllowsRetry() {
     // STUB: a fake whose addTask always fails with a fixed error, to test how the ViewModel reacts.
@@ -834,6 +844,15 @@ class CreateTaskUiStateTest {
     val state = valid.copy(range = valid.range.copy(endDate = LocalDate.of(2000, 1, 1)))
     assertEquals(FieldError.OUTDATED, state.endDateError)
     assertFalse(state.canCreate)
+  }
+
+  /** Breaks if allowPast does not stop the past end from being an error, as on the edit form. */
+  @Test
+  fun endInThePast_isNotAnErrorWhenThePastIsAllowed() {
+    val state =
+        valid.copy(range = valid.range.copy(endDate = LocalDate.of(2000, 1, 1)), allowPast = true)
+
+    assertNull(state.endDateError)
   }
 
   // An end date without a time covers that whole day, so picking the start day as the end date

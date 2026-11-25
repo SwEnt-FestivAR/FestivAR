@@ -3,6 +3,7 @@
 package com.android.festivar.ui.task
 
 import com.android.festivar.model.task.Priority
+import com.android.festivar.ui.components.datetime.DateTimeRange
 import com.android.festivar.ui.task.create.CreateTaskUiState
 import com.android.festivar.ui.task.create.MAX_ESTIMATED_DIGITS
 import com.android.festivar.ui.task.create.MIN_MAX_ASSIGN
@@ -87,5 +88,15 @@ class TaskFormEditingTest {
     assertOnly({ it.copy(estimatedMinutes = "1".repeat(MAX_ESTIMATED_DIGITS)) }) {
       editing.updateEstimatedMinutes(tooLong)
     }
+  }
+
+  /** Breaks if updateRange writes another field than the range, or keeps part of the old range. */
+  @Test
+  fun updateRangeChangesOnlyTheRange() {
+    val range = DateTimeRange(day, nine, day.plusDays(1), nine.plusHours(2))
+
+    assertOnly({ it.copy(range = range) }) { editing.updateRange(range) }
+
+    assertOnly({ it.copy(range = DateTimeRange()) }) { editing.updateRange(DateTimeRange()) }
   }
 }

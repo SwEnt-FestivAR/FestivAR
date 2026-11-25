@@ -443,6 +443,22 @@ class EditTaskViewModelTest {
     assertFalse(changed())
   }
 
+  /** Breaks if a task that already ended is reported as an error, so it could not be edited. */
+  @Test
+  fun aTaskThatEndedCanBeSavedAfterAChange() {
+    val ended = ZonedDateTime.of(2020, 3, 10, 9, 0, 0, 0, zone)
+    runBlocking {
+      local.editTask(seeded.taskId, seeded.copy(startTime = ended, endTime = ended.plusHours(1)))
+    }
+    viewModel.load()
+    assertNull(viewModel.uiState.value.form.endDateError)
+    assertFalse(viewModel.uiState.value.canSave)
+
+    viewModel.updateTitle("Run power to the main stage")
+
+    assertTrue(viewModel.uiState.value.canSave)
+  }
+
   // Breaks if maxAssignError is missing, uses the wrong bound, or canSave ignores it.
   @Test
   fun maxAssignBelowTheAssigneesShowsTooFewSlotsAndBlocksSave() {
