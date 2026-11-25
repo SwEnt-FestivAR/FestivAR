@@ -78,7 +78,6 @@ fun MapPinImage(kind: MapPinKind, modifier: Modifier = Modifier) {
 @Composable
 fun MapPin(location: GeoPosition, kind: MapPinKind) {
   MarkerComposable(
-      kind,
       state = rememberUpdatedMarkerState(LatLng(location.latitude, location.longitude)),
       anchor = MapPinAnchor,
   ) {
