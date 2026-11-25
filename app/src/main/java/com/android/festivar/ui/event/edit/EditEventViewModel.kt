@@ -240,12 +240,12 @@ class EditEventViewModel(
     updateState { it.copy(isLoading = true, errorFetchMsg = null) }
     loadJob = viewModelScope.launch {
       try {
-          val event = eventsRepository.getEvent(eventId)
-          if (canEdit(event)) {
-              updateState { it.load(event) }
-          } else {
-              updateState { it.copy(isLoading = false, canEditEvent = false) }
-          }
+        val event = eventsRepository.getEvent(eventId)
+        if (canEdit(event)) {
+          updateState { it.load(event) }
+        } else {
+          updateState { it.copy(isLoading = false, canEditEvent = false) }
+        }
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
@@ -256,8 +256,6 @@ class EditEventViewModel(
       }
     }
   }
-
-
 
   /** Starts discard confirmation when the form has changes; otherwise discards immediately. */
   fun requestDiscard() {
@@ -303,10 +301,10 @@ class EditEventViewModel(
         val latestEvent =
             withTimeout(saveTimeoutMs) { eventsRepository.getEvent(updatedEvent.eventId) }
 
-          if (!canEdit(latestEvent)) {
-              updateState { it.copy(isSaving = false, canEditEvent = false) }
-              return@launch
-          }
+        if (!canEdit(latestEvent)) {
+          updateState { it.copy(isSaving = false, canEditEvent = false) }
+          return@launch
+        }
 
         val eventToSave =
             latestEvent.copy(
@@ -359,18 +357,17 @@ class EditEventViewModel(
           endDate == other.endDate &&
           location == other.location
 
-
-    /**
-     * Tells whether the current user can edit [event]: they must be a member of it and their role
-     * must have [Permission.CAN_EDIT_EVENT]. A non-member gets `false` instead of the exception
-     * thrown by [Event.canAct].
-     *
-     * @param event The [Event] the current user wants to edit.
-     * @return `true` if the current user is a member of [event] whose role can edit it, `false`
-     *   otherwise.
-     */
-    private fun canEdit(event: Event): Boolean {
-        val uid = currentUserId()
-        return uid in event.roles && event.canAct(uid, Permission.CAN_EDIT_EVENT)
-    }
+  /**
+   * Tells whether the current user can edit [event]: they must be a member of it and their role
+   * must have [Permission.CAN_EDIT_EVENT]. A non-member gets `false` instead of the exception
+   * thrown by [Event.canAct].
+   *
+   * @param event The [Event] the current user wants to edit.
+   * @return `true` if the current user is a member of [event] whose role can edit it, `false`
+   *   otherwise.
+   */
+  private fun canEdit(event: Event): Boolean {
+    val uid = currentUserId()
+    return uid in event.roles && event.canAct(uid, Permission.CAN_EDIT_EVENT)
+  }
 }
