@@ -138,6 +138,8 @@ private const val SAVE_TIMEOUT_MS = 15_000L
  *   between the different repositories. It coordinates the creation of the event and the update of
  *   its members.
  * @property userId the uid of the signed-in user, blank when nobody is.
+ * @property isAnonymous Tells whether the signed-in user has an anonymous account, which cannot
+ *   create an [Event]. Read when the ViewModel is created and again before saving.
  */
 class CreateEventViewModel(
     private val dataRepository: DataRepository,
