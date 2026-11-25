@@ -1,6 +1,7 @@
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.components.map
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -32,7 +33,7 @@ import com.google.maps.android.compose.rememberUpdatedMarkerState
  * @property size Width and height of the pin.
  * @property testTag Test tag of the pin.
  */
-enum class MapPinKind(val drawable: Int, val size: Dp, val testTag: String) {
+enum class MapPinKind(@DrawableRes val drawable: Int, val size: Dp, val testTag: String) {
   /** The location of an event: a red flag. */
   EVENT(R.drawable.ic_map_pin_event, size = 56.dp, testTag = "map_pin_event"),
   /** The location of a task: a lime flag with an ink outline. */
