@@ -221,6 +221,29 @@ class CreateEventScreenTest {
     verify(exactly = 1) { onBack() }
   }
 
+  /** Breaks if an anonymous account stays on the create event screen. */
+  @Test
+  fun anonymousAccountLeavesTheScreen() {
+    val onBack = mockk<() -> Unit>(relaxed = true)
+    viewModel = CreateEventViewModel(dataRepository, isAnonymous = { true })
+    composeTestRule.setContent { CreateEventScreen(viewModel = viewModel, onBack = onBack) }
+
+    composeTestRule.waitForIdle()
+    verify(exactly = 1) { onBack() }
+  }
+
+  /** Breaks if a signed-up account is sent back as soon as the screen opens. */
+  @Test
+  fun signedUpAccountStaysOnTheScreen() {
+    val onBack = mockk<() -> Unit>(relaxed = true)
+    viewModel = CreateEventViewModel(dataRepository, isAnonymous = { false })
+    composeTestRule.setContent { CreateEventScreen(viewModel = viewModel, onBack = onBack) }
+
+    composeTestRule.waitForIdle()
+    verify(exactly = 0) { onBack() }
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsDisplayed()
+  }
+
   /** Red if the back arrow skips confirmation or if either dialog choice behaves incorrectly. */
   @Test
   fun backArrowAsksBeforeDiscardingEnteredDetails() {
