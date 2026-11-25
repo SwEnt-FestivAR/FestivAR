@@ -75,7 +75,6 @@ data class Event(
     val tasks: List<Task> = emptyList(),
     val closed: Boolean = false,
     val announcements: List<Announcement> = emptyList(),
-    val imageUrl: String = "",
     val chatIds: List<String> = listOf(eventId),
     val imageUrl: String = "",
 ) {
