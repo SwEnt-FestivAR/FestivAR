@@ -76,6 +76,9 @@ internal fun GeoPosition.toLatLng(): LatLng = LatLng(latitude, longitude)
 /**
  * A marker with the pin of the given [kind] on [location], to be put in the content of a
  * `FestivarMap`. The ring at the foot of the pin is on the location.
+ *
+ * The [kind] of a pin must not change: the marker draws it once, and does not draw it again when
+ * the kind changes.
  */
 @Composable
 fun MapPin(location: GeoPosition, kind: MapPinKind) {
