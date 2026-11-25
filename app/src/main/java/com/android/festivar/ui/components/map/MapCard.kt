@@ -37,7 +37,8 @@ object MapCardTestTags {
  * It takes the size of its [modifier], so the screen decides how tall the card is.
  *
  * @param locations Where the map looks, at their barycenter. With none, it looks at EPFL.
- * @param shape The outline of the card, rounded on all four corners by default. A screen that puts
+ * @param shape The outline of the card. With none (`null`), the card takes the usual rounded
+ *   corners of the theme (`MaterialTheme.shapes.large`), on all four corners. A screen that puts
  *   the card inside a larger one passes a shape that rounds only the corners that show.
  * @param content Markers and polygons, drawn on the map.
  */
@@ -45,11 +46,12 @@ object MapCardTestTags {
 fun MapCard(
     locations: List<GeoPosition>,
     modifier: Modifier = Modifier,
-    shape: Shape = MaterialTheme.shapes.large,
+    shape: Shape? = null,
     content: @Composable () -> Unit = {},
 ) {
+  val cardShape = shape ?: MaterialTheme.shapes.large
   Box(
-      modifier = modifier.clip(shape).testTag(MapCardTestTags.CARD),
+      modifier = modifier.clip(cardShape).testTag(MapCardTestTags.CARD),
   ) {
     FestivarMap(
         locations = locations,
