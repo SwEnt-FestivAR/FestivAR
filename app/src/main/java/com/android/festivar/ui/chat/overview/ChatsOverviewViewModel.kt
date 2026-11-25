@@ -26,10 +26,15 @@ import kotlinx.coroutines.launch
 
 private const val LOG_TAG = "ChatsOverviewViewModel"
 
+// Temporary: a Chat has no name in the model yet, so every chat is shown with this one. It goes
+// away when Chat has a name.
+private const val PLACEHOLDER_CHAT_NAME = "General"
+
 /**
  * One chat of the overview, with what its row shows about its last message.
  *
  * @property chatId The unique identifier of the chat.
+ * @property name The name shown for the chat. "General" for every chat until `Chat` has a name.
  * @property lastMessage The most recent message of the chat, with its `sentAt` in the time zone of
  *   the ViewModel's clock, or `null` if nobody wrote yet.
  * @property lastMessageAuthor The stored [User] who sent [lastMessage], or `null` without message.
@@ -38,6 +43,7 @@ private const val LOG_TAG = "ChatsOverviewViewModel"
  */
 data class ChatsOverviewItem(
     val chatId: String,
+    val name: String,
     val lastMessage: ChatMessage? = null,
     val lastMessageAuthor: User? = null,
     val isLastMessageOwn: Boolean = false,
@@ -181,6 +187,7 @@ class ChatsOverviewViewModel(
     val lastMessage = messages.lastOrNull()
     return ChatsOverviewItem(
         chatId = chatId,
+        name = PLACEHOLDER_CHAT_NAME,
         lastMessage =
             lastMessage?.copy(sentAt = lastMessage.sentAt.withZoneSameInstant(clock.zone)),
         lastMessageAuthor = lastMessage?.let { authors[it.authorId] },

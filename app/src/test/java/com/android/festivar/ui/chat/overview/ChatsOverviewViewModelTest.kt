@@ -83,7 +83,7 @@ class ChatsOverviewViewModelTest {
 
   /**
    * Breaks if the title, the general chat, the membership filter, the order of the user's chats,
-   * the authors, the "own" flag or the zone of the last messages are off.
+   * the name of a chat, the authors, the "own" flag or the zone of the last messages are off.
    */
   @Test
   fun refreshShowsTheGeneralChatAndTheChatsOfTheUserMostRecentFirst() = runTest {
@@ -94,7 +94,11 @@ class ChatsOverviewViewModelTest {
             eventTitle = "Festival",
             generalChat = item(general, alice),
             yourChats =
-                listOf(item(newer, bob), item(older, me, own = true), ChatsOverviewItem("empty")),
+                listOf(
+                    item(newer, bob),
+                    item(older, me, own = true),
+                    ChatsOverviewItem("empty", "General"),
+                ),
         ),
         state,
     )
@@ -213,7 +217,7 @@ class ChatsOverviewViewModelTest {
   private fun item(chat: Chat, author: User, own: Boolean = false): ChatsOverviewItem {
     val last = chat.messages.last()
     val shown = last.copy(sentAt = last.sentAt.withZoneSameInstant(zone))
-    return ChatsOverviewItem(chat.chatId, shown, author, own)
+    return ChatsOverviewItem(chat.chatId, "General", shown, author, own)
   }
 
   private fun chat(
