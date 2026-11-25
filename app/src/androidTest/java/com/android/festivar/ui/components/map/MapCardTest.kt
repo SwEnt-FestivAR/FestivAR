@@ -167,6 +167,28 @@ class MapCardTest {
     composeTestRule.onNodeWithTag(MapCardTestTags.CARD).assertIsDisplayed()
   }
 
+  /** Breaks if the map keeps drawing the old content when the content given to the card changes. */
+  @Test
+  fun card_whenItsContentChanges_composesTheNewContent() {
+    var label by mutableStateOf("first")
+    var seen = ""
+    composeTestRule.setContent {
+      AppTheme {
+        // Read here, not inside the lambda, so the card gets a new lambda when the label changes.
+        val current = label
+        MapCard(listOf(EPFL_LOCATION), Modifier.fillMaxWidth().height(156.dp)) {
+          SideEffect { seen = current }
+        }
+      }
+    }
+    // The map composes its content only once it is ready.
+    composeTestRule.waitUntil(timeoutMillis = 5_000) { seen == "first" }
+
+    composeTestRule.runOnIdle { label = "second" }
+
+    composeTestRule.waitUntil(timeoutMillis = 5_000) { seen == "second" }
+  }
+
   /**
    * Breaks if the card disappears or crashes when its parent recomposes with the same arguments.
    */
