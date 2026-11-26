@@ -83,8 +83,9 @@ data class EditEventUIState(
     get() = validateEventName(name, nameEdited)
 
   /**
-   * The error shown under the times, or `null`. See [validateEndDateError]. An event that already
-   * ended is not an error, so it can still be edited.
+   * The error shown under the times, or `null`. See [validateEndDateError]. The past is allowed on
+   * purpose: an event that has ended must still be saveable without changing its dates. The cost is
+   * that an upcoming event can also be moved into the past, which is accepted.
    */
   val endDateError: FieldError?
     get() = validateEndDateError(range, zone, endZone = endZone, allowPast = true)
