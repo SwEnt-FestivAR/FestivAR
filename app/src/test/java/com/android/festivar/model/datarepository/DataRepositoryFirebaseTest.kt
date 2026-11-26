@@ -34,6 +34,9 @@ class DataRepositoryFirebaseTest {
 
   // No FirebaseApp exists in a plain unit test: if building the data repository built a Firestore
   // repository, this would throw.
+  /**
+   * Breaks if DataRepositoryFirebase stops honoring provider overrides without accessing Firestore.
+   */
   @Test
   fun defaults_areTheRepositoriesOfTheProvidersWithoutTouchingFirestore() {
     val tasks = TasksRepositoryLocal()

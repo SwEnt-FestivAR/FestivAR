@@ -29,6 +29,7 @@ class DataRepositoryFirebaseDefaultTest {
     if (FirebaseApp.getApps(context).isEmpty()) FirebaseApp.initializeApp(context)
   }
 
+  /** Breaks if Firebase defaults stop using the Firebase-backed repository implementations. */
   @Test
   fun defaults_areTheFirebaseRepositories() {
     val repository = DataRepositoryFirebase()
