@@ -95,6 +95,8 @@ data class EditTaskUiState(
 // Every stored time is kept explicit, even one on the START_OF_DAY or END_OF_DAY boundary: the
 // form maps it back to the same instant either way, and an explicit time loses nothing.
 // A time in the repeated hour of a daylight saving change maps back to the earlier offset.
+// The past is allowed on purpose: a task that has ended must still be saved without changing its
+// dates. The cost is that an upcoming task can be moved into the past, which is accepted.
 private fun Task.toForm(zone: ZoneId): CreateTaskUiState {
   val start = startTime?.withZoneSameInstant(zone)
   val end = endTime?.withZoneSameInstant(zone)
