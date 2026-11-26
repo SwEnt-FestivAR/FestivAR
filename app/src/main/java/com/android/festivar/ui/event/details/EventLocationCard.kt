@@ -5,14 +5,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.android.festivar.model.map.geometry.GeoPosition
+import com.android.festivar.ui.components.map.DetailMapCardHeight
 import com.android.festivar.ui.components.map.MapCard
 import com.android.festivar.ui.components.map.MapPin
 import com.android.festivar.ui.components.map.MapPinKind
-
-/** Height of the map card, as in the "map card" of the Event details frame in Figma. */
-private val EventLocationCardHeight = 156.dp
 
 /** A pin of the kind [kind] drawn on the map of the event card at [position]. */
 internal data class EventMapPin(val kind: MapPinKind, val position: GeoPosition)
@@ -35,7 +32,7 @@ internal fun EventLocationCard(location: GeoPosition) {
   val pin = eventMapPin(location)
   MapCard(
       locations = listOf(pin.position),
-      modifier = Modifier.fillMaxWidth().height(EventLocationCardHeight),
+      modifier = Modifier.fillMaxWidth().height(DetailMapCardHeight),
   ) {
     MapPin(pin.position, pin.kind)
   }
