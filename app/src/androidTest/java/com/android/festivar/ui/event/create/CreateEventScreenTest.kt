@@ -554,8 +554,7 @@ class CreateEventScreenTest {
     composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
 
     viewModel.updateName("Summer festival")
-    viewModel.updateStartDate(startDate)
-    viewModel.updateEndDate(endDate)
+    viewModel.updateRange(DateTimeRange(startDate = startDate, endDate = endDate))
     composeTestRule.waitForIdle()
 
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.IMAGE_SELECT_BUTTON).assertIsEnabled()
@@ -592,8 +591,7 @@ class CreateEventScreenTest {
     composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
 
     viewModel.updateName("Summer festival")
-    viewModel.updateStartDate(startDate)
-    viewModel.updateEndDate(endDate)
+    viewModel.updateRange(DateTimeRange(startDate = startDate, endDate = endDate))
     composeTestRule.waitForIdle()
 
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).performClick()
