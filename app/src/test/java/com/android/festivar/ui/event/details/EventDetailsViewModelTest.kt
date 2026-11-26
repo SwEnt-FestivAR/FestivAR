@@ -6,6 +6,7 @@ package com.android.festivar.ui.event.details
 
 import com.android.festivar.R
 import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
@@ -336,7 +337,10 @@ class EventDetailsViewModelTest {
     }
   }
 
-  /** Breaks if a second change or a reload runs while a change is saved, e.g. on a double tap. */
+  /**
+   * Breaks if a second change, a deletion or a reload runs while a change is saved, e.g. on a
+   * double tap.
+   */
   @Test
   fun nothingElseRunsWhileAChangeIsBeingSaved() = runTest {
     val stored = EventsRepositoryLocal(listOf(rolesEvent))
@@ -355,10 +359,12 @@ class EventDetailsViewModelTest {
 
     viewModel.changeRole(visitor.uid, Role.TEAM_LEAD)
     viewModel.kickMember(visitor.uid)
+    viewModel.deleteEvent()
     viewModel.fetchEvent()
     advanceUntilIdle()
 
     assertEquals(1, saves)
+    assertFalse(viewModel.uiState.value.isDeleted)
     assertTrue(viewModel.uiState.value.isUpdating)
     assertEquals(rolesEvent, viewModel.uiState.value.event)
     release.complete(Unit)
@@ -378,6 +384,116 @@ class EventDetailsViewModelTest {
             rolesEvent.eventId,
             userId,
         )
+    viewModel.fetchEvent()
+    advanceUntilIdle()
+    return viewModel
+  }
+
+  /**
+   * Breaks if the organizer's deletion does not delete that event and mark it deleted, or lets
+   * another action run once it is deleted.
+   */
+  @Test
+  fun ownerDeletesTheEventThenLeaves() = runTest {
+    val deleted = mutableListOf<String>()
+    val viewModel = loadedViewModel("owner") { deleted += it }
+
+    viewModel.deleteEvent()
+    advanceUntilIdle()
+
+    assertEquals(listOf("event-1"), deleted)
+    assertTrue(viewModel.uiState.value.isDeleted)
+    assertTrue(viewModel.uiState.value.isDeleting)
+  }
+
+  /** Breaks if a volunteer can delete the event of its organizer. */
+  @Test
+  fun volunteerCannotDeleteTheEvent() = runTest {
+    val deleted = mutableListOf<String>()
+    val viewModel = loadedViewModel("volunteer") { deleted += it }
+
+    viewModel.deleteEvent()
+    advanceUntilIdle()
+
+    assertTrue(deleted.isEmpty())
+    assertFalse(viewModel.uiState.value.isDeleted)
+  }
+
+  /** Breaks if a failed deletion leaves the screen, hides the event or shows no error. */
+  @Test
+  fun failedDeletionKeepsTheEventAndShowsAnError() = runTest {
+    val viewModel = loadedViewModel("owner") { throw IllegalStateException("delete failed") }
+
+    viewModel.deleteEvent()
+    advanceUntilIdle()
+
+    val state = viewModel.uiState.value
+    assertFalse(state.isDeleted)
+    assertEquals("event-1", state.event?.eventId)
+    assertEquals(R.string.event_details_delete_error, state.errorMsg)
+    assertFalse(state.isDeleting)
+  }
+
+  /**
+   * Breaks if a second tap deletes the event twice, if a change of role runs during the deletion,
+   * or if a reload during the deletion resets the screen, so the organizer could tap Delete again.
+   */
+  @Test
+  fun deletionRunsOnceAndIsNotResetByAReload() = runTest {
+    val gate = CompletableDeferred<Unit>()
+    var deletions = 0
+    val viewModel =
+        loadedViewModel("owner") {
+          deletions++
+          gate.await()
+        }
+
+    viewModel.deleteEvent()
+    advanceUntilIdle()
+    viewModel.deleteEvent()
+    viewModel.changeRole("volunteer", Role.TEAM_LEAD)
+    viewModel.fetchEvent()
+    advanceUntilIdle()
+
+    assertTrue(viewModel.uiState.value.isDeleting)
+    assertFalse(viewModel.uiState.value.isDeleted)
+    assertEquals(testEvent("event-1"), viewModel.uiState.value.event)
+    gate.complete(Unit)
+    advanceUntilIdle()
+    assertEquals(1, deletions)
+    assertTrue(viewModel.uiState.value.isDeleted)
+  }
+
+  /**
+   * Breaks if a cancelled deletion stays in progress, so the event can never be deleted again, or
+   * is taken for a success, so the screen leaves.
+   */
+  @Test
+  fun cancelledDeletionCanBeRetried() = runTest {
+    val viewModel = loadedViewModel("owner") { throw CancellationException("cancelled") }
+
+    viewModel.deleteEvent()
+    advanceUntilIdle()
+
+    assertFalse(viewModel.uiState.value.isDeleting)
+    assertFalse(viewModel.uiState.value.isDeleted)
+    assertNull(viewModel.uiState.value.errorMsg)
+  }
+
+  /**
+   * A view model of `event-1`, loaded for [currentUserId], whose repository runs [onDelete] instead
+   * of deleting the event.
+   */
+  private fun TestScope.loadedViewModel(
+      currentUserId: String,
+      onDelete: suspend (String) -> Unit,
+  ): EventDetailsViewModel {
+    val base = dataRepositoryWith(EventsRepositoryLocal(listOf(testEvent("event-1"))))
+    val dataRepository =
+        object : DataRepository by base {
+          override suspend fun deleteEvent(eventId: String) = onDelete(eventId)
+        }
+    val viewModel = EventDetailsViewModel(dataRepository, "event-1", currentUserId)
     viewModel.fetchEvent()
     advanceUntilIdle()
     return viewModel

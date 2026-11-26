@@ -23,12 +23,14 @@ import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.navigation.AppScreens
 import com.android.festivar.ui.event.create.CreateEventScreenTestTags
+import com.android.festivar.ui.event.details.EventDetailsScreenTestTags
 import com.android.festivar.ui.event.edit.EditEventScreenTestTags
 import com.android.festivar.ui.theme.AppTheme
 import com.google.firebase.auth.FirebaseUser
 import io.mockk.every
 import io.mockk.mockk
 import java.time.ZonedDateTime
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Rule
@@ -135,6 +137,63 @@ class EventNavGraphTest {
 
     assertEquals(eventId, navController.currentBackStackEntry?.arguments?.getString("eventId"))
     composeTestRule.onNodeWithTag(EditEventScreenTestTags.SCREEN).assertDoesNotExist()
+  }
+
+  /** Breaks if deleting the event from its details does not delete it and go back to the list. */
+  @Test
+  fun eventDetailsRoute_deletingReturnsToTheEventsOverview() {
+    val eventId = "event-123"
+    val owner = User(uid = "owner-1", joinedEvents = listOf(eventId))
+    val event =
+        Event(
+            eventId = eventId,
+            ownerId = owner.uid,
+            title = "Festival",
+            members = listOf(owner),
+            startDate = ZonedDateTime.now().plusDays(1),
+            endDate = ZonedDateTime.now().plusDays(2),
+        )
+    val eventsRepository = EventsRepositoryLocal(listOf(event))
+    val dataRepository =
+        DataRepositoryLocal(
+            authRepository =
+                FakeAuthRepository(
+                    currentUser =
+                        mockk<FirebaseUser> {
+                          every { uid } returns owner.uid
+                          every { isAnonymous } returns false
+                        }
+                ),
+            eventsRepository = eventsRepository,
+            usersRepository = UsersRepositoryLocal(listOf(owner)),
+        )
+    lateinit var navController: NavHostController
+
+    composeTestRule.setContent {
+      AppTheme {
+        navController = rememberNavController()
+        NavHost(navController, startDestination = AppScreens.EventsOverview.name) {
+          eventGraph(navController, dataRepository)
+        }
+      }
+    }
+    composeTestRule.runOnIdle { navController.navigate(AppScreens.eventDetails(eventId)) }
+    composeTestRule.waitUntil(timeoutMillis = 5_000) {
+      composeTestRule
+          .onAllNodesWithTag(EventDetailsScreenTestTags.MORE_ACTIONS_BUTTON)
+          .fetchSemanticsNodes()
+          .isNotEmpty()
+    }
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.MORE_ACTIONS_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DELETE_MENU_ITEM).performClick()
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DELETE_CONFIRM_BUTTON).performClick()
+    composeTestRule.waitUntil(timeoutMillis = 5_000) {
+      navController.currentBackStackEntry?.destination?.route == AppScreens.EventsOverview.name
+    }
+
+    assertThrows(NoSuchElementException::class.java) {
+      runBlocking { eventsRepository.getEvent(eventId) }
+    }
   }
 
   @Test

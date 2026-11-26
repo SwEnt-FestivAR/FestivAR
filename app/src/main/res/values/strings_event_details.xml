@@ -16,6 +16,12 @@
     <string name="event_details_announcements">Announcements</string>
     <string name="event_details_more_actions">More event actions</string>
     <string name="event_details_edit_event">Edit event</string>
+    <string name="event_details_delete_event">Delete event</string>
+    <string name="event_details_delete_confirmation_title">Delete %1$s?</string>
+    <string name="event_details_delete_confirmation_message">Its tasks, structures and team go with it. This cannot be undone.</string>
+    <string name="event_details_delete_confirm">Delete</string>
+    <string name="event_details_keep_event">Keep it</string>
+    <string name="event_details_delete_error">Unable to delete the event. Please try again.</string>
     <string name="event_details_change_role_failed">Could not change the role. Please try again.</string>
     <string name="event_details_kick_failed">Could not kick this member. Please try again.</string>
     <string name="event_details_role_owner">Owner</string>

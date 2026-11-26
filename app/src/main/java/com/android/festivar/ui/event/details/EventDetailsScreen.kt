@@ -39,6 +39,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,7 +60,9 @@ import com.android.festivar.model.event.role.Role
 import com.android.festivar.model.map.geometry.EPFL_LOCATION
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
+import com.android.festivar.ui.components.DeleteMenuItem
 import com.android.festivar.ui.components.EditDeleteMenu
+import com.android.festivar.ui.components.FestivarConfirmDialog
 import com.android.festivar.ui.components.Hairline
 import com.android.festivar.ui.components.NoticeSnackbar
 import com.android.festivar.ui.components.PillStyle
@@ -84,6 +90,10 @@ object EventDetailsScreenTestTags {
   const val MEMBERS_SHEET = "membersSheet"
   const val MORE_ACTIONS_BUTTON = "eventMoreActionsButton"
   const val EDIT_MENU_ITEM = "eventEditMenuItem"
+  const val DELETE_MENU_ITEM = "eventDeleteMenuItem"
+  const val DELETE_DIALOG = "eventDeleteDialog"
+  const val DELETE_CONFIRM_BUTTON = "eventDeleteConfirmButton"
+  const val DELETE_DISMISS_BUTTON = "eventDeleteDismissButton"
   const val ACTION_ERROR = "eventDetailsActionError"
   const val CHANGE_ROLE_CONFIRM = "changeRoleConfirmButton"
   const val KICK_CONFIRM = "kickConfirmButton"
@@ -95,6 +105,7 @@ class EventDetailsActions(
     val onTasksButtonClicked: () -> Unit = {},
     val onAnnouncementsClicked: () -> Unit = {},
     val onEditClicked: () -> Unit = {},
+    val onDeleteEvent: () -> Unit = {},
     val onChangeRole: (userId: String, newRole: Role) -> Unit = { _, _ -> },
     val onKick: (userId: String) -> Unit = {},
     val onErrorShown: () -> Unit = {},
@@ -112,6 +123,7 @@ class EventDetailsActions(
  * @param onAnnouncementsClicked called when the "Announcements" row is clicked.
  * @param onEditClicked called when the organizer picks "Edit event" in the menu.
  * @param modifier modifier applied to the event content.
+ * @param onEventDeleted called once the event is deleted, to leave the screen.
  */
 @Composable
 fun EventDetailsScreen(
@@ -121,9 +133,13 @@ fun EventDetailsScreen(
     onAnnouncementsClicked: () -> Unit,
     onEditClicked: () -> Unit,
     modifier: Modifier = Modifier,
+    onEventDeleted: () -> Unit = {},
 ) {
   val uiState by viewModel.uiState.collectAsState()
   LaunchedEffect(Unit) { viewModel.fetchEvent() }
+  // The latest callback is called, even if the caller passed a new one during the deletion.
+  val currentOnEventDeleted by rememberUpdatedState(onEventDeleted)
+  LaunchedEffect(uiState.isDeleted) { if (uiState.isDeleted) currentOnEventDeleted() }
 
   EventDetailsContent(
       state = uiState,
@@ -133,6 +149,7 @@ fun EventDetailsScreen(
               onTasksButtonClicked = onTasksButtonClicked,
               onAnnouncementsClicked = onAnnouncementsClicked,
               onEditClicked = onEditClicked,
+              onDeleteEvent = viewModel::deleteEvent,
               onChangeRole = viewModel::changeRole,
               onKick = viewModel::kickMember,
               onErrorShown = viewModel::clearError,
@@ -141,7 +158,11 @@ fun EventDetailsScreen(
   )
 }
 
-/** The stateless details screen: everything it shows comes from [state]. */
+/**
+ * The stateless details screen: everything it shows comes from [state]. Deleting the event first
+ * asks for a confirmation; [EventDetailsActions.onDeleteEvent] is called only once the organizer
+ * confirms.
+ */
 @Composable
 private fun EventDetailsContent(
     state: EventDetailsUIState,
@@ -149,13 +170,15 @@ private fun EventDetailsContent(
     modifier: Modifier = Modifier,
 ) {
   val event = state.event
+  var showDeleteConfirmation by rememberSaveable { mutableStateOf(false) }
   Scaffold(
       containerColor = MaterialTheme.colorScheme.background,
       topBar = {
         EventDetailsTopBar(
             onBack = actions.onBack,
-            showMenu = state.permissions.canEditEvent,
+            showMenu = state.permissions.canEditEvent && !state.isDeleting,
             onEditClicked = actions.onEditClicked,
+            onDeleteClicked = { showDeleteConfirmation = true }.takeIf { state.canDelete },
         )
       },
       bottomBar = {
@@ -198,6 +221,22 @@ private fun EventDetailsContent(
             )
           }
     }
+  }
+  if (showDeleteConfirmation && event != null) {
+    FestivarConfirmDialog(
+        title = stringResource(R.string.event_details_delete_confirmation_title, event.title),
+        message = stringResource(R.string.event_details_delete_confirmation_message),
+        confirmText = stringResource(R.string.event_details_delete_confirm),
+        dismissText = stringResource(R.string.event_details_keep_event),
+        onConfirm = {
+          showDeleteConfirmation = false
+          actions.onDeleteEvent()
+        },
+        onDismiss = { showDeleteConfirmation = false },
+        modifier = Modifier.testTag(EventDetailsScreenTestTags.DELETE_DIALOG),
+        confirmModifier = Modifier.testTag(EventDetailsScreenTestTags.DELETE_CONFIRM_BUTTON),
+        dismissModifier = Modifier.testTag(EventDetailsScreenTestTags.DELETE_DISMISS_BUTTON),
+    )
   }
 }
 
@@ -410,7 +449,7 @@ private fun JoinCodeRow(code: String) {
 
 /**
  * Top app bar containing the navigation button for leaving the details screen and, when [showMenu]
- * is true, the menu to edit the event.
+ * is true, the menu to edit the event. The menu offers to delete it only with an [onDeleteClicked].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -418,6 +457,7 @@ private fun EventDetailsTopBar(
     onBack: () -> Unit,
     showMenu: Boolean,
     onEditClicked: () -> Unit,
+    onDeleteClicked: (() -> Unit)?,
 ) {
   TopAppBar(
       title = {},
@@ -445,6 +485,14 @@ private fun EventDetailsTopBar(
               editLabel = stringResource(R.string.event_details_edit_event),
               editTag = EventDetailsScreenTestTags.EDIT_MENU_ITEM,
               onEdit = onEditClicked,
+              delete =
+                  onDeleteClicked?.let {
+                    DeleteMenuItem(
+                        label = stringResource(R.string.event_details_delete_event),
+                        testTag = EventDetailsScreenTestTags.DELETE_MENU_ITEM,
+                        onClick = it,
+                    )
+                  },
           )
         }
       },

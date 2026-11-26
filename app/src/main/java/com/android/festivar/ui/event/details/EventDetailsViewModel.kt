@@ -21,6 +21,7 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -76,24 +77,36 @@ data class EventDetailsPermissions(
  * @property permissions what the current user can do in the loaded event; nothing until it loads.
  * @property isUpdating true while a change of role or a kick is being saved, so a second tap does
  *   nothing.
+ * @property isDeleting true while the event is being deleted, so a second tap does nothing.
+ * @property isDeleted true once the event is deleted; the screen then leaves.
  * @property errorMsg the string resource of the latest failure, or null. Without an [event], the
- *   loading failed; with one, a change could not be saved and the event shown is unchanged.
+ *   loading failed; with one, a change or the deletion failed and the event shown is unchanged.
  */
 data class EventDetailsUIState(
     val event: Event? = null,
     val permissions: EventDetailsPermissions = EventDetailsPermissions(),
     val isUpdating: Boolean = false,
     @StringRes val errorMsg: Int? = null,
-)
+    val isDeleting: Boolean = false,
+    val isDeleted: Boolean = false,
+) {
+  /**
+   * Whether the event can be deleted now: only with the permission, and never while a deletion or
+   * another change is running.
+   */
+  val canDelete: Boolean
+    get() = permissions.canDeleteEvent && !isUpdating && !isDeleting
+}
 
 /**
  * Loads and exposes the event shown by the Event Details screen.
  *
  * Loading starts when the screen calls [fetchEvent]. A failed reload clears the currently displayed
- * event and exposes [EventDetailsUIState.errorMsg] so the screen can show an error.
+ * event and exposes [EventDetailsUIState.errorMsg] so the screen can show an error. Its organizer
+ * can also delete the event with [deleteEvent].
  *
  * @param dataRepository repository giving access to the events repository used to retrieve the
- *   event.
+ *   event, and deleting the event with its tasks and the links of its members.
  * @param eventId identifier of the event to load.
  * @param currentUserId identifier of the signed-in user, whose role in the event decides the
  *   [EventDetailsUIState.permissions].
@@ -111,10 +124,11 @@ class EventDetailsViewModel(
 
   /**
    * Loads [eventId] and updates the UI state with either the event and the permissions of the
-   * current user in it, or a loading error. A non-member gets a loading error.
+   * current user in it, or a loading error. A non-member gets a loading error. Does nothing while a
+   * change is being saved or the event is being deleted.
    */
   fun fetchEvent() {
-    if (_uiState.value.isUpdating) return
+    if (_uiState.value.isUpdating || _uiState.value.isDeleting) return
     viewModelScope.launch {
       _uiState.update { EventDetailsUIState() }
       try {
@@ -125,6 +139,35 @@ class EventDetailsViewModel(
       } catch (_: Exception) {
         _uiState.update { it.copy(errorMsg = R.string.event_details_fetch_error) }
       }
+    }
+  }
+
+  /**
+   * Deletes the event, its tasks and the links of its members, then sets
+   * [EventDetailsUIState.isDeleted] so the screen leaves. [EventDetailsUIState.isDeleting] stays
+   * true after a success, since the screen is left for good. A failure keeps the event shown and
+   * sets [EventDetailsUIState.errorMsg]. Does nothing unless [EventDetailsUIState.canDelete].
+   */
+  fun deleteEvent() {
+    val before = _uiState.getAndUpdate {
+      if (it.canDelete) it.copy(isDeleting = true, errorMsg = null) else it
+    }
+    if (!before.canDelete) return
+
+    viewModelScope.launch {
+      try {
+        dataRepository.deleteEvent(eventId)
+      } catch (e: CancellationException) {
+        _uiState.update { it.copy(isDeleting = false) }
+        throw e
+      } catch (e: Exception) {
+        Log.e(LOG_TAG, "Error deleting event $eventId", e)
+        _uiState.update {
+          it.copy(isDeleting = false, errorMsg = R.string.event_details_delete_error)
+        }
+        return@launch
+      }
+      _uiState.update { it.copy(isDeleted = true) }
     }
   }
 
@@ -153,13 +196,14 @@ class EventDetailsViewModel(
   fun clearError() = _uiState.update { it.copy(errorMsg = null) }
 
   /**
-   * Runs [applyAndResult] unless the event is not loaded or another change is being saved, then
-   * shows the event it returns with the permissions recomputed, or [failedMsg] if it fails.
-   * [EventDetailsUIState.isUpdating] is set before the save starts, so a second tap does nothing
-   * until it ends.
+   * Runs [applyAndResult] unless the event is not loaded, another change is being saved or the
+   * event is being deleted, then shows the event it returns with the permissions recomputed, or
+   * [failedMsg] if it fails. [EventDetailsUIState.isUpdating] is set before the save starts, so a
+   * second tap does nothing until it ends.
    */
   private fun save(@StringRes failedMsg: Int, applyAndResult: suspend () -> Event) {
-    val canSave = _uiState.value.event != null && !_uiState.value.isUpdating
+    val state = _uiState.value
+    val canSave = state.event != null && !state.isUpdating && !state.isDeleting
     if (!canSave) return
     _uiState.update { it.copy(isUpdating = true, errorMsg = null) }
 
