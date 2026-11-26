@@ -25,15 +25,15 @@ import java.time.format.DateTimeParseException
  * @property duration Length of the recording.
  * @property createdAt When the note was recorded.
  * @property waveform The loudness of the recording as bars between 0 and 1, taken while recording.
- *   Empty when the level is not known: for a note stored before waveforms existed, and for a
- *   recording whose level could not be read. An empty waveform means unknown, not silence.
+ *   Empty when the level of the recording could not be read, which means unknown, not silence. It
+ *   is always stored, even when empty: [fromMap] refuses a note without it.
  */
 data class VoiceNote(
     val id: String,
     val audioUrl: String,
     val duration: Duration,
     val createdAt: ZonedDateTime,
-    val waveform: List<Float> = emptyList(),
+    val waveform: List<Float>,
 ) {
 
   init {
@@ -62,10 +62,8 @@ data class VoiceNote(
     /**
      * Rebuilds a note from a [map] written by [toMap].
      *
-     * A map without a `waveform`, as stored before waveforms existed, gives a note without bars.
-     *
-     * @throws IllegalArgumentException if a field is missing or has the wrong type, or if the
-     *   values break a rule of [VoiceNote].
+     * @throws IllegalArgumentException if a field, the `waveform` included, is missing or has the
+     *   wrong type, or if the values break a rule of [VoiceNote].
      */
     fun fromMap(map: Map<*, *>): VoiceNote {
       fun <T> field(name: String, value: T?): T =
@@ -91,7 +89,6 @@ data class VoiceNote(
     }
 
     private fun readWaveform(value: Any?): List<Float> {
-      if (value == null) return emptyList()
       val bars = requireNotNull(value as? List<*>) { "Invalid voice note data: bad waveform." }
       return bars.map {
         requireNotNull((it as? Number)?.toFloat()) { "Invalid voice note data: bad waveform." }

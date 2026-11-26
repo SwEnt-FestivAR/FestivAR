@@ -1,3 +1,4 @@
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co authored by: Gemini
 // Co-authored-by: Claude Fable 5.2 <noreply@anthropic.com>
@@ -55,8 +56,8 @@ import com.android.festivar.ui.announcement.announcementPriorityLabelRes
 import com.android.festivar.ui.announcement.announcementPriorityPillStyle
 import com.android.festivar.ui.components.SectionLabel
 import com.android.festivar.ui.components.StatusPill
-import com.android.festivar.ui.components.formatDate
-import com.android.festivar.ui.components.formatTime
+import com.android.festivar.ui.components.datetime.formatDate
+import com.android.festivar.ui.components.datetime.formatTime
 import com.android.festivar.ui.theme.AppTheme
 import java.time.ZonedDateTime
 

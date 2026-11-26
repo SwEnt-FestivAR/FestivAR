@@ -1,6 +1,7 @@
 package com.android.festivar.ui.event.edit
 
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.mutableStateOf
@@ -211,7 +212,7 @@ class EditEventScreenTest {
                 FakeAuthRepository(),
                 eventsRepository = EventsRepositoryLocal(listOf(event)),
             ),
-            { "user" },
+            { event.ownerId },
         )
     var backCount = 0
     composeTestRule.setContent {
@@ -251,7 +252,7 @@ class EditEventScreenTest {
                 FakeAuthRepository(),
                 eventsRepository = EventsRepositoryLocal(listOf(event)),
             ),
-            { "user" },
+            { event.ownerId },
         )
     var savedCount = 0
     var backCount = 0
@@ -282,6 +283,35 @@ class EditEventScreenTest {
 
     assertEquals(1, savedCount)
     assertEquals(0, backCount)
+  }
+
+  /** Breaks if the screen stays open, or shows the form, for a user who cannot edit the event. */
+  @Test
+  fun screenCallsBackWhenTheUserCannotEditTheEvent() {
+    val event = testState().event!!
+    val viewModel =
+        EditEventViewModel(
+            DataRepositoryLocal(
+                FakeAuthRepository(),
+                eventsRepository = EventsRepositoryLocal(listOf(event)),
+            ),
+            { "stranger" },
+        )
+    var backCount = 0
+    composeTestRule.setContent {
+      AppTheme {
+        EditEventScreen(
+            eventId = event.eventId,
+            viewModel = viewModel,
+            onBack = { backCount++ },
+            onSaved = {},
+        )
+      }
+    }
+    composeTestRule.waitForIdle()
+
+    assertEquals(1, backCount)
+    composeTestRule.onNodeWithTag(EditEventScreenTestTags.NAME_FIELD).assertDoesNotExist()
   }
 
   private fun testState(): EditEventUIState {

@@ -1,6 +1,7 @@
 package com.android.festivar.ui.event.edit
 
 // Co-authored-by: Copilot App
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 
 import com.android.festivar.R
 import com.android.festivar.model.authentication.FakeAuthRepository
@@ -9,6 +10,7 @@ import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.announcement.Announcement
+import com.android.festivar.model.event.role.Role
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.FieldError
@@ -41,14 +43,14 @@ import org.junit.Test
 class EditEventViewModelTest {
   private val dispatcher = StandardTestDispatcher()
   private val initialEvent = testEvent()
-  private var signedInUserId = "organizer"
+  private var signedInUserId = initialEvent.ownerId
   private lateinit var eventsRepository: EventsRepositoryLocal
   private lateinit var viewModel: EditEventViewModel
 
   @Before
   fun setUp() {
     Dispatchers.setMain(dispatcher)
-    signedInUserId = "organizer"
+    signedInUserId = initialEvent.ownerId
     eventsRepository = EventsRepositoryLocal(listOf(initialEvent))
     viewModel = createViewModel(eventsRepository)
   }
@@ -589,6 +591,89 @@ class EditEventViewModelTest {
     advanceUntilIdle()
     assertNull(viewModel.uiState.value.errorFetchMsg)
     assertEquals(initialEvent.title, viewModel.uiState.value.name)
+  }
+
+  /** Breaks if a member whose role cannot edit the event still gets the form loaded. */
+  @Test
+  fun fetchEventByMemberWithoutEditRightDoesNotLoadTheForm() = runTest {
+    useEventWithSignedInMember(Role.TEAM_LEAD)
+
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+
+    val state = viewModel.uiState.value
+    assertFalse(state.canEditEvent)
+    assertNull(state.event)
+    assertFalse(state.isLoading)
+    assertNull(state.errorFetchMsg)
+  }
+
+  /** Breaks if a user who is not a member of the event crashes the load or gets a fetch error. */
+  @Test
+  fun fetchEventByNonMemberIsRefusedWithoutFetchError() = runTest {
+    signedInUserId = "stranger"
+
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+
+    val state = viewModel.uiState.value
+    assertFalse(state.canEditEvent)
+    assertNull(state.event)
+    assertFalse(state.isLoading)
+    assertNull(state.errorFetchMsg)
+  }
+
+  /** Breaks if a member whose role has the edit right, without owning the event, cannot edit it. */
+  @Test
+  fun staffManagerCanLoadAndSaveTheEvent() = runTest {
+    useEventWithSignedInMember(Role.STAFF_MANAGER)
+
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+    viewModel.updateName("Updated festival")
+    viewModel.saveChanges()
+    advanceUntilIdle()
+
+    assertTrue(viewModel.uiState.value.canEditEvent)
+    assertEquals(initialEvent.eventId, viewModel.uiState.value.savedEventId)
+    assertEquals("Updated festival", eventsRepository.getEvent(initialEvent.eventId).title)
+  }
+
+  /** Breaks if a member who lost the edit right while the form was open can still save it. */
+  @Test
+  fun saveChangesAfterLosingTheEditRightWritesNothing() = runTest {
+    val event = useEventWithSignedInMember(Role.STAFF_MANAGER)
+    viewModel.fetchEvent(event.eventId)
+    advanceUntilIdle()
+    viewModel.updateName("Updated festival")
+    val demoted = event.setRole(event.ownerId, signedInUserId, Role.TEAM_LEAD)
+    eventsRepository.editEvent(event.eventId, demoted)
+
+    viewModel.saveChanges()
+    advanceUntilIdle()
+
+    val state = viewModel.uiState.value
+    assertEquals(demoted, eventsRepository.getEvent(event.eventId))
+    assertFalse(state.canEditEvent)
+    assertFalse(state.isSaving)
+    assertNull(state.savedEventId)
+  }
+
+  /**
+   * Stores [initialEvent] with the signed-in user as a member of [role], given by the owner, and
+   * recreates [viewModel] on it.
+   *
+   * @return The stored event.
+   */
+  private fun useEventWithSignedInMember(role: Role): Event {
+    signedInUserId = "member-2"
+    val event =
+        initialEvent.addMember(User(uid = signedInUserId)).let {
+          it.setRole(it.ownerId, signedInUserId, role)
+        }
+    eventsRepository = EventsRepositoryLocal(listOf(event))
+    viewModel = createViewModel(eventsRepository)
+    return event
   }
 
   private fun testEvent(): Event {

@@ -30,8 +30,8 @@ import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.ui.components.LONG_TEXT_MAX_LENGTH
 import com.android.festivar.ui.components.checkTheOnlyCounterIsUnder
-import com.android.festivar.ui.components.formatDate
-import com.android.festivar.ui.components.formatTime
+import com.android.festivar.ui.components.datetime.formatDate
+import com.android.festivar.ui.components.datetime.formatTime
 import io.mockk.mockk
 import io.mockk.spyk
 import io.mockk.verify
@@ -219,6 +219,29 @@ class CreateEventScreenTest {
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAVIGATION_BUTTON).performClick()
     composeTestRule.waitForIdle()
     verify(exactly = 1) { onBack() }
+  }
+
+  /** Breaks if an anonymous account stays on the create event screen. */
+  @Test
+  fun anonymousAccountLeavesTheScreen() {
+    val onBack = mockk<() -> Unit>(relaxed = true)
+    viewModel = CreateEventViewModel(dataRepository, isAnonymous = { true })
+    composeTestRule.setContent { CreateEventScreen(viewModel = viewModel, onBack = onBack) }
+
+    composeTestRule.waitForIdle()
+    verify(exactly = 1) { onBack() }
+  }
+
+  /** Breaks if a signed-up account is sent back as soon as the screen opens. */
+  @Test
+  fun signedUpAccountStaysOnTheScreen() {
+    val onBack = mockk<() -> Unit>(relaxed = true)
+    viewModel = CreateEventViewModel(dataRepository, isAnonymous = { false })
+    composeTestRule.setContent { CreateEventScreen(viewModel = viewModel, onBack = onBack) }
+
+    composeTestRule.waitForIdle()
+    verify(exactly = 0) { onBack() }
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsDisplayed()
   }
 
   /** Red if the back arrow skips confirmation or if either dialog choice behaves incorrectly. */

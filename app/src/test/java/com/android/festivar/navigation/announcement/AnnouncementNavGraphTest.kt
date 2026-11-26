@@ -24,6 +24,8 @@ import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.announcement.Announcement
+import com.android.festivar.model.event.role.Role
+import com.android.festivar.model.user.User
 import com.android.festivar.navigation.AppScreens
 import com.android.festivar.ui.announcement.create.CreateAnnouncementScreenTestTags as Tags
 import com.android.festivar.ui.announcement.details.AnnouncementDetailsScreenTestTags as DetailsTags
@@ -59,19 +61,20 @@ private const val TAP_GAP_MILLIS = 100L
 class AnnouncementNavGraphTest {
   @get:Rule val composeTestRule = createComposeRule()
 
-  // FAKE: a real repository that keeps the event in memory, read back by the test.
-  private val repository =
-      EventsRepositoryLocal(
-          listOf(
-              Event(
-                  eventId = EVENT_ID,
-                  ownerId = OWNER_ID,
-                  title = "Balelec",
-                  startDate = ZonedDateTime.now().plusDays(1),
-                  endDate = ZonedDateTime.now().plusDays(2),
-              )
-          )
+  /** The event of the routes, where the signed-in user is a team lead, who may post. */
+  private val event =
+      Event(
+          eventId = EVENT_ID,
+          ownerId = OWNER_ID,
+          title = "Balelec",
+          members = listOf(User(OWNER_ID), User(USER_ID)),
+          roles = mapOf(OWNER_ID to Role.OWNER, USER_ID to Role.TEAM_LEAD),
+          startDate = ZonedDateTime.now().plusDays(1),
+          endDate = ZonedDateTime.now().plusDays(2),
       )
+
+  // FAKE: a real repository that keeps the event in memory, read back by the test.
+  private val repository = EventsRepositoryLocal(listOf(event))
   private val signedInUser = mockk<FirebaseUser> { every { uid } returns USER_ID }
   private val organizer = mockk<FirebaseUser> { every { uid } returns OWNER_ID }
   private lateinit var navController: NavHostController
@@ -382,5 +385,34 @@ class AnnouncementNavGraphTest {
     composeTestRule.runOnIdle {
       assertEquals(AppScreens.Login.name, navController.currentDestination?.route)
     }
+  }
+
+  /** Breaks if a signed-out user can still open the announcement feed. */
+  @Test
+  fun aSignedOutUserOpeningTheFeedIsSentToTheLogin() {
+    showTheGraphAs(null)
+    composeTestRule.runOnUiThread { navController.navigate(AppScreens.announcementFeed(EVENT_ID)) }
+
+    composeTestRule.onNodeWithText(LOGIN_SCREEN).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(FeedTags.TITLE).assertDoesNotExist()
+    composeTestRule.runOnIdle {
+      assertEquals(AppScreens.Login.name, navController.currentDestination?.route)
+    }
+  }
+
+  /** Breaks if a user who is not a member of the event stays on its feed, or leaves it twice. */
+  @Test
+  fun aUserWhoIsNotAMemberIsSentBackFromTheFeed() {
+    runBlocking {
+      repository.editEvent(
+          EVENT_ID,
+          event.copy(members = listOf(User(OWNER_ID)), roles = mapOf(OWNER_ID to Role.OWNER)),
+      )
+    }
+    showTheGraphAs(signedInUser)
+    composeTestRule.runOnUiThread { navController.navigate(AppScreens.announcementFeed(EVENT_ID)) }
+
+    assertThePreviousScreenIsAloneOnTheBackStack()
+    composeTestRule.onNodeWithTag(FeedTags.TITLE).assertDoesNotExist()
   }
 }

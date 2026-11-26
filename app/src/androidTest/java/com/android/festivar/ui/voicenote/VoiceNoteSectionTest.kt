@@ -15,8 +15,8 @@ import com.android.festivar.R
 import com.android.festivar.model.audio.PendingRecording
 import com.android.festivar.model.audio.PlayerState
 import com.android.festivar.model.voicenote.VoiceNote
-import com.android.festivar.ui.components.formatDate
-import com.android.festivar.ui.components.formatDateWithYear
+import com.android.festivar.ui.components.datetime.formatDate
+import com.android.festivar.ui.components.datetime.formatDateWithYear
 import com.android.festivar.ui.theme.AppTheme
 import io.mockk.confirmVerified
 import io.mockk.mockk
@@ -42,6 +42,7 @@ class VoiceNoteSectionTest {
           "https://x/n1.m4a",
           Duration.ofSeconds(14),
           ZonedDateTime.of(2026, 10, 17, 9, 12, 0, 0, ZoneOffset.UTC),
+          listOf(0.25f, 0.5f, 1f),
       )
 
   private fun text(id: Int, vararg args: Any) =
