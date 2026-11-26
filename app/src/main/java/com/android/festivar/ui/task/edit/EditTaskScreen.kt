@@ -180,8 +180,8 @@ private fun LoadError(@StringRes message: Int, onRetry: () -> Unit) {
   }
 }
 
-// A fixed zone and dates keep the previews the same on every machine. The day is far ahead, since
-// the form shows an error for an end in the past; 2037 has the weekdays of 2026.
+// A fixed zone and dates keep the previews the same on every machine; 2037 has the weekdays of
+// 2026.
 private val previewStart = ZonedDateTime.of(2037, 10, 17, 9, 0, 0, 0, ZoneOffset.UTC)
 
 private val previewTask =
