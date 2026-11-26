@@ -20,38 +20,23 @@ private const val FESTIVAL = "Fête de l'Asso 2026"
 private const val JAZZ_ID = "e2"
 private const val JAZZ = "Soirée Jazz"
 
-/** One row of the preview; it has no start when [day] or [time] is null. */
-private fun previewRow(
-    id: String,
-    title: String,
-    eventId: String,
-    eventTitle: String,
-    priority: Priority = Priority.NONE,
-    location: String = "",
-    day: LocalDate? = null,
-    time: LocalTime? = null,
-    completed: Boolean = false,
-    minutesUntilStart: Int? = null,
-): MyTaskRowUi {
-  val start =
-      if (day != null && time != null) ZonedDateTime.of(day, time, ZoneId.systemDefault()) else null
-  return MyTaskRowUi(
-      task =
-          Task(
-              taskId = id,
-              eventId = eventId,
-              title = title,
-              location = location,
-              priority = priority,
-              startTime = start,
-              completed = completed,
-              ownerId = "owner",
-          ),
-      eventTitle = eventTitle,
-      startTime = start?.toLocalTime(),
-      minutesUntilStart = minutesUntilStart,
-  )
-}
+private const val PREVIEW_OWNER = "owner"
+
+/** The title of each preview event, by its id. */
+private val previewEventTitles = mapOf(FESTIVAL_ID to FESTIVAL, JAZZ_ID to JAZZ)
+
+/** [hour]:[minute] on [day], in the time zone of the phone. */
+private fun previewAt(day: LocalDate, hour: Int, minute: Int): ZonedDateTime =
+    ZonedDateTime.of(day, LocalTime.of(hour, minute), ZoneId.systemDefault())
+
+/** The row of [task], under the title of its event. */
+private fun previewRow(task: Task, minutesUntilStart: Int? = null) =
+    MyTaskRowUi(
+        task = task,
+        eventTitle = previewEventTitles[task.eventId],
+        startTime = task.startTime?.toLocalTime(),
+        minutesUntilStart = minutesUntilStart,
+    )
 
 private val previewSections =
     listOf(
@@ -59,25 +44,27 @@ private val previewSections =
             previewToday,
             listOf(
                 previewRow(
-                    "t1",
-                    "Check the tickets",
-                    FESTIVAL_ID,
-                    FESTIVAL,
-                    Priority.URGENT,
-                    "North gate",
-                    previewToday,
-                    LocalTime.of(10, 0),
-                    completed = true,
+                    Task(
+                        taskId = "t1",
+                        eventId = FESTIVAL_ID,
+                        title = "Check the tickets",
+                        location = "North gate",
+                        priority = Priority.URGENT,
+                        startTime = previewAt(previewToday, 10, 0),
+                        completed = true,
+                        ownerId = PREVIEW_OWNER,
+                    )
                 ),
                 previewRow(
-                    "t2",
-                    "Set up the bar",
-                    FESTIVAL_ID,
-                    FESTIVAL,
-                    Priority.HIGH,
-                    "Main stage",
-                    previewToday,
-                    LocalTime.of(14, 0),
+                    Task(
+                        taskId = "t2",
+                        eventId = FESTIVAL_ID,
+                        title = "Set up the bar",
+                        location = "Main stage",
+                        priority = Priority.HIGH,
+                        startTime = previewAt(previewToday, 14, 0),
+                        ownerId = PREVIEW_OWNER,
+                    ),
                     minutesUntilStart = 28,
                 ),
             ),
@@ -86,21 +73,30 @@ private val previewSections =
             previewToday.plusDays(1),
             listOf(
                 previewRow(
-                    "t3",
-                    "Welcome the musicians",
-                    JAZZ_ID,
-                    JAZZ,
-                    Priority.MEDIUM,
-                    "Backstage",
-                    previewToday.plusDays(1),
-                    LocalTime.of(18, 30),
+                    Task(
+                        taskId = "t3",
+                        eventId = JAZZ_ID,
+                        title = "Welcome the musicians",
+                        location = "Backstage",
+                        priority = Priority.MEDIUM,
+                        startTime = previewAt(previewToday.plusDays(1), 18, 30),
+                        ownerId = PREVIEW_OWNER,
+                    )
                 )
             ),
         ),
         MyTasksDaySection(
             null,
             listOf(
-                previewRow("t4", "Print the volunteer badges", FESTIVAL_ID, FESTIVAL, Priority.LOW)
+                previewRow(
+                    Task(
+                        taskId = "t4",
+                        eventId = FESTIVAL_ID,
+                        title = "Print the volunteer badges",
+                        priority = Priority.LOW,
+                        ownerId = PREVIEW_OWNER,
+                    )
+                )
             ),
         ),
     )
