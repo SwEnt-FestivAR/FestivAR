@@ -1,10 +1,12 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.edit
 
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -20,10 +22,18 @@ import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.user.User
+import com.android.festivar.ui.components.datetime.DateRangePickerTestTags
+import com.android.festivar.ui.components.datetime.DateTimeRange
+import com.android.festivar.ui.components.datetime.formatDate
+import com.android.festivar.ui.components.datetime.pickDays
 import com.android.festivar.ui.task.create.CreateTaskActions
 import com.android.festivar.ui.task.create.CreateTaskScreenTestTags
+import com.android.festivar.ui.task.create.CreateTaskUiState
 import com.android.festivar.ui.task.create.string
 import com.android.festivar.ui.theme.AppTheme
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -120,6 +130,52 @@ class EditTaskScreenTest {
     composeTestRule.waitUntil(5_000) { exists(CreateTaskScreenTestTags.TITLE_FIELD) }
     composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.TITLE_FIELD).assert(hasText(task.title))
     assertFalse(exists(EditTaskScreenTestTags.LOADING))
+  }
+
+  /** Breaks if the edit screen does not open the days of a task that already ended, selected. */
+  @Test
+  fun aTaskThatEndedOpensItsDaysSelected() {
+    val start = ZonedDateTime.of(2020, 3, 10, 9, 0, 0, 0, ZoneId.systemDefault())
+    runBlocking { local.addTask(task.copy(startTime = start, endTime = start.plusHours(1))) }
+    showScreen()
+    composeTestRule.waitUntil(5_000) { exists(CreateTaskScreenTestTags.TITLE_FIELD) }
+
+    composeTestRule
+        .onNodeWithTag(CreateTaskScreenTestTags.DATES_FIELD)
+        .performScrollTo()
+        .performClick()
+
+    composeTestRule
+        .onNode(
+            hasText(formatDate(start.toLocalDate()), substring = true) and
+                hasAnyAncestor(hasTestTag(DateRangePickerTestTags.SUMMARY))
+        )
+        .assertIsDisplayed()
+  }
+
+  /** Breaks if the dates picker of the edit screen refuses days that are over. */
+  @Test
+  fun pastDaysCanBePicked() {
+    val pastDay = LocalDate.of(2020, 3, 10)
+    val ranges = mutableListOf<DateTimeRange>()
+    composeTestRule.setContent {
+      AppTheme {
+        EditTaskContent(
+            state =
+                EditTaskUiState(
+                    task = task,
+                    form = CreateTaskUiState(title = task.title, allowPast = true),
+                    isOwner = { true },
+                ),
+            actions = CreateTaskActions(onRangeChange = ranges::add),
+            onRetry = {},
+        )
+      }
+    }
+
+    composeTestRule.pickDays(CreateTaskScreenTestTags.DATES_FIELD, pastDay)
+
+    assertEquals(pastDay, ranges.single().startDate)
   }
 
   // Breaks if a state that has not been loaded yet shows the load error instead of the spinner.

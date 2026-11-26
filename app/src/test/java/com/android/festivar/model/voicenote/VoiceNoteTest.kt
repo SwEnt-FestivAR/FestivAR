@@ -145,12 +145,24 @@ class VoiceNoteTest {
     assertEquals(listOf(0f, 0.25f, 1f), VoiceNote.fromMap(stored).waveform)
   }
 
-  /** Breaks if a note stored before waveforms existed can no longer be read. */
+  /** Breaks if a note without a waveform, or with a null one, is accepted instead of refused. */
   @Test
-  fun fromMap_readsAnOldNoteWithoutBars() {
-    val old = note().toMap() - "waveform"
+  fun fromMap_rejects_aNoteWithoutWaveform() {
+    assertInvalid("Invalid voice note data: bad waveform.") {
+      VoiceNote.fromMap(note().toMap() - "waveform")
+    }
+    assertInvalid("Invalid voice note data: bad waveform.") {
+      VoiceNote.fromMap(note().toMap() + ("waveform" to null))
+    }
+  }
 
-    assertEquals(note(waveform = emptyList()), VoiceNote.fromMap(old))
+  /** Breaks if a note recorded without a readable level, stored as empty bars, is refused. */
+  @Test
+  fun fromMap_rebuildsANoteWithEmptyWaveform() {
+    assertEquals(
+        note(waveform = emptyList()),
+        VoiceNote.fromMap(note(waveform = emptyList()).toMap()),
+    )
   }
 
   /** Breaks if a waveform that is not a list of numbers is accepted instead of refused. */

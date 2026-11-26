@@ -43,6 +43,8 @@ import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.event.announcement.AnnouncementPriority
+import com.android.festivar.model.event.role.Role
+import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.EmptyStateTestTags
 import com.android.festivar.ui.components.RefreshableListTestTags
 import com.android.festivar.ui.theme.AppTheme
@@ -60,6 +62,8 @@ import org.junit.Rule
 import org.junit.Test
 
 private const val EVENT_ID = "e1"
+private const val OWNER_ID = "u0"
+private const val MEMBER_ID = "member"
 private const val SCREEN = "screen"
 
 class AnnouncementFeedScreenTest {
@@ -449,22 +453,39 @@ class AnnouncementFeedScreenTest {
   private fun figmaEvent() =
       Event(
           eventId = EVENT_ID,
-          ownerId = "u0",
+          ownerId = OWNER_ID,
           title = "Balelec",
           startDate = at(yesterday, 8),
           endDate = at(today.plusDays(1), 4),
           announcements = listOf(shuttle, water, pinned, urgent, lostAndFound, warning),
       )
 
+  /** The Figma event, where [MEMBER_ID] is a member with [role] beside the owner. */
+  private fun figmaEventWithMember(role: Role) =
+      figmaEvent()
+          .copy(
+              members = listOf(User(OWNER_ID), User(MEMBER_ID)),
+              roles = mapOf(OWNER_ID to Role.OWNER, MEMBER_ID to role),
+          )
+
   /**
-   * Shows the [AnnouncementFeedScreen] of a ViewModel reading [repository], in [lifecycleOwner].
+   * Shows the [AnnouncementFeedScreen] of a ViewModel reading [repository] as [userId], in
+   * [lifecycleOwner].
+   *
+   * @return How many times the screen asked to go back.
    */
-  private fun setScreen(repository: EventsRepository, lifecycleOwner: LifecycleOwner? = null) {
+  private fun setScreen(
+      repository: EventsRepository,
+      lifecycleOwner: LifecycleOwner? = null,
+      userId: String = OWNER_ID,
+  ): AtomicInteger {
+    val backs = AtomicInteger()
     val viewModel =
         AnnouncementFeedViewModel(
             eventId = EVENT_ID,
             dataRepository =
                 DataRepositoryLocal(FakeAuthRepository(), eventsRepository = repository),
+            currentUserId = { userId },
             clock = Clock.fixed(at(today, 15).toInstant(), zone),
         )
     composeTestRule.setContent {
@@ -474,13 +495,65 @@ class AnnouncementFeedScreenTest {
         AppTheme {
           AnnouncementFeedScreen(
               viewModel = viewModel,
-              canAddAnnouncement = true,
-              onBack = {},
+              onBack = { backs.incrementAndGet() },
               onAddAnnouncement = {},
           )
         }
       }
     }
+    return backs
+  }
+
+  /** Breaks if the add button ignores the role, e.g. shown to staff or hidden from a team lead. */
+  @Test
+  fun addButtonIsShownOnlyToARoleAllowedToCreateAnnouncements() {
+    val repository = EventsRepositoryLocal(listOf(figmaEventWithMember(Role.STAFF)))
+    val lifecycleOwner = TestLifecycleOwner()
+    composeTestRule.runOnUiThread { lifecycleOwner.registry.currentState = Lifecycle.State.RESUMED }
+    setScreen(repository, lifecycleOwner, userId = MEMBER_ID)
+    val tags = AnnouncementFeedScreenTestTags
+
+    composeTestRule.onNodeWithTag(tags.announcementRow(pinned)).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(tags.ADD_ANNOUNCEMENT_FAB).assertDoesNotExist()
+
+    // The member is promoted while another screen is in front, then comes back to the feed
+    composeTestRule.runOnUiThread { lifecycleOwner.registry.currentState = Lifecycle.State.CREATED }
+    runBlocking { repository.editEvent(EVENT_ID, figmaEventWithMember(Role.TEAM_LEAD)) }
+    composeTestRule.runOnUiThread { lifecycleOwner.registry.currentState = Lifecycle.State.RESUMED }
+
+    composeTestRule.onNodeWithTag(tags.ADD_ANNOUNCEMENT_FAB).assertIsDisplayed()
+  }
+
+  /** Breaks if a user who is not a member of the event stays on the feed, or leaves it twice. */
+  @Test
+  fun aUserWhoIsNotAMemberLeavesTheFeedOnce() {
+    val backs = setScreen(EventsRepositoryLocal(listOf(figmaEvent())), userId = "stranger")
+
+    composeTestRule.waitUntil { backs.get() > 0 }
+    composeTestRule.waitForIdle()
+    assertEquals(1, backs.get())
+  }
+
+  /** Breaks if the screen leaves while the event loads or after a failed fetch, before any role. */
+  @Test
+  fun theScreenStaysWhileLoadingAndAfterAFailedFetch() {
+    val gate = CompletableDeferred<Unit>()
+    val repository =
+        object : EventsRepository by EventsRepositoryLocal() {
+          override suspend fun getEvent(eventId: String): Event {
+            gate.await()
+            throw IllegalStateException("fetch failed")
+          }
+        }
+    val backs = setScreen(repository)
+
+    composeTestRule.onNodeWithTag(RefreshableListTestTags.LOADING).assertIsDisplayed()
+    assertEquals(0, backs.get())
+
+    gate.complete(Unit)
+
+    composeTestRule.onNodeWithTag(RefreshableListTestTags.ERROR_MESSAGE).assertIsDisplayed()
+    assertEquals(0, backs.get())
   }
 
   // Breaks if the screen does not fetch when it comes to the front, e.g. coming back from adding an

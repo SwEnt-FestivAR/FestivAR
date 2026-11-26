@@ -30,6 +30,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -94,16 +95,18 @@ internal fun dateHeaderPrefixRes(date: LocalDate, today: LocalDate): Int? =
  * items are fetched again every time the screen comes back to the front, e.g. after adding a new
  * one, and when the user pulls the list down.
  *
- * @param viewModel The ViewModel providing the [Announcement] items.
- * @param canAddAnnouncement Whether the user may add an announcement, which shows the add button.
- * @param onBack Called when the user clicks on the back arrow.
+ * The add button is shown only to a user whose role may create announcements, and a user who may
+ * not see the announcements, e.g. one no longer a member of the event, leaves the screen.
+ *
+ * @param viewModel The ViewModel providing the [Announcement] items and the user's permissions.
+ * @param onBack Called when the user clicks on the back arrow, or when they may not see the
+ *   announcements.
  * @param onAddAnnouncement Called when the user clicks on "Add announcement".
  * @param onSelectAnnouncement Called when the user clicks on an [Announcement].
  */
 @Composable
 fun AnnouncementFeedScreen(
     viewModel: AnnouncementFeedViewModel,
-    canAddAnnouncement: Boolean,
     onBack: () -> Unit,
     onAddAnnouncement: () -> Unit,
     onSelectAnnouncement: (Announcement) -> Unit = {},
@@ -111,10 +114,12 @@ fun AnnouncementFeedScreen(
   val uiState by viewModel.uiState.collectAsState()
 
   LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshUIState() }
+  val canSeeAnnouncements = uiState.permissions.canSeeAnnouncements
+  LaunchedEffect(canSeeAnnouncements) { if (!canSeeAnnouncements) onBack() }
 
   AnnouncementFeedContent(
       uiState = uiState,
-      canAddAnnouncement = canAddAnnouncement,
+      canAddAnnouncement = uiState.permissions.canCreateAnnouncement,
       onSelectFilter = viewModel::selectFilter,
       onRefresh = viewModel::refreshUIState,
       onBack = onBack,

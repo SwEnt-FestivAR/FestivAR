@@ -1,3 +1,4 @@
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 package com.android.festivar.ui.task.edit
@@ -15,7 +16,7 @@ import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.user.User
 import com.android.festivar.model.voicenote.VoiceNote
 import com.android.festivar.ui.components.FieldError
-import com.android.festivar.ui.components.datetime.DateTimeField
+import com.android.festivar.ui.components.datetime.DateTimeRange
 import com.android.festivar.ui.components.datetime.END_OF_DAY
 import com.android.festivar.ui.components.datetime.START_OF_DAY
 import com.android.festivar.ui.task.create.CreateTaskUiState
@@ -82,7 +83,7 @@ private class ScriptedRepository(val local: TasksRepositoryLocal) : TasksReposit
 @RunWith(AndroidJUnit4::class)
 class EditTaskViewModelTest {
   private val zone = ZoneId.of("Europe/Zurich")
-  // Tomorrow, like the picker tests of #371: the form refuses an end in the past.
+  // Tomorrow, so that the days are always ahead.
   private val day = LocalDate.now(zone).plusDays(1)
   private val voiceNote =
       VoiceNote(
@@ -90,6 +91,7 @@ class EditTaskViewModelTest {
           audioUrl = "https://example.com/note-1.m4a",
           duration = Duration.ofSeconds(12),
           createdAt = ZonedDateTime.of(day, LocalTime.of(8, 0), zone),
+          waveform = listOf(0.25f, 0.5f, 1f),
       )
   private val seeded =
       Task(
@@ -157,10 +159,10 @@ class EditTaskViewModelTest {
     assertEquals("Run power to stage", form.title)
     assertEquals("Blue crate", form.description)
     assertEquals("Stage", form.location)
-    assertEquals(day, form.startDate)
-    assertEquals(LocalTime.of(9, 0), form.startTime)
-    assertEquals(day, form.endDate)
-    assertEquals(LocalTime.of(10, 30), form.endTime)
+    assertEquals(day, form.range.startDate)
+    assertEquals(LocalTime.of(9, 0), form.range.startTime)
+    assertEquals(day, form.range.endDate)
+    assertEquals(LocalTime.of(10, 30), form.range.endTime)
     assertEquals(Priority.HIGH, form.priority)
     assertEquals(3, form.maxAssign)
     assertEquals("45", form.estimatedMinutes)
@@ -174,8 +176,11 @@ class EditTaskViewModelTest {
     assertFalse(other.isOwner())
     // Zurich is one or two hours ahead of UTC depending on the season of tomorrow.
     val utc = ZoneId.of("UTC")
-    assertEquals(seeded.startTime?.withZoneSameInstant(utc)?.toLocalTime(), other.form.startTime)
-    assertEquals(seeded.endTime?.withZoneSameInstant(utc)?.toLocalTime(), other.form.endTime)
+    assertEquals(
+        seeded.startTime?.withZoneSameInstant(utc)?.toLocalTime(),
+        other.form.range.startTime,
+    )
+    assertEquals(seeded.endTime?.withZoneSameInstant(utc)?.toLocalTime(), other.form.range.endTime)
   }
 
   // Breaks if load reloads an already loaded task.
@@ -297,8 +302,8 @@ class EditTaskViewModelTest {
     vm.load()
 
     val form = vm.uiState.value.form
-    assertEquals(START_OF_DAY, form.startTime)
-    assertEquals(END_OF_DAY, form.endTime)
+    assertEquals(START_OF_DAY, form.range.startTime)
+    assertEquals(END_OF_DAY, form.range.endTime)
     assertFalse(vm.uiState.value.hasChanges)
   }
 
@@ -326,8 +331,8 @@ class EditTaskViewModelTest {
     vm.load()
 
     val form = vm.uiState.value.form
-    assertEquals(repeated.toLocalDate(), form.startDate)
-    assertEquals(repeated.toLocalTime(), form.startTime)
+    assertEquals(repeated.toLocalDate(), form.range.startDate)
+    assertEquals(repeated.toLocalTime(), form.range.startTime)
     assertEquals(firstOccurrence, form.startDateTime)
     assertEquals(secondOccurrence.minusHours(1).toInstant(), form.startDateTime?.toInstant())
     assertFalse(vm.uiState.value.hasChanges)
@@ -365,11 +370,10 @@ class EditTaskViewModelTest {
     assertFalse(state.canSave)
   }
 
-  // Breaks if an open picker counts as a change.
+  /** Breaks if a loaded form that was not touched counts as changed. */
   @Test
   fun anUntouchedLoadedFormHasNoChangesAndCannotSave() {
     viewModel.load()
-    viewModel.showPicker(DateTimeField.START_DATE)
 
     val state = viewModel.uiState.value
     assertFalse(state.hasChanges)
@@ -382,6 +386,9 @@ class EditTaskViewModelTest {
   fun editingAFieldThenRevertingItLeavesNoChanges() {
     viewModel.load()
     fun changed() = viewModel.uiState.value.hasChanges
+
+    fun changeRange(change: (DateTimeRange) -> DateTimeRange) =
+        viewModel.updateRange(change(viewModel.uiState.value.form.range))
 
     viewModel.updateTitle("Something else")
     assertTrue(changed())
@@ -415,39 +422,42 @@ class EditTaskViewModelTest {
     viewModel.updateEstimatedMinutes("45")
     assertFalse(changed())
 
-    viewModel.showPicker(DateTimeField.START_DATE)
-    viewModel.pickDate(day.minusDays(1))
-    assertEquals(day.minusDays(1), viewModel.uiState.value.form.startDate)
-    assertNull(viewModel.uiState.value.form.openPicker)
+    changeRange { it.copy(startDate = day.minusDays(1)) }
+    assertEquals(day.minusDays(1), viewModel.uiState.value.form.range.startDate)
     assertTrue(changed())
-    viewModel.updateStartDate(day)
+    changeRange { it.copy(startDate = day) }
     assertFalse(changed())
 
-    viewModel.showPicker(DateTimeField.START_TIME)
-    viewModel.pickTime(LocalTime.of(8, 0))
+    changeRange { it.copy(startTime = LocalTime.of(8, 0)) }
     assertTrue(changed())
-    viewModel.updateStartTime(LocalTime.of(9, 0))
+    changeRange { it.copy(startTime = LocalTime.of(9, 0)) }
     assertFalse(changed())
 
-    viewModel.showPicker(DateTimeField.END_DATE)
-    viewModel.pickDate(day.plusDays(1))
+    changeRange { it.copy(endDate = day.plusDays(1)) }
     assertTrue(changed())
-    viewModel.updateEndDate(day)
+    changeRange { it.copy(endDate = day) }
     assertFalse(changed())
 
-    viewModel.showPicker(DateTimeField.END_TIME)
-    viewModel.pickTime(LocalTime.of(11, 0))
+    changeRange { it.copy(endTime = LocalTime.of(11, 0)) }
     assertTrue(changed())
-    viewModel.updateEndTime(LocalTime.of(10, 30))
+    changeRange { it.copy(endTime = LocalTime.of(10, 30)) }
     assertFalse(changed())
+  }
 
-    // A date picked with a time picker open, and the reverse, only close the picker.
-    viewModel.showPicker(DateTimeField.START_TIME)
-    viewModel.pickDate(day.plusDays(3))
-    viewModel.showPicker(DateTimeField.START_DATE)
-    viewModel.pickTime(LocalTime.NOON)
-    assertFalse(changed())
-    assertNull(viewModel.uiState.value.form.openPicker)
+  /** Breaks if a task that already ended is reported as an error, so it could not be edited. */
+  @Test
+  fun aTaskThatEndedCanBeSavedAfterAChange() {
+    val ended = ZonedDateTime.of(2020, 3, 10, 9, 0, 0, 0, zone)
+    runBlocking {
+      local.editTask(seeded.taskId, seeded.copy(startTime = ended, endTime = ended.plusHours(1)))
+    }
+    viewModel.load()
+    assertNull(viewModel.uiState.value.form.endDateError)
+    assertFalse(viewModel.uiState.value.canSave)
+
+    viewModel.updateTitle("Run power to the main stage")
+
+    assertTrue(viewModel.uiState.value.canSave)
   }
 
   // Breaks if maxAssignError is missing, uses the wrong bound, or canSave ignores it.
@@ -496,7 +506,7 @@ class EditTaskViewModelTest {
     viewModel.updateLocation("Main stage")
     viewModel.updatePriority(Priority.URGENT)
     viewModel.updateEstimatedMinutes("90")
-    viewModel.updateEndTime(LocalTime.of(11, 0))
+    viewModel.updateRange(viewModel.uiState.value.form.range.copy(endTime = LocalTime.of(11, 0)))
 
     viewModel.save()
 
@@ -649,19 +659,20 @@ class EditTaskViewModelTest {
     }
   }
 
-  // Breaks if the guard lets a picker open before load or after save.
+  /** Breaks if the guard lets the range change before load or after save. */
   @Test
-  fun showPickerDoesNothingBeforeLoadOrAfterSave() {
-    viewModel.showPicker(DateTimeField.START_DATE)
-    assertNull(viewModel.uiState.value.form.openPicker)
+  fun updateRangeDoesNothingBeforeLoadOrAfterSave() {
+    viewModel.updateRange(DateTimeRange(startDate = day))
+    assertEquals(DateTimeRange(), viewModel.uiState.value.form.range)
 
     viewModel.load()
     viewModel.updateTitle("Run power to the main stage")
     viewModel.save()
     assertTrue(viewModel.uiState.value.isSaved)
 
-    viewModel.showPicker(DateTimeField.START_DATE)
-    assertNull(viewModel.uiState.value.form.openPicker)
+    val saved = viewModel.uiState.value.form.range
+    viewModel.updateRange(saved.copy(startDate = saved.startDate!!.plusDays(1)))
+    assertEquals(saved, viewModel.uiState.value.form.range)
   }
 
   // Breaks if a saved edit rebuilds the task from the form and drops when each assignee took it.
@@ -694,7 +705,7 @@ class EditTaskViewModelTest {
 /** Tests of the rules of [EditTaskUiState], without a ViewModel. */
 class EditTaskUiStateTest {
   private val zone = ZoneId.of("Europe/Zurich")
-  // Tomorrow, like the picker tests of #371: the form refuses an end in the past.
+  // Tomorrow, so that the days are always ahead.
   private val day = LocalDate.now(zone).plusDays(1)
   private val bare =
       Task(taskId = "task-1", eventId = "event-1", title = "Run", ownerId = "owner-1")
@@ -732,8 +743,10 @@ class EditTaskUiStateTest {
     val invalid =
         listOf(
             edited.form.copy(title = " ", titleEdited = true),
-            edited.form.copy(startTime = LocalTime.NOON),
-            edited.form.copy(startDate = day, endDate = day.minusDays(1)),
+            edited.form.copy(range = edited.form.range.copy(endTime = LocalTime.NOON)),
+            edited.form.copy(
+                range = edited.form.range.copy(startDate = day, endDate = day.minusDays(1))
+            ),
             edited.form.copy(estimatedMinutes = "0"),
         )
 

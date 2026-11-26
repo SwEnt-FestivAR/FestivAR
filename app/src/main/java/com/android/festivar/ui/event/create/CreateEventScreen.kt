@@ -1,9 +1,12 @@
 package com.android.festivar.ui.event.create
 
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+
 // Co-authored-by: Copilot App
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 // Co-authored-by: Gemini
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -60,7 +63,6 @@ import com.android.festivar.R
 import com.android.festivar.ui.components.FestivarConfirmDialog
 import com.android.festivar.ui.components.FestivarDiscardDialog
 import com.android.festivar.ui.components.FestivarFieldError
-import com.android.festivar.ui.components.datetime.DateTimeField
 import com.android.festivar.ui.components.datetime.DateTimeRange
 import com.android.festivar.ui.event.EventFields
 import com.android.festivar.ui.event.EventFieldsTestTags
@@ -68,8 +70,6 @@ import com.android.festivar.ui.theme.AppTheme
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.bumptech.glide.integration.compose.GlideImage
 import com.bumptech.glide.integration.compose.placeholder
-import java.time.LocalDate
-import java.time.LocalTime
 
 object CreateEventScreenTestTags {
   const val DELETE_IMAGE_BUTTON: String = "DeleteImageButton"
@@ -80,14 +80,12 @@ object CreateEventScreenTestTags {
   const val NAVIGATION_BUTTON = "navigationButton"
   const val TITLE = "title"
   const val NAME_FIELD = "nameField"
-  const val START_DATE_FIELD = "startDateField"
+  const val DATES_FIELD = "datesField"
   const val START_TIME_FIELD = "startTimeField"
-  const val END_DATE_FIELD = "endDateField"
   const val END_TIME_FIELD = "endTimeField"
   const val LOCATION_FIELD = "locationField"
   const val DESCRIPTION_FIELD = "descriptionField"
   const val NAME_ERROR = "nameError"
-  const val START_DATE_ERROR = "startDateError"
   const val END_DATE_ERROR = "endDateError"
   const val CREATE_BUTTON = "createButton"
   const val SAVING_INDICATOR = "createEventSaving"
@@ -101,26 +99,22 @@ object CreateEventScreenTestTags {
 private val createEventFieldTags =
     EventFieldsTestTags(
         name = CreateEventScreenTestTags.NAME_FIELD,
-        startDate = CreateEventScreenTestTags.START_DATE_FIELD,
+        dates = CreateEventScreenTestTags.DATES_FIELD,
         startTime = CreateEventScreenTestTags.START_TIME_FIELD,
-        endDate = CreateEventScreenTestTags.END_DATE_FIELD,
         endTime = CreateEventScreenTestTags.END_TIME_FIELD,
         venue = CreateEventScreenTestTags.LOCATION_FIELD,
         notes = CreateEventScreenTestTags.DESCRIPTION_FIELD,
         nameError = CreateEventScreenTestTags.NAME_ERROR,
-        startDateError = CreateEventScreenTestTags.START_DATE_ERROR,
-        endDateError = CreateEventScreenTestTags.END_DATE_ERROR,
+        timesError = CreateEventScreenTestTags.END_DATE_ERROR,
     )
 
 /** What the user can do on the Create event screen. Lets [CreateEventContent] stay stateless. */
 class CreateEventActions(
     val onBack: () -> Unit = {},
     val onNameChange: (String) -> Unit = {},
-    val onShowPicker: (DateTimeField?) -> Unit = {},
+    val onRangeChange: (DateTimeRange) -> Unit = {},
     val onVenueChange: (String) -> Unit = {},
     val onNotesChange: (String) -> Unit = {},
-    val onDatePicked: (LocalDate) -> Unit = {},
-    val onTimePicked: (LocalTime) -> Unit = {},
     val onCreate: () -> Unit = {},
     val onDeleteImageClick: () -> Unit = {},
 )
@@ -143,6 +137,7 @@ fun CreateEventScreen(
   LaunchedEffect(uiState.isDiscarded) { if (uiState.isDiscarded) onBack() }
   LaunchedEffect(uiState.createdEventId) { if (uiState.createdEventId != null) onCreated() }
   BackHandler(onBack = viewModel::requestDiscard)
+  LaunchedEffect(uiState.canCreateEvent) { if (!uiState.canCreateEvent) onBack() }
 
   val context = LocalContext.current
   val photoPicker =
@@ -157,11 +152,9 @@ fun CreateEventScreen(
           CreateEventActions(
               onBack = viewModel::requestDiscard,
               onNameChange = viewModel::updateName,
-              onShowPicker = viewModel::showPicker,
+              onRangeChange = viewModel::updateRange,
               onVenueChange = viewModel::updateVenue,
               onNotesChange = viewModel::updateNotes,
-              onDatePicked = viewModel::pickDate,
-              onTimePicked = viewModel::pickTime,
               onCreate = viewModel::createEvent,
               onDeleteImageClick = viewModel::requestDeleteImage,
           ),
@@ -201,10 +194,7 @@ enum class IconsType {
   LOAD,
 }
 
-/**
- * Stateless Create event screen: draws [state] and reports user input through [actions]. The open
- * date picker dialog is part of [state] too.
- */
+/** Stateless Create event screen: draws [state] and reports user input through [actions]. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateEventContent(
@@ -255,26 +245,17 @@ fun CreateEventContent(
       EventFields(
           name = state.name,
           nameError = state.nameError,
-          dateTimeRange =
-              DateTimeRange(
-                  startDate = state.startDate,
-                  endDate = state.endDate,
-                  startTime = state.startTime,
-                  endTime = state.endTime,
-              ),
-          startDateError = state.startDateError,
-          endDateError = state.endDateError,
+          range = state.range,
+          timesError = state.endDateError,
           venue = state.venue,
           notes = state.notes,
-          openPicker = state.openPicker,
+          allowPast = false,
           enabled = !state.isSaving,
           testTags = createEventFieldTags,
           onNameChange = actions.onNameChange,
-          onShowPicker = actions.onShowPicker,
+          onRangeChange = actions.onRangeChange,
           onVenueChange = actions.onVenueChange,
           onNotesChange = actions.onNotesChange,
-          onDatePicked = actions.onDatePicked,
-          onTimePicked = actions.onTimePicked,
       )
     }
   }

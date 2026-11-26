@@ -1,6 +1,7 @@
 package com.android.festivar.ui.event.create
 
 // Co-authored-by: Copilot App
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Gemini
@@ -17,7 +18,6 @@ import com.android.festivar.model.event.Event
 import com.android.festivar.model.images.StoredImage
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.FieldError
-import com.android.festivar.ui.components.datetime.DateTimeField
 import com.android.festivar.ui.components.datetime.DateTimeRange
 import com.android.festivar.ui.components.datetime.endDateError
 import com.android.festivar.ui.event.EventFormViewModel
@@ -25,12 +25,9 @@ import com.android.festivar.ui.event.computeEndDateTime
 import com.android.festivar.ui.event.computeStartDateTime
 import com.android.festivar.ui.event.isEventFormValid
 import com.android.festivar.ui.event.validateEventName
-import com.android.festivar.ui.event.validateStartDate
 import com.android.festivar.ui.profile.isProfilePictureTooLarge
 import java.io.File
 import java.io.FileOutputStream
-import java.time.LocalDate
-import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlinx.coroutines.CancellationException
@@ -57,18 +54,15 @@ private const val LOG_TAG = "CreateEventViewModel"
 data class CreateEventUIState(
     val name: String = "",
     val nameEdited: Boolean = false,
-    val startDate: LocalDate? = null,
-    val endDate: LocalDate? = null,
-    val startTime: LocalTime? = null,
-    val endTime: LocalTime? = null,
+    val range: DateTimeRange = DateTimeRange(),
     val venue: String = "",
     val notes: String = "",
-    val openPicker: DateTimeField? = null,
     val isSaving: Boolean = false,
     val createdEventId: String? = null,
     val showDiscardConfirmation: Boolean = false,
     val isDiscarded: Boolean = false,
     val showDeleteImageConfirmation: Boolean = false,
+    val canCreateEvent: Boolean = true,
     val zone: ZoneId = ZoneId.systemDefault(),
     @StringRes val errorMsg: Int? = null,
     val imageUrl: String? = null,
@@ -77,19 +71,17 @@ data class CreateEventUIState(
     get() = !imageUrl.isNullOrEmpty()
 
   val startDateTime: ZonedDateTime?
-    get() = computeStartDateTime(startDate, startTime, zone)
+    get() = computeStartDateTime(range.startDate, range.startTime, zone)
 
   val endDateTime: ZonedDateTime?
-    get() = computeEndDateTime(endDate, endTime, zone)
+    get() = computeEndDateTime(range.endDate, range.endTime, zone)
 
   val nameError: FieldError?
     get() = validateEventName(name, nameEdited)
 
-  val startDateError: FieldError?
-    get() = validateStartDate(startDate, startTime)
-
+  /** The error shown under the times, or `null`. See [endDateError]. */
   val endDateError: FieldError?
-    get() = endDateError(DateTimeRange(startDate, startTime, endDate, endTime), zone)
+    get() = endDateError(range, zone)
 
   val isValid: Boolean
     get() =
@@ -99,7 +91,6 @@ data class CreateEventUIState(
             startDateTime,
             endDateTime,
             nameError,
-            startDateError,
             endDateError,
         )
 
@@ -137,13 +128,16 @@ private const val SAVE_TIMEOUT_MS = 15_000L
  *   between the different repositories. It coordinates the creation of the event and the update of
  *   its members.
  * @property userId the uid of the signed-in user, blank when nobody is.
+ * @property isAnonymous Tells whether the signed-in user has an anonymous account, which cannot
+ *   create an [Event]. Read when the ViewModel is created and again before saving.
  */
 class CreateEventViewModel(
     private val dataRepository: DataRepository,
     private val userId: String = "",
     private val saveTimeoutMs: Long = SAVE_TIMEOUT_MS,
     private val ioDispatcher: CoroutineDispatcher = IO,
-) : EventFormViewModel<CreateEventUIState>(CreateEventUIState()) {
+    private val isAnonymous: () -> Boolean = { false },
+) : EventFormViewModel<CreateEventUIState>(CreateEventUIState(canCreateEvent = !isAnonymous())) {
   val uiState: StateFlow<CreateEventUIState> = formState
   private var pendingEventId: String? = null
 
@@ -159,28 +153,14 @@ class CreateEventViewModel(
   override fun updateNameState(state: CreateEventUIState, newName: String) =
       state.copy(name = newName, nameEdited = true)
 
-  override fun updateStartDateState(state: CreateEventUIState, newDate: LocalDate) =
-      state.copy(startDate = newDate)
-
-  override fun updateEndDateState(state: CreateEventUIState, newDate: LocalDate) =
-      state.copy(endDate = newDate)
-
-  override fun updateStartTimeState(state: CreateEventUIState, time: LocalTime) =
-      state.copy(startTime = time)
-
-  override fun updateEndTimeState(state: CreateEventUIState, time: LocalTime) =
-      state.copy(endTime = time)
+  override fun updateRangeState(state: CreateEventUIState, range: DateTimeRange) =
+      state.copy(range = range)
 
   override fun updateVenueState(state: CreateEventUIState, newVenue: String) =
       state.copy(venue = newVenue)
 
   override fun updateNotesState(state: CreateEventUIState, newNotes: String) =
       state.copy(notes = newNotes)
-
-  override fun updatePickerState(state: CreateEventUIState, picker: DateTimeField?) =
-      state.copy(openPicker = picker)
-
-  override fun currentPicker(state: CreateEventUIState) = state.openPicker
 
   /** Handles system or top-bar back requests, asking before losing entered details. */
   fun requestDiscard() {
@@ -235,10 +215,7 @@ class CreateEventViewModel(
 
   private fun hasChanges(state: CreateEventUIState): Boolean =
       state.name.isNotEmpty() ||
-          state.startDate != null ||
-          state.endDate != null ||
-          state.startTime != null ||
-          state.endTime != null ||
+          state.range != DateTimeRange() ||
           state.venue.isNotEmpty() ||
           state.notes.isNotEmpty() ||
           state.hasImage
@@ -253,7 +230,7 @@ class CreateEventViewModel(
     val form = currentState
     val eventId = pendingEventId ?: dataRepository.eventsRepository.getNewUid()
     pendingEventId = eventId
-    updateState { it.copy(isSaving = true, errorMsg = null, openPicker = null) }
+    updateState { it.copy(isSaving = true, errorMsg = null) }
     viewModelScope.launch {
       try {
         withTimeout(saveTimeoutMs) { save(form, eventId) }
@@ -270,6 +247,7 @@ class CreateEventViewModel(
 
   private suspend fun save(form: CreateEventUIState, eventId: String) {
     check(userId.isNotBlank()) { "User not signed in" }
+    check(!isAnonymous()) { "An anonymous account user can't create an event." }
     val creator = dataRepository.usersRepository.getUser(userId)
 
     val newEvent = form.toEvent(eventId, creator)

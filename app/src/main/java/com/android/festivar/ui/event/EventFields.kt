@@ -4,6 +4,7 @@ package com.android.festivar.ui.event
 
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -18,12 +19,9 @@ import com.android.festivar.ui.components.FestivarFieldWithError
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.components.FieldError
 import com.android.festivar.ui.components.LONG_TEXT_MAX_LENGTH
-import com.android.festivar.ui.components.datetime.DateTimeField
 import com.android.festivar.ui.components.datetime.DateTimeRange
-import com.android.festivar.ui.components.datetime.FestivarDateTimePickerDialog
-import com.android.festivar.ui.components.datetime.FestivarDateTimeRow
-import java.time.LocalDate
-import java.time.LocalTime
+import com.android.festivar.ui.components.datetime.DatesAndTimesFieldTags
+import com.android.festivar.ui.components.datetime.FestivarDatesAndTimes
 
 /**
  * Identifies the event fields and validation messages rendered by [EventFields].
@@ -32,42 +30,37 @@ import java.time.LocalTime
  */
 data class EventFieldsTestTags(
     val name: String,
-    val startDate: String,
+    val dates: String,
     val startTime: String,
-    val endDate: String,
     val endTime: String,
     val venue: String,
     val notes: String,
     val nameError: String,
-    val startDateError: String,
-    val endDateError: String,
+    val timesError: String,
 )
 
 /**
- * Renders the shared title, start and end date/time, venue, and notes fields with a date/time
- * picker.
+ * Renders the shared title, dates and times, venue, and notes fields.
  *
  * The caller owns the form state, supplies screen-specific [testTags], and handles the callbacks.
- * [openPicker] selects which date/time picker is visible.
+ * [timesError] is shown under the times; [allowPast] lets the dates picker choose days that are
+ * over, for the screen that edits an existing event.
  */
 @Composable
 fun EventFields(
     name: String,
     nameError: FieldError?,
-    dateTimeRange: DateTimeRange,
-    startDateError: FieldError?,
-    endDateError: FieldError?,
+    range: DateTimeRange,
+    timesError: FieldError?,
     venue: String,
     notes: String,
-    openPicker: DateTimeField?,
+    allowPast: Boolean,
     enabled: Boolean = true,
     testTags: EventFieldsTestTags,
     onNameChange: (String) -> Unit,
-    onShowPicker: (DateTimeField?) -> Unit,
+    onRangeChange: (DateTimeRange) -> Unit,
     onVenueChange: (String) -> Unit,
     onNotesChange: (String) -> Unit,
-    onDatePicked: (LocalDate) -> Unit,
-    onTimePicked: (LocalTime) -> Unit,
 ) {
   Column {
     FestivarFieldWithError(nameError, testTags.nameError) {
@@ -82,33 +75,19 @@ fun EventFields(
     }
     Spacer(modifier = Modifier.height(14.dp))
 
-    FestivarDateTimeRow(
-        dateLabel = stringResource(R.string.create_event_field_start_date),
-        timeLabel = stringResource(R.string.create_event_field_start_time),
-        date = dateTimeRange.startDate,
-        time = dateTimeRange.startTime,
-        dateError = startDateError,
-        onDateClick = { onShowPicker(DateTimeField.START_DATE) },
-        onTimeClick = { onShowPicker(DateTimeField.START_TIME) },
+    FestivarDatesAndTimes(
+        range = range,
+        onRangeChange = onRangeChange,
         enabled = enabled,
-        dateTag = testTags.startDate,
-        dateErrorTag = testTags.startDateError,
-        timeTag = testTags.startTime,
-    )
-    Spacer(modifier = Modifier.height(14.dp))
-
-    FestivarDateTimeRow(
-        dateLabel = stringResource(R.string.create_event_field_end_date),
-        timeLabel = stringResource(R.string.create_event_field_end_time),
-        date = dateTimeRange.endDate,
-        time = dateTimeRange.endTime,
-        dateError = endDateError,
-        onDateClick = { onShowPicker(DateTimeField.END_DATE) },
-        onTimeClick = { onShowPicker(DateTimeField.END_TIME) },
-        enabled = enabled,
-        dateTag = testTags.endDate,
-        dateErrorTag = testTags.endDateError,
-        timeTag = testTags.endTime,
+        timesError = timesError,
+        allowPast = allowPast,
+        tags =
+            DatesAndTimesFieldTags(
+                dates = testTags.dates,
+                startTime = testTags.startTime,
+                endTime = testTags.endTime,
+                timesError = testTags.timesError,
+            ),
     )
     Spacer(modifier = Modifier.height(14.dp))
 
@@ -133,12 +112,4 @@ fun EventFields(
     )
     Spacer(modifier = Modifier.height(14.dp))
   }
-
-  FestivarDateTimePickerDialog(
-      field = openPicker,
-      range = dateTimeRange,
-      onDatePicked = onDatePicked,
-      onTimePicked = onTimePicked,
-      onDismiss = { onShowPicker(null) },
-  )
 }

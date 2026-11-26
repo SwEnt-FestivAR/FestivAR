@@ -1,6 +1,7 @@
 package com.android.festivar.ui.event.edit
 
 // Co-authored-by: Copilot App
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 
 import android.util.Log
 import androidx.annotation.StringRes
@@ -9,8 +10,8 @@ import com.android.festivar.R
 import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
+import com.android.festivar.model.event.role.Permission
 import com.android.festivar.ui.components.FieldError
-import com.android.festivar.ui.components.datetime.DateTimeField
 import com.android.festivar.ui.components.datetime.DateTimeRange
 import com.android.festivar.ui.components.datetime.endDateError as validateEndDateError
 import com.android.festivar.ui.event.EventFormViewModel
@@ -18,9 +19,6 @@ import com.android.festivar.ui.event.computeEndDateTime
 import com.android.festivar.ui.event.computeStartDateTime
 import com.android.festivar.ui.event.isEventFormValid
 import com.android.festivar.ui.event.validateEventName
-import com.android.festivar.ui.event.validateStartDate
-import java.time.LocalDate
-import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlinx.coroutines.CancellationException
@@ -42,20 +40,12 @@ data class EditEventUIState(
      * correctly.
      */
     val nameEdited: Boolean = false,
-    /** Selected start date for the event, used to build the full start timestamp. */
-    val startDate: LocalDate? = null,
-    /** Selected end date for the event, used to build the full end timestamp. */
-    val endDate: LocalDate? = null,
-    /** Selected start time for the event, used together with the start date. */
-    val startTime: LocalTime? = null,
-    /** Selected end time for the event, used together with the end date. */
-    val endTime: LocalTime? = null,
+    /** The days and times of the event, picked in one dates and times component. */
+    val range: DateTimeRange = DateTimeRange(),
     /** Venue text entered by the user for the event location. */
     val venue: String = "",
     /** Notes or description entered by the user for the event. */
     val notes: String = "",
-    /** Which date/time picker is currently open, or null when no picker is active. */
-    val openPicker: DateTimeField? = null,
     /** True while the existing event is being fetched from the repository. */
     val isLoading: Boolean = false,
     /** True while the updated event is being saved. */
@@ -66,6 +56,11 @@ data class EditEventUIState(
     val showDiscardConfirmation: Boolean = false,
     /** True when the user has confirmed the form should be discarded. */
     val isDiscarded: Boolean = false,
+    /**
+     * False when the current user is not a member of the event or their role cannot edit it, so the
+     * screen must leave. True until the event is loaded.
+     */
+    val canEditEvent: Boolean = true,
     /** Resource id for an event fetch error, or null when loading succeeded. */
     @param:StringRes val errorFetchMsg: Int? = null,
     /** Time zone used for the start date/time when building the event timestamp. */
@@ -77,32 +72,23 @@ data class EditEventUIState(
 ) {
   /** Full start timestamp assembled from the selected start date, time, and zone. */
   val startDateTime: ZonedDateTime?
-    get() = computeStartDateTime(startDate, startTime, zone)
+    get() = computeStartDateTime(range.startDate, range.startTime, zone)
 
   /** Full end timestamp assembled from the selected end date, time, and zone. */
   val endDateTime: ZonedDateTime?
-    get() = computeEndDateTime(endDate, endTime, endZone)
+    get() = computeEndDateTime(range.endDate, range.endTime, endZone)
 
   /** Validation error for the title field when it has been edited and left blank. */
   val nameError: FieldError?
     get() = validateEventName(name, nameEdited)
 
-  /** Validation error for the start date/time combination before saving. */
-  val startDateError: FieldError?
-    get() = validateStartDate(startDate, startTime)
-
-  /** Validation error for the end date/time combination before saving. */
+  /**
+   * The error shown under the times, or `null`. See [validateEndDateError]. The past is allowed on
+   * purpose: an event that has ended must still be saveable without changing its dates. The cost is
+   * that an upcoming event can also be moved into the past, which is accepted.
+   */
   val endDateError: FieldError?
-    get() = endDateErrorAt(ZonedDateTime.now())
-
-  /** Validates the end date/time against [now], including the distinct start and end zones. */
-  internal fun endDateErrorAt(now: ZonedDateTime): FieldError? =
-      validateEndDateError(
-          DateTimeRange(startDate, startTime, endDate, endTime),
-          zone,
-          now,
-          endZone,
-      )
+    get() = validateEndDateError(range, zone, endZone = endZone, allowPast = true)
 
   /** True when the loaded event data is complete and satisfies the form validation rules. */
   val isValid: Boolean
@@ -113,7 +99,6 @@ data class EditEventUIState(
             startDateTime = startDateTime,
             endDateTime = endDateTime,
             nameError = nameError,
-            startDateError = startDateError,
             endDateError = endDateError,
         )
 
@@ -122,10 +107,7 @@ data class EditEventUIState(
     get() =
         event != null &&
             (name != event.title ||
-                startDate != event.startDate.toLocalDate() ||
-                startTime != event.startDate.toLocalTime() ||
-                endDate != event.endDate.toLocalDate() ||
-                endTime != event.endDate.toLocalTime() ||
+                range != event.range() ||
                 venue != event.location ||
                 notes != event.description)
 
@@ -152,13 +134,9 @@ data class EditEventUIState(
           event = event,
           name = event.title,
           nameEdited = false,
-          startDate = event.startDate.toLocalDate(),
-          endDate = event.endDate.toLocalDate(),
-          startTime = event.startDate.toLocalTime(),
-          endTime = event.endDate.toLocalTime(),
+          range = event.range(),
           venue = event.location,
           notes = event.description,
-          openPicker = null,
           isLoading = false,
           isSaving = false,
           savedEventId = null,
@@ -170,6 +148,14 @@ data class EditEventUIState(
           errorMsg = null,
       )
 }
+
+private fun Event.range() =
+    DateTimeRange(
+        startDate.toLocalDate(),
+        startDate.toLocalTime(),
+        endDate.toLocalDate(),
+        endDate.toLocalTime(),
+    )
 
 class EditEventViewModel(
     private val dataRepository: DataRepository,
@@ -189,17 +175,8 @@ class EditEventViewModel(
   override fun updateNameState(state: EditEventUIState, newName: String) =
       state.copy(name = newName, nameEdited = true)
 
-  override fun updateStartDateState(state: EditEventUIState, newDate: LocalDate) =
-      state.copy(startDate = newDate)
-
-  override fun updateEndDateState(state: EditEventUIState, newDate: LocalDate) =
-      state.copy(endDate = newDate)
-
-  override fun updateStartTimeState(state: EditEventUIState, time: LocalTime) =
-      state.copy(startTime = time)
-
-  override fun updateEndTimeState(state: EditEventUIState, time: LocalTime) =
-      state.copy(endTime = time)
+  override fun updateRangeState(state: EditEventUIState, range: DateTimeRange) =
+      state.copy(range = range)
 
   override fun updateVenueState(state: EditEventUIState, newVenue: String) =
       state.copy(venue = newVenue)
@@ -207,14 +184,10 @@ class EditEventViewModel(
   override fun updateNotesState(state: EditEventUIState, newNotes: String) =
       state.copy(notes = newNotes)
 
-  override fun updatePickerState(state: EditEventUIState, picker: DateTimeField?) =
-      state.copy(openPicker = picker)
-
-  override fun currentPicker(state: EditEventUIState) = state.openPicker
-
   /**
-   * Loads [eventId] and populates the form. Does nothing for a blank id, an active load, an active
-   * save, or an already-loaded event.
+   * Loads [eventId] and populates the form when the current user can edit the event; otherwise sets
+   * [EditEventUIState.canEditEvent] to false without loading it. Does nothing for a blank id, an
+   * active load, an active save, or an already-loaded event.
    */
   fun fetchEvent(eventId: String) {
     if (eventId.isBlank()) {
@@ -234,7 +207,11 @@ class EditEventViewModel(
     loadJob = viewModelScope.launch {
       try {
         val event = eventsRepository.getEvent(eventId)
-        updateState { it.load(event) }
+        if (canEdit(event)) {
+          updateState { it.load(event) }
+        } else {
+          updateState { it.copy(isLoading = false, canEditEvent = false) }
+        }
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
@@ -271,8 +248,9 @@ class EditEventViewModel(
   }
 
   /**
-   * Saves the changed form when a user is signed in. A failed or timed-out write is read back to
-   * determine whether it succeeded.
+   * Saves the changed form when a user is signed in. The latest stored event is read first: if the
+   * current user can no longer edit it, nothing is written and [EditEventUIState.canEditEvent] is
+   * set to false. A failed or timed-out write is read back to determine whether it succeeded.
    */
   fun saveChanges() {
     val state = currentState
@@ -288,6 +266,12 @@ class EditEventViewModel(
       try {
         val latestEvent =
             withTimeout(saveTimeoutMs) { eventsRepository.getEvent(updatedEvent.eventId) }
+
+        if (!canEdit(latestEvent)) {
+          updateState { it.copy(isSaving = false, canEditEvent = false) }
+          return@launch
+        }
+
         val eventToSave =
             latestEvent.copy(
                 title = updatedEvent.title,
@@ -338,4 +322,18 @@ class EditEventViewModel(
           startDate == other.startDate &&
           endDate == other.endDate &&
           location == other.location
+
+  /**
+   * Tells whether the current user can edit [event]: they must be a member of it and their role
+   * must have [Permission.CAN_EDIT_EVENT]. A non-member gets `false` instead of the exception
+   * thrown by [Event.canAct].
+   *
+   * @param event The [Event] the current user wants to edit.
+   * @return `true` if the current user is a member of [event] whose role can edit it, `false`
+   *   otherwise.
+   */
+  private fun canEdit(event: Event): Boolean {
+    val uid = currentUserId()
+    return uid in event.roles && event.canAct(uid, Permission.CAN_EDIT_EVENT)
+  }
 }

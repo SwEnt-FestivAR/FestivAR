@@ -6,22 +6,24 @@ package com.android.festivar
 
 import android.util.Log
 import androidx.annotation.StringRes
+import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onChild
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.printToString
 import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -41,6 +43,7 @@ import com.android.festivar.ui.components.BottomNavigationBarTestTags
 import com.android.festivar.ui.components.NavigationSubScreen
 import com.android.festivar.ui.components.NavigationTab
 import com.android.festivar.ui.components.PeopleCardTestTags
+import com.android.festivar.ui.components.datetime.pickDays
 import com.android.festivar.ui.event.create.CreateEventScreenTestTags
 import com.android.festivar.ui.event.details.EventDetailsScreenTestTags
 import com.android.festivar.ui.event.join.JoinEventScreenTestTags
@@ -58,9 +61,6 @@ import com.google.firebase.firestore.firestore
 import java.time.Duration
 import java.time.LocalDate
 import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
-import java.util.Locale
 import java.util.UUID
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
@@ -331,8 +331,13 @@ class EndToEndTest {
           .onNodeWithTag(CreateEventScreenTestTags.NAME_FIELD)
           .performTextInput(CREATED_EVENT_TITLE)
       Espresso.closeSoftKeyboard()
-      selectDate(CreateEventScreenTestTags.START_DATE_FIELD, LocalDate.now().plusDays(1))
-      selectDate(CreateEventScreenTestTags.END_DATE_FIELD, LocalDate.now().plusDays(2))
+      // The real clock is needed: the event must be upcoming to show in the lists checked below
+      val today = LocalDate.now()
+      composeTestRule.pickDays(
+          CreateEventScreenTestTags.DATES_FIELD,
+          today.plusDays(1),
+          today.plusDays(2),
+      )
       composeTestRule
           .onNodeWithTag(CreateEventScreenTestTags.LOCATION_FIELD)
           .performTextInput("Vidy")
@@ -653,50 +658,41 @@ class EndToEndTest {
     composeTestRule.onNodeWithTag(LoginScreenTestTags.TITLE).assertIsDisplayed()
   }
 
-  /** Picks [date] in the dialog the field [tag] opens, as the create event screen test does. */
-  private fun selectDate(tag: String, date: LocalDate) {
-    composeTestRule.onNodeWithTag(tag).performClick()
-    waitUntilTextExists("OK")
-    val dateDescription =
-        DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL)
-            .withLocale(Locale.getDefault())
-            .format(date)
-    // The dialog shows one month, so a date near a month end can sit in the next one
-    if (
-        composeTestRule
-            .onAllNodesWithText(dateDescription, substring = true)
-            .fetchSemanticsNodes()
-            .isEmpty()
-    ) {
-      composeTestRule
-          .onNodeWithContentDescription("next month", substring = true, ignoreCase = true)
-          .performClick()
-    }
-    composeTestRule.onNodeWithText(dateDescription, substring = true).performClick()
-    composeTestRule.onNodeWithText("OK").performClick()
-  }
-
   private fun waitUntilTagExists(tag: String, timeout: Long = TIMEOUT) {
-    composeTestRule.waitUntil(timeoutMillis = timeout) {
+    waitUntil("the tag $tag to exist", timeout) {
       composeTestRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
     }
   }
 
   private fun waitUntilTagGone(tag: String, timeout: Long = TIMEOUT) {
-    composeTestRule.waitUntil(timeoutMillis = timeout) {
+    waitUntil("the tag $tag to be gone", timeout) {
       composeTestRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isEmpty()
     }
   }
 
   private fun waitUntilTextGone(text: String, timeout: Long = TIMEOUT) {
-    composeTestRule.waitUntil(timeoutMillis = timeout) {
+    waitUntil("the text \"$text\" to be gone", timeout) {
       composeTestRule.onAllNodesWithText(text).fetchSemanticsNodes().isEmpty()
     }
   }
 
   private fun waitUntilTextExists(text: String, timeout: Long = TIMEOUT) {
-    composeTestRule.waitUntil(timeoutMillis = timeout) {
+    waitUntil("the text \"$text\" to exist", timeout) {
       composeTestRule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
+    }
+  }
+
+  /**
+   * Waits until [condition] holds. On a timeout the failure says what was awaited and prints what
+   * is on screen, so that a flaky run shows whether the app was still loading, showed an error or
+   * never left the previous screen.
+   */
+  private fun waitUntil(what: String, timeout: Long, condition: () -> Boolean) {
+    try {
+      composeTestRule.waitUntil(timeoutMillis = timeout, condition = condition)
+    } catch (e: ComposeTimeoutException) {
+      val screen = composeTestRule.onAllNodes(isRoot()).printToString(maxDepth = Int.MAX_VALUE)
+      throw AssertionError("Still waiting for $what after $timeout ms. On screen:\n$screen", e)
     }
   }
 
@@ -834,6 +830,7 @@ class EndToEndTest {
                       audioUrl = "https://example.com/e2e-voice-note.m4a",
                       duration = Duration.ofSeconds(12),
                       createdAt = ZonedDateTime.now(),
+                      waveform = listOf(0.25f, 0.5f, 1f),
                   ),
           )
       runBlocking {

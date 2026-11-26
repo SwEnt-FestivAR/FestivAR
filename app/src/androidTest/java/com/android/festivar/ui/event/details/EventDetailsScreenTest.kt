@@ -34,6 +34,7 @@ import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
+import com.android.festivar.ui.components.map.MapCardTestTags
 import io.mockk.mockk
 import io.mockk.verify
 import java.time.ZoneId
@@ -110,6 +111,34 @@ class EventDetailsScreenTest {
     composeTestRule.onNodeWithText("${tasksListSize / 2}").assertIsDisplayed()
     composeTestRule.onNodeWithText("of $tasksListSize").assertIsDisplayed()
     composeTestRule.onNodeWithText("tasks still open").assertIsDisplayed()
+  }
+
+  /** Breaks if the map card is missing from the screen, or exposes a click action. */
+  @Test
+  fun mapCardIsDisplayedAndNotClickable() {
+    setContent(eventSameMonth)
+
+    composeTestRule.onNodeWithTag(MapCardTestTags.CARD).performScrollTo().assertIsDisplayed()
+    composeTestRule.onNodeWithTag(MapCardTestTags.CARD).assertHasNoClickAction()
+  }
+
+  /** Breaks if a member without any right does not see the map card. */
+  @Test
+  fun mapCardShowsToAMemberWithoutRights() {
+    val event =
+        Event(
+            eventId = EVENT_ID,
+            ownerId = "owner",
+            title = "Fête de l'Asso 2026",
+            members =
+                listOf(User(uid = "owner", name = "Olivia"), User(uid = "user", name = "Sami")),
+            startDate = eventStartDate,
+            endDate = eventEndDate,
+        )
+
+    setContent(event, currentUserId = "user")
+
+    composeTestRule.onNodeWithTag(MapCardTestTags.CARD).performScrollTo().assertIsDisplayed()
   }
 
   /** Breaks if the dates and the place are not on one line under the title. */
