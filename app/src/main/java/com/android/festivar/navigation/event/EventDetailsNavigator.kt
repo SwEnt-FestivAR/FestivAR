@@ -9,7 +9,10 @@ import com.android.festivar.navigation.AppScreens
 
 class EventDetailsNavigator(private val navController: NavHostController) {
   val onBack: () -> Unit = { navController.popBackStack() }
-  val onEventDeleted: () -> Unit = { navController.popBackStack() }
+  /** Back to the overview, which reloads on entry, so the deleted event is gone. */
+  val onEventDeleted: () -> Unit = {
+    navController.popBackStack(AppScreens.EventsOverview.name, inclusive = false)
+  }
   val onTasksButtonClicked: (String) -> Unit = { eventId ->
     navController.navigate(AppScreens.taskOverview(eventId))
   }

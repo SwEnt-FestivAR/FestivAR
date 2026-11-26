@@ -78,6 +78,7 @@ data class EventDetailsPermissions(
  * @property isUpdating true while a change of role or a kick is being saved, so a second tap does
  *   nothing.
  * @property isDeleting true while the event is being deleted, so a second tap does nothing.
+ * @property isDeleted true once the event is deleted; the screen then leaves.
  * @property errorMsg the string resource of the latest failure, or null. Without an [event], the
  *   loading failed; with one, a change or the deletion failed and the event shown is unchanged.
  */
@@ -87,6 +88,7 @@ data class EventDetailsUIState(
     val isUpdating: Boolean = false,
     @StringRes val errorMsg: Int? = null,
     val isDeleting: Boolean = false,
+    val isDeleted: Boolean = false,
 ) {
   /**
    * Whether the event can be deleted now: only with the permission, and never while a deletion or
@@ -141,11 +143,12 @@ class EventDetailsViewModel(
   }
 
   /**
-   * Deletes the event, its tasks and the links of its members, then calls [onDeleted]. A failure
-   * keeps the event shown and sets [EventDetailsUIState.errorMsg]. Does nothing unless
-   * [EventDetailsUIState.canDelete].
+   * Deletes the event, its tasks and the links of its members, then sets
+   * [EventDetailsUIState.isDeleted] so the screen leaves. [EventDetailsUIState.isDeleting] stays
+   * true after a success, since the screen is left for good. A failure keeps the event shown and
+   * sets [EventDetailsUIState.errorMsg]. Does nothing unless [EventDetailsUIState.canDelete].
    */
-  fun deleteEvent(onDeleted: () -> Unit = {}) {
+  fun deleteEvent() {
     val before = _uiState.getAndUpdate {
       if (it.canDelete) it.copy(isDeleting = true, errorMsg = null) else it
     }
@@ -164,8 +167,7 @@ class EventDetailsViewModel(
         }
         return@launch
       }
-      _uiState.update { it.copy(isDeleting = false) }
-      onDeleted()
+      _uiState.update { it.copy(isDeleted = true) }
     }
   }
 

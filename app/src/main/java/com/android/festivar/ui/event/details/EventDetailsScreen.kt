@@ -40,6 +40,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -122,7 +123,7 @@ class EventDetailsActions(
  * @param onAnnouncementsClicked called when the "Announcements" row is clicked.
  * @param onEditClicked called when the organizer picks "Edit event" in the menu.
  * @param modifier modifier applied to the event content.
- * @param onEventDeleted called after the organizer confirmed the deletion and the event is deleted.
+ * @param onEventDeleted called once the event is deleted, to leave the screen.
  */
 @Composable
 fun EventDetailsScreen(
@@ -136,6 +137,9 @@ fun EventDetailsScreen(
 ) {
   val uiState by viewModel.uiState.collectAsState()
   LaunchedEffect(Unit) { viewModel.fetchEvent() }
+  // The latest callback is called, even if the caller passed a new one during the deletion.
+  val currentOnEventDeleted by rememberUpdatedState(onEventDeleted)
+  LaunchedEffect(uiState.isDeleted) { if (uiState.isDeleted) currentOnEventDeleted() }
 
   EventDetailsContent(
       state = uiState,
@@ -145,7 +149,7 @@ fun EventDetailsScreen(
               onTasksButtonClicked = onTasksButtonClicked,
               onAnnouncementsClicked = onAnnouncementsClicked,
               onEditClicked = onEditClicked,
-              onDeleteEvent = { viewModel.deleteEvent(onEventDeleted) },
+              onDeleteEvent = viewModel::deleteEvent,
               onChangeRole = viewModel::changeRole,
               onKick = viewModel::kickMember,
               onErrorShown = viewModel::clearError,
