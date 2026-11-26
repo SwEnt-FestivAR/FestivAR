@@ -3,6 +3,7 @@ package com.android.festivar.ui.event.details
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.map.geometry.EPFL_LOCATION
+import com.android.festivar.model.map.geometry.GeoPosition
 import com.android.festivar.ui.components.map.MapPinKind
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -10,9 +11,17 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class EventLocationCardTest {
-  /** Breaks if the event card draws a pin that is not the event's, or not at the location. */
+  /**
+   * Breaks if the pin is not the event pin, or is not at the given location, for example when the
+   * function ignores its parameter and always returns EPFL.
+   */
   @Test
-  fun eventMapPin_isTheEventPinAtTheLocation() {
-    assertEquals(EventMapPin(MapPinKind.EVENT, EPFL_LOCATION), eventMapPin(EPFL_LOCATION))
+  fun eventMapPin_isTheEventPinAtTheGivenLocation() {
+    listOf(EPFL_LOCATION, GeoPosition(46.2044, 6.1432)).forEach { location ->
+      val pin = eventMapPin(location)
+
+      assertEquals(MapPinKind.EVENT, pin.kind)
+      assertEquals(location, pin.position)
+    }
   }
 }
