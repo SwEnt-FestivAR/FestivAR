@@ -834,6 +834,7 @@ class EndToEndTest {
                       audioUrl = "https://example.com/e2e-voice-note.m4a",
                       duration = Duration.ofSeconds(12),
                       createdAt = ZonedDateTime.now(),
+                      waveform = listOf(0.25f, 0.5f, 1f),
                   ),
           )
       runBlocking {

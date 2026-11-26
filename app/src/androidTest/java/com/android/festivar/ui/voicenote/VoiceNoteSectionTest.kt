@@ -42,6 +42,7 @@ class VoiceNoteSectionTest {
           "https://x/n1.m4a",
           Duration.ofSeconds(14),
           ZonedDateTime.of(2026, 10, 17, 9, 12, 0, 0, ZoneOffset.UTC),
+          listOf(0.25f, 0.5f, 1f),
       )
 
   private fun text(id: Int, vararg args: Any) =

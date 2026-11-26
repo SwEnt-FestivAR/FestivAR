@@ -32,6 +32,7 @@ class VoiceNotePlaybackDeletionTest {
           audioUrl = "https://fake/task/note.m4a",
           duration = Duration.ofSeconds(4),
           createdAt = recordedAt,
+          waveform = listOf(0.25f, 0.5f, 1f),
       )
   private val task =
       Task(

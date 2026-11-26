@@ -21,6 +21,7 @@ class VoiceNoteUiStateTest {
           "https://x/n1.m4a",
           Duration.ofSeconds(14),
           ZonedDateTime.of(2026, 10, 17, 9, 12, 0, 0, ZoneOffset.UTC),
+          listOf(0.25f, 0.5f, 1f),
       )
 
   /** Breaks if the record bar shows to a volunteer, or to the owner of a task that has a note. */
