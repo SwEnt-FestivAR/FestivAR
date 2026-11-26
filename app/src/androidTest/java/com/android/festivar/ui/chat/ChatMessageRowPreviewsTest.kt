@@ -14,7 +14,7 @@ class ChatMessageRowPreviewsTest {
 
   @get:Rule val composeTestRule = createComposeRule()
 
-  /** Breaks if the incoming message preview fails to render correctly. */
+  /** Breaks if the incoming message preview fails to display author "KIM", timestamp "13:58", or text "Every table in the right place ?". */
   @Test
   fun incomingMessagePreview_ShowsContent() {
     composeTestRule.setContent { IncomingMessagePreview() }
@@ -24,7 +24,7 @@ class ChatMessageRowPreviewsTest {
     composeTestRule.onNodeWithText("Every table in the right place ?").assertIsDisplayed()
   }
 
-  /** Breaks if the outgoing message preview fails to render correctly. */
+  /** Breaks if the outgoing message preview fails to display author "MANON", timestamp "13:59", or text "Chaque table à sa place !". */
   @Test
   fun outgoingMessagePreview_ShowsContent() {
     composeTestRule.setContent { OutgoingMessagePreview() }
