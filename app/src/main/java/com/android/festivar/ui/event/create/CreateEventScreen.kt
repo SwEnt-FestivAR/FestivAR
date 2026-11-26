@@ -246,6 +246,7 @@ fun CreateEventContent(
                 Modifier.padding(top = 5.dp).testTag(CreateEventScreenTestTags.IMAGE_SELECT_BUTTON),
             icon = IconsType.CAM,
             text = stringResource(R.string.create_event_image_add),
+            enabled = !state.isSaving,
             onEditImageClick = { launchPicker("image/*") },
         )
       }
@@ -344,6 +345,7 @@ fun ImagePlaceholderPicker(
     modifier: Modifier = Modifier,
     icon: IconsType,
     text: String,
+    enabled: Boolean = true,
     onEditImageClick: () -> Unit = {},
 ) {
   // Source - https://stackoverflow.com/a/67039676
@@ -372,6 +374,7 @@ fun ImagePlaceholderPicker(
               disabledContainerColor = MaterialTheme.colorScheme.outlineVariant,
               disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
           ),
+      enabled = enabled,
       onClick = onEditImageClick,
   ) {
     Column(
@@ -426,6 +429,7 @@ fun ImageViewer(
   BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
     Card(
         modifier = Modifier.fillMaxWidth().heightIn(max = maxWidth),
+        enabled = !uiState.isSaving,
         onClick = onEditImageClick,
     ) {
       GlideImage(
@@ -437,6 +441,7 @@ fun ImageViewer(
                 ImagePlaceholderPicker(
                     icon = IconsType.WARNING,
                     text = stringResource(R.string.create_event_image_fail),
+                    enabled = !uiState.isSaving,
                 )
               },
           loading =
@@ -444,6 +449,7 @@ fun ImageViewer(
                 ImagePlaceholderPicker(
                     icon = IconsType.LOAD,
                     text = stringResource(R.string.create_event_image_load),
+                    enabled = !uiState.isSaving,
                 )
               },
           modifier = Modifier.fillMaxWidth().testTag(CreateEventScreenTestTags.IMAGE_PREVIEW),

@@ -1341,6 +1341,44 @@ class CreateEventViewModelTest {
     }
   }
 
+  /** Breaks if concurrent image updates are permitted while saving. */
+  @Test
+  fun updateImageRejectsConcurrentUpdatesWhenSaving() {
+    runBlocking {
+      withMimeTypeMap {
+        val (resolver, uri) = createMockResolver()
+        val deferredUpload = CompletableDeferred<String>()
+        val customStorage =
+            object : ImageStorage {
+              override fun getNewUid(): String = "id"
+
+              override suspend fun upload(storedImage: StoredImage, subFolder: String): String {
+                return deferredUpload.await()
+              }
+
+              override suspend fun delete(imageUrl: String) {}
+            }
+        val repo =
+            DataRepositoryLocal(
+                authRepository = mockk(),
+                eventsRepository = eventsRepository,
+                usersRepository = usersRepository,
+                imageStorage = customStorage,
+            )
+        viewModel = CreateEventViewModel(repo, creator.uid, ioDispatcher = Dispatchers.Unconfined)
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        assertTrue(viewModel.uiState.value.isSaving)
+
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        deferredUpload.complete("https://example.com/image.jpg")
+        withTimeout(5_000.milliseconds) {
+          while (viewModel.uiState.value.isSaving) delay(10.milliseconds)
+        }
+        assertEquals("https://example.com/image.jpg", viewModel.uiState.value.imageUrl)
+      }
+    }
+  }
+
   private fun fillFormAndCreateEvent(
       eventsRepository: EventsRepository,
       usersRepository: UsersRepository,
