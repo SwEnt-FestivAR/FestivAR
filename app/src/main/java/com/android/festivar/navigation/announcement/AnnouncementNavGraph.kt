@@ -38,14 +38,14 @@ fun NavGraphBuilder.announcementGraph(
           ),
   ) { backStackEntry ->
     val (eventId, announcementId) =
-        requireAnnouncementDetailsArguments(
+        requireAnnouncementArguments(
             backStackEntry.arguments?.getString("eventId"),
             backStackEntry.arguments?.getString("announcementId"),
         )
     val navigator = AnnouncementDetailsNavigator(navController)
     RequireSignedIn(navController, dataRepository) { firebaseUser ->
       // Keyed by user: the view model knows whether the user may edit, so another sign-in needs a
-      // new one
+      // new one.
       AnnouncementDetailsScreen(
           viewModel =
               viewModel(key = "$eventId:$announcementId:${firebaseUser.uid}") {
@@ -72,16 +72,11 @@ fun NavGraphBuilder.announcementGraph(
           ),
   ) { backStackEntry ->
     val (eventId, announcementId) =
-        requireAnnouncementDetailsArguments(
+        requireAnnouncementArguments(
             backStackEntry.arguments?.getString("eventId"),
             backStackEntry.arguments?.getString("announcementId"),
         )
-    // Leaving the screen, whether the edit was saved or not, goes back to the details. The arrow
-    // still takes taps during the exit transition, so only this entry may pop itself, and only
-    // once.
-    val leave: () -> Unit = {
-      if (navController.currentBackStackEntry == backStackEntry) navController.popBackStack()
-    }
+    val navigator = EditAnnouncementNavigator(navController, backStackEntry)
     RequireSignedIn(navController, dataRepository) { firebaseUser ->
       // No key needed: the view model is scoped to this back stack entry, which has its own ids.
       EditAnnouncementScreen(
@@ -94,8 +89,8 @@ fun NavGraphBuilder.announcementGraph(
                     dataRepository,
                 )
               },
-          onBack = leave,
-          onSaved = leave,
+          onBack = navigator.onBack,
+          onSaved = navigator.onSaved,
       )
     }
   }
@@ -152,7 +147,13 @@ internal fun requireEventId(eventId: String?): String =
 internal fun requireEventId(backStackEntry: NavBackStackEntry): String =
     requireEventId(backStackEntry.arguments?.getString("eventId"))
 
-internal fun requireAnnouncementDetailsArguments(
+/**
+ * The ids in the route of a screen about one announcement, such as its details or its edit.
+ *
+ * @return the event id and the announcement id.
+ * @throws IllegalArgumentException if either id is missing or blank.
+ */
+internal fun requireAnnouncementArguments(
     eventId: String?,
     announcementId: String?,
 ): Pair<String, String> {
