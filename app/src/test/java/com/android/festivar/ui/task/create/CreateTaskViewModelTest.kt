@@ -111,6 +111,15 @@ class CreateTaskViewModelTest {
     assertTrue(viewModel.uiState.value.hasChanges)
   }
 
+  /** Breaks if a chosen day no longer counts as a change, so back would drop it unasked. */
+  @Test
+  fun hasChanges_isTrueOnceADayIsChosen() {
+    viewModel.updateRange(DateTimeRange(startDate = day, endDate = day))
+
+    assertTrue(viewModel.uiState.value.hasChanges)
+    assertTrue(viewModel.uiState.value.needsDiscardConfirmation)
+  }
+
   @Test
   fun hasChanges_isTrueOnceANewFieldIsEdited() {
     viewModel.updatePriority(Priority.LOW)
