@@ -8,6 +8,11 @@ import kotlinx.coroutines.tasks.await
 
 const val CHAT_COLLECTION_PATH = "chats"
 
+/**
+ * Firestore-backed [ChatRepository] that persists chats and their messages and members.
+ *
+ * @param db Firestore instance used to access chat documents.
+ */
 class ChatRepositoryFirebase(private val db: FirebaseFirestore) : ChatRepository {
   private val chatCollection
     get() = db.collection(CHAT_COLLECTION_PATH)
