@@ -15,9 +15,9 @@ import org.junit.Test
 class MyTasksScreenPreviewsTest {
   @get:Rule val composeTestRule = createComposeRule()
 
-  /** Breaks if the list preview stops showing the tasks of today and those without a start. */
+  /** Breaks if the list preview stops showing today's section and its row "Set up the bar". */
   @Test
-  fun listPreview_showsTheTasksGroupedByDay() {
+  fun listPreview_showsTodaysSection() {
     composeTestRule.setContent { MyTasksListPreview() }
 
     composeTestRule.onNodeWithTag(MyTasksScreenTestTags.LIST).assertIsDisplayed()
