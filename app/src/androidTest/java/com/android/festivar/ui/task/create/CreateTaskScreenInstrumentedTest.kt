@@ -27,6 +27,7 @@ import java.time.Duration
 import java.time.LocalDate
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -131,6 +132,15 @@ class CreateTaskScreenInstrumentedTest : CreateTaskTest() {
 
     composeTestRule.checkNoFieldErrorIsDisplayed()
     composeTestRule.onNodeWithTag(CreateTaskScreenTestTags.CREATE_BUTTON).assertIsEnabled()
+  }
+
+  /** Breaks if the create screen lets the user pick a day that is over. */
+  @Test
+  fun aPastDayCannotBePickedOnTheCreateScreen() {
+    // The screen has no `today` parameter, so yesterday is taken from the real clock.
+    composeTestRule.pickDays(CreateTaskScreenTestTags.DATES_FIELD, LocalDate.now().minusDays(1))
+
+    assertNull(viewModel.uiState.value.range.startDate)
   }
 
   @Test
