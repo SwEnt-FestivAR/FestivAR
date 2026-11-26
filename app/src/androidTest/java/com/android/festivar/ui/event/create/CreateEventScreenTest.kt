@@ -481,6 +481,9 @@ class CreateEventScreenTest {
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsNotEnabled()
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAME_FIELD).assertIsNotEnabled()
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.LOCATION_FIELD).assertIsNotEnabled()
+    composeTestRule
+        .onNodeWithTag(CreateEventScreenTestTags.IMAGE_SELECT_BUTTON)
+        .assertIsNotEnabled()
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAVIGATION_BUTTON).performClick()
     pressSystemBack()
     composeTestRule.waitForIdle()
@@ -496,6 +499,44 @@ class CreateEventScreenTest {
     gate.complete(Unit)
     composeTestRule.waitForIdle()
     verify(exactly = 1) { onCreated() }
+  }
+
+  /** Breaks if image picker or viewer remains enabled while saving. */
+  @Test
+  fun savingDisablesImagePickerAndImageViewer() {
+    val startDate = LocalDate.now()
+    val endDate = startDate.plusDays(1)
+    val gate = CompletableDeferred<Unit>()
+    val creator = User("creator-123", "Alice", "AliceInWonderland")
+    dataRepository =
+        DataRepositoryLocal(
+            mockk(),
+            eventsRepository = GatedRepository(gate),
+            usersRepository = UsersRepositoryLocal(listOf(creator)),
+        )
+    viewModel =
+        CreateEventViewModel(
+            dataRepository,
+            creator.uid,
+        )
+    viewModel.setImageUrlForTesting("https://example.com/image.png")
+    composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
+
+    viewModel.updateName("Summer festival")
+    viewModel.updateStartDate(startDate)
+    viewModel.updateEndDate(endDate)
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).performClick()
+    waitForTag(CreateEventScreenTestTags.SAVING_INDICATOR)
+
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.IMAGE_PREVIEW).assertIsNotEnabled()
+    composeTestRule
+        .onNodeWithTag(CreateEventScreenTestTags.DELETE_IMAGE_BUTTON)
+        .assertIsNotEnabled()
+
+    gate.complete(Unit)
+    composeTestRule.waitForIdle()
   }
 
   /** Red if a failed write shows nothing, or leaves the button disabled so no retry is possible. */
