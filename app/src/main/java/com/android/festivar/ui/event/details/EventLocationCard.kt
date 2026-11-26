@@ -31,11 +31,11 @@ internal fun eventMapPin(location: GeoPosition): EventMapPin =
  * @param location Where the event is.
  */
 @Composable
-internal fun EventLocationCard(location: GeoPosition, modifier: Modifier = Modifier) {
+internal fun EventLocationCard(location: GeoPosition) {
   val pin = eventMapPin(location)
   MapCard(
       locations = listOf(pin.position),
-      modifier = modifier.fillMaxWidth().height(EventLocationCardHeight),
+      modifier = Modifier.fillMaxWidth().height(EventLocationCardHeight),
   ) {
     MapPin(pin.position, pin.kind)
   }
