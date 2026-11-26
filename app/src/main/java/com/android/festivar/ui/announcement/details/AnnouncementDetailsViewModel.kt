@@ -58,14 +58,14 @@ data class AnnouncementDetailsUiState(
  *
  * @param eventId identifier of the event containing the announcement.
  * @param announcementId identifier of the announcement to show.
- * @param currentUserId the uid of the signed-in user, to tell whether they can edit the
+ * @param currentUserId returns the uid of the signed-in user, to tell whether they can edit the
  *   announcement.
  * @param dataRepository provides the event and user repositories used by this ViewModel.
  */
 class AnnouncementDetailsViewModel(
     private val eventId: String,
     private val announcementId: String,
-    private val currentUserId: String,
+    private val currentUserId: () -> String,
     private val dataRepository: DataRepository,
 ) : ViewModel() {
   private val eventsRepository: EventsRepository = dataRepository.eventsRepository
@@ -107,7 +107,7 @@ class AnnouncementDetailsViewModel(
               authorNameRes =
                   if (authorName == null) R.string.announcement_details_user_fetch_failed else null,
               eventEndTime = event.endDate,
-              canEdit = event.ownerId == currentUserId,
+              canEdit = event.ownerId == currentUserId(),
               isLoading = false,
               errorMsg =
                   it.errorMsg.takeUnless { error ->

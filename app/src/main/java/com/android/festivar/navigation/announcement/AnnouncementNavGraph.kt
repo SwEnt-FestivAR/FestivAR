@@ -52,7 +52,7 @@ fun NavGraphBuilder.announcementGraph(
                 AnnouncementDetailsViewModel(
                     eventId,
                     announcementId,
-                    firebaseUser.uid,
+                    { firebaseUser.uid },
                     dataRepository,
                 )
               },

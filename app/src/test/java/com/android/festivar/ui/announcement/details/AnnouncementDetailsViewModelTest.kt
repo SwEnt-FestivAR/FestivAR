@@ -84,7 +84,7 @@ class AnnouncementDetailsViewModelTest {
       )
 
   private fun viewModel(currentUserId: String = MEMBER_ID) =
-      AnnouncementDetailsViewModel("event-1", "announcement-1", currentUserId, dataRepository())
+      AnnouncementDetailsViewModel("event-1", "announcement-1", { currentUserId }, dataRepository())
 
   /**
    * Breaks if canEdit is true before the event is loaded, false for the owner of the event, or true
@@ -174,7 +174,7 @@ class AnnouncementDetailsViewModelTest {
         AnnouncementDetailsViewModel(
             "event-1",
             "announcement-1",
-            MEMBER_ID,
+            { MEMBER_ID },
             dataRepository(repository),
         )
 
@@ -208,7 +208,7 @@ class AnnouncementDetailsViewModelTest {
         AnnouncementDetailsViewModel(
             "event-1",
             "announcement-1",
-            MEMBER_ID,
+            { MEMBER_ID },
             dataRepository(usersRepository = blankSurnameUsers),
         )
 
@@ -229,7 +229,7 @@ class AnnouncementDetailsViewModelTest {
         AnnouncementDetailsViewModel(
             "event-1",
             "announcement-1",
-            MEMBER_ID,
+            { MEMBER_ID },
             dataRepository(usersRepository = deletedAuthorRepository),
         )
 
@@ -315,10 +315,10 @@ class AnnouncementDetailsViewModelTest {
   @Test
   fun blankIdsFailFast() {
     assertThrows(IllegalArgumentException::class.java) {
-      AnnouncementDetailsViewModel(" ", "announcement-1", MEMBER_ID, dataRepository())
+      AnnouncementDetailsViewModel(" ", "announcement-1", { MEMBER_ID }, dataRepository())
     }
     assertThrows(IllegalArgumentException::class.java) {
-      AnnouncementDetailsViewModel("event-1", " ", MEMBER_ID, dataRepository())
+      AnnouncementDetailsViewModel("event-1", " ", { MEMBER_ID }, dataRepository())
     }
   }
 

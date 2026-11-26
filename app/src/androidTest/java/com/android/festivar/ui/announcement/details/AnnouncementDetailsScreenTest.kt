@@ -76,7 +76,7 @@ class AnnouncementDetailsScreenTest {
         AnnouncementDetailsViewModel(
             eventId = "event-1",
             announcementId = announcement.announcementId,
-            currentUserId = "member-1",
+            currentUserId = { "member-1" },
             dataRepository =
                 DataRepositoryLocal(
                     authRepository = FakeAuthRepository(),
@@ -239,7 +239,7 @@ class AnnouncementDetailsScreenTest {
         AnnouncementDetailsViewModel(
             eventId = "event-1",
             announcementId = announcement.announcementId,
-            currentUserId = "member-1",
+            currentUserId = { "member-1" },
             dataRepository =
                 DataRepositoryLocal(
                     authRepository = FakeAuthRepository(),
@@ -290,7 +290,7 @@ class AnnouncementDetailsScreenTest {
         AnnouncementDetailsViewModel(
             eventId = "event-1",
             announcementId = announcement.announcementId,
-            currentUserId = "member-1",
+            currentUserId = { "member-1" },
             dataRepository =
                 DataRepositoryLocal(
                     authRepository = FakeAuthRepository(),
