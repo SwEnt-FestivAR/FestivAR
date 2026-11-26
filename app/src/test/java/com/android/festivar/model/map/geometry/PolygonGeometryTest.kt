@@ -151,6 +151,44 @@ class PolygonGeometryTest {
     assertFalse(polygonContains(lShape, at(-2.0, 5.0)))
   }
 
+  /**
+   * Breaks if a ray that only touches the outline is counted as a crossing, which happens when one
+   * of the two ends of an edge is compared with `>=`: the points are outside, level with the top of
+   * a triangle, with the bottom of another one, and with the two horizontal sides of the square.
+   */
+  @Test
+  fun aRayThatOnlyTouchesTheOutlineCrossesNothing() {
+    val pointingUp = listOf(at(0.0, 0.0), at(4.0, 0.0), at(2.0, 4.0))
+    val pointingDown = listOf(at(0.0, 4.0), at(4.0, 4.0), at(2.0, 0.0))
+
+    for (polygon in listOf(pointingUp, pointingUp.reversed())) {
+      assertFalse(polygonContains(polygon, at(-5.0, 4.0)))
+      assertFalse(polygonContains(polygon, at(10.0, 4.0)))
+    }
+    for (polygon in listOf(pointingDown, pointingDown.reversed())) {
+      assertFalse(polygonContains(polygon, at(-5.0, 0.0)))
+      assertFalse(polygonContains(polygon, at(10.0, 0.0)))
+    }
+    for (polygon in listOf(square, square.reversed())) {
+      assertFalse(polygonContains(polygon, at(-5.0, 0.0)))
+      assertFalse(polygonContains(polygon, at(-5.0, 10.0)))
+      assertFalse(polygonContains(polygon, at(15.0, 0.0)))
+      assertFalse(polygonContains(polygon, at(15.0, 10.0)))
+    }
+  }
+
+  /**
+   * Breaks if "on an edge" becomes looser or stricter than a micrometre: a millimetre outside the
+   * square is outside, a nanometre outside is rounding and counts as on the edge.
+   */
+  @Test
+  fun onAnEdgeMeansWithinAMicrometreOfIt() {
+    assertFalse(polygonContains(square, at(5.0, -1e-3)))
+    assertFalse(polygonContains(square, at(10.0 + 1e-3, 7.5)))
+    assertTrue(polygonContains(square, at(5.0, -1e-9)))
+    assertTrue(polygonContains(square, at(10.0 + 1e-9, 7.5)))
+  }
+
   /** Breaks if a line is taken for a surface. */
   @Test
   fun fewerThanThreeCornersContainNothing() {
