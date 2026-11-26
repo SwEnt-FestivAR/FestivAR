@@ -21,6 +21,9 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.rememberUpdatedMarkerState
 
+/** Height of the map card of the detail screens of an event and of a task, as in Figma. */
+internal val DetailMapCardHeight = 156.dp
+
 /** Test tags of [MapCard]. */
 object MapCardTestTags {
   const val CARD = "map_card"
@@ -87,7 +90,7 @@ internal fun MapCardPreview() {
           GeoPosition(EPFL_LOCATION.latitude - 0.0004, EPFL_LOCATION.longitude - 0.0008),
       )
   AppTheme {
-    MapCard(locations, Modifier.fillMaxWidth().padding(20.dp).height(156.dp)) {
+    MapCard(locations, Modifier.fillMaxWidth().padding(20.dp).height(DetailMapCardHeight)) {
       locations.forEachIndexed { index, location ->
         Marker(
             state =
