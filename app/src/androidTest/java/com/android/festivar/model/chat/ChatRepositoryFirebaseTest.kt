@@ -178,6 +178,19 @@ class ChatRepositoryFirebaseTest {
     assertTrue(error.message!!.contains(chatId))
   }
 
+  /** Breaks if missing optional fields or chat IDs do not use their defaults. */
+  @Test
+  fun getChat_defaultsMissingOptionalFieldsAndChatId() = runBlocking {
+    val chatId = "chat-corrupt-${UUID.randomUUID()}"
+    Firebase.firestore
+        .collection(CHAT_COLLECTION_PATH)
+        .document(chatId)
+        .set(mapOf("eventId" to "event-test"))
+        .await()
+
+    assertEquals(Chat(chatId = chatId, eventId = "event-test"), repository.getChat(chatId))
+  }
+
   /** Breaks if missing or malformed stored fields are silently accepted or lose chat context. */
   @Test
   fun getChat_rejectsMissingEventAndInvalidMemberOrMessageData() = runBlocking {
