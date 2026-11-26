@@ -9,6 +9,7 @@ import com.android.festivar.R
 import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
+import com.android.festivar.model.event.role.Permission
 import com.android.festivar.ui.components.FieldError
 import com.android.festivar.ui.components.datetime.DateTimeField
 import com.android.festivar.ui.components.datetime.DateTimeRange
@@ -66,6 +67,11 @@ data class EditEventUIState(
     val showDiscardConfirmation: Boolean = false,
     /** True when the user has confirmed the form should be discarded. */
     val isDiscarded: Boolean = false,
+    /**
+     * False when the current user is not a member of the event or their role cannot edit it, so the
+     * screen must leave. True until the event is loaded.
+     */
+    val canEditEvent: Boolean = true,
     /** Resource id for an event fetch error, or null when loading succeeded. */
     @param:StringRes val errorFetchMsg: Int? = null,
     /** Time zone used for the start date/time when building the event timestamp. */
@@ -213,8 +219,9 @@ class EditEventViewModel(
   override fun currentPicker(state: EditEventUIState) = state.openPicker
 
   /**
-   * Loads [eventId] and populates the form. Does nothing for a blank id, an active load, an active
-   * save, or an already-loaded event.
+   * Loads [eventId] and populates the form when the current user can edit the event; otherwise sets
+   * [EditEventUIState.canEditEvent] to false without loading it. Does nothing for a blank id, an
+   * active load, an active save, or an already-loaded event.
    */
   fun fetchEvent(eventId: String) {
     if (eventId.isBlank()) {
@@ -234,7 +241,11 @@ class EditEventViewModel(
     loadJob = viewModelScope.launch {
       try {
         val event = eventsRepository.getEvent(eventId)
-        updateState { it.load(event) }
+        if (canEdit(event)) {
+          updateState { it.load(event) }
+        } else {
+          updateState { it.copy(isLoading = false, canEditEvent = false) }
+        }
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
@@ -271,8 +282,9 @@ class EditEventViewModel(
   }
 
   /**
-   * Saves the changed form when a user is signed in. A failed or timed-out write is read back to
-   * determine whether it succeeded.
+   * Saves the changed form when a user is signed in. The latest stored event is read first: if the
+   * current user can no longer edit it, nothing is written and [EditEventUIState.canEditEvent] is
+   * set to false. A failed or timed-out write is read back to determine whether it succeeded.
    */
   fun saveChanges() {
     val state = currentState
@@ -288,6 +300,12 @@ class EditEventViewModel(
       try {
         val latestEvent =
             withTimeout(saveTimeoutMs) { eventsRepository.getEvent(updatedEvent.eventId) }
+
+        if (!canEdit(latestEvent)) {
+          updateState { it.copy(isSaving = false, canEditEvent = false) }
+          return@launch
+        }
+
         val eventToSave =
             latestEvent.copy(
                 title = updatedEvent.title,
@@ -338,4 +356,18 @@ class EditEventViewModel(
           startDate == other.startDate &&
           endDate == other.endDate &&
           location == other.location
+
+  /**
+   * Tells whether the current user can edit [event]: they must be a member of it and their role
+   * must have [Permission.CAN_EDIT_EVENT]. A non-member gets `false` instead of the exception
+   * thrown by [Event.canAct].
+   *
+   * @param event The [Event] the current user wants to edit.
+   * @return `true` if the current user is a member of [event] whose role can edit it, `false`
+   *   otherwise.
+   */
+  private fun canEdit(event: Event): Boolean {
+    val uid = currentUserId()
+    return uid in event.roles && event.canAct(uid, Permission.CAN_EDIT_EVENT)
+  }
 }

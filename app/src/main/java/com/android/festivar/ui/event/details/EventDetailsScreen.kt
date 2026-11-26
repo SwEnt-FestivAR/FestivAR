@@ -53,6 +53,7 @@ import com.android.festivar.R
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.joinCodeOf
 import com.android.festivar.model.event.role.Role
+import com.android.festivar.model.map.geometry.EPFL_LOCATION
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.EditDeleteMenu
@@ -60,7 +61,7 @@ import com.android.festivar.ui.components.Hairline
 import com.android.festivar.ui.components.NoticeSnackbar
 import com.android.festivar.ui.components.PillStyle
 import com.android.festivar.ui.components.StatusPill
-import com.android.festivar.ui.components.formatEventDateAndLocation
+import com.android.festivar.ui.components.datetime.formatEventDateAndLocation
 import com.android.festivar.ui.theme.AppTheme
 import com.android.festivar.ui.theme.NumeralLarge
 import java.time.ZoneId
@@ -269,6 +270,9 @@ private fun EventInfo(
     JoinCodeRow(code = joinCodeOf(event))
 
     EventLinks(event = event, state = state, actions = actions)
+
+    // The location of an event is not stored yet: every event shows EPFL for now.
+    EventLocationCard(EPFL_LOCATION)
   }
 }
 

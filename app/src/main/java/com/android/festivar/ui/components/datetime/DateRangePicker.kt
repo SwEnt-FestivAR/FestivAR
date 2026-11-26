@@ -49,7 +49,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.android.festivar.R
 import com.android.festivar.ui.components.FixedBottomBar
-import com.android.festivar.ui.components.formatDateRange
 import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit

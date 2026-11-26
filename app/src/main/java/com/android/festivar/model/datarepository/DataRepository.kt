@@ -3,6 +3,8 @@
 package com.android.festivar.model.datarepository
 
 import com.android.festivar.model.authentication.AuthRepository
+import com.android.festivar.model.chat.Chat
+import com.android.festivar.model.chat.ChatRepository
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.canKick
@@ -33,6 +35,7 @@ import kotlinx.coroutines.withContext
  * @property tasksRepository The repository storing the [Task]s.
  * @property eventsRepository The repository storing the [Event]s.
  * @property usersRepository The repository storing the [User]s.
+ * @property chatRepository The repository storing the chats, when configured.
  */
 interface DataRepository {
 
@@ -40,6 +43,7 @@ interface DataRepository {
   val tasksRepository: TasksRepository
   val eventsRepository: EventsRepository
   val usersRepository: UsersRepository
+  val chatRepository: ChatRepository?
   val imageStorage: ImageStorage
 
   /**
@@ -174,6 +178,13 @@ interface DataRepository {
       eventsRepository.addEvent(event)
       undoProcess.addFirst { eventsRepository.deleteEvent(event.eventId) }
 
+      chatRepository?.let {
+        for (chatId in event.chatIds) {
+          it.addChat(Chat(chatId = chatId, eventId = event.eventId))
+          undoProcess.addFirst { it.deleteChat(chatId) }
+        }
+      }
+
       editUsers(users, newUsers, undoProcess)
     } catch (e: Exception) {
       rollback(undoProcess, e)
@@ -225,7 +236,48 @@ interface DataRepository {
         undoProcess.addFirst { tasksRepository.addTask(task) }
       }
 
+      chatRepository?.let {
+        for (chatId in event.chatIds) {
+          try {
+            val chat = it.getChat(chatId)
+            it.deleteChat(chatId)
+            undoProcess.addFirst { it.addChat(chat) }
+          } catch (_: NoSuchElementException) {
+            // Events stored before chatIds existed may have no linked chat.
+          }
+        }
+      }
+
       editUsers(users, newUsers, undoProcess)
+    } catch (e: Exception) {
+      rollback(undoProcess, e)
+      throw e
+    }
+  }
+
+  /**
+   * Deletes a chat and removes its identifier from the event that owns it.
+   *
+   * @param chatId The identifier of the chat to delete.
+   * @throws IllegalStateException If no chat repository is configured.
+   * @throws NoSuchElementException If the chat or its event does not exist.
+   * @throws DataInconsistencyException If a write failed and could not be fully undone.
+   */
+  suspend fun deleteChat(chatId: String) {
+    val repository =
+        chatRepository ?: throw IllegalStateException("Chat repository is not configured.")
+
+    val chat = repository.getChat(chatId)
+    val event = eventsRepository.getEvent(chat.eventId)
+    val newEvent = event.removeChatId(chatId)
+
+    val undoProcess = ArrayDeque<suspend () -> Unit>()
+    try {
+      repository.deleteChat(chatId)
+      undoProcess.addFirst { repository.addChat(chat) }
+
+      eventsRepository.editEvent(event.eventId, newEvent)
+      undoProcess.addFirst { eventsRepository.editEvent(event.eventId, event) }
     } catch (e: Exception) {
       rollback(undoProcess, e)
       throw e

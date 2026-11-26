@@ -31,7 +31,14 @@ A Kotlin/Android Festival manager app (`com.android.festivar`), built with an **
 - Read the failing tests carefully and iterate until `./gradlew check` passes.
 - Stage only the files you changed; never `git add .` or `git add -A` (it can pull in local config like `local.properties`).
 - **Never force push** (`--force`, `--force-with-lease`, `+branch`), on any branch. If a push is rejected or a rebase/amend would need one, stop and ask the human which alternative to use (merge the base branch in, add a new commit, or push to a new branch and open a new PR).
-- Commit with an imperative subject of at most 50 characters, capitalized (e.g. `Add user authentication`). Add a body wrapped at 72 characters when the subject is not enough.
+- Write commit headers as `type(scope): Subject`, e.g. `feat(task-details): Add TaskDetailsViewModel`.
+  - Type: `feat`, `fix`, `refactor`, `test`, `docs`, `style`, `chore` or `revert`. Type and scope are lowercase; the scope is kebab-case.
+  - The subject is imperative, capitalized
+  - The whole header, prefix included, is **at most 50 characters**.
+  - When the subject is not enough, add a body wrapped at 72 characters.
+  - One logical change per commit, and tests in their own commit apart from the code they cover.
+  - Name the change, never the review ("address review", "fix comments").
+  - End with the trailer, after a blank line: `Co-Authored-By: ...`. It does not count toward the 50.
 - **Acknowledge your contributors** at the top of the file: credit the AI that wrote it with a `Co-authored-by` line. An AI agent is a contributor, so credit it.
 
 ## Your role
