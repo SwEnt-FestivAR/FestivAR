@@ -68,7 +68,8 @@ private val createAnnouncementLabels =
  * Create announcement screen, connected to its [viewModel], which knows the event the announcement
  * belongs to and its author.
  *
- * @param onBack Called when the user leaves without publishing.
+ * @param onBack Called when the user leaves without publishing, and when their role in the event
+ *   does not allow creating an announcement.
  * @param onPublished Called once the announcement has been saved.
  */
 @Composable
@@ -83,6 +84,9 @@ fun CreateAnnouncementScreen(
   // The latest callback is called, even if the caller passed a new one during the save.
   val currentOnPublished by rememberUpdatedState(onPublished)
   LaunchedEffect(state.isPublished) { if (state.isPublished) currentOnPublished() }
+
+  val canCreateAnnouncement = state.canCreateAnnouncement
+  LaunchedEffect(canCreateAnnouncement) { if (!canCreateAnnouncement) onBack() }
 
   AnnouncementFormBackHandling(
       isSaving = { state.isSaving },
