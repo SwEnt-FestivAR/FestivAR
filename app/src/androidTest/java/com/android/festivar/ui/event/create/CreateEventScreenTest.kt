@@ -316,6 +316,10 @@ class CreateEventScreenTest {
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.IMAGE_SELECT_BUTTON).performClick()
     activityResultRegistry.dispatchGetContentResult(Uri.parse("content://event-image"))
     composeTestRule.waitForIdle()
+
+    composeTestRule.waitUntil(timeoutMillis = 5_000) { viewModel.uiState.value.imageUrl != null }
+    assertNotNull(viewModel.uiState.value.imageUrl)
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.IMAGE_PREVIEW).assertIsDisplayed()
   }
 
   /**
