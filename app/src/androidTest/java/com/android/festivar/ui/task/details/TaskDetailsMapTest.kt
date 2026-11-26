@@ -90,6 +90,15 @@ class TaskDetailsMapTest {
     composeTestRule.onNodeWithTag(MapCardTestTags.CARD).performScrollTo().assertIsDisplayed()
   }
 
+  /** Breaks if the preview of the card fails to compose, or loses its map or its address. */
+  @Test
+  fun preview_showsTheMapAndTheAddress() {
+    composeTestRule.setContent { TaskMapCardPreview() }
+
+    composeTestRule.onNodeWithTag(MapCardTestTags.CARD).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(TaskMapCardTestTags.ADDRESS).assertIsDisplayed()
+  }
+
   /** Breaks if the card gets a click action, so a tap on it does something. */
   @Test
   fun card_hasNoClickAction() {
