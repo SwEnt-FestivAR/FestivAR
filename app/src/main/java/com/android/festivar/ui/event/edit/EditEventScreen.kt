@@ -1,6 +1,7 @@
 package com.android.festivar.ui.event.edit
 
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
@@ -41,13 +42,10 @@ import com.android.festivar.R
 import com.android.festivar.model.event.Event
 import com.android.festivar.ui.components.FestivarDiscardDialog
 import com.android.festivar.ui.components.FestivarFieldError
-import com.android.festivar.ui.components.datetime.DateTimeField
 import com.android.festivar.ui.components.datetime.DateTimeRange
 import com.android.festivar.ui.event.EventFields
 import com.android.festivar.ui.event.EventFieldsTestTags
 import com.android.festivar.ui.theme.AppTheme
-import java.time.LocalDate
-import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
@@ -57,14 +55,12 @@ object EditEventScreenTestTags {
   const val BACK_BUTTON = "editEventBackButton"
   const val TITLE = "editEventTitle"
   const val NAME_FIELD = "editEventNameField"
-  const val START_DATE_FIELD = "editEventStartDateField"
+  const val DATES_FIELD = "editEventDatesField"
   const val START_TIME_FIELD = "editEventStartTimeField"
-  const val END_DATE_FIELD = "editEventEndDateField"
   const val END_TIME_FIELD = "editEventEndTimeField"
   const val LOCATION_FIELD = "editEventLocationField"
   const val DESCRIPTION_FIELD = "editEventDescriptionField"
   const val NAME_ERROR = "editEventNameError"
-  const val START_DATE_ERROR = "editEventStartDateError"
   const val END_DATE_ERROR = "editEventEndDateError"
   const val SAVE_BUTTON = "editEventSaveButton"
   const val SAVING_INDICATOR = "editEventSaving"
@@ -78,15 +74,13 @@ object EditEventScreenTestTags {
 private val editEventFieldTags =
     EventFieldsTestTags(
         name = EditEventScreenTestTags.NAME_FIELD,
-        startDate = EditEventScreenTestTags.START_DATE_FIELD,
+        dates = EditEventScreenTestTags.DATES_FIELD,
         startTime = EditEventScreenTestTags.START_TIME_FIELD,
-        endDate = EditEventScreenTestTags.END_DATE_FIELD,
         endTime = EditEventScreenTestTags.END_TIME_FIELD,
         venue = EditEventScreenTestTags.LOCATION_FIELD,
         notes = EditEventScreenTestTags.DESCRIPTION_FIELD,
         nameError = EditEventScreenTestTags.NAME_ERROR,
-        startDateError = EditEventScreenTestTags.START_DATE_ERROR,
-        endDateError = EditEventScreenTestTags.END_DATE_ERROR,
+        timesError = EditEventScreenTestTags.END_DATE_ERROR,
     )
 
 /** Callbacks handled by the Edit event screen. */
@@ -94,11 +88,9 @@ class EditEventActions(
     val onBack: () -> Unit = {},
     val onRetry: () -> Unit = {},
     val onNameChange: (String) -> Unit = {},
-    val onShowPicker: (DateTimeField?) -> Unit = {},
+    val onRangeChange: (DateTimeRange) -> Unit = {},
     val onVenueChange: (String) -> Unit = {},
     val onNotesChange: (String) -> Unit = {},
-    val onDatePicked: (LocalDate) -> Unit = {},
-    val onTimePicked: (LocalTime) -> Unit = {},
     val onSave: () -> Unit = {},
     val onCancelDiscard: () -> Unit = {},
     val onConfirmDiscard: () -> Unit = {},
@@ -132,11 +124,9 @@ fun EditEventScreen(
               onBack = viewModel::requestDiscard,
               onRetry = { viewModel.fetchEvent(eventId) },
               onNameChange = viewModel::updateName,
-              onShowPicker = viewModel::showPicker,
+              onRangeChange = viewModel::updateRange,
               onVenueChange = viewModel::updateVenue,
               onNotesChange = viewModel::updateNotes,
-              onDatePicked = viewModel::pickDate,
-              onTimePicked = viewModel::pickTime,
               onSave = viewModel::saveChanges,
               onCancelDiscard = viewModel::cancelDiscard,
               onConfirmDiscard = viewModel::confirmDiscard,
@@ -180,25 +170,16 @@ fun EditEventContent(
             EventFields(
                 name = state.name,
                 nameError = state.nameError,
-                dateTimeRange =
-                    DateTimeRange(
-                        startDate = state.startDate,
-                        endDate = state.endDate,
-                        startTime = state.startTime,
-                        endTime = state.endTime,
-                    ),
-                startDateError = state.startDateError,
-                endDateError = state.endDateError,
+                range = state.range,
+                timesError = state.endDateError,
                 venue = state.venue,
                 notes = state.notes,
-                openPicker = state.openPicker,
+                allowPast = true,
                 testTags = editEventFieldTags,
                 onNameChange = actions.onNameChange,
-                onShowPicker = actions.onShowPicker,
+                onRangeChange = actions.onRangeChange,
                 onVenueChange = actions.onVenueChange,
                 onNotesChange = actions.onNotesChange,
-                onDatePicked = actions.onDatePicked,
-                onTimePicked = actions.onTimePicked,
             )
           }
       state.isLoading ->

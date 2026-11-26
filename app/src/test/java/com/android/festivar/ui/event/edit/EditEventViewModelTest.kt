@@ -2,6 +2,7 @@ package com.android.festivar.ui.event.edit
 
 // Co-authored-by: Copilot App
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 
 import com.android.festivar.R
 import com.android.festivar.model.authentication.FakeAuthRepository
@@ -14,7 +15,7 @@ import com.android.festivar.model.event.role.Role
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.FieldError
-import com.android.festivar.ui.components.datetime.DateTimeField
+import com.android.festivar.ui.components.datetime.DateTimeRange
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
@@ -67,10 +68,10 @@ class EditEventViewModelTest {
 
     val state = viewModel.uiState.value
     assertEquals(initialEvent.title, state.name)
-    assertEquals(initialEvent.startDate.toLocalDate(), state.startDate)
-    assertEquals(initialEvent.endDate.toLocalDate(), state.endDate)
-    assertEquals(initialEvent.startDate.toLocalTime(), state.startTime)
-    assertEquals(initialEvent.endDate.toLocalTime(), state.endTime)
+    assertEquals(initialEvent.startDate.toLocalDate(), state.range.startDate)
+    assertEquals(initialEvent.endDate.toLocalDate(), state.range.endDate)
+    assertEquals(initialEvent.startDate.toLocalTime(), state.range.startTime)
+    assertEquals(initialEvent.endDate.toLocalTime(), state.range.endTime)
     assertEquals(initialEvent.location, state.venue)
     assertEquals(initialEvent.description, state.notes)
     assertFalse(state.hasChanges)
@@ -136,47 +137,22 @@ class EditEventViewModelTest {
     )
   }
 
+  /** Breaks if updating the range does not replace it whole, or does not count as a change. */
   @Test
-  fun pickerUpdatesSelectedFieldAndCloses() = runTest {
+  fun updateRangeReplacesTheRangeAndMarksTheFormChanged() = runTest {
     viewModel.fetchEvent(initialEvent.eventId)
     advanceUntilIdle()
+    val loaded = viewModel.uiState.value.range
+    val newRange =
+        loaded.copy(
+            startDate = loaded.startDate!!.plusDays(1),
+            endDate = loaded.endDate!!.plusDays(2),
+        )
 
-    val date = initialEvent.startDate.toLocalDate().plusDays(1)
-    viewModel.showPicker(DateTimeField.START_DATE)
-    viewModel.pickDate(date)
+    viewModel.updateRange(newRange)
 
-    assertEquals(date, viewModel.uiState.value.startDate)
-    assertNull(viewModel.uiState.value.openPicker)
-  }
-
-  @Test
-  fun pickerUpdatesEveryDateAndTimeFieldAndIgnoresMismatchedPicker() = runTest {
-    viewModel.fetchEvent(initialEvent.eventId)
-    advanceUntilIdle()
-    val state = viewModel.uiState.value
-    val date = state.startDate!!.plusDays(1)
-    val time = state.startTime!!.plusHours(1)
-
-    viewModel.showPicker(DateTimeField.END_DATE)
-    viewModel.pickDate(date)
-    assertEquals(date, viewModel.uiState.value.endDate)
-
-    viewModel.showPicker(DateTimeField.START_TIME)
-    viewModel.pickTime(time)
-    assertEquals(time, viewModel.uiState.value.startTime)
-
-    viewModel.showPicker(DateTimeField.END_TIME)
-    viewModel.pickTime(time)
-    assertEquals(time, viewModel.uiState.value.endTime)
-
-    viewModel.showPicker(DateTimeField.START_DATE)
-    viewModel.pickTime(time)
-    assertEquals(state.startDate, viewModel.uiState.value.startDate)
-    assertNull(viewModel.uiState.value.openPicker)
-
-    viewModel.showPicker(null)
-    viewModel.pickDate(date)
-    assertNull(viewModel.uiState.value.openPicker)
+    assertEquals(newRange, viewModel.uiState.value.range)
+    assertTrue(viewModel.uiState.value.hasChanges)
   }
 
   @Test
@@ -186,7 +162,6 @@ class EditEventViewModelTest {
     assertNull(state.startDateTime)
     assertNull(state.endDateTime)
     assertNull(state.nameError)
-    assertNull(state.startDateError)
     assertNull(state.endDateError)
     assertFalse(state.isValid)
     assertFalse(state.hasChanges)
@@ -221,62 +196,99 @@ class EditEventViewModelTest {
     assertThrows(IllegalArgumentException::class.java) { loadedState.copy(name = "").toEvent() }
   }
 
+  /** Breaks if changing any one of the four parts of the range is not counted as a change. */
   @Test
   fun changingEachDateOrTimeFieldMarksDraftAsChanged() {
     val state = EditEventUIState().load(initialEvent)
 
-    assertTrue(state.copy(startDate = state.startDate!!.plusDays(1)).hasChanges)
-    assertTrue(state.copy(endDate = state.endDate!!.plusDays(1)).hasChanges)
-    assertTrue(state.copy(startTime = state.startTime!!.plusHours(1)).hasChanges)
-    assertTrue(state.copy(endTime = state.endTime!!.plusHours(1)).hasChanges)
+    assertTrue(
+        state
+            .copy(range = state.range.copy(startDate = state.range.startDate!!.plusDays(1)))
+            .hasChanges
+    )
+    assertTrue(
+        state.copy(range = state.range.copy(endDate = state.range.endDate!!.plusDays(1))).hasChanges
+    )
+    assertTrue(
+        state
+            .copy(range = state.range.copy(startTime = state.range.startTime!!.plusHours(1)))
+            .hasChanges
+    )
+    assertTrue(
+        state
+            .copy(range = state.range.copy(endTime = state.range.endTime!!.plusHours(1)))
+            .hasChanges
+    )
   }
 
+  /** Breaks if an end time with no end date is not reported as a missing date. */
   @Test
   fun endDateErrorRequiresDateWhenEndTimeIsSet() = runTest {
     viewModel.fetchEvent(initialEvent.eventId)
     advanceUntilIdle()
 
-    val state = viewModel.uiState.value.copy(endDate = null)
+    val state = viewModel.uiState.value.let { it.copy(range = it.range.copy(endDate = null)) }
 
     assertEquals(FieldError.MISSING_DATE, state.endDateError)
   }
 
+  /** Breaks if an event that already ended is reported as an error, so it could not be edited. */
   @Test
-  fun endDateErrorRejectsPastEndTime() = runTest {
+  fun endDateErrorAcceptsAnEndInThePast() = runTest {
     viewModel.fetchEvent(initialEvent.eventId)
     advanceUntilIdle()
 
-    val now = ZonedDateTime.of(2026, 11, 5, 12, 0, 0, 0, ZoneId.of("Europe/Zurich"))
-    val yesterday = now.toLocalDate().minusDays(1)
+    val lastDay = LocalDate.of(2020, 3, 10)
     val state =
         viewModel.uiState.value.copy(
-            startDate = yesterday.minusDays(1),
-            startTime = LocalTime.NOON,
-            endDate = yesterday,
-            endTime = LocalTime.NOON,
+            range =
+                DateTimeRange(
+                    startDate = lastDay.minusDays(1),
+                    startTime = LocalTime.NOON,
+                    endDate = lastDay,
+                    endTime = LocalTime.NOON,
+                ),
         )
 
-    assertEquals(FieldError.OUTDATED, state.endDateErrorAt(now))
+    assertNull(state.endDateError)
   }
 
+  /** Breaks if an event that already ended cannot be saved after its title is changed. */
   @Test
-  fun endDateErrorUsesEndZoneAndProvidedCurrentTime() = runTest {
+  fun anEventThatEndedCanBeSavedAfterAChange() {
+    val ended =
+        initialEvent.copy(
+            startDate = ZonedDateTime.of(2020, 3, 8, 12, 0, 0, 0, ZoneId.of("Europe/Zurich")),
+            endDate = ZonedDateTime.of(2020, 3, 9, 12, 0, 0, 0, ZoneId.of("Europe/Zurich")),
+        )
+    val state = EditEventUIState().load(ended)
+
+    assertFalse(state.canSave)
+    assertTrue(state.copy(name = "Renamed").canSave)
+  }
+
+  /** Breaks if the end is read in the zone of the start, which would put it before the start. */
+  @Test
+  fun endDateErrorUsesTheEndZone() = runTest {
     viewModel.fetchEvent(initialEvent.eventId)
     advanceUntilIdle()
     val startDate = LocalDate.of(2026, 11, 6)
     val state =
         viewModel.uiState.value.copy(
-            startDate = startDate,
-            startTime = LocalTime.of(23, 0),
-            endDate = startDate,
-            endTime = LocalTime.of(17, 0),
+            range =
+                DateTimeRange(
+                    startDate = startDate,
+                    startTime = LocalTime.of(23, 0),
+                    endDate = startDate,
+                    endTime = LocalTime.of(17, 0),
+                ),
             endZone = ZoneId.of("America/Los_Angeles"),
         )
-    val now = ZonedDateTime.of(2026, 11, 5, 12, 0, 0, 0, ZoneId.of("Europe/Zurich"))
 
-    assertNull(state.endDateErrorAt(now))
+    assertNull(state.endDateError)
   }
 
+  /** Breaks if an end before the start, on the same day, is not reported as an error. */
   @Test
   fun endDateErrorRejectsEndBeforeStart() = runTest {
     viewModel.fetchEvent(initialEvent.eventId)
@@ -285,10 +297,13 @@ class EditEventViewModelTest {
     val tomorrow = LocalDate.now().plusDays(1)
     val state =
         viewModel.uiState.value.copy(
-            startDate = tomorrow,
-            startTime = LocalTime.of(15, 0),
-            endDate = tomorrow,
-            endTime = LocalTime.of(14, 0),
+            range =
+                DateTimeRange(
+                    startDate = tomorrow,
+                    startTime = LocalTime.of(15, 0),
+                    endDate = tomorrow,
+                    endTime = LocalTime.of(14, 0),
+                ),
         )
 
     assertEquals(FieldError.END_BEFORE_START, state.endDateError)

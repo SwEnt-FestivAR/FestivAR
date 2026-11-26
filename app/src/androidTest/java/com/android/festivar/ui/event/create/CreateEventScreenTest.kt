@@ -13,8 +13,6 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
-import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -30,17 +28,17 @@ import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.ui.components.LONG_TEXT_MAX_LENGTH
 import com.android.festivar.ui.components.checkTheOnlyCounterIsUnder
-import com.android.festivar.ui.components.datetime.formatDate
+import com.android.festivar.ui.components.datetime.DateRangePickerTestTags
+import com.android.festivar.ui.components.datetime.DateTimeRange
 import com.android.festivar.ui.components.datetime.formatTime
+import com.android.festivar.ui.components.datetime.pickDays
 import io.mockk.mockk
 import io.mockk.spyk
 import io.mockk.verify
 import java.time.LocalDate
 import java.time.LocalTime
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
-import java.util.Locale
 import kotlinx.coroutines.CompletableDeferred
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -49,6 +47,8 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class CreateEventScreenTest {
+  /** A day always ahead of the screen's own clock, which has no `today` parameter to fix. */
+  private val inOneWeek: LocalDate = LocalDate.now().plusWeeks(1)
 
   @get:Rule val composeTestRule = createAndroidComposeRule<ComponentActivity>()
   private lateinit var viewModel: CreateEventViewModel
@@ -74,9 +74,8 @@ class CreateEventScreenTest {
             CreateEventScreenTestTags.NAVIGATION_BUTTON,
             CreateEventScreenTestTags.TITLE,
             CreateEventScreenTestTags.NAME_FIELD,
-            CreateEventScreenTestTags.START_DATE_FIELD,
+            CreateEventScreenTestTags.DATES_FIELD,
             CreateEventScreenTestTags.START_TIME_FIELD,
-            CreateEventScreenTestTags.END_DATE_FIELD,
             CreateEventScreenTestTags.END_TIME_FIELD,
             CreateEventScreenTestTags.LOCATION_FIELD,
             CreateEventScreenTestTags.DESCRIPTION_FIELD,
@@ -103,7 +102,7 @@ class CreateEventScreenTest {
    */
   @Test
   fun fieldsReceiveAndDisplayInput() {
-    val startDate = LocalDate.now()
+    val startDate = inOneWeek
     val endDate = startDate.plusDays(1)
     viewModel = CreateEventViewModel(dataRepository)
     composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
@@ -125,13 +124,10 @@ class CreateEventScreenTest {
     composeTestRule.onNodeWithText("Main square").assertIsDisplayed()
     composeTestRule.onNodeWithText("Bring the stage equipment").assertIsDisplayed()
 
-    selectDate(CreateEventScreenTestTags.START_DATE_FIELD, startDate)
-    selectDate(CreateEventScreenTestTags.END_DATE_FIELD, endDate)
+    composeTestRule.pickDays(CreateEventScreenTestTags.DATES_FIELD, startDate, endDate)
 
-    val expectedStartDate = formatDate(startDate)
-    val expectedEndDate = formatDate(endDate)
-    composeTestRule.onNodeWithText(expectedStartDate).assertIsDisplayed()
-    composeTestRule.onNodeWithText(expectedEndDate).assertIsDisplayed()
+    assertEquals(startDate, viewModel.uiState.value.range.startDate)
+    assertEquals(endDate, viewModel.uiState.value.range.endDate)
 
     selectDefaultTime(CreateEventScreenTestTags.START_TIME_FIELD)
     selectDefaultTime(CreateEventScreenTestTags.END_TIME_FIELD)
@@ -146,7 +142,7 @@ class CreateEventScreenTest {
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsEnabled()
   }
 
-  /** Red if an edited blank name shows no error. */
+  /** Breaks if an edited blank name, or an end that is not after the start, shows no error. */
   @Test
   fun fieldsDisplayErrorWhenNeeded() {
     viewModel = CreateEventViewModel(dataRepository)
@@ -156,53 +152,68 @@ class CreateEventScreenTest {
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAME_FIELD).performTextClearance()
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAME_ERROR).assertIsDisplayed()
 
-    viewModel.updateStartTime(LocalTime.of(9, 0))
-    composeTestRule.waitForIdle()
-    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.START_DATE_ERROR).assertIsDisplayed()
-
-    viewModel.updateEndTime(LocalTime.of(10, 0))
+    viewModel.updateRange(
+        DateTimeRange(inOneWeek, LocalTime.of(10, 0), inOneWeek, LocalTime.of(9, 0)),
+    )
     composeTestRule.waitForIdle()
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.END_DATE_ERROR).assertIsDisplayed()
   }
 
-  /** Red if cancelling a date picker changes the associated field. */
+  /** Breaks if leaving the dates picker without saving changes the days. */
   @Test
   fun cancellingDatePickerKeepsTheDateUnchanged() {
     viewModel = CreateEventViewModel(dataRepository)
     composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
 
-    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.START_DATE_FIELD).performClick()
-    composeTestRule.onNodeWithText("Cancel").performClick()
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.DATES_FIELD).performClick()
+    composeTestRule.onNodeWithTag(DateRangePickerTestTags.BACK_BUTTON).performClick()
 
-    assertNull(viewModel.uiState.value.startDate)
-    assertNull(viewModel.uiState.value.openPicker)
+    assertNull(viewModel.uiState.value.range.startDate)
+    composeTestRule.onNodeWithTag(DateRangePickerTestTags.SAVE_BUTTON).assertDoesNotExist()
   }
 
-  /** Red if cancelling either time picker changes the form or leaves a dialog open. */
+  /** Breaks if cancelling either time picker changes the form or leaves a dialog open. */
   @Test
   fun cancellingTimePickersClosesTheDialog() {
+    val range = DateTimeRange(startDate = inOneWeek, endDate = inOneWeek)
     viewModel = CreateEventViewModel(dataRepository)
     composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
+    viewModel.updateRange(range)
 
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.START_TIME_FIELD).performClick()
     composeTestRule.onNodeWithText("Cancel").performClick()
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.END_TIME_FIELD).performClick()
     composeTestRule.onNodeWithText("Cancel").performClick()
 
-    assertNull(viewModel.uiState.value.openPicker)
+    composeTestRule.onNodeWithText("Cancel").assertDoesNotExist()
+    assertEquals(range, viewModel.uiState.value.range)
+  }
+
+  /** Breaks if the create screen lets the user save a day that is over. */
+  @Test
+  fun aPastDayCannotBePickedOnTheCreateScreen() {
+    viewModel = CreateEventViewModel(dataRepository)
+    composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
+
+    // The screen has no `today` parameter, so yesterday is taken from the real clock
+    composeTestRule.pickDays(
+        CreateEventScreenTestTags.DATES_FIELD,
+        LocalDate.now().minusDays(1),
+    )
+
+    assertNull(viewModel.uiState.value.range.startDate)
   }
 
   /** Red if an end date before the start date does not display an end-date error. */
   @Test
   fun endDateRangeErrorIsDisplayed() {
-    val startDate = LocalDate.now().plusDays(1)
-    val endDate = LocalDate.now()
+    val startDate = inOneWeek.plusDays(1)
+    val endDate = inOneWeek
     viewModel = CreateEventViewModel(dataRepository)
     composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
 
     viewModel.updateName("Summer festival")
-    viewModel.updateStartDate(startDate)
-    viewModel.updateEndDate(endDate)
+    viewModel.updateRange(DateTimeRange(startDate = startDate, endDate = endDate))
     composeTestRule.waitForIdle()
 
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.END_DATE_ERROR).assertIsDisplayed()
@@ -304,7 +315,7 @@ class CreateEventScreenTest {
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsNotEnabled()
 
     viewModel.updateName("Summer festival")
-    viewModel.updateStartDate(LocalDate.now())
+    viewModel.updateRange(DateTimeRange(startDate = inOneWeek))
     composeTestRule.waitForIdle()
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsNotEnabled()
   }
@@ -325,11 +336,10 @@ class CreateEventScreenTest {
     viewModel = CreateEventViewModel(dataRepository)
     composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
 
-    val startDate = LocalDate.now()
+    val startDate = inOneWeek
     val endDate = startDate.plusDays(1)
     viewModel.updateName("Summer festival")
-    viewModel.updateStartDate(startDate)
-    viewModel.updateEndDate(endDate)
+    viewModel.updateRange(DateTimeRange(startDate = startDate, endDate = endDate))
     composeTestRule.waitForIdle()
 
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsEnabled()
@@ -341,11 +351,10 @@ class CreateEventScreenTest {
     viewModel = spyk(CreateEventViewModel(dataRepository))
     composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
 
-    val startDate = LocalDate.now()
+    val startDate = inOneWeek
     val endDate = startDate.plusDays(1)
     viewModel.updateName("Summer festival")
-    viewModel.updateStartDate(startDate)
-    viewModel.updateEndDate(endDate)
+    viewModel.updateRange(DateTimeRange(startDate = startDate, endDate = endDate))
     composeTestRule.waitForIdle()
 
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsEnabled()
@@ -360,7 +369,7 @@ class CreateEventScreenTest {
    */
   @Test
   fun savingDisablesTheButtonWithASpinnerAndASavedEventCallsOnCreated() {
-    val startDate = LocalDate.now()
+    val startDate = inOneWeek
     val endDate = startDate.plusDays(1)
     val gate = CompletableDeferred<Unit>()
     val onCreated = mockk<() -> Unit>(relaxed = true)
@@ -386,8 +395,7 @@ class CreateEventScreenTest {
     }
 
     viewModel.updateName("Summer festival")
-    viewModel.updateStartDate(startDate)
-    viewModel.updateEndDate(endDate)
+    viewModel.updateRange(DateTimeRange(startDate = startDate, endDate = endDate))
     composeTestRule.waitForIdle()
 
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).performClick()
@@ -396,6 +404,9 @@ class CreateEventScreenTest {
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).assertIsNotEnabled()
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAME_FIELD).assertIsNotEnabled()
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.LOCATION_FIELD).assertIsNotEnabled()
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.DATES_FIELD).assertIsNotEnabled()
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.START_TIME_FIELD).assertIsNotEnabled()
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.END_TIME_FIELD).assertIsNotEnabled()
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAVIGATION_BUTTON).performClick()
     pressSystemBack()
     composeTestRule.waitForIdle()
@@ -417,15 +428,14 @@ class CreateEventScreenTest {
   @Test
   fun aFailedSaveShowsTheErrorLineAndKeepsTheButtonEnabled() {
     val onCreated = mockk<() -> Unit>(relaxed = true)
-    val startDate = LocalDate.now()
+    val startDate = inOneWeek
     val endDate = startDate.plusDays(1)
     dataRepository = DataRepositoryLocal(mockk(), eventsRepository = FailingRepository())
     viewModel = CreateEventViewModel(dataRepository)
     composeTestRule.setContent { CreateEventScreen(viewModel = viewModel, onCreated = onCreated) }
 
     viewModel.updateName("Summer festival")
-    viewModel.updateStartDate(startDate)
-    viewModel.updateEndDate(endDate)
+    viewModel.updateRange(DateTimeRange(startDate = startDate, endDate = endDate))
     composeTestRule.waitForIdle()
 
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).performClick()
@@ -440,15 +450,14 @@ class CreateEventScreenTest {
   /** Red if changing the form does not dismiss a stale save error. */
   @Test
   fun editingAfterAFailedSaveHidesTheErrorLine() {
-    val startDate = LocalDate.now()
+    val startDate = inOneWeek
     val endDate = startDate.plusDays(1)
     dataRepository = DataRepositoryLocal(mockk(), eventsRepository = FailingRepository())
     viewModel = CreateEventViewModel(dataRepository)
     composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
 
     viewModel.updateName("Summer festival")
-    viewModel.updateStartDate(startDate)
-    viewModel.updateEndDate(endDate)
+    viewModel.updateRange(DateTimeRange(startDate = startDate, endDate = endDate))
     composeTestRule.waitForIdle()
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).performClick()
 
@@ -463,32 +472,6 @@ class CreateEventScreenTest {
             .fetchSemanticsNodes()
             .isEmpty()
     )
-  }
-
-  private fun selectDate(tag: String, date: LocalDate) {
-    composeTestRule.onNodeWithTag(tag).performClick()
-    composeTestRule.onNodeWithText("OK").assertIsDisplayed()
-    if (date == LocalDate.now()) {
-      composeTestRule.onNodeWithText("Today", substring = true).performClick()
-    } else {
-      val dateDescription =
-          DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL)
-              .withLocale(Locale.getDefault())
-              .format(date)
-      // The dialog shows one month, so a date near a month end can sit in the next one
-      if (
-          composeTestRule
-              .onAllNodesWithText(dateDescription, substring = true)
-              .fetchSemanticsNodes()
-              .isEmpty()
-      ) {
-        composeTestRule
-            .onNodeWithContentDescription("next month", substring = true, ignoreCase = true)
-            .performClick()
-      }
-      composeTestRule.onNodeWithText(dateDescription, substring = true).performClick()
-    }
-    composeTestRule.onNodeWithText("OK").performClick()
   }
 
   private fun selectDefaultTime(tag: String) {
