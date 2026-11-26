@@ -14,6 +14,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -23,12 +24,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
@@ -67,6 +72,7 @@ import com.android.festivar.ui.components.floatingShadow
 import com.android.festivar.ui.theme.AppTheme
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.bumptech.glide.integration.compose.GlideImage
+import com.bumptech.glide.integration.compose.placeholder
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
@@ -423,7 +429,39 @@ private fun EventItem(event: Event, onClick: () -> Unit) {
           model = event.imageUrl,
           contentDescription = null,
           contentScale = ContentScale.Crop,
-          modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp).fillMaxWidth(),
+          failure =
+              placeholder {
+                Box(
+                    modifier =
+                        Modifier.fillMaxWidth()
+                            .height(150.dp)
+                            .background(MaterialTheme.colorScheme.outlineVariant),
+                    contentAlignment = Alignment.Center,
+                ) {
+                  Icon(
+                      imageVector = Icons.Outlined.Warning,
+                      contentDescription = null,
+                      tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                  )
+                }
+              },
+          loading =
+              placeholder {
+                Box(
+                    modifier =
+                        Modifier.fillMaxWidth()
+                            .height(150.dp)
+                            .background(MaterialTheme.colorScheme.outlineVariant),
+                    contentAlignment = Alignment.Center,
+                ) {
+                  CircularProgressIndicator(
+                      modifier = Modifier.size(24.dp),
+                      color = MaterialTheme.colorScheme.onSurfaceVariant,
+                      strokeWidth = 2.dp,
+                  )
+                }
+              },
+          modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp),
       )
     }
     Column(
