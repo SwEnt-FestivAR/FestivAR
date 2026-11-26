@@ -482,8 +482,8 @@ class CreateAnnouncementViewModelTest {
   }
 
   /**
-   * Breaks if the role is not read when the screen opens, or if a role with
-   * CAN_CREATE_ANNOUNCEMENT is refused.
+   * Breaks if the role is not read when the screen opens, or if a role with CAN_CREATE_ANNOUNCEMENT
+   * is refused.
    */
   @Test
   fun aRoleWithTheCreatePermissionCanPublish() {
