@@ -42,8 +42,9 @@ fun toLocal(origin: GeoPosition, position: GeoPosition): LocalPosition {
  * The position on Earth of [position], given in metres from [origin]. The exact inverse of
  * [toLocal], with the same limits.
  *
- * @throws IllegalArgumentException if the result is not on Earth or is more than half a turn of
- *   longitude from the origin, which only happens far outside those limits.
+ * @throws IllegalArgumentException if the result cannot be represented as a [GeoPosition]: past a
+ *   pole, where the latitude goes beyond 90 degrees, or more than half a turn of longitude from the
+ *   origin. Both only happen far outside those limits.
  */
 fun toGeo(origin: GeoPosition, position: LocalPosition): GeoPosition {
   val latitude = origin.latitude + Math.toDegrees(position.y / EARTH_RADIUS_METERS)
