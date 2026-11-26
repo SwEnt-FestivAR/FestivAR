@@ -2,4 +2,13 @@
 <resources>
     <string name="chat_load_failed">Impossible de charger le chat. Réessayez.</string>
     <string name="chat_send_failed">Impossible d\'envoyer le message. Réessayez.</string>
+    <string name="chat_back">Retour</string>
+    <string name="chat_default_title">Général</string>
+    <string name="chat_today">AUJOURD’HUI</string>
+    <string name="chat_input_placeholder">Écrire un message…</string>
+    <string name="chat_send">Envoyer</string>
+    <string name="chat_author_you">Vous</string>
+    <string name="chat_retry">Réessayer</string>
+    <string name="chat_empty">Aucun message pour l\'instant. Commencez la discussion !</string>
 </resources>
+

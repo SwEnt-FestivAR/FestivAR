@@ -59,7 +59,7 @@ data class ChatUiState(
 class ChatViewModel(
     private val chatId: String,
     private val dataRepository: DataRepository,
-    private val currentUserId: String,
+    val currentUserId: String,
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
 
