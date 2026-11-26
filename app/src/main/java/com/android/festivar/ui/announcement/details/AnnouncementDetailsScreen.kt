@@ -1,5 +1,7 @@
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co authored by: Gemini
+// Co-authored-by: Claude Fable 5.2 <noreply@anthropic.com>
 package com.android.festivar.ui.announcement.details
 
 import android.content.ActivityNotFoundException
@@ -20,6 +22,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -53,8 +56,8 @@ import com.android.festivar.ui.announcement.announcementPriorityLabelRes
 import com.android.festivar.ui.announcement.announcementPriorityPillStyle
 import com.android.festivar.ui.components.SectionLabel
 import com.android.festivar.ui.components.StatusPill
-import com.android.festivar.ui.components.formatDate
-import com.android.festivar.ui.components.formatTime
+import com.android.festivar.ui.components.datetime.formatDate
+import com.android.festivar.ui.components.datetime.formatTime
 import com.android.festivar.ui.theme.AppTheme
 import java.time.ZonedDateTime
 
@@ -62,6 +65,7 @@ private const val LOG_TAG = "AnnouncementDetailsScreen"
 
 object AnnouncementDetailsScreenTestTags {
   const val BACK_BUTTON = "announcementDetailsBackButton"
+  const val EDIT_BUTTON = "announcementDetailsEditButton"
   const val PRIORITY_BADGE = "announcementDetailsPriorityBadge"
   const val TITLE = "announcementDetailsTitle"
   const val POSTED_AT = "announcementDetailsPostedAt"
@@ -78,13 +82,19 @@ object AnnouncementDetailsScreenTestTags {
 
 /**
  * Displays announcement details from [viewModel]. Navigation remains owned by the caller through
- * [onBack]; this screen does not add or select a navigation route.
+ * [onBack] and [onEdit]; this screen does not add or select a navigation route.
+ *
+ * @param viewModel holds the announcement to show and tells whether the user can edit it.
+ * @param modifier applied to the whole screen.
+ * @param onBack called when the user taps the back button.
+ * @param onEdit called when the organizer taps the edit button.
  */
 @Composable
 fun AnnouncementDetailsScreen(
     viewModel: AnnouncementDetailsViewModel,
     modifier: Modifier = Modifier,
     onBack: () -> Unit = {},
+    onEdit: () -> Unit = {},
 ) {
   val state by viewModel.uiState.collectAsStateWithLifecycle()
   val uriHandler = LocalUriHandler.current
@@ -94,6 +104,7 @@ fun AnnouncementDetailsScreen(
       state = state,
       modifier = modifier,
       onBack = onBack,
+      onEdit = onEdit,
       onTogglePin = viewModel::togglePin,
       onRetry = viewModel::load,
       onOpenLink = { url -> openAnnouncementLink(uriHandler, url) },
@@ -114,13 +125,17 @@ private fun openAnnouncementLink(uriHandler: UriHandler, url: String) {
   }
 }
 
-/** Stateless announcement details UI. */
+/**
+ * Stateless announcement details UI. The edit button of the top bar is drawn only when
+ * [AnnouncementDetailsUiState.canEdit].
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnnouncementDetailsContent(
     state: AnnouncementDetailsUiState,
     modifier: Modifier = Modifier,
     onBack: () -> Unit = {},
+    onEdit: () -> Unit = {},
     onTogglePin: () -> Unit = {},
     onRetry: () -> Unit = {},
     onOpenLink: (String) -> Unit = {},
@@ -140,6 +155,19 @@ fun AnnouncementDetailsContent(
                     Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = stringResource(R.string.announcement_details_back),
                 )
+              }
+            },
+            actions = {
+              if (state.canEdit) {
+                IconButton(
+                    onClick = onEdit,
+                    modifier = Modifier.testTag(AnnouncementDetailsScreenTestTags.EDIT_BUTTON),
+                ) {
+                  Icon(
+                      Icons.Rounded.Edit,
+                      contentDescription = stringResource(R.string.edit_announcement),
+                  )
+                }
               }
             },
             colors =
@@ -337,6 +365,7 @@ internal fun AnnouncementDetailsContentPreview() {
                     ),
                 authorName = "Marie Dupont",
                 eventEndTime = date.plusHours(2),
+                canEdit = true,
                 isLoading = false,
             )
     )

@@ -37,31 +37,31 @@ class AnnouncementNavGraphValidationTest {
   }
 
   @Test
-  fun requireAnnouncementDetailsArguments_withArguments_returnsIds() {
+  fun requireAnnouncementArguments_withArguments_returnsIds() {
     assertEquals(
         "event-1" to "announcement-1",
-        requireAnnouncementDetailsArguments("event-1", "announcement-1"),
+        requireAnnouncementArguments("event-1", "announcement-1"),
     )
   }
 
   @Test
-  fun requireAnnouncementDetailsArguments_withoutAnnouncementId_throws() {
+  fun requireAnnouncementArguments_withoutAnnouncementId_throws() {
     assertThrowsWithMessage("announcementId argument is required") {
-      requireAnnouncementDetailsArguments("event-1", null)
+      requireAnnouncementArguments("event-1", null)
     }
   }
 
   @Test
-  fun requireAnnouncementDetailsArguments_withBlankEventId_throws() {
+  fun requireAnnouncementArguments_withBlankEventId_throws() {
     assertThrowsWithMessage("eventId must not be blank") {
-      requireAnnouncementDetailsArguments(" ", "announcement-1")
+      requireAnnouncementArguments(" ", "announcement-1")
     }
   }
 
   @Test
-  fun requireAnnouncementDetailsArguments_withBlankAnnouncementId_throws() {
+  fun requireAnnouncementArguments_withBlankAnnouncementId_throws() {
     assertThrowsWithMessage("announcementId must not be blank") {
-      requireAnnouncementDetailsArguments("event-1", "\t")
+      requireAnnouncementArguments("event-1", "\t")
     }
   }
 

@@ -1,3 +1,4 @@
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task.edit
 
@@ -28,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import com.android.festivar.R
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
+import com.android.festivar.ui.components.datetime.DateTimeRange
 import com.android.festivar.ui.task.DiscardTaskDialog
 import com.android.festivar.ui.task.TaskFormBackHandling
 import com.android.festivar.ui.task.TaskFormLabels
@@ -178,8 +180,8 @@ private fun LoadError(@StringRes message: Int, onRetry: () -> Unit) {
   }
 }
 
-// A fixed zone and dates keep the previews the same on every machine. The day is far ahead, since
-// the form shows an error for an end in the past; 2037 has the weekdays of 2026.
+// A fixed zone and dates keep the previews the same on every machine; 2037 has the weekdays of
+// 2026.
 private val previewStart = ZonedDateTime.of(2037, 10, 17, 9, 0, 0, 0, ZoneOffset.UTC)
 
 private val previewTask =
@@ -201,12 +203,16 @@ private val previewForm =
         title = previewTask.title,
         description = previewTask.description,
         location = previewTask.location,
-        startDate = LocalDate.of(2037, 10, 17),
-        startTime = LocalTime.of(9, 0),
-        endDate = LocalDate.of(2037, 10, 17),
-        endTime = LocalTime.of(11, 0),
+        range =
+            DateTimeRange(
+                LocalDate.of(2037, 10, 17),
+                LocalTime.of(9, 0),
+                LocalDate.of(2037, 10, 17),
+                LocalTime.of(11, 0),
+            ),
         maxAssign = previewTask.maxAssign,
         zone = ZoneOffset.UTC,
+        allowPast = true,
     )
 
 private val previewLoaded =

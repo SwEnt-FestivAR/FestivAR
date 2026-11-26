@@ -1,6 +1,7 @@
 package com.android.festivar.ui.event.create
 
 // Co-authored-by: Copilot App
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -26,9 +27,8 @@ class CreateEventPreviewsTest {
             CreateEventScreenTestTags.NAVIGATION_BUTTON,
             CreateEventScreenTestTags.TITLE,
             CreateEventScreenTestTags.NAME_FIELD,
-            CreateEventScreenTestTags.START_DATE_FIELD,
+            CreateEventScreenTestTags.DATES_FIELD,
             CreateEventScreenTestTags.START_TIME_FIELD,
-            CreateEventScreenTestTags.END_DATE_FIELD,
             CreateEventScreenTestTags.END_TIME_FIELD,
             CreateEventScreenTestTags.LOCATION_FIELD,
             CreateEventScreenTestTags.DESCRIPTION_FIELD,

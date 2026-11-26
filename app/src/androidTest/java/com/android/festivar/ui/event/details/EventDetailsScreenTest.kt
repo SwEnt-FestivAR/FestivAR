@@ -27,17 +27,21 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.android.festivar.R
 import com.android.festivar.model.authentication.FakeAuthRepository
+import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.announcement.Announcement
+import com.android.festivar.model.event.role.Role
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
+import com.android.festivar.ui.components.map.MapCardTestTags
 import io.mockk.mockk
 import io.mockk.verify
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -110,6 +114,34 @@ class EventDetailsScreenTest {
     composeTestRule.onNodeWithText("${tasksListSize / 2}").assertIsDisplayed()
     composeTestRule.onNodeWithText("of $tasksListSize").assertIsDisplayed()
     composeTestRule.onNodeWithText("tasks still open").assertIsDisplayed()
+  }
+
+  /** Breaks if the map card is missing from the screen, or exposes a click action. */
+  @Test
+  fun mapCardIsDisplayedAndNotClickable() {
+    setContent(eventSameMonth)
+
+    composeTestRule.onNodeWithTag(MapCardTestTags.CARD).performScrollTo().assertIsDisplayed()
+    composeTestRule.onNodeWithTag(MapCardTestTags.CARD).assertHasNoClickAction()
+  }
+
+  /** Breaks if a member without any right does not see the map card. */
+  @Test
+  fun mapCardShowsToAMemberWithoutRights() {
+    val event =
+        Event(
+            eventId = EVENT_ID,
+            ownerId = "owner",
+            title = "Fête de l'Asso 2026",
+            members =
+                listOf(User(uid = "owner", name = "Olivia"), User(uid = "user", name = "Sami")),
+            startDate = eventStartDate,
+            endDate = eventEndDate,
+        )
+
+    setContent(event, currentUserId = "user")
+
+    composeTestRule.onNodeWithTag(MapCardTestTags.CARD).performScrollTo().assertIsDisplayed()
   }
 
   /** Breaks if the dates and the place are not on one line under the title. */
@@ -429,15 +461,110 @@ class EventDetailsScreenTest {
         .assertTextEquals(joinCodeLabel(), "3F9A1C")
   }
 
-  /** Breaks if the organizer cannot open the menu with Edit event. */
+  /** Breaks if the organizer cannot open the menu with Edit event and Delete event. */
   @Test
-  fun ownerSeesMenuWithEdit() {
+  fun ownerSeesMenuWithEditAndDelete() {
     setContent(eventSameMonth)
 
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.MORE_ACTIONS_BUTTON).performClick()
 
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.EDIT_MENU_ITEM).assertIsDisplayed()
     composeTestRule.onNodeWithText(string(R.string.event_details_edit_event)).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.DELETE_MENU_ITEM)
+        .assertIsDisplayed()
+        .assertTextEquals(string(R.string.event_details_delete_event))
+  }
+
+  /**
+   * Breaks if confirming does not delete the event and then leave, or if the menu stays usable
+   * while the deletion runs.
+   */
+  @Test
+  fun confirmingDeletionDeletesTheEventThenLeaves() {
+    val gate = CompletableDeferred<Unit>()
+    val deleted = mutableListOf<String>()
+    var leaves = 0
+    setContent(
+        eventSameMonth,
+        dataRepository =
+            deletingWith {
+              deleted += it
+              gate.await()
+            },
+        onEventDeleted = { leaves++ },
+    )
+
+    openDeleteDialog()
+    composeTestRule.onNodeWithText("Delete Fête de l'Asso 2026?").assertIsDisplayed()
+    composeTestRule
+        .onNodeWithText(string(R.string.event_details_delete_confirmation_message))
+        .assertIsDisplayed()
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DELETE_CONFIRM_BUTTON).performClick()
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DELETE_DIALOG).assertDoesNotExist()
+    composeTestRule
+        .onNodeWithTag(EventDetailsScreenTestTags.MORE_ACTIONS_BUTTON)
+        .assertDoesNotExist()
+    assertEquals(listOf(EVENT_ID), deleted)
+    assertEquals(0, leaves)
+
+    gate.complete(Unit)
+    composeTestRule.waitUntil(timeoutMillis = 5_000) { leaves == 1 }
+  }
+
+  /** Breaks if Keep it deletes the event or leaves the dialog open. */
+  @Test
+  fun keepItClosesTheDialogAndDeletesNothing() {
+    val deleted = mutableListOf<String>()
+    var leaves = 0
+    setContent(
+        eventSameMonth,
+        dataRepository = deletingWith { deleted += it },
+        onEventDeleted = { leaves++ },
+    )
+
+    openDeleteDialog()
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DELETE_DISMISS_BUTTON).performClick()
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DELETE_DIALOG).assertDoesNotExist()
+    assertTrue(deleted.isEmpty())
+    assertEquals(0, leaves)
+  }
+
+  /** Breaks if a failed deletion shows no error, hides the event or leaves the screen. */
+  @Test
+  fun failedDeletionShowsAnErrorAndKeepsTheEvent() {
+    var leaves = 0
+    setContent(
+        eventSameMonth,
+        dataRepository = deletingWith { throw IllegalStateException("delete failed") },
+        onEventDeleted = { leaves++ },
+    )
+
+    openDeleteDialog()
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DELETE_CONFIRM_BUTTON).performClick()
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.ACTION_ERROR).assertIsDisplayed()
+    composeTestRule.onNodeWithText(string(R.string.event_details_delete_error)).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.EVENT_NAME).assertIsDisplayed()
+    assertEquals(0, leaves)
+  }
+
+  /** Breaks if a member who can edit the event without owning it is offered Delete event. */
+  @Test
+  fun staffManagerSeesMenuWithoutDelete() {
+    val manager = User(uid = "manager", name = "Mona M.")
+    val event = eventSameMonth.addMember(manager)
+    setContent(event.copy(roles = event.roles + (manager.uid to Role.STAFF_MANAGER)), manager.uid)
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.MORE_ACTIONS_BUTTON).performClick()
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.EDIT_MENU_ITEM).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DELETE_MENU_ITEM).assertDoesNotExist()
   }
 
   /** Breaks if a volunteer gets the menu button. */
@@ -472,6 +599,20 @@ class EventDetailsScreenTest {
 
     assertEquals(1, edits)
     composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.EDIT_MENU_ITEM).assertDoesNotExist()
+  }
+
+  private fun openDeleteDialog() {
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.MORE_ACTIONS_BUTTON).performClick()
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DELETE_MENU_ITEM).performClick()
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.DELETE_DIALOG).assertIsDisplayed()
+  }
+
+  /** A repository holding [eventSameMonth] that runs [onDelete] instead of deleting the event. */
+  private fun deletingWith(onDelete: suspend (String) -> Unit): DataRepository {
+    val base = dataRepositoryWith(EventsRepositoryLocal(listOf(eventSameMonth)))
+    return object : DataRepository by base {
+      override suspend fun deleteEvent(eventId: String) = onDelete(eventId)
+    }
   }
 
   /** The label of the join code row, in capitals as the screen shows it. */
@@ -513,19 +654,17 @@ class EventDetailsScreenTest {
       onAnnouncementsClicked: () -> Unit = {},
       onEditClicked: () -> Unit = {},
       onBack: () -> Unit = {},
+      dataRepository: DataRepository = dataRepositoryWith(EventsRepositoryLocal(listOf(event))),
+      onEventDeleted: () -> Unit = {},
   ) {
     composeTestRule.setContent {
       EventDetailsScreen(
-          viewModel =
-              EventDetailsViewModel(
-                  dataRepositoryWith(EventsRepositoryLocal(listOf(event))),
-                  event.eventId,
-                  currentUserId,
-              ),
+          viewModel = EventDetailsViewModel(dataRepository, event.eventId, currentUserId),
           onTasksButtonClicked = onTasksButtonClicked,
           onAnnouncementsClicked = onAnnouncementsClicked,
           onEditClicked = onEditClicked,
           onBack = onBack,
+          onEventDeleted = onEventDeleted,
       )
     }
     composeTestRule.waitForIdle()

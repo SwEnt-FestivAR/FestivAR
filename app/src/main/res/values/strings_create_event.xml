@@ -3,13 +3,16 @@
     <string name="create_event_title">Create event</string>
     <string name="create_event_back">Navigate back</string>
     <string name="create_event_field_name">Event name</string>
-    <string name="create_event_field_start_date">Starts</string>
-    <string name="create_event_field_start_time">Start time</string>
-    <string name="create_event_field_end_date">Ends</string>
-    <string name="create_event_field_end_time">End time</string>
     <string name="create_event_field_venue">Venue</string>
     <string name="create_event_field_notes">Notes for the team, optional</string>
     <string name="create_event_button">Create event</string>
     <string name="create_event_error_save_failed">Unable to create the event.</string>
     <string name="create_event_discard_title">Discard this event?</string>
+    <string name="create_event_image_add">Add an image</string>
+    <string name="create_event_image_fail">Image failed to load</string>
+    <string name="create_event_image_load">Loading…</string>
+    <string name="create_event_image_del">Delete image</string>
+    <string name="create_event_delete_image_title">Delete image?</string>
+    <string name="create_event_delete_image_message">Are you sure you want to delete this image?</string>
+    <string name="create_event_delete_image_cancel">Cancel</string>
 </resources>

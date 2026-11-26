@@ -34,7 +34,8 @@ import com.android.festivar.model.task.TasksRepositoryLocal
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.ui.components.FieldError
-import com.android.festivar.ui.components.datetime.hasDayOfMonth
+import com.android.festivar.ui.components.datetime.DateTimeRange
+import com.android.festivar.ui.components.datetime.pickDays
 import com.android.festivar.ui.components.fieldErrorMessageRes
 import com.android.festivar.ui.task.priorityLabelRes
 import com.android.festivar.ui.theme.AppTheme
@@ -175,20 +176,6 @@ abstract class CreateTaskTest {
         .performSemanticsAction(SemanticsActions.OnClick)
   }
 
-  /**
-   * Picks [date] in the date picker opened by the field [fieldTag]. The picker opens on the current
-   * month, so [date] must be in it.
-   */
-  fun ComposeTestRule.pickCreateTaskDate(fieldTag: String, date: LocalDate) {
-    val today = LocalDate.now()
-    require(date.year == today.year && date.month == today.month) {
-      "The date picker opens on the current month, so $date cannot be picked."
-    }
-    onNodeWithTag(fieldTag).performScrollTo().performClick()
-    onNode(hasDayOfMonth(date.dayOfMonth)).performClick()
-    onNodeWithText("OK").performClick()
-  }
-
   /** Picks [time] in the time picker opened by [fieldTag]. Only the proposed 09:00 is supported. */
   fun ComposeTestRule.pickCreateTaskTime(fieldTag: String, time: LocalTime) {
     require(time == PICKER_DEFAULT_TIME) {
@@ -207,10 +194,11 @@ abstract class CreateTaskTest {
     if (form.location.isNotEmpty()) {
       enterText(CreateTaskScreenTestTags.LOCATION_FIELD, form.location)
     }
-    form.startDate?.let { pickCreateTaskDate(CreateTaskScreenTestTags.START_DATE_FIELD, it) }
-    form.startTime?.let { pickCreateTaskTime(CreateTaskScreenTestTags.START_TIME_FIELD, it) }
-    form.endDate?.let { pickCreateTaskDate(CreateTaskScreenTestTags.END_DATE_FIELD, it) }
-    form.endTime?.let { pickCreateTaskTime(CreateTaskScreenTestTags.END_TIME_FIELD, it) }
+    form.range.startDate?.let {
+      pickDays(CreateTaskScreenTestTags.DATES_FIELD, it, form.range.endDate ?: it)
+    }
+    form.range.startTime?.let { pickCreateTaskTime(CreateTaskScreenTestTags.START_TIME_FIELD, it) }
+    form.range.endTime?.let { pickCreateTaskTime(CreateTaskScreenTestTags.END_TIME_FIELD, it) }
   }
 
   fun ComposeTestRule.clickOnCreate(waitForRedirection: Boolean = false) {
@@ -233,9 +221,6 @@ abstract class CreateTaskTest {
   fun ComposeTestRule.checkTitleErrorIsDisplayed(error: FieldError = FieldError.EMPTY_TITLE) =
       checkErrorIsDisplayed(CreateTaskScreenTestTags.TITLE_ERROR, error)
 
-  fun ComposeTestRule.checkStartDateErrorIsDisplayed(error: FieldError) =
-      checkErrorIsDisplayed(CreateTaskScreenTestTags.START_DATE_ERROR, error)
-
   fun ComposeTestRule.checkEndDateErrorIsDisplayed(error: FieldError) =
       checkErrorIsDisplayed(CreateTaskScreenTestTags.END_DATE_ERROR, error)
 
@@ -247,7 +232,6 @@ abstract class CreateTaskTest {
 
   fun ComposeTestRule.checkNoFieldErrorIsDisplayed() {
     onNodeWithTag(CreateTaskScreenTestTags.TITLE_ERROR).assertDoesNotExist()
-    onNodeWithTag(CreateTaskScreenTestTags.START_DATE_ERROR).assertDoesNotExist()
     onNodeWithTag(CreateTaskScreenTestTags.END_DATE_ERROR).assertDoesNotExist()
     onNodeWithTag(CreateTaskScreenTestTags.ESTIMATED_TIME_ERROR).assertDoesNotExist()
   }
@@ -260,15 +244,10 @@ abstract class CreateTaskTest {
     val PICKER_DEFAULT_TIME: LocalTime = LocalTime.of(9, 0)
 
     /**
-     * The date picker only offers the current month, so the sample dates are taken from it. They
-     * start today and not on the 1st: an end in the past is refused. The two days after it must
-     * stay in the month, so on its last two days the base moves back and the tests that need a
-     * future end fail until the month changes.
+     * The first sample day, fixed and far ahead so that the end is never in the past. The range
+     * picker scrolls to any month, so the day does not depend on the clock.
      */
-    private val baseDay: LocalDate =
-        LocalDate.now().let { today ->
-          minOf(today, today.withDayOfMonth(today.lengthOfMonth()).minusDays(2))
-        }
+    private val baseDay: LocalDate = LocalDate.of(2037, 10, 17)
 
     /** A form with every field filled and a valid schedule. */
     val completeForm =
@@ -276,10 +255,13 @@ abstract class CreateTaskTest {
             title = "Run power to stage",
             description = "Extension reel is in the blue crate by the van.",
             location = "Stage, north corner",
-            startDate = baseDay,
-            startTime = PICKER_DEFAULT_TIME,
-            endDate = baseDay.plusDays(1),
-            endTime = PICKER_DEFAULT_TIME,
+            range =
+                DateTimeRange(
+                    baseDay,
+                    PICKER_DEFAULT_TIME,
+                    baseDay.plusDays(1),
+                    PICKER_DEFAULT_TIME,
+                ),
         )
 
     /** A form with the only mandatory field. */

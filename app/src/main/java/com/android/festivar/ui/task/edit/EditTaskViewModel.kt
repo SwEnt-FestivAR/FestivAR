@@ -1,3 +1,4 @@
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
 package com.android.festivar.ui.task.edit
@@ -11,6 +12,7 @@ import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.task.TasksRepository
 import com.android.festivar.ui.components.FieldError
+import com.android.festivar.ui.components.datetime.DateTimeRange
 import com.android.festivar.ui.task.TaskFormEditing
 import com.android.festivar.ui.task.TaskFormEditor
 import com.android.festivar.ui.task.create.CreateTaskUiState
@@ -47,8 +49,8 @@ data class EditTaskUiState(
     @StringRes val errorMsg: Int? = null,
 ) {
   /**
-   * Whether the form differs from [task] on a field the user can edit. Opening a picker, touching
-   * the title without changing it, or adding spaces around a text is not a change.
+   * Whether the form differs from [task] on a field the user can edit. Touching the title without
+   * changing it, or adding spaces around a text, is not a change.
    */
   val hasChanges: Boolean
     get() = task != null && form.normalised() != task.toForm(form.zone).normalised()
@@ -93,6 +95,8 @@ data class EditTaskUiState(
 // Every stored time is kept explicit, even one on the START_OF_DAY or END_OF_DAY boundary: the
 // form maps it back to the same instant either way, and an explicit time loses nothing.
 // A time in the repeated hour of a daylight saving change maps back to the earlier offset.
+// The past is allowed on purpose: a task that has ended must still be saved without changing its
+// dates. The cost is that an upcoming task can be moved into the past, which is accepted.
 private fun Task.toForm(zone: ZoneId): CreateTaskUiState {
   val start = startTime?.withZoneSameInstant(zone)
   val end = endTime?.withZoneSameInstant(zone)
@@ -100,26 +104,30 @@ private fun Task.toForm(zone: ZoneId): CreateTaskUiState {
       title = title,
       description = description,
       location = location,
-      startDate = start?.toLocalDate(),
-      startTime = start?.toLocalTime(),
-      endDate = end?.toLocalDate(),
-      endTime = end?.toLocalTime(),
+      range =
+          DateTimeRange(
+              start?.toLocalDate(),
+              start?.toLocalTime(),
+              end?.toLocalDate(),
+              end?.toLocalTime(),
+          ),
       priority = priority,
       maxAssign = maxAssign,
       estimatedMinutes = estimatedTime?.toMinutes()?.toString() ?: "",
       zone = zone,
+      allowPast = true,
   )
 }
 
-// What the user cannot see in the form: the picker, the edited flag, flags of the create screen,
-// and spaces around the texts, which the save trims anyway.
+// What the user cannot see in the form: the edited flag, the flags of the create screen, the flag
+// that allows the past, and spaces around the texts, which the save trims anyway.
 private fun CreateTaskUiState.normalised(): CreateTaskUiState =
     copy(
         title = title.trim(),
         description = description.trim(),
         location = location.trim(),
-        openPicker = null,
         titleEdited = false,
+        allowPast = true,
         isSaving = false,
         isCreated = false,
         errorMsg = null,
@@ -197,16 +205,15 @@ private constructor(
     }
   }
 
-  // A finished form ignores every change, pickers included, since the screen leaves on save.
+  // A finished form ignores every change, since the screen leaves on save.
   private fun edit(change: (CreateTaskUiState) -> CreateTaskUiState) = _uiState.update {
     if (it.task == null || it.isSaved) it else it.copy(form = change(it.form))
   }
 
   init {
     require(taskId.isNotBlank()) { "taskId must not be blank" }
-    // The form setters come from TaskFormEditing. Pickers follow the same guard as the fields.
+    // The form setters come from TaskFormEditing and follow the same guard as the fields.
     formEditing.applyEdit = ::edit
-    formEditing.current = { _uiState.value.form }
   }
 
   /** Clears the error message. */

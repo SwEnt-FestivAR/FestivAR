@@ -37,7 +37,15 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, dataRepository:
     RequireSignedIn(navController, dataRepository) { firebaseUser ->
       EventsOverviewScreen(
           eventsOverviewViewModel =
-              viewModel { EventsOverviewViewModel(dataRepository, firebaseUser.uid) },
+              viewModel {
+                EventsOverviewViewModel(
+                    dataRepository = dataRepository,
+                    uId = firebaseUser.uid,
+                    isAnonymous = {
+                      dataRepository.authRepository.currentUser?.isAnonymous == true
+                    },
+                )
+              },
           onSelectEvent = navigator.onSelectEvent,
           onJoinEvent = navigator.onJoinEvent,
           onAddEvent = navigator.onAddEvent,
@@ -51,7 +59,16 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, dataRepository:
     }
     RequireSignedIn(navController, dataRepository) { firebaseUser ->
       CreateEventScreen(
-          viewModel = viewModel { CreateEventViewModel(dataRepository, userId = firebaseUser.uid) },
+          viewModel =
+              viewModel {
+                CreateEventViewModel(
+                    dataRepository = dataRepository,
+                    userId = firebaseUser.uid,
+                    isAnonymous = {
+                      dataRepository.authRepository.currentUser?.isAnonymous == true
+                    },
+                )
+              },
           onBack = leave,
           onCreated = leave,
       )
@@ -75,6 +92,7 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, dataRepository:
           onTasksButtonClicked = { navigator.onTasksButtonClicked(eventId) },
           onAnnouncementsClicked = { navigator.onAnnouncementsClicked(eventId) },
           onEditClicked = { navigator.onEdit(eventId) },
+          onEventDeleted = navigator.onEventDeleted,
       )
     }
   }

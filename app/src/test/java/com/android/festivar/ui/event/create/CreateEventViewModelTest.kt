@@ -1,28 +1,49 @@
+@file:OptIn(ExperimentalCoroutinesApi::class)
+
 package com.android.festivar.ui.event.create
 
 // Co-authored-by: Copilot App
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Gemini <noreply@google.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 
+import android.content.ContentResolver
+import android.net.Uri
+import android.webkit.MimeTypeMap
 import com.android.festivar.R
 import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
+import com.android.festivar.model.event.role.Role
+import com.android.festivar.model.images.ImageStorage
+import com.android.festivar.model.images.StoredImage
 import com.android.festivar.model.user.User
 import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryLocal
 import com.android.festivar.ui.components.FieldError
-import com.android.festivar.ui.components.datetime.DateTimeField
+import com.android.festivar.ui.components.datetime.DateTimeRange
 import com.android.festivar.ui.components.datetime.END_OF_DAY
 import com.android.festivar.ui.components.datetime.START_OF_DAY
+import com.android.festivar.ui.event.EventFormViewModel
+import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkStatic
+import io.mockk.unmockkStatic
+import io.mockk.verify
+import java.io.ByteArrayInputStream
+import java.io.File
 import java.time.LocalDate
 import java.time.LocalTime
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
@@ -68,68 +89,22 @@ class CreateEventViewModelTest {
 
     val state = viewModel.uiState.value
     assertEquals("Summer festival", state.name)
-    assertEquals(startDate, state.startDate)
-    assertEquals(endDate, state.endDate)
-    assertEquals(startTime, state.startTime)
-    assertEquals(endTime, state.endTime)
+    assertEquals(startDate, state.range.startDate)
+    assertEquals(endDate, state.range.endDate)
+    assertEquals(startTime, state.range.startTime)
+    assertEquals(endTime, state.range.endTime)
     assertEquals("Main square", state.venue)
     assertEquals("Bring the stage equipment", state.notes)
   }
 
-  /** Red if any date/time picker fails to update its field or close afterward. */
+  /** Breaks if updating the range does not store the whole range in the form. */
   @Test
-  fun pickerActionsUpdateAndCloseThePicker() {
-    viewModel.showPicker(DateTimeField.START_DATE)
-    assertEquals(DateTimeField.START_DATE, viewModel.uiState.value.openPicker)
+  fun updateRangeStoresTheWholeRange() {
+    val range = DateTimeRange(startDate, startTime, endDate, endTime)
 
-    viewModel.pickDate(startDate)
-    assertEquals(startDate, viewModel.uiState.value.startDate)
-    assertNull(viewModel.uiState.value.openPicker)
+    viewModel.updateRange(range)
 
-    viewModel.showPicker(DateTimeField.END_DATE)
-    assertEquals(DateTimeField.END_DATE, viewModel.uiState.value.openPicker)
-
-    viewModel.pickDate(endDate)
-    assertEquals(endDate, viewModel.uiState.value.endDate)
-    assertNull(viewModel.uiState.value.openPicker)
-
-    viewModel.showPicker(DateTimeField.START_TIME)
-    assertEquals(DateTimeField.START_TIME, viewModel.uiState.value.openPicker)
-
-    viewModel.pickTime(startTime)
-    assertEquals(startTime, viewModel.uiState.value.startTime)
-    assertNull(viewModel.uiState.value.openPicker)
-
-    viewModel.showPicker(DateTimeField.END_TIME)
-    assertEquals(DateTimeField.END_TIME, viewModel.uiState.value.openPicker)
-
-    viewModel.pickTime(endTime)
-    assertEquals(endTime, viewModel.uiState.value.endTime)
-    assertNull(viewModel.uiState.value.openPicker)
-  }
-
-  /** Red if picking a date without a date picker leaves an unintended date behind. */
-  @Test
-  fun pickDateWithoutDatePickerOnlyClosesThePicker() {
-    viewModel.showPicker(DateTimeField.START_TIME)
-
-    viewModel.pickDate(startDate)
-
-    assertNull(viewModel.uiState.value.startDate)
-    assertNull(viewModel.uiState.value.endDate)
-    assertNull(viewModel.uiState.value.openPicker)
-  }
-
-  /** Red if picking a time without a time picker writes to an unintended field. */
-  @Test
-  fun pickTimeWithoutTimePickerOnlyClosesThePicker() {
-    viewModel.showPicker(DateTimeField.START_DATE)
-
-    viewModel.pickTime(startTime)
-
-    assertNull(viewModel.uiState.value.startTime)
-    assertNull(viewModel.uiState.value.endTime)
-    assertNull(viewModel.uiState.value.openPicker)
+    assertEquals(range, viewModel.uiState.value.range)
   }
 
   /** Red if the initial event form is considered valid. */
@@ -144,20 +119,32 @@ class CreateEventViewModelTest {
     assertFalse(viewModel.uiState.value.canCreate)
   }
 
+  /** Breaks if an anonymous account is allowed on the create event form. */
+  @Test
+  fun anonymousAccountCannotCreateEvent() {
+    viewModel = CreateEventViewModel(dataRepository, creator.uid, isAnonymous = { true })
+
+    assertFalse(viewModel.uiState.value.canCreateEvent)
+  }
+
+  /** Breaks if a signed-up account is sent away from the create event form. */
+  @Test
+  fun signedUpAccountCanCreateEvent() {
+    assertTrue(viewModel.uiState.value.canCreateEvent)
+  }
+
   /** Red if the ViewModel misses a form field or asks before the user enters anything. */
   @Test
   fun needsDiscardConfirmationTracksEnteredDetails() {
-    assertFalse(viewModel.needsDiscardConfirmation)
-    viewModel.showPicker(DateTimeField.START_DATE)
     assertFalse(viewModel.needsDiscardConfirmation)
 
     val edits: List<(CreateEventViewModel) -> Unit> =
         listOf(
             { it.updateName("Festival") },
-            { it.updateStartDate(startDate) },
-            { it.updateEndDate(endDate) },
-            { it.updateStartTime(startTime) },
-            { it.updateEndTime(endTime) },
+            { it.updateRange(DateTimeRange(startDate = startDate)) },
+            { it.updateRange(DateTimeRange(endDate = endDate)) },
+            { it.updateRange(DateTimeRange(startTime = startTime)) },
+            { it.updateRange(DateTimeRange(endTime = endTime)) },
             { it.updateVenue("Main square") },
             { it.updateNotes("Bring equipment") },
         )
@@ -250,15 +237,13 @@ class CreateEventViewModelTest {
     val state = viewModel.uiState.value
 
     assertNull(state.nameError)
-    assertNull(state.startDateError)
     assertNull(state.endDateError)
   }
 
   /** Red if missing times do not default to the start and end of their dates. */
   @Test
   fun dateTimesUseDefaultTimesWhenTimesAreNotSet() {
-    viewModel.updateStartDate(startDate)
-    viewModel.updateEndDate(endDate)
+    viewModel.updateRange(DateTimeRange(startDate = startDate, endDate = endDate))
 
     val state = viewModel.uiState.value
     assertEquals(START_OF_DAY, state.startDateTime?.toLocalTime())
@@ -270,10 +255,14 @@ class CreateEventViewModelTest {
   fun dateTimesUseSelectedTimesWhenTimesAreSet() {
     val selectedStartTime = LocalTime.of(14, 30)
     val selectedEndTime = LocalTime.of(18, 0)
-    viewModel.updateStartDate(startDate)
-    viewModel.updateEndDate(endDate)
-    viewModel.updateStartTime(selectedStartTime)
-    viewModel.updateEndTime(selectedEndTime)
+    viewModel.updateRange(
+        DateTimeRange(
+            startDate = startDate,
+            endDate = endDate,
+            startTime = selectedStartTime,
+            endTime = selectedEndTime,
+        )
+    )
 
     val state = viewModel.uiState.value
     assertEquals(selectedStartTime, state.startDateTime?.toLocalTime())
@@ -286,8 +275,11 @@ class CreateEventViewModelTest {
     val validState =
         viewModel.uiState.value.copy(
             name = "Summer festival",
-            startDate = startDate,
-            endDate = endDate,
+            range =
+                DateTimeRange(
+                    startDate = startDate,
+                    endDate = endDate,
+                ),
         )
 
     assertFalse(validState.copy(name = "").canCreate)
@@ -306,8 +298,7 @@ class CreateEventViewModelTest {
   @Test
   fun invalidDateRangeIsReported() {
     viewModel.updateName("Summer festival")
-    viewModel.updateStartDate(endDate)
-    viewModel.updateEndDate(startDate)
+    viewModel.updateRange(DateTimeRange(startDate = endDate, endDate = startDate))
 
     assertEquals(FieldError.END_BEFORE_START, viewModel.uiState.value.endDateError)
     assertFalse(viewModel.uiState.value.isValid)
@@ -321,8 +312,11 @@ class CreateEventViewModelTest {
     val state =
         CreateEventUIState(
             name = "Summer festival",
-            startDate = oldStartDate,
-            endDate = oldEndDate,
+            range =
+                DateTimeRange(
+                    startDate = oldStartDate,
+                    endDate = oldEndDate,
+                ),
         )
 
     assertEquals(FieldError.OUTDATED, state.endDateError)
@@ -378,8 +372,7 @@ class CreateEventViewModelTest {
         )
     val gatedViewModel = CreateEventViewModel(dataRepository, creator.uid)
     gatedViewModel.updateName("Summer festival")
-    gatedViewModel.updateStartDate(startDate)
-    gatedViewModel.updateEndDate(endDate)
+    gatedViewModel.updateRange(DateTimeRange(startDate = startDate, endDate = endDate))
 
     gatedViewModel.createEvent()
     withTimeout(5_000.milliseconds) {
@@ -498,6 +491,7 @@ class CreateEventViewModelTest {
     val event = waitForEvents(eventsRepository).single()
     assertEquals(creator.uid, event.ownerId)
     assertEquals(listOf(creator), event.members)
+    assertEquals(Role.OWNER, event.roles[creator.uid])
     assertTrue(usersRepository.getUser(creator.uid).joinedEvents.contains(event.eventId))
   }
 
@@ -529,10 +523,10 @@ class CreateEventViewModelTest {
     assertEquals(R.string.create_event_error_save_failed, failingViewModel.uiState.value.errorMsg)
     assertFalse(failingViewModel.uiState.value.isSaving)
     assertEquals("Summer festival", failingViewModel.uiState.value.name)
-    assertEquals(startDate, failingViewModel.uiState.value.startDate)
-    assertEquals(endDate, failingViewModel.uiState.value.endDate)
-    assertEquals(startTime, failingViewModel.uiState.value.startTime)
-    assertEquals(endTime, failingViewModel.uiState.value.endTime)
+    assertEquals(startDate, failingViewModel.uiState.value.range.startDate)
+    assertEquals(endDate, failingViewModel.uiState.value.range.endDate)
+    assertEquals(startTime, failingViewModel.uiState.value.range.startTime)
+    assertEquals(endTime, failingViewModel.uiState.value.range.endTime)
     assertEquals("Main square", failingViewModel.uiState.value.venue)
     assertEquals("Bring the stage equipment", failingViewModel.uiState.value.notes)
   }
@@ -556,6 +550,48 @@ class CreateEventViewModelTest {
     assertTrue(eventsRepository.getAllEvents().isEmpty())
   }
 
+  /** Breaks if an anonymous account can write an event by calling createEvent. */
+  @Test
+  fun createEventWithAnonymousAccountShowsAnErrorAndDoesNotAddAnEvent() = runBlocking {
+    viewModel = CreateEventViewModel(dataRepository, creator.uid, isAnonymous = { true })
+    fillRequiredFields()
+
+    viewModel.createEvent()
+    withTimeout(5_000.milliseconds) {
+      while (viewModel.uiState.value.errorMsg == null) delay(10.milliseconds)
+    }
+
+    assertEquals(
+        R.string.create_event_error_save_failed,
+        viewModel.uiState.value.errorMsg,
+    )
+    assertFalse(viewModel.uiState.value.isSaving)
+    assertTrue(eventsRepository.getAllEvents().isEmpty())
+    assertTrue(usersRepository.getUser(creator.uid).joinedEvents.isEmpty())
+  }
+
+  /** Breaks if save trusts the state computed at creation instead of checking the account. */
+  @Test
+  fun createEventChecksTheAccountAtSaveTime() = runBlocking {
+    var anonymous = false
+    viewModel = CreateEventViewModel(dataRepository, creator.uid, isAnonymous = { anonymous })
+    assertTrue(viewModel.uiState.value.canCreateEvent)
+    fillRequiredFields()
+
+    anonymous = true
+    viewModel.createEvent()
+    withTimeout(5_000.milliseconds) {
+      while (viewModel.uiState.value.errorMsg == null) delay(10.milliseconds)
+    }
+
+    assertEquals(
+        R.string.create_event_error_save_failed,
+        viewModel.uiState.value.errorMsg,
+    )
+    assertNull(viewModel.uiState.value.createdEventId)
+    assertTrue(eventsRepository.getAllEvents().isEmpty())
+  }
+
   /** Red if editing the form does not clear a stale save error. */
   @Test
   fun editingTheFormClearsTheSaveError() = runBlocking {
@@ -573,8 +609,7 @@ class CreateEventViewModelTest {
         )
     val failingViewModel = CreateEventViewModel(dataRepository, creator.uid)
     failingViewModel.updateName("Summer festival")
-    failingViewModel.updateStartDate(startDate)
-    failingViewModel.updateEndDate(endDate)
+    failingViewModel.updateRange(DateTimeRange(startDate = startDate, endDate = endDate))
 
     failingViewModel.createEvent()
     withTimeout(5_000.milliseconds) {
@@ -679,6 +714,688 @@ class CreateEventViewModelTest {
     }
   }
 
+  /**
+   * Breaks if hasImage, toEvent, or setImageUrlForTesting do not accurately reflect image URL
+   * state.
+   */
+  @Test
+  fun uiStateAndViewModelImageHelpersWork() {
+    assertFalse(CreateEventUIState(imageUrl = null).hasImage)
+    assertFalse(CreateEventUIState(imageUrl = "").hasImage)
+    assertTrue(CreateEventUIState(imageUrl = "https://example.com/image.png").hasImage)
+
+    fillAllFields()
+    val event =
+        viewModel.uiState.value
+            .copy(imageUrl = "https://example.com/image.png")
+            .toEvent("event-1", creator)
+    assertEquals("https://example.com/image.png", event.imageUrl)
+
+    viewModel.setImageUrlForTesting("https://example.com/custom.jpg")
+    assertEquals("https://example.com/custom.jpg", viewModel.uiState.value.imageUrl)
+  }
+
+  /**
+   * Breaks if deleteTemporaryImage fails to handle non-existent, deletable, or undeletable files.
+   */
+  @Test
+  fun deleteTemporaryImageHandlesFileStatus() {
+    val nonExistentFile = File("non_existent_file_12345.tmp")
+    viewModel.deleteTemporaryImageForTesting(nonExistentFile)
+    assertFalse(nonExistentFile.exists())
+
+    val tempFile = File.createTempFile("temp", ".tmp")
+    assertTrue(tempFile.exists())
+    viewModel.deleteTemporaryImageForTesting(tempFile)
+    assertFalse(tempFile.exists())
+
+    val mockFile = mockk<File>()
+    every { mockFile.exists() } returns true
+    every { mockFile.delete() } returns false
+    every { mockFile.path } returns "mock/path"
+    viewModel.deleteTemporaryImageForTesting(mockFile)
+    verify { mockFile.delete() }
+  }
+
+  /**
+   * Breaks if an uploaded image is not treated as draft modification or deleted on confirmed
+   * discard.
+   */
+  @Test
+  fun uploadedImageRequiresDiscardConfirmationAndDeletesOnConfirm() {
+    runBlocking {
+      withMimeTypeMap {
+        val imageStorage = RecordingImageStorage()
+        dataRepository =
+            DataRepositoryLocal(
+                mockk(),
+                eventsRepository = eventsRepository,
+                usersRepository = usersRepository,
+                imageStorage = imageStorage,
+            )
+        viewModel =
+            CreateEventViewModel(
+                dataRepository,
+                creator.uid,
+                ioDispatcher = Dispatchers.Unconfined,
+            )
+        val (resolver, uri) = createMockResolver()
+
+        assertFalse(viewModel.needsDiscardConfirmation)
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        withTimeout(5_000.milliseconds) {
+          while (viewModel.uiState.value.imageUrl == null) delay(10.milliseconds)
+        }
+
+        val uploadedUrl = viewModel.uiState.value.imageUrl
+        assertNotNull(uploadedUrl)
+        assertTrue(viewModel.needsDiscardConfirmation)
+
+        viewModel.confirmDiscard()
+        withTimeout(5_000.milliseconds) {
+          while (imageStorage.deletedUrls.isEmpty()) delay(10.milliseconds)
+        }
+        assertEquals(listOf(uploadedUrl), imageStorage.deletedUrls)
+
+        imageStorage.deleteError = RuntimeException("delete error")
+        viewModel.confirmDiscard()
+        assertTrue(viewModel.uiState.value.isDiscarded)
+      }
+    }
+  }
+
+  /**
+   * Breaks if confirmDiscard attempts image deletion when URL is null/blank or event is created.
+   */
+  @Test
+  fun confirmDiscardNoOpsImageDeletionWhenNotNeeded() {
+    runBlocking {
+      val imageStorage = RecordingImageStorage()
+      dataRepository =
+          DataRepositoryLocal(
+              mockk(),
+              eventsRepository = eventsRepository,
+              usersRepository = usersRepository,
+              imageStorage = imageStorage,
+          )
+      viewModel =
+          CreateEventViewModel(
+              dataRepository,
+              creator.uid,
+              ioDispatcher = Dispatchers.Unconfined,
+          )
+
+      viewModel.setImageUrlForTesting(null)
+      viewModel.confirmDiscard()
+      viewModel.setImageUrlForTesting("   ")
+      viewModel.confirmDiscard()
+
+      viewModel.setImageUrlForTesting("https://example.com/image.png")
+      val stateField =
+          EventFormViewModel::class.java.getDeclaredField("_uiState").apply { isAccessible = true }
+      @Suppress("UNCHECKED_CAST")
+      val stateFlow = stateField.get(viewModel) as MutableStateFlow<CreateEventUIState>
+      stateFlow.value = stateFlow.value.copy(createdEventId = "event-123")
+      viewModel.confirmDiscard()
+
+      assertTrue(imageStorage.deletedUrls.isEmpty())
+    }
+  }
+
+  /**
+   * Breaks if ViewModel clearance fails to delete uploaded images for uncreated events or crash on
+   * delete error.
+   */
+  @Test
+  fun onClearedDeletesUploadedImageForUncreatedEvent() {
+    runBlocking {
+      withMimeTypeMap {
+        val imageStorage = RecordingImageStorage()
+        dataRepository =
+            DataRepositoryLocal(
+                mockk(),
+                eventsRepository = eventsRepository,
+                usersRepository = usersRepository,
+                imageStorage = imageStorage,
+            )
+        viewModel =
+            CreateEventViewModel(
+                dataRepository,
+                creator.uid,
+                ioDispatcher = Dispatchers.Unconfined,
+            )
+        val (resolver, uri) = createMockResolver()
+
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        withTimeout(5_000.milliseconds) {
+          while (viewModel.uiState.value.imageUrl == null) delay(10.milliseconds)
+        }
+        val uploadedUrl = viewModel.uiState.value.imageUrl!!
+
+        val method =
+            viewModel.javaClass.getDeclaredMethod("onCleared").apply { isAccessible = true }
+        method.invoke(viewModel)
+
+        withTimeout(5_000.milliseconds) {
+          while (imageStorage.deletedUrls.isEmpty()) delay(10.milliseconds)
+        }
+        assertEquals(listOf(uploadedUrl), imageStorage.deletedUrls)
+
+        imageStorage.deleteError = RuntimeException("delete error")
+        method.invoke(viewModel)
+      }
+    }
+  }
+
+  /** Breaks if onCleared attempts image deletion when URL is null/blank or event is created. */
+  @Test
+  fun onClearedNoOpsImageDeletionWhenNotNeeded() {
+    runBlocking {
+      val imageStorage = RecordingImageStorage()
+      dataRepository =
+          DataRepositoryLocal(
+              mockk(),
+              eventsRepository = eventsRepository,
+              usersRepository = usersRepository,
+              imageStorage = imageStorage,
+          )
+      viewModel =
+          CreateEventViewModel(
+              dataRepository,
+              creator.uid,
+              ioDispatcher = Dispatchers.Unconfined,
+          )
+      val method = viewModel.javaClass.getDeclaredMethod("onCleared").apply { isAccessible = true }
+
+      viewModel.setImageUrlForTesting(null)
+      method.invoke(viewModel)
+      viewModel.setImageUrlForTesting("   ")
+      method.invoke(viewModel)
+
+      viewModel.setImageUrlForTesting("https://example.com/image.png")
+      val stateField =
+          EventFormViewModel::class.java.getDeclaredField("_uiState").apply { isAccessible = true }
+      @Suppress("UNCHECKED_CAST")
+      val stateFlow = stateField.get(viewModel) as MutableStateFlow<CreateEventUIState>
+      stateFlow.value = stateFlow.value.copy(createdEventId = "event-123")
+      method.invoke(viewModel)
+
+      assertTrue(imageStorage.deletedUrls.isEmpty())
+    }
+  }
+
+  /**
+   * Breaks if image deletion dialog, storage removal, or exception handling during delete image
+   * fails.
+   */
+  @Test
+  fun deleteImageDialogAndConfirmationFlow() {
+    runBlocking {
+      withMimeTypeMap {
+        val imageStorage = RecordingImageStorage()
+        dataRepository =
+            DataRepositoryLocal(
+                mockk(),
+                eventsRepository = eventsRepository,
+                usersRepository = usersRepository,
+                imageStorage = imageStorage,
+            )
+        viewModel =
+            CreateEventViewModel(
+                dataRepository,
+                creator.uid,
+                ioDispatcher = Dispatchers.Unconfined,
+            )
+        val (resolver, uri) = createMockResolver()
+
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        withTimeout(5_000.milliseconds) {
+          while (viewModel.uiState.value.imageUrl == null) delay(10.milliseconds)
+        }
+
+        val uploadedUrl = viewModel.uiState.value.imageUrl!!
+        viewModel.requestDeleteImage()
+        assertTrue(viewModel.uiState.value.showDeleteImageConfirmation)
+        viewModel.cancelDeleteImage()
+        assertFalse(viewModel.uiState.value.showDeleteImageConfirmation)
+
+        viewModel.requestDeleteImage()
+        viewModel.confirmDeleteImage()
+        assertNull(viewModel.uiState.value.imageUrl)
+        assertFalse(viewModel.uiState.value.showDeleteImageConfirmation)
+
+        withTimeout(5_000.milliseconds) {
+          while (imageStorage.deletedUrls.isEmpty()) delay(10.milliseconds)
+        }
+        assertEquals(listOf(uploadedUrl), imageStorage.deletedUrls)
+
+        viewModel.setImageUrlForTesting("https://example.com/test.png")
+        imageStorage.deleteError = RuntimeException("delete error")
+        viewModel.requestDeleteImage()
+        viewModel.confirmDeleteImage()
+        assertNull(viewModel.uiState.value.imageUrl)
+      }
+    }
+  }
+
+  /**
+   * Breaks if requesting or confirming image deletion without an image triggers dialog or storage
+   * delete.
+   */
+  @Test
+  fun deleteImageNoOpsWhenImageMissing() {
+    runBlocking {
+      val imageStorage = RecordingImageStorage()
+      dataRepository =
+          DataRepositoryLocal(
+              mockk(),
+              eventsRepository = eventsRepository,
+              usersRepository = usersRepository,
+              imageStorage = imageStorage,
+          )
+      viewModel =
+          CreateEventViewModel(
+              dataRepository,
+              creator.uid,
+              ioDispatcher = Dispatchers.Unconfined,
+          )
+
+      viewModel.requestDeleteImage()
+      assertFalse(viewModel.uiState.value.showDeleteImageConfirmation)
+
+      viewModel.setImageUrlForTesting(null)
+      viewModel.confirmDeleteImage()
+      viewModel.setImageUrlForTesting("")
+      viewModel.confirmDeleteImage()
+
+      assertTrue(imageStorage.deletedUrls.isEmpty())
+    }
+  }
+
+  /**
+   * Breaks if updating image fails to enforce file size limits or default to jpg extension when
+   * mime type is null.
+   */
+  @Test
+  fun updateImageFileValidationAndExtensionFallback() {
+    runBlocking {
+      withMimeTypeMap {
+        val largeData = ByteArray(11 * 1024 * 1024)
+        val (resolver, uri) = createMockResolver(bytes = largeData)
+        viewModel =
+            CreateEventViewModel(
+                dataRepository,
+                creator.uid,
+                ioDispatcher = Dispatchers.Unconfined,
+            )
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        withTimeout(5_000.milliseconds) {
+          while (viewModel.uiState.value.errorMsg == null) delay(10.milliseconds)
+        }
+        assertEquals(R.string.profile_picture_too_large, viewModel.uiState.value.errorMsg)
+        assertNull(viewModel.uiState.value.imageUrl)
+      }
+
+      withMimeTypeMap(extension = null) {
+        val imageStorage = RecordingImageStorage()
+        dataRepository =
+            DataRepositoryLocal(
+                mockk(),
+                eventsRepository = eventsRepository,
+                usersRepository = usersRepository,
+                imageStorage = imageStorage,
+            )
+        viewModel =
+            CreateEventViewModel(
+                dataRepository,
+                creator.uid,
+                ioDispatcher = Dispatchers.Unconfined,
+            )
+        val (resolver, uri) = createMockResolver(mimeType = null)
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        withTimeout(5_000.milliseconds) {
+          while (viewModel.uiState.value.imageUrl == null) delay(10.milliseconds)
+        }
+        assertTrue(viewModel.uiState.value.imageUrl!!.endsWith(".jpg"))
+      }
+    }
+  }
+
+  /**
+   * Breaks if updating image when a previous image exists fails to delete old image or skips
+   * deletion when URLs match.
+   */
+  @Test
+  fun updateImageHandlesImageReplacement() {
+    runBlocking {
+      withMimeTypeMap {
+        val imageStorage = RecordingImageStorage()
+        dataRepository =
+            DataRepositoryLocal(
+                mockk(),
+                eventsRepository = eventsRepository,
+                usersRepository = usersRepository,
+                imageStorage = imageStorage,
+            )
+        viewModel =
+            CreateEventViewModel(
+                dataRepository,
+                creator.uid,
+                ioDispatcher = Dispatchers.Unconfined,
+            )
+        val (resolver, uri) = createMockResolver()
+
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        withTimeout(5_000.milliseconds) {
+          while (viewModel.uiState.value.imageUrl == null) delay(10.milliseconds)
+        }
+        val firstUrl = viewModel.uiState.value.imageUrl!!
+
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        withTimeout(5_000.milliseconds) {
+          while (imageStorage.deletedUrls.isEmpty()) delay(10.milliseconds)
+        }
+        assertTrue(imageStorage.deletedUrls.contains(firstUrl))
+
+        val sameStorage =
+            object : ImageStorage {
+              val deleted = mutableListOf<String>()
+
+              override fun getNewUid() = "uid"
+
+              override suspend fun upload(storedImage: StoredImage, subFolder: String) =
+                  "https://example.com/same.png"
+
+              override suspend fun delete(imageUrl: String) {
+                deleted.add(imageUrl)
+              }
+            }
+        dataRepository =
+            DataRepositoryLocal(
+                mockk(),
+                eventsRepository = eventsRepository,
+                usersRepository = usersRepository,
+                imageStorage = sameStorage,
+            )
+        viewModel =
+            CreateEventViewModel(
+                dataRepository,
+                creator.uid,
+                ioDispatcher = Dispatchers.Unconfined,
+            )
+        viewModel.setImageUrlForTesting("https://example.com/same.png")
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        withTimeout(5_000.milliseconds) {
+          while (viewModel.uiState.value.isSaving) delay(10.milliseconds)
+        }
+        assertTrue(sameStorage.deleted.isEmpty())
+      }
+    }
+  }
+
+  /**
+   * Breaks if read or upload exceptions during updateImage fail to report save error or clean up
+   * uploaded image.
+   */
+  @Test
+  fun updateImageHandlesReadAndUploadExceptions() {
+    runBlocking {
+      withMimeTypeMap {
+        val (failingResolver, failingUri) =
+            createMockResolver(readException = RuntimeException("read error"))
+        viewModel =
+            CreateEventViewModel(
+                dataRepository,
+                creator.uid,
+                ioDispatcher = Dispatchers.Unconfined,
+            )
+        viewModel.updateImage(failingUri, failingResolver, createTempTestDir())
+        withTimeout(5_000.milliseconds) {
+          while (viewModel.uiState.value.errorMsg == null) delay(10.milliseconds)
+        }
+        assertEquals(R.string.create_event_error_save_failed, viewModel.uiState.value.errorMsg)
+
+        val imageStorage = RecordingImageStorage(uploadError = RuntimeException("upload error"))
+        dataRepository =
+            DataRepositoryLocal(
+                mockk(),
+                eventsRepository = eventsRepository,
+                usersRepository = usersRepository,
+                imageStorage = imageStorage,
+            )
+        viewModel =
+            CreateEventViewModel(
+                dataRepository,
+                creator.uid,
+                ioDispatcher = Dispatchers.Unconfined,
+            )
+        val (resolver, uri) = createMockResolver()
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        withTimeout(5_000.milliseconds) {
+          while (viewModel.uiState.value.errorMsg == null) delay(10.milliseconds)
+        }
+        assertEquals(R.string.create_event_error_save_failed, viewModel.uiState.value.errorMsg)
+      }
+    }
+  }
+
+  /**
+   * Breaks if old image deletion failure or post-upload state update failure fails to log error and
+   * clean up image.
+   */
+  @Test
+  fun updateImageHandlesPostUploadErrors() {
+    runBlocking {
+      withMimeTypeMap {
+        val imageStorage = RecordingImageStorage()
+        dataRepository =
+            DataRepositoryLocal(
+                mockk(),
+                eventsRepository = eventsRepository,
+                usersRepository = usersRepository,
+                imageStorage = imageStorage,
+            )
+        viewModel =
+            CreateEventViewModel(
+                dataRepository,
+                creator.uid,
+                ioDispatcher = Dispatchers.Unconfined,
+            )
+        val (resolver, uri) = createMockResolver()
+
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        withTimeout(5_000.milliseconds) {
+          while (viewModel.uiState.value.imageUrl == null) delay(10.milliseconds)
+        }
+        imageStorage.deleteError = RuntimeException("delete error")
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        withTimeout(5_000.milliseconds) {
+          while (viewModel.uiState.value.errorMsg == null) delay(10.milliseconds)
+        }
+        assertEquals(R.string.create_event_error_save_failed, viewModel.uiState.value.errorMsg)
+
+        val cleanupStorage = RecordingImageStorage()
+        dataRepository =
+            DataRepositoryLocal(
+                mockk(),
+                eventsRepository = eventsRepository,
+                usersRepository = usersRepository,
+                imageStorage = cleanupStorage,
+            )
+        viewModel =
+            CreateEventViewModel(
+                dataRepository,
+                creator.uid,
+                ioDispatcher = Dispatchers.Unconfined,
+            )
+        val field =
+            EventFormViewModel::class.java.getDeclaredField("_uiState").apply {
+              isAccessible = true
+            }
+        @Suppress("UNCHECKED_CAST")
+        val originalStateFlow = field.get(viewModel) as MutableStateFlow<CreateEventUIState>
+        var updateCount = 0
+        @Suppress("OPT_IN_USAGE")
+        val failingStateFlow =
+            object : MutableStateFlow<CreateEventUIState> by originalStateFlow {
+              override fun compareAndSet(
+                  expect: CreateEventUIState,
+                  update: CreateEventUIState,
+              ): Boolean {
+                updateCount++
+                if (updateCount == 2) throw RuntimeException("Simulated updateState failure")
+                return originalStateFlow.compareAndSet(expect, update)
+              }
+            }
+        field.set(viewModel, failingStateFlow)
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        withTimeout(5_000.milliseconds) {
+          while (cleanupStorage.deletedUrls.isEmpty()) delay(10.milliseconds)
+        }
+        assertTrue(cleanupStorage.deletedUrls.isNotEmpty())
+        assertEquals(R.string.create_event_error_save_failed, viewModel.uiState.value.errorMsg)
+
+        val failingStorage2 =
+            RecordingImageStorage().apply { deleteError = RuntimeException("cleanup fail") }
+        dataRepository =
+            DataRepositoryLocal(
+                mockk(),
+                eventsRepository = eventsRepository,
+                usersRepository = usersRepository,
+                imageStorage = failingStorage2,
+            )
+        viewModel =
+            CreateEventViewModel(
+                dataRepository,
+                creator.uid,
+                ioDispatcher = Dispatchers.Unconfined,
+            )
+        @Suppress("UNCHECKED_CAST")
+        val stateFlow2 = field.get(viewModel) as MutableStateFlow<CreateEventUIState>
+        var updateCount2 = 0
+        @Suppress("OPT_IN_USAGE")
+        val failingStateFlow2 =
+            object : MutableStateFlow<CreateEventUIState> by stateFlow2 {
+              override fun compareAndSet(
+                  expect: CreateEventUIState,
+                  update: CreateEventUIState,
+              ): Boolean {
+                updateCount2++
+                if (updateCount2 == 2) throw RuntimeException("Simulated updateState failure")
+                return stateFlow2.compareAndSet(expect, update)
+              }
+            }
+        field.set(viewModel, failingStateFlow2)
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        withTimeout(5_000.milliseconds) {
+          while (viewModel.uiState.value.errorMsg == null) delay(10.milliseconds)
+        }
+        assertEquals(R.string.create_event_error_save_failed, viewModel.uiState.value.errorMsg)
+      }
+    }
+  }
+
+  /**
+   * Breaks if CancellationException during image read, upload, or old image deletion is swallowed
+   * as save error.
+   */
+  @Test
+  fun updateImagePropagatesCancellationExceptions() {
+    runBlocking {
+      withMimeTypeMap {
+        val (readCancelResolver, readCancelUri) =
+            createMockResolver(readException = CancellationException("cancelled"))
+        viewModel =
+            CreateEventViewModel(
+                dataRepository,
+                creator.uid,
+                ioDispatcher = Dispatchers.Unconfined,
+            )
+        viewModel.updateImage(readCancelUri, readCancelResolver, createTempTestDir())
+        assertNull(viewModel.uiState.value.errorMsg)
+
+        val cancelUploadStorage =
+            RecordingImageStorage(uploadError = CancellationException("cancelled"))
+        dataRepository =
+            DataRepositoryLocal(
+                mockk(),
+                eventsRepository = eventsRepository,
+                usersRepository = usersRepository,
+                imageStorage = cancelUploadStorage,
+            )
+        viewModel =
+            CreateEventViewModel(
+                dataRepository,
+                creator.uid,
+                ioDispatcher = Dispatchers.Unconfined,
+            )
+        val (resolver, uri) = createMockResolver()
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        assertNull(viewModel.uiState.value.errorMsg)
+
+        val cancelDeleteStorage = RecordingImageStorage()
+        dataRepository =
+            DataRepositoryLocal(
+                mockk(),
+                eventsRepository = eventsRepository,
+                usersRepository = usersRepository,
+                imageStorage = cancelDeleteStorage,
+            )
+        viewModel =
+            CreateEventViewModel(
+                dataRepository,
+                creator.uid,
+                ioDispatcher = Dispatchers.Unconfined,
+            )
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        withTimeout(5_000.milliseconds) {
+          while (viewModel.uiState.value.imageUrl == null) delay(10.milliseconds)
+        }
+        cancelDeleteStorage.deleteError = CancellationException("cancel delete")
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        assertNull(viewModel.uiState.value.errorMsg)
+      }
+    }
+  }
+
+  /** Breaks if concurrent image updates are permitted while saving. */
+  @Test
+  fun updateImageRejectsConcurrentUpdatesWhenSaving() {
+    runBlocking {
+      withMimeTypeMap {
+        val (resolver, uri) = createMockResolver()
+        val deferredUpload = CompletableDeferred<String>()
+        val customStorage =
+            object : ImageStorage {
+              override fun getNewUid(): String = "id"
+
+              override suspend fun upload(storedImage: StoredImage, subFolder: String): String {
+                return deferredUpload.await()
+              }
+
+              override suspend fun delete(imageUrl: String) {}
+            }
+        val repo =
+            DataRepositoryLocal(
+                authRepository = mockk(),
+                eventsRepository = eventsRepository,
+                usersRepository = usersRepository,
+                imageStorage = customStorage,
+            )
+        viewModel = CreateEventViewModel(repo, creator.uid, ioDispatcher = Dispatchers.Unconfined)
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        assertTrue(viewModel.uiState.value.isSaving)
+
+        viewModel.updateImage(uri, resolver, createTempTestDir())
+        deferredUpload.complete("https://example.com/image.jpg")
+        withTimeout(5_000.milliseconds) {
+          while (viewModel.uiState.value.isSaving) delay(10.milliseconds)
+        }
+        assertEquals("https://example.com/image.jpg", viewModel.uiState.value.imageUrl)
+      }
+    }
+  }
+
   private fun fillFormAndCreateEvent(
       eventsRepository: EventsRepository,
       usersRepository: UsersRepository,
@@ -718,16 +1435,19 @@ class CreateEventViewModelTest {
 
   private fun fillRequiredFields() {
     viewModel.updateName("Summer festival")
-    viewModel.updateStartDate(startDate)
-    viewModel.updateEndDate(endDate)
+    viewModel.updateRange(DateTimeRange(startDate = startDate, endDate = endDate))
   }
 
   private fun fillAllFields() {
     viewModel.updateName("Summer festival")
-    viewModel.updateStartDate(startDate)
-    viewModel.updateEndDate(endDate)
-    viewModel.updateStartTime(startTime)
-    viewModel.updateEndTime(endTime)
+    viewModel.updateRange(
+        DateTimeRange(
+            startDate = startDate,
+            endDate = endDate,
+            startTime = startTime,
+            endTime = endTime,
+        )
+    )
     viewModel.updateVenue("Main square")
     viewModel.updateNotes("Bring the stage equipment")
   }
@@ -741,5 +1461,62 @@ class CreateEventViewModelTest {
       }
     }
     return events
+  }
+
+  private inline fun <T> withMimeTypeMap(extension: String? = "png", block: () -> T): T {
+    val mimeTypeMap = mockk<MimeTypeMap>()
+    mockkStatic(MimeTypeMap::class)
+    every { MimeTypeMap.getSingleton() } returns mimeTypeMap
+    every { mimeTypeMap.getExtensionFromMimeType(any()) } returns extension
+    try {
+      return block()
+    } finally {
+      unmockkStatic(MimeTypeMap::class)
+    }
+  }
+
+  private fun createMockResolver(
+      mimeType: String? = "image/png",
+      bytes: ByteArray = "test image content".toByteArray(),
+      readException: Throwable? = null,
+  ): Pair<ContentResolver, Uri> {
+    val resolver = mockk<ContentResolver>()
+    val uri = mockk<Uri>()
+    every { resolver.getType(uri) } returns mimeType
+    if (readException != null) {
+      every { resolver.openInputStream(uri) } throws readException
+    } else {
+      every { resolver.openInputStream(uri) } returns ByteArrayInputStream(bytes)
+    }
+    return resolver to uri
+  }
+
+  private fun createTempTestDir(): File {
+    val tempDir = File.createTempFile("test", "dir")
+    tempDir.delete()
+    tempDir.mkdir()
+    tempDir.deleteOnExit()
+    return tempDir
+  }
+}
+
+private class RecordingImageStorage(
+    var uploadError: Throwable? = null,
+    var deleteError: Throwable? = null,
+) : ImageStorage {
+  val uploadedImages = mutableListOf<Pair<StoredImage, String>>()
+  val deletedUrls = mutableListOf<String>()
+
+  override fun getNewUid(): String = "image-uid"
+
+  override suspend fun upload(storedImage: StoredImage, subFolder: String): String {
+    uploadError?.let { throw it }
+    uploadedImages += storedImage to subFolder
+    return "https://example.com/${subFolder}/${storedImage.file.name}"
+  }
+
+  override suspend fun delete(imageUrl: String) {
+    deleteError?.let { throw it }
+    deletedUrls += imageUrl
   }
 }

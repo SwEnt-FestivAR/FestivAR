@@ -31,6 +31,8 @@ enum class EventsFilter {
  * @property pastEvents The [Event] items that are closed or ended, the most recently ended first.
  * @property selectedFilter Which [Event] items are shown: [ongoingEvents], [upcomingEvents] or
  *   [pastEvents].
+ * @property canCreateEvent Whether the user can create an [Event], so whether the screen shows the
+ *   "Create" buttons. `false` for an anonymous account, which can only join an [Event].
  * @property isLoading Whether the [Event] items are currently being fetched.
  * @property hasError Whether the last fetch of the [Event] items failed. It stays `true` until a
  *   fetch succeeds, so the screen can keep showing the error with a retry.
@@ -42,6 +44,7 @@ data class EventsOverviewUIState(
     val upcomingEvents: List<Event> = emptyList(),
     val pastEvents: List<Event> = emptyList(),
     val selectedFilter: EventsFilter = EventsFilter.ONGOING,
+    val canCreateEvent: Boolean = true,
     val isLoading: Boolean = false,
     val hasError: Boolean = false,
     val errorMsg: String? = null,
@@ -73,18 +76,24 @@ data class EventsOverviewUIState(
  * @property dataRepository Gives the [EventsRepository] used to fetch the [Event] items.
  * @property uId The signed-in user unique identifier.
  * @property now Gives the current time, used to split ongoing, upcoming and past [Event] items.
+ * @property isAnonymous Tells whether the signed-in user has an anonymous account, which cannot
+ *   create an [Event]. Read again at each [refreshUIState], so that an account upgraded in the
+ *   meantime gets back the "Create" buttons.
  */
 class EventsOverviewViewModel(
     private val dataRepository: DataRepository,
     private val uId: String,
     private val now: () -> ZonedDateTime = ZonedDateTime::now,
+    private val isAnonymous: () -> Boolean = { false },
 ) : ViewModel() {
 
   private val eventsRepository: EventsRepository = dataRepository.eventsRepository
 
   // Loading from the start: nothing is fetched until the screen calls refreshUIState on resume,
-  // and until then the screen must show its progress indicator, not its empty state.
-  private val _uiState = MutableStateFlow(EventsOverviewUIState(isLoading = true))
+  // and until then the screen must show its progress indicator, not its empty state. Whether the
+  // user can create an event is known right away, so it is already set.
+  private val _uiState =
+      MutableStateFlow(EventsOverviewUIState(isLoading = true, canCreateEvent = !isAnonymous()))
   val uiState: StateFlow<EventsOverviewUIState> = _uiState.asStateFlow()
 
   /** The fetch of the [Event] items in progress, cancelled when a newer one starts. */
@@ -105,7 +114,8 @@ class EventsOverviewViewModel(
 
   /**
    * Refreshes the UI state by fetching the [Event] items from the repository, e.g. when the screen
-   * is shown again after an event was created or joined, or when the user retries.
+   * is shown again after an event was created or joined, or when the user retries. Also checks
+   * again whether the user can create an [Event], e.g. after upgrading an anonymous account.
    */
   fun refreshUIState() {
     getEvents()
@@ -114,11 +124,12 @@ class EventsOverviewViewModel(
   /**
    * Fetches the [Event] items of the signed-in user from the repository and updates the UI state.
    * Cancels the previous fetch, so that an older result never overwrites a newer one. A failure
-   * keeps the [Event] items already shown, and the error stays until a fetch succeeds.
+   * keeps the [Event] items already shown, and the error stays until a fetch succeeds. Whether the
+   * user can create an [Event] is updated before the fetch, so even when it fails.
    */
   private fun getEvents() {
     getEventsJob?.cancel()
-    _uiState.update { it.copy(isLoading = true) }
+    _uiState.update { it.copy(isLoading = true, canCreateEvent = !isAnonymous()) }
     getEventsJob = viewModelScope.launch {
       try {
         val events = eventsRepository.getEventsForUser(uId)

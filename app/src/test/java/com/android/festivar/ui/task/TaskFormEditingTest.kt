@@ -1,8 +1,9 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task
 
 import com.android.festivar.model.task.Priority
-import com.android.festivar.ui.components.datetime.DateTimeField
+import com.android.festivar.ui.components.datetime.DateTimeRange
 import com.android.festivar.ui.task.create.CreateTaskUiState
 import com.android.festivar.ui.task.create.MAX_ESTIMATED_DIGITS
 import com.android.festivar.ui.task.create.MIN_MAX_ASSIGN
@@ -11,18 +12,13 @@ import java.time.LocalTime
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** Tests of [TaskFormEditing] over a plain state, without a ViewModel. */
 class TaskFormEditingTest {
   private val state = MutableStateFlow(CreateTaskUiState())
-  private val editing =
-      TaskFormEditing().also {
-        it.applyEdit = { change -> state.update(change) }
-        it.current = { state.value }
-      }
+  private val editing = TaskFormEditing().also { it.applyEdit = { change -> state.update(change) } }
 
   // Breaks if the title setter does not mark the title as edited, so a blank title shows no error.
   @Test
@@ -40,19 +36,6 @@ class TaskFormEditingTest {
     repeat(3) { editing.decrementMaxAssign() }
 
     assertEquals(MIN_MAX_ASSIGN, state.value.maxAssign)
-  }
-
-  // Breaks if pickDate writes another field than the open picker's or leaves the picker open.
-  @Test
-  fun pickDateWritesTheFieldWhosePickerIsOpenAndClosesIt() {
-    val day = LocalDate.of(2026, 10, 17)
-    editing.showPicker(DateTimeField.END_DATE)
-
-    editing.pickDate(day)
-
-    assertEquals(day, state.value.endDate)
-    assertNull(state.value.startDate)
-    assertNull(state.value.openPicker)
   }
 
   private val day = LocalDate.of(2026, 10, 17)
@@ -107,51 +90,13 @@ class TaskFormEditingTest {
     }
   }
 
-  // Breaks if updateStartDate writes another field, such as the end date.
+  /** Breaks if updateRange writes another field than the range, or keeps part of the old range. */
   @Test
-  fun updateStartDateChangesOnlyTheStartDate() =
-      assertOnly({ it.copy(startDate = day) }) { editing.updateStartDate(day) }
+  fun updateRangeChangesOnlyTheRange() {
+    val range = DateTimeRange(day, nine, day.plusDays(1), nine.plusHours(2))
 
-  // Breaks if updateStartTime writes another field, such as the end time.
-  @Test
-  fun updateStartTimeChangesOnlyTheStartTime() =
-      assertOnly({ it.copy(startTime = nine) }) { editing.updateStartTime(nine) }
+    assertOnly({ it.copy(range = range) }) { editing.updateRange(range) }
 
-  // Breaks if updateEndDate writes another field, such as the start date.
-  @Test
-  fun updateEndDateChangesOnlyTheEndDate() =
-      assertOnly({ it.copy(endDate = day) }) { editing.updateEndDate(day) }
-
-  // Breaks if updateEndTime writes another field, such as the start time.
-  @Test
-  fun updateEndTimeChangesOnlyTheEndTime() =
-      assertOnly({ it.copy(endTime = nine) }) { editing.updateEndTime(nine) }
-
-  // Breaks if showPicker opens another field than the one given, or null does not close it.
-  @Test
-  fun showPickerOpensTheGivenFieldAndNullClosesIt() {
-    assertOnly({ it.copy(openPicker = DateTimeField.END_TIME) }) {
-      editing.showPicker(DateTimeField.END_TIME)
-    }
-
-    assertOnly({ it.copy(openPicker = null) }) { editing.showPicker(null) }
-  }
-
-  // Breaks if pickTime writes another field than the open picker's or leaves the picker open.
-  @Test
-  fun pickTimeWritesTheFieldWhosePickerIsOpenAndClosesIt() {
-    editing.showPicker(DateTimeField.START_TIME)
-    assertOnly({ it.copy(startTime = nine, openPicker = null) }) { editing.pickTime(nine) }
-
-    editing.showPicker(DateTimeField.END_TIME)
-    assertOnly({ it.copy(endTime = nine, openPicker = null) }) { editing.pickTime(nine) }
-  }
-
-  // Breaks if pickTime writes a time while a date picker is open, or leaves that picker open.
-  @Test
-  fun pickTimeWithADatePickerOpenOnlyClosesIt() {
-    editing.showPicker(DateTimeField.START_DATE)
-
-    assertOnly({ it.copy(openPicker = null) }) { editing.pickTime(nine) }
+    assertOnly({ it.copy(range = DateTimeRange()) }) { editing.updateRange(DateTimeRange()) }
   }
 }

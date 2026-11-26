@@ -16,28 +16,28 @@ class AnnouncementNavGraphHelperTest {
   }
 
   @Test
-  fun requireAnnouncementDetailsArgumentsReturnsValidPair() {
-    val result = requireAnnouncementDetailsArguments("e1", "a1")
+  fun requireAnnouncementArgumentsReturnsValidPair() {
+    val result = requireAnnouncementArguments("e1", "a1")
     assertEquals("e1" to "a1", result)
   }
 
   @Test(expected = IllegalArgumentException::class)
-  fun requireAnnouncementDetailsArgumentsThrowsWhenEventIdNull() {
-    requireAnnouncementDetailsArguments(null, "a1")
+  fun requireAnnouncementArgumentsThrowsWhenEventIdNull() {
+    requireAnnouncementArguments(null, "a1")
   }
 
   @Test(expected = IllegalArgumentException::class)
-  fun requireAnnouncementDetailsArgumentsThrowsWhenAnnouncementIdNull() {
-    requireAnnouncementDetailsArguments("e1", null)
+  fun requireAnnouncementArgumentsThrowsWhenAnnouncementIdNull() {
+    requireAnnouncementArguments("e1", null)
   }
 
   @Test(expected = IllegalArgumentException::class)
-  fun requireAnnouncementDetailsArgumentsThrowsWhenEventIdBlank() {
-    requireAnnouncementDetailsArguments("   ", "a1")
+  fun requireAnnouncementArgumentsThrowsWhenEventIdBlank() {
+    requireAnnouncementArguments("   ", "a1")
   }
 
   @Test(expected = IllegalArgumentException::class)
-  fun requireAnnouncementDetailsArgumentsThrowsWhenAnnouncementIdBlank() {
-    requireAnnouncementDetailsArguments("e1", "   ")
+  fun requireAnnouncementArgumentsThrowsWhenAnnouncementIdBlank() {
+    requireAnnouncementArguments("e1", "   ")
   }
 }

@@ -22,14 +22,14 @@ class MapGeometryTest {
   // toLocal and toGeo
   // ---------------------------------------------------------------------------------------------
 
-  // Breaks if the origin is not the zero of the local coordinates.
+  /** Breaks if the origin is not the zero of the local coordinates. */
   @Test
   fun theOriginIsAtZero() {
     assertPosition(at(0.0, 0.0), toLocal(lausanne, lausanne))
     assertEquals(lausanne, toGeo(lausanne, at(0.0, 0.0)))
   }
 
-  // Breaks if y points south, or latitude and longitude are swapped.
+  /** Breaks if y points south, or latitude and longitude are swapped. */
   @Test
   fun northIsPositiveYAndEastIsPositiveX() {
     val north = toLocal(lausanne, GeoPosition(lausanne.latitude + 0.001, lausanne.longitude))
@@ -41,8 +41,10 @@ class MapGeometryTest {
     assertEquals(0.0, east.y, millimetre)
   }
 
-  // Breaks if the cosine of the latitude is dropped, or degrees are taken for radians: a thousandth
-  // of a degree is 111.19 m of latitude anywhere, and 76.52 m of longitude at Lausanne.
+  /**
+   * Breaks if the cosine of the latitude is dropped, or degrees are taken for radians: a thousandth
+   * of a degree is 111.19 m of latitude anywhere, and 76.52 m of longitude at Lausanne.
+   */
   @Test
   fun aThousandthOfADegreeHasTheRightLength() {
     val north = toLocal(lausanne, GeoPosition(lausanne.latitude + 0.001, lausanne.longitude))
@@ -52,8 +54,10 @@ class MapGeometryTest {
     assertEquals(76.52, east.x, 0.01)
   }
 
-  // Breaks if toGeo is not the exact inverse of toLocal, for instance a cosine taken at another
-  // latitude in one direction only. Checked up to 5 km from the origin, in the four quadrants.
+  /**
+   * Breaks if toGeo is not the exact inverse of toLocal, for instance a cosine taken at another
+   * latitude in one direction only. Checked up to 5 km from the origin, in the four quadrants.
+   */
   @Test
   fun aRoundTripGivesBackTheSamePoint() {
     val origins = listOf(lausanne, GeoPosition(0.0, 0.0), GeoPosition(-33.86, 151.21))
@@ -66,17 +70,32 @@ class MapGeometryTest {
     }
   }
 
-  // Breaks if a result that is not on Earth is returned instead of being refused. Next to a pole
-  // one metre east is more than a full turn of longitude.
+  /**
+   * Breaks if a result more than half a turn of longitude from the origin is returned instead of
+   * being refused: next to a pole one metre east is more than a full turn.
+   */
   @Test
-  fun toGeoRefusesAResultThatIsNotOnEarth() {
+  fun toGeoRefusesMoreThanHalfATurnOfLongitude() {
     assertThrows(IllegalArgumentException::class.java) {
       toGeo(GeoPosition(90.0, 0.0), at(1.0, 0.0))
     }
   }
 
-  // Breaks if a site next to longitude 180 is refused: 100 m east of 179.9995 is a real place, on
-  // the other side of the antimeridian.
+  /**
+   * Breaks if a result past a pole is returned instead of being refused: 100 m north of latitude
+   * 89.9999 is beyond 90 degrees, which a GeoPosition cannot hold.
+   */
+  @Test
+  fun toGeoRefusesAResultPastAPole() {
+    assertThrows(IllegalArgumentException::class.java) {
+      toGeo(GeoPosition(89.9999, 0.0), at(0.0, 100.0))
+    }
+  }
+
+  /**
+   * Breaks if a site next to longitude 180 is refused: 100 m east of 179.9995 is a real place, on
+   * the other side of the antimeridian.
+   */
   @Test
   fun aSiteAcrossTheAntimeridianIsConverted() {
     val origin = GeoPosition(0.0, 179.9995)
@@ -92,15 +111,17 @@ class MapGeometryTest {
   // distanceMeters
   // ---------------------------------------------------------------------------------------------
 
-  // Breaks if the local distance is not the straight line: a 3, 4, 5 triangle.
+  /** Breaks if the local distance is not the straight line: a 3, 4, 5 triangle. */
   @Test
   fun theLocalDistanceIsTheStraightLine() {
     assertEquals(5.0, distanceMeters(at(1.0, 1.0), at(4.0, 5.0)), 1e-12)
     assertEquals(0.0, distanceMeters(at(2.0, 2.0), at(2.0, 2.0)), 0.0)
   }
 
-  // Breaks if the distance on Earth uses the wrong radius or mixes degrees and radians: one degree
-  // of latitude is 111.19 km.
+  /**
+   * Breaks if the distance on Earth uses the wrong radius or mixes degrees and radians: one degree
+   * of latitude is 111.19 km.
+   */
   @Test
   fun theDistanceOnEarthOfOneDegreeOfLatitude() {
     val distance = distanceMeters(GeoPosition(46.0, 6.0), GeoPosition(47.0, 6.0))
@@ -109,8 +130,10 @@ class MapGeometryTest {
     assertEquals(0.0, distanceMeters(lausanne, lausanne), 0.0)
   }
 
-  // Breaks if the two distances disagree at the scale of a site, where a boundary is measured with
-  // one and drawn with the other.
+  /**
+   * Breaks if the two distances disagree at the scale of a site, where a boundary is measured with
+   * one and drawn with the other.
+   */
   @Test
   fun bothDistancesAgreeAtTheScaleOfASite() {
     val far = toGeo(lausanne, at(600.0, 800.0))
@@ -122,7 +145,7 @@ class MapGeometryTest {
   // normalizeDegrees
   // ---------------------------------------------------------------------------------------------
 
-  // Breaks if a negative angle stays negative, or a full turn is not brought back to 0.
+  /** Breaks if a negative angle stays negative, or a full turn is not brought back to 0. */
   @Test
   fun degreesAreBroughtBackWithinOneTurn() {
     assertEquals(0.0, normalizeDegrees(0.0), 0.0)
@@ -132,7 +155,7 @@ class MapGeometryTest {
     assertEquals(359.5, normalizeDegrees(-720.5), 1e-9)
   }
 
-  // Breaks if an angle that is not a number is passed on as NaN instead of being refused.
+  /** Breaks if an angle that is not a number is passed on as NaN instead of being refused. */
   @Test
   fun anAngleThatIsNotFiniteIsRefused() {
     for (angle in listOf(Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY)) {
@@ -145,8 +168,10 @@ class MapGeometryTest {
   // distanceToSegment
   // ---------------------------------------------------------------------------------------------
 
-  // Breaks if the distance is taken to the whole line: level with the segment it is the
-  // perpendicular, beyond an end it is the distance to that end.
+  /**
+   * Breaks if the distance is taken to the whole line: level with the segment it is the
+   * perpendicular, beyond an end it is the distance to that end.
+   */
   @Test
   fun theDistanceToASegmentStopsAtItsEnds() {
     val a = at(0.0, 0.0)
@@ -158,7 +183,7 @@ class MapGeometryTest {
     assertEquals(5.0, distanceToSegment(at(-3.0, -4.0), a, b), 1e-12)
   }
 
-  // Breaks if a point of the segment is not at distance zero, its ends included.
+  /** Breaks if a point of the segment is not at distance zero, its ends included. */
   @Test
   fun aPointOfTheSegmentIsAtDistanceZero() {
     val a = at(2.0, 2.0)
@@ -169,7 +194,7 @@ class MapGeometryTest {
     assertEquals(0.0, distanceToSegment(b, a, b), 1e-12)
   }
 
-  // Breaks if a segment without length divides by zero.
+  /** Breaks if a segment without length divides by zero. */
   @Test
   fun aSegmentWithoutLengthIsAPoint() {
     assertEquals(5.0, distanceToSegment(at(3.0, 4.0), at(0.0, 0.0), at(0.0, 0.0)), 1e-12)

@@ -1,5 +1,6 @@
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Fable 5.2 <noreply@anthropic.com>
 package com.android.festivar.navigation.announcement
 
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -16,6 +17,8 @@ import com.android.festivar.ui.announcement.create.CreateAnnouncementScreen
 import com.android.festivar.ui.announcement.create.CreateAnnouncementViewModel
 import com.android.festivar.ui.announcement.details.AnnouncementDetailsScreen
 import com.android.festivar.ui.announcement.details.AnnouncementDetailsViewModel
+import com.android.festivar.ui.announcement.edit.EditAnnouncementScreen
+import com.android.festivar.ui.announcement.edit.EditAnnouncementViewModel
 import com.android.festivar.ui.announcement.feed.AnnouncementFeedScreen
 import com.android.festivar.ui.announcement.feed.AnnouncementFeedViewModel
 
@@ -35,16 +38,61 @@ fun NavGraphBuilder.announcementGraph(
           ),
   ) { backStackEntry ->
     val (eventId, announcementId) =
-        requireAnnouncementDetailsArguments(
+        requireAnnouncementArguments(
             backStackEntry.arguments?.getString("eventId"),
             backStackEntry.arguments?.getString("announcementId"),
         )
     val navigator = AnnouncementDetailsNavigator(navController)
-    AnnouncementDetailsScreen(
-        viewModel =
-            viewModel { AnnouncementDetailsViewModel(eventId, announcementId, dataRepository) },
-        onBack = navigator.onBack,
-    )
+    RequireSignedIn(navController, dataRepository) { firebaseUser ->
+      // Keyed by user: the view model knows whether the user may edit, so another sign-in needs a
+      // new one.
+      AnnouncementDetailsScreen(
+          viewModel =
+              viewModel(key = "$eventId:$announcementId:${firebaseUser.uid}") {
+                AnnouncementDetailsViewModel(
+                    eventId,
+                    announcementId,
+                    { firebaseUser.uid },
+                    dataRepository,
+                )
+              },
+          onBack = navigator.onBack,
+          onEdit = { navigator.onEdit(eventId, announcementId) },
+      )
+    }
+  }
+  // Reached through AppScreens.editAnnouncement(eventId, announcementId), from the details of an
+  // announcement the organizer of the event opened.
+  composable(
+      route = "${AppScreens.EditAnnouncement.name}/{eventId}/{announcementId}",
+      arguments =
+          listOf(
+              navArgument("eventId") { type = NavType.StringType },
+              navArgument("announcementId") { type = NavType.StringType },
+          ),
+  ) { backStackEntry ->
+    val (eventId, announcementId) =
+        requireAnnouncementArguments(
+            backStackEntry.arguments?.getString("eventId"),
+            backStackEntry.arguments?.getString("announcementId"),
+        )
+    val navigator = EditAnnouncementNavigator(navController, backStackEntry)
+    RequireSignedIn(navController, dataRepository) { firebaseUser ->
+      // No key needed: the view model is scoped to this back stack entry, which has its own ids.
+      EditAnnouncementScreen(
+          viewModel =
+              viewModel {
+                EditAnnouncementViewModel(
+                    eventId,
+                    announcementId,
+                    { firebaseUser.uid },
+                    dataRepository,
+                )
+              },
+          onBack = navigator.onBack,
+          onSaved = navigator.onSaved,
+      )
+    }
   }
   // Reached through AppScreens.createAnnouncement(eventId). The route carries the id of the event
   // the new announcement belongs to.
@@ -79,17 +127,19 @@ fun NavGraphBuilder.announcementGraph(
   ) { backStackEntry ->
     val eventId = requireEventId(backStackEntry)
     val navigator = AnnouncementFeedNavigator(navController, backStackEntry)
-    AnnouncementFeedScreen(
-        viewModel = viewModel { AnnouncementFeedViewModel(eventId, dataRepository) },
-        // Every member may add an announcement for now. Limiting it to the event's owner needs the
-        // loaded event, so it is left to the feed's view model
-        canAddAnnouncement = true,
-        onBack = navigator.onBack,
-        onAddAnnouncement = { navigator.onAddAnnouncement(eventId) },
-        onSelectAnnouncement = { announcement ->
-          navigator.onSelectAnnouncement(eventId, announcement.announcementId)
-        },
-    )
+    RequireSignedIn(navController, dataRepository) { firebaseUser ->
+      AnnouncementFeedScreen(
+          viewModel =
+              viewModel {
+                AnnouncementFeedViewModel(eventId, dataRepository, { firebaseUser.uid })
+              },
+          onBack = navigator.onBack,
+          onAddAnnouncement = { navigator.onAddAnnouncement(eventId) },
+          onSelectAnnouncement = { announcement ->
+            navigator.onSelectAnnouncement(eventId, announcement.announcementId)
+          },
+      )
+    }
   }
 }
 
@@ -99,7 +149,13 @@ internal fun requireEventId(eventId: String?): String =
 internal fun requireEventId(backStackEntry: NavBackStackEntry): String =
     requireEventId(backStackEntry.arguments?.getString("eventId"))
 
-internal fun requireAnnouncementDetailsArguments(
+/**
+ * The ids in the route of a screen about one announcement, such as its details or its edit.
+ *
+ * @return the event id and the announcement id.
+ * @throws IllegalArgumentException if either id is missing or blank.
+ */
+internal fun requireAnnouncementArguments(
     eventId: String?,
     announcementId: String?,
 ): Pair<String, String> {

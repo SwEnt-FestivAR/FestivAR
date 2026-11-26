@@ -4,6 +4,7 @@ package com.android.festivar.model.datarepository
 
 import com.android.festivar.model.authentication.AuthRepository
 import com.android.festivar.model.chat.ChatRepository
+import com.android.festivar.model.chat.ChatRepositoryLocal
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.images.ImageStorage
@@ -24,6 +25,7 @@ import com.android.festivar.model.user.UsersRepositoryLocal
  * @param tasksRepository The repository storing the tasks.
  * @param eventsRepository The repository storing the events.
  * @param usersRepository The repository storing the users.
+ * @param chatRepository The repository storing the chats.
  * @param imageStorage The storage for uploaded images.
  */
 class DataRepositoryLocal(
@@ -31,6 +33,6 @@ class DataRepositoryLocal(
     override val tasksRepository: TasksRepository = TasksRepositoryLocal(),
     override val eventsRepository: EventsRepository = EventsRepositoryLocal(),
     override val usersRepository: UsersRepository = UsersRepositoryLocal(),
-    override val chatRepository: ChatRepository? = null,
+    override val chatRepository: ChatRepository? = ChatRepositoryLocal(),
     override val imageStorage: ImageStorage = ImageStorageLocal(),
 ) : DataRepository

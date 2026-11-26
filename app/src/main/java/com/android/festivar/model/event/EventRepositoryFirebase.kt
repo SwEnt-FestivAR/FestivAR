@@ -1,5 +1,6 @@
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Gemini
 package com.android.festivar.model.event
 
 import android.util.Log
@@ -242,6 +243,7 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
         // Stored so a join can be a single query instead of a download of the whole collection
         "joinCode" to joinCodeOf(event),
         ANNOUNCEMENTS_FIELD to event.announcements.map { it.toMap() },
+        "imageUrl" to event.imageUrl,
     )
   }
 
@@ -287,6 +289,7 @@ class EventRepositoryFirebase(private val db: FirebaseFirestore) : EventsReposit
         tasks = tasks,
         closed = document.getBoolean("closed") ?: false,
         announcements = readAnnouncements(document),
+        imageUrl = document.getString("imageUrl") ?: "",
     )
   }
 }
