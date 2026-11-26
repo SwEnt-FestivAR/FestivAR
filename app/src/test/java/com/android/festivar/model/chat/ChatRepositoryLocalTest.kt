@@ -60,12 +60,13 @@ class ChatRepositoryLocalTest {
   fun addAndGetChatRejectInvalidIds() = runTest {
     repository.addChat(chat)
 
-    assertThrows(IllegalArgumentException::class.java) {
-      kotlinx.coroutines.runBlocking { repository.addChat(chat.copy(eventId = "e2")) }
+    val duplicateAddFailure = runCatching {
+      repository.addChat(chat.copy(eventId = "e2"))
     }
-    assertThrows(NoSuchElementException::class.java) {
-      kotlinx.coroutines.runBlocking { repository.getChat("missing") }
-    }
+        .exceptionOrNull()
+    assertTrue(duplicateAddFailure is IllegalArgumentException)
+    val missingChatFailure = runCatching { repository.getChat("missing") }.exceptionOrNull()
+    assertTrue(missingChatFailure is NoSuchElementException)
     assertEquals(emptyList<Chat>(), repository.getChatsForEvent("missing"))
   }
 
