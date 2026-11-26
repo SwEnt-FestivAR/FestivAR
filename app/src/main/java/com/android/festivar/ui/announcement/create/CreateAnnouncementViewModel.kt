@@ -110,8 +110,8 @@ private fun canCreateAnnouncementIn(event: Event, userId: String): Boolean =
  *   error.
  * @param dataRepository Gives the [EventsRepository] where the announcement is saved.
  * @param clock Gives the publication time. The device's clock by default.
- * @param saveTimeoutMs How long a save, with the check of the role before it, may last before it
- *   is reported as failed, so that the form never stays stuck in the saving state. A failed save is
+ * @param saveTimeoutMs How long a save, with the check of the role before it, may last before it is
+ *   reported as failed, so that the form never stays stuck in the saving state. A failed save is
  *   followed by a read of the event under the same timeout, so the saving state lasts at most twice
  *   this long.
  */
