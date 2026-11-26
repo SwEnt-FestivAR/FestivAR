@@ -196,6 +196,7 @@ class EditEventViewModelTest {
     assertThrows(IllegalArgumentException::class.java) { loadedState.copy(name = "").toEvent() }
   }
 
+  /** Breaks if changing any one of the four parts of the range is not counted as a change. */
   @Test
   fun changingEachDateOrTimeFieldMarksDraftAsChanged() {
     val state = EditEventUIState().load(initialEvent)
@@ -220,6 +221,7 @@ class EditEventViewModelTest {
     )
   }
 
+  /** Breaks if an end time with no end date is not reported as a missing date. */
   @Test
   fun endDateErrorRequiresDateWhenEndTimeIsSet() = runTest {
     viewModel.fetchEvent(initialEvent.eventId)
@@ -286,6 +288,7 @@ class EditEventViewModelTest {
     assertNull(state.endDateError)
   }
 
+  /** Breaks if an end before the start, on the same day, is not reported as an error. */
   @Test
   fun endDateErrorRejectsEndBeforeStart() = runTest {
     viewModel.fetchEvent(initialEvent.eventId)
