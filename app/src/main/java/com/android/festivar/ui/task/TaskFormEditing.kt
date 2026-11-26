@@ -1,13 +1,12 @@
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 package com.android.festivar.ui.task
 
 import com.android.festivar.model.task.Priority
-import com.android.festivar.ui.components.datetime.DateTimeField
+import com.android.festivar.ui.components.datetime.DateTimeRange
 import com.android.festivar.ui.task.create.CreateTaskUiState
 import com.android.festivar.ui.task.create.MAX_ESTIMATED_DIGITS
 import com.android.festivar.ui.task.create.MIN_MAX_ASSIGN
-import java.time.LocalDate
-import java.time.LocalTime
 
 /** The setters a task form screen needs, shared by the create and edit ViewModels. */
 interface TaskFormEditor {
@@ -38,26 +37,8 @@ interface TaskFormEditor {
    */
   fun updateEstimatedMinutes(text: String)
 
-  /** Sets the date the task starts. */
-  fun updateStartDate(date: LocalDate)
-
-  /** Sets the time the task starts. */
-  fun updateStartTime(time: LocalTime)
-
-  /** Sets the date the task ends. */
-  fun updateEndDate(date: LocalDate)
-
-  /** Sets the time the task ends. */
-  fun updateEndTime(time: LocalTime)
-
-  /** Opens the picker dialog of [field], or closes the open one when [field] is `null`. */
-  fun showPicker(field: DateTimeField?)
-
-  /** Sets [date] in the field whose picker is open, then closes the picker. */
-  fun pickDate(date: LocalDate)
-
-  /** Sets [time] in the field whose picker is open, then closes the picker. */
-  fun pickTime(time: LocalTime)
+  /** Sets the days and times the task starts and ends, all at once. */
+  fun updateRange(range: DateTimeRange)
 }
 
 /**
@@ -66,16 +47,10 @@ interface TaskFormEditor {
  */
 internal class TaskFormEditing : TaskFormEditor {
   /**
-   * Applies a change of a form field or of the open picker. Set by the owning ViewModel in its
-   * init, before any setter runs.
+   * Applies a change of a form field. Set by the owning ViewModel in its init, before any setter
+   * runs.
    */
   lateinit var applyEdit: ((CreateTaskUiState) -> CreateTaskUiState) -> Unit
-
-  /**
-   * The form as it is now, read by [pickDate] and [pickTime]. Set by the owning ViewModel in its
-   * init.
-   */
-  lateinit var current: () -> CreateTaskUiState
 
   override fun updateTitle(title: String) = applyEdit { it.copy(title = title, titleEdited = true) }
 
@@ -104,31 +79,5 @@ internal class TaskFormEditing : TaskFormEditor {
     it.copy(estimatedMinutes = text.filter(Char::isDigit).take(MAX_ESTIMATED_DIGITS))
   }
 
-  override fun updateStartDate(date: LocalDate) = applyEdit { it.copy(startDate = date) }
-
-  override fun updateStartTime(time: LocalTime) = applyEdit { it.copy(startTime = time) }
-
-  override fun updateEndDate(date: LocalDate) = applyEdit { it.copy(endDate = date) }
-
-  override fun updateEndTime(time: LocalTime) = applyEdit { it.copy(endTime = time) }
-
-  override fun showPicker(field: DateTimeField?) = applyEdit { it.copy(openPicker = field) }
-
-  override fun pickDate(date: LocalDate) {
-    when (current().openPicker) {
-      DateTimeField.START_DATE -> updateStartDate(date)
-      DateTimeField.END_DATE -> updateEndDate(date)
-      else -> Unit
-    }
-    showPicker(null)
-  }
-
-  override fun pickTime(time: LocalTime) {
-    when (current().openPicker) {
-      DateTimeField.START_TIME -> updateStartTime(time)
-      DateTimeField.END_TIME -> updateEndTime(time)
-      else -> Unit
-    }
-    showPicker(null)
-  }
+  override fun updateRange(range: DateTimeRange) = applyEdit { it.copy(range = range) }
 }
