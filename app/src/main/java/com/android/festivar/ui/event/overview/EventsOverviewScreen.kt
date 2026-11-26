@@ -14,6 +14,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -21,13 +22,18 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
@@ -48,6 +54,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -63,6 +70,9 @@ import com.android.festivar.ui.components.RefreshableStateList
 import com.android.festivar.ui.components.datetime.formatEventDateAndLocation
 import com.android.festivar.ui.components.floatingShadow
 import com.android.festivar.ui.theme.AppTheme
+import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
+import com.bumptech.glide.integration.compose.GlideImage
+import com.bumptech.glide.integration.compose.placeholder
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
@@ -396,31 +406,79 @@ private fun EventActionButton(
   )
 }
 
-/** Card showing an [event]: its title, then its days and location. */
+/**
+ * Card showing an [event]: its image viewer above the title (if present), then its days and
+ * location.
+ */
+@OptIn(ExperimentalGlideComposeApi::class)
 @Composable
 private fun EventItem(event: Event, onClick: () -> Unit) {
   val shape = RoundedCornerShape(20.dp)
+  val hasImage = event.imageUrl.isNotBlank()
   Column(
-      verticalArrangement = Arrangement.spacedBy(6.dp),
       modifier =
           Modifier.testTag(EventsOverviewScreenTestTags.getTestTagForEventItem(event))
               .fillMaxWidth()
               .clip(shape)
               .background(MaterialTheme.colorScheme.surfaceContainerLowest)
               .border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape)
-              .clickable(onClick = onClick)
-              .padding(16.dp),
+              .clickable(onClick = onClick),
   ) {
-    Text(
-        text = event.title,
-        style = MaterialTheme.typography.titleLarge,
-        color = MaterialTheme.colorScheme.onSurface,
-    )
-    Text(
-        text = formatEventDateAndLocation(event),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
+    if (hasImage) {
+      GlideImage(
+          model = event.imageUrl,
+          contentDescription = null,
+          contentScale = ContentScale.Crop,
+          failure =
+              placeholder {
+                Box(
+                    modifier =
+                        Modifier.fillMaxWidth()
+                            .height(150.dp)
+                            .background(MaterialTheme.colorScheme.outlineVariant),
+                    contentAlignment = Alignment.Center,
+                ) {
+                  Icon(
+                      imageVector = Icons.Outlined.Warning,
+                      contentDescription = null,
+                      tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                  )
+                }
+              },
+          loading =
+              placeholder {
+                Box(
+                    modifier =
+                        Modifier.fillMaxWidth()
+                            .height(150.dp)
+                            .background(MaterialTheme.colorScheme.outlineVariant),
+                    contentAlignment = Alignment.Center,
+                ) {
+                  CircularProgressIndicator(
+                      modifier = Modifier.size(24.dp),
+                      color = MaterialTheme.colorScheme.onSurfaceVariant,
+                      strokeWidth = 2.dp,
+                  )
+                }
+              },
+          modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp),
+      )
+    }
+    Column(
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier.padding(16.dp),
+    ) {
+      Text(
+          text = event.title,
+          style = MaterialTheme.typography.titleLarge,
+          color = MaterialTheme.colorScheme.onSurface,
+      )
+      Text(
+          text = formatEventDateAndLocation(event),
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
+    }
   }
 }
 
@@ -439,6 +497,7 @@ internal fun EventsOverviewContentPreview() {
               startDate = date(10, 16, 10),
               endDate = date(10, 18, 23),
               location = "Parc de Vidy, Lausanne",
+              imageUrl = "android.resource://com.android.festivar/drawable/app_logo",
           ),
           Event(
               eventId = "2",

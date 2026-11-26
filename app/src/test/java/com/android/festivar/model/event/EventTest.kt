@@ -776,4 +776,11 @@ class EventTest {
     assertInvalid(notMemberMessage) { event.transferOwnership(alice.uid, outsider.uid) }
     assertInvalid(notMemberMessage) { event.transferOwnership(outsider.uid, bob.uid) }
   }
+
+  /** Breaks if the Event data model does not correctly store or preserve the image URL. */
+  @Test
+  fun event_storesAndPreservesImageUrl() {
+    val event = event().copy(imageUrl = "https://example.com/festival.jpg")
+    assertEquals("https://example.com/festival.jpg", event.imageUrl)
+  }
 }

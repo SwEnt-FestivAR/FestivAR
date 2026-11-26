@@ -675,6 +675,19 @@ class EventsOverviewScreenTest {
     assertEquals(1, adds)
   }
 
+  /** Breaks if an event with an image URL fails to display in the event overview screen. */
+  @Test
+  fun eventItem_displaysImageWhenImageUrlIsPresent() {
+    val eventWithImage =
+        upcomingEvent.copy(imageUrl = "android.resource://com.android.festivar/drawable/app_logo")
+    setContent(withRepository = EventsRepositoryImpl(listOf(eventWithImage)))
+
+    composeTestRule.onNodeWithText("Soirée Jazz").assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(EventsOverviewScreenTestTags.getTestTagForEventItem(eventWithImage))
+        .assertIsDisplayed()
+  }
+
   /**
    * Breaks if the "+" button, or its description, still offers to create an event to an anonymous
    * account.
