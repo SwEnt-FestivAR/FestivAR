@@ -12,6 +12,8 @@ import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.event.announcement.AnnouncementPriority
+import com.android.festivar.model.event.role.Role
+import com.android.festivar.model.user.User
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -33,11 +35,22 @@ import org.robolectric.Shadows.shadowOf
 class CreateAnnouncementViewModelTest {
   private val zone = ZoneId.of("Europe/Zurich")
   private val clock = Clock.fixed(Instant.parse("2026-10-30T18:00:00Z"), zone)
+  // One member per role around CAN_CREATE_ANNOUNCEMENT: the owner and the team lead have it, the
+  // staff member and the visitor do not.
+  private val roles =
+      mapOf(
+          "owner-1" to Role.OWNER,
+          "lead-1" to Role.TEAM_LEAD,
+          "staff-1" to Role.STAFF,
+          "visitor-1" to Role.VISITOR,
+      )
   private val event =
       Event(
           eventId = "event-1",
           ownerId = "owner-1",
           title = "Balelec",
+          members = roles.keys.map { User(it) },
+          roles = roles,
           startDate = ZonedDateTime.of(2026, 11, 6, 16, 0, 0, 0, zone),
           endDate = ZonedDateTime.of(2026, 11, 7, 4, 0, 0, 0, zone),
       )
@@ -274,6 +287,9 @@ class CreateAnnouncementViewModelTest {
     val vm = viewModel()
     vm.fill()
     val typed = vm.uiState.value.form
+    // Only the reads of the publish are counted: the role check before the write, then the
+    // read-back.
+    repo.reads = 0
 
     vm.publish()
 
@@ -283,7 +299,7 @@ class CreateAnnouncementViewModelTest {
     assertFalse(state.isSaving)
     assertTrue(state.canPublish)
     assertEquals(typed, state.form)
-    assertEquals(1, repo.reads)
+    assertEquals(2, repo.reads)
     assertTrue(stored().isEmpty())
   }
 
@@ -335,8 +351,13 @@ class CreateAnnouncementViewModelTest {
   @Test
   fun aReadBackThatHangsEndsAsTheSaveError() {
     val never = CompletableDeferred<Unit>()
-    repo.beforeStore = { throw IllegalStateException("offline") }
-    repo.beforeRead = { never.await() }
+    var writeTried = false
+    repo.beforeStore = {
+      writeTried = true
+      throw IllegalStateException("offline")
+    }
+    // Only the read-back hangs: the role is read before the write is tried.
+    repo.beforeRead = { if (writeTried) never.await() }
     val vm = viewModel(saveTimeoutMs = 1_000)
     vm.fill()
 
@@ -389,11 +410,12 @@ class CreateAnnouncementViewModelTest {
         throw IllegalStateException("lost the answer")
       }
     }
-    // The first read-back fails too (offline), so the first attempt ends with the error.
-    var firstRead = true
+    // The first read-back fails too (offline), so the first attempt ends with the error. The reads
+    // of the role, before the writes, succeed.
+    var readBackFailed = false
     repo.beforeRead = {
-      if (firstRead) {
-        firstRead = false
+      if (!firstTry && !readBackFailed) {
+        readBackFailed = true
         throw IllegalStateException("offline")
       }
     }
@@ -405,7 +427,7 @@ class CreateAnnouncementViewModelTest {
     assertEquals(R.string.create_announcement_error_save_failed, vm.uiState.value.errorMsg)
 
     moving.now = moving.now.plusSeconds(60)
-    user = "owner-2"
+    user = "lead-1"
     vm.updateContent("The north gate opens at 16:30.")
     vm.publish()
 
@@ -457,6 +479,93 @@ class CreateAnnouncementViewModelTest {
 
     assertEquals("Gates open", stored().single().title)
     assertEquals("Doors open", vm.uiState.value.form.title)
+  }
+
+  /**
+   * Breaks if the role is not read when the screen opens, or if a role with
+   * CAN_CREATE_ANNOUNCEMENT is refused.
+   */
+  @Test
+  fun aRoleWithTheCreatePermissionCanPublish() {
+    val vm = viewModel(userId = { "lead-1" })
+    vm.fill()
+
+    assertTrue(vm.uiState.value.canCreateAnnouncement)
+    assertTrue(vm.uiState.value.canPublish)
+    vm.publish()
+
+    assertEquals("lead-1", stored().single().authorId)
+    assertTrue(vm.uiState.value.isPublished)
+  }
+
+  /**
+   * Breaks if a role without CAN_CREATE_ANNOUNCEMENT is allowed on the form, or if canPublish
+   * ignores canCreateAnnouncement, so such a member can still publish.
+   */
+  @Test
+  fun aRoleWithoutTheCreatePermissionCannotPublish() {
+    for (userId in listOf("staff-1", "visitor-1")) {
+      val vm = viewModel(userId = { userId })
+      vm.fill()
+
+      assertFalse(userId, vm.uiState.value.canCreateAnnouncement)
+      assertFalse(userId, vm.uiState.value.canPublish)
+      vm.publish()
+
+      assertTrue(userId, repo.addedIds.isEmpty())
+      assertFalse(userId, vm.uiState.value.isPublished)
+    }
+  }
+
+  /** Breaks if a user who is not a member makes the role check throw instead of refusing them. */
+  @Test
+  fun aUserWhoIsNotAMemberCannotPublish() {
+    val vm = viewModel(userId = { "stranger" })
+
+    assertFalse(vm.uiState.value.canCreateAnnouncement)
+    assertNull(vm.uiState.value.errorMsg)
+  }
+
+  /**
+   * Breaks if a failed load of the event refuses the user, so the screen closes for everyone
+   * offline.
+   */
+  @Test
+  fun aFailedLoadOfTheEventKeepsTheFormOpen() {
+    var failing = true
+    repo.beforeRead = { if (failing) throw IllegalStateException("offline") }
+    val vm = viewModel()
+
+    assertTrue(vm.uiState.value.canCreateAnnouncement)
+
+    failing = false
+    vm.fill()
+    vm.publish()
+    assertTrue(vm.uiState.value.isPublished)
+  }
+
+  /**
+   * Breaks if publish trusts the role read when the screen opened instead of checking it again
+   * before the write.
+   */
+  @Test
+  fun aRoleLostAfterTheScreenOpenedPublishesNothing() {
+    val vm = viewModel(userId = { "lead-1" })
+    vm.fill()
+    assertTrue(vm.uiState.value.canPublish)
+
+    runBlocking {
+      repo.local.editEvent("event-1", event.copy(roles = roles + ("lead-1" to Role.STAFF)))
+    }
+    vm.publish()
+
+    val state = vm.uiState.value
+    assertTrue(repo.addedIds.isEmpty())
+    assertTrue(stored().isEmpty())
+    assertFalse(state.isPublished)
+    assertFalse(state.isSaving)
+    assertFalse(state.canCreateAnnouncement)
+    assertEquals(R.string.create_announcement_error_save_failed, state.errorMsg)
   }
 
   /** Breaks if the init check on eventId is removed, so a blank event fails only at save time. */

@@ -20,6 +20,7 @@ import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.announcement.Announcement
+import com.android.festivar.model.user.User
 import com.android.festivar.navigation.announcement.announcementGraph
 import com.android.festivar.ui.announcement.create.CreateAnnouncementScreenTestTags as Tags
 import com.android.festivar.ui.announcement.details.AnnouncementDetailsScreenTestTags as DetailsTags
@@ -36,6 +37,7 @@ import org.junit.Test
 
 private const val EVENT_ID = "e1"
 private const val USER_ID = "user-1"
+private const val VISITOR_ID = "visitor-1"
 private const val PREVIOUS_SCREEN = "previous screen"
 private const val LOGIN_SCREEN = "login screen"
 
@@ -49,20 +51,24 @@ private const val TAP_GAP_MILLIS = 100L
 class AnnouncementNavGraphTest {
   @get:Rule val composeTestRule = createComposeRule()
 
-  // FAKE: a real repository that keeps the event in memory, read back by the test.
+  // FAKE: a real repository that keeps the event in memory, read back by the test. The signed-in
+  // user owns the event, so they may create announcements; the visitor, with the default role, may
+  // not.
   private val repository =
       EventsRepositoryLocal(
           listOf(
               Event(
                   eventId = EVENT_ID,
-                  ownerId = "owner",
+                  ownerId = USER_ID,
                   title = "Balelec",
+                  members = listOf(User(USER_ID), User(VISITOR_ID)),
                   startDate = ZonedDateTime.now().plusDays(1),
                   endDate = ZonedDateTime.now().plusDays(2),
               )
           )
       )
   private val signedInUser = mockk<FirebaseUser> { every { uid } returns USER_ID }
+  private val visitor = mockk<FirebaseUser> { every { uid } returns VISITOR_ID }
   private lateinit var navController: NavHostController
 
   /** Shows the announcement graph behind a previous screen, as [user]; null means signed out. */
@@ -140,6 +146,24 @@ class AnnouncementNavGraphTest {
     composeTestRule.runOnIdle {
       assertEquals(AppScreens.Login.name, navController.currentDestination?.route)
     }
+  }
+
+  /**
+   * Breaks if the route lets a member whose role cannot create announcements stay on the form, or
+   * leaves it by navigating to the previous screen instead of popping the route.
+   */
+  @Test
+  fun aVisitorOpeningTheRouteGoesBackToThePreviousScreen() {
+    showTheGraphAs(visitor)
+    composeTestRule.runOnUiThread {
+      navController.navigate(AppScreens.createAnnouncement(EVENT_ID))
+    }
+
+    composeTestRule.waitUntil(timeoutMillis = 5_000) {
+      navController.currentDestination?.route == PREVIOUS_SCREEN
+    }
+    assertThePreviousScreenIsAloneOnTheBackStack()
+    composeTestRule.onNodeWithTag(Tags.TITLE).assertDoesNotExist()
   }
 
   // Breaks if the back arrow of the screen is not connected to the back stack, or if it does not
