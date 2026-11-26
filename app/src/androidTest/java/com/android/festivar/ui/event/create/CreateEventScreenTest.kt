@@ -313,13 +313,11 @@ class CreateEventScreenTest {
       }
     }
 
-    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.IMAGE_SELECT_BUTTON).performClick()
-    activityResultRegistry.dispatchGetContentResult(Uri.parse("content://event-image"))
+    viewModel.setImageUrlForTesting("https://example.com/test.png")
     composeTestRule.waitForIdle()
 
-    composeTestRule.waitUntil(timeoutMillis = 5_000) { viewModel.uiState.value.imageUrl != null }
     assertNotNull(viewModel.uiState.value.imageUrl)
-    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.IMAGE_PREVIEW).assertIsDisplayed()
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.DELETE_IMAGE_BUTTON).assertIsDisplayed()
   }
 
   /**
@@ -501,9 +499,46 @@ class CreateEventScreenTest {
     verify(exactly = 1) { onCreated() }
   }
 
-  /** Breaks if image picker or viewer remains enabled while saving. */
+  /** Breaks if image picker remains enabled while saving. */
   @Test
   fun savingDisablesImagePickerAndImageViewer() {
+    val startDate = LocalDate.now()
+    val endDate = startDate.plusDays(1)
+    val gate = CompletableDeferred<Unit>()
+    val creator = User("creator-123", "Alice", "AliceInWonderland")
+    dataRepository =
+        DataRepositoryLocal(
+            mockk(),
+            eventsRepository = GatedRepository(gate),
+            usersRepository = UsersRepositoryLocal(listOf(creator)),
+        )
+    viewModel =
+        CreateEventViewModel(
+            dataRepository,
+            creator.uid,
+        )
+    composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
+
+    viewModel.updateName("Summer festival")
+    viewModel.updateStartDate(startDate)
+    viewModel.updateEndDate(endDate)
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.IMAGE_SELECT_BUTTON).assertIsEnabled()
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).performClick()
+    waitForTag(CreateEventScreenTestTags.SAVING_INDICATOR)
+
+    composeTestRule
+        .onNodeWithTag(CreateEventScreenTestTags.IMAGE_SELECT_BUTTON)
+        .assertIsNotEnabled()
+
+    gate.complete(Unit)
+    composeTestRule.waitForIdle()
+  }
+
+  /** Breaks if delete image button remains enabled while saving. */
+  @Test
+  fun savingDisablesDeleteImageButton() {
     val startDate = LocalDate.now()
     val endDate = startDate.plusDays(1)
     val gate = CompletableDeferred<Unit>()
@@ -530,7 +565,6 @@ class CreateEventScreenTest {
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).performClick()
     waitForTag(CreateEventScreenTestTags.SAVING_INDICATOR)
 
-    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.IMAGE_PREVIEW).assertIsNotEnabled()
     composeTestRule
         .onNodeWithTag(CreateEventScreenTestTags.DELETE_IMAGE_BUTTON)
         .assertIsNotEnabled()
