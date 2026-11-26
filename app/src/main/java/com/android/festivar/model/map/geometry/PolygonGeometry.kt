@@ -187,7 +187,13 @@ private fun squaredEdgeLengths(polygon: List<LocalPosition>): Double {
 private fun cross(a: LocalPosition, b: LocalPosition, c: LocalPosition): Double =
     (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
 
-/** Whether [point] is on the segment from [a] to [b], ends included. */
+/**
+ * Whether [point] is on the segment from [a] to [b], ends included.
+ *
+ * The threshold is fixed, unlike the relative one of the areas: a distance grows with the lengths
+ * and not with their square, so a few kilometres from the origin rounding leaves about a millionth
+ * of a micrometre, far below it.
+ */
 private fun isOnSegment(a: LocalPosition, b: LocalPosition, point: LocalPosition): Boolean =
     distanceToSegment(point, a, b) < TOLERANCE_METERS
 
