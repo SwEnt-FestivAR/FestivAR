@@ -817,6 +817,7 @@ class CreateTaskUiStateTest {
     assertFalse(state.canCreate)
   }
 
+  /** Breaks if an end before the start is not reported under the times. */
   @Test
   fun endBeforeStart_isAnError() {
     val state =
@@ -848,6 +849,7 @@ class CreateTaskUiStateTest {
     assertEquals(FieldError.END_BEFORE_START, state.endDateError)
   }
 
+  /** Breaks if an end in the past is accepted on the create form. */
   @Test
   fun endInThePast_isAnError() {
     val state = valid.copy(range = valid.range.copy(endDate = LocalDate.of(2000, 1, 1)))
@@ -966,6 +968,7 @@ class CreateTaskUiStateTest {
     }
   }
 
+  /** Breaks if a time without its day is saved, which would drop the time. */
   @Test
   fun toTask_withTimeWithoutDate_isRejected() {
     val form = valid.copy(range = valid.range.copy(endTime = LocalTime.of(9, 50)))
