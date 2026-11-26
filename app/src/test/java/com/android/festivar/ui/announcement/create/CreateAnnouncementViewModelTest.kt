@@ -231,9 +231,13 @@ class CreateAnnouncementViewModelTest {
    */
   @Test
   fun aBlankUserIdPublishesNothingAndShowsTheSaveError() {
-    val vm = viewModel(userId = { " " })
+    // The user is signed out after the screen opened: a blank uid from the start is not a member,
+    // so the form would not let them publish at all.
+    var userId = "owner-1"
+    val vm = viewModel(userId = { userId })
     vm.fill()
 
+    userId = " "
     vm.publish()
 
     assertTrue(stored().isEmpty())
