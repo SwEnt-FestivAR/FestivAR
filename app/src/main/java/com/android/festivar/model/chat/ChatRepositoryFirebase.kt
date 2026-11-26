@@ -108,28 +108,44 @@ class ChatRepositoryFirebase(private val db: FirebaseFirestore) : ChatRepository
             ?: throw IllegalArgumentException("Chat '${document.id}' has missing eventId.")
 
     val members =
-        (document.get("members") as? List<*>).orEmpty().map { value ->
-          value as? String
-              ?: throw IllegalArgumentException(
-                  "Invalid chat member data for chat '${document.id}': $value"
+        when (val storedMembers = document.get("members")) {
+          null -> emptyList()
+          is List<*> ->
+              storedMembers.map { value ->
+                value as? String
+                    ?: throw IllegalArgumentException(
+                        "Invalid chat member data for chat '${document.id}': $value"
+                    )
+              }
+          else ->
+              throw IllegalArgumentException(
+                  "Invalid chat member data for chat '${document.id}': expected a list."
               )
         }
 
     val messages =
-        (document.get("messages") as? List<*>).orEmpty().map { value ->
-          val map =
-              value as? Map<*, *>
-                  ?: throw IllegalArgumentException(
-                      "Invalid chat message data for chat '${document.id}'."
+        when (val storedMessages = document.get("messages")) {
+          null -> emptyList()
+          is List<*> ->
+              storedMessages.map { value ->
+                val map =
+                    value as? Map<*, *>
+                        ?: throw IllegalArgumentException(
+                            "Invalid chat message data for chat '${document.id}'."
+                        )
+                try {
+                  ChatMessage.fromMap(map)
+                } catch (e: IllegalArgumentException) {
+                  throw IllegalArgumentException(
+                      "Invalid chat message data for chat '${document.id}': ${e.message}",
+                      e,
                   )
-          try {
-            ChatMessage.fromMap(map)
-          } catch (e: IllegalArgumentException) {
-            throw IllegalArgumentException(
-                "Invalid chat message data for chat '${document.id}': ${e.message}",
-                e,
-            )
-          }
+                }
+              }
+          else ->
+              throw IllegalArgumentException(
+                  "Invalid chat message data for chat '${document.id}': expected a list."
+              )
         }
 
     return Chat(
