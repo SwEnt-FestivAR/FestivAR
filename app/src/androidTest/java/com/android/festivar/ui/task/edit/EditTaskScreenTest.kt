@@ -5,8 +5,8 @@ package com.android.festivar.ui.task.edit
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -142,8 +142,11 @@ class EditTaskScreenTest {
         .performClick()
 
     composeTestRule
-        .onNodeWithTag(DateRangePickerTestTags.SUMMARY)
-        .assertTextContains(formatDate(start.toLocalDate()), substring = true)
+        .onNode(
+            hasText(formatDate(start.toLocalDate()), substring = true) and
+                hasAnyAncestor(hasTestTag(DateRangePickerTestTags.SUMMARY))
+        )
+        .assertIsDisplayed()
   }
 
   // Breaks if a state that has not been loaded yet shows the load error instead of the spinner.
