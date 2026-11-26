@@ -354,18 +354,17 @@ class EventDetailsViewModelTest {
             stored.editEvent(eventId, newValue)
           }
         }
-    var leaves = 0
     val viewModel = loadedViewModel(owner.uid, repository)
     viewModel.changeRole(visitor.uid, Role.STAFF)
 
     viewModel.changeRole(visitor.uid, Role.TEAM_LEAD)
     viewModel.kickMember(visitor.uid)
-    viewModel.deleteEvent { leaves++ }
+    viewModel.deleteEvent()
     viewModel.fetchEvent()
     advanceUntilIdle()
 
     assertEquals(1, saves)
-    assertEquals(0, leaves)
+    assertFalse(viewModel.uiState.value.isDeleted)
     assertTrue(viewModel.uiState.value.isUpdating)
     assertEquals(rolesEvent, viewModel.uiState.value.event)
     release.complete(Unit)
@@ -390,46 +389,46 @@ class EventDetailsViewModelTest {
     return viewModel
   }
 
-  /** Breaks if the organizer's deletion does not delete that event, then leave once. */
+  /**
+   * Breaks if the organizer's deletion does not delete that event and mark it deleted, or lets
+   * another action run once it is deleted.
+   */
   @Test
   fun ownerDeletesTheEventThenLeaves() = runTest {
     val deleted = mutableListOf<String>()
-    var leaves = 0
     val viewModel = loadedViewModel("owner") { deleted += it }
 
-    viewModel.deleteEvent { leaves++ }
+    viewModel.deleteEvent()
     advanceUntilIdle()
 
     assertEquals(listOf("event-1"), deleted)
-    assertEquals(1, leaves)
-    assertFalse(viewModel.uiState.value.isDeleting)
+    assertTrue(viewModel.uiState.value.isDeleted)
+    assertTrue(viewModel.uiState.value.isDeleting)
   }
 
   /** Breaks if a volunteer can delete the event of its organizer. */
   @Test
   fun volunteerCannotDeleteTheEvent() = runTest {
     val deleted = mutableListOf<String>()
-    var leaves = 0
     val viewModel = loadedViewModel("volunteer") { deleted += it }
 
-    viewModel.deleteEvent { leaves++ }
+    viewModel.deleteEvent()
     advanceUntilIdle()
 
     assertTrue(deleted.isEmpty())
-    assertEquals(0, leaves)
+    assertFalse(viewModel.uiState.value.isDeleted)
   }
 
   /** Breaks if a failed deletion leaves the screen, hides the event or shows no error. */
   @Test
   fun failedDeletionKeepsTheEventAndShowsAnError() = runTest {
-    var leaves = 0
     val viewModel = loadedViewModel("owner") { throw IllegalStateException("delete failed") }
 
-    viewModel.deleteEvent { leaves++ }
+    viewModel.deleteEvent()
     advanceUntilIdle()
 
     val state = viewModel.uiState.value
-    assertEquals(0, leaves)
+    assertFalse(state.isDeleted)
     assertEquals("event-1", state.event?.eventId)
     assertEquals(R.string.event_details_delete_error, state.errorMsg)
     assertFalse(state.isDeleting)
@@ -443,29 +442,32 @@ class EventDetailsViewModelTest {
   fun deletionRunsOnceAndIsNotResetByAReload() = runTest {
     val gate = CompletableDeferred<Unit>()
     var deletions = 0
-    var leaves = 0
     val viewModel =
         loadedViewModel("owner") {
           deletions++
           gate.await()
         }
 
-    viewModel.deleteEvent { leaves++ }
+    viewModel.deleteEvent()
     advanceUntilIdle()
-    viewModel.deleteEvent { leaves++ }
+    viewModel.deleteEvent()
     viewModel.changeRole("volunteer", Role.TEAM_LEAD)
     viewModel.fetchEvent()
     advanceUntilIdle()
 
     assertTrue(viewModel.uiState.value.isDeleting)
+    assertFalse(viewModel.uiState.value.isDeleted)
     assertEquals(testEvent("event-1"), viewModel.uiState.value.event)
     gate.complete(Unit)
     advanceUntilIdle()
     assertEquals(1, deletions)
-    assertEquals(1, leaves)
+    assertTrue(viewModel.uiState.value.isDeleted)
   }
 
-  /** Breaks if a cancelled deletion stays in progress, so the event can never be deleted again. */
+  /**
+   * Breaks if a cancelled deletion stays in progress, so the event can never be deleted again, or
+   * is taken for a success, so the screen leaves.
+   */
   @Test
   fun cancelledDeletionCanBeRetried() = runTest {
     val viewModel = loadedViewModel("owner") { throw CancellationException("cancelled") }
@@ -474,6 +476,7 @@ class EventDetailsViewModelTest {
     advanceUntilIdle()
 
     assertFalse(viewModel.uiState.value.isDeleting)
+    assertFalse(viewModel.uiState.value.isDeleted)
     assertNull(viewModel.uiState.value.errorMsg)
   }
 
