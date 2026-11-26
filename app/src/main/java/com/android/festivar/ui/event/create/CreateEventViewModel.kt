@@ -362,6 +362,7 @@ class CreateEventViewModel(
 
   @OptIn(ExperimentalStdlibApi::class)
   fun updateImage(uri: Uri, contentResolver: ContentResolver, cacheDir: File) {
+    if (currentState.isSaving) return
     updateState { it.copy(isSaving = true, errorMsg = null) }
     viewModelScope.launch {
       var temporaryFile: File? = null

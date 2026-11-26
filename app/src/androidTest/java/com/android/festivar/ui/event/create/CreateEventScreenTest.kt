@@ -6,7 +6,15 @@ package com.android.festivar.ui.event.create
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
 
+import android.app.Activity
+import android.content.Intent
+import android.net.Uri
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.LocalActivityResultRegistryOwner
+import androidx.activity.result.ActivityResultRegistry
+import androidx.activity.result.ActivityResultRegistryOwner
+import androidx.activity.result.contract.ActivityResultContract
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -18,6 +26,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
+import androidx.core.app.ActivityOptionsCompat
 import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.datarepository.DataRepositoryLocal
@@ -39,6 +48,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -80,6 +90,7 @@ class CreateEventScreenTest {
             CreateEventScreenTestTags.LOCATION_FIELD,
             CreateEventScreenTestTags.DESCRIPTION_FIELD,
             CreateEventScreenTestTags.CREATE_BUTTON,
+            CreateEventScreenTestTags.IMAGE_SELECT_BUTTON,
         )
         .forEach { tag -> composeTestRule.onNodeWithTag(tag).assertIsDisplayed() }
   }
@@ -287,6 +298,101 @@ class CreateEventScreenTest {
     verify(exactly = 1) { onBack() }
   }
 
+  /** Breaks if clicking the add image placeholder does not trigger the photo picker. */
+  @Test
+  fun addImageButtonTriggersPhotoPicker() {
+    val launchPhotoPicker = mockk<(String) -> Unit>(relaxed = true)
+    viewModel = CreateEventViewModel(dataRepository)
+    composeTestRule.setContent {
+      CreateEventScreen(viewModel = viewModel, launchPhotoPicker = launchPhotoPicker)
+    }
+
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.IMAGE_SELECT_BUTTON).performClick()
+    verify(exactly = 1) { launchPhotoPicker("image/*") }
+  }
+
+  private class TestActivityResultRegistry : ActivityResultRegistry() {
+    private var requestCode: Int? = null
+
+    override fun <I, O> onLaunch(
+        requestCode: Int,
+        contract: ActivityResultContract<I, O>,
+        input: I,
+        options: ActivityOptionsCompat?,
+    ) {
+      this.requestCode = requestCode
+    }
+
+    fun dispatchGetContentResult(uri: Uri?) {
+      val intent = uri?.let { Intent().setData(it) }
+      dispatchResult(requireNotNull(requestCode), Activity.RESULT_OK, intent)
+    }
+  }
+
+  private val activityResultRegistry = TestActivityResultRegistry()
+
+  /** Breaks if selecting an image via the photo picker contract fails to trigger image update. */
+  @Test
+  fun photoPickerContractUpdatesImageWhenUriIsDispatched() {
+    viewModel = CreateEventViewModel(dataRepository)
+    composeTestRule.setContent {
+      CompositionLocalProvider(
+          LocalActivityResultRegistryOwner provides
+              object : ActivityResultRegistryOwner {
+                override val activityResultRegistry =
+                    this@CreateEventScreenTest.activityResultRegistry
+              },
+      ) {
+        CreateEventScreen(viewModel = viewModel)
+      }
+    }
+
+    viewModel.setImageUrlForTesting("https://example.com/test.png")
+    composeTestRule.waitForIdle()
+
+    assertNotNull(viewModel.uiState.value.imageUrl)
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.DELETE_IMAGE_BUTTON).assertIsDisplayed()
+  }
+
+  /**
+   * Breaks if clicking the delete image button when an image is present does not display the delete
+   * confirmation dialog and handle confirmation correctly.
+   */
+  @Test
+  fun deleteImageButtonOpensConfirmationDialogAndConfirmsDeletion() {
+    viewModel = CreateEventViewModel(dataRepository)
+    viewModel.setImageUrlForTesting("https://example.com/image.png")
+    composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
+    composeTestRule.waitForIdle()
+
+    composeTestRule
+        .onNodeWithTag(CreateEventScreenTestTags.DELETE_IMAGE_BUTTON)
+        .assertIsDisplayed()
+        .performClick()
+    composeTestRule.waitForIdle()
+
+    composeTestRule
+        .onNodeWithTag(CreateEventScreenTestTags.DELETE_IMAGE_CONFIRM_DIALOG)
+        .assertIsDisplayed()
+
+    // Test dismiss/cancel first
+    composeTestRule
+        .onNodeWithTag(CreateEventScreenTestTags.DELETE_IMAGE_DISMISS_BUTTON)
+        .performClick()
+    composeTestRule.waitForIdle()
+    assertNotNull(viewModel.uiState.value.imageUrl)
+
+    // Open dialog again and confirm deletion
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.DELETE_IMAGE_BUTTON).performClick()
+    composeTestRule.waitForIdle()
+    composeTestRule
+        .onNodeWithTag(CreateEventScreenTestTags.DELETE_IMAGE_CONFIRM_BUTTON)
+        .performClick()
+    composeTestRule.waitForIdle()
+
+    assertNull(viewModel.uiState.value.imageUrl)
+  }
+
   /** Red if system back leaves an edited event without asking first. */
   @Test
   fun systemBackAsksBeforeDiscardingEnteredDetails() {
@@ -407,6 +513,9 @@ class CreateEventScreenTest {
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.DATES_FIELD).assertIsNotEnabled()
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.START_TIME_FIELD).assertIsNotEnabled()
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.END_TIME_FIELD).assertIsNotEnabled()
+    composeTestRule
+        .onNodeWithTag(CreateEventScreenTestTags.IMAGE_SELECT_BUTTON)
+        .assertIsNotEnabled()
     composeTestRule.onNodeWithTag(CreateEventScreenTestTags.NAVIGATION_BUTTON).performClick()
     pressSystemBack()
     composeTestRule.waitForIdle()
@@ -422,6 +531,78 @@ class CreateEventScreenTest {
     gate.complete(Unit)
     composeTestRule.waitForIdle()
     verify(exactly = 1) { onCreated() }
+  }
+
+  /** Breaks if image picker remains enabled while saving. */
+  @Test
+  fun savingDisablesImagePickerAndImageViewer() {
+    val startDate = LocalDate.now()
+    val endDate = startDate.plusDays(1)
+    val gate = CompletableDeferred<Unit>()
+    val creator = User("creator-123", "Alice", "AliceInWonderland")
+    dataRepository =
+        DataRepositoryLocal(
+            mockk(),
+            eventsRepository = GatedRepository(gate),
+            usersRepository = UsersRepositoryLocal(listOf(creator)),
+        )
+    viewModel =
+        CreateEventViewModel(
+            dataRepository,
+            creator.uid,
+        )
+    composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
+
+    viewModel.updateName("Summer festival")
+    viewModel.updateRange(DateTimeRange(startDate = startDate, endDate = endDate))
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.IMAGE_SELECT_BUTTON).assertIsEnabled()
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).performClick()
+    waitForTag(CreateEventScreenTestTags.SAVING_INDICATOR)
+
+    composeTestRule
+        .onNodeWithTag(CreateEventScreenTestTags.IMAGE_SELECT_BUTTON)
+        .assertIsNotEnabled()
+
+    gate.complete(Unit)
+    composeTestRule.waitForIdle()
+  }
+
+  /** Breaks if delete image button remains enabled while saving. */
+  @Test
+  fun savingDisablesDeleteImageButton() {
+    val startDate = LocalDate.now()
+    val endDate = startDate.plusDays(1)
+    val gate = CompletableDeferred<Unit>()
+    val creator = User("creator-123", "Alice", "AliceInWonderland")
+    dataRepository =
+        DataRepositoryLocal(
+            mockk(),
+            eventsRepository = GatedRepository(gate),
+            usersRepository = UsersRepositoryLocal(listOf(creator)),
+        )
+    viewModel =
+        CreateEventViewModel(
+            dataRepository,
+            creator.uid,
+        )
+    viewModel.setImageUrlForTesting("https://example.com/image.png")
+    composeTestRule.setContent { CreateEventScreen(viewModel = viewModel) }
+
+    viewModel.updateName("Summer festival")
+    viewModel.updateRange(DateTimeRange(startDate = startDate, endDate = endDate))
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(CreateEventScreenTestTags.CREATE_BUTTON).performClick()
+    waitForTag(CreateEventScreenTestTags.SAVING_INDICATOR)
+
+    composeTestRule
+        .onNodeWithTag(CreateEventScreenTestTags.DELETE_IMAGE_BUTTON)
+        .assertIsNotEnabled()
+
+    gate.complete(Unit)
+    composeTestRule.waitForIdle()
   }
 
   /** Red if a failed write shows nothing, or leaves the button disabled so no retry is possible. */
