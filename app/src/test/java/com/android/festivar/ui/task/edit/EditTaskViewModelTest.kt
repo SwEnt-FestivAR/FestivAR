@@ -90,6 +90,7 @@ class EditTaskViewModelTest {
           audioUrl = "https://example.com/note-1.m4a",
           duration = Duration.ofSeconds(12),
           createdAt = ZonedDateTime.of(day, LocalTime.of(8, 0), zone),
+          waveform = listOf(0.25f, 0.5f, 1f),
       )
   private val seeded =
       Task(

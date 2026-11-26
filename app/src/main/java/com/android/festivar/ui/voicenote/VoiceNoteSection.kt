@@ -180,6 +180,7 @@ internal val previewNote =
         audioUrl = "https://example.com/n1.m4a",
         duration = Duration.ofSeconds(14),
         createdAt = ZonedDateTime.of(2026, 10, 17, 9, 12, 0, 0, ZoneOffset.UTC),
+        waveform = listOf(0.25f, 0.5f, 1f),
     )
 
 internal val previewCallbacks = VoiceNoteCallbacks.NoOp

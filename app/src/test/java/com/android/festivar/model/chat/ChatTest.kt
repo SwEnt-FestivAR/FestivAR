@@ -28,6 +28,7 @@ class ChatTest {
           audioUrl = "https://example.com/n1.m4a",
           duration = Duration.ofSeconds(14),
           createdAt = sentAt,
+          waveform = listOf(0.25f, 0.5f, 1f),
       )
 
   /** Runs invalid-input code and verifies its exact exception message. */
