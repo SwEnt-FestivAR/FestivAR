@@ -236,8 +236,10 @@ class ChatViewModelTest {
       return chatState
     }
 
-    override suspend fun getChatsForEvent(eventId: String): List<Chat> =
-        listOf(chatState).filter { it.eventId == eventId }
+    override suspend fun getChatsForEvent(eventId: String): List<Chat> {
+      getFailure?.let { throw it }
+      return listOf(chatState).filter { it.eventId == eventId }
+    }
 
     override suspend fun addChat(chat: Chat) {
       chatState = chat

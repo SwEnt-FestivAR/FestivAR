@@ -43,7 +43,7 @@ data class ChatUiState(
 ) {
   /** Whether messages can be sent. */
   val canSend: Boolean
-    get() = chat != null && !isLoading && !isSending
+    get() = (chat != null) && (!isLoading && !isSending)
 }
 
 /**
@@ -80,21 +80,13 @@ class ChatViewModel(
 
   /** Loads the chat and the user profiles of its members and message authors. */
   fun loadChat() {
-    if (_uiState.value.isSending || loadJob?.isActive == true) return
+    if (_uiState.value.isSending || (loadJob?.isActive == true)) return
     loadJob = viewModelScope.launch {
       _uiState.update { it.copy(isLoading = true) }
       try {
-        val chat =
-            try {
-              chatRepository.getChat(chatId)
-            } catch (e: CancellationException) {
-              throw e
-            } catch (e: Exception) {
-              chatRepository.getChatsForEvent(chatId).firstOrNull() ?: throw e
-            }
+        val chat = fetchOrCreateChat(chatId, currentUserId)
         val userIds = (chat.members + chat.messages.map { it.authorId }).distinct()
-        val users = usersRepository.getListUsers(userIds)
-        val authorsMap = users.associateBy { it.uid }
+        val authorsMap = fetchUserMap(userIds)
 
         _uiState.update {
           it.copy(
@@ -111,6 +103,29 @@ class ChatViewModel(
         _uiState.update { it.copy(isLoading = false, errorMsg = R.string.chat_load_failed) }
       }
     }
+  }
+
+  private suspend fun fetchOrCreateChat(chatId: String, currentUserId: String): Chat {
+    return try {
+      chatRepository.getChat(chatId)
+    } catch (e: CancellationException) {
+      throw e
+    } catch (_: Exception) {
+      chatRepository.getChatsForEvent(chatId).firstOrNull()
+          ?: createInitialChat(chatId, currentUserId)
+    }
+  }
+
+  private suspend fun createInitialChat(chatId: String, currentUserId: String): Chat {
+    val newChat = Chat(chatId = chatId, eventId = chatId, members = listOf(currentUserId))
+    runCatching { chatRepository.addChat(newChat) }
+    return newChat
+  }
+
+  private suspend fun fetchUserMap(userIds: List<String>): Map<String, User> {
+    if (userIds.isEmpty()) return emptyMap()
+    val users = runCatching { usersRepository.getListUsers(userIds) }.getOrElse { emptyList() }
+    return users.associateBy { it.uid }
   }
 
   /**
@@ -135,10 +150,26 @@ class ChatViewModel(
                 sentAt = ZonedDateTime.now(clock),
                 content = content,
             )
-        chatRepository.addMessage(targetChatId, message)
-        val updatedChat = chatRepository.getChat(targetChatId)
+        try {
+          chatRepository.addMessage(targetChatId, message)
+        } catch (_: NoSuchElementException) {
+          chatRepository.addChat(currentChat.addMessage(message))
+        }
+
+        val updatedChat =
+            try {
+              chatRepository.getChat(targetChatId)
+            } catch (_: Exception) {
+              currentChat.addMessage(message)
+            }
+
         val userIds = (updatedChat.members + updatedChat.messages.map { it.authorId }).distinct()
-        val users = usersRepository.getListUsers(userIds)
+        val users =
+            try {
+              usersRepository.getListUsers(userIds)
+            } catch (_: Exception) {
+              emptyList()
+            }
         val authorsMap = users.associateBy { it.uid }
 
         _uiState.update {
