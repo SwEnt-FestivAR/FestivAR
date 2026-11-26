@@ -1,6 +1,8 @@
 package com.android.festivar.ui.event.edit
 
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+// Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.mutableStateOf
@@ -19,7 +21,9 @@ import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepositoryLocal
-import com.android.festivar.ui.components.datetime.DateTimeField
+import com.android.festivar.ui.components.datetime.DateRangePickerTestTags
+import com.android.festivar.ui.components.datetime.DateTimeRange
+import com.android.festivar.ui.components.datetime.pickDays
 import com.android.festivar.ui.theme.AppTheme
 import java.time.LocalDate
 import java.time.LocalTime
@@ -32,6 +36,8 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class EditEventScreenTest {
+  /** A day long over, to show that the edit screen accepts the days of an event that ended. */
+  private val pastDay: LocalDate = LocalDate.of(2020, 3, 10)
 
   @get:Rule val composeTestRule = createAndroidComposeRule<ComponentActivity>()
 
@@ -58,9 +64,8 @@ class EditEventScreenTest {
             EditEventScreenTestTags.BACK_BUTTON,
             EditEventScreenTestTags.TITLE,
             EditEventScreenTestTags.NAME_FIELD,
-            EditEventScreenTestTags.START_DATE_FIELD,
+            EditEventScreenTestTags.DATES_FIELD,
             EditEventScreenTestTags.START_TIME_FIELD,
-            EditEventScreenTestTags.END_DATE_FIELD,
             EditEventScreenTestTags.END_TIME_FIELD,
             EditEventScreenTestTags.LOCATION_FIELD,
             EditEventScreenTestTags.DESCRIPTION_FIELD,
@@ -127,6 +132,10 @@ class EditEventScreenTest {
     composeTestRule.onNodeWithTag(EditEventScreenTestTags.SAVE_BUTTON).assertDoesNotExist()
   }
 
+  /**
+   * Breaks if the edit screen hides the errors of a blank name, an end not after the start or a
+   * failed save, or keeps Save enabled with them.
+   */
   @Test
   fun invalidAndSavingFormsShowErrorsAndDisableSave() {
     val state =
@@ -135,17 +144,13 @@ class EditEventScreenTest {
                 .copy(
                     name = "",
                     nameEdited = true,
-                    startDate = null,
-                    endDate = null,
-                    startTime = LocalTime.NOON,
-                    endTime = LocalTime.NOON,
+                    range = endBeforeStartRange(),
                     errorMsg = R.string.edit_event_error_save_failed,
                 )
         )
     composeTestRule.setContent { AppTheme { EditEventContent(state.value, EditEventActions()) } }
 
     composeTestRule.onNodeWithTag(EditEventScreenTestTags.NAME_ERROR).assertIsDisplayed()
-    composeTestRule.onNodeWithTag(EditEventScreenTestTags.START_DATE_ERROR).assertIsDisplayed()
     composeTestRule.onNodeWithTag(EditEventScreenTestTags.END_DATE_ERROR).assertIsDisplayed()
     composeTestRule.onNodeWithTag(EditEventScreenTestTags.SAVE_ERROR).assertIsDisplayed()
     composeTestRule.onNodeWithTag(EditEventScreenTestTags.SAVE_BUTTON).assertIsNotEnabled()
@@ -155,35 +160,56 @@ class EditEventScreenTest {
     composeTestRule.onNodeWithTag(EditEventScreenTestTags.SAVING_INDICATOR).assertIsDisplayed()
   }
 
+  /** Breaks if the edit screen does not keep the days of an event that already ended selected. */
   @Test
-  fun dateAndTimeFieldsDispatchPickerRequests() {
-    val requests = mutableListOf<DateTimeField?>()
+  fun anEventThatEndedOpensItsDaysSelected() {
     composeTestRule.setContent {
       AppTheme {
         EditEventContent(
-            state = testState(),
-            actions = EditEventActions(onShowPicker = requests::add),
+            state = testState().copy(range = pastRange()),
+            actions = EditEventActions(),
         )
       }
     }
 
-    listOf(
-            EditEventScreenTestTags.START_DATE_FIELD to DateTimeField.START_DATE,
-            EditEventScreenTestTags.START_TIME_FIELD to DateTimeField.START_TIME,
-            EditEventScreenTestTags.END_DATE_FIELD to DateTimeField.END_DATE,
-            EditEventScreenTestTags.END_TIME_FIELD to DateTimeField.END_TIME,
-        )
-        .forEach { (tag, field) -> composeTestRule.onNodeWithTag(tag).performClick() }
+    composeTestRule.onNodeWithTag(EditEventScreenTestTags.DATES_FIELD).performClick()
 
-    assertEquals(
-        listOf(
-            DateTimeField.START_DATE,
-            DateTimeField.START_TIME,
-            DateTimeField.END_DATE,
-            DateTimeField.END_TIME,
-        ),
-        requests,
-    )
+    composeTestRule.onNodeWithTag(DateRangePickerTestTags.CLEAR_BUTTON).assertIsDisplayed()
+  }
+
+  /** Breaks if the saved days are not reported as one range that keeps the times. */
+  @Test
+  fun savingTheDatesReportsOneRangeWithTheSameTimes() {
+    val state = testState()
+    val ranges = mutableListOf<DateTimeRange>()
+    composeTestRule.setContent {
+      AppTheme {
+        EditEventContent(state = state, actions = EditEventActions(onRangeChange = ranges::add))
+      }
+    }
+    val start = state.range.startDate!!.plusDays(1)
+    val end = start.plusDays(2)
+
+    composeTestRule.pickDays(EditEventScreenTestTags.DATES_FIELD, start, end)
+
+    assertEquals(listOf(state.range.copy(startDate = start, endDate = end)), ranges)
+  }
+
+  /** Breaks if the dates picker of the edit screen refuses days that are over. */
+  @Test
+  fun pastDaysCanBePicked() {
+    val ranges = mutableListOf<DateTimeRange>()
+    composeTestRule.setContent {
+      AppTheme {
+        EditEventContent(
+            state = testState(),
+            actions = EditEventActions(onRangeChange = ranges::add),
+        )
+      }
+    }
+    composeTestRule.pickDays(EditEventScreenTestTags.DATES_FIELD, pastDay)
+
+    assertEquals(pastDay, ranges.single().startDate)
   }
 
   @Test
@@ -211,7 +237,7 @@ class EditEventScreenTest {
                 FakeAuthRepository(),
                 eventsRepository = EventsRepositoryLocal(listOf(event)),
             ),
-            { "user" },
+            { event.ownerId },
         )
     var backCount = 0
     composeTestRule.setContent {
@@ -251,7 +277,7 @@ class EditEventScreenTest {
                 FakeAuthRepository(),
                 eventsRepository = EventsRepositoryLocal(listOf(event)),
             ),
-            { "user" },
+            { event.ownerId },
         )
     var savedCount = 0
     var backCount = 0
@@ -284,6 +310,46 @@ class EditEventScreenTest {
     assertEquals(0, backCount)
   }
 
+  /** Breaks if the screen stays open, or shows the form, for a user who cannot edit the event. */
+  @Test
+  fun screenCallsBackWhenTheUserCannotEditTheEvent() {
+    val event = testState().event!!
+    val viewModel =
+        EditEventViewModel(
+            DataRepositoryLocal(
+                FakeAuthRepository(),
+                eventsRepository = EventsRepositoryLocal(listOf(event)),
+            ),
+            { "stranger" },
+        )
+    var backCount = 0
+    composeTestRule.setContent {
+      AppTheme {
+        EditEventScreen(
+            eventId = event.eventId,
+            viewModel = viewModel,
+            onBack = { backCount++ },
+            onSaved = {},
+        )
+      }
+    }
+    composeTestRule.waitForIdle()
+
+    assertEquals(1, backCount)
+    composeTestRule.onNodeWithTag(EditEventScreenTestTags.NAME_FIELD).assertDoesNotExist()
+  }
+
+  /** A range that ended long ago, which the edit screen must still open with its days selected. */
+  private fun pastRange(): DateTimeRange {
+    return DateTimeRange(pastDay, LocalTime.of(9, 0), pastDay, LocalTime.of(10, 0))
+  }
+
+  /** A range whose end is before its start, which the edit screen reports under the times. */
+  private fun endBeforeStartRange(): DateTimeRange {
+    val day = LocalDate.now().plusWeeks(1)
+    return DateTimeRange(day, LocalTime.of(17, 0), day, LocalTime.of(9, 0))
+  }
+
   private fun testState(): EditEventUIState {
     val zone = ZoneId.of("Europe/Zurich")
     val startDate = LocalDate.now().plusDays(5)
@@ -301,10 +367,7 @@ class EditEventScreenTest {
     return EditEventUIState(
         event = event,
         name = event.title,
-        startDate = startDate,
-        endDate = endDate,
-        startTime = LocalTime.of(16, 0),
-        endTime = LocalTime.of(10, 0),
+        range = DateTimeRange(startDate, LocalTime.of(16, 0), endDate, LocalTime.of(10, 0)),
         venue = event.location,
         notes = "Updated notes",
         zone = zone,

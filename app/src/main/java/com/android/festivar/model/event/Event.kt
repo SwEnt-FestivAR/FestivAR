@@ -75,9 +75,9 @@ data class Event(
     val tasks: List<Task> = emptyList(),
     val closed: Boolean = false,
     val announcements: List<Announcement> = emptyList(),
+    val imageUrl: String = "",
     val chatIds: List<String> = listOf(eventId),
 ) {
-
   init {
     require(eventId.isNotBlank()) { "The eventId cannot be empty." }
     require(chatIds.none { it.isBlank() }) { "A chatId cannot be empty." }

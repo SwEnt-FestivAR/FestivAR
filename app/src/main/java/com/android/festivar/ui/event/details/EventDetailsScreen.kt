@@ -56,6 +56,7 @@ import com.android.festivar.R
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.joinCodeOf
 import com.android.festivar.model.event.role.Role
+import com.android.festivar.model.map.geometry.EPFL_LOCATION
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.DeleteMenuItem
@@ -304,6 +305,9 @@ private fun EventInfo(
     JoinCodeRow(code = joinCodeOf(event))
 
     EventLinks(event = event, state = state, actions = actions)
+
+    // The location of an event is not stored yet: every event shows EPFL for now.
+    EventLocationCard(EPFL_LOCATION)
   }
 }
 

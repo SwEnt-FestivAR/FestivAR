@@ -353,6 +353,7 @@ class TaskTest {
           "https://example.com/$id.m4a",
           Duration.ofSeconds(5),
           start,
+          listOf(0.25f, 0.5f, 1f),
       )
 
   private val ownedTask = Task(ownerId = "owner", taskId = "t1", eventId = "e1", title = "Task")

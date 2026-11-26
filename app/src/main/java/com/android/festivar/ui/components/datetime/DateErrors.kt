@@ -23,14 +23,15 @@ fun startDateError(startDate: LocalDate?, startTime: LocalTime?): FieldError? =
  *
  * A selected end time requires an end date. When both dates are present, missing start and end
  * times default to [START_OF_DAY] and [END_OF_DAY]. The end must be strictly after the start, and
- * it must not be in the past. A start in the past is allowed as long as the end is still in the
- * future.
+ * it must not be in the past unless [allowPast], which the screens that edit an item that may have
+ * ended turn on. A start in the past is allowed as long as the end is still in the future.
  */
 fun endDateError(
     range: DateTimeRange,
     zone: ZoneId = ZoneId.systemDefault(),
     now: ZonedDateTime = ZonedDateTime.now(),
     endZone: ZoneId = zone,
+    allowPast: Boolean = false,
 ): FieldError? {
   if (range.endTime != null && range.endDate == null) return FieldError.MISSING_DATE
 
@@ -40,7 +41,7 @@ fun endDateError(
   return if (end != null) {
     when {
       start != null && !end.isAfter(start) -> FieldError.END_BEFORE_START
-      end.isBefore(now) -> FieldError.OUTDATED
+      !allowPast && end.isBefore(now) -> FieldError.OUTDATED
       else -> null
     }
   } else {

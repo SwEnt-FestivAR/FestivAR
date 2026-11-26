@@ -40,10 +40,9 @@ import com.android.festivar.ui.components.FestivarStepper
 import com.android.festivar.ui.components.FestivarTextField
 import com.android.festivar.ui.components.FieldError
 import com.android.festivar.ui.components.LONG_TEXT_MAX_LENGTH
-import com.android.festivar.ui.components.datetime.DateTimeField
 import com.android.festivar.ui.components.datetime.DateTimeRange
-import com.android.festivar.ui.components.datetime.FestivarDateTimePickerDialog
-import com.android.festivar.ui.components.datetime.FestivarDateTimeRow
+import com.android.festivar.ui.components.datetime.DatesAndTimesFieldTags
+import com.android.festivar.ui.components.datetime.FestivarDatesAndTimes
 import com.android.festivar.ui.task.DiscardTaskDialog
 import com.android.festivar.ui.task.TaskFormBackHandling
 import com.android.festivar.ui.task.TaskFormLabels
@@ -61,9 +60,8 @@ object CreateTaskScreenTestTags {
   const val TITLE_FIELD = "createTaskTitleField"
   const val DESCRIPTION_FIELD = "createTaskDescriptionField"
   const val LOCATION_FIELD = "createTaskLocationField"
-  const val START_DATE_FIELD = "createTaskStartDateField"
+  const val DATES_FIELD = "createTaskDatesField"
   const val START_TIME_FIELD = "createTaskStartTimeField"
-  const val END_DATE_FIELD = "createTaskEndDateField"
   const val END_TIME_FIELD = "createTaskEndTimeField"
   const val PRIORITY_SELECTOR = "createTaskPrioritySelector"
   const val MAX_ASSIGN_FIELD = "createTaskMaxAssignField"
@@ -73,7 +71,6 @@ object CreateTaskScreenTestTags {
   const val ESTIMATED_TIME_FIELD = "createTaskEstimatedTimeField"
   const val ESTIMATED_TIME_ERROR = "createTaskEstimatedTimeError"
   const val TITLE_ERROR = "createTaskTitleError"
-  const val START_DATE_ERROR = "createTaskStartDateError"
   const val END_DATE_ERROR = "createTaskEndDateError"
   const val SAVE_ERROR = "createTaskSaveError"
   const val CREATE_BUTTON = "createTaskCreateButton"
@@ -93,9 +90,7 @@ class CreateTaskActions(
     val onMaxAssignIncrease: () -> Unit = {},
     val onMaxAssignChange: (String) -> Unit = {},
     val onEstimatedMinutesChange: (String) -> Unit = {},
-    val onShowPicker: (DateTimeField?) -> Unit = {},
-    val onDatePicked: (LocalDate) -> Unit = {},
-    val onTimePicked: (LocalTime) -> Unit = {},
+    val onRangeChange: (DateTimeRange) -> Unit = {},
     val onCreate: () -> Unit = {},
 )
 
@@ -135,8 +130,8 @@ fun CreateTaskScreen(
 }
 
 /**
- * Stateless Create task screen: draws [state] and reports user input through [actions]. The open
- * picker dialog is part of [state] too. The Edit task screen draws its form with it as well.
+ * Stateless Create task screen: draws [state] and reports user input through [actions]. The Edit
+ * task screen draws its form with it as well.
  *
  * @param labels The top bar title and the button text.
  * @param canSubmit Whether the button at the bottom can be pressed.
@@ -221,31 +216,19 @@ fun CreateTaskContent(
           enabled = !state.isSaving,
           modifier = Modifier.testTag(CreateTaskScreenTestTags.LOCATION_FIELD),
       )
-      FestivarDateTimeRow(
-          dateLabel = stringResource(R.string.create_task_field_start_date),
-          timeLabel = stringResource(R.string.create_task_field_start_time),
-          date = state.startDate,
-          time = state.startTime,
-          dateError = state.startDateError,
-          onDateClick = { actions.onShowPicker(DateTimeField.START_DATE) },
-          onTimeClick = { actions.onShowPicker(DateTimeField.START_TIME) },
+      FestivarDatesAndTimes(
+          range = state.range,
+          onRangeChange = actions.onRangeChange,
           enabled = !state.isSaving,
-          dateTag = CreateTaskScreenTestTags.START_DATE_FIELD,
-          dateErrorTag = CreateTaskScreenTestTags.START_DATE_ERROR,
-          timeTag = CreateTaskScreenTestTags.START_TIME_FIELD,
-      )
-      FestivarDateTimeRow(
-          dateLabel = stringResource(R.string.create_task_field_end_date),
-          timeLabel = stringResource(R.string.create_task_field_end_time),
-          date = state.endDate,
-          time = state.endTime,
-          dateError = state.endDateError,
-          onDateClick = { actions.onShowPicker(DateTimeField.END_DATE) },
-          onTimeClick = { actions.onShowPicker(DateTimeField.END_TIME) },
-          enabled = !state.isSaving,
-          dateTag = CreateTaskScreenTestTags.END_DATE_FIELD,
-          dateErrorTag = CreateTaskScreenTestTags.END_DATE_ERROR,
-          timeTag = CreateTaskScreenTestTags.END_TIME_FIELD,
+          timesError = state.endDateError,
+          allowPast = state.allowPast,
+          tags =
+              DatesAndTimesFieldTags(
+                  dates = CreateTaskScreenTestTags.DATES_FIELD,
+                  startTime = CreateTaskScreenTestTags.START_TIME_FIELD,
+                  endTime = CreateTaskScreenTestTags.END_TIME_FIELD,
+                  timesError = CreateTaskScreenTestTags.END_DATE_ERROR,
+              ),
       )
       FestivarChipSelector(
           options = Priority.entries,
@@ -292,14 +275,6 @@ fun CreateTaskContent(
       }
     }
   }
-
-  FestivarDateTimePickerDialog(
-      field = state.openPicker,
-      range = DateTimeRange(state.startDate, state.startTime, state.endDate, state.endTime),
-      onDatePicked = actions.onDatePicked,
-      onTimePicked = actions.onTimePicked,
-      onDismiss = { actions.onShowPicker(null) },
-  )
 }
 
 // A fixed zone and dates keep the previews the same on every machine. The day is far ahead, since
@@ -309,10 +284,13 @@ private val previewForm =
         title = "Run power to stage",
         description = "Extension reel is in the blue crate by the van.",
         location = "Stage, north corner",
-        startDate = LocalDate.of(2037, 10, 17),
-        startTime = LocalTime.of(9, 0),
-        endDate = LocalDate.of(2037, 10, 17),
-        endTime = LocalTime.of(11, 0),
+        range =
+            DateTimeRange(
+                LocalDate.of(2037, 10, 17),
+                LocalTime.of(9, 0),
+                LocalDate.of(2037, 10, 17),
+                LocalTime.of(11, 0),
+            ),
         zone = ZoneOffset.UTC,
     )
 

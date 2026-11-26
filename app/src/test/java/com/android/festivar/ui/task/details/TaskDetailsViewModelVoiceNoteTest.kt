@@ -64,6 +64,7 @@ class TaskDetailsViewModelVoiceNoteTest {
           "https://fake/t1/old.m4a",
           Duration.ofSeconds(4),
           ZonedDateTime.of(2026, 1, 1, 8, 0, 0, 0, ZoneOffset.UTC),
+          listOf(0.25f, 0.5f, 1f),
       )
 
   @Before
