@@ -17,10 +17,13 @@ class ChatRepositoryFirebase(private val db: FirebaseFirestore) : ChatRepository
   private val chatCollection
     get() = db.collection(CHAT_COLLECTION_PATH)
 
-  override fun getNewUid(): String = UUID.randomUUID().toString()
+  override fun getNewUid(): String {
+    return UUID.randomUUID().toString()
+  }
 
-  override suspend fun getAllChats(): List<Chat> =
-      chatCollection.get().await().documents.map { documentToChat(it) }
+  override suspend fun getAllChats(): List<Chat> {
+    return chatCollection.get().await().documents.map { documentToChat(it) }
+  }
 
   override suspend fun getChat(chatId: String): Chat {
     val document = chatCollection.document(chatId).get().await()
@@ -92,7 +95,10 @@ class ChatRepositoryFirebase(private val db: FirebaseFirestore) : ChatRepository
           if (!snapshot.exists()) {
             throw NoSuchElementException("Chat '$chatId' does not exist.")
           }
-          transaction.update(document, toFirestoreData(change(documentToChat(snapshot))))
+          transaction.update(
+              document,
+              toFirestoreData(change(documentToChat(snapshot))),
+          )
         }
         .await()
   }
