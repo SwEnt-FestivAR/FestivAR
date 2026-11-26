@@ -25,6 +25,8 @@ import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.event.announcement.AnnouncementPriority
+import com.android.festivar.model.event.role.Role
+import com.android.festivar.model.user.User
 import com.android.festivar.ui.announcement.create.CreateAnnouncementScreenTestTags as Tags
 import com.android.festivar.ui.theme.AppTheme
 import java.time.ZoneId
@@ -39,6 +41,9 @@ import org.junit.Rule
 import org.junit.Test
 
 private const val EVENT_ID = "event-1"
+private const val OWNER_ID = "owner-1"
+private const val LEAD_ID = "lead-1"
+private const val VISITOR_ID = "visitor-1"
 private const val UI_WAIT_TIMEOUT = 5_000L
 
 class CreateAnnouncementScreenTest {
@@ -47,6 +52,7 @@ class CreateAnnouncementScreenTest {
   // FAKE: a real repository that keeps the event in memory. The tests read the stored announcements
   // back from it; nothing checks that a configured mock was called.
   private lateinit var local: EventsRepositoryLocal
+  private lateinit var scripted: EventsRepository
   private var backCount = 0
   private var publishedCount = 0
 
@@ -56,30 +62,38 @@ class CreateAnnouncementScreenTest {
   @Before
   fun setUp() {
     val zone = ZoneId.of("Europe/Zurich")
+    // The owner and the team lead can create announcements, the visitor cannot.
+    val roles = mapOf(OWNER_ID to Role.OWNER, LEAD_ID to Role.TEAM_LEAD, VISITOR_ID to Role.VISITOR)
     local =
         EventsRepositoryLocal(
             listOf(
                 Event(
                     eventId = EVENT_ID,
-                    ownerId = "owner",
+                    ownerId = OWNER_ID,
                     title = "Balelec",
+                    members = roles.keys.map { User(it) },
+                    roles = roles,
                     startDate = ZonedDateTime.of(2026, 11, 6, 16, 0, 0, 0, zone),
                     endDate = ZonedDateTime.of(2026, 11, 7, 4, 0, 0, 0, zone),
                 )
             )
         )
     // STUB over the fake: the hook lets a test fail or hold the write.
-    val scripted =
+    scripted =
         object : EventsRepository by local {
           override suspend fun addAnnouncement(eventId: String, announcement: Announcement) {
             beforeAdd()
             local.addAnnouncement(eventId, announcement)
           }
         }
+  }
+
+  /** Shows the screen to [userId], whose role in the event decides whether they may stay. */
+  private fun showScreen(userId: String = OWNER_ID) {
     val viewModel =
         CreateAnnouncementViewModel(
             EVENT_ID,
-            { "owner-1" },
+            { userId },
             DataRepositoryLocal(FakeAuthRepository(), eventsRepository = scripted),
         )
     composeTestRule.setContent {
@@ -134,6 +148,7 @@ class CreateAnnouncementScreenTest {
    */
   @Test
   fun anEmptyFormShowsTheDesignWithInfoSelectedAndBackLeaves() {
+    showScreen()
     composeTestRule.onNodeWithTag(Tags.TITLE).assertTextEquals(string(R.string.create_announcement))
     composeTestRule
         .onNodeWithTag(Tags.TITLE_FIELD)
@@ -168,6 +183,7 @@ class CreateAnnouncementScreenTest {
    */
   @Test
   fun publishingSavesTheFormAndReportsItOnce() {
+    showScreen()
     typeTitle("Stage B is closed")
     typeDescription("Strong wind on the hill.")
     chip(AnnouncementPriority.URGENT).performClick()
@@ -198,6 +214,7 @@ class CreateAnnouncementScreenTest {
   fun aRunningSaveLocksTheFormAndBackUntilItFinishes() {
     val gate = CompletableDeferred<Unit>()
     beforeAdd = { gate.await() }
+    showScreen()
     fillAndPublish()
 
     composeTestRule
@@ -227,6 +244,7 @@ class CreateAnnouncementScreenTest {
   @Test
   fun aFailedSaveShowsTheErrorAndARetryPublishes() {
     beforeAdd = { throw IllegalStateException("offline") }
+    showScreen()
 
     fillAndPublish()
     composeTestRule.waitForIdle()
@@ -253,6 +271,7 @@ class CreateAnnouncementScreenTest {
    */
   @Test
   fun systemBackFromAnEditedFormAsksWithTheCreateTitleAndDiscardLeaves() {
+    showScreen()
     typeTitle("Stage B")
 
     pressSystemBack()
@@ -264,5 +283,32 @@ class CreateAnnouncementScreenTest {
     composeTestRule.waitForIdle()
     assertEquals(1, backCount)
     assertTrue(stored().isEmpty())
+  }
+
+  /**
+   * Breaks if a member whose role cannot create announcements stays on the screen, or leaves it
+   * through the discard dialog.
+   */
+  @Test
+  fun aVisitorLeavesTheScreenOnce() {
+    showScreen(VISITOR_ID)
+
+    composeTestRule.waitUntil(UI_WAIT_TIMEOUT) { backCount > 0 }
+    composeTestRule.waitForIdle()
+    assertEquals(1, backCount)
+    assertEquals(0, publishedCount)
+    composeTestRule.onNodeWithTag(Tags.DISCARD_DIALOG).assertDoesNotExist()
+  }
+
+  /** Breaks if a member who is not the owner but may create announcements is sent back. */
+  @Test
+  fun aTeamLeadStaysOnTheScreenAndCanPublish() {
+    showScreen(LEAD_ID)
+    composeTestRule.waitForIdle()
+
+    assertEquals(0, backCount)
+    fillAndPublish()
+    composeTestRule.waitUntil(UI_WAIT_TIMEOUT) { publishedCount == 1 }
+    assertEquals(LEAD_ID, stored().single().authorId)
   }
 }
