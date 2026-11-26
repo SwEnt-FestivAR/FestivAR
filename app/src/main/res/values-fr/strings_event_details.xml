@@ -14,6 +14,7 @@
     <string name="event_details_status_open">Ouvert</string>
     <string name="event_details_status_closed">Fermé</string>
     <string name="event_details_announcements">Annonces</string>
+    <string name="event_details_chat">Chat</string>
     <string name="event_details_more_actions">Plus d’actions pour l’événement</string>
     <string name="event_details_edit_event">Modifier l’événement</string>
     <string name="event_details_delete_event">Supprimer l’événement</string>

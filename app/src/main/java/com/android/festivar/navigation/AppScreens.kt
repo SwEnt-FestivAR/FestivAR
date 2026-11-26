@@ -25,9 +25,12 @@ enum class AppScreens {
   AnnouncementFeed,
   TaskDetails,
   EditTask,
-  MyTasks;
+  MyTasks,
+  Chat;
 
   companion object {
+    fun chat(chatId: String) = "${Chat.name}/$chatId"
+
     fun eventDetails(eventId: String) = "${EventDetails.name}/$eventId"
 
     fun editEvent(eventId: String) = "${EditEvent.name}/$eventId"

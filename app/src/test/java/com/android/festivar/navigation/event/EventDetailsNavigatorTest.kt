@@ -33,4 +33,12 @@ class EventDetailsNavigatorTest {
 
     verify { navController.navigate(AppScreens.editEvent("event-123")) }
   }
+
+  /** Breaks if Chat row opens a destination other than the Chat screen of that event. */
+  @Test
+  fun chatClickNavigatesToChatOfThatEvent() {
+    navigator.onChatClicked("event-123")
+
+    verify { navController.navigate(AppScreens.chat("event-123")) }
+  }
 }

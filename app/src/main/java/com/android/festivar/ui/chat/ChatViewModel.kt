@@ -84,7 +84,14 @@ class ChatViewModel(
     loadJob = viewModelScope.launch {
       _uiState.update { it.copy(isLoading = true) }
       try {
-        val chat = chatRepository.getChat(chatId)
+        val chat =
+            try {
+              chatRepository.getChat(chatId)
+            } catch (e: CancellationException) {
+              throw e
+            } catch (e: Exception) {
+              chatRepository.getChatsForEvent(chatId).firstOrNull() ?: throw e
+            }
         val userIds = (chat.members + chat.messages.map { it.authorId }).distinct()
         val users = usersRepository.getListUsers(userIds)
         val authorsMap = users.associateBy { it.uid }
@@ -114,6 +121,9 @@ class ChatViewModel(
   fun sendMessage(content: MessageContent) {
     if (!_uiState.value.canSend) return
 
+    val currentChat = _uiState.value.chat ?: return
+    val targetChatId = currentChat.chatId
+
     _uiState.update { it.copy(isSending = true, errorMsg = null) }
     viewModelScope.launch {
       try {
@@ -125,8 +135,8 @@ class ChatViewModel(
                 sentAt = ZonedDateTime.now(clock),
                 content = content,
             )
-        chatRepository.addMessage(chatId, message)
-        val updatedChat = chatRepository.getChat(chatId)
+        chatRepository.addMessage(targetChatId, message)
+        val updatedChat = chatRepository.getChat(targetChatId)
         val userIds = (updatedChat.members + updatedChat.messages.map { it.authorId }).distinct()
         val users = usersRepository.getListUsers(userIds)
         val authorsMap = users.associateBy { it.uid }
@@ -142,7 +152,7 @@ class ChatViewModel(
         _uiState.update { it.copy(isSending = false) }
         throw e
       } catch (e: Exception) {
-        Log.e(LOG_TAG, "Error sending message to chat $chatId", e)
+        Log.e(LOG_TAG, "Error sending message to chat $targetChatId", e)
         _uiState.update { it.copy(isSending = false, errorMsg = R.string.chat_send_failed) }
       }
     }

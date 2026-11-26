@@ -23,6 +23,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Chat
 import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -86,6 +87,7 @@ object EventDetailsScreenTestTags {
   const val DESCRIPTION = "eventDescription"
   const val SEE_TASKS_BUTTON = "seeTasksButton"
   const val ANNOUNCEMENTS_ROW = "announcementsRow"
+  const val CHAT_ROW = "chatRow"
   const val MEMBERS_CARD = "membersCard"
   const val MEMBERS_SHEET = "membersSheet"
   const val MORE_ACTIONS_BUTTON = "eventMoreActionsButton"
@@ -109,6 +111,7 @@ class EventDetailsActions(
     val onChangeRole: (userId: String, newRole: Role) -> Unit = { _, _ -> },
     val onKick: (userId: String) -> Unit = {},
     val onErrorShown: () -> Unit = {},
+    val onChatClicked: () -> Unit = {},
 )
 
 /**
@@ -124,6 +127,7 @@ class EventDetailsActions(
  * @param onEditClicked called when the organizer picks "Edit event" in the menu.
  * @param modifier modifier applied to the event content.
  * @param onEventDeleted called once the event is deleted, to leave the screen.
+ * @param onChatClicked called when the "Chat" row is clicked.
  */
 @Composable
 fun EventDetailsScreen(
@@ -134,6 +138,7 @@ fun EventDetailsScreen(
     onEditClicked: () -> Unit,
     modifier: Modifier = Modifier,
     onEventDeleted: () -> Unit = {},
+    onChatClicked: () -> Unit = {},
 ) {
   val uiState by viewModel.uiState.collectAsState()
   LaunchedEffect(Unit) { viewModel.fetchEvent() }
@@ -153,6 +158,7 @@ fun EventDetailsScreen(
               onChangeRole = viewModel::changeRole,
               onKick = viewModel::kickMember,
               onErrorShown = viewModel::clearError,
+              onChatClicked = onChatClicked,
           ),
       modifier = modifier,
   )
@@ -368,6 +374,8 @@ private fun EventLinks(event: Event, state: EventDetailsUIState, actions: EventD
       Hairline(modifier = Modifier.padding(start = 68.dp))
       MembersEntry(event = event, state = state, actions = actions)
     }
+    Hairline(modifier = Modifier.padding(start = 68.dp))
+    ChatRow(onClick = actions.onChatClicked)
   }
 }
 
@@ -398,6 +406,45 @@ private fun AnnouncementsRow(onClick: () -> Unit) {
     }
     Text(
         text = stringResource(R.string.event_details_announcements),
+        modifier = Modifier.weight(1f),
+        color = MaterialTheme.colorScheme.onSurface,
+        style = MaterialTheme.typography.titleSmall,
+    )
+    Icon(
+        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+        contentDescription = null,
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+  }
+}
+
+/** Row of the [EventLinks] card opening the event's chat. */
+@Composable
+private fun ChatRow(onClick: () -> Unit) {
+  Row(
+      modifier =
+          Modifier.fillMaxWidth()
+              .clickable(onClick = onClick)
+              .padding(horizontal = 16.dp, vertical = 12.dp)
+              .testTag(EventDetailsScreenTestTags.CHAT_ROW),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(12.dp),
+  ) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier =
+            Modifier.size(40.dp)
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape),
+    ) {
+      Icon(
+          imageVector = Icons.AutoMirrored.Outlined.Chat,
+          contentDescription = null,
+          tint = MaterialTheme.colorScheme.onSurface,
+          modifier = Modifier.size(24.dp),
+      )
+    }
+    Text(
+        text = stringResource(R.string.event_details_chat),
         modifier = Modifier.weight(1f),
         color = MaterialTheme.colorScheme.onSurface,
         style = MaterialTheme.typography.titleSmall,

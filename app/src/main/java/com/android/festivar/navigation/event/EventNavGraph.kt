@@ -14,6 +14,8 @@ import androidx.navigation.navArgument
 import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.navigation.AppScreens
 import com.android.festivar.navigation.RequireSignedIn
+import com.android.festivar.ui.chat.ChatScreen
+import com.android.festivar.ui.chat.ChatViewModel
 import com.android.festivar.ui.event.create.CreateEventScreen
 import com.android.festivar.ui.event.create.CreateEventViewModel
 import com.android.festivar.ui.event.details.EventDetailsScreen
@@ -93,6 +95,7 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, dataRepository:
           onAnnouncementsClicked = { navigator.onAnnouncementsClicked(eventId) },
           onEditClicked = { navigator.onEdit(eventId) },
           onEventDeleted = navigator.onEventDeleted,
+          onChatClicked = { navigator.onChatClicked(eventId) },
       )
     }
   }
@@ -122,6 +125,25 @@ fun NavGraphBuilder.eventGraph(navController: NavHostController, dataRepository:
           viewModel = viewModel { JoinEventViewModel(firebaseUser.uid, dataRepository) },
           onBack = navigator.onBack,
           onOpenEvent = navigator.onOpenEvent,
+      )
+    }
+  }
+  composable(
+      route = "${AppScreens.Chat.name}/{chatId}",
+      arguments = listOf(navArgument("chatId") { type = NavType.StringType }),
+  ) { backStackEntry ->
+    val chatId = requireEventId(backStackEntry.arguments?.getString("chatId") ?: "")
+    RequireSignedIn(navController, dataRepository) { firebaseUser ->
+      ChatScreen(
+          viewModel =
+              viewModel(key = "$chatId:${firebaseUser.uid}") {
+                ChatViewModel(
+                    chatId = chatId,
+                    dataRepository = dataRepository,
+                    currentUserId = firebaseUser.uid,
+                )
+              },
+          onBack = { navController.popBackStack() },
       )
     }
   }

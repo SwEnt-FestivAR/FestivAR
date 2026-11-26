@@ -22,4 +22,7 @@ class EventDetailsNavigator(private val navController: NavHostController) {
   val onEdit: (String) -> Unit = { eventId ->
     navController.navigate(AppScreens.editEvent(eventId))
   }
+  val onChatClicked: (String) -> Unit = { chatId ->
+    navController.navigate(AppScreens.chat(chatId))
+  }
 }
