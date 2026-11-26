@@ -270,9 +270,11 @@ class ArEntryViewModelTest {
         rationaleAfter = false,
         answeredAtOnce = false,
     )
+    // The system recommended a rationale before this request and, once granted, no longer does:
+    // the same signs as a refusal for good, on an answer that is a grant.
     vm.onCameraAnswered(
         granted = true,
-        rationaleBefore = false,
+        rationaleBefore = true,
         rationaleAfter = false,
         answeredAtOnce = false,
     )
