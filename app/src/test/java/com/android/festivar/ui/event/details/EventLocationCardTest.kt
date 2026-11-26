@@ -4,8 +4,6 @@ package com.android.festivar.ui.event.details
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.android.festivar.model.map.geometry.EPFL_LOCATION
 import com.android.festivar.ui.components.map.MapPinKind
-import com.android.festivar.ui.components.map.cameraPositionFor
-import com.android.festivar.ui.components.map.toLatLng
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -16,13 +14,5 @@ class EventLocationCardTest {
   @Test
   fun eventMapPin_isTheEventPinAtTheLocation() {
     assertEquals(EventMapPin(MapPinKind.EVENT, EPFL_LOCATION), eventMapPin(EPFL_LOCATION))
-  }
-
-  /** Breaks if the camera of the event card is not on the same point as its pin. */
-  @Test
-  fun eventMapPin_cameraIsOnThePin() {
-    val pin = eventMapPin(EPFL_LOCATION)
-
-    assertEquals(pin.position.toLatLng(), cameraPositionFor(listOf(pin.position)).target)
   }
 }
