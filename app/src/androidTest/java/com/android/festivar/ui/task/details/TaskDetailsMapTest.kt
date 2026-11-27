@@ -107,7 +107,10 @@ class TaskDetailsMapTest {
     composeTestRule.onNodeWithTag(MapCardTestTags.CARD).assertHasNoClickAction()
   }
 
-  /** Breaks if the card is hidden from a viewer who is not the owner and has not taken the task. */
+  /**
+   * Breaks if the card is hidden from a viewer who is not the owner and has not taken the task, or
+   * does not display in the light theme, which is the default one.
+   */
   @Test
   fun card_isShownToAVolunteerWhoDidNotTakeTheTask() {
     show(stateFor(sami))
@@ -135,14 +138,6 @@ class TaskDetailsMapTest {
   @Test
   fun card_isShownWhenSomeoneElseTookTheTask() {
     show(stateFor(sami, task.addAssignee(yasser, task.startTime!!)))
-
-    composeTestRule.onNodeWithTag(MapCardTestTags.CARD).performScrollTo().assertIsDisplayed()
-  }
-
-  /** Breaks if the card does not display in the light theme. */
-  @Test
-  fun card_isDisplayedInLightTheme() {
-    show(stateFor(sami), darkTheme = false)
 
     composeTestRule.onNodeWithTag(MapCardTestTags.CARD).performScrollTo().assertIsDisplayed()
   }
