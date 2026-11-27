@@ -3,7 +3,6 @@ package com.android.festivar.ui.task.details
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -69,7 +68,7 @@ fun TaskMapCard(location: GeoPosition, address: String, modifier: Modifier = Mod
           style = MaterialTheme.typography.titleSmall,
           modifier =
               Modifier.fillMaxWidth()
-                  .padding(PaddingValues(start = 16.dp, top = 12.dp, end = 12.dp, bottom = 12.dp))
+                  .padding(start = 16.dp, top = 12.dp, end = 12.dp, bottom = 12.dp)
                   .testTag(TaskMapCardTestTags.ADDRESS),
       )
     }
