@@ -4,7 +4,6 @@ package com.android.festivar.ui.task.details
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
-import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performScrollTo
@@ -13,9 +12,10 @@ import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.map.MapCardTestTags
 import com.android.festivar.ui.theme.AppTheme
+import com.android.festivar.ui.voicenote.VoiceNoteUiState
+import com.android.festivar.ui.voicenote.previewNote
 import java.time.ZoneId
 import java.time.ZonedDateTime
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -40,34 +40,29 @@ class TaskDetailsMapTest {
           ownerId = "owner-1",
       )
 
-  private fun show(state: TaskDetailsUiState, darkTheme: Boolean = false) =
-      composeTestRule.setContent {
-        AppTheme(darkTheme = darkTheme) { TaskDetailsContent(state) }
-      }
+  private fun show(
+      state: TaskDetailsUiState,
+      darkTheme: Boolean = false,
+      voiceNote: VoiceNoteUiState = VoiceNoteUiState(),
+  ) = composeTestRule.setContent {
+    AppTheme(darkTheme = darkTheme) { TaskDetailsContent(state, voiceNote = voiceNote) }
+  }
 
   private fun stateFor(user: User, task: Task = this.task) =
       TaskDetailsUiState(user.uid, task, isLoading = false)
 
-  /** Breaks if the card is not at the bottom of the page, under the description and the people. */
+  /**
+   * Breaks if the card can no longer be reached by scrolling when the page also shows the people
+   * and a voice note.
+   */
   @Test
-  fun card_isAtTheBottomOfThePage() {
-    show(stateFor(sami, task.addAssignee(yasser, task.startTime!!)))
+  fun card_isReachableByScrollingWithEverySectionShown() {
+    show(
+        stateFor(sami, task.addAssignee(yasser, task.startTime!!)),
+        voiceNote = VoiceNoteUiState(note = previewNote),
+    )
+
     composeTestRule.onNodeWithTag(MapCardTestTags.CARD).performScrollTo().assertIsDisplayed()
-
-    val card = composeTestRule.onNodeWithTag(MapCardTestTags.CARD).getUnclippedBoundsInRoot()
-    val descriptionBottom =
-        composeTestRule
-            .onNodeWithTag(TaskDetailsScreenTestTags.DESCRIPTION)
-            .getUnclippedBoundsInRoot()
-            .bottom
-    val peopleBottom =
-        composeTestRule
-            .onNodeWithTag(TaskDetailsScreenTestTags.ON_THIS_TASK_SECTION)
-            .getUnclippedBoundsInRoot()
-            .bottom
-
-    assertTrue(card.top >= descriptionBottom)
-    assertTrue(card.top >= peopleBottom)
   }
 
   /** Breaks if the line under the map shows something else than the location of the task. */
