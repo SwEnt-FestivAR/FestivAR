@@ -50,7 +50,9 @@ import androidx.compose.ui.window.DialogProperties
 import com.android.festivar.R
 import com.android.festivar.ui.components.FixedBottomBar
 import com.android.festivar.ui.theme.AppTheme
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneOffset
 import java.time.temporal.ChronoUnit
 
 /** Test tags of [FestivarDateRangePickerDialog]. */
@@ -62,6 +64,14 @@ object DateRangePickerTestTags {
   const val SAVE_BUTTON = "dateRangePickerSaveButton"
   const val CLEAR_BUTTON = "dateRangePickerClearButton"
 }
+
+/** The date picker works in UTC milliseconds; this is the value that shows [this] date. */
+internal fun LocalDate.toPickerMillis(): Long =
+    atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+
+/** Inverse of [toPickerMillis]. */
+internal fun Long.toPickerDate(): LocalDate =
+    Instant.ofEpochMilli(this).atZone(ZoneOffset.UTC).toLocalDate()
 
 /** The width of Material's calendar, which it keeps whatever the room it gets. */
 private val MATERIAL_CALENDAR_WIDTH = 360.dp

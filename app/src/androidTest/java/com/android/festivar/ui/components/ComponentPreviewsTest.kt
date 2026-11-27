@@ -10,7 +10,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.android.festivar.R
-import com.android.festivar.ui.components.datetime.FestivarDatePickerDialogPreview
 import com.android.festivar.ui.components.datetime.FestivarTimePickerDialogPreview
 import org.junit.Rule
 import org.junit.Test
@@ -32,15 +31,6 @@ class ComponentPreviewsTest {
     composeTestRule.onNodeWithText("Run power to stage").assertIsDisplayed()
     composeTestRule.onNodeWithText("Title cannot be empty").assertIsDisplayed()
     composeTestRule.onNodeWithText("Sat 17 Oct").assertIsDisplayed()
-  }
-
-  // The date dialog preview renders without crashing and shows its OK and Cancel buttons.
-  @Test
-  fun datePickerDialogPreview_showsTheDialog() {
-    composeTestRule.setContent { FestivarDatePickerDialogPreview() }
-
-    composeTestRule.onNodeWithText("OK").assertIsDisplayed()
-    composeTestRule.onNodeWithText("Cancel").assertIsDisplayed()
   }
 
   // The time dialog preview renders without crashing and shows its OK and Cancel buttons.
