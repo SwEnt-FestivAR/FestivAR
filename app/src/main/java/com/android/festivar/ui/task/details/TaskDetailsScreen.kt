@@ -46,6 +46,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.festivar.R
+import com.android.festivar.model.map.geometry.EPFL_LOCATION
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.DeleteMenuItem
@@ -241,6 +242,8 @@ fun TaskDetailsContent(
       if (task != null && status != null) {
         Body(task, status) { showPeople = true }
         VoiceNoteSection(voiceNote, voiceNoteCallbacks, state.ownerName)
+        // The location of a task is not stored yet: every task is at EPFL until it is.
+        TaskMapCard(EPFL_LOCATION, task.location)
       }
     }
   }
