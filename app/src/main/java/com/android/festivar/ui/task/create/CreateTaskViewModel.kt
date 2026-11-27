@@ -113,8 +113,8 @@ data class CreateTaskUiState(
 
   /**
    * Whether it has a title and no field error; [canCreate] adds the saving and created flags. The
-   * start relies on the Dates field, whose times stay disabled until a day is chosen, so a start
-   * time without a day is not checked; an end time without a day is still refused.
+   * times of the Dates field stay disabled until a day is chosen, so a time without a day is not
+   * checked.
    */
   internal val isValid: Boolean
     get() = title.isNotBlank() && endDateError == null && estimatedTimeError == null

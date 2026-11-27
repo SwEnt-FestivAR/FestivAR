@@ -315,16 +315,6 @@ class CreateTaskViewModelTest {
     assertNull(viewModel.uiState.value.titleError)
   }
 
-  /**
-   * Breaks if an end time without its end date does not report the missing date under the times.
-   */
-  @Test
-  fun endTimeWithoutDate_putsTheErrorUnderTheTimes() {
-    viewModel.updateRange(viewModel.uiState.value.range.copy(endTime = LocalTime.of(9, 50)))
-
-    assertEquals(FieldError.MISSING_DATE, viewModel.uiState.value.endDateError)
-  }
-
   /** Breaks if updateRange does not store the whole range in the form. */
   @Test
   fun updateRange_storesTheWholeRange() {
@@ -808,15 +798,6 @@ class CreateTaskUiStateTest {
     )
   }
 
-  /** Breaks if a form with an end time but no end date can be created. */
-  @Test
-  fun endTimeWithoutDate_isAnError() {
-    val state = valid.copy(range = valid.range.copy(endTime = LocalTime.of(9, 50)))
-
-    assertEquals(FieldError.MISSING_DATE, state.endDateError)
-    assertFalse(state.canCreate)
-  }
-
   /** Breaks if an end before the start is not reported under the times. */
   @Test
   fun endBeforeStart_isAnError() {
@@ -966,14 +947,6 @@ class CreateTaskUiStateTest {
     assertThrows(IllegalArgumentException::class.java) {
       CreateTaskUiState().toTask("t1", "e1", "owner-1")
     }
-  }
-
-  /** Breaks if a time without its day is saved, which would drop the time. */
-  @Test
-  fun toTask_withTimeWithoutDate_isRejected() {
-    val form = valid.copy(range = valid.range.copy(endTime = LocalTime.of(9, 50)))
-
-    assertThrows(IllegalArgumentException::class.java) { form.toTask("t1", "e1", "owner-1") }
   }
 
   @Test

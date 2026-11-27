@@ -12,27 +12,6 @@ import org.junit.Test
 
 /** The field errors of a start and an end date and time. */
 class DateErrorsTest {
-  /** Breaks if the initially empty start date/time fields report an error. */
-  @Test
-  fun startDateError_initialState_returnsNoError() {
-    assertNull(startDateError(startDate = null, startTime = null))
-  }
-
-  /** Breaks if a start date without a start time incorrectly reports an error. */
-  @Test
-  fun startDateError_dateWithoutTime_returnsNoError() {
-    assertNull(startDateError(startDate = LocalDate.now(), startTime = null))
-  }
-
-  /** Breaks if a start time without a start date does not report a missing-date error. */
-  @Test
-  fun startDateError_timeWithoutDate_returnsMissingDate() {
-    assertEquals(
-        FieldError.MISSING_DATE,
-        startDateError(startDate = null, startTime = LocalTime.NOON),
-    )
-  }
-
   /** Breaks if the initially empty end date/time fields report an error. */
   @Test
   fun endDateError_initialState_returnsNoError() {
@@ -115,15 +94,6 @@ class DateErrorsTest {
     val date = LocalDate.now().plusDays(1)
 
     assertNull(endDateError(DateTimeRange(startDate = date, endDate = date)))
-  }
-
-  /** Breaks if an end time without an end date does not report a missing-date error. */
-  @Test
-  fun endDateError_timeWithoutDate_returnsMissingDate() {
-    assertEquals(
-        FieldError.MISSING_DATE,
-        endDateError(DateTimeRange(endTime = LocalTime.NOON)),
-    )
   }
 
   /** Breaks if an end before start does not report an end-before-start error. */

@@ -743,7 +743,6 @@ class EditTaskUiStateTest {
     val invalid =
         listOf(
             edited.form.copy(title = " ", titleEdited = true),
-            edited.form.copy(range = edited.form.range.copy(endTime = LocalTime.NOON)),
             edited.form.copy(
                 range = edited.form.range.copy(startDate = day, endDate = day.minusDays(1))
             ),
