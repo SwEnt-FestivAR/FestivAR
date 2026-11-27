@@ -66,6 +66,7 @@ fun TaskMapCard(location: GeoPosition, address: String, modifier: Modifier = Mod
       Text(
           address,
           style = MaterialTheme.typography.titleSmall,
+          color = MaterialTheme.colorScheme.onSurface,
           modifier =
               Modifier.fillMaxWidth()
                   .padding(start = 16.dp, top = 12.dp, end = 12.dp, bottom = 12.dp)
