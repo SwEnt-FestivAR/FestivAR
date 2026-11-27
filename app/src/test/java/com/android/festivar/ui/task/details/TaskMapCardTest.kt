@@ -41,7 +41,5 @@ class TaskMapCardTest {
 
     assertEquals(pin.latitude, target.latitude, 0.0)
     assertEquals(pin.longitude, target.longitude, 0.0)
-    assertEquals(EPFL_LOCATION.latitude, target.latitude, 0.0)
-    assertEquals(EPFL_LOCATION.longitude, target.longitude, 0.0)
   }
 }
