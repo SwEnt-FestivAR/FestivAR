@@ -4,6 +4,7 @@ package com.android.festivar.model.map
 
 import com.android.festivar.model.map.geometry.GeoPosition
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
@@ -33,7 +34,7 @@ class StoredLocationTest {
 
   /**
    * Breaks if a number or a map with a blank name is read as a place, or hides which document is
-   * wrong.
+   * wrong, or loses the reason of the refusal.
    */
   @Test
   fun anInvalidLocationIsRefusedWithTheOwner() {
@@ -45,6 +46,7 @@ class StoredLocationTest {
             readStoredLocation(stored, "event-1")
           }
       assertTrue(error.message.orEmpty().contains("event-1"))
+      assertNotNull(error.cause)
     }
   }
 }
