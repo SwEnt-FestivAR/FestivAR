@@ -8,7 +8,8 @@ package com.android.festivar.model.map
  *
  * A document saved before locations had coordinates stored its location as a text, which cannot
  * give a [Location]. It reads as no location, like a document saved without one, and the text is
- * not kept. The code of this text is to be removed once the stored texts are set to `null`.
+ * not kept. The handling of old texts can be removed once the stored texts are set to `null`
+ * (#756).
  *
  * @param stored The value of the location field, as the document returns it.
  * @param owner What the document is, for the message of an invalid location, for instance "event
