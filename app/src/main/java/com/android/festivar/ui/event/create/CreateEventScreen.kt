@@ -328,6 +328,7 @@ fun ImagePlaceholderPicker(
     text: String,
     enabled: Boolean = true,
     onEditImageClick: () -> Unit = {},
+    savingIndicatorTestTag: String = CreateEventScreenTestTags.SAVING_INDICATOR,
 ) {
   // Source - https://stackoverflow.com/a/67039676
   // Posted by Gabriele Mariotti, modified by community. See post 'Timeline' for change history
@@ -379,10 +380,7 @@ fun ImagePlaceholderPicker(
         }
         IconsType.LOAD -> {
           CircularProgressIndicator(
-              modifier =
-                  Modifier.padding(20.dp)
-                      .size(16.dp)
-                      .testTag(CreateEventScreenTestTags.SAVING_INDICATOR),
+              modifier = Modifier.padding(20.dp).size(16.dp).testTag(savingIndicatorTestTag),
               color = MaterialTheme.colorScheme.onSurfaceVariant,
               strokeWidth = 2.dp,
           )
@@ -402,15 +400,18 @@ fun ImagePlaceholderPicker(
 fun ImageViewer(
     url: String,
     modifier: Modifier = Modifier,
+    isSaving: Boolean = false,
+    hasImage: Boolean = true,
     onEditImageClick: () -> Unit = {},
     onDeleteImageClick: () -> Unit = {},
-    uiState: CreateEventUIState,
+    imagePreviewTestTag: String = CreateEventScreenTestTags.IMAGE_PREVIEW,
+    deleteImageButtonTestTag: String = CreateEventScreenTestTags.DELETE_IMAGE_BUTTON,
 ) {
   // This forces the image to not be shown taller than a square
   BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
     Card(
         modifier = Modifier.fillMaxWidth().heightIn(max = maxWidth),
-        enabled = !uiState.isSaving,
+        enabled = !isSaving,
         onClick = onEditImageClick,
     ) {
       GlideImage(
@@ -422,7 +423,7 @@ fun ImageViewer(
                 ImagePlaceholderPicker(
                     icon = IconsType.WARNING,
                     text = stringResource(R.string.create_event_image_fail),
-                    enabled = !uiState.isSaving,
+                    enabled = !isSaving,
                 )
               },
           loading =
@@ -430,20 +431,20 @@ fun ImageViewer(
                 ImagePlaceholderPicker(
                     icon = IconsType.LOAD,
                     text = stringResource(R.string.create_event_image_load),
-                    enabled = !uiState.isSaving,
+                    enabled = !isSaving,
                 )
               },
-          modifier = Modifier.fillMaxWidth().testTag(CreateEventScreenTestTags.IMAGE_PREVIEW),
+          modifier = Modifier.fillMaxWidth().testTag(imagePreviewTestTag),
       )
     }
     IconButton(
         onClick = onDeleteImageClick,
-        enabled = !uiState.isSaving && uiState.hasImage,
+        enabled = !isSaving && hasImage,
         modifier =
             Modifier.align(Alignment.BottomEnd)
                 .padding(8.dp)
                 .size(64.dp)
-                .testTag(CreateEventScreenTestTags.DELETE_IMAGE_BUTTON),
+                .testTag(deleteImageButtonTestTag),
         colors =
             androidx.compose.material3.IconButtonDefaults.iconButtonColors(
                 containerColor = MaterialTheme.colorScheme.primary,
@@ -458,6 +459,26 @@ fun ImageViewer(
     }
   }
 }
+
+@OptIn(ExperimentalGlideComposeApi::class)
+@Composable
+fun ImageViewer(
+    url: String,
+    modifier: Modifier = Modifier,
+    onEditImageClick: () -> Unit = {},
+    onDeleteImageClick: () -> Unit = {},
+    uiState: CreateEventUIState,
+) =
+    ImageViewer(
+        url = url,
+        modifier = modifier,
+        isSaving = uiState.isSaving,
+        hasImage = uiState.hasImage,
+        onEditImageClick = onEditImageClick,
+        onDeleteImageClick = onDeleteImageClick,
+        imagePreviewTestTag = CreateEventScreenTestTags.IMAGE_PREVIEW,
+        deleteImageButtonTestTag = CreateEventScreenTestTags.DELETE_IMAGE_BUTTON,
+    )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
