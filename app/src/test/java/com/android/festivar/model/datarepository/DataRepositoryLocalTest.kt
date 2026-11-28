@@ -446,6 +446,56 @@ class DataRepositoryLocalTest {
   @Test
   fun deleteEvent_failingWrite_isUndone() = runTest { assertRollsBack("bob") { deleteEvent("e1") } }
 
+  /** Breaks if creating a chat does not store it and link it to its owning event. */
+  @Test
+  fun createChat_addsTheChatIdToItsEvent() = runTest {
+    val chat = Chat("chat-1", "e1", members = listOf(alice.uid, bob.uid))
+    val chatRepository = mockk<ChatRepository>()
+    dataRepository = repositoryWith(chatRepository = chatRepository)
+    coEvery { chatRepository.addChat(chat) } returns Unit
+
+    dataRepository.createChat(chat)
+
+    assertEquals(listOf("e1", "chat-1"), eventsRepository.getEvent("e1").chatIds)
+    coVerify(exactly = 1) { chatRepository.addChat(chat) }
+  }
+
+  /** Breaks if a failed event update leaves a newly created chat behind. */
+  @Test
+  fun createChat_failingEventWrite_isUndone() = runTest {
+    val chat = Chat("chat-1", "e1", members = listOf(alice.uid, bob.uid))
+    val chatRepository = mockk<ChatRepository>()
+    eventsRepository = BrokenEventsRepository(EventsRepositoryLocal(listOf(e1, e2)))
+    dataRepository = repositoryWith(chatRepository = chatRepository)
+    coEvery { chatRepository.addChat(chat) } returns Unit
+    coEvery { chatRepository.deleteChat(chat.chatId) } returns Unit
+
+    val exception =
+        assertThrows(IOException::class.java) { runBlocking { dataRepository.createChat(chat) } }
+
+    assertEquals("Connection lost while editing event e1", exception.message)
+    assertEquals(e1.chatIds, eventsRepository.getEvent("e1").chatIds)
+    coVerify(exactly = 1) { chatRepository.addChat(chat) }
+    coVerify(exactly = 1) { chatRepository.deleteChat(chat.chatId) }
+  }
+
+  /** Breaks if creating a chat accepts a user outside its event. */
+  @Test
+  fun createChat_rejectsNonMemberBeforeWriting() = runTest {
+    val chat = Chat("chat-1", "e1", members = listOf(alice.uid, "outside-event"))
+    val chatRepository = mockk<ChatRepository>()
+    dataRepository = repositoryWith(chatRepository = chatRepository)
+
+    val exception =
+        assertThrows(IllegalArgumentException::class.java) {
+          runBlocking { dataRepository.createChat(chat) }
+        }
+
+    assertEquals("Every chat member must belong to its event.", exception.message)
+    assertEquals(e1.chatIds, eventsRepository.getEvent("e1").chatIds)
+    coVerify(exactly = 0) { chatRepository.addChat(any()) }
+  }
+
   /** Breaks if deleting a chat changes another event or leaves its identifier on its own event. */
   @Test
   fun deleteChat_removesTheChatIdFromItsEvent() = runTest {
