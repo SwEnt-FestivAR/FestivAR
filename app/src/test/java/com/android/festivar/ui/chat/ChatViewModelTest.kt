@@ -299,6 +299,75 @@ class ChatViewModelTest {
     assertTrue(vm.uiState.value.canSend)
   }
 
+  /**
+   * Breaks if CancellationException during user fetch after add sets error or leaves isSending
+   * true.
+   */
+  @Test
+  fun sendMessageCancellationDuringUserFetchDoesNotSetError() {
+    val repo = ScriptedChatRepository(chat)
+    var throwCancellation = false
+    val dynamicUsersRepo =
+        object : UsersRepository by users {
+          override suspend fun getListUsers(uIds: List<String>): List<User> {
+            if (throwCancellation) {
+              throw CancellationException("cancelled users fetch")
+            }
+            return users.getListUsers(uIds)
+          }
+        }
+    val dataRepo =
+        DataRepositoryLocal(
+            authRepository = mockk(),
+            tasksRepository = mockk(),
+            eventsRepository = mockk(),
+            usersRepository = dynamicUsersRepo,
+            chatRepository = repo,
+        )
+    val vm = ChatViewModel("c1", dataRepo, "u2").also { it.loadChat() }
+    assertNull(vm.uiState.value.errorMsg)
+
+    throwCancellation = true
+    vm.sendMessage(MessageContent.Text("Cancel users fetch"))
+
+    assertFalse(vm.uiState.value.isSending)
+    assertNull(vm.uiState.value.errorMsg)
+  }
+
+  /**
+   * Breaks if CancellationException during chat refresh after send sets error or leaves isSending
+   * true.
+   */
+  @Test
+  fun sendMessageCancellationDuringRefreshDoesNotSetError() {
+    val repo = ScriptedChatRepository(chat)
+    var getCallCount = 0
+    val refreshingRepo =
+        object : ChatRepository by repo {
+          override suspend fun getChat(chatId: String): Chat {
+            getCallCount++
+            if (getCallCount > 1) {
+              throw CancellationException("cancelled refresh")
+            }
+            return repo.getChat(chatId)
+          }
+        }
+    val dataRepo =
+        DataRepositoryLocal(
+            authRepository = mockk(),
+            tasksRepository = mockk(),
+            eventsRepository = mockk(),
+            usersRepository = users,
+            chatRepository = refreshingRepo,
+        )
+    val vm = ChatViewModel("c1", dataRepo, "u2").also { it.loadChat() }
+
+    vm.sendMessage(MessageContent.Text("Cancel refresh"))
+
+    assertFalse(vm.uiState.value.isSending)
+    assertNull(vm.uiState.value.errorMsg)
+  }
+
   private class ScriptedChatRepository(initialChat: Chat) : ChatRepository {
     var chatState = initialChat
     var getFailure: Exception? = null

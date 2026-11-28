@@ -139,31 +139,28 @@ class ChatViewModel(
         return@launch
       }
 
-      val currentChat = _uiState.value.chat
-      val updatedChat = currentChat?.addMessage(message)
-      if (updatedChat != null) {
-        val userIds = (updatedChat.members + updatedChat.messages.map { it.authorId }).distinct()
-        val users =
-            try {
-              usersRepository.getListUsers(userIds)
-            } catch (e: CancellationException) {
-              throw e
-            } catch (e: Exception) {
-              Log.w(LOG_TAG, "Error fetching users after adding message", e)
-              emptyList()
-            }
-        val authorsMap = _uiState.value.authors + users.associateBy { it.uid }
+      val currentChat = checkNotNull(_uiState.value.chat)
+      val updatedChat = currentChat.addMessage(message)
+      val userIds = (updatedChat.members + updatedChat.messages.map { it.authorId }).distinct()
+      val users =
+          try {
+            usersRepository.getListUsers(userIds)
+          } catch (e: CancellationException) {
+            _uiState.update { it.copy(isSending = false) }
+            throw e
+          } catch (e: Exception) {
+            Log.w(LOG_TAG, "Error fetching users after adding message", e)
+            emptyList()
+          }
+      val authorsMap = _uiState.value.authors + users.associateBy { it.uid }
 
-        _uiState.update {
-          it.copy(
-              chat = updatedChat,
-              authors = authorsMap,
-              isSending = false,
-              isMember = updatedChat.members.contains(currentUserId),
-          )
-        }
-      } else {
-        _uiState.update { it.copy(isSending = false) }
+      _uiState.update {
+        it.copy(
+            chat = updatedChat,
+            authors = authorsMap,
+            isSending = false,
+            isMember = updatedChat.members.contains(currentUserId),
+        )
       }
 
       try {
@@ -181,6 +178,7 @@ class ChatViewModel(
           )
         }
       } catch (e: CancellationException) {
+        _uiState.update { it.copy(isSending = false) }
         throw e
       } catch (e: Exception) {
         Log.w(LOG_TAG, "Error refreshing chat $chatId after sending message", e)
