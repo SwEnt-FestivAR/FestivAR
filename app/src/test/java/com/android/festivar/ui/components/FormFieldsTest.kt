@@ -34,6 +34,78 @@ class FormFieldsTest {
     )
   }
 
+  /** Breaks if EMPTY_TITLE is mapped to another message. */
+  @Test
+  fun emptyTitleMapsToItsString() {
+    assertEquals(
+        R.string.field_error_empty_title,
+        fieldErrorMessageRes(FieldError.EMPTY_TITLE),
+    )
+  }
+
+  /** Breaks if EMPTY_EVENT_NAME is mapped to another message. */
+  @Test
+  fun emptyEventNameMapsToItsString() {
+    assertEquals(
+        R.string.field_error_empty_event_name,
+        fieldErrorMessageRes(FieldError.EMPTY_EVENT_NAME),
+    )
+  }
+
+  /** Breaks if EMPTY_CHAT_NAME is mapped to another message. */
+  @Test
+  fun emptyChatNameMapsToItsString() {
+    assertEquals(
+        R.string.field_error_empty_chat_name,
+        fieldErrorMessageRes(FieldError.EMPTY_CHAT_NAME),
+    )
+  }
+
+  /** Breaks if TOO_LONG_CHAT_NAME is mapped to another message. */
+  @Test
+  fun tooLongChatNameMapsToItsString() {
+    assertEquals(
+        R.string.field_error_too_long_chat_name,
+        fieldErrorMessageRes(FieldError.TOO_LONG_CHAT_NAME),
+    )
+  }
+
+  /** Breaks if MISSING_DATE is mapped to another message. */
+  @Test
+  fun missingDateMapsToItsString() {
+    assertEquals(
+        R.string.field_error_missing_date,
+        fieldErrorMessageRes(FieldError.MISSING_DATE),
+    )
+  }
+
+  /** Breaks if END_BEFORE_START is mapped to another message. */
+  @Test
+  fun endBeforeStartMapsToItsString() {
+    assertEquals(
+        R.string.field_error_end_before_start,
+        fieldErrorMessageRes(FieldError.END_BEFORE_START),
+    )
+  }
+
+  /** Breaks if INVALID_ESTIMATED_TIME is mapped to another message. */
+  @Test
+  fun invalidEstimatedTimeMapsToItsString() {
+    assertEquals(
+        R.string.field_error_invalid_estimated_time,
+        fieldErrorMessageRes(FieldError.INVALID_ESTIMATED_TIME),
+    )
+  }
+
+  /** Breaks if OUTDATED is mapped to another message. */
+  @Test
+  fun outdatedMapsToItsString() {
+    assertEquals(
+        R.string.field_error_outdated,
+        fieldErrorMessageRes(FieldError.OUTDATED),
+    )
+  }
+
   // A text saved before the limit can be edited down: breaks if it is cut back to maxLength.
   @Test
   fun limitEdit_keepsALongerSavedTextThatIsEditedDown() {
