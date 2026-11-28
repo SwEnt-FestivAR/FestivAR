@@ -144,7 +144,7 @@ fun FestivarDatesAndTimes(
         )
     DatesAndTimesPicker.END_TIME ->
         FestivarTimePickerDialog(
-            initial = range.endTime,
+            initial = range.endTime ?: range.startTime,
             onConfirm = {
               onRangeChange(range.copy(endTime = it))
               openPicker = null
