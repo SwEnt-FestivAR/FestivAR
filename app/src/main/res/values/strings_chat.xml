@@ -1,0 +1,14 @@
+<!-- Co-authored-by: Gemini -->
+<resources>
+    <string name="chat_load_failed">Could not load the chat. Try again.</string>
+    <string name="chat_send_failed">Could not send the message. Try again.</string>
+    <string name="chat_back">Back</string>
+    <string name="chat_default_title">General</string>
+    <string name="chat_today">TODAY</string>
+    <string name="chat_input_placeholder">Type a message…</string>
+    <string name="chat_send">Send</string>
+    <string name="chat_author_you">You</string>
+    <string name="chat_retry">Retry</string>
+    <string name="chat_empty">No messages yet. Start the conversation!</string>
+</resources>
+

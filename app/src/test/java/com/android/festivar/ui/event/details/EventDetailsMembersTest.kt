@@ -54,6 +54,7 @@ class EventDetailsMembersTest {
       event: Event,
       currentUserId: String = organizer.uid,
       eventsRepository: EventsRepository = EventsRepositoryLocal(listOf(event)),
+      onChatClicked: () -> Unit = {},
   ) {
     composeTestRule.setContent {
       AppTheme {
@@ -68,6 +69,7 @@ class EventDetailsMembersTest {
             onTasksButtonClicked = {},
             onAnnouncementsClicked = {},
             onEditClicked = {},
+            onChatClicked = onChatClicked,
         )
       }
     }
@@ -321,6 +323,16 @@ class EventDetailsMembersTest {
     composeTestRule.onNodeWithText("Dismiss").performClick()
 
     composeTestRule.onAllNodesWithTag(EventDetailsScreenTestTags.ACTION_ERROR).assertCountEquals(0)
+  }
+
+  /** Breaks if tapping the chat row fails to trigger onChatClicked. */
+  @Test
+  fun tappingChatRowTriggersCallback() {
+    var chatClicked = false
+    setContent(event, onChatClicked = { chatClicked = true })
+
+    composeTestRule.onNodeWithTag(EventDetailsScreenTestTags.CHAT_ROW).performClick()
+    assertTrue(chatClicked)
   }
 
   private fun openMemberDialogOf(user: User) {
