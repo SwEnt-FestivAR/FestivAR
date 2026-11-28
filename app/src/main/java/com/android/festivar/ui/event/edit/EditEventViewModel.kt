@@ -6,7 +6,6 @@ package com.android.festivar.ui.event.edit
 import android.content.ContentResolver
 import android.net.Uri
 import android.util.Log
-import android.webkit.MimeTypeMap
 import androidx.annotation.StringRes
 import androidx.lifecycle.viewModelScope
 import com.android.festivar.R
@@ -14,30 +13,25 @@ import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.event.Event
 import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.role.Permission
-import com.android.festivar.model.images.StoredImage
 import com.android.festivar.ui.components.FieldError
 import com.android.festivar.ui.components.datetime.DateTimeRange
 import com.android.festivar.ui.components.datetime.endDateError as validateEndDateError
 import com.android.festivar.ui.event.EventFormViewModel
+import com.android.festivar.ui.event.EventImageHandler
 import com.android.festivar.ui.event.computeEndDateTime
 import com.android.festivar.ui.event.computeStartDateTime
 import com.android.festivar.ui.event.isEventFormValid
 import com.android.festivar.ui.event.validateEventName
-import com.android.festivar.ui.profile.isProfilePictureTooLarge
 import java.io.File
-import java.io.FileOutputStream
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 
 private const val SAVE_TIMEOUT_MS = 15_000L
@@ -189,6 +183,7 @@ class EditEventViewModel(
 ) : EventFormViewModel<EditEventUIState>(EditEventUIState()) {
   private val eventsRepository: EventsRepository = dataRepository.eventsRepository
   private val imageStorage = dataRepository.imageStorage
+  private val imageHandler = EventImageHandler(imageStorage, ioDispatcher)
   val uiState: StateFlow<EditEventUIState> = formState
   private var loadJob: Job? = null
 
@@ -275,8 +270,7 @@ class EditEventViewModel(
 
   /** Opens the delete image confirmation dialog if an image is present. */
   fun requestDeleteImage() {
-    if (!uiState.value.hasImage) return
-    updateState { it.copy(showDeleteImageConfirmation = true) }
+    imageHandler.requestDeleteImage(currentState, currentState.hasImage, ::updateState)
   }
 
   internal fun setImageUrlForTesting(url: String?) {
@@ -285,119 +279,34 @@ class EditEventViewModel(
 
   /** Closes the delete image confirmation dialog without deleting the image. */
   fun cancelDeleteImage() {
-    updateState { it.copy(showDeleteImageConfirmation = false) }
+    imageHandler.cancelDeleteImage(::updateState)
   }
 
   /** Confirms deleting the image from storage and removes it from the form state. */
   fun confirmDeleteImage() {
-    val urlToDelete = uiState.value.imageUrl
-    updateState { it.copy(imageUrl = null, showDeleteImageConfirmation = false) }
-    if (!urlToDelete.isNullOrEmpty()) {
-      CoroutineScope(ioDispatcher + NonCancellable).launch {
-        try {
-          imageStorage.delete(urlToDelete)
-        } catch (e: Exception) {
-          Log.e(LOG_TAG, "Error deleting image", e)
-        }
-      }
-    }
+    imageHandler.confirmDeleteImage(
+        imageUrl = uiState.value.imageUrl,
+        coroutineScope = viewModelScope,
+        updateState = ::updateState,
+        setImageUrlNull = { it.copy(imageUrl = null, showDeleteImageConfirmation = false) },
+    )
   }
 
-  private fun deleteTemporaryImage(file: File) {
-    if (file.exists() && !file.delete()) {
-      Log.w(LOG_TAG, "Could not delete temporary image ${file.path}")
-    }
-  }
-
-  private suspend fun saveImage(storedImage: StoredImage) {
-    val oldImageUrl = uiState.value.imageUrl
-    var newImageUrl: String? = null
-    try {
-      newImageUrl = imageStorage.upload(storedImage, "events")
-      updateState {
-        it.copy(
-            imageUrl = newImageUrl,
-            isSaving = false,
-        )
-      }
-      var oldImageDeletionFailed = false
-      if (!oldImageUrl.isNullOrBlank() && oldImageUrl != newImageUrl) {
-        try {
-          imageStorage.delete(oldImageUrl)
-        } catch (e: CancellationException) {
-          throw e
-        } catch (e: Exception) {
-          Log.e(LOG_TAG, "Error deleting old event image", e)
-          oldImageDeletionFailed = true
-        }
-      }
-      if (oldImageDeletionFailed) {
-        updateState {
-          it.copy(
-              errorMsg = R.string.edit_event_error_save_failed,
-          )
-        }
-      }
-    } catch (e: CancellationException) {
-      throw e
-    } catch (e: Exception) {
-      Log.e(LOG_TAG, "Error saving event image", e)
-      newImageUrl?.let { uploadedUrl ->
-        try {
-          imageStorage.delete(uploadedUrl)
-        } catch (cleanupError: Exception) {
-          Log.e(LOG_TAG, "Error cleaning up event image", cleanupError)
-        }
-      }
-      updateState { it.copy(isSaving = false, errorMsg = R.string.edit_event_error_save_failed) }
-    }
-  }
-
-  @OptIn(ExperimentalStdlibApi::class)
   fun updateImage(uri: Uri, contentResolver: ContentResolver, cacheDir: File) {
-    if (currentState.isSaving) return
-    updateState { it.copy(isSaving = true, errorMsg = null) }
-    viewModelScope.launch {
-      var temporaryFile: File? = null
-      try {
-        val extension =
-            MimeTypeMap.getSingleton().getExtensionFromMimeType(contentResolver.getType(uri))
-                ?: "jpg"
-        val storedImage: StoredImage? =
-            withContext(ioDispatcher) {
-              val file = File.createTempFile("temp-event-image-", ".$extension", cacheDir)
-              try {
-                val input =
-                    contentResolver.openInputStream(uri) ?: error("Unable to read selected image.")
-                input.use { FileOutputStream(file).use { output -> input.copyTo(output) } }
-                if (isProfilePictureTooLarge(file.length())) {
-                  deleteTemporaryImage(file)
-                  null
-                } else {
-                  StoredImage(file)
-                }
-              } catch (e: Exception) {
-                deleteTemporaryImage(file)
-                throw e
-              }
-            }
-        if (storedImage == null) {
-          updateState { it.copy(isSaving = false, errorMsg = R.string.profile_picture_too_large) }
-        } else {
-          temporaryFile = storedImage.file
-          saveImage(storedImage)
-        }
-      } catch (e: CancellationException) {
-        throw e
-      } catch (e: Exception) {
-        Log.e(LOG_TAG, "Unable to read selected image", e)
-        updateState { it.copy(isSaving = false, errorMsg = R.string.edit_event_error_save_failed) }
-      } finally {
-        temporaryFile?.let { file ->
-          withContext(NonCancellable + ioDispatcher) { deleteTemporaryImage(file) }
-        }
-      }
-    }
+    imageHandler.updateImage(
+        uri = uri,
+        contentResolver = contentResolver,
+        cacheDir = cacheDir,
+        isSaving = currentState.isSaving,
+        currentImageUrl = uiState.value.imageUrl,
+        coroutineScope = viewModelScope,
+        saveErrorResId = R.string.edit_event_error_save_failed,
+        updateState = ::updateState,
+        setSavingState = { state, saving, err -> state.copy(isSaving = saving, errorMsg = err) },
+        setImageUrlState = { state, url, saving, err ->
+          state.copy(imageUrl = url, isSaving = saving, errorMsg = err)
+        },
+    )
   }
 
   /**
