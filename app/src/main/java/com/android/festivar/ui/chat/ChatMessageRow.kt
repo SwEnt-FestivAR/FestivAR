@@ -30,6 +30,7 @@ import java.time.ZonedDateTime
 object ChatMessageTestTags {
   const val MESSAGE_ROW = "chatMessageRow"
   const val MESSAGE_TEXT = "chatMessageText"
+  const val MESSAGE_IMAGE = "chatMessageImage"
   const val AUTHOR_TIME = "chatMessageAuthorTime"
   const val AVATAR = "chatMessageAvatar"
 }
