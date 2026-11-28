@@ -261,4 +261,83 @@ class CreateChatViewModelTest {
     assertEquals(ChatFormState(), viewModel().uiState.value.form)
     assertNull(ChatFormState().nameError)
   }
+
+  /**
+   * Breaks if loading an event where the current user is not a member succeeds instead of failing.
+   */
+  @Test
+  fun loadFailsWhenCurrentUserIsNotAnEventMember() {
+    val vm = viewModel(currentUserId = "non-member")
+
+    vm.load()
+    idle()
+
+    assertEquals(R.string.create_chat_error_load_failed, vm.uiState.value.errorMsg)
+    assertFalse(vm.uiState.value.isLoading)
+    assertNull(vm.uiState.value.event)
+  }
+
+  /** Breaks if form edits are applied while the form is not editable. */
+  @Test
+  fun applyEditIsIgnoredWhenNotEditable() {
+    val vm = readyViewModel()
+    vm.createChat()
+    idle()
+    assertTrue(vm.uiState.value.isCreated)
+    assertFalse(vm.uiState.value.isEditable)
+
+    vm.applyEdit { it.copy(name = "Changed Name") }
+
+    assertEquals("Bar crew", vm.uiState.value.form.name)
+  }
+
+  /**
+   * Breaks if members can be toggled before the event is loaded or when the form is not editable.
+   */
+  @Test
+  fun toggleMemberIsIgnoredBeforeLoadOrWhenNotEditable() {
+    val vm = viewModel()
+    assertNull(vm.uiState.value.event)
+
+    vm.toggleMember(member.uid)
+    assertTrue(vm.uiState.value.selectedMemberIds.isEmpty())
+
+    vm.load()
+    idle()
+    vm.updateName("Bar crew")
+    vm.toggleMember(member.uid)
+    assertEquals(listOf(member.uid), vm.uiState.value.selectedMemberIds)
+
+    vm.createChat()
+    idle()
+    assertTrue(vm.uiState.value.isCreated)
+
+    vm.toggleMember(member.uid)
+    assertEquals(listOf(member.uid), vm.uiState.value.selectedMemberIds)
+  }
+
+  /** Breaks if creating a chat without a configured chat repository fails to set a save error. */
+  @Test
+  fun createChatFailsWhenChatRepositoryIsNull() {
+    val noChatDataRepo =
+        DataRepositoryLocal(
+            authRepository = FakeAuthRepository(),
+            eventsRepository = eventsRepository,
+            chatRepository = null,
+        )
+    val vm = CreateChatViewModel(event.eventId, owner.uid, noChatDataRepo)
+
+    vm.load()
+    idle()
+    vm.updateName("Bar crew")
+    vm.toggleMember(member.uid)
+    assertTrue(vm.uiState.value.canCreate)
+
+    vm.createChat()
+    idle()
+
+    assertEquals(R.string.create_chat_error_save_failed, vm.uiState.value.errorMsg)
+    assertFalse(vm.uiState.value.isCreating)
+    assertFalse(vm.uiState.value.isCreated)
+  }
 }
