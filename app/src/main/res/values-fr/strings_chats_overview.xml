@@ -1,0 +1,4 @@
+<!-- Co-authored-by: Claude Fable 5.2 <noreply@anthropic.com> -->
+<resources>
+    <string name="chats_overview_load_failed">Impossible de charger les discussions.</string>
+</resources>
