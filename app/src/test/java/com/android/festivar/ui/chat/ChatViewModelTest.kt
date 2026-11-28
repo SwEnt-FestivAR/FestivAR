@@ -10,6 +10,7 @@ import com.android.festivar.model.chat.MessageContent
 import com.android.festivar.model.datarepository.DataRepository
 import com.android.festivar.model.datarepository.DataRepositoryLocal
 import com.android.festivar.model.user.User
+import com.android.festivar.model.user.UsersRepository
 import com.android.festivar.model.user.UsersRepositoryLocal
 import io.mockk.mockk
 import java.io.IOException
@@ -248,6 +249,54 @@ class ChatViewModelTest {
     nonMemberVm.loadChat()
     assertFalse(nonMemberVm.uiState.value.isMember)
     assertFalse(nonMemberVm.uiState.value.canSend)
+  }
+
+  /**
+   * Breaks if sendMessage does not handle exceptions from getUsers after adding a message
+   * successfully.
+   */
+  @Test
+  fun sendMessageHandlesGetUsersExceptionAfterAdd() {
+    val repo = ScriptedChatRepository(chat)
+    var throwInGetListUsers = false
+    val dynamicUsersRepo =
+        object : UsersRepository by users {
+          override suspend fun getListUsers(uIds: List<String>): List<User> {
+            if (throwInGetListUsers) {
+              throw IOException("users offline")
+            }
+            return users.getListUsers(uIds)
+          }
+        }
+    val dataRepo =
+        DataRepositoryLocal(
+            authRepository = mockk(),
+            tasksRepository = mockk(),
+            eventsRepository = mockk(),
+            usersRepository = dynamicUsersRepo,
+            chatRepository = repo,
+        )
+    val vm = ChatViewModel("c1", dataRepo, "u2").also { it.loadChat() }
+    assertNull(vm.uiState.value.errorMsg)
+
+    throwInGetListUsers = true
+    vm.sendMessage(MessageContent.Text("Hello dynamic users exception"))
+
+    assertNull(vm.uiState.value.errorMsg)
+    assertFalse(vm.uiState.value.isSending)
+  }
+
+  /**
+   * Breaks if canSend computed property does not correctly evaluate chat, loading, sending, and
+   * membership states.
+   */
+  @Test
+  fun canSendStateEvaluations() {
+    val vm = viewModel()
+    assertFalse(vm.uiState.value.canSend)
+
+    vm.loadChat()
+    assertTrue(vm.uiState.value.canSend)
   }
 
   private class ScriptedChatRepository(initialChat: Chat) : ChatRepository {
