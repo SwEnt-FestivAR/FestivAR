@@ -674,6 +674,167 @@ class EditEventViewModelTest {
     assertNull(state.savedEventId)
   }
 
+  /** Breaks if fetchEvent with a blank eventId does not handle error correctly. */
+  @Test
+  fun fetchEventBlankIdSetsError() = runTest {
+    viewModel.fetchEvent("")
+    advanceUntilIdle()
+
+    assertEquals(R.string.edit_event_error_fetch_failed, viewModel.uiState.value.errorFetchMsg)
+    assertFalse(viewModel.uiState.value.isLoading)
+  }
+
+  /** Breaks if updateNotes does not update notes state. */
+  @Test
+  fun updateNotesUpdatesState() = runTest {
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+
+    viewModel.updateNotes("New notes")
+    assertEquals("New notes", viewModel.uiState.value.notes)
+  }
+
+  /** Breaks if hasChanges does not detect changes in description or location. */
+  @Test
+  fun hasChangesDetectsDescriptionAndLocationChanges() = runTest {
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+
+    viewModel.updateNotes("New description")
+    assertTrue(viewModel.uiState.value.hasChanges)
+
+    viewModel.updateNotes(initialEvent.description)
+    viewModel.updateVenue("New venue")
+    assertTrue(viewModel.uiState.value.hasChanges)
+  }
+
+  /** Breaks if updateVenue does not update venue state and register changes. */
+  @Test
+  fun updateVenueUpdatesStateAndChanges() = runTest {
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+
+    viewModel.updateVenue("New venue")
+    assertEquals("New venue", viewModel.uiState.value.venue)
+    assertTrue(viewModel.uiState.value.hasChanges)
+  }
+
+  /**
+   * Breaks if EditEventViewModel does not reject non-positive saveTimeoutMs with
+   * IllegalArgumentException.
+   */
+  @Test
+  fun nonPositiveSaveTimeoutThrowsIllegalArgumentException() {
+    assertThrows(IllegalArgumentException::class.java) {
+      EditEventViewModel(
+          DataRepositoryLocal(FakeAuthRepository(), eventsRepository = eventsRepository),
+          { signedInUserId },
+          saveTimeoutMs = 0,
+      )
+    }
+  }
+
+  /** Breaks if requestDiscard without changes does not immediately discard. */
+  @Test
+  fun requestDiscardWithoutChangesDiscardsImmediately() = runTest {
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+
+    viewModel.requestDiscard()
+    assertTrue(viewModel.uiState.value.isDiscarded)
+    assertFalse(viewModel.uiState.value.showDiscardConfirmation)
+  }
+
+  /** Breaks if fetchEvent with a blank ID overwrites an already loaded event. */
+  @Test
+  fun fetchEventBlankIdWhenEventAlreadyLoadedDoesNothing() = runTest {
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+
+    viewModel.fetchEvent("")
+    assertEquals(initialEvent.title, viewModel.uiState.value.name)
+  }
+
+  /** Breaks if save failure verification timeout does not handle save failure correctly. */
+  @Test
+  fun saveFailureVerificationTimeoutShowsError() = runTest {
+    val repository =
+        object : EventsRepository by eventsRepository {
+          override suspend fun editEvent(eventId: String, newValue: Event) {
+            error("offline")
+          }
+
+          override suspend fun getEvent(eventId: String): Event {
+            delay(1000)
+            return eventsRepository.getEvent(eventId)
+          }
+        }
+    viewModel =
+        EditEventViewModel(
+            DataRepositoryLocal(FakeAuthRepository(), eventsRepository = repository),
+            { signedInUserId },
+            saveTimeoutMs = 10,
+        )
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+    viewModel.updateName("Updated festival")
+
+    viewModel.saveChanges()
+    advanceUntilIdle()
+
+    assertEquals(R.string.edit_event_error_save_failed, viewModel.uiState.value.errorMsg)
+  }
+
+  /** Breaks if save failure verification cancellation is not handled correctly. */
+  @Test
+  fun saveFailureVerificationCancellationRethrown() = runTest {
+    val repository =
+        object : EventsRepository by eventsRepository {
+          override suspend fun editEvent(eventId: String, newValue: Event) {
+            error("offline")
+          }
+
+          override suspend fun getEvent(eventId: String): Event {
+            throw CancellationException("cancelled verification")
+          }
+        }
+    viewModel = createViewModel(repository)
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+    viewModel.updateName("Updated festival")
+
+    viewModel.saveChanges()
+    advanceUntilIdle()
+
+    assertFalse(viewModel.uiState.value.isSaving)
+  }
+
+  /** Breaks if save failure verification exception does not result in save failed error state. */
+  @Test
+  fun saveFailureVerificationExceptionShowsError() = runTest {
+    var callCount = 0
+    val repository =
+        object : EventsRepository by eventsRepository {
+          override suspend fun editEvent(eventId: String, newValue: Event) {
+            error("offline")
+          }
+
+          override suspend fun getEvent(eventId: String): Event {
+            if (callCount++ > 0) error("get failed")
+            return eventsRepository.getEvent(eventId)
+          }
+        }
+    viewModel = createViewModel(repository)
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+    viewModel.updateName("Updated festival")
+
+    viewModel.saveChanges()
+    advanceUntilIdle()
+
+    assertEquals(R.string.edit_event_error_save_failed, viewModel.uiState.value.errorMsg)
+  }
+
   /**
    * Stores [initialEvent] with the signed-in user as a member of [role], given by the owner, and
    * recreates [viewModel] on it.
