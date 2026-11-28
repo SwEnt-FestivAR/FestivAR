@@ -218,9 +218,6 @@ enum class FieldError {
   /** The announcement content was edited and is now blank. */
   EMPTY_ANNOUNCEMENT_CONTENT,
 
-  /** A time was picked without its date. */
-  MISSING_DATE,
-
   /** The end is before the start. */
   END_BEFORE_START,
 
@@ -242,7 +239,6 @@ fun fieldErrorMessageRes(error: FieldError): Int =
       FieldError.EMPTY_EVENT_NAME -> R.string.field_error_empty_event_name
       FieldError.EMPTY_ANNOUNCEMENT_TITLE -> R.string.field_error_empty_announcement_title
       FieldError.EMPTY_ANNOUNCEMENT_CONTENT -> R.string.field_error_empty_announcement_content
-      FieldError.MISSING_DATE -> R.string.field_error_missing_date
       FieldError.END_BEFORE_START -> R.string.field_error_end_before_start
       FieldError.INVALID_ESTIMATED_TIME -> R.string.field_error_invalid_estimated_time
       FieldError.OUTDATED -> R.string.field_error_outdated

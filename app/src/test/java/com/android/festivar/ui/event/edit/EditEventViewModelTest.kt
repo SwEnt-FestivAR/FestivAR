@@ -221,17 +221,6 @@ class EditEventViewModelTest {
     )
   }
 
-  /** Breaks if an end time with no end date is not reported as a missing date. */
-  @Test
-  fun endDateErrorRequiresDateWhenEndTimeIsSet() = runTest {
-    viewModel.fetchEvent(initialEvent.eventId)
-    advanceUntilIdle()
-
-    val state = viewModel.uiState.value.let { it.copy(range = it.range.copy(endDate = null)) }
-
-    assertEquals(FieldError.MISSING_DATE, state.endDateError)
-  }
-
   /** Breaks if an event that already ended is reported as an error, so it could not be edited. */
   @Test
   fun endDateErrorAcceptsAnEndInThePast() = runTest {

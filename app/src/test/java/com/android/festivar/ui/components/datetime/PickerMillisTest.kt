@@ -5,7 +5,7 @@ import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-class DatePickerDialogTest {
+class PickerMillisTest {
   /**
    * Breaks if converting a date to picker milliseconds and back changes the date, leap day
    * included.

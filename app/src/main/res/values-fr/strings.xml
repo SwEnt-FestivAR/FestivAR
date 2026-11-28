@@ -38,7 +38,6 @@
     <string name="create_task_field_estimated_time">Durée estimée (minutes)</string>
     <string name="create_task_field_priority">Priorité</string>
     <string name="field_error_empty_title">Donnez un titre à la tâche</string>
-    <string name="field_error_missing_date">Choisissez une date pour cette heure</string>
     <string name="field_error_end_before_start">La fin précède le début</string>
     <string name="field_error_invalid_estimated_time">Saisissez au moins 1 minute</string>
     <string name="field_error_empty_event_name">Donnez un nom à l’événement</string>
