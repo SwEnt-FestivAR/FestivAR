@@ -674,6 +674,86 @@ class EditEventViewModelTest {
     assertNull(state.savedEventId)
   }
 
+  /** Breaks if fetching an event with an image URL does not prefill it into the state. */
+  @Test
+  fun fetchEventPrefillsImageUrl() = runTest {
+    val eventWithImage = initialEvent.copy(imageUrl = "https://example.com/event.jpg")
+    eventsRepository = EventsRepositoryLocal(listOf(eventWithImage))
+    viewModel = createViewModel(eventsRepository)
+
+    viewModel.fetchEvent(eventWithImage.eventId)
+    advanceUntilIdle()
+
+    val state = viewModel.uiState.value
+    assertEquals("https://example.com/event.jpg", state.imageUrl)
+    assertTrue(state.hasImage)
+    assertFalse(state.hasChanges)
+  }
+
+  /** Breaks if changing or clearing the image URL is not recognized as a draft change. */
+  @Test
+  fun changingImageMarksDraftAsChanged() = runTest {
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+    assertFalse(viewModel.uiState.value.hasChanges)
+
+    viewModel.setImageUrlForTesting("https://example.com/new.jpg")
+    assertTrue(viewModel.uiState.value.hasChanges)
+
+    viewModel.setImageUrlForTesting(null)
+    assertFalse(viewModel.uiState.value.hasChanges)
+  }
+
+  /** Breaks if requesting delete image when no image is present opens the delete dialog. */
+  @Test
+  fun requestDeleteImageIgnoredWhenNoImage() = runTest {
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+
+    viewModel.requestDeleteImage()
+    assertFalse(viewModel.uiState.value.showDeleteImageConfirmation)
+  }
+
+  /** Breaks if deleting the image cannot be requested, cancelled, or confirmed. */
+  @Test
+  fun deleteImageConfirmationDialogFlow() = runTest {
+    val eventWithImage = initialEvent.copy(imageUrl = "https://example.com/event.jpg")
+    eventsRepository = EventsRepositoryLocal(listOf(eventWithImage))
+    viewModel = createViewModel(eventsRepository)
+    viewModel.fetchEvent(eventWithImage.eventId)
+    advanceUntilIdle()
+
+    viewModel.requestDeleteImage()
+    assertTrue(viewModel.uiState.value.showDeleteImageConfirmation)
+
+    viewModel.cancelDeleteImage()
+    assertFalse(viewModel.uiState.value.showDeleteImageConfirmation)
+    assertEquals("https://example.com/event.jpg", viewModel.uiState.value.imageUrl)
+
+    viewModel.requestDeleteImage()
+    viewModel.confirmDeleteImage()
+    assertFalse(viewModel.uiState.value.showDeleteImageConfirmation)
+    assertNull(viewModel.uiState.value.imageUrl)
+    assertTrue(viewModel.uiState.value.hasChanges)
+  }
+
+  /**
+   * Breaks if saving changes with a modified image URL does not persist the image URL to the
+   * repository.
+   */
+  @Test
+  fun saveChangesPersistsModifiedImageUrl() = runTest {
+    viewModel.fetchEvent(initialEvent.eventId)
+    advanceUntilIdle()
+
+    viewModel.setImageUrlForTesting("https://example.com/updated.jpg")
+    viewModel.saveChanges()
+    advanceUntilIdle()
+
+    val saved = eventsRepository.getEvent(initialEvent.eventId)
+    assertEquals("https://example.com/updated.jpg", saved.imageUrl)
+  }
+
   /**
    * Stores [initialEvent] with the signed-in user as a member of [role], given by the owner, and
    * recreates [viewModel] on it.
