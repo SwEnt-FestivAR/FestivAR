@@ -33,14 +33,16 @@ class StoredLocationTest {
   }
 
   /**
-   * Breaks if a number or a map with a blank name is read as a place, or hides which document is
-   * wrong, or loses the reason of the refusal.
+   * Breaks if a number, an empty map or a map missing its name or position is read as a place, or
+   * hides which document is wrong, or loses the reason of the refusal.
    */
   @Test
   fun anInvalidLocationIsRefusedWithTheOwner() {
     val blankName = epfl.toMap() + ("name" to " ")
+    val noName = epfl.toMap() - "name"
+    val noPosition = epfl.toMap() - "position"
 
-    for (stored in listOf(42, blankName)) {
+    for (stored in listOf(42, blankName, emptyMap<String, Any>(), noName, noPosition)) {
       val error =
           assertThrows(IllegalArgumentException::class.java) {
             readStoredLocation(stored, "event-1")
