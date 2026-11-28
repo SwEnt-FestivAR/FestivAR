@@ -2,7 +2,7 @@ package com.android.festivar.ui.event.edit
 
 // Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
-// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Gemini <noreply@google.com>
 
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.mutableStateOf
@@ -25,11 +25,15 @@ import com.android.festivar.ui.components.datetime.DateRangePickerTestTags
 import com.android.festivar.ui.components.datetime.DateTimeRange
 import com.android.festivar.ui.components.datetime.pickDays
 import com.android.festivar.ui.theme.AppTheme
+import io.mockk.mockk
+import io.mockk.verify
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -337,6 +341,93 @@ class EditEventScreenTest {
 
     assertEquals(1, backCount)
     composeTestRule.onNodeWithTag(EditEventScreenTestTags.NAME_FIELD).assertDoesNotExist()
+  }
+
+  /**
+   * Breaks if clicking the add image placeholder does not trigger the photo picker on edit event.
+   */
+  @Test
+  fun addImageButtonTriggersPhotoPickerOnEditEvent() {
+    val launchPhotoPicker = mockk<(String) -> Unit>(relaxed = true)
+    val event = testState().event!!
+    val viewModel =
+        EditEventViewModel(
+            DataRepositoryLocal(
+                FakeAuthRepository(),
+                eventsRepository = EventsRepositoryLocal(listOf(event)),
+            ),
+            { event.ownerId },
+        )
+    composeTestRule.setContent {
+      AppTheme {
+        EditEventScreen(
+            eventId = event.eventId,
+            viewModel = viewModel,
+            onBack = {},
+            onSaved = {},
+            launchPhotoPicker = launchPhotoPicker,
+        )
+      }
+    }
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(EditEventScreenTestTags.IMAGE_SELECT_BUTTON).performClick()
+    verify(exactly = 1) { launchPhotoPicker("image/*") }
+  }
+
+  /**
+   * Breaks if clicking the delete image button when an image is present on edit event does not
+   * display the delete confirmation dialog and handle confirmation correctly.
+   */
+  @Test
+  fun deleteImageButtonOpensConfirmationDialogAndConfirmsDeletionOnEditEvent() {
+    val event = testState().event!!.copy(imageUrl = "https://example.com/image.png")
+    val viewModel =
+        EditEventViewModel(
+            DataRepositoryLocal(
+                FakeAuthRepository(),
+                eventsRepository = EventsRepositoryLocal(listOf(event)),
+            ),
+            { event.ownerId },
+        )
+    composeTestRule.setContent {
+      AppTheme {
+        EditEventScreen(
+            eventId = event.eventId,
+            viewModel = viewModel,
+            onBack = {},
+            onSaved = {},
+        )
+      }
+    }
+    composeTestRule.waitForIdle()
+
+    composeTestRule
+        .onNodeWithTag(EditEventScreenTestTags.DELETE_IMAGE_BUTTON)
+        .assertIsDisplayed()
+        .performClick()
+    composeTestRule.waitForIdle()
+
+    composeTestRule
+        .onNodeWithTag(EditEventScreenTestTags.DELETE_IMAGE_CONFIRM_DIALOG)
+        .assertIsDisplayed()
+
+    // Test dismiss/cancel first
+    composeTestRule
+        .onNodeWithTag(EditEventScreenTestTags.DELETE_IMAGE_DISMISS_BUTTON)
+        .performClick()
+    composeTestRule.waitForIdle()
+    assertNotNull(viewModel.uiState.value.imageUrl)
+
+    // Open dialog again and confirm deletion
+    composeTestRule.onNodeWithTag(EditEventScreenTestTags.DELETE_IMAGE_BUTTON).performClick()
+    composeTestRule.waitForIdle()
+    composeTestRule
+        .onNodeWithTag(EditEventScreenTestTags.DELETE_IMAGE_CONFIRM_BUTTON)
+        .performClick()
+    composeTestRule.waitForIdle()
+
+    assertNull(viewModel.uiState.value.imageUrl)
   }
 
   /** A range that ended long ago, which the edit screen must still open with its days selected. */

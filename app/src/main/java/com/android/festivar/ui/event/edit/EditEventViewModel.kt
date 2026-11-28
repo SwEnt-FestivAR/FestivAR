@@ -1,8 +1,10 @@
 package com.android.festivar.ui.event.edit
 
 // Co-authored-by: Copilot App
-// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Gemini <noreply@google.com>
 
+import android.content.ContentResolver
+import android.net.Uri
 import android.util.Log
 import androidx.annotation.StringRes
 import androidx.lifecycle.viewModelScope
@@ -15,13 +17,17 @@ import com.android.festivar.ui.components.FieldError
 import com.android.festivar.ui.components.datetime.DateTimeRange
 import com.android.festivar.ui.components.datetime.endDateError as validateEndDateError
 import com.android.festivar.ui.event.EventFormViewModel
+import com.android.festivar.ui.event.EventImageHandler
 import com.android.festivar.ui.event.computeEndDateTime
 import com.android.festivar.ui.event.computeStartDateTime
 import com.android.festivar.ui.event.isEventFormValid
 import com.android.festivar.ui.event.validateEventName
+import java.io.File
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.StateFlow
@@ -29,6 +35,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 
 private const val SAVE_TIMEOUT_MS = 15_000L
+private const val LOG_TAG = "EditEventViewModel"
 
 data class EditEventUIState(
     /** The event currently being edited, or null before a record has been loaded. */
@@ -56,6 +63,8 @@ data class EditEventUIState(
     val showDiscardConfirmation: Boolean = false,
     /** True when the user has confirmed the form should be discarded. */
     val isDiscarded: Boolean = false,
+    /** True when the delete image confirmation dialog should be shown. */
+    val showDeleteImageConfirmation: Boolean = false,
     /**
      * False when the current user is not a member of the event or their role cannot edit it, so the
      * screen must leave. True until the event is loaded.
@@ -69,7 +78,12 @@ data class EditEventUIState(
     val endZone: ZoneId = ZoneId.systemDefault(),
     /** Resource id for the latest form error message displayed to the user. */
     @param:StringRes val errorMsg: Int? = null,
+    /** The image URL of the event. */
+    val imageUrl: String? = null,
 ) {
+  val hasImage: Boolean
+    get() = !imageUrl.isNullOrEmpty()
+
   /** Full start timestamp assembled from the selected start date, time, and zone. */
   val startDateTime: ZonedDateTime?
     get() = computeStartDateTime(range.startDate, range.startTime, zone)
@@ -109,7 +123,8 @@ data class EditEventUIState(
             (name != event.title ||
                 range != event.range() ||
                 venue != event.location ||
-                notes != event.description)
+                notes != event.description ||
+                (imageUrl ?: "") != event.imageUrl)
 
   /** True when the form is valid, changed, not busy, and not already saved. */
   val canSave: Boolean
@@ -125,6 +140,7 @@ data class EditEventUIState(
         startDate = startDateTime!!,
         endDate = endDateTime!!,
         location = venue,
+        imageUrl = imageUrl ?: "",
     )
   }
 
@@ -142,10 +158,12 @@ data class EditEventUIState(
           savedEventId = null,
           showDiscardConfirmation = false,
           isDiscarded = false,
+          showDeleteImageConfirmation = false,
           errorFetchMsg = null,
           zone = event.startDate.zone,
           endZone = event.endDate.zone,
           errorMsg = null,
+          imageUrl = event.imageUrl.ifBlank { null },
       )
 }
 
@@ -161,8 +179,11 @@ class EditEventViewModel(
     private val dataRepository: DataRepository,
     private val currentUserId: () -> String,
     private val saveTimeoutMs: Long = SAVE_TIMEOUT_MS,
+    private val ioDispatcher: CoroutineDispatcher = IO,
 ) : EventFormViewModel<EditEventUIState>(EditEventUIState()) {
   private val eventsRepository: EventsRepository = dataRepository.eventsRepository
+  private val imageStorage = dataRepository.imageStorage
+  private val imageHandler = EventImageHandler(imageStorage, ioDispatcher)
   val uiState: StateFlow<EditEventUIState> = formState
   private var loadJob: Job? = null
 
@@ -191,7 +212,7 @@ class EditEventViewModel(
    */
   fun fetchEvent(eventId: String) {
     if (eventId.isBlank()) {
-      Log.e("EditEventViewModel", "Cannot load an event with a blank id")
+      Log.e(LOG_TAG, "Cannot load an event with a blank id")
       updateState {
         if (it.event == null) {
           it.copy(isLoading = false, errorFetchMsg = R.string.edit_event_error_fetch_failed)
@@ -215,7 +236,7 @@ class EditEventViewModel(
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
-        Log.e("EditEventViewModel", "Loading event $eventId failed", e)
+        Log.e(LOG_TAG, "Loading event $eventId failed", e)
         updateState {
           it.copy(isLoading = false, errorFetchMsg = R.string.edit_event_error_fetch_failed)
         }
@@ -247,6 +268,47 @@ class EditEventViewModel(
     }
   }
 
+  /** Opens the delete image confirmation dialog if an image is present. */
+  fun requestDeleteImage() {
+    imageHandler.requestDeleteImage(currentState, currentState.hasImage, ::updateState)
+  }
+
+  internal fun setImageUrlForTesting(url: String?) {
+    updateState { it.copy(imageUrl = url) }
+  }
+
+  /** Closes the delete image confirmation dialog without deleting the image. */
+  fun cancelDeleteImage() {
+    imageHandler.cancelDeleteImage(::updateState)
+  }
+
+  /** Confirms deleting the image from storage and removes it from the form state. */
+  fun confirmDeleteImage() {
+    imageHandler.confirmDeleteImage(
+        imageUrl = uiState.value.imageUrl,
+        coroutineScope = viewModelScope,
+        updateState = ::updateState,
+        setImageUrlNull = { it.copy(imageUrl = null, showDeleteImageConfirmation = false) },
+    )
+  }
+
+  fun updateImage(uri: Uri, contentResolver: ContentResolver, cacheDir: File) {
+    imageHandler.updateImage(
+        uri = uri,
+        contentResolver = contentResolver,
+        cacheDir = cacheDir,
+        isSaving = currentState.isSaving,
+        currentImageUrl = uiState.value.imageUrl,
+        coroutineScope = viewModelScope,
+        saveErrorResId = R.string.edit_event_error_save_failed,
+        updateState = ::updateState,
+        setSavingState = { state, saving, err -> state.copy(isSaving = saving, errorMsg = err) },
+        setImageUrlState = { state, url, saving, err ->
+          state.copy(imageUrl = url, isSaving = saving, errorMsg = err)
+        },
+    )
+  }
+
   /**
    * Saves the changed form when a user is signed in. The latest stored event is read first: if the
    * current user can no longer edit it, nothing is written and [EditEventUIState.canEditEvent] is
@@ -256,7 +318,7 @@ class EditEventViewModel(
     val state = currentState
     if (!state.canSave) return
     if (currentUserId().isBlank()) {
-      Log.e("EditEventViewModel", "Cannot save event without a signed-in user")
+      Log.e(LOG_TAG, "Cannot save event without a signed-in user")
       updateState { it.copy(errorMsg = R.string.edit_event_error_save_failed) }
       return
     }
@@ -279,6 +341,7 @@ class EditEventViewModel(
                 startDate = updatedEvent.startDate,
                 endDate = updatedEvent.endDate,
                 location = updatedEvent.location,
+                imageUrl = updatedEvent.imageUrl,
             )
         withTimeout(saveTimeoutMs) { eventsRepository.editEvent(eventToSave.eventId, eventToSave) }
         updateState { it.load(eventToSave).copy(savedEventId = eventToSave.eventId) }
@@ -294,18 +357,18 @@ class EditEventViewModel(
   }
 
   private suspend fun onSaveFailed(updatedEvent: Event, error: Exception) {
-    Log.w("EditEventViewModel", "Saving event failed; checking whether it was stored", error)
+    Log.w(LOG_TAG, "Saving event failed; checking whether it was stored", error)
     val storedEvent =
         try {
           withTimeout(saveTimeoutMs) { eventsRepository.getEvent(updatedEvent.eventId) }
         } catch (e: TimeoutCancellationException) {
-          Log.e("EditEventViewModel", "Could not verify event save before timeout", e)
+          Log.e(LOG_TAG, "Could not verify event save before timeout", e)
           null
         } catch (e: CancellationException) {
           updateState { it.copy(isSaving = false) }
           throw e
         } catch (e: Exception) {
-          Log.e("EditEventViewModel", "Could not verify event save", e)
+          Log.e(LOG_TAG, "Could not verify event save", e)
           null
         }
 
@@ -321,7 +384,8 @@ class EditEventViewModel(
           description == other.description &&
           startDate == other.startDate &&
           endDate == other.endDate &&
-          location == other.location
+          location == other.location &&
+          imageUrl == other.imageUrl
 
   /**
    * Tells whether the current user can edit [event]: they must be a member of it and their role
