@@ -256,6 +256,40 @@ interface DataRepository {
   }
 
   /**
+   * Stores a new [Chat] and adds its identifier to the owning [Event].
+   *
+   * Every chat member must belong to the event.
+   *
+   * @param chat The chat to create. Its event must already exist.
+   * @throws IllegalStateException If no chat repository is configured.
+   * @throws NoSuchElementException If the event does not exist.
+   * @throws IllegalArgumentException If a member is not in the event or the chat ID is already
+   *   linked.
+   * @throws DataInconsistencyException If a write fails and cannot be undone.
+   */
+  suspend fun createChat(chat: Chat) {
+    val repository =
+        chatRepository ?: throw IllegalStateException("Chat repository is not configured.")
+    val event = eventsRepository.getEvent(chat.eventId)
+    require(chat.members.all { memberId -> event.members.any { it.uid == memberId } }) {
+      "Every chat member must belong to its event."
+    }
+    val newEvent = event.addChatId(chat.chatId)
+
+    val undoProcess = ArrayDeque<suspend () -> Unit>()
+    try {
+      repository.addChat(chat)
+      undoProcess.addFirst { repository.deleteChat(chat.chatId) }
+
+      eventsRepository.editEvent(event.eventId, newEvent)
+      undoProcess.addFirst { eventsRepository.editEvent(event.eventId, event) }
+    } catch (e: Exception) {
+      rollback(undoProcess, e)
+      throw e
+    }
+  }
+
+  /**
    * Deletes a chat and removes its identifier from the event that owns it.
    *
    * @param chatId The identifier of the chat to delete.

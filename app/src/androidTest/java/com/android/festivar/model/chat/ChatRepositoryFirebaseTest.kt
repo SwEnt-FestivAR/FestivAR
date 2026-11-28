@@ -191,16 +191,28 @@ class ChatRepositoryFirebaseTest {
     assertEquals(Chat(chatId = chatId, eventId = "event-test"), repository.getChat(chatId))
   }
 
+  /** Breaks if custom chat names are lost during storage or retrieval. */
+  @Test
+  fun getChat_readsStoredCustomName() = runBlocking {
+    val chatId = "chat-test-${UUID.randomUUID()}"
+    val chat = Chat(chatId = chatId, eventId = "event-test", name = "Stage Team")
+
+    repository.addChat(chat)
+    assertEquals(chat, repository.getChat(chatId))
+  }
+
   /** Breaks if missing or malformed stored fields are silently accepted or lose chat context. */
   @Test
   fun getChat_rejectsMissingEventAndInvalidMemberOrMessageData() = runBlocking {
     val chats = Firebase.firestore.collection(CHAT_COLLECTION_PATH)
     val missingEventChatId = "chat-corrupt-${UUID.randomUUID()}"
+    val invalidNameChatId = "chat-corrupt-${UUID.randomUUID()}"
     val memberChatId = "chat-corrupt-${UUID.randomUUID()}"
     val invalidMemberChatId = "chat-corrupt-${UUID.randomUUID()}"
     val messageChatId = "chat-corrupt-${UUID.randomUUID()}"
     val malformedMessageChatId = "chat-corrupt-${UUID.randomUUID()}"
     chats.document(missingEventChatId).set(mapOf("members" to emptyList<String>())).await()
+    chats.document(invalidNameChatId).set(mapOf("eventId" to "event-test", "name" to 42)).await()
     chats.document(memberChatId).set(mapOf("eventId" to "event-test", "members" to "u1")).await()
     chats
         .document(invalidMemberChatId)
@@ -218,6 +230,7 @@ class ChatRepositoryFirebaseTest {
     for (chatId in
         listOf(
             missingEventChatId,
+            invalidNameChatId,
             memberChatId,
             invalidMemberChatId,
             messageChatId,

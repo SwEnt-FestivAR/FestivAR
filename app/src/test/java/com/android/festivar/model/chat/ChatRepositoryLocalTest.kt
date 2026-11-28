@@ -15,7 +15,7 @@ class ChatRepositoryLocalTest {
 
   private val sentAt = ZonedDateTime.of(2026, 11, 20, 16, 0, 0, 0, ZoneOffset.UTC)
   private val message = ChatMessage("m1", "u1", sentAt, MessageContent.Text("Hello"))
-  private val chat = Chat("c1", "e1", listOf(message))
+  private val chat = Chat("c1", "e1", messages = listOf(message))
   private val otherChat = Chat("c2", "e2")
 
   @Before

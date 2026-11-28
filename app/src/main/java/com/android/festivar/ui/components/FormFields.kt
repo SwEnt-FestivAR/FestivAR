@@ -218,6 +218,12 @@ enum class FieldError {
   /** The announcement content was edited and is now blank. */
   EMPTY_ANNOUNCEMENT_CONTENT,
 
+  /** The chat name was edited and is now blank. */
+  EMPTY_CHAT_NAME,
+
+  /** The chat name is longer than its limit. */
+  TOO_LONG_CHAT_NAME,
+
   /** A time was picked without its date. */
   MISSING_DATE,
 
@@ -242,6 +248,8 @@ fun fieldErrorMessageRes(error: FieldError): Int =
       FieldError.EMPTY_EVENT_NAME -> R.string.field_error_empty_event_name
       FieldError.EMPTY_ANNOUNCEMENT_TITLE -> R.string.field_error_empty_announcement_title
       FieldError.EMPTY_ANNOUNCEMENT_CONTENT -> R.string.field_error_empty_announcement_content
+      FieldError.EMPTY_CHAT_NAME -> R.string.field_error_empty_chat_name
+      FieldError.TOO_LONG_CHAT_NAME -> R.string.field_error_too_long_chat_name
       FieldError.MISSING_DATE -> R.string.field_error_missing_date
       FieldError.END_BEFORE_START -> R.string.field_error_end_before_start
       FieldError.INVALID_ESTIMATED_TIME -> R.string.field_error_invalid_estimated_time

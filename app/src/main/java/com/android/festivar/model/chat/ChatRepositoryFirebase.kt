@@ -138,6 +138,7 @@ class ChatRepositoryFirebase(private val db: FirebaseFirestore) : ChatRepository
       mapOf(
           "chatId" to chat.chatId,
           "eventId" to chat.eventId,
+          "name" to chat.name,
           "members" to chat.members,
           "messages" to chat.messages.map { it.toMap() },
       )
@@ -159,6 +160,22 @@ class ChatRepositoryFirebase(private val db: FirebaseFirestore) : ChatRepository
       )
       throw IllegalArgumentException("Chat '${document.id}' has missing eventId.")
     }
+
+    val storedName = document.get("name")
+    val name =
+        when (storedName) {
+          null -> DEFAULT_CHAT_NAME
+          is String -> storedName
+          else -> {
+            Log.e(
+                TAG,
+                "Invalid chat name data for chat '${document.id}'",
+            )
+            throw IllegalArgumentException(
+                "Invalid chat name data for chat '${document.id}': expected a string."
+            )
+          }
+        }
 
     val storedMembers = document.get("members")
     val members =
@@ -233,6 +250,7 @@ class ChatRepositoryFirebase(private val db: FirebaseFirestore) : ChatRepository
     return Chat(
         chatId = document.getString("chatId") ?: document.id,
         eventId = eventId,
+        name = name,
         messages = messages,
         members = members,
     )

@@ -37,19 +37,30 @@ class ChatTest {
     assertEquals(expectedMessage, exception.message)
   }
 
-  /** Breaks if an otherwise valid chat no longer gets default values and rejects blank IDs. */
+  /**
+   * Breaks if an otherwise valid chat no longer gets default values and rejects blank IDs or
+   * invalid names.
+   */
   @Test
-  fun chatCreationUsesDefaultsAndRejectsBlankIds() {
+  fun chatCreationUsesDefaultsAndRejectsBlankIdsAndInvalidNames() {
+    assertEquals(DEFAULT_CHAT_NAME, Chat("c1", "e1").name)
+    assertEquals("Custom Chat", Chat("c1", "e1", name = "Custom Chat").name)
     assertTrue(Chat("c1", "e1").messages.isEmpty())
     assertTrue(Chat("c1", "e1").members.isEmpty())
     assertInvalid("The chatId cannot be empty.") { Chat(" ", "e1") }
     assertInvalid("The eventId cannot be empty.") { Chat("c1", "") }
+    assertInvalid("The chat name cannot be empty.") { Chat("c1", "e1", name = " ") }
+    assertInvalid("The chat name cannot exceed $CHAT_NAME_MAX_LENGTH characters.") {
+      Chat("c1", "e1", name = "a".repeat(CHAT_NAME_MAX_LENGTH + 1))
+    }
   }
 
   /** Breaks if duplicate message IDs are accepted in Chat. */
   @Test
   fun chatRejectsDuplicateMessageIds() {
-    assertInvalid("A messageId is duplicated.") { Chat("c1", "e1", listOf(message(), message())) }
+    assertInvalid("A messageId is duplicated.") {
+      Chat("c1", "e1", messages = listOf(message(), message()))
+    }
   }
 
   /** Breaks if Chat accepts duplicate users or member changes are not immutable. */
@@ -82,7 +93,7 @@ class ChatTest {
       Chat(
           "c1",
           "e1",
-          listOf(message("m2", time = sentAt.plusHours(1)), message("m1")),
+          messages = listOf(message("m2", time = sentAt.plusHours(1)), message("m1")),
       )
     }
   }
@@ -105,7 +116,7 @@ class ChatTest {
    */
   @Test
   fun addMessageRejectsDuplicateAndInsertsOlderMessage() {
-    val chat = Chat("c1", "e1", listOf(message()))
+    val chat = Chat("c1", "e1", messages = listOf(message()))
 
     assertInvalid("A messageId is duplicated.") { chat.addMessage(message()) }
 
@@ -116,7 +127,7 @@ class ChatTest {
   /** Breaks if addMessage changes the original or appends a later message without order. */
   @Test
   fun addMessageAddsAtEndWithoutChangingOriginal() {
-    val chat = Chat("c1", "e1", listOf(message()))
+    val chat = Chat("c1", "e1", messages = listOf(message()))
     val later = message("m2", time = sentAt.plusHours(1))
 
     val result = chat.addMessage(later)
@@ -131,7 +142,7 @@ class ChatTest {
     val first = message("m1", time = sentAt)
     val third = message("m3", time = sentAt.plusHours(2))
     val second = message("m2", time = sentAt.plusHours(1))
-    val chat = Chat("c1", "e1", listOf(first, third))
+    val chat = Chat("c1", "e1", messages = listOf(first, third))
 
     assertEquals(listOf(first, second, third), chat.addMessage(second).messages)
   }
@@ -139,7 +150,8 @@ class ChatTest {
   /** Breaks if deleteMessage accepts an unknown ID or changes the original chat. */
   @Test
   fun deleteMessageRemovesKnownMessageWithoutChangingOriginal() {
-    val chat = Chat("c1", "e1", listOf(message(), message("m2", time = sentAt.plusHours(1))))
+    val chat =
+        Chat("c1", "e1", messages = listOf(message(), message("m2", time = sentAt.plusHours(1))))
 
     assertInvalid("The messageId is unknown.") { chat.deleteMessage("missing") }
     assertEquals(listOf(chat.messages[1]), chat.deleteMessage("m1").messages)

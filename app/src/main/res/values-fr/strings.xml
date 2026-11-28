@@ -1,5 +1,6 @@
 <!-- Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com> -->
 <!-- Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com> -->
+<!-- Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com> -->
 <resources>
 
 
@@ -44,6 +45,8 @@
     <string name="field_error_empty_event_name">Donnez un nom à l’événement</string>
     <string name="field_error_empty_announcement_title">Donnez un titre à l’annonce</string>
     <string name="field_error_empty_announcement_content">Rédigez l’annonce</string>
+    <string name="field_error_empty_chat_name">Donnez un nom au chat</string>
+    <string name="field_error_too_long_chat_name">Le nom du chat est trop long</string>
     <string name="field_error_outdated">Déjà terminé</string>
     <string name="field_error_too_few_slots">Moins de personnes que celles déjà assignées</string>
     <string name="priority_none">Aucune</string>
@@ -53,6 +56,8 @@
     <string name="priority_urgent">Urgente</string>
     <string name="create_task_discard_title">Abandonner cette tâche ?</string>
     <string name="create_task_error_save_failed">Impossible de créer la tâche.</string>
+    <string name="create_chat_error_load_failed">Impossible de charger les membres de l’événement.</string>
+    <string name="create_chat_error_save_failed">Impossible de créer le chat.</string>
     <!-- Join event screen -->
     <string name="join_event_back">Retour</string>
     <string name="join_event_title">Rejoindre par code</string>
