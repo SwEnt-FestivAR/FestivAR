@@ -82,6 +82,28 @@ class ImageChatMessageRowRobolectricTest {
         .assertIsDisplayed()
   }
 
+  /** Breaks if an incoming image message without author user displays an avatar. */
+  @Test
+  fun displaysIncomingImageMessageWithoutUserCorrectly() {
+    composeTestRule.setContent {
+      AppTheme {
+        ImageChatMessageRow(
+            message = incomingImageMessage,
+            authorName = "Camille",
+            authorUser = null,
+            isCurrentUser = false,
+            formattedTime = "13:58",
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithText("CAMILLE · 13:58").assertIsDisplayed()
+    composeTestRule.onNodeWithTag(ChatMessageTestTags.MESSAGE_IMAGE).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(ChatMessageTestTags.AVATAR, useUnmergedTree = true)
+        .assertDoesNotExist()
+  }
+
   /**
    * Breaks if an outgoing image message fails to display author name, timestamp, avatar, image, or
    * text content.
@@ -106,6 +128,28 @@ class ImageChatMessageRowRobolectricTest {
     composeTestRule
         .onNodeWithTag(ChatMessageTestTags.AVATAR, useUnmergedTree = true)
         .assertIsDisplayed()
+  }
+
+  /** Breaks if an outgoing image message without author user displays an avatar. */
+  @Test
+  fun displaysOutgoingImageMessageWithoutUserCorrectly() {
+    composeTestRule.setContent {
+      AppTheme {
+        ImageChatMessageRow(
+            message = outgoingImageMessage,
+            authorName = "Vous",
+            authorUser = null,
+            isCurrentUser = true,
+            formattedTime = "13:59",
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithText("VOUS · 13:59").assertIsDisplayed()
+    composeTestRule.onNodeWithTag(ChatMessageTestTags.MESSAGE_IMAGE).assertIsDisplayed()
+    composeTestRule
+        .onNodeWithTag(ChatMessageTestTags.AVATAR, useUnmergedTree = true)
+        .assertDoesNotExist()
   }
 
   /** Breaks if a message without image URLs displays an image chat message row. */
