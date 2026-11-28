@@ -218,10 +218,44 @@ class ChatViewModelTest {
     assertNull(vm.uiState.value.errorMsg)
   }
 
+  /**
+   * Breaks if sendMessage reports a send failure when refreshing the chat or users fails after the
+   * message has already been successfully added.
+   */
+  @Test
+  fun sendMessageSucceedsEvenIfPostAddRefreshFails() {
+    val vm = viewModel().also { it.loadChat() }
+    localChatRepo.getFailure = null
+    localChatRepo.refreshFailure = IOException("refresh offline")
+
+    vm.sendMessage(MessageContent.Text("Hello again"))
+
+    assertNull(vm.uiState.value.errorMsg)
+    assertFalse(vm.uiState.value.isSending)
+    localChatRepo.refreshFailure = null
+    localChatRepo.getCallCount = 0
+  }
+
+  /** Breaks if isMember is false for chat members or true for non-members. */
+  @Test
+  fun isMemberStateIsCorrect() {
+    val memberVm = viewModel()
+    memberVm.loadChat()
+    assertTrue(memberVm.uiState.value.isMember)
+    assertTrue(memberVm.uiState.value.canSend)
+
+    val nonMemberVm = ChatViewModel("c1", dataRepository(), "u99")
+    nonMemberVm.loadChat()
+    assertFalse(nonMemberVm.uiState.value.isMember)
+    assertFalse(nonMemberVm.uiState.value.canSend)
+  }
+
   private class ScriptedChatRepository(initialChat: Chat) : ChatRepository {
     var chatState = initialChat
     var getFailure: Exception? = null
+    var refreshFailure: Exception? = null
     var addMessageFailure: Exception? = null
+    var getCallCount = 0
     var beforeGet: suspend () -> Unit = {}
     var uidCounter = 10
 
@@ -231,6 +265,10 @@ class ChatViewModelTest {
 
     override suspend fun getChat(chatId: String): Chat {
       beforeGet()
+      getCallCount++
+      if (getCallCount > 1 && refreshFailure != null) {
+        throw refreshFailure!!
+      }
       getFailure?.let { throw it }
       require(chatId == chatState.chatId) { "Chat not found" }
       return chatState
