@@ -1,0 +1,5 @@
+<!-- Co-authored-by: Gemini -->
+<resources>
+    <string name="chat_load_failed">Impossible de charger le chat. Réessayez.</string>
+    <string name="chat_send_failed">Impossible d\'envoyer le message. Réessayez.</string>
+</resources>
