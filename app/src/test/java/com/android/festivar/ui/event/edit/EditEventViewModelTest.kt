@@ -2,8 +2,11 @@ package com.android.festivar.ui.event.edit
 
 // Co-authored-by: Copilot App
 // Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
-// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Gemini <noreply@google.com>
 
+import android.content.ContentResolver
+import android.net.Uri
+import android.webkit.MimeTypeMap
 import com.android.festivar.R
 import com.android.festivar.model.authentication.FakeAuthRepository
 import com.android.festivar.model.datarepository.DataRepositoryLocal
@@ -12,10 +15,18 @@ import com.android.festivar.model.event.EventsRepository
 import com.android.festivar.model.event.EventsRepositoryLocal
 import com.android.festivar.model.event.announcement.Announcement
 import com.android.festivar.model.event.role.Role
+import com.android.festivar.model.images.ImageStorage
+import com.android.festivar.model.images.StoredImage
 import com.android.festivar.model.task.Task
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.components.FieldError
 import com.android.festivar.ui.components.datetime.DateTimeRange
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.mockkStatic
+import io.mockk.unmockkStatic
+import java.io.ByteArrayInputStream
+import java.io.File
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
@@ -34,6 +45,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
@@ -755,6 +767,148 @@ class EditEventViewModelTest {
   }
 
   /**
+   * Breaks if updateImage fails to upload selected image and set error state when storage fails.
+   */
+  @Test
+  fun updateImageHandlesUploadError() = runTest {
+    withMockedExtension {
+      val imageStorage = RecordingImageStorage(uploadError = RuntimeException("upload error"))
+      val dataRepo =
+          DataRepositoryLocal(
+              FakeAuthRepository(),
+              eventsRepository = eventsRepository,
+              imageStorage = imageStorage,
+          )
+      val testDispatcher = StandardTestDispatcher(testScheduler)
+      viewModel = EditEventViewModel(dataRepo, { signedInUserId }, ioDispatcher = testDispatcher)
+      viewModel.fetchEvent(initialEvent.eventId)
+      advanceUntilIdle()
+
+      val (resolver, uri) = createMockResolver()
+      viewModel.updateImage(uri, resolver, createTempTestDir())
+      advanceUntilIdle()
+
+      assertEquals(R.string.edit_event_error_save_failed, viewModel.uiState.value.errorMsg)
+      assertFalse(viewModel.uiState.value.isSaving)
+    }
+  }
+
+  /** Breaks if updateImage updates image URL and deletes previous image on replacement. */
+  @Test
+  fun updateImageUpdatesImageUrlAndDeletesPrevious() = runTest {
+    withMockedExtension {
+      val imageStorage = RecordingImageStorage()
+      val dataRepo =
+          DataRepositoryLocal(
+              FakeAuthRepository(),
+              eventsRepository = eventsRepository,
+              imageStorage = imageStorage,
+          )
+      val testDispatcher = StandardTestDispatcher(testScheduler)
+      viewModel = EditEventViewModel(dataRepo, { signedInUserId }, ioDispatcher = testDispatcher)
+      viewModel.fetchEvent(initialEvent.eventId)
+      advanceUntilIdle()
+      viewModel.setImageUrlForTesting("https://example.com/old.jpg")
+
+      val (resolver, uri) = createMockResolver()
+      viewModel.updateImage(uri, resolver, createTempTestDir())
+      advanceUntilIdle()
+
+      assertNotNull(viewModel.uiState.value.imageUrl)
+      assertEquals(listOf("https://example.com/old.jpg"), imageStorage.deletedUrls)
+      assertFalse(viewModel.uiState.value.isSaving)
+    }
+  }
+
+  /**
+   * Breaks if updateImage sets profile picture too large error when image file exceeds size limit.
+   */
+  @Test
+  fun updateImageRejectsImageWhenTooLarge() = runTest {
+    withMockedExtension {
+      val largeData = ByteArray(11 * 1024 * 1024)
+      val (resolver, uri) = createMockResolver(bytes = largeData)
+      val testDispatcher = StandardTestDispatcher(testScheduler)
+      val dataRepo =
+          DataRepositoryLocal(
+              FakeAuthRepository(),
+              eventsRepository = eventsRepository,
+          )
+      viewModel = EditEventViewModel(dataRepo, { signedInUserId }, ioDispatcher = testDispatcher)
+      viewModel.fetchEvent(initialEvent.eventId)
+      advanceUntilIdle()
+
+      viewModel.updateImage(uri, resolver, createTempTestDir())
+      advanceUntilIdle()
+
+      assertEquals(R.string.profile_picture_too_large, viewModel.uiState.value.errorMsg)
+      assertFalse(viewModel.uiState.value.isSaving)
+    }
+  }
+
+  /** Breaks if updateImage sets save error when input stream cannot be opened. */
+  @Test
+  fun updateImageHandlesInputStreamError() = runTest {
+    withMockedExtension {
+      val (resolver, uri) = createMockResolver(readException = RuntimeException("read error"))
+      val testDispatcher = StandardTestDispatcher(testScheduler)
+      val dataRepo =
+          DataRepositoryLocal(
+              FakeAuthRepository(),
+              eventsRepository = eventsRepository,
+          )
+      viewModel = EditEventViewModel(dataRepo, { signedInUserId }, ioDispatcher = testDispatcher)
+      viewModel.fetchEvent(initialEvent.eventId)
+      advanceUntilIdle()
+
+      viewModel.updateImage(uri, resolver, createTempTestDir())
+      advanceUntilIdle()
+
+      assertEquals(R.string.edit_event_error_save_failed, viewModel.uiState.value.errorMsg)
+      assertFalse(viewModel.uiState.value.isSaving)
+    }
+  }
+
+  private inline fun <T> withMockedExtension(
+      extension: String = "png",
+      block: () -> T,
+  ): T {
+    mockkStatic(MimeTypeMap::class)
+    val mimeTypeMap = mockk<MimeTypeMap>()
+    every { MimeTypeMap.getSingleton() } returns mimeTypeMap
+    every { mimeTypeMap.getExtensionFromMimeType(any()) } returns extension
+    try {
+      return block()
+    } finally {
+      unmockkStatic(MimeTypeMap::class)
+    }
+  }
+
+  private fun createMockResolver(
+      mimeType: String? = "image/png",
+      bytes: ByteArray = "test image content".toByteArray(),
+      readException: Throwable? = null,
+  ): Pair<ContentResolver, Uri> {
+    val resolver = mockk<ContentResolver>()
+    val uri = mockk<Uri>()
+    every { resolver.getType(uri) } returns mimeType
+    if (readException != null) {
+      every { resolver.openInputStream(uri) } throws readException
+    } else {
+      every { resolver.openInputStream(uri) } returns ByteArrayInputStream(bytes)
+    }
+    return resolver to uri
+  }
+
+  private fun createTempTestDir(): File {
+    val tempDir = File.createTempFile("test", "dir")
+    tempDir.delete()
+    tempDir.mkdir()
+    tempDir.deleteOnExit()
+    return tempDir
+  }
+
+  /**
    * Stores [initialEvent] with the signed-in user as a member of [role], given by the owner, and
    * recreates [viewModel] on it.
    *
@@ -809,4 +963,26 @@ class EditEventViewModelTest {
           DataRepositoryLocal(FakeAuthRepository(), eventsRepository = repository),
           { signedInUserId },
       )
+}
+
+private class RecordingImageStorage(
+    var uploadError: Throwable? = null,
+    var deleteError: Throwable? = null,
+) : ImageStorage {
+  val uploadedImages = mutableListOf<Pair<StoredImage, String>>()
+  val deletedUrls = mutableListOf<String>()
+
+  override fun getNewUid(): String = "image-uid"
+
+  override suspend fun upload(storedImage: StoredImage, subFolder: String): String {
+    uploadError?.let { throw it }
+    val url = "https://example.com/${storedImage.file.name}"
+    uploadedImages.add(storedImage to subFolder)
+    return url
+  }
+
+  override suspend fun delete(imageUrl: String) {
+    deleteError?.let { throw it }
+    deletedUrls.add(imageUrl)
+  }
 }

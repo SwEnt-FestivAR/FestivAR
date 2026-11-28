@@ -1,7 +1,7 @@
 package com.android.festivar.ui.event.edit
 
 // Co-authored-by: Copilot App
-// Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
+// Co-authored-by: Gemini <noreply@google.com>
 
 import android.content.ContentResolver
 import android.net.Uri
