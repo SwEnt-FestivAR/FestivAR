@@ -5,6 +5,9 @@ import com.android.festivar.model.voicenote.VoiceNote
 import java.time.ZonedDateTime
 import java.time.format.DateTimeParseException
 
+const val CHAT_NAME_MAX_LENGTH = 80
+const val DEFAULT_CHAT_NAME = "General"
+
 /**
  * Conversation for one event.
  *
@@ -12,18 +15,24 @@ import java.time.format.DateTimeParseException
  *
  * @property chatId Unique identifier of the chat.
  * @property eventId Unique identifier of the event.
+ * @property name Name of the chat.
  * @property messages Messages in chronological order.
  * @property members IDs of users who belong to the chat.
  */
 data class Chat(
     val chatId: String,
     val eventId: String,
+    val name: String = DEFAULT_CHAT_NAME,
     val messages: List<ChatMessage> = emptyList(),
     val members: List<String> = emptyList(),
 ) {
   init {
     require(chatId.isNotBlank()) { "The chatId cannot be empty." }
     require(eventId.isNotBlank()) { "The eventId cannot be empty." }
+    require(name.isNotBlank()) { "The chat name cannot be empty." }
+    require(name.length <= CHAT_NAME_MAX_LENGTH) {
+      "The chat name cannot exceed $CHAT_NAME_MAX_LENGTH characters."
+    }
     require(members.all { it.isNotBlank() }) { "The userId cannot be empty." }
     require(members.distinct().size == members.size) { "A user is registered twice." }
     require(messages.map { it.messageId }.distinct().size == messages.size) {
