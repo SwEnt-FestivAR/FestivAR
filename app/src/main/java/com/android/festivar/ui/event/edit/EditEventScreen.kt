@@ -163,20 +163,6 @@ fun EditEventScreen(
       modifier = modifier,
       launchPicker = launchPicker,
   )
-
-  if (uiState.showDeleteImageConfirmation) {
-    FestivarConfirmDialog(
-        title = stringResource(R.string.create_event_delete_image_title),
-        message = stringResource(R.string.create_event_delete_image_message),
-        confirmText = stringResource(R.string.create_event_image_del),
-        dismissText = stringResource(R.string.create_event_delete_image_cancel),
-        onConfirm = viewModel::confirmDeleteImage,
-        onDismiss = viewModel::cancelDeleteImage,
-        modifier = Modifier.testTag(EditEventScreenTestTags.DELETE_IMAGE_CONFIRM_DIALOG),
-        confirmModifier = Modifier.testTag(EditEventScreenTestTags.DELETE_IMAGE_CONFIRM_BUTTON),
-        dismissModifier = Modifier.testTag(EditEventScreenTestTags.DELETE_IMAGE_DISMISS_BUTTON),
-    )
-  }
 }
 
 /** Stateless edit form. All visible state and user actions come from [state] and [actions]. */
