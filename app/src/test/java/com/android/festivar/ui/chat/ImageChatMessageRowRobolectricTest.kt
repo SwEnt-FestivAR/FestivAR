@@ -10,6 +10,7 @@ import com.android.festivar.model.chat.ChatMessage
 import com.android.festivar.model.chat.MessageContent
 import com.android.festivar.model.user.User
 import com.android.festivar.ui.theme.AppTheme
+import io.mockk.mockk
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import org.junit.Rule
@@ -46,14 +47,6 @@ class ImageChatMessageRowRobolectricTest {
                   text = "Super reçu !",
                   imageUrls = listOf("https://example.com/image2.png"),
               ),
-      )
-
-  private val textOnlyMessage =
-      ChatMessage(
-          messageId = "m3",
-          authorId = "u1",
-          sentAt = ZonedDateTime.of(2026, 10, 17, 14, 0, 0, 0, ZoneOffset.UTC),
-          content = MessageContent.Text("Just text"),
       )
 
   /**
@@ -152,13 +145,22 @@ class ImageChatMessageRowRobolectricTest {
         .assertDoesNotExist()
   }
 
-  /** Breaks if a message without image URLs displays an image chat message row. */
+  /**
+   * Breaks if a non-text/image message (e.g. voice) fails to return early without displaying row.
+   */
   @Test
-  fun textOnlyMessageReturnsEarlyWithoutDisplayingRow() {
+  fun nonTextOrImageMessageReturnsEarlyWithoutDisplayingRow() {
+    val voiceMessage =
+        ChatMessage(
+            messageId = "m5",
+            authorId = "u1",
+            sentAt = ZonedDateTime.of(2026, 10, 17, 14, 0, 0, 0, ZoneOffset.UTC),
+            content = MessageContent.Voice(mockk(relaxed = true)),
+        )
     composeTestRule.setContent {
       AppTheme {
         ImageChatMessageRow(
-            message = textOnlyMessage,
+            message = voiceMessage,
             authorName = "Camille",
             authorUser = userCamille,
             isCurrentUser = false,
@@ -168,6 +170,41 @@ class ImageChatMessageRowRobolectricTest {
     }
 
     composeTestRule.onNodeWithTag(ChatMessageTestTags.MESSAGE_ROW).assertDoesNotExist()
+  }
+
+  /**
+   * Breaks if an image message with a failing image URL does not display the image failure
+   * placeholder.
+   */
+  @Test
+  fun displaysImageFailurePlaceholderWhenImageLoadFails() {
+    val failingImageMessage =
+        ChatMessage(
+            messageId = "m_fail",
+            authorId = "u1",
+            sentAt = ZonedDateTime.of(2026, 10, 17, 14, 10, 0, 0, ZoneOffset.UTC),
+            content =
+                MessageContent.Text(
+                    text = "Image loading failed",
+                    imageUrls = listOf("invalid://failing-url"),
+                ),
+        )
+
+    composeTestRule.setContent {
+      AppTheme {
+        ImageChatMessageRow(
+            message = failingImageMessage,
+            authorName = "Camille",
+            authorUser = userCamille,
+            isCurrentUser = false,
+            formattedTime = "14:10",
+        )
+      }
+    }
+
+    composeTestRule
+        .onNodeWithTag(ChatMessageTestTags.MESSAGE_IMAGE_FAILURE, useUnmergedTree = true)
+        .assertIsDisplayed()
   }
 
   /** Breaks if incoming image message preview fails to render without errors. */
