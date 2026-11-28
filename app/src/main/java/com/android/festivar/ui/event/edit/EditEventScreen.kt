@@ -4,7 +4,11 @@ package com.android.festivar.ui.event.edit
 // Co-authored-by: Claude Sonnet 5.5 <noreply@anthropic.com>
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -33,6 +37,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -40,11 +45,15 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.festivar.R
 import com.android.festivar.model.event.Event
+import com.android.festivar.ui.components.FestivarConfirmDialog
 import com.android.festivar.ui.components.FestivarDiscardDialog
 import com.android.festivar.ui.components.FestivarFieldError
 import com.android.festivar.ui.components.datetime.DateTimeRange
 import com.android.festivar.ui.event.EventFields
 import com.android.festivar.ui.event.EventFieldsTestTags
+import com.android.festivar.ui.event.create.IconsType
+import com.android.festivar.ui.event.create.ImagePlaceholderPicker
+import com.android.festivar.ui.event.create.ImageViewer
 import com.android.festivar.ui.theme.AppTheme
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -69,6 +78,12 @@ object EditEventScreenTestTags {
   const val SAVE_ERROR = "editEventSaveError"
   const val DISCARD_CONFIRM = "editEventDiscardConfirm"
   const val DISCARD_KEEP_EDITING = "editEventDiscardKeepEditing"
+  const val DELETE_IMAGE_BUTTON = "editEventDeleteImageButton"
+  const val IMAGE_PREVIEW = "editEventImagePreview"
+  const val DELETE_IMAGE_CONFIRM_DIALOG = "editEventDeleteImageConfirmDialog"
+  const val DELETE_IMAGE_CONFIRM_BUTTON = "editEventDeleteImageConfirmButton"
+  const val DELETE_IMAGE_DISMISS_BUTTON = "editEventDeleteImageDismissButton"
+  const val IMAGE_SELECT_BUTTON = "editEventImageSelectButton"
 }
 
 private val editEventFieldTags =
@@ -94,6 +109,9 @@ class EditEventActions(
     val onSave: () -> Unit = {},
     val onCancelDiscard: () -> Unit = {},
     val onConfirmDiscard: () -> Unit = {},
+    val onDeleteImageClick: () -> Unit = {},
+    val onCancelDeleteImage: () -> Unit = {},
+    val onConfirmDeleteImage: () -> Unit = {},
 )
 
 /**
@@ -107,6 +125,7 @@ fun EditEventScreen(
     onBack: () -> Unit,
     onSaved: () -> Unit,
     modifier: Modifier = Modifier,
+    launchPhotoPicker: ((String) -> Unit)? = null,
 ) {
   val uiState by viewModel.uiState.collectAsState()
 
@@ -116,6 +135,13 @@ fun EditEventScreen(
   BackHandler(onBack = viewModel::requestDiscard)
   val canEditEvent = uiState.canEditEvent
   LaunchedEffect(canEditEvent) { if (!canEditEvent) onBack() }
+
+  val context = LocalContext.current
+  val photoPicker =
+      rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let { viewModel.updateImage(it, context.contentResolver, context.cacheDir) }
+      }
+  val launchPicker = launchPhotoPicker ?: { mimeType -> photoPicker.launch(mimeType) }
 
   EditEventContent(
       state = uiState,
@@ -130,9 +156,27 @@ fun EditEventScreen(
               onSave = viewModel::saveChanges,
               onCancelDiscard = viewModel::cancelDiscard,
               onConfirmDiscard = viewModel::confirmDiscard,
+              onDeleteImageClick = viewModel::requestDeleteImage,
+              onCancelDeleteImage = viewModel::cancelDeleteImage,
+              onConfirmDeleteImage = viewModel::confirmDeleteImage,
           ),
       modifier = modifier,
+      launchPicker = launchPicker,
   )
+
+  if (uiState.showDeleteImageConfirmation) {
+    FestivarConfirmDialog(
+        title = stringResource(R.string.create_event_delete_image_title),
+        message = stringResource(R.string.create_event_delete_image_message),
+        confirmText = stringResource(R.string.create_event_image_del),
+        dismissText = stringResource(R.string.create_event_delete_image_cancel),
+        onConfirm = viewModel::confirmDeleteImage,
+        onDismiss = viewModel::cancelDeleteImage,
+        modifier = Modifier.testTag(EditEventScreenTestTags.DELETE_IMAGE_CONFIRM_DIALOG),
+        confirmModifier = Modifier.testTag(EditEventScreenTestTags.DELETE_IMAGE_CONFIRM_BUTTON),
+        dismissModifier = Modifier.testTag(EditEventScreenTestTags.DELETE_IMAGE_DISMISS_BUTTON),
+    )
+  }
 }
 
 /** Stateless edit form. All visible state and user actions come from [state] and [actions]. */
@@ -142,6 +186,7 @@ fun EditEventContent(
     state: EditEventUIState,
     actions: EditEventActions,
     modifier: Modifier = Modifier,
+    launchPicker: ((String) -> Unit) = {},
 ) {
   Scaffold(
       modifier = modifier.testTag(EditEventScreenTestTags.SCREEN),
@@ -167,6 +212,30 @@ fun EditEventContent(
                       .verticalScroll(rememberScrollState())
                       .padding(horizontal = 12.dp),
           ) {
+            if (state.hasImage && !state.imageUrl.isNullOrEmpty()) {
+              ImageViewer(
+                  url = state.imageUrl,
+                  onEditImageClick = { launchPicker("image/*") },
+                  onDeleteImageClick = actions.onDeleteImageClick,
+                  isSaving = state.isSaving,
+                  hasImage = state.hasImage,
+                  imagePreviewTestTag = EditEventScreenTestTags.IMAGE_PREVIEW,
+                  deleteImageButtonTestTag = EditEventScreenTestTags.DELETE_IMAGE_BUTTON,
+              )
+            } else {
+              ImagePlaceholderPicker(
+                  modifier =
+                      Modifier.padding(top = 5.dp)
+                          .testTag(EditEventScreenTestTags.IMAGE_SELECT_BUTTON),
+                  icon = IconsType.CAM,
+                  text = stringResource(R.string.create_event_image_add),
+                  enabled = !state.isSaving,
+                  onEditImageClick = { launchPicker("image/*") },
+                  savingIndicatorTestTag = EditEventScreenTestTags.SAVING_INDICATOR,
+              )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
             EventFields(
                 name = state.name,
                 nameError = state.nameError,
@@ -175,6 +244,7 @@ fun EditEventContent(
                 venue = state.venue,
                 notes = state.notes,
                 allowPast = true,
+                enabled = !state.isSaving,
                 testTags = editEventFieldTags,
                 onNameChange = actions.onNameChange,
                 onRangeChange = actions.onRangeChange,
@@ -183,7 +253,7 @@ fun EditEventContent(
             )
           }
       state.isLoading ->
-          androidx.compose.foundation.layout.Box(
+          Box(
               modifier = Modifier.fillMaxSize().padding(padding),
               contentAlignment = Alignment.Center,
           ) {
@@ -192,7 +262,7 @@ fun EditEventContent(
             )
           }
       state.errorFetchMsg != null ->
-          androidx.compose.foundation.layout.Box(
+          Box(
               modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
               contentAlignment = Alignment.Center,
           ) {
@@ -222,6 +292,20 @@ fun EditEventContent(
         onDismiss = actions.onCancelDiscard,
         confirmModifier = Modifier.testTag(EditEventScreenTestTags.DISCARD_CONFIRM),
         dismissModifier = Modifier.testTag(EditEventScreenTestTags.DISCARD_KEEP_EDITING),
+    )
+  }
+
+  if (state.showDeleteImageConfirmation) {
+    FestivarConfirmDialog(
+        title = stringResource(R.string.create_event_delete_image_title),
+        message = stringResource(R.string.create_event_delete_image_message),
+        confirmText = stringResource(R.string.create_event_image_del),
+        dismissText = stringResource(R.string.create_event_delete_image_cancel),
+        onConfirm = actions.onConfirmDeleteImage,
+        onDismiss = actions.onCancelDeleteImage,
+        modifier = Modifier.testTag(EditEventScreenTestTags.DELETE_IMAGE_CONFIRM_DIALOG),
+        confirmModifier = Modifier.testTag(EditEventScreenTestTags.DELETE_IMAGE_CONFIRM_BUTTON),
+        dismissModifier = Modifier.testTag(EditEventScreenTestTags.DELETE_IMAGE_DISMISS_BUTTON),
     )
   }
 }
