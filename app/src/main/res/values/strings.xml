@@ -45,6 +45,8 @@
     <string name="field_error_empty_event_name">Give the event a name</string>
     <string name="field_error_empty_announcement_title">Give the announcement a title</string>
     <string name="field_error_empty_announcement_content">Write the announcement</string>
+    <string name="field_error_empty_chat_name">Give the chat a name</string>
+    <string name="field_error_too_long_chat_name">Chat name is too long</string>
     <string name="field_error_outdated">Ends in the past</string>
     <string name="field_error_too_few_slots">Fewer than the people already assigned</string>
     <string name="priority_none">None</string>
@@ -54,6 +56,8 @@
     <string name="priority_urgent">Urgent</string>
     <string name="create_task_discard_title">Discard this task?</string>
     <string name="create_task_error_save_failed">Unable to create the task.</string>
+    <string name="create_chat_error_load_failed">Unable to load event members.</string>
+    <string name="create_chat_error_save_failed">Unable to create the chat.</string>
     <!-- Join event screen -->
     <string name="join_event_back">Navigate back</string>
     <string name="join_event_title">Join by code</string>
