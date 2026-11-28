@@ -33,6 +33,7 @@ private const val LOG_TAG = "ChatViewModel"
  * @property isLoading Whether the chat is currently being loaded.
  * @property isSending Whether a message is currently being sent.
  * @property errorMsg The string resource of the latest load or send failure, or null.
+ * @property isMember Whether the current user is a member of the chat.
  */
 data class ChatUiState(
     val chat: Chat? = null,
@@ -40,10 +41,11 @@ data class ChatUiState(
     val isLoading: Boolean = true,
     val isSending: Boolean = false,
     @param:StringRes val errorMsg: Int? = null,
+    val isMember: Boolean = false,
 ) {
   /** Whether messages can be sent. */
   val canSend: Boolean
-    get() = chat != null && !isLoading && !isSending
+    get() = chat != null && !isLoading && !isSending && isMember
 }
 
 /**
@@ -88,6 +90,7 @@ class ChatViewModel(
         val userIds = (chat.members + chat.messages.map { it.authorId }).distinct()
         val users = usersRepository.getListUsers(userIds)
         val authorsMap = users.associateBy { it.uid }
+        val isMember = chat.members.contains(currentUserId)
 
         _uiState.update {
           it.copy(
@@ -95,6 +98,7 @@ class ChatViewModel(
               authors = authorsMap,
               isLoading = false,
               errorMsg = null,
+              isMember = isMember,
           )
         }
       } catch (e: CancellationException) {
@@ -116,34 +120,70 @@ class ChatViewModel(
 
     _uiState.update { it.copy(isSending = true, errorMsg = null) }
     viewModelScope.launch {
-      try {
-        val messageId = chatRepository.getNewUid()
-        val message =
-            ChatMessage(
-                messageId = messageId,
-                authorId = currentUserId,
-                sentAt = ZonedDateTime.now(clock),
-                content = content,
-            )
-        chatRepository.addMessage(chatId, message)
-        val updatedChat = chatRepository.getChat(chatId)
-        val userIds = (updatedChat.members + updatedChat.messages.map { it.authorId }).distinct()
-        val users = usersRepository.getListUsers(userIds)
-        val authorsMap = users.associateBy { it.uid }
-
-        _uiState.update {
-          it.copy(
-              chat = updatedChat,
-              authors = authorsMap,
-              isSending = false,
+      val messageId = chatRepository.getNewUid()
+      val message =
+          ChatMessage(
+              messageId = messageId,
+              authorId = currentUserId,
+              sentAt = ZonedDateTime.now(clock),
+              content = content,
           )
-        }
+      try {
+        chatRepository.addMessage(chatId, message)
       } catch (e: CancellationException) {
         _uiState.update { it.copy(isSending = false) }
         throw e
       } catch (e: Exception) {
         Log.e(LOG_TAG, "Error sending message to chat $chatId", e)
         _uiState.update { it.copy(isSending = false, errorMsg = R.string.chat_send_failed) }
+        return@launch
+      }
+
+      val currentChat = _uiState.value.chat
+      val updatedChat = currentChat?.addMessage(message)
+      if (updatedChat != null) {
+        val userIds = (updatedChat.members + updatedChat.messages.map { it.authorId }).distinct()
+        val users =
+            try {
+              usersRepository.getListUsers(userIds)
+            } catch (e: CancellationException) {
+              throw e
+            } catch (e: Exception) {
+              Log.w(LOG_TAG, "Error fetching users after adding message", e)
+              emptyList()
+            }
+        val authorsMap = _uiState.value.authors + users.associateBy { it.uid }
+
+        _uiState.update {
+          it.copy(
+              chat = updatedChat,
+              authors = authorsMap,
+              isSending = false,
+              isMember = updatedChat.members.contains(currentUserId),
+          )
+        }
+      } else {
+        _uiState.update { it.copy(isSending = false) }
+      }
+
+      try {
+        val refreshedChat = chatRepository.getChat(chatId)
+        val refreshedUserIds =
+            (refreshedChat.members + refreshedChat.messages.map { it.authorId }).distinct()
+        val refreshedUsers = usersRepository.getListUsers(refreshedUserIds)
+        val refreshedAuthorsMap = refreshedUsers.associateBy { it.uid }
+
+        _uiState.update {
+          it.copy(
+              chat = refreshedChat,
+              authors = refreshedAuthorsMap,
+              isMember = refreshedChat.members.contains(currentUserId),
+          )
+        }
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        Log.w(LOG_TAG, "Error refreshing chat $chatId after sending message", e)
       }
     }
   }
